@@ -83,29 +83,39 @@ class TestWeeklySchedule:
 
     def test_valid_weekly_schedule(self):
         """Test valid weekly schedule creation."""
-        monday_schedule = [DaySchedule(startTime="09:00", stopTime="17:00")]
-        tuesday_schedule = [DaySchedule(startTime="10:00", stopTime="18:00")]
+        monday_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
+        tuesday_schedule = DaySchedule(startTime="10:00", stopTime="18:00")
 
         weekly = WeeklySchedule(monday=monday_schedule, tuesday=tuesday_schedule)
-        assert len(weekly.monday) == 1
-        assert len(weekly.tuesday) == 1
+        assert weekly.monday.startTime == "09:00"
+        assert weekly.monday.stopTime == "17:00"
+        assert weekly.tuesday.startTime == "10:00"
+        assert weekly.tuesday.stopTime == "18:00"
         assert weekly.wednesday is None
 
-    def test_multiple_periods_per_day(self):
-        """Test multiple time periods per day."""
-        morning_schedule = DaySchedule(startTime="09:00", stopTime="12:00")
-        afternoon_schedule = DaySchedule(startTime="13:00", stopTime="17:00")
+    def test_single_schedule_per_day(self):
+        """Test single schedule per day (no multiple periods allowed)."""
+        monday_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
 
-        weekly = WeeklySchedule(monday=[morning_schedule, afternoon_schedule])
-        assert len(weekly.monday) == 2
+        weekly = WeeklySchedule(monday=monday_schedule)
+        assert weekly.monday.startTime == "09:00"
+        assert weekly.monday.stopTime == "17:00"
 
-    def test_overlapping_schedules_validation(self):
-        """Test overlapping schedules raise ValidationError."""
-        overlap_schedule1 = DaySchedule(startTime="09:00", stopTime="13:00")
-        overlap_schedule2 = DaySchedule(startTime="12:00", stopTime="16:00")
+    def test_no_overlapping_validation_needed(self):
+        """Test that overlapping validation is not needed since only one schedule per day is allowed."""
+        # With the new structure, each day can only have one schedule, so overlapping is impossible
+        monday_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
 
-        with pytest.raises(ValidationError, match="Monday has overlapping schedules"):
-            WeeklySchedule(monday=[overlap_schedule1, overlap_schedule2])
+        # This should work fine since there's only one schedule per day
+        weekly = WeeklySchedule(monday=monday_schedule)
+        assert weekly.monday.startTime == "09:00"
+        assert weekly.monday.stopTime == "17:00"
+
+    def test_empty_weekly_schedule_validation(self):
+        """Test that WeeklySchedule requires at least one day to be configured."""
+        # Should fail when no days are configured
+        with pytest.raises(ValidationError, match="At least one day must have a schedule configured"):
+            WeeklySchedule()
 
 
 class TestSchedulingConfig:
@@ -125,7 +135,7 @@ class TestSchedulingConfig:
 
     def test_each_day_schedule(self):
         """Test EACH_DAY schedule type."""
-        monday_schedule = [DaySchedule(startTime="09:00", stopTime="17:00")]
+        monday_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
         weekly_schedule = WeeklySchedule(monday=monday_schedule)
 
         config = SchedulingConfig(
@@ -153,11 +163,11 @@ class TestSchedulingConfig:
             SchedulingConfig(
                 scheduleType=ScheduleType.RECURRING_DAILY,
                 dailySchedule=daily_schedule,
-                weeklySchedule=WeeklySchedule(monday=[daily_schedule]),
+                weeklySchedule=WeeklySchedule(monday=daily_schedule),
             )
 
         # EACH_DAY without weeklySchedule should fail
-        with pytest.raises(ValidationError, match="weeklySchedule with at least one day required for EACH_DAY type"):
+        with pytest.raises(ValidationError, match="weeklySchedule required for EACH_DAY type"):
             SchedulingConfig(scheduleType=ScheduleType.EACH_DAY)
 
     def test_timezone_validation(self):

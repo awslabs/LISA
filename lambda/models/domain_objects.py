@@ -189,17 +189,20 @@ class DaySchedule(BaseModel):
     @model_validator(mode="after")
     def validate_stop_after_start(self) -> Self:
         """Validates that stop time is after start time and at least 2 hours later"""
-        from datetime import datetime, timedelta
 
         start_time = datetime.strptime(self.startTime, "%H:%M").time()
         stop_time = datetime.strptime(self.stopTime, "%H:%M").time()
+
+        # Reject if start and stop times are exactly equal
+        if start_time == stop_time:
+            raise ValueError("Stop time must be at least 2 hours after start time")
 
         # Convert to datetime objects for easier calculation
         start_dt = datetime.combine(datetime.today(), start_time)
         stop_dt = datetime.combine(datetime.today(), stop_time)
 
         # Handle case where stop time is next day (e.g., start at 23:00, stop at 01:00)
-        if stop_time <= start_time:
+        if stop_time < start_time:
             stop_dt += timedelta(days=1)
 
         # Calculate the time difference
@@ -214,63 +217,23 @@ class DaySchedule(BaseModel):
 
 
 class WeeklySchedule(BaseModel):
-    """Defines schedule for each day of the week with support for multiple time periods per day"""
+    """Defines schedule for each day of the week with one start/stop time per day"""
 
-    monday: Optional[List[DaySchedule]] = None
-    tuesday: Optional[List[DaySchedule]] = None
-    wednesday: Optional[List[DaySchedule]] = None
-    thursday: Optional[List[DaySchedule]] = None
-    friday: Optional[List[DaySchedule]] = None
-    saturday: Optional[List[DaySchedule]] = None
-    sunday: Optional[List[DaySchedule]] = None
+    monday: Optional[DaySchedule] = None
+    tuesday: Optional[DaySchedule] = None
+    wednesday: Optional[DaySchedule] = None
+    thursday: Optional[DaySchedule] = None
+    friday: Optional[DaySchedule] = None
+    saturday: Optional[DaySchedule] = None
+    sunday: Optional[DaySchedule] = None
 
     @model_validator(mode="after")
     def validate_daily_schedules(self) -> Self:
-        """Validates that each day's schedules don't overlap and are properly ordered"""
-        days = [
-            ("monday", self.monday),
-            ("tuesday", self.tuesday),
-            ("wednesday", self.wednesday),
-            ("thursday", self.thursday),
-            ("friday", self.friday),
-            ("saturday", self.saturday),
-            ("sunday", self.sunday),
-        ]
+        """Validates that at least one day has a schedule configured"""
+        days = [self.monday, self.tuesday, self.wednesday, self.thursday, self.friday, self.saturday, self.sunday]
 
-        for day_name, day_schedules in days:
-            "Each day isn't required to have a schedule"
-            if not day_schedules:
-                continue
-
-            # Convert all times to datetime objects for comparison
-            time_periods = []
-            for schedule in day_schedules:
-                start_time = datetime.strptime(schedule.startTime, "%H:%M").time()
-                stop_time = datetime.strptime(schedule.stopTime, "%H:%M").time()
-
-                start_dt = datetime.combine(datetime.today(), start_time)
-                stop_dt = datetime.combine(datetime.today(), stop_time)
-
-                # Handle cross-midnight schedules
-                if stop_time <= start_time:
-                    stop_dt += timedelta(days=1)
-
-                time_periods.append((start_dt, stop_dt, schedule))
-
-            # Sort by start time
-            time_periods.sort(key=lambda x: x[0])
-
-            # Check for overlaps
-            for i in range(len(time_periods) - 1):
-                current_end = time_periods[i][1]
-                next_start = time_periods[i + 1][0]
-
-                if current_end > next_start:
-                    raise ValueError(
-                        f"{day_name.capitalize()} has overlapping schedules: "
-                        f"{time_periods[i][2].startTime}-{time_periods[i][2].stopTime} "
-                        f"overlaps with {time_periods[i + 1][2].startTime}-{time_periods[i + 1][2].stopTime}"
-                    )
+        if not any(days):
+            raise ValueError("At least one day must have a schedule configured")
 
         return self
 
@@ -335,18 +298,8 @@ class SchedulingConfig(BaseModel):
             return self
 
         if self.scheduleType == ScheduleType.EACH_DAY:
-            if not self.weeklySchedule or not any(
-                [
-                    self.weeklySchedule.monday,
-                    self.weeklySchedule.tuesday,
-                    self.weeklySchedule.wednesday,
-                    self.weeklySchedule.thursday,
-                    self.weeklySchedule.friday,
-                    self.weeklySchedule.saturday,
-                    self.weeklySchedule.sunday,
-                ]
-            ):
-                raise ValueError("weeklySchedule with at least one day required for EACH_DAY type")
+            if not self.weeklySchedule:
+                raise ValueError("weeklySchedule required for EACH_DAY type")
             if self.dailySchedule:
                 raise ValueError("dailySchedule not allowed for EACH_DAY type")
         elif self.scheduleType == ScheduleType.RECURRING_DAILY:

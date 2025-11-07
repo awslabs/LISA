@@ -61,9 +61,9 @@ def sample_weekly_schedule_config():
         "scheduleType": "EACH_DAY",
         "timezone": "UTC",
         "weeklySchedule": {
-            "monday": [{"startTime": "09:00", "stopTime": "17:00"}],
-            "tuesday": [{"startTime": "10:00", "stopTime": "18:00"}],
-            "friday": [{"startTime": "08:00", "stopTime": "16:00"}],
+            "monday": {"startTime": "09:00", "stopTime": "17:00"},
+            "tuesday": {"startTime": "10:00", "stopTime": "18:00"},
+            "friday": {"startTime": "08:00", "stopTime": "16:00"},
         },
         "scheduleEnabled": True,
     }
@@ -272,8 +272,8 @@ class TestCalculateNextScheduledAction:
             "scheduleType": "EACH_DAY",
             "timezone": "UTC",
             "weeklySchedule": {
-                "monday": [{"startTime": "09:00", "stopTime": "17:00"}],
-                "wednesday": [{"startTime": "10:00", "stopTime": "18:00"}],
+                "monday": {"startTime": "09:00", "stopTime": "17:00"},
+                "wednesday": {"startTime": "10:00", "stopTime": "18:00"},
             },
         }
 
@@ -563,8 +563,8 @@ class TestCreateScheduledActions:
         mock_create_weekly.return_value = ["arn1", "arn2", "arn3"]
 
         weekly_schedule = WeeklySchedule(
-            monday=[DaySchedule(startTime="09:00", stopTime="17:00")],
-            tuesday=[DaySchedule(startTime="10:00", stopTime="18:00")],
+            monday=DaySchedule(startTime="09:00", stopTime="17:00"),
+            tuesday=DaySchedule(startTime="10:00", stopTime="18:00"),
         )
 
         schedule_config = SchedulingConfig(

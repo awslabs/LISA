@@ -298,7 +298,7 @@ def create_daily_scheduled_actions(
 def create_weekly_scheduled_actions(
     model_id: str, auto_scaling_group: str, weekly_schedule: WeeklySchedule, timezone_name: str
 ) -> List[str]:
-    """Create scheduled actions for weekly schedule (different times each day with support for multiple periods)"""
+    """Create scheduled actions for weekly schedule (different times each day with one start/stop time per day)"""
     scheduled_action_arns = []
 
     # Get ASG capacity config
@@ -314,59 +314,55 @@ def create_weekly_scheduled_actions(
         "sunday": (0, weekly_schedule.sunday),
     }
 
-    for day_name, (day_num, day_schedules) in day_mapping.items():
-        if not day_schedules:
+    for day_name, (day_num, day_schedule) in day_mapping.items():
+        if not day_schedule:
             continue
 
-        # Handle multiple time periods for each day
-        for period_idx, day_schedule in enumerate(day_schedules):
-            # Create start action for this period
-            start_cron = convert_to_utc_cron_with_day(day_schedule.startTime, timezone_name, day_num)
-            start_action_name = f"{model_id}-{day_name}-period{period_idx + 1}-start"
+        # Create start action for this day
+        start_cron = convert_to_utc_cron_with_day(day_schedule.startTime, timezone_name, day_num)
+        start_action_name = f"{model_id}-{day_name}-start"
 
-            try:
-                autoscaling_client.put_scheduled_update_group_action(
-                    AutoScalingGroupName=auto_scaling_group,
-                    ScheduledActionName=start_action_name,
-                    Recurrence=start_cron,
-                    MinSize=capacity_config["MinSize"],
-                    MaxSize=capacity_config["MaxSize"],
-                    DesiredCapacity=capacity_config["DesiredCapacity"],
-                )
+        try:
+            autoscaling_client.put_scheduled_update_group_action(
+                AutoScalingGroupName=auto_scaling_group,
+                ScheduledActionName=start_action_name,
+                Recurrence=start_cron,
+                MinSize=capacity_config["MinSize"],
+                MaxSize=capacity_config["MaxSize"],
+                DesiredCapacity=capacity_config["DesiredCapacity"],
+            )
 
-                start_arn = construct_scheduled_action_arn(auto_scaling_group, start_action_name)
-                scheduled_action_arns.append(start_arn)
-                logger.info(f"Created {day_name} period {period_idx + 1} start action: {start_action_name}")
+            start_arn = construct_scheduled_action_arn(auto_scaling_group, start_action_name)
+            scheduled_action_arns.append(start_arn)
+            logger.info(f"Created {day_name} start action: {start_action_name}")
 
-            except ClientError as e:
-                logger.error(
-                    f"Failed to create {day_name} period {period_idx + 1} start action {start_action_name}: {e}"
-                )
-                cleanup_scheduled_actions(scheduled_action_arns)
-                raise
+        except ClientError as e:
+            logger.error(f"Failed to create {day_name} start action {start_action_name}: {e}")
+            cleanup_scheduled_actions(scheduled_action_arns)
+            raise
 
-            # Create stop action for this period
-            stop_cron = convert_to_utc_cron_with_day(day_schedule.stopTime, timezone_name, day_num)
-            stop_action_name = f"{model_id}-{day_name}-period{period_idx + 1}-stop"
+        # Create stop action for this day
+        stop_cron = convert_to_utc_cron_with_day(day_schedule.stopTime, timezone_name, day_num)
+        stop_action_name = f"{model_id}-{day_name}-stop"
 
-            try:
-                autoscaling_client.put_scheduled_update_group_action(
-                    AutoScalingGroupName=auto_scaling_group,
-                    ScheduledActionName=stop_action_name,
-                    Recurrence=stop_cron,
-                    MinSize=0,
-                    MaxSize=0,
-                    DesiredCapacity=0,
-                )
+        try:
+            autoscaling_client.put_scheduled_update_group_action(
+                AutoScalingGroupName=auto_scaling_group,
+                ScheduledActionName=stop_action_name,
+                Recurrence=stop_cron,
+                MinSize=0,
+                MaxSize=0,
+                DesiredCapacity=0,
+            )
 
-                stop_arn = construct_scheduled_action_arn(auto_scaling_group, stop_action_name)
-                scheduled_action_arns.append(stop_arn)
-                logger.info(f"Created {day_name} period {period_idx + 1} stop action: {stop_action_name}")
+            stop_arn = construct_scheduled_action_arn(auto_scaling_group, stop_action_name)
+            scheduled_action_arns.append(stop_arn)
+            logger.info(f"Created {day_name} stop action: {stop_action_name}")
 
-            except ClientError as e:
-                logger.error(f"Failed to create {day_name} period {period_idx + 1} stop action {stop_action_name}: {e}")
-                cleanup_scheduled_actions(scheduled_action_arns)
-                raise
+        except ClientError as e:
+            logger.error(f"Failed to create {day_name} stop action {stop_action_name}: {e}")
+            cleanup_scheduled_actions(scheduled_action_arns)
+            raise
 
     return scheduled_action_arns
 

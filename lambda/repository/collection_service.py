@@ -21,21 +21,32 @@ import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
+import boto3
 from models.domain_objects import (
     CollectionMetadata,
     CollectionSortBy,
+    CollectionStatus,
+    DeletionJobType,
+    IngestionJob,
+    IngestionStatus,
     RagCollectionConfig,
     SortOrder,
     SortParams,
     VectorStoreStatus,
 )
 from repository.collection_repo import CollectionRepository
+from repository.ingestion_job_repo import IngestionJobRepository
+from repository.ingestion_service import DocumentIngestionService
 from repository.rag_document_repo import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.repository_types import RepositoryType
 from utilities.validation import ValidationError
 
 logger = logging.getLogger(__name__)
+
+# Initialize AWS clients
+sfn_client = boto3.client("stepfunctions")
+ssm_client = boto3.client("ssm")
 
 
 class CollectionService:
@@ -309,19 +320,41 @@ class CollectionService:
         if not self.has_access(collection, username, user_groups, is_admin, require_write=True):
             raise ValidationError(f"Permission denied to delete collection {collection_id}")
 
-        # Update to clean up docs with batch task deletion
-        # TODO: Delete documents from Document Table
-        # - Delete by PK repo#collection
-        # TODO: Delete documents from Vector Store
-        # - Drop index to speed up cleanup
-        # TODO: Delete pipelines
-        # - Kick off statemachine to cleanup events
+        logger.info(f"Starting deletion of collection {collection_id} in repository {repository_id}")
 
-        # Delete all documents in collection
-        self.document_repo.delete_all(repository_id, collection_id)
+        # Update collection status to DELETE_IN_PROGRESS
+        self.collection_repo.update(collection_id, repository_id, {"status": CollectionStatus.DELETE_IN_PROGRESS})
 
-        # Delete collection entry
-        self.collection_repo.delete(collection_id, repository_id)
+        # Submit batch deletion job for documents and vector store cleanup
+        try:
+            ingestion_job_repo = IngestionJobRepository()
+            ingestion_service = DocumentIngestionService()
+
+            # Create deletion job for the collection
+            deletion_job = IngestionJob(
+                repository_id=repository_id,
+                collection_id=collection_id,
+                s3_path="",  # Not applicable for collection deletion
+                embedding_model=collection.embeddingModel,
+                username=username,
+                status=IngestionStatus.DELETE_PENDING,
+                job_type=DeletionJobType.COLLECTION_DELETION,
+                collection_deletion=True,
+            )
+
+            # Save and submit the deletion job
+            ingestion_job_repo.save(deletion_job)
+            ingestion_service.submit_delete_job(deletion_job)
+
+            logger.info(f"Submitted batch deletion job for collection {collection_id}")
+
+        except Exception as e:
+            logger.error(f"Failed to submit batch deletion job: {e}", exc_info=True)
+            # Update collection status to DELETE_FAILED
+            self.collection_repo.update(collection_id, repository_id, {"status": CollectionStatus.DELETE_FAILED})
+            raise
+
+        logger.info(f"Collection {collection_id} deletion initiated successfully")
 
     def get_collection_by_name(
         self,

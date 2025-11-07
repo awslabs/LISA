@@ -366,6 +366,13 @@ class IngestionType(str, Enum):
     MANUAL = "manual"
 
 
+class DeletionJobType(str, Enum):
+    """Defines deletion job types."""
+
+    DOCUMENT_DELETION = "DOCUMENT_DELETION"
+    COLLECTION_DELETION = "COLLECTION_DELETION"
+
+
 RagDocumentDict: TypeAlias = Dict[str, Any]
 
 
@@ -535,6 +542,7 @@ class IngestionJob(BaseModel):
     document_name: Optional[str] = Field(default=None)
     auto: Optional[bool] = Field(default=None)
     metadata: Optional[dict] = Field(default=None)
+    job_type: Optional[DeletionJobType] = Field(default=None, description="Type of deletion job")
 
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)

@@ -75,6 +75,9 @@ jobs:
         fi
         pip install -e ./lisa-sdk
     - name: Run tests
+      env:
+        ACCOUNT_NUMBER: '012345678901'
+        REGION: us-east-1
       run: |
         make test-coverage
   pre-commit:

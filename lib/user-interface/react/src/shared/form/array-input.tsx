@@ -25,7 +25,7 @@ type ArrayInputProps = FormFieldProps & {
 };
 
 export function ArrayInputField (props: ArrayInputProps): ReactElement {
-    const { onChange, values } = props;
+    const { onChange, values, ...formFieldProps } = props;
 
     const handleInputChange = (index: number, value: string) => {
         const newValues = [...values];
@@ -43,10 +43,12 @@ export function ArrayInputField (props: ArrayInputProps): ReactElement {
     };
 
     return (
-        <FormField
-            {...props}
-        >
-            <SpaceBetween size='xs'>
+        <SpaceBetween size='s'>
+            <FormField
+                {...formFieldProps}
+            >
+            </FormField>
+            <SpaceBetween size='s'>
                 {values.map((value, index) => (
                     <SpaceBetween direction='horizontal' size='xs' key={index}>
                         <Input
@@ -68,6 +70,6 @@ export function ArrayInputField (props: ArrayInputProps): ReactElement {
                     Add new
                 </Button>
             </SpaceBetween>
-        </FormField>
+        </SpaceBetween>
     );
 }

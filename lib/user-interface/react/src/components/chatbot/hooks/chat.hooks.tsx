@@ -22,7 +22,7 @@ import {
     LisaChatSession,
     MessageTypes, ModelFeatures,
 } from '@/components/types';
-import { RESTAPI_URI, RESTAPI_VERSION } from '@/components/utils';
+import { RESTAPI_URI, RESTAPI_VERSION, markLastUserMessageAsGuardrailTriggered } from '@/components/utils';
 import { IModel } from '@/shared/model/model-management.model';
 import { GenerateLLMRequestParams, IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { ChatMemory } from '@/shared/util/chat-memory';
@@ -145,8 +145,10 @@ export const useChatGeneration = ({
                 const llmClient = createOpenAiClient(chatConfiguration.sessionConfiguration.streaming);
 
                 // Convert chat history to messages format
-                // Always concatenate session history with new messages
-                const messagesToProcess = session.history.concat(params.message);
+                // Filter out guardrail-triggered messages when sending to model
+                const filteredHistory = session.history.filter((msg) => !msg.guardrailTriggered);
+                // Always concatenate filtered session history with new messages
+                const messagesToProcess = filteredHistory.concat(params.message);
 
                 let messages = messagesToProcess.map((msg) => {
                     const baseMessage: any = {
@@ -199,6 +201,8 @@ export const useChatGeneration = ({
                         const resp: string[] = [];
                         const toolCallsAccumulator: { [index: number]: any } = {};
 
+                        let guardrailTriggered = false;
+
                         for await (const chunk of stream) {
                             // Check if stop was requested
                             if (stopRequested.current) {
@@ -207,6 +211,13 @@ export const useChatGeneration = ({
                             }
 
                             const content = chunk.content as string;
+
+                            // Check if this chunk indicates a guardrail was triggered
+                            const isGuardrailTriggered = (chunk as any).id === 'guardrail-response';
+
+                            if (isGuardrailTriggered) {
+                                guardrailTriggered = true;
+                            }
 
                             // Get tool calls from LangChain streaming chunks
                             let tool_calls: any[] = [];
@@ -355,17 +366,25 @@ export const useChatGeneration = ({
                         setSession((prev) => {
                             const lastMessage = prev.history[prev.history.length - 1];
                             if (lastMessage?.type === MessageTypes.AI) {
+                                let updatedHistory = [...prev.history.slice(0, -1),
+                                    new LisaChatMessage({
+                                        ...lastMessage,
+                                        usage: {
+                                            ...lastMessage.usage,
+                                            responseTime: parseFloat(responseTime.toFixed(2))
+                                        },
+                                        guardrailTriggered: guardrailTriggered
+                                    })
+                                ];
+
+                                // If guardrail was triggered, also mark the user message
+                                if (guardrailTriggered) {
+                                    updatedHistory = markLastUserMessageAsGuardrailTriggered(updatedHistory);
+                                }
+
                                 return {
                                     ...prev,
-                                    history: [...prev.history.slice(0, -1),
-                                        new LisaChatMessage({
-                                            ...lastMessage,
-                                            usage: {
-                                                ...lastMessage.usage,
-                                                responseTime: parseFloat(responseTime.toFixed(2))
-                                            }
-                                        })
-                                    ],
+                                    history: updatedHistory,
                                 };
                             }
                             return prev;
@@ -385,23 +404,40 @@ export const useChatGeneration = ({
                     const content = response.content as string;
                     const usage = response.response_metadata.tokenUsage;
 
+                    // Check if guardrail was triggered
+                    const isGuardrailTriggered = (response as any)?.id === 'guardrail-response';
+
                     // Calculate response time
                     const responseTime = (performance.now() - startTime) / 1000;
 
                     await memory.saveContext({ input: params.input }, { output: content });
-                    setSession((prev) => ({
-                        ...prev,
-                        history: [...prev.history, new LisaChatMessage({
-                            type: 'ai',
-                            content,
-                            metadata,
-                            toolCalls: [...(response.tool_calls ?? [])],
-                            usage: {
-                                ...usage,
-                                responseTime: parseFloat(responseTime.toFixed(2))
-                            }
-                        })],
-                    }));
+
+                    // Create the AI message
+                    const aiMessage = new LisaChatMessage({
+                        type: 'ai',
+                        content,
+                        metadata,
+                        toolCalls: [...(response.tool_calls ?? [])],
+                        usage: {
+                            ...usage,
+                            responseTime: parseFloat(responseTime.toFixed(2))
+                        },
+                        guardrailTriggered: isGuardrailTriggered
+                    });
+
+                    setSession((prev) => {
+                        let updatedHistory = [...prev.history, aiMessage];
+
+                        // If guardrail was triggered, also mark the user message
+                        if (isGuardrailTriggered) {
+                            updatedHistory = markLastUserMessageAsGuardrailTriggered(updatedHistory);
+                        }
+
+                        return {
+                            ...prev,
+                            history: updatedHistory,
+                        };
+                    });
                 }
             }
         } catch (error) {

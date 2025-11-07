@@ -16,14 +16,14 @@ repos:
   hooks:
     - id: bandit
       args: [--recursive, -c=pyproject.toml]
-      additional_dependencies: ['bandit[toml]', 'pbr']
+      additional_dependencies: ['bandit[toml]', 'pbr', 'PyYAML']
 
 - repo: https://github.com/Yelp/detect-secrets
   rev: v1.5.0
   hooks:
     - id: detect-secrets
       exclude: (?x)^(
-        .*.ipynb|config.yaml|.*.md|.*test.*.py
+        .*.ipynb|config.yaml|.*.md|.*test.*.py|test/cdk/stacks/__baselines__/.*\.json
         )$
 
 - repo: https://github.com/pre-commit/pre-commit-hooks

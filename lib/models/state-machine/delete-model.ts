@@ -38,6 +38,7 @@ import { LAMBDA_PATH } from '../../util';
 
 type DeleteModelStateMachineProps = BaseProps & {
     modelTable: ITable,
+    guardrailsTable: ITable,
     lambdaLayers: ILayerVersion[],
     vpc: Vpc,
     securityGroups: ISecurityGroup[];
@@ -57,10 +58,11 @@ export class DeleteModelStateMachine extends Construct {
     constructor (scope: Construct, id: string, props: DeleteModelStateMachineProps) {
         super(scope, id);
 
-        const { config, modelTable, lambdaLayers, role, vpc, securityGroups, restApiContainerEndpointPs, managementKeyName, executionRole } = props;
+        const { config, modelTable, guardrailsTable, lambdaLayers, role, vpc, securityGroups, restApiContainerEndpointPs, managementKeyName, executionRole } = props;
 
         const environment = {  // Environment variables to set in all Lambda functions
             MODEL_TABLE_NAME: modelTable.tableName,
+            GUARDRAILS_TABLE_NAME: guardrailsTable.tableName,
             LISA_API_URL_PS_NAME: restApiContainerEndpointPs.parameterName,
             REST_API_VERSION: 'v2',
             MANAGEMENT_KEY_NAME: managementKeyName,
@@ -154,6 +156,23 @@ export class DeleteModelStateMachine extends Construct {
             outputPath: OUTPUT_PATH,
         });
 
+        const deleteGuardrails = new LambdaInvoke(this, 'DeleteGuardrails', {
+            lambdaFunction: new Function(this, 'DeleteGuardrailsFunc', {
+                runtime: getDefaultRuntime(),
+                handler: 'models.state_machine.delete_model.handle_delete_guardrails',
+                code: Code.fromAsset(lambdaPath),
+                timeout: LAMBDA_TIMEOUT,
+                memorySize: LAMBDA_MEMORY,
+                role: role,
+                vpc: vpc.vpc,
+                vpcSubnets: vpc.subnetSelection,
+                securityGroups: securityGroups,
+                layers: lambdaLayers,
+                environment: environment,
+            }),
+            outputPath: OUTPUT_PATH,
+        });
+
         const successState = new Succeed(this, 'DeleteSuccess');
 
         const deleteStackChoice = new Choice(this, 'DeleteStackChoice');
@@ -164,7 +183,8 @@ export class DeleteModelStateMachine extends Construct {
 
         // State Machine definition
         setModelToDeleting.next(deleteFromLitellm);
-        deleteFromLitellm.next(deleteStackChoice);
+        deleteFromLitellm.next(deleteGuardrails);
+        deleteGuardrails.next(deleteStackChoice);
 
         deleteStackChoice
             .when(Condition.isNotNull('$.cloudformation_stack_arn'), deleteStack)

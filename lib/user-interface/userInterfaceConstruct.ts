@@ -226,7 +226,7 @@ export class UserInterfaceConstruct extends Construct {
                         ].join(' && '),
                     ],
                     environment: {
-                        BASE_URL: `${uriPrefix}`
+                        BASE_URL: uriPrefix
                     },
                     local: {
                         tryBundle (outputDir: string) {
@@ -235,7 +235,7 @@ export class UserInterfaceConstruct extends Construct {
                                     stdio: 'inherit',
                                     env: {
                                         ...process.env,
-                                        BASE_URL: `${uriPrefix}`
+                                        BASE_URL: uriPrefix
                                     },
                                 };
                                 execSync(`npm --silent --prefix "${ROOT_PATH}" ci`, options);

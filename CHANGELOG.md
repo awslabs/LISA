@@ -2,69 +2,34 @@
 
 ## Key Features
 
-### Guardrail Enhancements
-Improvements to the guardrails functionality, including moving the  into the serve stack to fix a circular dependency.
-**Guardrails:**
-- **Serve Stack**: Relocated the  to resolve a circular dependency issue.
-- **Permission**: Added the  permission to enable applying guardrails.
-
-### Bedrock Guardrails
-Introduced a new feature for Bedrock Guardrails, providing enhanced governance and policy enforcement capabilities.
-- **Bedrock**: Implemented Bedrock Guardrails to enforce policies and governance across the LISA platform.
+### Bedrock Guardrails Integration
+LISA Administrators can now Bedrock Guardrails to any models via the Model Management page or API
+- **Comprehensive Protection**: Integrated with Bedrock Guardrails through LiteLLM's proxy support of the ApplyGuardrail API, enabling guardrails during prompt input, response generation, and prompt output.
+- **Advanced Capabilities**: Supports topic denial, word filtering, sensitive information limitation, contextual grounding checks, and automated reasoning for factual accuracy.
+- **Flexible Administration**: Administrators can apply Guardrails to any LISA model (self hosted or 3rd party) via the Model Management UI or API, with customizable permissions for different user groups.
+- **Adaptive Policies**: Guardrails and group permissions can be updated anytime to evolve content moderation alongside organizational needs.
 
 ### Offline/Air-gapped Deployment Support
 Enhanced the platform to support offline and air-gapped deployments by enabling pre-caching of external dependencies for the REST API and MCP Workbench.
-**REST API**:
 - **Nodeenv Pre-caching**: Added support for pre-caching the required nodeenv in the REST API container to enable offline deployments.
-**MCP Workbench**:
 - **Offline Deployment**: Enabled configuration of pre-cached external dependencies for the MCP Workbench via  to support offline and air-gapped deployments.
-
-### Function Name Validation
-Improved the platform by adding validation for AWS Lambda function names, ensuring they meet the required length and regex patterns.
-- **Lambda Functions**: Implemented validation for function names to enforce length and regex requirements.
-
-### Scaling Improvements
-Refined the scaling configuration for the ECS cluster, removing per-task autoscaling and simplifying the target group creation logic.
-- **ECS Cluster**: Refactored the scaling configuration to use cluster-level autoscaling instead of per-task autoscaling, simplifying the deployment.
 
 ### MCP Workbench Refactoring
 Migrated the MCP Workbench deployment to use the shared LisaServe ECS cluster, improving modularity and enabling conditional deployment.
-- **MCP Workbench Stack**: Created a dedicated  that deploys the MCP Workbench as a separate ECS service on the shared cluster.
+- **MCP Workbench Stack**: Created a dedicated stack that deploys the MCP Workbench as a separate ECS service on the shared cluster.
 - **Conditional Deployment**: Introduced a  configuration flag to control the optional deployment of the MCP Workbench.
-- **Task Management**: Implemented a flexible task management pattern and comprehensive testing infrastructure to prevent breaking changes during CDK stack migrations.
+- **Container Overrides**: Added support for overriding the MCP Workbench container image during deployment..
 
 ### MCP Workbench UX Improvements
 Enhanced the user experience of the MCP Workbench with tool validation, error display, and theme support.
 - **Validation**: Implemented tool validation to improve the user experience.
-- **Error Handling**: Added enhanced error display capabilities to the MCP Workbench.
 - **Theming**: Introduced theme support for the MCP Workbench UI.
 
-### MCP Workbench Container Overrides
-Enabled the ability to override the MCP Workbench container image, providing more flexibility in deployment.
-- **Container Overrides**: Added support for overriding the MCP Workbench container image during deployment.
-
-### GPT OSS Compatibility
-Improved the ECS cluster configuration to support optional memory reservation and updated the Docker image repository parsing for better flexibility.
-- **ECS Cluster**: Enhanced the cluster configuration with optional memory reservation.
-- **Docker Image**: Updated the Docker image repository parsing to improve flexibility.
-
-## Key Changes
-- **Guardrails**: Relocated the  and added the  permission.
-- **Bedrock**: Introduced a new Bedrock Guardrails feature.
-- **Offline Deployment**: Added support for offline and air-gapped deployments of the REST API and MCP Workbench.
-- **Function Validation**: Implemented validation for AWS Lambda function names.
-- **Scaling**: Refactored the ECS cluster scaling configuration to use cluster-level autoscaling.
-- **MCP Workbench**: Migrated the MCP Workbench deployment to a dedicated stack, enabling conditional deployment.
-- **MCP Workbench UX**: Enhanced the user experience with tool validation, error handling, and theming.
-- **MCP Workbench Containers**: Enabled overriding the MCP Workbench container image.
-- **GPT OSS**: Improved the ECS cluster configuration and Docker image repository parsing.
-
 ## Acknowledgements
-* @121983012+jmharold
 * @batzela
 * @bedanley
-* @dustinps
-* @evmann
+* @dustins
+* @estohlmann
 * @jmharold
 
 **Full Changelog**: https://github.com/awslabs/LISA/compare/v5.3.2..v5.4.0
@@ -91,7 +56,7 @@ This release includes updates to our [documentation site](https://awslabs.github
 
 ## Acknowledgements
 * @bedanley
-* @dustinps
+* @dustins
 * @estohlmann
 * @jmharold
 

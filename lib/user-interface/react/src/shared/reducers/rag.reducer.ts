@@ -16,7 +16,7 @@
 
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { lisaBaseQuery } from '@/shared/reducers/reducer.utils';
-import { Model, PaginatedDocumentResponse } from '@/components/types';
+import { PaginatedDocumentResponse } from '@/components/types';
 import { Document } from '@langchain/core/documents';
 import {
     RagRepositoryConfig,

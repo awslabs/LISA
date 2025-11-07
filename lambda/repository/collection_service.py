@@ -32,6 +32,7 @@ from models.domain_objects import (
 from repository.collection_repo import CollectionRepository
 from repository.rag_document_repo import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
+from utilities.repository_types import RepositoryType
 from utilities.validation import ValidationError
 
 logger = logging.getLogger(__name__)
@@ -88,14 +89,13 @@ class CollectionService:
         repository: dict,
         collection: RagCollectionConfig,
         username: str,
-        is_admin: bool,
     ) -> RagCollectionConfig:
         """Create a new collection with name uniqueness validation.
 
         Args:
+            repository: Repository configuration dictionary
             collection: Collection configuration to create
             username: Username creating the collection
-            is_admin: Whether user is admin
 
         Returns:
             Created collection
@@ -103,7 +103,7 @@ class CollectionService:
         Raises:
             ValidationError: If collection name already exists in repository
         """
-        if repository.get('type') is RepositoryType.BEDROCK_KB:
+        if repository.get("type") is RepositoryType.BEDROCK_KB:
             raise ValidationError(f"Unsupported repository type: {RepositoryType.BEDROCK_KB}")
 
         # Check if collection name already exists in this repository

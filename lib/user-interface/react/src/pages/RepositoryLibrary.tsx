@@ -17,7 +17,7 @@
 import { ReactElement, useEffect } from 'react';
 import CollectionLibraryComponent from '../components/document-library/CollectionLibraryComponent';
 
-export function RepositoryLibrary({ setNav }): ReactElement {
+export function RepositoryLibrary ({ setNav }): ReactElement {
     useEffect(() => {
         setNav(null);
     }, [setNav]);

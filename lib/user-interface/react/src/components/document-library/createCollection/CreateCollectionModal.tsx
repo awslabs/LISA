@@ -187,8 +187,8 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
                     allowedGroups: selectedCollection.allowedGroups || [],
                     metadata: selectedCollection.metadata || { tags: [], customFields: {} },
                     allowChunkingOverride: selectedCollection.allowChunkingOverride !== undefined
-                    ? selectedCollection.allowChunkingOverride
-                    : true,
+                        ? selectedCollection.allowChunkingOverride
+                        : true,
                     // private: selectedCollection.private,
                     // pipelines: selectedCollection.pipelines || [],
                 },

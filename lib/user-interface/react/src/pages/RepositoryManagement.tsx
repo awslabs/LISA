@@ -23,13 +23,13 @@ export type RepositoryManagementProps = {
     setNav: (nav: React.ReactNode | null) => void;
 };
 
-export function RepositoryManagement({ setNav }: RepositoryManagementProps): ReactElement {
+export function RepositoryManagement ({ setNav }: RepositoryManagementProps): ReactElement {
     useEffect(() => {
         setNav(null);
     }, [setNav]);
 
     return (
-        <SpaceBetween size="l">
+        <SpaceBetween size='l'>
             <RepositoryManagementComponent />
             <CollectionLibraryComponent admin={true} />
         </SpaceBetween>

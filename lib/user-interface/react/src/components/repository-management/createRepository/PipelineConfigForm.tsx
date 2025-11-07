@@ -27,7 +27,7 @@ import {
 } from '@cloudscape-design/components';
 import { FormProps } from '../../../shared/form/form-props';
 
-import { PipelineConfig, RagRepositoryPipeline, ChunkingStrategyType } from '#root/lib/schema';
+import { PipelineConfig, RagRepositoryPipeline } from '#root/lib/schema';
 import { getDefaults } from '#root/lib/schema/zodUtil';
 import { useListCollectionsQuery } from '@/shared/reducers/rag.reducer';
 import { ChunkingConfigForm } from '@/components/document-library/createCollection/ChunkingConfigForm';
@@ -37,7 +37,7 @@ export type PipelineConfigProps = {
     repositoryId?: string;
 };
 
-export function PipelineConfigForm(props: FormProps<PipelineConfig[]> & PipelineConfigProps): ReactElement {
+export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & PipelineConfigProps): ReactElement {
     const { item, touchFields, setFields, formErrors, isEdit, repositoryId } = props;
 
     // Only query collections if we have a repositoryId (editing existing repository)
@@ -131,7 +131,7 @@ export function PipelineConfigForm(props: FormProps<PipelineConfig[]> & Pipeline
                         >
                             <Select
                                 options={collectionOptions}
-                                selectedOption={collectionOptions.find(opt => opt.value === pipeline.collectionId) || null}
+                                selectedOption={collectionOptions.find((opt) => opt.value === pipeline.collectionId) || null}
                                 loadingText='Loading collections'
                                 placeholder='Select a collection'
                                 onBlur={() => touchFields([`pipelines[${index}].collectionId`])}

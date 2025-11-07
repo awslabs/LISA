@@ -801,9 +801,7 @@ class CollectionMetadata(BaseModel):
         return tags
 
     @classmethod
-    def merge(
-        cls, parent: Optional[CollectionMetadata], child: Optional[CollectionMetadata]
-    ) -> CollectionMetadata:
+    def merge(cls, parent: Optional[CollectionMetadata], child: Optional[CollectionMetadata]) -> CollectionMetadata:
         """Merges parent and child metadata.
 
         Args:

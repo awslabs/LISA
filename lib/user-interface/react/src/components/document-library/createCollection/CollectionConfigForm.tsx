@@ -19,7 +19,7 @@ import { FormProps } from '../../../shared/form/form-props';
 import FormField from '@cloudscape-design/components/form-field';
 import Input from '@cloudscape-design/components/input';
 import Select from '@cloudscape-design/components/select';
-import { Checkbox, SpaceBetween, Textarea } from '@cloudscape-design/components';
+import { SpaceBetween, Textarea } from '@cloudscape-design/components';
 import { useListRagRepositoriesQuery } from '../../../shared/reducers/rag.reducer';
 import { CommonFieldsForm } from '../../../shared/form/CommonFieldsForm';
 import { RagCollectionConfig, RagRepositoryType, VectorStoreStatus } from '#root/lib/schema';
@@ -53,7 +53,7 @@ export function CollectionConfigForm (
                 ].includes(repository.status)
             )
             // BRK not supported yet
-            .filter(repo => repo.type !== RagRepositoryType.BEDROCK_KNOWLEDGE_BASE)
+            .filter((repo) => repo.type !== RagRepositoryType.BEDROCK_KNOWLEDGE_BASE)
             .map((repo) => ({
                 label: repo.repositoryName || repo.repositoryId,
                 value: repo.repositoryId,

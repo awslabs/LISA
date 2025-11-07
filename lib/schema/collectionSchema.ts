@@ -17,11 +17,7 @@
 import { z } from 'zod';
 import {
     RagRepositoryPipeline,
-    ChunkingStrategyType,
     ChunkingStrategySchema,
-    FixedSizeChunkingStrategySchema,
-    ChunkingStrategy as RagChunkingStrategy,
-    FixedSizeChunkingStrategy as RagFixedSizeChunkingStrategy
 } from './ragSchema';
 
 /**
@@ -33,10 +29,6 @@ export enum CollectionStatus {
     DELETED = 'DELETED',
 }
 
-// Re-export chunking types from ragSchema for backward compatibility
-export { ChunkingStrategyType, ChunkingStrategySchema, FixedSizeChunkingStrategySchema };
-export type ChunkingStrategy = RagChunkingStrategy;
-export type FixedSizeChunkingStrategy = RagFixedSizeChunkingStrategy;
 
 // Future chunking strategies (not yet implemented):
 //

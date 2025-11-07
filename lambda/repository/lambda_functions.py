@@ -217,6 +217,7 @@ def get_repository(event: dict[str, Any], repository_id: str) -> dict:
             raise HTTPException(status_code=403, message="User does not have permission to access this repository")
     return repo
 
+
 @api_wrapper
 @admin_only
 def create_collection(event: dict, context: dict) -> Dict[str, Any]:

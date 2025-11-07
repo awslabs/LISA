@@ -16,7 +16,6 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { CollectionLibraryComponent } from './CollectionLibraryComponent';
 import { renderWithProviders } from '../../test/helpers/render';
 import {
@@ -129,7 +128,6 @@ describe('CollectionLibraryComponent', () => {
 
             await waitFor(() => {
                 expect(screen.getByText('Engineering Docs')).toBeInTheDocument();
-                expect(screen.getByText('eng-123')).toBeInTheDocument();
                 expect(screen.getByText('repo-456')).toBeInTheDocument();
             });
         });
@@ -168,11 +166,11 @@ describe('CollectionLibraryComponent', () => {
     });
 
     describe('Navigation', () => {
-        it('should navigate to document library when row is clicked', async () => {
-            const user = userEvent.setup();
+        it('should have link to document library', async () => {
             const mockCollection = createMockCollection({
                 collectionId: 'col-123',
                 repositoryId: 'repo-456',
+                name: 'Test Collection',
             });
             vi.spyOn(ragReducer, 'useListAllCollectionsQuery').mockReturnValue({
                 data: [mockCollection],
@@ -186,18 +184,15 @@ describe('CollectionLibraryComponent', () => {
             );
 
             await waitFor(() => {
-                expect(screen.getByText('Test Collection')).toBeInTheDocument();
+                const link = screen.getByText('Test Collection');
+                expect(link).toBeInTheDocument();
+                expect(link.closest('a')).toHaveAttribute('href', '#/document-library/repo-456/col-123');
             });
-
-            const row = screen.getByText('Test Collection').closest('tr');
-            await user.click(row!);
-
-            expect(mockNavigate).toHaveBeenCalledWith('/document-library/repo-456/col-123');
         });
     });
 
     describe('Actions Button', () => {
-        it('should render Actions button', async () => {
+        it('should render Actions button for admin users', async () => {
             vi.spyOn(ragReducer, 'useListAllCollectionsQuery').mockReturnValue({
                 data: createMockCollections(1),
                 isLoading: false,
@@ -205,12 +200,29 @@ describe('CollectionLibraryComponent', () => {
 
             renderWithProviders(
                 <MemoryRouter>
-                    <CollectionLibraryComponent />
+                    <CollectionLibraryComponent admin={true} />
                 </MemoryRouter>
             );
 
             await waitFor(() => {
                 expect(screen.getByText('Actions')).toBeInTheDocument();
+            });
+        });
+
+        it('should not render Actions button for non-admin users', async () => {
+            vi.spyOn(ragReducer, 'useListAllCollectionsQuery').mockReturnValue({
+                data: createMockCollections(1),
+                isLoading: false,
+            } as any);
+
+            renderWithProviders(
+                <MemoryRouter>
+                    <CollectionLibraryComponent admin={false} />
+                </MemoryRouter>
+            );
+
+            await waitFor(() => {
+                expect(screen.queryByText('Actions')).not.toBeInTheDocument();
             });
         });
 
@@ -222,7 +234,7 @@ describe('CollectionLibraryComponent', () => {
 
             renderWithProviders(
                 <MemoryRouter>
-                    <CollectionLibraryComponent />
+                    <CollectionLibraryComponent admin={true} />
                 </MemoryRouter>
             );
 

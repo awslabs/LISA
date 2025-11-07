@@ -30,9 +30,9 @@ import { useAppDispatch } from '@/config/store';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 import { CreateCollectionModal } from '@/components/document-library/createCollection/CreateCollectionModal';
 
-interface CollectionLibraryComponentProps {
+type CollectionLibraryComponentProps = {
     admin?: boolean;
-}
+};
 
 export function CollectionLibraryComponent ({ admin = false }: CollectionLibraryComponentProps): ReactElement {
     const {
@@ -135,8 +135,8 @@ export function CollectionLibraryComponent ({ admin = false }: CollectionLibrary
             )}
             <Table
                 {...collectionProps}
-                selectedItems={admin ? collectionProps.selectedItems: []}
-                onSelectionChange={admin ? handleSelectionChange: undefined}
+                selectedItems={admin ? collectionProps.selectedItems : []}
+                onSelectionChange={admin ? handleSelectionChange : undefined}
                 columnDefinitions={COLLECTION_COLUMN_DEFINITIONS}
                 columnDisplay={preferences.contentDisplay}
                 stickyColumns={{ first: 1, last: 0 }}
@@ -145,7 +145,7 @@ export function CollectionLibraryComponent ({ admin = false }: CollectionLibrary
                 items={items}
                 loading={fetchingCollections && !allCollections}
                 loadingText='Loading collections'
-                selectionType={admin ? 'single': undefined}
+                selectionType={admin ? 'single' : undefined}
                 filter={
                     <TextFilter
                         {...filterProps}

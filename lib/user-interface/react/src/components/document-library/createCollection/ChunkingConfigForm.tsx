@@ -18,12 +18,12 @@ import React, { ReactElement } from 'react';
 import FormField from '@cloudscape-design/components/form-field';
 import Input from '@cloudscape-design/components/input';
 import Select from '@cloudscape-design/components/select';
-import { Alert, SpaceBetween } from '@cloudscape-design/components';
+import { SpaceBetween } from '@cloudscape-design/components';
 import { ChunkingStrategy, ChunkingStrategyType } from '#root/lib/schema';
 import { ModifyMethod } from '../../../shared/form/form-props';
 
 // Utility function to create default chunking strategy
-function createDefaultChunkingStrategy() {
+function createDefaultChunkingStrategy () {
     return {
         type: ChunkingStrategyType.FIXED,
         size: 512,
@@ -38,7 +38,7 @@ export type ChunkingConfigFormProps = {
     formErrors: any;
 };
 
-export function ChunkingConfigForm(props: ChunkingConfigFormProps): ReactElement {
+export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElement {
     const { item, touchFields, setFields, formErrors } = props;
 
     // Chunking type options

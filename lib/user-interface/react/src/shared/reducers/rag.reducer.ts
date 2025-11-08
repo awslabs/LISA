@@ -53,10 +53,9 @@ type IngestDocumentResponse = {
 
 type RelevantDocRequest = {
     repositoryId: string,
+    collectionId?: string
     query: string,
-    modelName: string,
-    repositoryType: string,
-    topK: number
+    topK: number,
 };
 
 type ListRagDocumentRequest = {
@@ -171,9 +170,21 @@ export const ragApi = createApi({
             }),
         }),
         getRelevantDocuments: builder.query<Document[], RelevantDocRequest>({
-            query: (request) => ({
-                url: `repository/${request.repositoryId}/similaritySearch?query=${request.query}&modelName=${request.modelName}&repositoryType=${request.repositoryType}&topK=${request.topK}`,
-            }),
+            query: (request) => {
+                const params: any = {
+                    query: request.query,
+                    topK: request.topK
+                };
+
+                if (request.collectionId) {
+                    params.collectionId = request.collectionId;
+                }
+
+                const queryString = new URLSearchParams(params).toString();
+                return {
+                    url: `repository/${request.repositoryId}/similaritySearch?${queryString}`,
+                };
+            },
         }),
         uploadToS3: builder.mutation<void, S3UploadRequest>({
             query: (request) => ({
@@ -193,11 +204,6 @@ export const ragApi = createApi({
             query: (request) => {
 
                 let url = `repository/${request.repositoryId}/bulk`;
-
-                // Add collectionId parameter if provided
-                if (request.collectionId) {
-                    url += `&collectionId=${request.collectionId}`;
-                }
 
                 return {
                     url,

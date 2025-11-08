@@ -248,27 +248,13 @@ export default function Chat ({ sessionId }) {
     const fetchRelevantDocuments = useCallback(async (query: string) => {
         const { ragTopK = 3 } = chatConfiguration.sessionConfiguration;
 
-        // Determine embedding model: use collection's model if available,
-        // otherwise fall back to ragConfig.embeddingModel (repository default)
-        const embeddingModelId = ragConfig.collection?.embeddingModel
-            ?? ragConfig.embeddingModel?.modelId;
-
-        if (!embeddingModelId) {
-            notificationService.generateNotification(
-                'No embedding model available for RAG',
-                'error'
-            );
-            return null;
-        }
-
         return getRelevantDocuments({
             query,
             repositoryId: ragConfig.repositoryId,
-            repositoryType: ragConfig.repositoryType,
-            modelName: embeddingModelId,
+            collectionId: ragConfig.collection?.collectionId,
             topK: ragTopK,
         });
-    }, [getRelevantDocuments, chatConfiguration.sessionConfiguration, ragConfig.repositoryId, ragConfig.repositoryType, ragConfig.collection, ragConfig.embeddingModel?.modelId, notificationService]);
+    }, [getRelevantDocuments, chatConfiguration.sessionConfiguration, ragConfig.repositoryId, ragConfig.repositoryType, ragConfig.collection]);
 
     const { isRunning, setIsRunning, isStreaming, generateResponse, stopGeneration } = useChatGeneration({
         chatConfiguration,

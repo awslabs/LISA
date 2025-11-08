@@ -18,7 +18,7 @@ from typing import Any, Dict
 
 import boto3
 from boto3.dynamodb.conditions import Key
-from models.domain_objects import CollectionStatus, DeletionJobType, IngestionJob, IngestionStatus, IngestionType
+from models.domain_objects import CollectionStatus, JobActionType, IngestionJob, IngestionStatus, IngestionType
 from repository.collection_repo import CollectionRepository
 from repository.embeddings import RagEmbeddings
 from repository.ingestion_job_repo import IngestionJobRepository
@@ -205,7 +205,7 @@ def pipeline_delete(job: IngestionJob) -> None:
         job: Ingestion job with deletion details
     """
     # Check job type and route accordingly
-    if job.job_type == DeletionJobType.COLLECTION_DELETION:
+    if job.job_type == JobActionType.COLLECTION_DELETION:
         logger.info(f"Routing to collection deletion for job {job.id}")
         pipeline_delete_collection(job)
     else:

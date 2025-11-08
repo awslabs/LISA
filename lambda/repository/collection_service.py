@@ -26,7 +26,7 @@ from models.domain_objects import (
     CollectionMetadata,
     CollectionSortBy,
     CollectionStatus,
-    DeletionJobType,
+    JobActionType,
     IngestionJob,
     IngestionStatus,
     RagCollectionConfig,
@@ -338,7 +338,7 @@ class CollectionService:
                 embedding_model=collection.embeddingModel,
                 username=username,
                 status=IngestionStatus.DELETE_PENDING,
-                job_type=DeletionJobType.COLLECTION_DELETION,
+                job_type=JobActionType.COLLECTION_DELETION,
                 collection_deletion=True,
             )
 

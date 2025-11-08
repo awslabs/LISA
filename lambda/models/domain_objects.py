@@ -366,7 +366,7 @@ class IngestionType(str, Enum):
     MANUAL = "manual"
 
 
-class DeletionJobType(str, Enum):
+class JobActionType(str, Enum):
     """Defines deletion job types."""
 
     DOCUMENT_DELETION = "DOCUMENT_DELETION"
@@ -534,7 +534,7 @@ class IngestionJob(BaseModel):
     document_id: Optional[str] = Field(default=None)
     repository_id: str
     chunk_strategy: Optional[ChunkingStrategy] = Field(default=None)
-    embedding_model: Optional[str] = Field(default=None)
+    embedding_model: str
     username: Optional[str] = Field(default=None)
     status: IngestionStatus = IngestionStatus.INGESTION_PENDING
     created_date: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
@@ -542,7 +542,7 @@ class IngestionJob(BaseModel):
     document_name: Optional[str] = Field(default=None)
     auto: Optional[bool] = Field(default=None)
     metadata: Optional[dict] = Field(default=None)
-    job_type: Optional[DeletionJobType] = Field(default=None, description="Type of deletion job")
+    job_type: Optional[JobActionType] = Field(default=None, description="Type of deletion job")
 
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)

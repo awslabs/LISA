@@ -81,7 +81,7 @@ def test_drop_pgvector_collection(setup_env):
 
 def test_pipeline_delete_collection_opensearch(setup_env):
     """Test pipeline_delete_collection with OpenSearch repository."""
-    from models.domain_objects import DeletionJobType, IngestionJob, IngestionStatus
+    from models.domain_objects import JobActionType, IngestionJob, IngestionStatus
     from utilities.repository_types import RepositoryType
 
     job = IngestionJob(
@@ -90,7 +90,7 @@ def test_pipeline_delete_collection_opensearch(setup_env):
         s3_path="",
         embedding_model="model1",
         username="user1",
-        job_type=DeletionJobType.COLLECTION_DELETION,
+        job_type=JobActionType.COLLECTION_DELETION,
     )
 
     with patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo, patch(
@@ -114,7 +114,7 @@ def test_pipeline_delete_collection_opensearch(setup_env):
 
 def test_pipeline_delete_collection_bedrock_kb(setup_env):
     """Test pipeline_delete_collection with Bedrock KB repository."""
-    from models.domain_objects import DeletionJobType, IngestionJob
+    from models.domain_objects import JobActionType, IngestionJob
     from utilities.repository_types import RepositoryType
 
     job = IngestionJob(
@@ -123,7 +123,7 @@ def test_pipeline_delete_collection_bedrock_kb(setup_env):
         s3_path="",
         embedding_model="model1",
         username="user1",
-        job_type=DeletionJobType.COLLECTION_DELETION,
+        job_type=JobActionType.COLLECTION_DELETION,
     )
 
     with patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo, patch(
@@ -159,7 +159,7 @@ def test_pipeline_delete_collection_bedrock_kb(setup_env):
 
 def test_pipeline_delete_collection_failure(setup_env):
     """Test pipeline_delete_collection handles failures."""
-    from models.domain_objects import DeletionJobType, IngestionJob, IngestionStatus
+    from models.domain_objects import JobActionType, IngestionJob, IngestionStatus
     from utilities.repository_types import RepositoryType
 
     job = IngestionJob(
@@ -168,7 +168,7 @@ def test_pipeline_delete_collection_failure(setup_env):
         s3_path="",
         embedding_model="model1",
         username="user1",
-        job_type=DeletionJobType.COLLECTION_DELETION,
+        job_type=JobActionType.COLLECTION_DELETION,
     )
 
     with patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo, patch(
@@ -309,7 +309,7 @@ def test_handle_pipeline_delete_event_no_pipeline_config(setup_env):
 
 def test_pipeline_delete_routes_to_collection_deletion(setup_env):
     """Test pipeline_delete routes to collection deletion."""
-    from models.domain_objects import DeletionJobType, IngestionJob
+    from models.domain_objects import JobActionType, IngestionJob
 
     job = IngestionJob(
         repository_id="repo1",
@@ -317,7 +317,7 @@ def test_pipeline_delete_routes_to_collection_deletion(setup_env):
         s3_path="",
         embedding_model="model1",
         username="user1",
-        job_type=DeletionJobType.COLLECTION_DELETION,
+        job_type=JobActionType.COLLECTION_DELETION,
     )
 
     with patch("repository.pipeline_delete_documents.pipeline_delete_collection") as mock_delete_collection:

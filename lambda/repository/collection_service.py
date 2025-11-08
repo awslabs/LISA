@@ -344,7 +344,7 @@ class CollectionService:
 
             # Save and submit the deletion job
             ingestion_job_repo.save(deletion_job)
-            ingestion_service.submit_delete_job(deletion_job)
+            ingestion_service.create_delete_job(deletion_job)
 
             logger.info(f"Submitted batch deletion job for collection {collection_id}")
 

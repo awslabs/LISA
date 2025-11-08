@@ -17,18 +17,16 @@
 import { Construct } from 'constructs';
 import { Duration, Stack } from 'aws-cdk-lib';
 import { BaseProps } from '../../schema';
-import { ILayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { Effect, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { Vpc } from '../../networking/vpc';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
-import { PythonFunction } from '@aws-cdk/aws-lambda-python-alpha';
 import { createCdkId } from '../../core/utils';
 import { Roles } from '../../core/iam/roles';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH } from './constants';
-import * as path from 'path';
 import { getDefaultRuntime } from '../../api-base/utils';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 
@@ -41,7 +39,7 @@ export type PipelineStateMachineProps = BaseProps & {
 
 /**
  * Pipeline State Machine for managing collection pipeline lifecycle.
- * 
+ *
  * This construct creates a Step Functions state machine that orchestrates
  * the creation, update, and deletion of EventBridge rules for collection pipelines.
  */

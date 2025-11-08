@@ -124,6 +124,8 @@ def test_list_collections():
 
 def test_delete_collection():
     """Test delete collection"""
+    from unittest.mock import patch
+
     from repository.collection_service import CollectionService
 
     mock_repo = Mock()
@@ -144,11 +146,23 @@ def test_delete_collection():
     )
 
     mock_repo.find_by_id.return_value = collection
-    mock_repo.delete.return_value = None
+    mock_repo.update.return_value = None
 
-    service.delete_collection("test-repo", "test-coll", "user", ["group1"], False)
+    # Mock the dependencies created inside delete_collection
+    mock_ingestion_job_repo = Mock()
+    mock_ingestion_service = Mock()
 
-    mock_repo.delete.assert_called_once()
+    with patch("repository.collection_service.IngestionJobRepository", return_value=mock_ingestion_job_repo), patch(
+        "repository.collection_service.DocumentIngestionService", return_value=mock_ingestion_service
+    ):
+
+        service.delete_collection("test-repo", "test-coll", "user", ["group1"], False)
+
+    # Verify status was updated to DELETE_IN_PROGRESS
+    mock_repo.update.assert_called()
+    # Verify ingestion job was saved and submitted
+    mock_ingestion_job_repo.save.assert_called_once()
+    mock_ingestion_service.create_delete_job.assert_called_once()
 
 
 class TestCollectionMetadataMerging:

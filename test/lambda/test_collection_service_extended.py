@@ -17,14 +17,13 @@
 import os
 import sys
 from datetime import datetime, timezone
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../lambda"))
 
 from models.domain_objects import (
-    CollectionMetadata,
     CollectionSortBy,
     CollectionStatus,
     FixedChunkingStrategy,
@@ -86,20 +85,18 @@ def test_create_default_collection_no_embedding_model(service):
 
 def test_create_default_collection_success(service):
     """Test _create_default_collection creates virtual collection."""
-    service.vector_store_repo.get_registered_repositories.return_value = [
-        {
-            "repositoryId": "repo1",
-            "status": VectorStoreStatus.CREATE_COMPLETE,
-            "embeddingModelId": "model1",
-            "chunkingStrategy": FixedChunkingStrategy(size=1000, overlap=100),
-            "allowedGroups": ["group1"],
-        }
-    ]
+    service.vector_store_repo.find_repository_by_id.return_value = {
+        "repositoryId": "repo1",
+        "status": VectorStoreStatus.CREATE_COMPLETE,
+        "embeddingModelId": "model1",
+        "chunkingStrategy": FixedChunkingStrategy(size=1000, overlap=100),
+        "allowedGroups": ["group1"],
+    }
 
     result = service._create_default_collection("repo1")
     assert result is not None
     assert result.collectionId == "model1"
-    assert result.name == "Default"
+    assert result.name == f"{result.repositoryId}-{result.collectionId}"
     assert result.embeddingModel == "model1"
 
 
@@ -222,9 +219,7 @@ def test_list_all_user_collections_with_filter(service):
     service.collection_repo.list_by_repository.return_value = ([collection1, collection2], None)
     service.collection_repo.count_by_repository.return_value = 2
 
-    collections, _ = service.list_all_user_collections(
-        "user1", ["group1"], False, page_size=10, filter_text="matching"
-    )
+    collections, _ = service.list_all_user_collections("user1", ["group1"], False, page_size=10, filter_text="matching")
     assert len(collections) == 1
     assert collections[0]["name"] == "Matching Collection"
 

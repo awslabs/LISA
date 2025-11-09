@@ -18,7 +18,6 @@
 import heapq
 import logging
 import os
-from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 import boto3
@@ -26,9 +25,9 @@ from models.domain_objects import (
     CollectionMetadata,
     CollectionSortBy,
     CollectionStatus,
-    JobActionType,
     IngestionJob,
     IngestionStatus,
+    JobActionType,
     RagCollectionConfig,
     SortOrder,
     SortParams,
@@ -170,7 +169,7 @@ class CollectionService:
 
         # On first page, check if default collection needs to be added
         if not last_evaluated_key:
-            default_collection = self._create_default_collection(repository_id)
+            default_collection = self._create_default_collection(repository_id=repository_id)
             if default_collection:
                 # Check if a collection with the default embedding model ID already exists
                 existing_ids = {c.collectionId for c in filtered}
@@ -179,7 +178,9 @@ class CollectionService:
 
         return filtered, key
 
-    def _create_default_collection(self, repository_id: str) -> Optional[RagCollectionConfig]:
+    def _create_default_collection(
+        self, repository_id: str, repository: Optional[dict] = None
+    ) -> Optional[RagCollectionConfig]:
         """
         Create a virtual default collection for a repository.
 
@@ -194,9 +195,11 @@ class CollectionService:
         """
         try:
             # Get repository configuration
-            repositories = self.vector_store_repo.get_registered_repositories()
-            repository = next((r for r in repositories if r.get("repositoryId") == repository_id), None)
-
+            repository = (
+                self.vector_store_repo.find_repository_by_id(repository_id=repository_id)
+                if repository is None
+                else repository
+            )
             if not repository:
                 logger.warning(f"Repository {repository_id} not found")
                 return None
@@ -216,19 +219,15 @@ class CollectionService:
                 logger.info(f"Repository {repository_id} has no default embedding model")
                 return None
 
-            now = datetime.now(timezone.utc).isoformat()
-
             default_collection = RagCollectionConfig(
                 collectionId=embedding_model,  # Use embedding model name as collection ID
                 repositoryId=repository_id,
-                name="Default",
+                name=f"{repository_id}-{embedding_model}",
                 description="Default collection using repository's embedding model",
                 embeddingModel=embedding_model,
                 chunkingStrategy=repository.get("chunkingStrategy"),
                 allowedGroups=repository.get("allowedGroups", []),
-                createdBy="system",
-                createdAt=now,
-                updatedAt=now,
+                createdBy=repository.get("createdBy", "system"),
                 status="ACTIVE",
                 private=False,
                 metadata=CollectionMetadata(tags=["default"], customFields={}),
@@ -682,7 +681,7 @@ class CollectionService:
                 accessible = [c for c in collections if self.has_access(c, username, user_groups, is_admin)]
 
                 # Check if default collection needs to be added
-                default_collection = self._create_default_collection(repo_id)
+                default_collection = self._create_default_collection(repo_id, repo)
                 if default_collection:
                     # Check if a collection with the default embedding model ID already exists
                     existing_ids = {c.collectionId for c in accessible}
@@ -860,7 +859,7 @@ class CollectionService:
 
                 # On first fetch for this repository, check if default collection needs to be added
                 if not cursor["lastEvaluatedKey"]:
-                    default_collection = self._create_default_collection(repo_id)
+                    default_collection = self._create_default_collection(repo_id, repo)
                     if default_collection:
                         # Check if we've seen a collection with the default embedding model ID
                         if default_collection.collectionId not in seen_collection_ids[repo_id]:

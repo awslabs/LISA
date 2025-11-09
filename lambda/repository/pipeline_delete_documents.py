@@ -18,7 +18,7 @@ from typing import Any, Dict
 
 import boto3
 from boto3.dynamodb.conditions import Key
-from models.domain_objects import CollectionStatus, JobActionType, IngestionJob, IngestionStatus, IngestionType
+from models.domain_objects import CollectionStatus, IngestionJob, IngestionStatus, IngestionType, JobActionType
 from repository.collection_repo import CollectionRepository
 from repository.embeddings import RagEmbeddings
 from repository.ingestion_job_repo import IngestionJobRepository

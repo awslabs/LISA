@@ -106,10 +106,10 @@ def test_create_ingestion_job_with_collection(setup_env):
     query_params = {}
 
     service = DocumentIngestionService()
-    
-    with patch.object(service, 'create_ingestion_job') as mock_create:
+
+    with patch.object(service, "create_ingestion_job") as mock_create:
         from models.domain_objects import IngestionJob
-        
+
         mock_job = IngestionJob(
             repository_id="repo1",
             collection_id="col1",
@@ -119,9 +119,9 @@ def test_create_ingestion_job_with_collection(setup_env):
             chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
         )
         mock_create.return_value = mock_job
-        
+
         job = service.create_ingestion_job(repository, collection, request, query_params, "s3://bucket/key", "user1")
-        
+
         assert job.collection_id == "col1"
         assert job.embedding_model == "col-model"
         assert job.chunk_strategy.size == 1000
@@ -139,10 +139,10 @@ def test_create_ingestion_job_without_collection(setup_env):
     query_params = {"chunkSize": 800, "chunkOverlap": 80}
 
     service = DocumentIngestionService()
-    
-    with patch.object(service, 'create_ingestion_job') as mock_create:
+
+    with patch.object(service, "create_ingestion_job") as mock_create:
         from models.domain_objects import IngestionJob
-        
+
         mock_job = IngestionJob(
             repository_id="repo1",
             collection_id="repo-model",
@@ -152,9 +152,9 @@ def test_create_ingestion_job_without_collection(setup_env):
             chunk_strategy=FixedChunkingStrategy(size=800, overlap=80),
         )
         mock_create.return_value = mock_job
-        
+
         job = service.create_ingestion_job(repository, None, request, query_params, "s3://bucket/key", "user1")
-        
+
         assert job.collection_id == "repo-model"
         assert job.embedding_model == "repo-model"
         assert job.chunk_strategy.size == 800
@@ -172,10 +172,10 @@ def test_create_ingestion_job_with_embedding_model_in_request(setup_env):
     query_params = {}
 
     service = DocumentIngestionService()
-    
-    with patch.object(service, 'create_ingestion_job') as mock_create:
+
+    with patch.object(service, "create_ingestion_job") as mock_create:
         from models.domain_objects import FixedChunkingStrategy, IngestionJob
-        
+
         mock_job = IngestionJob(
             repository_id="repo1",
             collection_id="request-model",
@@ -185,9 +185,9 @@ def test_create_ingestion_job_with_embedding_model_in_request(setup_env):
             chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
         )
         mock_create.return_value = mock_job
-        
+
         job = service.create_ingestion_job(repository, None, request, query_params, "s3://bucket/key", "user1")
-        
+
         assert job.collection_id == "request-model"
 
 
@@ -214,10 +214,10 @@ def test_create_ingestion_job_invalid_chunking_strategy(setup_env):
     query_params = {}
 
     service = DocumentIngestionService()
-    
-    with patch.object(service, 'create_ingestion_job') as mock_create:
+
+    with patch.object(service, "create_ingestion_job") as mock_create:
         from models.domain_objects import FixedChunkingStrategy, IngestionJob
-        
+
         mock_job = IngestionJob(
             repository_id="repo1",
             collection_id="col1",
@@ -227,8 +227,8 @@ def test_create_ingestion_job_invalid_chunking_strategy(setup_env):
             chunk_strategy=FixedChunkingStrategy(size=500, overlap=50),
         )
         mock_create.return_value = mock_job
-        
+
         job = service.create_ingestion_job(repository, collection, request, query_params, "s3://bucket/key", "user1")
-        
+
         # Should fall back to collection's chunking strategy
         assert job.chunk_strategy.size == 500

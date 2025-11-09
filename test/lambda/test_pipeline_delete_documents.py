@@ -81,7 +81,7 @@ def test_drop_pgvector_collection(setup_env):
 
 def test_pipeline_delete_collection_opensearch(setup_env):
     """Test pipeline_delete_collection with OpenSearch repository."""
-    from models.domain_objects import JobActionType, IngestionJob, IngestionStatus
+    from models.domain_objects import IngestionJob, IngestionStatus, JobActionType
     from utilities.repository_types import RepositoryType
 
     job = IngestionJob(
@@ -114,7 +114,7 @@ def test_pipeline_delete_collection_opensearch(setup_env):
 
 def test_pipeline_delete_collection_bedrock_kb(setup_env):
     """Test pipeline_delete_collection with Bedrock KB repository."""
-    from models.domain_objects import JobActionType, IngestionJob
+    from models.domain_objects import IngestionJob, JobActionType
     from utilities.repository_types import RepositoryType
 
     job = IngestionJob(
@@ -159,7 +159,7 @@ def test_pipeline_delete_collection_bedrock_kb(setup_env):
 
 def test_pipeline_delete_collection_failure(setup_env):
     """Test pipeline_delete_collection handles failures."""
-    from models.domain_objects import JobActionType, IngestionJob, IngestionStatus
+    from models.domain_objects import IngestionJob, IngestionStatus, JobActionType
     from utilities.repository_types import RepositoryType
 
     job = IngestionJob(
@@ -309,7 +309,7 @@ def test_handle_pipeline_delete_event_no_pipeline_config(setup_env):
 
 def test_pipeline_delete_routes_to_collection_deletion(setup_env):
     """Test pipeline_delete routes to collection deletion."""
-    from models.domain_objects import JobActionType, IngestionJob
+    from models.domain_objects import IngestionJob, JobActionType
 
     job = IngestionJob(
         repository_id="repo1",

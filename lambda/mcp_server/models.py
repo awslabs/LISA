@@ -180,6 +180,12 @@ class HostedMcpServerModel(BaseModel):
     # IAM role ARN for running tasks (optional, will be auto-created if not provided)
     taskRoleArn: Optional[str] = Field(default=None)
 
+    # Fargate CPU units (defaults to 256 which equals 0.25 vCPU)
+    cpu: Optional[int] = Field(default=256)
+
+    # Fargate memory limit in MiB (defaults to 512 MiB)
+    memoryLimitMiB: Optional[int ]= Field(default=512)
+
     # Groups of the MCP server (for authorization)
     groups: Optional[List[str]] = Field(default_factory=lambda: None)
 

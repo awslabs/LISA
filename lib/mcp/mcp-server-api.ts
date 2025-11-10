@@ -344,7 +344,8 @@ export class McpServerApi extends Construct {
                     'cloudformation:DescribeStacks',
                 ],
                 resources: [
-                    'arn:*:cloudformation:*:*:stack/*',
+                    // Limit CloudFormation permissions to MCP server stacks that this deployment creates.
+                    `arn:${config.partition}:cloudformation:${config.region}:${config.accountNumber}:stack/${config.appName}-${config.deploymentName}-${config.deploymentStage}-mcp-server-*`,
                 ],
             }),
             new PolicyStatement({

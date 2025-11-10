@@ -51,6 +51,8 @@ export type McpServerConfig = {
     id: string;
     startCommand: string;
     port?: number;
+    cpu?: number;
+    memoryLimitMiB?: number;
     autoScalingConfig: {
         minCapacity: number;
         maxCapacity: number;

@@ -100,10 +100,10 @@ export class ECSFargateCluster extends Construct {
         super(scope, id);
         const { identifier, config, vpc, securityGroup, mcpServerConfig, subnetSelection, taskExecutionRole, taskRole, containerDefinitionConfig } = props;
 
-        // Default CPU and memory for Fargate
+        // CPU and memory for Fargate (defaults align with current minimums if not provided)
         // Minimum: 0.25 vCPU / 0.5 GB, Maximum: 4 vCPU / 30 GB
-        const cpu = 256; // 0.25 vCPU
-        const memoryLimitMiB = 512; // 0.5 GB
+        const cpu = mcpServerConfig.cpu ?? 256; // 0.25 vCPU
+        const memoryLimitMiB = mcpServerConfig.memoryLimitMiB ?? 512; // 0.5 GB
 
         // Determine container port
         const containerPort = containerDefinitionConfig.portMappings.length > 0

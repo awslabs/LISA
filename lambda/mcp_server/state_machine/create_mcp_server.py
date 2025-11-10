@@ -76,6 +76,8 @@ def handle_deploy_server(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         "startCommand": event.get("startCommand"),
         "serverType": event.get("serverType"),
         "autoScalingConfig": event.get("autoScalingConfig"),
+        "cpu": event.get("cpu"),
+        "memoryLimitMiB": event.get("memoryLimitMiB"),
     }
 
     # Add optional fields if present

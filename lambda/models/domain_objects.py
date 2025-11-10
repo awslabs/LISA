@@ -25,7 +25,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum, StrEnum
-from typing import Annotated, Any, Dict, Generator, List, Optional, TypeAlias, Union
+from typing import Annotated, Any, Dict, Generator, List, Optional, Union
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
@@ -366,7 +366,14 @@ class IngestionType(str, Enum):
     MANUAL = "manual"
 
 
-RagDocumentDict: TypeAlias = Dict[str, Any]
+class JobActionType(str, Enum):
+    """Defines deletion job types."""
+
+    DOCUMENT_DELETION = "DOCUMENT_DELETION"
+    COLLECTION_DELETION = "COLLECTION_DELETION"
+
+
+RagDocumentDict = Dict[str, Any]
 
 
 class ChunkingStrategyType(str, Enum):
@@ -422,37 +429,14 @@ class FixedChunkingStrategy(BaseModel):
         return self
 
 
-ChunkingStrategy: TypeAlias = Union[FixedChunkingStrategy]
-
-
-# Future chunking strategies can be added here when implemented:
-#
-# class SemanticChunkingStrategy(BaseModel):
-#     """Defines parameters for semantic document chunking."""
-#     type: ChunkingStrategyType = ChunkingStrategyType.SEMANTIC
-#     threshold: float = Field(ge=0.0, le=1.0, description="Similarity threshold for semantic boundaries")
-#     chunkSize: Optional[int] = Field(default=1000, ge=100, le=10000, description="Maximum chunk size")
-#
-# class RecursiveChunkingStrategy(BaseModel):
-#     """Defines parameters for recursive document chunking."""
-#     type: ChunkingStrategyType = ChunkingStrategyType.RECURSIVE
-#     chunkSize: int = Field(ge=100, le=10000, description="Target size of each chunk")
-#     chunkOverlap: int = Field(ge=0, description="Overlap between chunks")
-#     separators: List[str] = Field(default_factory=lambda: ["\n\n", "\n", ". ", " "], description="Separators to use")
-#
-# To implement a new strategy:
-# 1. Add the strategy type to ChunkingStrategyType enum
-# 2. Create a strategy model class (like above)
-# 3. Add it to the ChunkingStrategy TypeAlias union
-# 4. Create a handler class extending ChunkingStrategyHandler in chunking_strategy_factory.py
-# 5. Register the handler with ChunkingStrategyFactory.register_handler()
+ChunkingStrategy = FixedChunkingStrategy
 
 
 class RagSubDocument(BaseModel):
     """Represents a sub-document entity for DynamoDB storage."""
 
     document_id: str
-    subdocs: list[str] = Field(default_factory=lambda: [])
+    subdocs: List[str] = Field(default_factory=lambda: [])
     index: Optional[int] = Field(default=None)
     sk: Optional[str] = None
 
@@ -535,6 +519,7 @@ class IngestionJob(BaseModel):
     document_name: Optional[str] = Field(default=None)
     auto: Optional[bool] = Field(default=None)
     metadata: Optional[dict] = Field(default=None)
+    job_type: Optional[JobActionType] = Field(default=None, description="Type of deletion job")
 
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)
@@ -747,6 +732,8 @@ class CollectionStatus(StrEnum):
     ACTIVE = "ACTIVE"
     ARCHIVED = "ARCHIVED"
     DELETED = "DELETED"
+    DELETE_IN_PROGRESS = "DELETE_IN_PROGRESS"
+    DELETE_FAILED = "DELETE_FAILED"
 
 
 class VectorStoreStatus(StrEnum):

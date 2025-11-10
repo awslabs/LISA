@@ -57,9 +57,9 @@ ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=re
 
 
 def pipeline_ingest(job: IngestionJob) -> None:
-    texts = []
-    metadatas = []
-    all_ids = []
+    texts: list[str] = []
+    metadatas: list[dict] = []
+    all_ids: list[str] = []
     try:
         # chunk and save chunks in vector store
         repository = vs_repo.find_repository_by_id(job.repository_id)
@@ -74,7 +74,11 @@ def pipeline_ingest(job: IngestionJob) -> None:
             documents = generate_chunks(job)
             texts, metadatas = prepare_chunks(documents, job.repository_id, job.collection_id)
             all_ids = store_chunks_in_vectorstore(
-                texts, metadatas, job.repository_id, job.collection_id, job.embedding_model
+                texts=texts,
+                metadatas=metadatas,
+                repository_id=job.repository_id,
+                collection_id=job.collection_id,
+                embedding_model=job.embedding_model,
             )
 
         # remove old
@@ -145,9 +149,16 @@ def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
     key = detail.get("key", None)
     repository_id = detail.get("repositoryId", None)
     pipeline_config = detail.get("pipelineConfig", None)
-    embedding_model = pipeline_config.get("embeddingModel", None)
+    collection_id = pipeline_config.get("collectionId", None)
     s3_path = f"s3://{bucket}/{key}"
-
+    embedding_model = pipeline_config.get("embeddingModel", None)
+    if collection_id:
+        collection = collection_service.get_collection(
+            collection_id=collection_id, repository_id=repository_id, is_admin=True, username="", user_groups=[]
+        )
+        embedding_model = collection.embeddingModel
+    else:
+        collection_id = embedding_model
     logger.info(f"Ingesting object {s3_path} for repository {repository_id}/{embedding_model}")
 
     chunk_strategy = extract_chunk_strategy(pipeline_config)
@@ -159,7 +170,8 @@ def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
     # create ingestion job and save it to dynamodb
     job = IngestionJob(
         repository_id=repository_id,
-        collection_id=embedding_model,
+        collection_id=collection_id,
+        embedding_model=embedding_model,
         chunk_strategy=chunk_strategy,
         s3_path=s3_path,
         username=username,

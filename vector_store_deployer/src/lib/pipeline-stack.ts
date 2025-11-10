@@ -60,14 +60,16 @@ export abstract class PipelineStack extends Stack {
             // Create rules based on trigger type
             switch (pipelineConfig.trigger) {
                 case 'daily': {
-                    const ingestionLambdaArn = StringParameter.fromStringParameterName(this, `IngestionScheduleLambdaStringParameter-${index}`, `${config.deploymentPrefix}/ingestion/ingest/schedule`);
-                    const ingestionLambda = lambda.Function.fromFunctionArn(this, `IngestionScheduleLambda-${index}`, ingestionLambdaArn.stringValue);
+                    const paramName = `${config.deploymentPrefix}/ingestion/ingest/schedule`;
+                    const ingestionLambdaArn = StringParameter.valueForStringParameter(this, paramName);
+                    const ingestionLambda = lambda.Function.fromFunctionArn(this, `IngestionScheduleLambda-${index}`, ingestionLambdaArn);
                     this.createDailyLambdaRule(config, ingestionLambda, ragConfig, pipelineConfig, hash);
                     break;
                 }
                 case 'event': {
-                    const ingestionLambdaArn = StringParameter.fromStringParameterName(this, `IngestionChangeEventLambdaStringParameter-${index}`, `${config.deploymentPrefix}/ingestion/ingest/event`);
-                    const ingestionLambda = lambda.Function.fromFunctionArn(this, `IngestionIngestEventLambda-${index}`, ingestionLambdaArn.stringValue);
+                    const paramName = `${config.deploymentPrefix}/ingestion/ingest/event`;
+                    const ingestionLambdaArn = StringParameter.valueForStringParameter(this, paramName);
+                    const ingestionLambda = lambda.Function.fromFunctionArn(this, `IngestionIngestEventLambda-${index}`, ingestionLambdaArn);
                     this.createEventLambdaRule(config, ingestionLambda, ragConfig.repositoryId, pipelineConfig, ['Object Created', 'Object Modified'], 'Ingest', hash);
                     break;
                 }
@@ -79,8 +81,9 @@ export abstract class PipelineStack extends Stack {
             // Add EventBridge Rule for when objects are removed from S3
             // Setup auto-removal of objects if enabled
             if (pipelineConfig.autoRemove) {
-                const deletionLambdaArn = StringParameter.fromStringParameterName(this, `IngestionDeleteEventLambdaStringParameter-${index}`, `${config.deploymentPrefix}/ingestion/delete/event`);
-                const deletionLambda = lambda.Function.fromFunctionArn(this, `IngestionDeleteEventLambda-${index}`, deletionLambdaArn.stringValue);
+                const paramName = `${config.deploymentPrefix}/ingestion/delete/event`;
+                const deletionLambdaArn = StringParameter.valueForStringParameter(this, paramName);
+                const deletionLambda = lambda.Function.fromFunctionArn(this, `IngestionDeleteEventLambda-${index}`, deletionLambdaArn);
                 console.log('Creating autodelete rule...');
 
                 bucketActions.push('s3:DeleteObject');

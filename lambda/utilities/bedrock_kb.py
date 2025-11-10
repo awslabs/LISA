@@ -109,3 +109,36 @@ def delete_document_from_kb(
         knowledgeBaseId=bedrock_config.get("bedrockKnowledgeBaseId", None),
         dataSourceId=bedrock_config.get("bedrockKnowledgeDatasourceId", None),
     )
+
+
+def bulk_delete_documents_from_kb(
+    s3_client: Any,
+    bedrock_agent_client: Any,
+    repository: Dict[str, Any],
+    s3_paths: List[str],
+) -> None:
+    """Bulk delete documents from KB datasource bucket and trigger single ingestion.
+
+    Args:
+        s3_client: boto3 S3 client
+        bedrock_agent_client: boto3 bedrock-agent client
+        repository: Repository configuration dictionary
+        s3_paths: List of S3 paths to delete
+    """
+    bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
+    datasource_bucket = bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket")
+
+    # Batch delete from S3 (max 1000 per request)
+    batch_size = 1000
+    for i in range(0, len(s3_paths), batch_size):
+        batch = s3_paths[i : i + batch_size]
+        delete_objects = [{"Key": os.path.basename(path)} for path in batch]
+
+        if delete_objects:
+            s3_client.delete_objects(Bucket=datasource_bucket, Delete={"Objects": delete_objects})
+
+    # Trigger single ingestion job to sync KB
+    bedrock_agent_client.start_ingestion_job(
+        knowledgeBaseId=bedrock_config.get("bedrockKnowledgeBaseId"),
+        dataSourceId=bedrock_config.get("bedrockKnowledgeDatasourceId"),
+    )

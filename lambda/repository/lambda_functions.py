@@ -162,7 +162,7 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     )
 
     if not model_name:
-        raise ValidationError("modelName is required when collectionName is not provided")
+        raise ValidationError("modelName is required when collectionId is not provided")
 
     id_token = get_id_token(event)
 

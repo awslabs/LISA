@@ -18,24 +18,34 @@
 import heapq
 import logging
 import os
-from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
+import boto3
 from models.domain_objects import (
     CollectionMetadata,
     CollectionSortBy,
+    CollectionStatus,
+    IngestionJob,
+    IngestionStatus,
+    JobActionType,
     RagCollectionConfig,
     SortOrder,
     SortParams,
     VectorStoreStatus,
 )
 from repository.collection_repo import CollectionRepository
+from repository.ingestion_job_repo import IngestionJobRepository
+from repository.ingestion_service import DocumentIngestionService
 from repository.rag_document_repo import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.repository_types import RepositoryType
 from utilities.validation import ValidationError
 
 logger = logging.getLogger(__name__)
+
+# Initialize AWS clients
+sfn_client = boto3.client("stepfunctions")
+ssm_client = boto3.client("ssm")
 
 
 class CollectionService:
@@ -159,7 +169,7 @@ class CollectionService:
 
         # On first page, check if default collection needs to be added
         if not last_evaluated_key:
-            default_collection = self._create_default_collection(repository_id)
+            default_collection = self._create_default_collection(repository_id=repository_id)
             if default_collection:
                 # Check if a collection with the default embedding model ID already exists
                 existing_ids = {c.collectionId for c in filtered}
@@ -168,7 +178,9 @@ class CollectionService:
 
         return filtered, key
 
-    def _create_default_collection(self, repository_id: str) -> Optional[RagCollectionConfig]:
+    def _create_default_collection(
+        self, repository_id: str, repository: Optional[dict] = None
+    ) -> Optional[RagCollectionConfig]:
         """
         Create a virtual default collection for a repository.
 
@@ -183,9 +195,11 @@ class CollectionService:
         """
         try:
             # Get repository configuration
-            repositories = self.vector_store_repo.get_registered_repositories()
-            repository = next((r for r in repositories if r.get("repositoryId") == repository_id), None)
-
+            repository = (
+                self.vector_store_repo.find_repository_by_id(repository_id=repository_id)
+                if repository is None
+                else repository
+            )
             if not repository:
                 logger.warning(f"Repository {repository_id} not found")
                 return None
@@ -205,19 +219,15 @@ class CollectionService:
                 logger.info(f"Repository {repository_id} has no default embedding model")
                 return None
 
-            now = datetime.now(timezone.utc).isoformat()
-
             default_collection = RagCollectionConfig(
                 collectionId=embedding_model,  # Use embedding model name as collection ID
                 repositoryId=repository_id,
-                name="Default",
+                name=f"{repository_id}-{embedding_model}",
                 description="Default collection using repository's embedding model",
                 embeddingModel=embedding_model,
                 chunkingStrategy=repository.get("chunkingStrategy"),
                 allowedGroups=repository.get("allowedGroups", []),
-                createdBy="system",
-                createdAt=now,
-                updatedAt=now,
+                createdBy=repository.get("createdBy", "system"),
                 status="ACTIVE",
                 private=False,
                 metadata=CollectionMetadata(tags=["default"], customFields={}),
@@ -309,19 +319,41 @@ class CollectionService:
         if not self.has_access(collection, username, user_groups, is_admin, require_write=True):
             raise ValidationError(f"Permission denied to delete collection {collection_id}")
 
-        # Update to clean up docs with batch task deletion
-        # TODO: Delete documents from Document Table
-        # - Delete by PK repo#collection
-        # TODO: Delete documents from Vector Store
-        # - Drop index to speed up cleanup
-        # TODO: Delete pipelines
-        # - Kick off statemachine to cleanup events
+        logger.info(f"Starting deletion of collection {collection_id} in repository {repository_id}")
 
-        # Delete all documents in collection
-        self.document_repo.delete_all(repository_id, collection_id)
+        # Update collection status to DELETE_IN_PROGRESS
+        self.collection_repo.update(collection_id, repository_id, {"status": CollectionStatus.DELETE_IN_PROGRESS})
 
-        # Delete collection entry
-        self.collection_repo.delete(collection_id, repository_id)
+        # Submit batch deletion job for documents and vector store cleanup
+        try:
+            ingestion_job_repo = IngestionJobRepository()
+            ingestion_service = DocumentIngestionService()
+
+            # Create deletion job for the collection
+            deletion_job = IngestionJob(
+                repository_id=repository_id,
+                collection_id=collection_id,
+                s3_path="",  # Not applicable for collection deletion
+                embedding_model=collection.embeddingModel,
+                username=username,
+                status=IngestionStatus.DELETE_PENDING,
+                job_type=JobActionType.COLLECTION_DELETION,
+                collection_deletion=True,
+            )
+
+            # Save and submit the deletion job
+            ingestion_job_repo.save(deletion_job)
+            ingestion_service.create_delete_job(deletion_job)
+
+            logger.info(f"Submitted batch deletion job for collection {collection_id}")
+
+        except Exception as e:
+            logger.error(f"Failed to submit batch deletion job: {e}", exc_info=True)
+            # Update collection status to DELETE_FAILED
+            self.collection_repo.update(collection_id, repository_id, {"status": CollectionStatus.DELETE_FAILED})
+            raise
+
+        logger.info(f"Collection {collection_id} deletion initiated successfully")
 
     def get_collection_by_name(
         self,
@@ -649,7 +681,7 @@ class CollectionService:
                 accessible = [c for c in collections if self.has_access(c, username, user_groups, is_admin)]
 
                 # Check if default collection needs to be added
-                default_collection = self._create_default_collection(repo_id)
+                default_collection = self._create_default_collection(repo_id, repo)
                 if default_collection:
                     # Check if a collection with the default embedding model ID already exists
                     existing_ids = {c.collectionId for c in accessible}
@@ -827,7 +859,7 @@ class CollectionService:
 
                 # On first fetch for this repository, check if default collection needs to be added
                 if not cursor["lastEvaluatedKey"]:
-                    default_collection = self._create_default_collection(repo_id)
+                    default_collection = self._create_default_collection(repo_id, repo)
                     if default_collection:
                         # Check if we've seen a collection with the default embedding model ID
                         if default_collection.collectionId not in seen_collection_ids[repo_id]:

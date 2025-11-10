@@ -205,6 +205,11 @@ export const ragApi = createApi({
 
                 let url = `repository/${request.repositoryId}/bulk`;
 
+                // Add collectionId parameter if provided
+                if (request.collectionId) {
+                    url += `&collectionId=${request.collectionId}`;
+                }
+
                 return {
                     url,
                     method: 'POST',

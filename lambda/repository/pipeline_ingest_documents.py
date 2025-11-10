@@ -72,9 +72,7 @@ def pipeline_ingest(job: IngestionJob) -> None:
             )
         else:
             documents = generate_chunks(job)
-            texts, metadatas = prepare_chunks(
-                docs=documents, repository_id=job.repository_id, collection_id=job.collection_id
-            )
+            texts, metadatas = prepare_chunks(documents, job.repository_id, job.collection_id)
             all_ids = store_chunks_in_vectorstore(
                 texts=texts,
                 metadatas=metadatas,

@@ -17,7 +17,7 @@
 import os
 import sys
 from datetime import datetime, timedelta, timezone
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, MagicMock, patch
 
 import pytest
 
@@ -374,3 +374,14 @@ def test_remove_document_from_vectorstore(setup_env):
         remove_document_from_vectorstore(doc)
 
         mock_vs.delete.assert_called_once_with(["sub1", "sub2"])
+
+def test_prepare_chunks():
+    import repository.pipeline_ingest_documents as pid
+
+    docs = [MagicMock(page_content="abc", metadata={"meta": 1}), MagicMock(page_content="def", metadata={"meta": 2})]
+    texts, metadatas = pid.prepare_chunks(docs, "repo-1", "col-1")
+    assert texts == ["abc", "def"]
+    assert metadatas == [
+        {"meta": 1, "repository_id": "repo-1", "collection_id": "col-1"},
+        {"meta": 2, "repository_id": "repo-1", "collection_id": "col-1"},
+    ]

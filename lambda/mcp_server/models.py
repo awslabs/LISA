@@ -184,7 +184,7 @@ class HostedMcpServerModel(BaseModel):
     cpu: Optional[int] = Field(default=256)
 
     # Fargate memory limit in MiB (defaults to 512 MiB)
-    memoryLimitMiB: Optional[int ]= Field(default=512)
+    memoryLimitMiB: Optional[int] = Field(default=512)
 
     # Groups of the MCP server (for authorization)
     groups: Optional[List[str]] = Field(default_factory=lambda: None)

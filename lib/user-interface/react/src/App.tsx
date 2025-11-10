@@ -29,6 +29,7 @@ import { useAppSelector } from './config/store';
 import { selectCurrentUserIsAdmin, selectCurrentUserIsUser } from './shared/reducers/user.reducer';
 import ModelManagement from './pages/ModelManagement';
 import ModelLibrary from './pages/ModelLibrary';
+import RepositoryManagement from './pages/RepositoryManagement';
 import NotificationBanner from './shared/notification/notification';
 import ConfirmationModal, { ConfirmationModalProps } from './shared/modal/confirmation-modal';
 import Configuration from './pages/Configuration';
@@ -169,6 +170,14 @@ function App () {
                                     </AdminRoute>
                                 }
                             />
+                            <Route
+                                path='repository-management'
+                                element={
+                                    <AdminRoute>
+                                        <RepositoryManagement setNav={setNav} />
+                                    </AdminRoute>
+                                }
+                            />
                             {config?.configuration?.enabledComponents?.modelLibrary && <Route
                                 path='model-library'
                                 element={
@@ -188,7 +197,7 @@ function App () {
                                         }
                                     />
                                     <Route
-                                        path='document-library/:repoId'
+                                        path='document-library/:repoId/:collectionId?'
                                         element={
                                             <PrivateRoute showConfig='showRagLibrary' configs={config}>
                                                 <DocumentLibrary setNav={setNav} />

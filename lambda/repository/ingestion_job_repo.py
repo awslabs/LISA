@@ -227,38 +227,3 @@ class IngestionJobRepository:
                 logger.debug(f"Error listing jobs with status {status}: {e}")
 
         return None
-
-    def wait_for_batch_job_completion(self, document_id: str, job_queue: str, timeout_seconds: int = 300) -> bool:
-        """Wait for a batch job to complete.
-
-        Args:
-            document_id: Document ID
-            job_queue: Batch job queue name
-            timeout_seconds: Maximum time to wait
-
-        Returns:
-            True if job succeeded, False if failed or timed out
-        """
-        import logging
-        import time
-
-        logger = logging.getLogger(__name__)
-        start_time = time.time()
-
-        while time.time() - start_time < timeout_seconds:
-            job_info = self.find_batch_job_for_document(document_id, job_queue)
-
-            if job_info:
-                status = job_info["status"]
-                logger.info(f"Batch job {job_info['jobName']}: {status}")
-
-                if status == "SUCCEEDED":
-                    return True
-                elif status == "FAILED":
-                    logger.error(f"Batch job failed: {job_info['jobName']}")
-                    return False
-
-            time.sleep(10)
-
-        logger.error(f"Batch job timeout for document {document_id}")
-        return False

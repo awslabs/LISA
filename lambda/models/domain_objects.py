@@ -14,43 +14,44 @@
 
 """Defines domain objects for model endpoint interactions."""
 
+from __future__ import annotations
+
+import json
 import logging
 import re
 import time
+import urllib.parse
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from enum import Enum
-from typing import Annotated, Any, Dict, Generator, List, Optional, TypeAlias, Union
+from enum import Enum, StrEnum
+from typing import Annotated, Any, Dict, Generator, List, Optional, Union
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
 from pydantic.functional_validators import AfterValidator, field_validator, model_validator
 from typing_extensions import Self
 from utilities.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, MIN_PAGE_SIZE
-from utilities.validators import validate_all_fields_defined, validate_any_fields_defined, validate_instance_type
+from utilities.validation import (
+    validate_all_fields_defined,
+    validate_any_fields_defined,
+    validate_instance_type,
+    ValidationError,
+)
 
 logger = logging.getLogger(__name__)
 
 
-class InferenceContainer(str, Enum):
+class InferenceContainer(StrEnum):
     """Defines supported inference container types."""
-
-    def __str__(self) -> str:
-        """Returns string representation of the enum value."""
-        return str(self.value)
 
     TGI = "tgi"
     TEI = "tei"
     VLLM = "vllm"
 
 
-class ModelStatus(str, Enum):
+class ModelStatus(StrEnum):
     """Defines possible model deployment states."""
-
-    def __str__(self) -> str:
-        """Returns string representation of the enum value."""
-        return str(self.value)
 
     CREATING = "Creating"
     IN_SERVICE = "InService"
@@ -62,12 +63,8 @@ class ModelStatus(str, Enum):
     FAILED = "Failed"
 
 
-class ModelType(str, Enum):
+class ModelType(StrEnum):
     """Defines supported model categories."""
-
-    def __str__(self) -> str:
-        """Returns string representation of the enum value."""
-        return str(self.value)
 
     TEXTGEN = "textgen"
     IMAGEGEN = "imagegen"
@@ -433,7 +430,14 @@ class IngestionType(str, Enum):
     MANUAL = "manual"
 
 
-RagDocumentDict: TypeAlias = Dict[str, Any]
+class JobActionType(str, Enum):
+    """Defines deletion job types."""
+
+    DOCUMENT_DELETION = "DOCUMENT_DELETION"
+    COLLECTION_DELETION = "COLLECTION_DELETION"
+
+
+RagDocumentDict = Dict[str, Any]
 
 
 class ChunkingStrategyType(str, Enum):
@@ -489,37 +493,14 @@ class FixedChunkingStrategy(BaseModel):
         return self
 
 
-ChunkingStrategy: TypeAlias = Union[FixedChunkingStrategy]
-
-
-# Future chunking strategies can be added here when implemented:
-#
-# class SemanticChunkingStrategy(BaseModel):
-#     """Defines parameters for semantic document chunking."""
-#     type: ChunkingStrategyType = ChunkingStrategyType.SEMANTIC
-#     threshold: float = Field(ge=0.0, le=1.0, description="Similarity threshold for semantic boundaries")
-#     chunkSize: Optional[int] = Field(default=1000, ge=100, le=10000, description="Maximum chunk size")
-#
-# class RecursiveChunkingStrategy(BaseModel):
-#     """Defines parameters for recursive document chunking."""
-#     type: ChunkingStrategyType = ChunkingStrategyType.RECURSIVE
-#     chunkSize: int = Field(ge=100, le=10000, description="Target size of each chunk")
-#     chunkOverlap: int = Field(ge=0, description="Overlap between chunks")
-#     separators: List[str] = Field(default_factory=lambda: ["\n\n", "\n", ". ", " "], description="Separators to use")
-#
-# To implement a new strategy:
-# 1. Add the strategy type to ChunkingStrategyType enum
-# 2. Create a strategy model class (like above)
-# 3. Add it to the ChunkingStrategy TypeAlias union
-# 4. Create a handler class extending ChunkingStrategyHandler in chunking_strategy_factory.py
-# 5. Register the handler with ChunkingStrategyFactory.register_handler()
+ChunkingStrategy = FixedChunkingStrategy
 
 
 class RagSubDocument(BaseModel):
     """Represents a sub-document entity for DynamoDB storage."""
 
     document_id: str
-    subdocs: list[str] = Field(default_factory=lambda: [])
+    subdocs: List[str] = Field(default_factory=lambda: [])
     index: Optional[int] = Field(default=None)
     sk: Optional[str] = None
 
@@ -601,6 +582,8 @@ class IngestionJob(BaseModel):
     error_message: Optional[str] = Field(default=None)
     document_name: Optional[str] = Field(default=None)
     auto: Optional[bool] = Field(default=None)
+    metadata: Optional[dict] = Field(default=None)
+    job_type: Optional[JobActionType] = Field(default=None, description="Type of deletion job")
 
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)
@@ -653,18 +636,180 @@ class PaginationParams:
         page_size = int(query_params.get("pageSize", str(default)))
         return max(MIN_PAGE_SIZE, min(page_size, max_size))
 
+    @staticmethod
+    def parse_last_evaluated_key(query_params: Dict[str, str], key_fields: List[str]) -> Optional[Dict[str, str]]:
+        """Parse last evaluated key from query parameters.
+
+        Args:
+            query_params: Query string parameters dictionary
+            key_fields: List of field names to extract from query params (e.g., ['collectionId', 'status', 'createdAt'])
+
+        Returns:
+            Dictionary with last evaluated key fields, or None if no key present
+
+        Notes:
+            Query params should be formatted as lastEvaluatedKey{FieldName}, e.g.:
+            - lastEvaluatedKeyCollectionId
+            - lastEvaluatedKeyStatus
+            - lastEvaluatedKeyCreatedAt
+        """
+        # Check if any lastEvaluatedKey fields are present
+        has_key = any(f"lastEvaluatedKey{field.capitalize()}" in query_params for field in key_fields)
+
+        if not has_key:
+            return None
+
+        last_evaluated_key = {}
+        for field in key_fields:
+            # Convert field name to camelCase for query param (e.g., collectionId -> CollectionId)
+            param_name = f"lastEvaluatedKey{field[0].upper()}{field[1:]}"
+
+            if param_name in query_params:
+                last_evaluated_key[field] = urllib.parse.unquote(query_params[param_name])
+
+        return last_evaluated_key if last_evaluated_key else None
+
+    @staticmethod
+    def parse_last_evaluated_key_v2(query_params: Dict[str, str]) -> Optional[Dict[str, Any]]:
+        """Parse v2 pagination token from query parameters.
+
+        The v2 token format supports scalable pagination with per-repository cursors.
+        It is passed as a JSON string in the lastEvaluatedKey query parameter.
+
+        Args:
+            query_params: Query string parameters dictionary
+
+        Returns:
+            Dictionary with v2 pagination token structure, or None if not present
+
+        Token Structure:
+            {
+                "version": "v2",
+                "repositoryCursors": {
+                    "repo-id": {
+                        "lastEvaluatedKey": {...},
+                        "exhausted": bool
+                    }
+                },
+                "globalOffset": int,
+                "filters": {
+                    "filter": str,
+                    "sortBy": str,
+                    "sortOrder": str
+                }
+            }
+        """
+        if "lastEvaluatedKey" not in query_params:
+            return None
+
+        try:
+            token_str = urllib.parse.unquote(query_params["lastEvaluatedKey"])
+            token = json.loads(token_str)
+
+            # Validate it's a v2 token
+            if not isinstance(token, dict) or token.get("version") != "v2":
+                return None
+
+            return token
+        except (json.JSONDecodeError, ValueError, TypeError):
+            return None
+
+
+@dataclass
+class FilterParams:
+    """Shared filtering parameter handling for collections."""
+
+    filter_text: Optional[str] = None
+    status_filter: Optional[CollectionStatus] = None
+
+    @staticmethod
+    def from_query_params(query_params: Dict[str, str]) -> FilterParams:
+        """Parse filter parameters from query string parameters.
+
+        Args:
+            query_params: Query string parameters dictionary
+
+        Returns:
+            FilterParams object with parsed filter parameters
+
+        Raises:
+            ValidationError: If status value is invalid
+        """
+        filter_text = query_params.get("filter")
+
+        status_filter = None
+        if "status" in query_params:
+            try:
+                status_filter = CollectionStatus(query_params["status"])
+            except ValueError:
+                raise ValidationError(f"Invalid status value: {query_params['status']}")
+
+        return FilterParams(filter_text=filter_text, status_filter=status_filter)
+
+
+@dataclass
+class SortParams:
+    """Shared sorting parameter handling for collections."""
+
+    sort_by: CollectionSortBy = None  # Will be set to default in from_query_params
+    sort_order: SortOrder = None  # Will be set to default in from_query_params
+
+    @staticmethod
+    def from_query_params(query_params: Dict[str, str]) -> SortParams:
+        """Parse sort parameters from query string parameters.
+
+        Args:
+            query_params: Query string parameters dictionary
+
+        Returns:
+            SortParams object with parsed sort parameters
+
+        Raises:
+            ValidationError: If sortBy or sortOrder values are invalid
+        """
+
+        sort_by = CollectionSortBy.CREATED_AT
+        if "sortBy" in query_params:
+            try:
+                sort_by = CollectionSortBy(query_params["sortBy"])
+            except ValueError:
+                raise ValidationError(f"Invalid sortBy value: {query_params['sortBy']}")
+
+        sort_order = SortOrder.DESC
+        if "sortOrder" in query_params:
+            try:
+                sort_order = SortOrder(query_params["sortOrder"])
+            except ValueError:
+                raise ValidationError(f"Invalid sortOrder value: {query_params['sortOrder']}")
+
+        return SortParams(sort_by=sort_by, sort_order=sort_order)
+
 
 # ============================================================================
 # Collection Management Models
 # ============================================================================
 
 
-class CollectionStatus(str, Enum):
+class CollectionStatus(StrEnum):
     """Defines possible states for a collection."""
 
     ACTIVE = "ACTIVE"
     ARCHIVED = "ARCHIVED"
     DELETED = "DELETED"
+    DELETE_IN_PROGRESS = "DELETE_IN_PROGRESS"
+    DELETE_FAILED = "DELETE_FAILED"
+
+
+class VectorStoreStatus(StrEnum):
+    """Defines possible states for a vector store deployment."""
+
+    CREATE_IN_PROGRESS = "CREATE_IN_PROGRESS"
+    CREATE_COMPLETE = "CREATE_COMPLETE"
+    CREATE_FAILED = "CREATE_FAILED"
+    UPDATE_IN_PROGRESS = "UPDATE_IN_PROGRESS"
+    UPDATE_COMPLETE = "UPDATE_COMPLETE"
+    UPDATE_COMPLETE_CLEANUP_IN_PROGRESS = "UPDATE_COMPLETE_CLEANUP_IN_PROGRESS"
+    UNKNOWN = "UNKNOWN"
 
 
 class PipelineTrigger(str, Enum):
@@ -707,9 +852,7 @@ class CollectionMetadata(BaseModel):
         return tags
 
     @classmethod
-    def merge(
-        cls, parent: Optional["CollectionMetadata"], child: Optional["CollectionMetadata"]
-    ) -> "CollectionMetadata":
+    def merge(cls, parent: Optional[CollectionMetadata], child: Optional[CollectionMetadata]) -> CollectionMetadata:
         """Merges parent and child metadata.
 
         Args:
@@ -786,93 +929,14 @@ class RagCollectionConfig(BaseModel):
         return groups
 
 
-class CreateCollectionRequest(BaseModel):
-    """Request model for creating a new collection."""
+class IngestDocumentRequest(BaseModel):
+    """Request model for ingesting documents."""
 
-    name: str = Field(min_length=1, max_length=100, description="Collection name (required)")
-    description: Optional[str] = Field(default=None, description="Collection description")
-    embeddingModel: Optional[str] = Field(
-        default=None,
-        min_length=1,
-        description="Embedding model ID (inherits from parent if omitted, immutable after creation)",
-    )
-    chunkingStrategy: Optional[ChunkingStrategy] = Field(
-        default=None, description="Chunking strategy (inherits from parent if omitted)"
-    )
-    allowedGroups: Optional[List[str]] = Field(
-        default=None, description="User groups with access (inherits from parent if omitted)"
-    )
-    metadata: Optional[CollectionMetadata] = Field(
-        default=None, description="Collection-specific metadata (merged with parent metadata)"
-    )
-    private: bool = Field(default=False, description="Whether collection is private to creator")
-    allowChunkingOverride: bool = Field(default=True, description="Allow chunking strategy override during ingestion")
-    pipelines: Optional[List[PipelineConfig]] = Field(default=None, description="Automated ingestion pipelines")
-
-    @field_validator("name")
-    @classmethod
-    def validate_name_format(cls, name: str) -> str:
-        """Validates collection name format."""
-        import re
-
-        if not name.strip():
-            raise ValueError("Collection name cannot be empty")
-        name_pattern = re.compile(r"^[a-zA-Z0-9 _-]+$")
-        if not name_pattern.match(name):
-            raise ValueError(
-                "Collection name must contain only alphanumeric characters, spaces, hyphens, and underscores"
-            )
-        return name
-
-
-class UpdateCollectionRequest(BaseModel):
-    """Request model for updating a collection."""
-
-    name: Optional[str] = Field(default=None, max_length=100, description="Collection name")
-    description: Optional[str] = Field(default=None, description="Collection description")
-    chunkingStrategy: Optional[ChunkingStrategy] = Field(default=None, description="Chunking strategy")
-    allowedGroups: Optional[List[str]] = Field(default=None, description="User groups with access")
-    metadata: Optional[CollectionMetadata] = Field(default=None, description="Collection metadata")
-    private: Optional[bool] = Field(default=None, description="Whether collection is private to creator")
-    allowChunkingOverride: Optional[bool] = Field(
-        default=None, description="Allow chunking strategy override during ingestion"
-    )
-    pipelines: Optional[List[PipelineConfig]] = Field(default=None, description="Automated ingestion pipelines")
-    status: Optional[CollectionStatus] = Field(default=None, description="Collection status")
-
-    @field_validator("name")
-    @classmethod
-    def validate_name_format(cls, name: Optional[str]) -> Optional[str]:
-        """Validates collection name format."""
-        if name is not None:
-            import re
-
-            if not name.strip():
-                raise ValueError("Collection name cannot be empty")
-            name_pattern = re.compile(r"^[a-zA-Z0-9 _-]+$")
-            if not name_pattern.match(name):
-                raise ValueError(
-                    "Collection name must contain only alphanumeric characters, spaces, hyphens, and underscores"
-                )
-        return name
-
-    @model_validator(mode="after")
-    def validate_update_request(self) -> Self:
-        """Validates that at least one field is provided for update."""
-        fields = [
-            self.name,
-            self.description,
-            self.chunkingStrategy,
-            self.allowedGroups,
-            self.metadata,
-            self.private,
-            self.allowChunkingOverride,
-            self.pipelines,
-            self.status,
-        ]
-        if not validate_any_fields_defined(fields):
-            raise ValueError("At least one field must be provided for update")
-        return self
+    keys: List[str] = Field(description="S3 keys to ingest")
+    collectionId: Optional[str] = Field(default=None, description="Target collection ID")
+    embeddingModel: Optional[Dict[str, str]] = Field(default=None, description="Embedding model config")
+    chunkingStrategy: Optional[Dict[str, Any]] = Field(default=None, description="Chunking strategy override")
+    metadata: Optional[Dict[str, Any]] = Field(default=None, description="Additional metadata")
 
 
 class ListCollectionsResponse(PaginatedResponse):
@@ -884,7 +948,7 @@ class ListCollectionsResponse(PaginatedResponse):
     totalPages: Optional[int] = Field(default=None, description="Total number of pages")
 
 
-class CollectionSortBy(str, Enum):
+class CollectionSortBy(StrEnum):
     """Defines sort options for collection listing."""
 
     NAME = "name"
@@ -892,7 +956,7 @@ class CollectionSortBy(str, Enum):
     UPDATED_AT = "updatedAt"
 
 
-class SortOrder(str, Enum):
+class SortOrder(StrEnum):
     """Defines sort order options."""
 
     ASC = "asc"
@@ -924,7 +988,7 @@ class VectorStoreConfig(BaseModel):
         default=None, description="Bedrock Knowledge Base configuration"
     )
     # Status and timestamps
-    status: Optional[str] = Field(default=None, description="Repository status")
+    status: Optional[str] = VectorStoreStatus.UNKNOWN
     createdAt: Optional[datetime] = Field(default=None, description="Creation timestamp")
     updatedAt: Optional[datetime] = Field(default=None, description="Last update timestamp")
 

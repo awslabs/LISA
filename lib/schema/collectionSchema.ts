@@ -15,7 +15,10 @@
  */
 
 import { z } from 'zod';
-import { RagRepositoryPipeline } from './ragSchema';
+import {
+    RagRepositoryPipeline,
+    ChunkingStrategySchema,
+} from './ragSchema';
 
 /**
  * Enum for collection status
@@ -26,38 +29,6 @@ export enum CollectionStatus {
     DELETED = 'DELETED',
 }
 
-/**
- * Enum for chunking strategy types
- *
- * Note: Only FIXED_SIZE is currently implemented.
- * Additional strategies can be added by implementing a ChunkingStrategyHandler
- * and registering it with the ChunkingStrategyFactory in the backend.
- */
-export enum ChunkingStrategyType {
-    FIXED = 'FIXED',
-    // SEMANTIC = 'SEMANTIC',  // Not yet implemented
-    // RECURSIVE = 'RECURSIVE',  // Not yet implemented
-}
-
-/**
- * Fixed size chunking strategy schema
- */
-export const FixedSizeChunkingStrategySchema = z.object({
-    type: z.literal(ChunkingStrategyType.FIXED).describe('Fixed size chunking strategy type'),
-    chunkSize: z.number().min(100).max(10000).describe('Size of each chunk in characters'),
-    chunkOverlap: z.number().min(0).describe('Overlap between chunks in characters'),
-}).refine(
-    (data) => data.chunkOverlap <= data.chunkSize / 2,
-    { message: 'chunkOverlap must be less than or equal to half of chunkSize' }
-);
-
-/**
- * Union of all chunking strategy types
- *
- * Currently only FIXED_SIZE is implemented. Additional strategies can be added here
- * when their backend implementations are complete.
- */
-export const ChunkingStrategySchema = FixedSizeChunkingStrategySchema;
 
 // Future chunking strategies (not yet implemented):
 //
@@ -126,47 +97,6 @@ export const RagCollectionConfigSchema = z.object({
 });
 
 /**
- * Create collection request schema
- */
-export const CreateCollectionRequestSchema = z.object({
-    name: z.string()
-        .min(1)
-        .max(100)
-        .regex(/^[a-zA-Z0-9 _-]+$/, 'Collection name must contain only alphanumeric characters, spaces, hyphens, and underscores')
-        .describe('Collection name (required)'),
-    description: z.string().optional().describe('Collection description'),
-    embeddingModel: z.string().optional().describe('Embedding model ID (inherits from parent if omitted, immutable after creation)'),
-    chunkingStrategy: ChunkingStrategySchema.optional().describe('Chunking strategy (inherits from parent if omitted)'),
-    allowedGroups: z.array(z.string()).optional().describe('User groups with access (inherits from parent if omitted)'),
-    metadata: CollectionMetadataSchema.optional().describe('Collection-specific metadata (merged with parent metadata)'),
-    private: z.boolean().default(false).describe('Whether collection is private to creator'),
-    allowChunkingOverride: z.boolean().default(true).describe('Allow chunking strategy override during ingestion'),
-    pipelines: z.array(PipelineConfigSchema).optional().describe('Automated ingestion pipelines'),
-});
-
-/**
- * Update collection request schema
- */
-export const UpdateCollectionRequestSchema = z.object({
-    name: z.string()
-        .max(100)
-        .regex(/^[a-zA-Z0-9 _-]+$/, 'Collection name must contain only alphanumeric characters, spaces, hyphens, and underscores')
-        .optional()
-        .describe('Collection name'),
-    description: z.string().optional().describe('Collection description'),
-    chunkingStrategy: ChunkingStrategySchema.optional().describe('Chunking strategy'),
-    allowedGroups: z.array(z.string()).optional().describe('User groups with access'),
-    metadata: CollectionMetadataSchema.optional().describe('Collection metadata'),
-    private: z.boolean().optional().describe('Whether collection is private to creator'),
-    allowChunkingOverride: z.boolean().optional().describe('Allow chunking strategy override during ingestion'),
-    pipelines: z.array(PipelineConfigSchema).optional().describe('Automated ingestion pipelines'),
-    status: z.nativeEnum(CollectionStatus).optional().describe('Collection status'),
-}).refine(
-    (data) => Object.values(data).some((value) => value !== undefined),
-    { message: 'At least one field must be provided for update' }
-);
-
-/**
  * Collection sort options
  */
 export enum CollectionSortBy {
@@ -211,15 +141,12 @@ export const ListCollectionsResponseSchema = z.object({
 /**
  * Type exports
  */
-export type ChunkingStrategy = z.infer<typeof ChunkingStrategySchema>;
-export type FixedSizeChunkingStrategy = z.infer<typeof FixedSizeChunkingStrategySchema>;
+// ChunkingStrategy types are re-exported from ragSchema above
 // export type SemanticChunkingStrategy = z.infer<typeof SemanticChunkingStrategySchema>;  // Not yet implemented
 // export type RecursiveChunkingStrategy = z.infer<typeof RecursiveChunkingStrategySchema>;  // Not yet implemented
 // PipelineConfig type is exported from ragSchema via PipelineConfigSchema
 export type CollectionMetadata = z.infer<typeof CollectionMetadataSchema>;
 export type RagCollectionConfig = z.infer<typeof RagCollectionConfigSchema>;
-export type CreateCollectionRequest = z.infer<typeof CreateCollectionRequestSchema>;
-export type UpdateCollectionRequest = z.infer<typeof UpdateCollectionRequestSchema>;
 export type ListCollectionsQuery = z.infer<typeof ListCollectionsQuerySchema>;
 export type ListCollectionsResponse = z.infer<typeof ListCollectionsResponseSchema>;
 

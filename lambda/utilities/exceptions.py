@@ -12,6 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+
 """Exceptions from handling RAG documents."""
 
 
@@ -24,3 +25,13 @@ class HTTPException(Exception):
         self.http_status_code = status_code
         self.message = message
         super().__init__(self.message)
+
+
+class NotFoundException(HTTPException):
+    def __init__(self, detail: str = "Not Found"):
+        super().__init__(404, detail)
+
+
+class UnauthorizedException(HTTPException):
+    def __init__(self, detail: str = "Unauthorized"):
+        super().__init__(401, detail)

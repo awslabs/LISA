@@ -19,13 +19,13 @@ import DocumentLibraryComponent from '../components/document-library/DocumentLib
 import { useParams } from 'react-router-dom';
 
 export function DocumentLibrary ({ setNav }): ReactElement {
-    const { repoId } = useParams();
+    const { repoId, collectionId } = useParams();
 
     useEffect(() => {
         setNav(null);
     }, [setNav]);
 
-    return <DocumentLibraryComponent repositoryId={repoId} />;
+    return <DocumentLibraryComponent repositoryId={repoId} collectionId={collectionId} />;
 }
 
 export default DocumentLibrary;

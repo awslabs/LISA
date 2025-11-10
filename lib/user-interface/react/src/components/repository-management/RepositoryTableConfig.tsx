@@ -15,8 +15,6 @@
  */
 import { CollectionPreferencesProps, TableProps } from '@cloudscape-design/components';
 import { DEFAULT_PAGE_SIZE_OPTIONS } from '../../shared/preferences/common-preferences';
-import { UseQueryHookResult } from '@reduxjs/toolkit/dist/query/react/buildHooks';
-import Spinner from '@cloudscape-design/components/spinner';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 import { ReactNode } from 'react';
 import ContentDisplayOption = CollectionPreferencesProps.ContentDisplayOption;
@@ -30,10 +28,7 @@ export type TableRow = TableProps.ColumnDefinition<any> & {
 
 export type TablePref = { id: string, label: ReactNode };
 
-export function getTableDefinition ({
-    data: ragStatus,
-    isFetching,
-}: UseQueryHookResult<any>): ReadonlyArray<TableRow> {
+export function getTableDefinition (): ReadonlyArray<TableRow> {
     return [
         {
             id: 'repositoryName',
@@ -73,7 +68,7 @@ export function getTableDefinition ({
         {
             id: 'status',
             header: 'Status',
-            cell: (e) => isFetching ? <Spinner /> : getStatusIcon(ragStatus?.[e.repositoryId]),
+            cell: (e) => getStatusIcon(e.status),
             visible: true,
         },
     ];

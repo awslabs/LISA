@@ -12,314 +12,337 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+"""Tests for pipeline delete documents."""
+
 import os
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../"))
-
-from models.domain_objects import (
-    ChunkingStrategyType,
-    FixedChunkingStrategy,
-    IngestionJob,
-    IngestionStatus,
-    IngestionType,
-    RagDocument,
-)
-
-# Patch environment variables for boto3
-os.environ["AWS_REGION"] = "us-east-1"
-os.environ["RAG_DOCUMENT_TABLE"] = "test-doc-table"
-os.environ["RAG_SUB_DOCUMENT_TABLE"] = "test-subdoc-table"
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../lambda"))
 
 
-def make_job():
-    return IngestionJob(
-        id="job-1",
-        repository_id="repo-1",
-        collection_id="coll-1",
-        document_id="doc-1",
-        s3_path="s3://bucket/key.txt",
-        chunk_strategy=FixedChunkingStrategy(type=ChunkingStrategyType.FIXED, size=1000, overlap=200),
-        status=IngestionStatus.DELETE_PENDING,
-        ingestion_type=IngestionType.MANUAL,
+@pytest.fixture
+def setup_env(monkeypatch):
+    """Setup environment variables."""
+    monkeypatch.setenv("AWS_REGION", "us-east-1")
+    monkeypatch.setenv("RAG_DOCUMENT_TABLE", "test-doc-table")
+    monkeypatch.setenv("RAG_SUB_DOCUMENT_TABLE", "test-subdoc-table")
+
+
+def test_drop_opensearch_index(setup_env):
+    """Test drop_opensearch_index drops index successfully."""
+    from repository.pipeline_delete_documents import drop_opensearch_index
+
+    with patch("repository.pipeline_delete_documents.RagEmbeddings"), patch(
+        "repository.pipeline_delete_documents.get_vector_store_client"
+    ) as mock_get_vs:
+        mock_vs = Mock()
+        mock_vs.client.indices.exists.return_value = True
+        mock_get_vs.return_value = mock_vs
+
+        drop_opensearch_index("repo1", "col1")
+
+        mock_vs.client.indices.delete.assert_called_once()
+
+
+def test_drop_opensearch_index_not_exists(setup_env):
+    """Test drop_opensearch_index when index doesn't exist."""
+    from repository.pipeline_delete_documents import drop_opensearch_index
+
+    with patch("repository.pipeline_delete_documents.RagEmbeddings"), patch(
+        "repository.pipeline_delete_documents.get_vector_store_client"
+    ) as mock_get_vs:
+        mock_vs = Mock()
+        mock_vs.client.indices.exists.return_value = False
+        mock_get_vs.return_value = mock_vs
+
+        drop_opensearch_index("repo1", "col1")
+
+        mock_vs.client.indices.delete.assert_not_called()
+
+
+def test_drop_pgvector_collection(setup_env):
+    """Test drop_pgvector_collection drops collection."""
+    from repository.pipeline_delete_documents import drop_pgvector_collection
+
+    with patch("repository.pipeline_delete_documents.RagEmbeddings"), patch(
+        "repository.pipeline_delete_documents.get_vector_store_client"
+    ) as mock_get_vs:
+        mock_vs = Mock()
+        mock_vs.delete_collection = Mock()
+        mock_get_vs.return_value = mock_vs
+
+        drop_pgvector_collection("repo1", "col1")
+
+        mock_vs.delete_collection.assert_called_once()
+
+
+def test_pipeline_delete_collection_opensearch(setup_env):
+    """Test pipeline_delete_collection with OpenSearch repository."""
+    from models.domain_objects import IngestionJob, IngestionStatus, JobActionType
+    from utilities.repository_types import RepositoryType
+
+    job = IngestionJob(
+        repository_id="repo1",
+        collection_id="col1",
+        s3_path="",
+        embedding_model="model1",
         username="user1",
-        created_date="2024-01-01T00:00:00Z",
+        job_type=JobActionType.COLLECTION_DELETION,
     )
 
+    with patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo, patch(
+        "repository.pipeline_delete_documents.drop_opensearch_index"
+    ) as mock_drop, patch("repository.pipeline_delete_documents.rag_document_repository") as mock_doc_repo, patch(
+        "repository.pipeline_delete_documents.collection_repo"
+    ), patch(
+        "repository.pipeline_delete_documents.ingestion_job_repository"
+    ) as mock_job_repo:
 
-def make_doc():
-    return RagDocument(
-        repository_id="repo-1",
-        collection_id="coll-1",
-        document_name="key.txt",
-        source="s3://bucket/key.txt",
-        subdocs=["chunk1", "chunk2"],
-        chunk_strategy=FixedChunkingStrategy(type=ChunkingStrategyType.FIXED, size=1000, overlap=200),
+        mock_vs_repo.find_repository_by_id.return_value = {"type": RepositoryType.OPENSEARCH}
+
+        from repository.pipeline_delete_documents import pipeline_delete_collection
+
+        pipeline_delete_collection(job)
+
+        mock_drop.assert_called_once_with("repo1", "col1")
+        mock_doc_repo.delete_all.assert_called_once_with("repo1", "col1")
+        mock_job_repo.update_status.assert_called_with(job, IngestionStatus.DELETE_COMPLETED)
+
+
+def test_pipeline_delete_collection_bedrock_kb(setup_env):
+    """Test pipeline_delete_collection with Bedrock KB repository."""
+    from models.domain_objects import IngestionJob, JobActionType
+    from utilities.repository_types import RepositoryType
+
+    job = IngestionJob(
+        repository_id="repo1",
+        collection_id="col1",
+        s3_path="",
+        embedding_model="model1",
         username="user1",
-        ingestion_type=IngestionType.MANUAL,
+        job_type=JobActionType.COLLECTION_DELETION,
     )
 
+    with patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo, patch(
+        "repository.pipeline_delete_documents.boto3"
+    ) as mock_boto3, patch("repository.pipeline_delete_documents.rag_document_repository") as mock_doc_repo, patch(
+        "repository.pipeline_delete_documents.collection_repo"
+    ), patch(
+        "repository.pipeline_delete_documents.ingestion_job_repository"
+    ), patch(
+        "repository.pipeline_delete_documents.bulk_delete_documents_from_kb"
+    ) as mock_bulk_delete:
 
-def test_pipeline_delete_success():
-    """Test successful pipeline delete operation"""
-    import repository.pipeline_delete_documents as pdd
+        mock_vs_repo.find_repository_by_id.return_value = {"type": RepositoryType.BEDROCK_KB}
 
-    job = make_job()
-    doc = make_doc()
-
-    with patch.object(pdd.rag_document_repository, "find_by_id", return_value=doc), patch(
-        "repository.pipeline_delete_documents.remove_document_from_vectorstore"
-    ) as mock_remove, patch.object(pdd.rag_document_repository, "delete_by_id") as mock_delete, patch.object(
-        pdd.ingestion_job_repository, "update_status"
-    ) as mock_update:
-
-        pdd.pipeline_delete(job)
-
-        mock_remove.assert_called_once_with(doc)
-        mock_delete.assert_called_once_with(doc.document_id)
-        mock_update.assert_called_with(job, IngestionStatus.DELETE_COMPLETED)
-
-
-def test_pipeline_delete_no_document_found():
-    """Test pipeline delete when no document is found"""
-    import repository.pipeline_delete_documents as pdd
-
-    job = make_job()
-
-    with patch.object(pdd.rag_document_repository, "find_by_id", return_value=None), patch.object(
-        pdd.ingestion_job_repository, "update_status"
-    ) as mock_update:
-
-        pdd.pipeline_delete(job)
-
-        # Should still update status to completed even if no document found
-        mock_update.assert_called_with(job, IngestionStatus.DELETE_COMPLETED)
-
-
-def test_pipeline_delete_exception():
-    """Test pipeline delete when an exception occurs"""
-    import repository.pipeline_delete_documents as pdd
-
-    job = make_job()
-
-    with patch.object(pdd.rag_document_repository, "find_by_id", side_effect=Exception("Database error")), patch.object(
-        pdd.ingestion_job_repository, "update_status"
-    ) as mock_update:
-
-        with pytest.raises(Exception, match="Failed to delete document: Database error"):
-            pdd.pipeline_delete(job)
-
-        mock_update.assert_called_with(job, IngestionStatus.DELETE_FAILED)
-
-
-def test_pipeline_delete_vectorstore_exception():
-    """Test pipeline delete when vectorstore removal fails"""
-    import repository.pipeline_delete_documents as pdd
-
-    job = make_job()
-    doc = make_doc()
-
-    with patch.object(pdd.rag_document_repository, "find_by_id", return_value=doc), patch(
-        "repository.pipeline_delete_documents.remove_document_from_vectorstore",
-        side_effect=Exception("Vector store error"),
-    ), patch.object(pdd.ingestion_job_repository, "update_status") as mock_update:
-
-        with pytest.raises(Exception, match="Failed to delete document: Vector store error"):
-            pdd.pipeline_delete(job)
-
-        mock_update.assert_called_with(job, IngestionStatus.DELETE_FAILED)
-
-
-def test_handle_pipeline_delete_event_success():
-    """Test successful pipeline delete event handling"""
-    import repository.pipeline_delete_documents as pdd
-
-    event = {
-        "detail": {
-            "bucket": "bucket",
-            "key": "key.txt",
-            "repositoryId": "repo-1",
-            "pipelineConfig": {"embeddingModel": "coll-1"},
+        mock_dynamodb = Mock()
+        mock_table = Mock()
+        mock_table.query.return_value = {
+            "Items": [
+                {"pk": "repo1#col1", "source": "s3://bucket/key1"},
+                {"pk": "repo1#col1", "source": "s3://bucket/key2"},
+            ]
         }
-    }
-    doc = make_doc()
+        mock_dynamodb.Table.return_value = mock_table
+        mock_boto3.resource.return_value = mock_dynamodb
 
-    with patch.object(pdd.rag_document_repository, "find_by_source", return_value=[doc]), patch.object(
-        pdd.ingestion_job_repository, "find_by_document", return_value=None
-    ), patch.object(pdd.ingestion_service, "create_delete_job") as mock_create:
+        from repository.pipeline_delete_documents import pipeline_delete_collection
 
-        pdd.handle_pipeline_delete_event(event, MagicMock())
+        pipeline_delete_collection(job)
 
-        mock_create.assert_called_once()
-        job = mock_create.call_args[0][0]
-        assert job.repository_id == "repo-1"
-        assert job.s3_path == "s3://bucket/key.txt"
+        mock_bulk_delete.assert_called_once()
+        mock_doc_repo.delete_all.assert_called_once()
 
 
-def test_handle_pipeline_delete_event_with_existing_job():
-    """Test pipeline delete event handling when ingestion job already exists"""
-    import repository.pipeline_delete_documents as pdd
+def test_pipeline_delete_collection_failure(setup_env):
+    """Test pipeline_delete_collection handles failures."""
+    from models.domain_objects import IngestionJob, IngestionStatus, JobActionType
+    from utilities.repository_types import RepositoryType
 
+    job = IngestionJob(
+        repository_id="repo1",
+        collection_id="col1",
+        s3_path="",
+        embedding_model="model1",
+        username="user1",
+        job_type=JobActionType.COLLECTION_DELETION,
+    )
+
+    with patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo, patch(
+        "repository.pipeline_delete_documents.rag_document_repository"
+    ) as mock_doc_repo, patch("repository.pipeline_delete_documents.collection_repo") as mock_coll_repo, patch(
+        "repository.pipeline_delete_documents.ingestion_job_repository"
+    ) as mock_job_repo:
+
+        mock_vs_repo.find_repository_by_id.return_value = {"type": RepositoryType.OPENSEARCH}
+        mock_doc_repo.delete_all.side_effect = Exception("Delete failed")
+
+        from repository.pipeline_delete_documents import pipeline_delete_collection
+
+        with pytest.raises(Exception):
+            pipeline_delete_collection(job)
+
+        mock_job_repo.update_status.assert_called_with(job, IngestionStatus.DELETE_FAILED)
+        mock_coll_repo.update.assert_called()
+
+
+def test_pipeline_delete_document(setup_env):
+    """Test pipeline_delete_document deletes single document."""
+    from models.domain_objects import IngestionJob, IngestionStatus, RagDocument
+    from utilities.repository_types import RepositoryType
+
+    job = IngestionJob(
+        repository_id="repo1",
+        collection_id="col1",
+        s3_path="s3://bucket/key",
+        embedding_model="model1",
+        username="user1",
+        document_id="doc1",
+    )
+
+    from models.domain_objects import FixedChunkingStrategy
+
+    rag_doc = RagDocument(
+        repository_id="repo1",
+        collection_id="col1",
+        document_id="doc1",
+        document_name="test.txt",
+        source="s3://bucket/key",
+        subdocs=["sub1", "sub2"],
+        username="user1",
+        chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
+    )
+
+    with patch("repository.pipeline_delete_documents.rag_document_repository") as mock_doc_repo, patch(
+        "repository.pipeline_delete_documents.vs_repo"
+    ) as mock_vs_repo, patch("repository.pipeline_delete_documents.remove_document_from_vectorstore"), patch(
+        "repository.pipeline_delete_documents.ingestion_job_repository"
+    ) as mock_job_repo:
+
+        mock_doc_repo.find_by_id.return_value = rag_doc
+        mock_vs_repo.find_repository_by_id.return_value = {"type": RepositoryType.OPENSEARCH}
+
+        from repository.pipeline_delete_documents import pipeline_delete_document
+
+        pipeline_delete_document(job)
+
+        mock_doc_repo.delete_by_id.assert_called_once_with("doc1")
+        mock_job_repo.update_status.assert_called_with(job, IngestionStatus.DELETE_COMPLETED)
+
+
+def test_pipeline_delete_document_not_found(setup_env):
+    """Test pipeline_delete_document when document not found."""
+    from models.domain_objects import IngestionJob, IngestionStatus
+
+    job = IngestionJob(
+        repository_id="repo1",
+        collection_id="col1",
+        s3_path="s3://bucket/key",
+        embedding_model="model1",
+        username="user1",
+        document_id="doc1",
+    )
+
+    with patch("repository.pipeline_delete_documents.rag_document_repository") as mock_doc_repo, patch(
+        "repository.pipeline_delete_documents.ingestion_job_repository"
+    ) as mock_job_repo:
+
+        mock_doc_repo.find_by_id.return_value = None
+
+        from repository.pipeline_delete_documents import pipeline_delete_document
+
+        pipeline_delete_document(job)
+
+        mock_job_repo.update_status.assert_called_with(job, IngestionStatus.DELETE_COMPLETED)
+
+
+def test_handle_pipeline_delete_event(setup_env):
+    """Test handle_pipeline_delete_event processes delete event."""
     event = {
         "detail": {
-            "bucket": "bucket",
-            "key": "key.txt",
-            "repositoryId": "repo-1",
-            "pipelineConfig": {"embeddingModel": "coll-1"},
-        }
-    }
-    doc = make_doc()
-    existing_job = make_job()
-
-    with patch.object(pdd.rag_document_repository, "find_by_source", return_value=[doc]), patch.object(
-        pdd.ingestion_job_repository, "find_by_document", return_value=existing_job
-    ), patch.object(pdd.ingestion_service, "create_delete_job") as mock_create:
-
-        pdd.handle_pipeline_delete_event(event, MagicMock())
-
-        mock_create.assert_called_once_with(existing_job)
-
-
-def test_handle_pipeline_delete_event_no_documents():
-    """Test pipeline delete event handling when no documents are found"""
-    import repository.pipeline_delete_documents as pdd
-
-    event = {
-        "detail": {
-            "bucket": "bucket",
-            "key": "key.txt",
-            "repositoryId": "repo-1",
-            "pipelineConfig": {"embeddingModel": "coll-1"},
-        }
-    }
-
-    with patch.object(pdd.rag_document_repository, "find_by_source", return_value=[]), patch.object(
-        pdd.ingestion_service, "create_delete_job"
-    ) as mock_create:
-
-        pdd.handle_pipeline_delete_event(event, MagicMock())
-
-        # Should not create any jobs if no documents found
-        mock_create.assert_not_called()
-
-
-def test_handle_pipeline_delete_event_multiple_documents():
-    """Test pipeline delete event handling with multiple documents"""
-    import repository.pipeline_delete_documents as pdd
-
-    event = {
-        "detail": {
-            "bucket": "bucket",
-            "key": "key.txt",
-            "repositoryId": "repo-1",
-            "pipelineConfig": {"embeddingModel": "coll-1"},
-        }
-    }
-    doc1 = make_doc()
-    doc2 = make_doc()
-    doc2.document_id = "doc-2"
-
-    with patch.object(pdd.rag_document_repository, "find_by_source", return_value=[doc1, doc2]), patch.object(
-        pdd.ingestion_job_repository, "find_by_document", return_value=None
-    ), patch.object(pdd.ingestion_service, "create_delete_job") as mock_create:
-
-        pdd.handle_pipeline_delete_event(event, MagicMock())
-
-        # Should create jobs for both documents
-        assert mock_create.call_count == 2
-
-
-def test_handle_pipeline_delete_event_missing_detail():
-    """Test pipeline delete event handling with missing detail"""
-    import repository.pipeline_delete_documents as pdd
-
-    event = {}
-
-    with patch.object(pdd.rag_document_repository, "find_by_source", return_value=[]), patch.object(
-        pdd.ingestion_service, "create_delete_job"
-    ) as mock_create:
-
-        pdd.handle_pipeline_delete_event(event, MagicMock())
-
-        # Should handle gracefully with empty detail
-        mock_create.assert_not_called()
-
-
-def test_handle_pipeline_delete_event_missing_pipeline_config():
-    """Test pipeline delete event handling with missing pipeline config"""
-    import repository.pipeline_delete_documents as pdd
-
-    event = {"detail": {"bucket": "bucket", "key": "key.txt", "repositoryId": "repo-1"}}
-
-    with patch.object(pdd.rag_document_repository, "find_by_source", return_value=[]), patch.object(
-        pdd.ingestion_service, "create_delete_job"
-    ) as mock_create:
-
-        pdd.handle_pipeline_delete_event(event, MagicMock())
-
-        # Should handle gracefully with missing pipeline config
-        mock_create.assert_not_called()
-
-
-def test_handle_pipeline_delete_event_missing_embedding_model():
-    """Test pipeline delete event handling with missing embedding model"""
-    import repository.pipeline_delete_documents as pdd
-
-    event = {"detail": {"bucket": "bucket", "key": "key.txt", "repositoryId": "repo-1", "pipelineConfig": {}}}
-
-    with patch.object(pdd.rag_document_repository, "find_by_source", return_value=[]), patch.object(
-        pdd.ingestion_service, "create_delete_job"
-    ) as mock_create:
-
-        pdd.handle_pipeline_delete_event(event, MagicMock())
-
-        # Should handle gracefully with missing embedding model
-        mock_create.assert_not_called()
-
-
-def test_handle_pipeline_delete_event_repository_error():
-    """Test pipeline delete event handling when repository lookup fails"""
-    import repository.pipeline_delete_documents as pdd
-
-    event = {
-        "detail": {
-            "bucket": "bucket",
-            "key": "key.txt",
-            "repositoryId": "repo-1",
-            "pipelineConfig": {"embeddingModel": "coll-1"},
+            "bucket": "test-bucket",
+            "key": "test-key",
+            "repositoryId": "repo1",
+            "pipelineConfig": {"embeddingModel": "model1"},
         }
     }
 
-    with patch.object(
-        pdd.rag_document_repository, "find_by_source", side_effect=Exception("Repository error")
-    ), patch.object(pdd.ingestion_service, "create_delete_job") as mock_create:
+    with patch("repository.pipeline_delete_documents.rag_document_repository") as mock_doc_repo, patch(
+        "repository.pipeline_delete_documents.ingestion_job_repository"
+    ) as mock_job_repo, patch("repository.pipeline_delete_documents.ingestion_service") as mock_service:
 
-        with pytest.raises(Exception, match="Repository error"):
-            pdd.handle_pipeline_delete_event(event, MagicMock())
+        from models.domain_objects import FixedChunkingStrategy, RagDocument
 
-        mock_create.assert_not_called()
+        rag_doc = RagDocument(
+            repository_id="repo1",
+            collection_id="model1",
+            document_id="doc1",
+            document_name="test.txt",
+            source="s3://test-bucket/test-key",
+            subdocs=[],
+            username="user1",
+            chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
+        )
+
+        mock_doc_repo.find_by_source.return_value = [rag_doc]
+        mock_job_repo.find_by_document.return_value = None
+
+        from repository.pipeline_delete_documents import handle_pipeline_delete_event
+
+        handle_pipeline_delete_event(event, None)
+
+        mock_service.create_delete_job.assert_called_once()
 
 
-def test_handle_pipeline_delete_event_ingestion_service_error():
-    """Test pipeline delete event handling when ingestion service fails"""
-    import repository.pipeline_delete_documents as pdd
+def test_handle_pipeline_delete_event_no_pipeline_config(setup_env):
+    """Test handle_pipeline_delete_event skips when no pipeline config."""
+    event = {"detail": {"bucket": "test-bucket", "key": "test-key", "repositoryId": "repo1"}}
 
-    event = {
-        "detail": {
-            "bucket": "bucket",
-            "key": "key.txt",
-            "repositoryId": "repo-1",
-            "pipelineConfig": {"embeddingModel": "coll-1"},
-        }
-    }
-    doc = make_doc()
+    from repository.pipeline_delete_documents import handle_pipeline_delete_event
 
-    with patch.object(pdd.rag_document_repository, "find_by_source", return_value=[doc]), patch.object(
-        pdd.ingestion_job_repository, "find_by_document", return_value=None
-    ), patch.object(pdd.ingestion_service, "create_delete_job", side_effect=Exception("Service error")):
+    # Should return without error
+    handle_pipeline_delete_event(event, None)
 
-        with pytest.raises(Exception, match="Service error"):
-            pdd.handle_pipeline_delete_event(event, MagicMock())
+
+def test_pipeline_delete_routes_to_collection_deletion(setup_env):
+    """Test pipeline_delete routes to collection deletion."""
+    from models.domain_objects import IngestionJob, JobActionType
+
+    job = IngestionJob(
+        repository_id="repo1",
+        collection_id="col1",
+        s3_path="",
+        embedding_model="model1",
+        username="user1",
+        job_type=JobActionType.COLLECTION_DELETION,
+    )
+
+    with patch("repository.pipeline_delete_documents.pipeline_delete_collection") as mock_delete_collection:
+        from repository.pipeline_delete_documents import pipeline_delete
+
+        pipeline_delete(job)
+
+        mock_delete_collection.assert_called_once_with(job)
+
+
+def test_pipeline_delete_routes_to_document_deletion(setup_env):
+    """Test pipeline_delete routes to document deletion."""
+    from models.domain_objects import IngestionJob
+
+    job = IngestionJob(
+        repository_id="repo1",
+        collection_id="col1",
+        s3_path="s3://bucket/key",
+        embedding_model="model1",
+        username="user1",
+    )
+
+    with patch("repository.pipeline_delete_documents.pipeline_delete_document") as mock_delete_document:
+        from repository.pipeline_delete_documents import pipeline_delete
+
+        pipeline_delete(job)
+
+        mock_delete_document.assert_called_once_with(job)

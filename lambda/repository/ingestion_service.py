@@ -13,9 +13,10 @@
 #   limitations under the License.
 import logging
 import os
+from typing import Optional
 
 import boto3
-from models.domain_objects import Enum, IngestionJob
+from models.domain_objects import Enum, IngestDocumentRequest, IngestionJob
 
 logger = logging.getLogger(__name__)
 
@@ -37,8 +38,69 @@ class DocumentIngestionService:
         )
         logger.info(f"Submitted {action} job for document {job.id}: {response['jobId']}")
 
-    def create_ingest_job(self, job: IngestionJob) -> None:
+    def submit_create_job(self, job: IngestionJob) -> None:
         self._submit_job(job, IngestionAction("ingest"))
 
     def create_delete_job(self, job: IngestionJob) -> None:
         self._submit_job(job, IngestionAction("delete"))
+
+    def create_ingestion_job(
+        self,
+        repository: dict,
+        collection: Optional[dict],
+        request: IngestDocumentRequest,
+        query_params: dict,
+        s3_path: str,
+        username: str,
+    ) -> IngestionJob:
+        from models.domain_objects import FixedChunkingStrategy
+
+        # Determine collection_id
+        collection_id = (
+            request.collectionId
+            or (request.embeddingModel.get("modelName") if request.embeddingModel else None)
+            or repository.get("embeddingModelId")
+        )
+
+        # Determine chunking strategy
+        chunk_strategy = None
+        if collection and request.chunkingStrategy and collection.get("allowChunkingOverride"):
+            try:
+                chunk_strategy = (
+                    FixedChunkingStrategy(**request.chunkingStrategy)
+                    if request.chunkingStrategy.get("type", "").upper() == "FIXED"
+                    else collection.get("chunkingStrategy")
+                )
+            except Exception:
+                chunk_strategy = collection.get("chunkingStrategy")
+        elif collection:
+            chunk_strategy = collection.get("chunkingStrategy")
+        if not chunk_strategy:
+            chunk_strategy = FixedChunkingStrategy(
+                size=str(query_params.get("chunkSize", 1000)),
+                overlap=str(query_params.get("chunkOverlap", 200)),
+            )
+
+        # Get embedding model
+        embedding_model = collection.get("embeddingModel") if collection else repository.get("embeddingModelId")
+        source = "collection" if collection else "repository"
+        logger.info(f"Using embedding model for ingestion: {embedding_model} (from {source})")
+
+        # Get metadata tags
+        from repository.collection_service import CollectionService
+
+        collection_service = CollectionService()
+        metadata = collection_service.get_collection_metadata(repository, collection, request.metadata)
+
+        job = IngestionJob(
+            repository_id=repository.get("repositoryId"),
+            collection_id=collection_id,
+            chunk_strategy=chunk_strategy,
+            embedding_model=embedding_model,
+            s3_path=s3_path,
+            username=username,
+            metadata=metadata,
+        )
+        logger.info(f"Created ingestion job with embedding_model: {embedding_model}")
+
+        return job

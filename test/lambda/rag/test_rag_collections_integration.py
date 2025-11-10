@@ -156,20 +156,20 @@ class TestRagCollectionsIntegration:
             Dict: Collection configuration for tests
         """
         # Create test collection
-        collection_id = f"{TEST_COLLECTION_ID}-{int(time.time())}"
-        logger.info(f"Creating test collection: {collection_id}")
+        collection_name = f"{TEST_COLLECTION_ID}-{int(time.time())}"
+        logger.info(f"Creating test collection: {collection_name}")
 
         collection = None
         try:
             collection = lisa_client.create_collection(
                 repository_id=test_repository_id,
-                name=collection_id,
+                name=collection_name,
                 description="Integration test collection",
                 embedding_model=test_embedding_model,
                 chunking_strategy={"type": "fixed", "size": 512, "overlap": 51},
             )
             collection_id = collection.get("collectionId")
-            logger.info(f"Created collection: {collection_id}")
+            logger.info(f"Created collection: {collection_id} {collection_name}")
 
             # Track for cleanup
             self.created_collections.append(collection_id)
@@ -327,7 +327,7 @@ class TestRagCollectionsIntegration:
         - Results contain the ingested document
         - Results match document content
         """
-        collection_id = test_collection.get("id")
+        collection_id = test_collection.get("collectionId")
         logger.info(f"Test 3: Performing similarity search on collection {collection_id}")
 
         # # Wait longer for embeddings to be indexed and available
@@ -387,7 +387,7 @@ class TestRagCollectionsIntegration:
         - Document removed from S3
         - Embeddings removed from vector store
         """
-        collection_id = test_collection.get("id")
+        collection_id = test_collection.get("collectionId")
         logger.info("Test 4: Deleting document and verifying cleanup")
 
         # Get documents in collection (use collection_id for user-facing API)
@@ -442,7 +442,30 @@ class TestRagCollectionsIntegration:
 
         logger.info("✓ Test 4 completed successfully")
 
-    def test_05_delete_collection_with_documents(
+    def test_05_get_user_collections(
+        self,
+        lisa_client: LisaApi,
+        test_collection: Dict,
+    ):
+        """Test 5: Get user collections.
+
+        Verifies:
+        - User collections can be retrieved across all repositories
+        - Test collection appears in results
+        """
+        collection_id = test_collection.get("collectionId")
+        logger.info("Test 5: Getting user collections across all repositories")
+
+        collections = lisa_client.get_user_collections()
+        logger.info(f"✓ Retrieved {len(collections)} collections")
+
+        collection_ids = [c.get("collectionId") for c in collections]
+        assert collection_id in collection_ids, f"Test collection {collection_id} not found in user collections"
+        logger.info(f"✓ Test collection {collection_id} found in user collections")
+
+        logger.info("✓ Test 5 completed successfully")
+
+    def test_06_delete_collection_with_documents(
         self,
         lisa_client: LisaApi,
         test_repository_id: str,
@@ -450,7 +473,7 @@ class TestRagCollectionsIntegration:
         test_collection: str,
         test_document_file: str,
     ):
-        """Test 5: Ingest document and delete collection.
+        """Test 6: Ingest document and delete collection.
 
         Verifies:
         - Collection with documents can be deleted
@@ -460,7 +483,7 @@ class TestRagCollectionsIntegration:
         - All embeddings removed from vector store
         - Collection marked as DELETED or removed from DynamoDB
         """
-        logger.info("Test 5: Deleting collection with documents")
+        logger.info("Test 6: Deleting collection with documents")
 
         collection_id = test_collection.get("collectionId")
         logger.info(f"Created test collection: ({collection_id})")
@@ -519,8 +542,6 @@ class TestRagCollectionsIntegration:
             pass
 
         logger.info("✓ Collection cleanup verified")
-
-        logger.info("✓ Test 5 completed successfully")
 
 
 if __name__ == "__main__":

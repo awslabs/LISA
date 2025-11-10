@@ -215,3 +215,44 @@ class CollectionMixin(BaseMixin):
             return response.json()
         else:
             raise parse_error(response.status_code, response)
+
+    def get_user_collections(
+        self,
+        page_size: int = 20,
+        filter_text: Optional[str] = None,
+        sort_by: str = "createdAt",
+        sort_order: str = "desc",
+        last_evaluated_key: Optional[str] = None,
+    ) -> List[Dict]:
+        """Get all collections user has access to across all repositories.
+
+        Args:
+            page_size: Number of items per page (default: 20, max: 100)
+            filter_text: Optional text filter for name/description
+            sort_by: Field to sort by (name, createdAt, updatedAt)
+            sort_order: Sort order (asc, desc)
+            last_evaluated_key: Optional pagination token
+
+        Returns:
+            List[Dict]: List of collections user has access to
+
+        Raises:
+            Exception: If the request fails
+        """
+        params = {
+            "pageSize": min(page_size, 100),
+            "sortBy": sort_by,
+            "sortOrder": sort_order,
+        }
+
+        if filter_text:
+            params["filter"] = filter_text
+        if last_evaluated_key:
+            params["lastEvaluatedKey"] = last_evaluated_key
+
+        response = self._session.get(f"{self.url}/repository/collections", params=params)
+        if response.status_code == 200:
+            result = response.json()
+            return result.get("collections", [])
+        else:
+            raise parse_error(response.status_code, response)

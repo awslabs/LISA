@@ -14,18 +14,14 @@
 
 import uuid
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
 
-class McpServerStatus(str, Enum):
+class McpServerStatus(StrEnum):
     """Enum representing the prompt template type."""
-
-    def __str__(self) -> str:
-        """Represent the enum as a string."""
-        return str(self.value)
 
     ACTIVE = "active"
     INACTIVE = "inactive"

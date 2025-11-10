@@ -34,8 +34,25 @@ session = boto3.Session()
 s3 = session.client("s3", region_name=os.environ["AWS_REGION"])
 
 
-def _get_metadata(s3_uri: str, name: str) -> dict:
-    return {"source": s3_uri, "name": name}
+def _get_metadata(s3_uri: str, name: str, metadata: dict | None = None) -> dict:
+    """
+    Create metadata dictionary for a document.
+
+    Args:
+        s3_uri: S3 URI of the document
+        name: Name of the document
+        metadata: Optional additional metadata to merge into the result
+
+    Returns:
+        Dictionary containing document metadata
+    """
+    base_metadata = {"source": s3_uri, "name": name}
+
+    # Merge additional metadata if provided
+    if metadata:
+        base_metadata.update(metadata)
+
+    return base_metadata
 
 
 def _get_s3_uri(bucket: str, key: str) -> str:
@@ -157,7 +174,14 @@ def generate_chunks(ingestion_job: IngestionJob) -> list[Document]:
     # Extract text and create initial document
     extracted_text = _extract_text_by_content_type(content_type=content_type, s3_object=s3_object)
     basename = os.path.basename(ingestion_job.s3_path)
-    docs = [Document(page_content=extracted_text, metadata=_get_metadata(s3_uri=ingestion_job.s3_path, name=basename))]
+
+    # Pass metadata from IngestionJob to be merged into document metadata
+    docs = [
+        Document(
+            page_content=extracted_text,
+            metadata=_get_metadata(s3_uri=ingestion_job.s3_path, name=basename, metadata=ingestion_job.metadata),
+        )
+    ]
 
     # Use factory to chunk documents based on strategy
     logger.info(f"Processing document with chunking strategy: {ingestion_job.chunk_strategy.type}")

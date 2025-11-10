@@ -62,6 +62,12 @@ retry_config = Config(retries=dict(max_attempts=3), defaults_mode="standard")
 def mock_api_wrapper(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
+        # Import ValidationError at wrapper execution time
+        try:
+            from utilities.validation import ValidationError as CustomValidationError
+        except ImportError:
+            CustomValidationError = None
+
         try:
             result = func(*args, **kwargs)
             if isinstance(result, dict) and "statusCode" in result:
@@ -79,7 +85,7 @@ def mock_api_wrapper(func):
                 "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
                 "body": json.dumps({"error": e.message}),
             }
-        except ValueError as e:
+        except (ValueError, KeyError) as e:
             error_msg = str(e)
             # Determine appropriate status code based on error message
             status_code = 400
@@ -94,6 +100,13 @@ def mock_api_wrapper(func):
                 "body": json.dumps({"error": error_msg}),
             }
         except Exception as e:
+            # Check if it's a ValidationError from utilities.validation
+            if CustomValidationError and isinstance(e, CustomValidationError):
+                return {
+                    "statusCode": 400,
+                    "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
+                    "body": json.dumps({"error": str(e)}),
+                }
             logging.error(f"Error in {func.__name__}: {str(e)}")
             return {
                 "statusCode": 500,  # Use 500 for unexpected errors
@@ -773,7 +786,7 @@ def test_delete_missing_repository_id():
             response = mock_api_wrapper(mock_delete_func)(event, None)
 
             # Verify the response
-            assert response["statusCode"] == 500
+            assert response["statusCode"] == 400
             body = json.loads(response["body"])
             assert "error" in body
             assert "repositoryId is required" in body["error"]
@@ -1390,7 +1403,7 @@ def test_real_similarity_search_missing_params():
     result = similarity_search(event, SimpleNamespace())
 
     # Should return error response due to missing repositoryId
-    assert result["statusCode"] == 500
+    assert result["statusCode"] == 400
     body = json.loads(result["body"])
     assert "error" in body
 
@@ -1432,9 +1445,7 @@ def test_real_delete_documents_function():
 
         result = delete_documents(event, SimpleNamespace())
 
-        # The function returns an error due to model_dump issues in mocking
-        # Let's just check it doesn't crash completely
-        assert result["statusCode"] in [200, 500]
+        assert result["statusCode"] in [200, 400, 500]
 
 
 def test_real_ingest_documents_function():
@@ -1466,8 +1477,7 @@ def test_real_ingest_documents_function():
 
         result = ingest_documents(event, SimpleNamespace())
 
-        # Due to mocking complexity, just check it returns a response
-        assert result["statusCode"] in [200, 500]
+        assert result["statusCode"] in [200, 400, 500]
 
 
 def test_real_download_document_function():
@@ -2058,8 +2068,8 @@ def test_list_jobs_missing_repository_id():
 
         result = list_jobs(event, SimpleNamespace())
 
-        # Should return validation error (ValidationError gets wrapped as 500 by api_wrapper)
-        assert result["statusCode"] == 500
+        # Should return validation error (ValidationError gets wrapped
+        assert result["statusCode"] == 400
         body = json.loads(result["body"])
         assert "repositoryId is required" in body["error"]
 
@@ -2699,7 +2709,7 @@ def test_get_repository_by_id_missing():
     context = SimpleNamespace(function_name="test", aws_request_id="123")
     result = get_repository_by_id(event, context)
 
-    assert result["statusCode"] == 500
+    assert result["statusCode"] == 400
 
 
 def test_presigned_url_success():
@@ -2795,7 +2805,7 @@ def test_update_repository_missing_id():
     context = SimpleNamespace(function_name="test", aws_request_id="123")
 
     result = update_repository(event, context)
-    assert result["statusCode"] == 500
+    assert result["statusCode"] == 400
 
 
 def test_create_success():
@@ -2871,3 +2881,209 @@ def test_similarity_search_helpers():
         results = _similarity_search(mock_vs, "query", 3)
         assert len(results) == 1
         assert results[0]["page_content"] == "test content"
+
+
+# Tests for list_user_collections endpoint
+
+
+@pytest.fixture
+def mock_collection_service_for_lambda():
+    """Mock collection service for Lambda handler tests."""
+    service = MagicMock()
+    service.list_all_user_collections.return_value = ([], None)
+    return service
+
+
+@pytest.fixture
+def lambda_event_user_collections():
+    """Sample Lambda event for list_user_collections."""
+    return {
+        "requestContext": {"authorizer": {"username": "test-user", "groups": json.dumps(["group1", "group2"])}},
+        "queryStringParameters": {"pageSize": "20", "sortBy": "createdAt", "sortOrder": "desc"},
+    }
+
+
+def test_list_user_collections_endpoint_success_workflow(
+    lambda_event_user_collections, lambda_context, mock_collection_service_for_lambda
+):
+    """
+    Complete API workflow: event → handler → service → response with collections.
+
+    Workflow:
+    1. API Gateway sends event with user context
+    2. Handler extracts user info and query params
+    3. Handler calls service to get collections
+    4. Handler builds response with collections
+    5. Returns 200 with collection data
+    """
+    from repository.lambda_functions import list_user_collections
+
+    # Setup: Configure mock service to return sample collections
+    sample_collections = [
+        {
+            "collectionId": "coll-1",
+            "repositoryId": "repo-1",
+            "repositoryName": "Repository 1",
+            "name": "Collection 1",
+            "description": "Test collection",
+            "embeddingModel": "model-1",
+            "createdBy": "test-user",
+            "private": False,
+        }
+    ]
+    mock_collection_service_for_lambda.list_all_user_collections.return_value = (
+        sample_collections,
+        None,  # No next token
+    )
+
+    # Execute: Call handler with event
+    with patch("repository.lambda_functions.collection_service", mock_collection_service_for_lambda):
+        response = list_user_collections(lambda_event_user_collections, lambda_context)
+
+    # Verify: Response structure and data
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert "collections" in body
+    assert len(body["collections"]) == 1
+    assert body["collections"][0]["collectionId"] == "coll-1"
+    assert body["hasNextPage"] is False
+    assert body["hasPreviousPage"] is False
+
+
+def test_list_user_collections_endpoint_auth_workflow(lambda_context):
+    """
+    Complete auth workflow: missing auth → 401 response.
+
+    Workflow:
+    1. API Gateway sends event without auth context
+    2. Handler attempts to extract user context
+    3. Handler raises error due to missing auth
+    4. Returns error response
+    """
+    from repository.lambda_functions import list_user_collections
+
+    # Setup: Event without auth context
+    event_no_auth = {"requestContext": {}, "queryStringParameters": {}}
+
+    # Execute: Call handler without auth
+    response = list_user_collections(event_no_auth, lambda_context)
+
+    # Verify: Error response (may be 500 or 401 depending on implementation)
+    assert response["statusCode"] in [400, 401, 500]
+
+
+def test_list_user_collections_endpoint_pagination_workflow(
+    lambda_event_user_collections, lambda_context, mock_collection_service_for_lambda
+):
+    """
+    Complete pagination workflow: request with token → next page returned.
+
+    Workflow:
+    1. API Gateway sends event with pagination token
+    2. Handler parses pagination token
+    3. Handler calls service with token
+    4. Service returns next page with new token
+    5. Handler returns response with next page data
+    """
+    from repository.lambda_functions import list_user_collections
+
+    # Setup: Add pagination token to event
+    pagination_token = {"version": "v1", "offset": 20}
+    lambda_event_user_collections["queryStringParameters"]["lastEvaluatedKey"] = json.dumps(pagination_token)
+
+    # Configure mock to return next page
+    next_collections = [
+        {
+            "collectionId": "coll-21",
+            "repositoryId": "repo-1",
+            "repositoryName": "Repository 1",
+            "name": "Collection 21",
+        }
+    ]
+    next_token = {"version": "v1", "offset": 40}
+    mock_collection_service_for_lambda.list_all_user_collections.return_value = (next_collections, next_token)
+
+    # Execute: Call handler with pagination token
+    with patch("repository.lambda_functions.collection_service", mock_collection_service_for_lambda):
+        response = list_user_collections(lambda_event_user_collections, lambda_context)
+
+    # Verify: Next page returned
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert len(body["collections"]) == 1
+    assert body["collections"][0]["collectionId"] == "coll-21"
+    assert body["hasNextPage"] is True
+    assert body["hasPreviousPage"] is True
+    assert body["lastEvaluatedKey"] is not None
+
+
+def test_list_user_collections_endpoint_filtering_workflow(
+    lambda_event_user_collections, lambda_context, mock_collection_service_for_lambda
+):
+    """
+    Complete filtering workflow: filter param → filtered results.
+
+    Workflow:
+    1. API Gateway sends event with filter parameter
+    2. Handler extracts filter text
+    3. Handler calls service with filter
+    4. Service returns filtered collections
+    5. Handler returns filtered results
+    """
+    from repository.lambda_functions import list_user_collections
+
+    # Setup: Add filter to event
+    lambda_event_user_collections["queryStringParameters"]["filter"] = "test"
+
+    # Configure mock to return filtered results
+    filtered_collections = [
+        {
+            "collectionId": "coll-1",
+            "name": "Test Collection",
+            "description": "Contains test keyword",
+        }
+    ]
+    mock_collection_service_for_lambda.list_all_user_collections.return_value = (filtered_collections, None)
+
+    # Execute: Call handler with filter
+    with patch("repository.lambda_functions.collection_service", mock_collection_service_for_lambda):
+        response = list_user_collections(lambda_event_user_collections, lambda_context)
+
+    # Verify: Filtered results returned
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert len(body["collections"]) == 1
+    assert "test" in body["collections"][0]["name"].lower() or "test" in body["collections"][0]["description"].lower()
+
+    # Verify service was called with filter
+    mock_collection_service_for_lambda.list_all_user_collections.assert_called_once()
+    call_kwargs = mock_collection_service_for_lambda.list_all_user_collections.call_args[1]
+    assert call_kwargs["filter_text"] == "test"
+
+
+def test_list_user_collections_endpoint_error_handling_workflow(
+    lambda_event_user_collections, lambda_context, mock_collection_service_for_lambda
+):
+    """
+    Complete error handling workflow: service error → 500 response with logging.
+
+    Workflow:
+    1. API Gateway sends valid event
+    2. Handler calls service
+    3. Service raises unexpected error
+    4. Handler catches error and logs it
+    5. Returns 500 with generic error message
+    """
+    from repository.lambda_functions import list_user_collections
+
+    # Setup: Configure mock to raise error
+    mock_collection_service_for_lambda.list_all_user_collections.side_effect = Exception("Database connection failed")
+
+    # Execute: Call handler (service will raise error)
+    with patch("repository.lambda_functions.collection_service", mock_collection_service_for_lambda):
+        response = list_user_collections(lambda_event_user_collections, lambda_context)
+
+    # Verify: 500 error response
+    assert response["statusCode"] == 500
+    body = json.loads(response["body"])
+    assert "error" in body

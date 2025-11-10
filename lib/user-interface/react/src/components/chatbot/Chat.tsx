@@ -251,11 +251,10 @@ export default function Chat ({ sessionId }) {
         return getRelevantDocuments({
             query,
             repositoryId: ragConfig.repositoryId,
-            repositoryType: ragConfig.repositoryType,
-            modelName: ragConfig.embeddingModel?.modelId,
+            collectionId: ragConfig.collection?.collectionId,
             topK: ragTopK,
         });
-    }, [getRelevantDocuments, chatConfiguration.sessionConfiguration, ragConfig.repositoryId, ragConfig.repositoryType, ragConfig.embeddingModel?.modelId]);
+    }, [getRelevantDocuments, chatConfiguration.sessionConfiguration, ragConfig.repositoryId, ragConfig.collection]);
 
     const { isRunning, setIsRunning, isStreaming, generateResponse, stopGeneration } = useChatGeneration({
         chatConfiguration,

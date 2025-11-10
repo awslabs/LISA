@@ -17,6 +17,7 @@ import time
 from typing import Any, cast, List
 
 import boto3
+from models.domain_objects import VectorStoreStatus
 from utilities.common_functions import retry_config
 from utilities.encoders import convert_decimal
 
@@ -43,6 +44,7 @@ class VectorStoreRepository:
         registered_repositories = []
         for item in items:
             config = item.get("config", {})
+            config["status"] = item.get("status", VectorStoreStatus.UNKNOWN)
             if item.get("legacy", False):
                 config["legacy"] = True
 

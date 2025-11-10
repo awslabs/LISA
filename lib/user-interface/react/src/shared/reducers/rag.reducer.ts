@@ -15,11 +15,15 @@
  */
 
 import { createApi } from '@reduxjs/toolkit/query/react';
-import { lisaBaseQuery } from './reducer.utils';
-import { Model, PaginatedDocumentResponse } from '../../components/types';
+import { lisaBaseQuery } from '@/shared/reducers/reducer.utils';
+import { PaginatedDocumentResponse } from '@/components/types';
 import { Document } from '@langchain/core/documents';
-import { RagRepositoryConfig } from '#root/lib/schema';
-import { RagStatus } from '../model/rag.model';
+import {
+    RagRepositoryConfig,
+    ChunkingStrategy,
+    RagCollectionConfig as SchemaRagCollectionConfig,
+} from '#root/lib/schema';
+import { RagStatus } from '@/shared/model/rag.model';
 
 export type S3UploadRequest = {
     url: string;
@@ -29,10 +33,9 @@ export type S3UploadRequest = {
 type IngestDocumentRequest = {
     documents: string[],
     repositoryId: string,
-    embeddingModel: Model,
+    collectionId?: string,
     repostiroyType: string,
-    chunkSize: number,
-    chunkOverlap: number
+    chunkingStrategy?: ChunkingStrategy;
 };
 
 type IngestDocumentJob = {
@@ -50,10 +53,9 @@ type IngestDocumentResponse = {
 
 type RelevantDocRequest = {
     repositoryId: string,
+    collectionId?: string
     query: string,
-    modelName: string,
-    repositoryType: string,
-    topK: number
+    topK: number,
 };
 
 type ListRagDocumentRequest = {
@@ -82,11 +84,7 @@ export type IngestionJob = {
     collection_id: string;
     document_id: string;
     repository_id: string;
-    chunk_strategy: {
-        type: string;
-        size: number;
-        overlap: number;
-    };
+    chunk_strategy: ChunkingStrategy;
     username: string;
     status: string;
     created_date: string;
@@ -109,10 +107,31 @@ export type PaginatedIngestionJobsResponse = {
     hasPreviousPage?: boolean;
 };
 
+// Collection types - using schema definitions
+export type RagCollectionConfig = SchemaRagCollectionConfig;
+
+type ListCollectionsRequest = {
+    repositoryId: string;
+    pageSize?: number;
+    lastEvaluatedKey?: any;
+};
+
+type ListCollectionsResponse = {
+    collections: RagCollectionConfig[];
+    totalCount?: number;
+    hasNextPage?: boolean;
+    lastEvaluatedKey?: any;
+};
+
+type CollectionRequest = {
+    repositoryId: string;
+    collectionId: string;
+};
+
 export const ragApi = createApi({
     reducerPath: 'rag',
     baseQuery: lisaBaseQuery(),
-    tagTypes: ['repositories', 'docs', 'repository-status', 'jobs'],
+    tagTypes: ['repositories', 'docs', 'repository-status', 'jobs', 'collections'],
     refetchOnFocus: true,
     refetchOnReconnect: true,
     endpoints: (builder) => ({
@@ -151,9 +170,21 @@ export const ragApi = createApi({
             }),
         }),
         getRelevantDocuments: builder.query<Document[], RelevantDocRequest>({
-            query: (request) => ({
-                url: `repository/${request.repositoryId}/similaritySearch?query=${request.query}&modelName=${request.modelName}&repositoryType=${request.repositoryType}&topK=${request.topK}`,
-            }),
+            query: (request) => {
+                const params: any = {
+                    query: request.query,
+                    topK: request.topK
+                };
+
+                if (request.collectionId) {
+                    params.collectionId = request.collectionId;
+                }
+
+                const queryString = new URLSearchParams(params).toString();
+                return {
+                    url: `repository/${request.repositoryId}/similaritySearch?${queryString}`,
+                };
+            },
         }),
         uploadToS3: builder.mutation<void, S3UploadRequest>({
             query: (request) => ({
@@ -170,16 +201,25 @@ export const ragApi = createApi({
             },
         }),
         ingestDocuments: builder.mutation<IngestDocumentResponse, IngestDocumentRequest>({
-            query: (request) => ({
-                url: `repository/${request.repositoryId}/bulk?repositoryType=${request.repostiroyType}&chunkSize=${request.chunkSize}&chunkOverlap=${request.chunkOverlap}`,
-                method: 'POST',
-                data: {
-                    embeddingModel: {
-                        modelName: request.embeddingModel.id
-                    },
-                    keys: request.documents
+            query: (request) => {
+
+                let url = `repository/${request.repositoryId}/bulk`;
+
+                // Add collectionId parameter if provided
+                if (request.collectionId) {
+                    url += `&collectionId=${request.collectionId}`;
                 }
-            }),
+
+                return {
+                    url,
+                    method: 'POST',
+                    data: {
+                        keys: request.documents,
+                        collectionId: request.collectionId,
+                        chunkingStrategy: request.chunkingStrategy
+                    }
+                };
+            },
             transformErrorResponse: (baseQueryReturnValue) => {
                 // transform into SerializedError
                 return {
@@ -259,6 +299,96 @@ export const ragApi = createApi({
             },
             providesTags: ['jobs'], // Add cache tags for invalidation
         }),
+        listCollections: builder.query<RagCollectionConfig[], ListCollectionsRequest>({
+            query: (request) => ({
+                url: `/repository/${request.repositoryId}/collection`,
+                params: {
+                    pageSize: request.pageSize,
+                    lastEvaluatedKey: request.lastEvaluatedKey,
+                },
+            }),
+            transformResponse: (response: ListCollectionsResponse) => response.collections,
+            providesTags: ['collections'],
+        }),
+        listAllCollections: builder.query<RagCollectionConfig[], void>({
+            query: () => ({
+                url: '/repository/collections',
+            }),
+            transformResponse: (response: ListCollectionsResponse) => response.collections,
+            providesTags: ['collections'],
+        }),
+        getCollection: builder.query<RagCollectionConfig, CollectionRequest>({
+            query: (request) => ({
+                url: `/repository/${request.repositoryId}/collection/${request.collectionId}`,
+            }),
+            providesTags: ['collections'],
+        }),
+        createCollection: builder.mutation<RagCollectionConfig, RagCollectionConfig>({
+            query: (request) => ({
+                url: `/repository/${request.repositoryId}/collection`,
+                method: 'POST',
+                data: {
+                    name: request.name,
+                    description: request.description,
+                    embeddingModel: request.embeddingModel,
+                    chunkingStrategy: request.chunkingStrategy,
+                    allowedGroups: request.allowedGroups,
+                    metadata: request.metadata,
+                    private: request.private,
+                    pipelines: request.pipelines,
+                },
+            }),
+            transformErrorResponse: (baseQueryReturnValue) => {
+                return {
+                    name: 'Create Collection Error',
+                    message: baseQueryReturnValue.data?.type === 'RequestValidationError'
+                        ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ')
+                        : baseQueryReturnValue.data.message
+                };
+            },
+            invalidatesTags: ['collections'],
+        }),
+        deleteCollection: builder.mutation<void, CollectionRequest>({
+            query: (request) => ({
+                url: `/repository/${request.repositoryId}/collection/${request.collectionId}`,
+                method: 'DELETE',
+            }),
+            transformErrorResponse: (baseQueryReturnValue) => {
+                return {
+                    name: 'Delete Collection Error',
+                    message: baseQueryReturnValue.data?.type === 'RequestValidationError'
+                        ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ')
+                        : baseQueryReturnValue.data.message
+                };
+            },
+            invalidatesTags: ['collections'],
+        }),
+        updateCollection: builder.mutation<RagCollectionConfig, RagCollectionConfig>({
+            query: (request) => ({
+                url: `/repository/${request.repositoryId}/collection/${request.collectionId}`,
+                method: 'PUT',
+                data: {
+                    name: request.name,
+                    description: request.description,
+                    chunkingStrategy: request.chunkingStrategy,
+                    allowedGroups: request.allowedGroups,
+                    metadata: request.metadata,
+                    private: request.private,
+                    allowChunkingOverride: request.allowChunkingOverride,
+                    pipelines: request.pipelines,
+                    status: request.status,
+                },
+            }),
+            transformErrorResponse: (baseQueryReturnValue) => {
+                return {
+                    name: 'Update Collection Error',
+                    message: baseQueryReturnValue.data?.type === 'RequestValidationError'
+                        ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ')
+                        : baseQueryReturnValue.data.message
+                };
+            },
+            invalidatesTags: ['collections'],
+        }),
     }),
 });
 
@@ -277,4 +407,10 @@ export const {
     useLazyDownloadRagDocumentQuery,
     useGetIngestionJobsQuery,
     useLazyGetIngestionJobsQuery,
+    useListCollectionsQuery,
+    useListAllCollectionsQuery,
+    useGetCollectionQuery,
+    useCreateCollectionMutation,
+    useUpdateCollectionMutation,
+    useDeleteCollectionMutation,
 } = ragApi;

@@ -76,6 +76,7 @@ export class ModelsApi extends Construct {
         super(scope, id);
 
         const { authorizer, config, guardrailsTable, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
 
         const lisaServeEndpointUrlPs = props.lisaServeEndpointUrlPs ?? StringParameter.fromStringParameterName(
             scope,
@@ -196,6 +197,21 @@ export class ModelsApi extends Construct {
             ...(stateMachineExecutionRole),
         });
 
+        const scheduleManagementLambda = new Function(this, 'ScheduleManagement', {
+            runtime: getDefaultRuntime(),
+            handler: 'models.scheduling.schedule_management.lambda_handler',
+            code: Code.fromAsset(lambdaPath),
+            layers: lambdaLayers,
+            environment: {
+                MODEL_TABLE_NAME: modelTable.tableName,
+            },
+            role: stateMachinesLambdaRole,
+            vpc: vpc.vpc,
+            securityGroups: securityGroups,
+            timeout: Duration.minutes(5),
+            description: 'Manages Auto Scaling scheduled actions for LISA model scheduling',
+        });
+
         const environment = {
             LISA_API_URL_PS_NAME: lisaServeEndpointUrlPs.parameterName,
             REST_API_VERSION: 'v2',
@@ -204,11 +220,11 @@ export class ModelsApi extends Construct {
             DELETE_SFN_ARN: deleteModelStateMachine.stateMachineArn,
             UPDATE_SFN_ARN: updateModelStateMachine.stateMachineArn,
             MODEL_TABLE_NAME: modelTable.tableName,
+            SCHEDULE_MANAGEMENT_FUNCTION_NAME: scheduleManagementLambda.functionName,
             GUARDRAILS_TABLE_NAME: guardrailsTable.tableName,
         };
 
         const lambdaRole: IRole = createLambdaRole(this, config.deploymentName, 'ModelApi', modelTable.tableArn, config.roles?.ModelApiRole);
-        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         // create proxy handler
         const lambdaFunction = registerAPIEndpoint(
             this,
@@ -349,6 +365,15 @@ export class ModelsApi extends Construct {
                     ],
                     resources: ['*'],  // we do not know ASG names in advance
                 }),
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: [
+                        'lambda:InvokeFunction',
+                    ],
+                    resources: [
+                        scheduleManagementLambda.functionArn,
+                    ],
+                }),
             ]
         });
         lambdaFunction.role!.attachInlinePolicy(workflowPermissions);
@@ -487,6 +512,9 @@ export class ModelsApi extends Construct {
                             actions: [
                                 'autoscaling:DescribeAutoScalingGroups',
                                 'autoscaling:UpdateAutoScalingGroup',
+                                'autoscaling:PutScheduledUpdateGroupAction',
+                                'autoscaling:DeleteScheduledAction',
+                                'autoscaling:DescribeScheduledActions',
                             ],
                             resources: ['*'],  // We do not know the ASG names in advance
                         }),

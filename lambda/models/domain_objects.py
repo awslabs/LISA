@@ -18,10 +18,11 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Annotated, Any, Dict, Generator, List, Optional, TypeAlias, Union
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
 from pydantic.functional_validators import AfterValidator, field_validator, model_validator
@@ -157,6 +158,159 @@ class LoadBalancerConfig(BaseModel):
     healthCheckConfig: LoadBalancerHealthCheckConfig
 
 
+class ScheduleType(str, Enum):
+    """Defines supported schedule types for resource scheduling"""
+
+    def __str__(self) -> str:
+        """Returns string representation of the enum value"""
+        return str(self.value)
+
+    EACH_DAY = "EACH_DAY"
+    RECURRING_DAILY = "RECURRING_DAILY"
+
+
+class DaySchedule(BaseModel):
+    """Defines start and stop times for a single day"""
+
+    startTime: str = Field(pattern=r"^([01]?[0-9]|2[0-3]):[0-5][0-9]$")
+    stopTime: str = Field(pattern=r"^([01]?[0-9]|2[0-3]):[0-5][0-9]$")
+
+    @field_validator("startTime", "stopTime")
+    @classmethod
+    def validate_time_format(cls, v: str) -> str:
+        """Validates time format is HH:MM"""
+        try:
+
+            datetime.strptime(v, "%H:%M")
+        except ValueError:
+            raise ValueError("Time must be in HH:MM format")
+        return v
+
+    @model_validator(mode="after")
+    def validate_stop_after_start(self) -> Self:
+        """Validates that stop time is after start time and at least 2 hours later"""
+
+        start_time = datetime.strptime(self.startTime, "%H:%M").time()
+        stop_time = datetime.strptime(self.stopTime, "%H:%M").time()
+
+        # Reject if start and stop times are exactly equal
+        if start_time == stop_time:
+            raise ValueError("Stop time must be at least 2 hours after start time")
+
+        # Convert to datetime objects for easier calculation
+        start_dt = datetime.combine(datetime.today(), start_time)
+        stop_dt = datetime.combine(datetime.today(), stop_time)
+
+        # Handle case where stop time is next day (e.g., start at 23:00, stop at 01:00)
+        if stop_time < start_time:
+            stop_dt += timedelta(days=1)
+
+        # Calculate the time difference
+        time_diff = stop_dt - start_dt
+
+        # Ensure stop time is at least 2 hours after start time
+        min_duration = timedelta(hours=2)
+        if time_diff < min_duration:
+            raise ValueError("Stop time must be at least 2 hours after start time")
+
+        return self
+
+
+class WeeklySchedule(BaseModel):
+    """Defines schedule for each day of the week with one start/stop time per day"""
+
+    monday: Optional[DaySchedule] = None
+    tuesday: Optional[DaySchedule] = None
+    wednesday: Optional[DaySchedule] = None
+    thursday: Optional[DaySchedule] = None
+    friday: Optional[DaySchedule] = None
+    saturday: Optional[DaySchedule] = None
+    sunday: Optional[DaySchedule] = None
+
+    @model_validator(mode="after")
+    def validate_daily_schedules(self) -> Self:
+        """Validates that at least one day has a schedule configured"""
+        days = [self.monday, self.tuesday, self.wednesday, self.thursday, self.friday, self.saturday, self.sunday]
+
+        if not any(days):
+            raise ValueError("At least one day must have a schedule configured")
+
+        return self
+
+
+class NextScheduledAction(BaseModel):
+    """Defines the next scheduled action for a model"""
+
+    action: str = Field(pattern=r"^(START|STOP)$")
+    scheduledTime: str
+
+
+class ScheduleFailure(BaseModel):
+    """Defines schedule failure information"""
+
+    timestamp: str
+    error: str
+    retryCount: int
+
+
+class SchedulingConfig(BaseModel):
+    """Defines scheduling configuration for model resource management"""
+
+    scheduleType: Optional[ScheduleType] = None
+    timezone: str = Field(default="UTC")
+
+    # Weekly schedule (for EACH_DAY type)
+    weeklySchedule: Optional[WeeklySchedule] = None
+
+    # Daily schedule (for RECURRING_DAILY and WEEKDAYS_ONLY types)
+    dailySchedule: Optional[DaySchedule] = None
+
+    # Schedule metadata and tracking
+    scheduleEnabled: bool = False
+    lastScheduleUpdate: Optional[str] = None
+    scheduledActionArns: Optional[List[str]] = None
+
+    # Status tracking
+    scheduleConfigured: bool = False
+    lastScheduleFailed: bool = False
+
+    # Next scheduled action info (computed field)
+    nextScheduledAction: Optional[NextScheduledAction] = None
+
+    # Failure tracking
+    lastScheduleFailure: Optional[ScheduleFailure] = None
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, v: str) -> str:
+        """Validates timezone is a valid IANA timezone identifier"""
+        try:
+            ZoneInfo(v)
+        except Exception:
+            raise ValueError(f"Invalid timezone: {v}, timezone must be a valid IANA timezone identifier")
+        return v
+
+    @model_validator(mode="after")
+    def validate_schedule_consistency(self) -> Self:
+        """Validates schedule configuration consistency"""
+        # Skip validation if no schedule type is configured
+        if self.scheduleType is None:
+            return self
+
+        if self.scheduleType == ScheduleType.EACH_DAY:
+            if not self.weeklySchedule:
+                raise ValueError("weeklySchedule required for EACH_DAY type")
+            if self.dailySchedule:
+                raise ValueError("dailySchedule not allowed for EACH_DAY type")
+        elif self.scheduleType == ScheduleType.RECURRING_DAILY:
+            if not self.dailySchedule:
+                raise ValueError(f"dailySchedule required for {self.scheduleType} type")
+            if self.weeklySchedule:
+                raise ValueError(f"weeklySchedule not allowed for {self.scheduleType} type")
+
+        return self
+
+
 class AutoScalingConfig(BaseModel):
     """Specifies auto-scaling parameters for model deployment."""
 
@@ -166,6 +320,7 @@ class AutoScalingConfig(BaseModel):
     cooldown: PositiveInt
     defaultInstanceWarmup: PositiveInt
     metricConfig: MetricConfig
+    scheduling: Optional[SchedulingConfig] = None
 
     @model_validator(mode="after")
     def validate_auto_scaling_config(self) -> Self:
@@ -423,6 +578,45 @@ class DeleteModelResponse(ApiResponseBase):
     """Defines response structure for model deletion."""
 
     pass
+
+
+class UpdateScheduleResponse(BaseModel):
+    """Response object for schedule create/update operations."""
+
+    message: str
+    modelId: str
+    scheduleEnabled: bool
+
+
+class GetScheduleResponse(BaseModel):
+    """Response object for getting schedule configuration."""
+
+    modelId: str
+    scheduling: Dict[str, Any]
+    nextScheduledAction: Optional[Dict[str, str]] = None
+
+
+class DeleteScheduleResponse(BaseModel):
+    """Response object for schedule deletion."""
+
+    message: str
+    modelId: str
+    scheduleEnabled: bool
+
+
+class GetScheduleStatusResponse(BaseModel):
+    """Response object for getting schedule status."""
+
+    modelId: str
+    scheduleEnabled: bool
+    scheduleConfigured: bool
+    lastScheduleFailed: bool
+    scheduleStatus: str
+    scheduleType: Optional[str] = None
+    timezone: str
+    nextScheduledAction: Optional[Dict[str, str]] = None
+    lastScheduleUpdate: Optional[str] = None
+    lastScheduleFailure: Optional[Dict[str, Any]] = None
 
 
 class IngestionType(str, Enum):

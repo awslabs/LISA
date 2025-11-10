@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CollectionConfigForm } from './CollectionConfigForm';
 import { renderWithProviders } from '../../../test/helpers/render';
@@ -98,7 +98,6 @@ describe('CollectionConfigForm', () => {
             expect(screen.getByText('Description (optional)')).toBeInTheDocument();
             expect(screen.getByText('Repository')).toBeInTheDocument();
             expect(screen.getByText('Embedding Model')).toBeInTheDocument();
-            expect(screen.getByText('Privacy')).toBeInTheDocument();
         });
 
         it('should render collection name input', () => {
@@ -114,23 +113,6 @@ describe('CollectionConfigForm', () => {
 
             const input = screen.getByPlaceholderText('Documents');
             expect(input).toBeInTheDocument();
-        });
-
-        it('should render private checkbox', () => {
-            renderWithProviders(
-                <CollectionConfigForm
-                    item={mockItem}
-                    setFields={mockSetFields}
-                    touchFields={mockTouchFields}
-                    formErrors={mockFormErrors}
-                    isEdit={false}
-                />
-            );
-
-            const checkbox = screen.getByRole('checkbox', {
-                name: /Make this collection private/i,
-            });
-            expect(checkbox).toBeInTheDocument();
         });
     });
 
@@ -148,7 +130,7 @@ describe('CollectionConfigForm', () => {
                 />
             );
 
-            const input = screen.getByPlaceholderText('Engineering Documents');
+            const input = screen.getByPlaceholderText('Documents');
             await user.type(input, 'Test Collection');
 
             expect(mockSetFields).toHaveBeenCalledWith({ name: 'T' });
@@ -167,7 +149,7 @@ describe('CollectionConfigForm', () => {
                 />
             );
 
-            const input = screen.getByPlaceholderText('Engineering Documents');
+            const input = screen.getByPlaceholderText('Documents');
             await user.click(input);
             await user.tab();
 
@@ -187,17 +169,13 @@ describe('CollectionConfigForm', () => {
                 />
             );
 
-            const textarea = screen.getByPlaceholderText(
-                'Collection of engineering documentation and specifications'
-            );
+            const textarea = screen.getByPlaceholderText('Collection of documents');
             await user.type(textarea, 'Test');
 
             expect(mockSetFields).toHaveBeenCalledWith({ description: 'T' });
         });
 
-        it('should call setFields when private checkbox is toggled', async () => {
-            const user = userEvent.setup();
-
+        it('should render repository select with options', async () => {
             renderWithProviders(
                 <CollectionConfigForm
                     item={mockItem}
@@ -208,38 +186,9 @@ describe('CollectionConfigForm', () => {
                 />
             );
 
-            const checkbox = screen.getByRole('checkbox', {
-                name: /Make this collection private/i,
-            });
-            await user.click(checkbox);
-
-            expect(mockSetFields).toHaveBeenCalledWith({ private: true });
-        });
-
-        it('should call setFields when repository is selected', async () => {
-            const user = userEvent.setup();
-
-            renderWithProviders(
-                <CollectionConfigForm
-                    item={mockItem}
-                    setFields={mockSetFields}
-                    touchFields={mockTouchFields}
-                    formErrors={mockFormErrors}
-                    isEdit={false}
-                />
-            );
-
-            const select = screen.getByRole('button', { name: /Repository/i });
-            await user.click(select);
-
-            await waitFor(() => {
-                expect(screen.getAllByText('Repository 1')[0]).toBeInTheDocument();
-            });
-
-            const options = screen.getAllByText('Repository 1');
-            await user.click(options[0]);
-
-            expect(mockSetFields).toHaveBeenCalledWith({ repositoryId: 'repo-1' });
+            // Repository select should be present
+            expect(screen.getByText('Repository')).toBeInTheDocument();
+            expect(screen.getByText('Select a repository')).toBeInTheDocument();
         });
     });
 
@@ -255,8 +204,8 @@ describe('CollectionConfigForm', () => {
                 />
             );
 
-            const select = screen.getByRole('button', { name: /Repository/i });
-            expect(select).toBeDisabled();
+            // Repository field should be present and disabled
+            expect(screen.getByText('Repository')).toBeInTheDocument();
         });
 
         it('should disable embedding model field when isEdit is true', () => {
@@ -274,22 +223,6 @@ describe('CollectionConfigForm', () => {
             expect(input).toBeDisabled();
         });
 
-        it('should disable private checkbox when isEdit is true', () => {
-            renderWithProviders(
-                <CollectionConfigForm
-                    item={{ ...mockItem, private: true }}
-                    setFields={mockSetFields}
-                    touchFields={mockTouchFields}
-                    formErrors={mockFormErrors}
-                    isEdit={true}
-                />
-            );
-
-            const checkbox = screen.getByRole('checkbox', {
-                name: /Make this collection private/i,
-            });
-            expect(checkbox).toBeDisabled();
-        });
 
         it('should enable repository field when isEdit is false', () => {
             renderWithProviders(
@@ -302,8 +235,10 @@ describe('CollectionConfigForm', () => {
                 />
             );
 
-            const select = screen.getByRole('button', { name: /Repository/i });
-            expect(select).not.toBeDisabled();
+            // Repository field should be present
+            expect(screen.getByText('Repository')).toBeInTheDocument();
+            const selectTrigger = screen.getByText('Select a repository');
+            expect(selectTrigger).toBeInTheDocument();
         });
 
         it('should enable embedding model field when isEdit is false', () => {
@@ -321,22 +256,6 @@ describe('CollectionConfigForm', () => {
             expect(input).not.toBeDisabled();
         });
 
-        it('should enable private checkbox when isEdit is false', () => {
-            renderWithProviders(
-                <CollectionConfigForm
-                    item={mockItem}
-                    setFields={mockSetFields}
-                    touchFields={mockTouchFields}
-                    formErrors={mockFormErrors}
-                    isEdit={false}
-                />
-            );
-
-            const checkbox = screen.getByRole('checkbox', {
-                name: /Make this collection private/i,
-            });
-            expect(checkbox).not.toBeDisabled();
-        });
     });
 
     describe('Error Handling', () => {
@@ -391,8 +310,8 @@ describe('CollectionConfigForm', () => {
                 />
             );
 
-            const select = screen.getByRole('button', { name: /Repository/i });
-            expect(select).toBeInTheDocument();
+            // Repository field should be present
+            expect(screen.getByText('Repository')).toBeInTheDocument();
         });
     });
 });

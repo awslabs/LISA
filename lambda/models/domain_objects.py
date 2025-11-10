@@ -14,6 +14,8 @@
 
 """Defines domain objects for model endpoint interactions."""
 
+from __future__ import annotations
+
 import json
 import logging
 import re
@@ -532,6 +534,7 @@ class IngestionJob(BaseModel):
     error_message: Optional[str] = Field(default=None)
     document_name: Optional[str] = Field(default=None)
     auto: Optional[bool] = Field(default=None)
+    metadata: Optional[dict] = Field(default=None)
 
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)
@@ -668,10 +671,10 @@ class FilterParams:
     """Shared filtering parameter handling for collections."""
 
     filter_text: Optional[str] = None
-    status_filter: Optional["CollectionStatus"] = None
+    status_filter: Optional[CollectionStatus] = None
 
     @staticmethod
-    def from_query_params(query_params: Dict[str, str]) -> "FilterParams":
+    def from_query_params(query_params: Dict[str, str]) -> FilterParams:
         """Parse filter parameters from query string parameters.
 
         Args:
@@ -699,11 +702,11 @@ class FilterParams:
 class SortParams:
     """Shared sorting parameter handling for collections."""
 
-    sort_by: "CollectionSortBy" = None  # Will be set to default in from_query_params
-    sort_order: "SortOrder" = None  # Will be set to default in from_query_params
+    sort_by: CollectionSortBy = None  # Will be set to default in from_query_params
+    sort_order: SortOrder = None  # Will be set to default in from_query_params
 
     @staticmethod
-    def from_query_params(query_params: Dict[str, str]) -> "SortParams":
+    def from_query_params(query_params: Dict[str, str]) -> SortParams:
         """Parse sort parameters from query string parameters.
 
         Args:
@@ -798,9 +801,7 @@ class CollectionMetadata(BaseModel):
         return tags
 
     @classmethod
-    def merge(
-        cls, parent: Optional["CollectionMetadata"], child: Optional["CollectionMetadata"]
-    ) -> "CollectionMetadata":
+    def merge(cls, parent: Optional[CollectionMetadata], child: Optional[CollectionMetadata]) -> CollectionMetadata:
         """Merges parent and child metadata.
 
         Args:

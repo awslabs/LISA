@@ -18,7 +18,7 @@ import React, { ReactElement } from 'react';
 import FormField from '@cloudscape-design/components/form-field';
 import Input from '@cloudscape-design/components/input';
 import Select from '@cloudscape-design/components/select';
-import { Alert, SpaceBetween } from '@cloudscape-design/components';
+import { SpaceBetween } from '@cloudscape-design/components';
 import { ChunkingStrategy, ChunkingStrategyType } from '#root/lib/schema';
 import { ModifyMethod } from '../../../shared/form/form-props';
 
@@ -50,11 +50,6 @@ export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElemen
 
     return (
         <SpaceBetween size='s'>
-            <Alert type='info'>
-                Chunking strategy is optional. If not specified, the collection will inherit
-                the chunking strategy from its parent repository.
-            </Alert>
-
             {/* Chunking Type */}
             <FormField
                 label='Chunking Type'

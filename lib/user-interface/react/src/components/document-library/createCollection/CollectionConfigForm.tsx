@@ -19,10 +19,10 @@ import { FormProps } from '../../../shared/form/form-props';
 import FormField from '@cloudscape-design/components/form-field';
 import Input from '@cloudscape-design/components/input';
 import Select from '@cloudscape-design/components/select';
-import { Checkbox, SpaceBetween, Textarea } from '@cloudscape-design/components';
+import { SpaceBetween, Textarea } from '@cloudscape-design/components';
 import { useListRagRepositoriesQuery } from '../../../shared/reducers/rag.reducer';
 import { CommonFieldsForm } from '../../../shared/form/CommonFieldsForm';
-import { RagCollectionConfig, VectorStoreStatus } from '#root/lib/schema';
+import { RagCollectionConfig, RagRepositoryType, VectorStoreStatus } from '#root/lib/schema';
 
 export type CollectionConfigProps = {
     isEdit: boolean;
@@ -52,6 +52,8 @@ export function CollectionConfigForm (
                     VectorStoreStatus.UPDATE_IN_PROGRESS,
                 ].includes(repository.status)
             )
+            // BRK not supported yet
+            .filter((repo) => repo.type !== RagRepositoryType.BEDROCK_KNOWLEDGE_BASE)
             .map((repo) => ({
                 label: repo.repositoryName || repo.repositoryId,
                 value: repo.repositoryId,
@@ -125,7 +127,7 @@ export function CollectionConfigForm (
             />
 
             {/* Private Checkbox */}
-            <FormField
+            {/* <FormField
                 label='Privacy'
                 description='Private collections are only accessible to the creator and administrators'
             >
@@ -136,10 +138,10 @@ export function CollectionConfigForm (
                 >
                     Make this collection private
                 </Checkbox>
-            </FormField>
+            </FormField> */}
 
             {/* Pipeline Configuration */}
-            <FormField
+            {/* <FormField
                 label='Pipeline Configuration'
                 description='Optional: Configure automatic ingestion from S3'
             >
@@ -162,7 +164,7 @@ export function CollectionConfigForm (
                 >
                     Enable S3 pipeline ingestion
                 </Checkbox>
-            </FormField>
+            </FormField> */}
 
             {/* S3 Bucket - only show if pipeline is enabled */}
             {item.pipelines && item.pipelines.length > 0 && (

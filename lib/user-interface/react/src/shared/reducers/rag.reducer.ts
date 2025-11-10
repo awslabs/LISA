@@ -192,7 +192,7 @@ export const ragApi = createApi({
         ingestDocuments: builder.mutation<IngestDocumentResponse, IngestDocumentRequest>({
             query: (request) => {
 
-                let url = `repository/${request.repositoryId}/bulk?chunkSize=${request.chunkingStrategy.size}&chunkOverlap=${request.chunkingStrategy.overlap}`;
+                let url = `repository/${request.repositoryId}/bulk`;
 
                 // Add collectionId parameter if provided
                 if (request.collectionId) {
@@ -204,6 +204,7 @@ export const ragApi = createApi({
                     method: 'POST',
                     data: {
                         keys: request.documents,
+                        collectionId: request.collectionId,
                         chunkingStrategy: request.chunkingStrategy
                     }
                 };

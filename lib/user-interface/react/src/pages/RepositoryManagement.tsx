@@ -16,6 +16,8 @@
 
 import { ReactElement, useEffect } from 'react';
 import RepositoryManagementComponent from '../components/repository-management/RepositoryManagementComponent';
+import CollectionLibraryComponent from '@/components/document-library/CollectionLibraryComponent';
+import { SpaceBetween } from '@cloudscape-design/components';
 
 export type RepositoryManagementProps = {
     setNav: (nav: React.ReactNode | null) => void;
@@ -26,7 +28,12 @@ export function RepositoryManagement ({ setNav }: RepositoryManagementProps): Re
         setNav(null);
     }, [setNav]);
 
-    return <RepositoryManagementComponent />;
+    return (
+        <SpaceBetween size='l'>
+            <RepositoryManagementComponent />
+            <CollectionLibraryComponent admin={true} />
+        </SpaceBetween>
+    );
 }
 
 export default RepositoryManagement;

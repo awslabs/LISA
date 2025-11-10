@@ -219,6 +219,7 @@ def get_repository(event: dict[str, Any], repository_id: str) -> dict:
 
 
 @api_wrapper
+@admin_only
 def create_collection(event: dict, context: dict) -> Dict[str, Any]:
     """
     Create a new collection within a vector store.
@@ -247,7 +248,7 @@ def create_collection(event: dict, context: dict) -> Dict[str, Any]:
     username, is_admin, groups = get_user_context(event)
 
     # Ensure repository exists and user has access
-    _ = get_repository(event, repository_id=repository_id)
+    repository = get_repository(event, repository_id=repository_id)
 
     # Parse request body
     try:
@@ -263,6 +264,7 @@ def create_collection(event: dict, context: dict) -> Dict[str, Any]:
 
     # Create collection via service
     created_collection = collection_service.create_collection(
+        repository=repository,
         collection=collection,
         username=username,
         is_admin=is_admin,
@@ -320,6 +322,7 @@ def get_collection(event: dict, context: dict) -> Dict[str, Any]:
 
 
 @api_wrapper
+@admin_only
 def update_collection(event: dict, context: dict) -> Dict[str, Any]:
     """
     Update a collection within a vector store.
@@ -379,6 +382,7 @@ def update_collection(event: dict, context: dict) -> Dict[str, Any]:
 
 
 @api_wrapper
+@admin_only
 def delete_collection(event: dict, context: dict) -> Dict[str, Any]:
     """
     Delete a collection within a vector store.

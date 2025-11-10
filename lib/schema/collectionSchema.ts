@@ -15,7 +15,10 @@
  */
 
 import { z } from 'zod';
-import { RagRepositoryPipeline } from './ragSchema';
+import {
+    RagRepositoryPipeline,
+    ChunkingStrategySchema,
+} from './ragSchema';
 
 /**
  * Enum for collection status
@@ -26,38 +29,6 @@ export enum CollectionStatus {
     DELETED = 'DELETED',
 }
 
-/**
- * Enum for chunking strategy types
- *
- * Note: Only FIXED_SIZE is currently implemented.
- * Additional strategies can be added by implementing a ChunkingStrategyHandler
- * and registering it with the ChunkingStrategyFactory in the backend.
- */
-export enum ChunkingStrategyType {
-    FIXED = 'fixed',
-    // SEMANTIC = 'semantic',  // Not yet implemented
-    // RECURSIVE = 'recursive',  // Not yet implemented
-}
-
-/**
- * Fixed size chunking strategy schema
- */
-export const FixedSizeChunkingStrategySchema = z.object({
-    type: z.literal(ChunkingStrategyType.FIXED).describe('Fixed size chunking strategy type'),
-    size: z.number().min(100).max(10000).default(512).describe('Size of each chunk in characters'),
-    overlap: z.number().min(0).default(51).describe('Overlap between chunks in characters'),
-}).refine(
-    (data) => data.overlap <= data.size / 2,
-    { message: 'overlap must be less than or equal to half of size' }
-);
-
-/**
- * Union of all chunking strategy types
- *
- * Currently only FIXED_SIZE is implemented. Additional strategies can be added here
- * when their backend implementations are complete.
- */
-export const ChunkingStrategySchema = FixedSizeChunkingStrategySchema;
 
 // Future chunking strategies (not yet implemented):
 //
@@ -170,8 +141,7 @@ export const ListCollectionsResponseSchema = z.object({
 /**
  * Type exports
  */
-export type ChunkingStrategy = z.infer<typeof ChunkingStrategySchema>;
-export type FixedSizeChunkingStrategy = z.infer<typeof FixedSizeChunkingStrategySchema>;
+// ChunkingStrategy types are re-exported from ragSchema above
 // export type SemanticChunkingStrategy = z.infer<typeof SemanticChunkingStrategySchema>;  // Not yet implemented
 // export type RecursiveChunkingStrategy = z.infer<typeof RecursiveChunkingStrategySchema>;  // Not yet implemented
 // PipelineConfig type is exported from ragSchema via PipelineConfigSchema

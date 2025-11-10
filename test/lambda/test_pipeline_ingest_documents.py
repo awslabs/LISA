@@ -221,6 +221,9 @@ def test_prepare_chunks():
     import repository.pipeline_ingest_documents as pid
 
     docs = [MagicMock(page_content="abc", metadata={"meta": 1}), MagicMock(page_content="def", metadata={"meta": 2})]
-    texts, metadatas = pid.prepare_chunks(docs, "repo-1")
+    texts, metadatas = pid.prepare_chunks(docs, "repo-1", "col-1")
     assert texts == ["abc", "def"]
-    assert metadatas == [{"meta": 1, "repository_id": "repo-1"}, {"meta": 2, "repository_id": "repo-1"}]
+    assert metadatas == [
+        {"meta": 1, "repository_id": "repo-1", "collection_id": "col-1"},
+        {"meta": 2, "repository_id": "repo-1", "collection_id": "col-1"},
+    ]

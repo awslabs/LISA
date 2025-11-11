@@ -16,9 +16,12 @@
 
 import { ChangeEvent, ReactElement, useEffect, useMemo, useState } from 'react';
 import {
-    Alert,
     Box,
+    Container,
+    ExpandableSection,
     FormField,
+    Grid,
+    Header,
     Input,
     Modal,
     Select,
@@ -68,7 +71,7 @@ type FormState = {
     environment: KeyValue[];
     healthCheckCommand: string;
     healthCheckInterval: string;
-    healthCheckTimeout: string;
+healthCheckTimeout: string;
     healthCheckRetries: string;
     healthCheckStartPeriod: string;
     lbPath: string;
@@ -119,7 +122,7 @@ export function CreateHostedMcpServerModal ({ visible, setVisible }: CreateHoste
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
     const [formState, setFormState] = useState<FormState>(INITIAL_FORM_STATE);
-    const [errors, setErrors] = useState<string[]>([]);
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [activeStepIndex, setActiveStepIndex] = useState(0);
     const [groupInput, setGroupInput] = useState('');
 
@@ -131,7 +134,7 @@ export function CreateHostedMcpServerModal ({ visible, setVisible }: CreateHoste
     useEffect(() => {
         if (!visible) {
             setFormState(INITIAL_FORM_STATE);
-            setErrors([]);
+            setFieldErrors({});
             setActiveStepIndex(0);
             setGroupInput('');
         }
@@ -256,15 +259,15 @@ export function CreateHostedMcpServerModal ({ visible, setVisible }: CreateHoste
         return trimmed;
     };
 
-    const validateStep = (stepIndex: number): string[] => {
-        const stepErrors: string[] = [];
+    const validateStep = (stepIndex: number): Record<string, string> => {
+        const errors: Record<string, string> = {};
         switch (stepIndex) {
             case 0: {
                 if (!formState.name.trim()) {
-                    stepErrors.push('Name is required.');
+                    errors.name = 'Name is required.';
                 }
                 if (!formState.startCommand.trim()) {
-                    stepErrors.push('Start command is required.');
+                    errors.startCommand = 'Start command is required.';
                 }
                 break;
             }
@@ -272,48 +275,48 @@ export function CreateHostedMcpServerModal ({ visible, setVisible }: CreateHoste
                 const min = Number(formState.minCapacity);
                 const max = Number(formState.maxCapacity);
                 if (Number.isNaN(min) || min < 1) {
-                    stepErrors.push('Minimum capacity must be a positive number.');
+                    errors.minCapacity = 'Minimum capacity must be a positive number.';
                 }
                 if (Number.isNaN(max) || max < 1) {
-                    stepErrors.push('Maximum capacity must be a positive number.');
+                    errors.maxCapacity = 'Maximum capacity must be a positive number.';
                 }
                 if (!Number.isNaN(min) && !Number.isNaN(max) && min > max) {
-                    stepErrors.push('Maximum capacity must be greater than or equal to minimum capacity.');
+                    errors.maxCapacity = 'Maximum capacity must be greater than or equal to minimum capacity.';
                 }
                 break;
             }
             case 3: {
                 if (!formState.healthCheckCommand.trim()) {
-                    stepErrors.push('Container health check command is required.');
+                    errors.healthCheckCommand = 'Container health check command is required.';
                 }
                 const containerNumericFields = [
-                    { value: formState.healthCheckInterval, label: 'Container health check interval' },
-                    { value: formState.healthCheckTimeout, label: 'Container health check timeout' },
-                    { value: formState.healthCheckRetries, label: 'Container health check retries' },
-                    { value: formState.healthCheckStartPeriod, label: 'Container health check start period' },
+                    { value: formState.healthCheckInterval, field: 'healthCheckInterval', label: 'Container health check interval' },
+                    { value: formState.healthCheckTimeout, field: 'healthCheckTimeout', label: 'Container health check timeout' },
+                    { value: formState.healthCheckRetries, field: 'healthCheckRetries', label: 'Container health check retries' },
+                    { value: formState.healthCheckStartPeriod, field: 'healthCheckStartPeriod', label: 'Container health check start period' },
                 ];
-                containerNumericFields.forEach(({ value, label }) => {
+                containerNumericFields.forEach(({ value, field, label }) => {
                     if (value.trim() === '') {
-                        stepErrors.push(`${label} is required.`);
+                        errors[field] = `${label} is required.`;
                     } else if (Number.isNaN(Number(value))) {
-                        stepErrors.push(`${label} must be a number.`);
+                        errors[field] = `${label} must be a number.`;
                     }
                 });
 
                 if (!formState.lbPath.trim()) {
-                    stepErrors.push('Load balancer health check path is required.');
+                    errors.lbPath = 'Load balancer health check path is required.';
                 }
                 const loadBalancerNumericFields = [
-                    { value: formState.lbInterval, label: 'Load balancer health check interval' },
-                    { value: formState.lbTimeout, label: 'Load balancer health check timeout' },
-                    { value: formState.lbHealthyThreshold, label: 'Load balancer healthy threshold' },
-                    { value: formState.lbUnhealthyThreshold, label: 'Load balancer unhealthy threshold' },
+                    { value: formState.lbInterval, field: 'lbInterval', label: 'Load balancer health check interval' },
+                    { value: formState.lbTimeout, field: 'lbTimeout', label: 'Load balancer health check timeout' },
+                    { value: formState.lbHealthyThreshold, field: 'lbHealthyThreshold', label: 'Load balancer healthy threshold' },
+                    { value: formState.lbUnhealthyThreshold, field: 'lbUnhealthyThreshold', label: 'Load balancer unhealthy threshold' },
                 ];
-                loadBalancerNumericFields.forEach(({ value, label }) => {
+                loadBalancerNumericFields.forEach(({ value, field, label }) => {
                     if (value.trim() === '') {
-                        stepErrors.push(`${label} is required.`);
+                        errors[field] = `${label} is required.`;
                     } else if (Number.isNaN(Number(value))) {
-                        stepErrors.push(`${label} must be a number.`);
+                        errors[field] = `${label} must be a number.`;
                     }
                 });
                 break;
@@ -321,19 +324,24 @@ export function CreateHostedMcpServerModal ({ visible, setVisible }: CreateHoste
             default:
                 break;
         }
-        return stepErrors;
+        return errors;
     };
 
     const handleSubmit = async () => {
         const stepsToValidate = [0, 1, 3];
-        const validationErrors = stepsToValidate.flatMap((step) => validateStep(step));
-        if (validationErrors.length > 0) {
-            setErrors(validationErrors);
-            if (validationErrors.some((error) => error.includes('Name') || error.includes('Start command'))) {
+        const allErrors: Record<string, string> = {};
+        stepsToValidate.forEach((step) => {
+            Object.assign(allErrors, validateStep(step));
+        });
+        
+        if (Object.keys(allErrors).length > 0) {
+            setFieldErrors(allErrors);
+            // Navigate to first step with errors
+            if (allErrors.name || allErrors.startCommand) {
                 setActiveStepIndex(0);
-            } else if (validationErrors.some((error) => error.includes('capacity'))) {
+            } else if (allErrors.minCapacity || allErrors.maxCapacity) {
                 setActiveStepIndex(1);
-            } else if (validationErrors.some((error) => error.toLowerCase().includes('health'))) {
+            } else if (Object.keys(allErrors).some(key => key.toLowerCase().includes('health') || key.includes('lb'))) {
                 setActiveStepIndex(3);
             }
             return;
@@ -404,14 +412,24 @@ export function CreateHostedMcpServerModal ({ visible, setVisible }: CreateHoste
             title: 'Server details',
             description: 'Configure name, type, and start command for your hosted MCP server.',
             content: (
-                <SpaceBetween size='m'>
-                    <FormField label='Name' info='Unique identifier for the hosted MCP server.'>
+                <SpaceBetween size='s'>
+                    <FormField 
+                        label='Name' 
+                        description='Unique identifier for the hosted MCP server.'
+                        errorText={fieldErrors.name}
+                    >
                         <Input value={formState.name} onChange={onChange('name')} />
                     </FormField>
-                    <FormField label='Description'>
+                    <FormField 
+                        label={<span>Description <em>- Optional</em></span>}
+                        description='Description of the MCP server.'
+                    >
                         <Textarea value={formState.description} rows={3} onChange={onChange('description')} />
                     </FormField>
-                    <FormField label='Server type'>
+                    <FormField 
+                        label='Server type'
+                        description='Transport protocol for MCP communication.'
+                    >
                         <Select
                             selectedOption={formState.serverType}
                             onChange={({ detail }) => setFormState((prev) => ({
@@ -421,24 +439,34 @@ export function CreateHostedMcpServerModal ({ visible, setVisible }: CreateHoste
                             options={SERVER_TYPE_OPTIONS}
                         />
                     </FormField>
-                    <FormField label='Base image' info='Optional. Pre-built image or base image URI.'>
-                        <Input value={formState.image} onChange={onChange('image')} placeholder='public.ecr.aws/... or registry/image:tag' />
+                    <FormField 
+                        label={<span>Base Image <em>- Optional</em></span>}
+                        description='Pre-built image or base image URI.'
+                        errorText={fieldErrors.image}
+                    >
+                        <Input 
+                            value={formState.image} 
+                            onChange={onChange('image')} 
+                            placeholder='public.ecr.aws/... or registry/image:tag' 
+                        />
                     </FormField>
                     <FormField
                         label='Start command'
-                        info='Command executed when the container starts. For STDIO servers include the binary or script to launch.'
+                        description='Command executed when the container starts. For STDIO servers include the binary or script to launch.'
+                        errorText={fieldErrors.startCommand}
                     >
                         <Textarea value={formState.startCommand} rows={4} onChange={onChange('startCommand')} />
                     </FormField>
                     <FormField
-                        label='Container port'
-                        info='Optional. Defaults to 8000 for HTTP/SSE or 8080 for STDIO proxy.'
+                        label={<span>Container Port <em>- Optional</em></span>}
+                        description='Defaults to 8000 for HTTP/SSE or 8080 for STDIO proxy.'
+                        errorText={fieldErrors.port}
                     >
-                        <Input value={formState.port} onChange={onChange('port')} inputMode='numeric' type='number' />
+                        <Input value={formState.port} onChange={onChange('port')} inputMode='numeric' type='number' placeholder={formState.serverType.label === 'STDIO' ? '8080' : '8000'}/>
                     </FormField>
                     <FormField
-                        label='Groups'
-                        description='Optional. Restrict access to specific groups. Enter a group name and press return to add it.'
+                        label={<span>Groups <em>- Optional</em></span>}
+                        description='Restrict access to specific groups. Enter a group name and press return to add it.'
                     >
                         <SpaceBetween size='xs'>
                             <Input
@@ -466,25 +494,52 @@ export function CreateHostedMcpServerModal ({ visible, setVisible }: CreateHoste
         {
             title: 'Scaling configuration',
             description: 'Define auto scaling parameters and optional metrics for the server.',
+            isOptional: true,
             content: (
-                <SpaceBetween size='m'>
-                    <FormField label='Minimum capacity'>
+                <SpaceBetween size='s'>
+                    <FormField 
+                        label='Minimum capacity'
+                        description='Minimum number of tasks to maintain.'
+                        errorText={fieldErrors.minCapacity}
+                    >
                         <Input value={formState.minCapacity} onChange={onChange('minCapacity')} inputMode='numeric' type='number' />
                     </FormField>
-                    <FormField label='Maximum capacity'>
+                    <FormField 
+                        label='Maximum capacity'
+                        description='Maximum number of tasks allowed to scale to.'
+                        errorText={fieldErrors.maxCapacity}
+                    >
                         <Input value={formState.maxCapacity} onChange={onChange('maxCapacity')} inputMode='numeric' type='number' />
                     </FormField>
-                    <FormField label='Target value' info='Optional. Target metric value for scaling.'>
+                    <FormField 
+                        label='Target value' 
+                        description='Target metric value for scaling.'
+                    >
                         <Input value={formState.targetValue} onChange={onChange('targetValue')} inputMode='numeric' type='number' />
                     </FormField>
-                    <FormField label='Metric name' info='Optional. CloudWatch metric for scaling (e.g. RequestCount).'>
+                    <FormField 
+                        label='Metric name' 
+                        description='CloudWatch metric for scaling, e.g. RequestCount.'
+                    >
                         <Input value={formState.metricName} onChange={onChange('metricName')} />
                     </FormField>
-                    <FormField label='Scale duration (seconds)' info='Optional. Period length for the CloudWatch metric.'>
+                    <FormField 
+                        label='Scale duration' 
+                        description='Period length for the CloudWatch metric.'
+                    >
+                    <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
                         <Input value={formState.duration} onChange={onChange('duration')} inputMode='numeric' type='number' />
+                        <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
+                    </Grid>
                     </FormField>
-                    <FormField label='Cooldown (seconds)' info='Optional. Cooldown between scaling events.'>
+                    <FormField 
+                        label='Cooldown' 
+                        description='Cooldown between scaling events.'
+                    >
+                    <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
                         <Input value={formState.cooldown} onChange={onChange('cooldown')} inputMode='numeric' type='number' />
+                        <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
+                    </Grid>
                     </FormField>
                 </SpaceBetween>
             ),
@@ -494,20 +549,41 @@ export function CreateHostedMcpServerModal ({ visible, setVisible }: CreateHoste
             description: 'Optional image, IAM roles, environment variables.',
             isOptional: true,
             content: (
-                <SpaceBetween size='m'>
-                    <FormField label='S3 artifact path' info='Optional. S3 URI for server artifacts.'>
+                <SpaceBetween size='s'>
+                    <FormField 
+                        label='S3 artifact path' 
+                        description='S3 URI for server artifacts.'
+                    >
                         <Input value={formState.s3Path} onChange={onChange('s3Path')} placeholder='s3://bucket/path' />
                     </FormField>
-                    <FormField label='CPU (units)' info='Optional. Defaults to 256 units (0.25 vCPU).'>
+                    <FormField 
+                        label='CPU' 
+                        description='Defaults to 256 units (0.25 vCPU).'
+                    >
+                    <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
                         <Input value={formState.cpu} onChange={onChange('cpu')} inputMode='numeric' type='number' />
+                        <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>units</span>
+                    </Grid>
                     </FormField>
-                    <FormField label='Memory (MiB)' info='Optional. Defaults to 512 MiB.'>
+                    <FormField 
+                        label='Memory' 
+                        description='Defaults to 512 MiB.'
+                    >
+                    <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
                         <Input value={formState.memoryLimitMiB} onChange={onChange('memoryLimitMiB')} inputMode='numeric' type='number' />
+                        <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>MiB</span>
+                    </Grid>
                     </FormField>
-                    <FormField label='Task execution role ARN' info='Optional IAM role for pulling images / reading S3.'>
+                    <FormField 
+                        label='Task execution role ARN' 
+                        description='IAM role for pulling images and reading S3.'
+                    >
                         <Input value={formState.taskExecutionRoleArn} onChange={onChange('taskExecutionRoleArn')} />
                     </FormField>
-                    <FormField label='Task role ARN' info='Optional IAM role for the running task.'>
+                    <FormField 
+                        label='Task role ARN' 
+                        description='IAM role for the running task.'
+                    >
                         <Input value={formState.taskRoleArn} onChange={onChange('taskRoleArn')} />
                     </FormField>
                     <EnvironmentVariables
@@ -525,95 +601,152 @@ export function CreateHostedMcpServerModal ({ visible, setVisible }: CreateHoste
             description: 'Configure container and load balancer health monitoring.',
             isOptional: true,
             content: (
-                <SpaceBetween size='l'>
-                    <SpaceBetween size='m'>
-                        <FormField
-                            label='Container health check command'
-                            description='Command executed inside the container to verify health. Use {{PORT}} to reference the container port.'
-                        >
-                            <Input
-                                value={formState.healthCheckCommand}
-                                onChange={onChange('healthCheckCommand')}
-                                placeholder='CMD-SHELL curl --fail http://localhost:{{PORT}}/status || exit 1'
-                            />
-                        </FormField>
-                        <FormField label='Interval (seconds)'>
-                            <Input
-                                value={formState.healthCheckInterval}
-                                onChange={onChange('healthCheckInterval')}
-                                inputMode='numeric'
-                                type='number'
-                            />
-                        </FormField>
-                        <FormField label='Timeout (seconds)'>
-                            <Input
-                                value={formState.healthCheckTimeout}
-                                onChange={onChange('healthCheckTimeout')}
-                                inputMode='numeric'
-                                type='number'
-                            />
-                        </FormField>
-                        <FormField label='Retries'>
-                            <Input
-                                value={formState.healthCheckRetries}
-                                onChange={onChange('healthCheckRetries')}
-                                inputMode='numeric'
-                                type='number'
-                            />
-                        </FormField>
-                        <FormField label='Start period (seconds)'>
-                            <Input
-                                value={formState.healthCheckStartPeriod}
-                                onChange={onChange('healthCheckStartPeriod')}
-                                inputMode='numeric'
-                                type='number'
-                            />
-                        </FormField>
-                    </SpaceBetween>
-                    <SpaceBetween size='m'>
-                        <FormField
-                            label='Load balancer health check path'
-                            description='Relative path used by the load balancer to determine service health.'
-                        >
-                            <Input
-                                value={formState.lbPath}
-                                onChange={onChange('lbPath')}
-                                placeholder='/status'
-                            />
-                        </FormField>
-                        <FormField label='Interval (seconds)'>
-                            <Input
-                                value={formState.lbInterval}
-                                onChange={onChange('lbInterval')}
-                                inputMode='numeric'
-                                type='number'
-                            />
-                        </FormField>
-                        <FormField label='Timeout (seconds)'>
-                            <Input
-                                value={formState.lbTimeout}
-                                onChange={onChange('lbTimeout')}
-                                inputMode='numeric'
-                                type='number'
-                            />
-                        </FormField>
-                        <FormField label='Healthy threshold'>
-                            <Input
-                                value={formState.lbHealthyThreshold}
-                                onChange={onChange('lbHealthyThreshold')}
-                                inputMode='numeric'
-                                type='number'
-                            />
-                        </FormField>
-                        <FormField label='Unhealthy threshold'>
-                            <Input
-                                value={formState.lbUnhealthyThreshold}
-                                onChange={onChange('lbUnhealthyThreshold')}
-                                inputMode='numeric'
-                                type='number'
-                            />
-                        </FormField>
-                    </SpaceBetween>
+                <SpaceBetween size='s'>
+                    <Container
+                        header={<Header variant='h2'>Container Health Check</Header>}
+                    >
+                        <SpaceBetween size='s'>
+                            <FormField
+                                label='Command'
+                                description='Command executed inside the container to verify health. Use {{PORT}} to reference the container port.'
+                                errorText={fieldErrors.healthCheckCommand}
+                            >
+                                <Input
+                                    value={formState.healthCheckCommand}
+                                    onChange={onChange('healthCheckCommand')}
+                                    placeholder='CMD-SHELL curl --fail http://localhost:{{PORT}}/status || exit 1'
+                                />
+                            </FormField>
+                            <FormField 
+                                label='Interval' 
+                                description='Time between running the health check.'
+                                errorText={fieldErrors.healthCheckInterval}
+                            >
+                            <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
+                                <Input
+                                    value={formState.healthCheckInterval}
+                                    onChange={onChange('healthCheckInterval')}
+                                    inputMode='numeric'
+                                    type='number'
+                                />
+                                <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
+                            </Grid>
+                            </FormField>
+                            <FormField 
+                                label='Timeout' 
+                                description='Time to wait for a health check to succeed before considering it failed.'
+                                errorText={fieldErrors.healthCheckTimeout}
+                            >
+                            <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
+                                <Input
+                                    value={formState.healthCheckTimeout}
+                                    onChange={onChange('healthCheckTimeout')}
+                                    inputMode='numeric'
+                                    type='number'
+                                />
+                                <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
+                            </Grid>
+                            </FormField>
+                            <FormField 
+                                label='Retries'
+                                description='Number of times to retry a failed health check before the container is considered unhealthy.'
+                                errorText={fieldErrors.healthCheckRetries}
+                            >
+                                <Input
+                                    value={formState.healthCheckRetries}
+                                    onChange={onChange('healthCheckRetries')}
+                                    inputMode='numeric'
+                                    type='number'
+                                />
+                            </FormField>
+                            <FormField 
+                                label='Start period' 
+                                description='Grace period before failed health checks count towards the maximum number of retries.'
+                                errorText={fieldErrors.healthCheckStartPeriod}
+                            >
+                            <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
+                                <Input
+                                    value={formState.healthCheckStartPeriod}
+                                    onChange={onChange('healthCheckStartPeriod')}
+                                    inputMode='numeric'
+                                    type='number'
+                                />
+                                <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
+                            </Grid>
+                            </FormField>
+                        </SpaceBetween>
+                    </Container>
+                    <Container
+                        header={<Header variant='h2'>Load Balancer Health Check</Header>}
+                    >
+                        <SpaceBetween size='s'>
+                            <FormField
+                                label='Path'
+                                description='Relative path used by the load balancer to determine service health.'
+                                errorText={fieldErrors.lbPath}
+                            >
+                                <Input
+                                    value={formState.lbPath}
+                                    onChange={onChange('lbPath')}
+                                    placeholder='/status'
+                                />
+                            </FormField>
+                            <FormField 
+                                label='Interval' 
+                                description='Time between health checks.'
+                                errorText={fieldErrors.lbInterval}
+                            >
+                            <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
+                                <Input
+                                    value={formState.lbInterval}
+                                    onChange={onChange('lbInterval')}
+                                    inputMode='numeric'
+                                    type='number'
+                                />
+                                <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
+                            </Grid>
+                            </FormField>
+                            <FormField 
+                                label='Timeout' 
+                                description='Time to wait for a response before considering the health check failed.'
+                                errorText={fieldErrors.lbTimeout}
+                            >
+                            <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
+                                <Input
+                                    value={formState.lbTimeout}
+                                    onChange={onChange('lbTimeout')}
+                                    inputMode='numeric'
+                                    type='number'
+                                />
+                                <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
+                            </Grid>
+                            </FormField>
+                            <FormField 
+                                label='Healthy threshold'
+                                description='Number of consecutive successful health checks before considering the target healthy.'
+                                errorText={fieldErrors.lbHealthyThreshold}
+                            >
+                                <Input
+                                    value={formState.lbHealthyThreshold}
+                                    onChange={onChange('lbHealthyThreshold')}
+                                    inputMode='numeric'
+                                    type='number'
+                                />
+                            </FormField>
+                            <FormField 
+                                label='Unhealthy threshold'
+                                description='Number of consecutive failed health checks before considering the target unhealthy.'
+                                errorText={fieldErrors.lbUnhealthyThreshold}
+                            >
+                                <Input
+                                    value={formState.lbUnhealthyThreshold}
+                                    onChange={onChange('lbUnhealthyThreshold')}
+                                    inputMode='numeric'
+                                    type='number'
+                                />
+                            </FormField>
+                        </SpaceBetween>
+                    </Container>
                 </SpaceBetween>
             ),
         },
@@ -621,30 +754,62 @@ export function CreateHostedMcpServerModal ({ visible, setVisible }: CreateHoste
             title: 'Review & create',
             description: 'Review configuration before provisioning the hosted MCP server.',
             content: (
-                <SpaceBetween size='m'>
-                    <Box><strong>Name:</strong> {formState.name || '-'}</Box>
-                    <Box><strong>Description:</strong> {formState.description || '-'}</Box>
-                    <Box><strong>Server type:</strong> {formState.serverType.label}</Box>
-                    <Box><strong>Start command:</strong> <div><code>{formState.startCommand || '-'}</code></div></Box>
-                    <Box><strong>Container port:</strong> {formState.port || '8000 (default)'}</Box>
-                    <Box><strong>CPU (units):</strong> {formState.cpu || '256 (default)'}</Box>
-                    <Box><strong>Memory (MiB):</strong> {formState.memoryLimitMiB || '512 (default)'}</Box>
-                    <Box><strong>Base image:</strong> {formState.image || '-'}</Box>
-                    <Box><strong>S3 artifact path:</strong> {formState.s3Path || '-'}</Box>
-                    <Box><strong>Task execution role ARN:</strong> {formState.taskExecutionRoleArn || '-'}</Box>
-                    <Box><strong>Task role ARN:</strong> {formState.taskRoleArn || '-'}</Box>
-                    <Box><strong>Auto scaling (min / max):</strong> {formState.minCapacity} / {formState.maxCapacity}</Box>
-                    <Box><strong>Auto scaling target value:</strong> {formState.targetValue || '-'}</Box>
-                    <Box><strong>Auto scaling metric name:</strong> {formState.metricName || '-'}</Box>
-                    <Box><strong>Auto scaling duration (seconds):</strong> {formState.duration || '-'}</Box>
-                    <Box><strong>Auto scaling cooldown (seconds):</strong> {formState.cooldown || '-'}</Box>
-                    <Box><strong>Environment variables:</strong> {formState.environment.length ? formState.environment.map(({ key, value }) => `${key}=${value}`).join(', ') : 'None'}</Box>
-                    <Box><strong>Groups:</strong> {formState.groups.length ? formState.groups.join(', ') : '(public)'}</Box>
-                    <Box><strong>Container health check command:</strong> {formState.healthCheckCommand}</Box>
-                    <Box><strong>Container health check interval / timeout / retries / start period:</strong> {`${formState.healthCheckInterval}s / ${formState.healthCheckTimeout}s / ${formState.healthCheckRetries} / ${formState.healthCheckStartPeriod}s`}</Box>
-                    <Box><strong>Load balancer health check path:</strong> {formState.lbPath}</Box>
-                    <Box><strong>Load balancer interval / timeout:</strong> {`${formState.lbInterval}s / ${formState.lbTimeout}s`}</Box>
-                    <Box><strong>Load balancer healthy / unhealthy thresholds:</strong> {`${formState.lbHealthyThreshold} / ${formState.lbUnhealthyThreshold}`}</Box>
+                <SpaceBetween size='l'>
+                    <ExpandableSection headerText='Server details' defaultExpanded={true}>
+                        <SpaceBetween size='xs'>
+                            <Box><strong>Name:</strong> {formState.name || '-'}</Box>
+                            <Box><strong>Description:</strong> {formState.description || '-'}</Box>
+                            <Box><strong>Server type:</strong> {formState.serverType.label}</Box>
+                            <Box><strong>Base image:</strong> {formState.image || '-'}</Box>
+                            <Box><strong>Start command:</strong> <div><code>{formState.startCommand || '-'}</code></div></Box>
+                            <Box><strong>Container port:</strong> {formState.port || '8000 (default)'}</Box>
+                            <Box><strong>Groups:</strong> {formState.groups.length ? formState.groups.join(', ') : '(public)'}</Box>
+                        </SpaceBetween>
+                    </ExpandableSection>
+                    <ExpandableSection headerText='Scaling configuration' defaultExpanded={false}>
+                        <SpaceBetween size='xs'>
+                            <Box><strong>Min capacity:</strong> {formState.minCapacity}</Box>
+                            <Box><strong>Max capacity:</strong> {formState.maxCapacity}</Box>
+                            <Box><strong>Target value:</strong> {formState.targetValue || '-'}</Box>
+                            <Box><strong>Metric name:</strong> {formState.metricName || '-'}</Box>
+                            <Box><strong>Duration:</strong> {formState.duration ? `${formState.duration}s` : '-'}</Box>
+                            <Box><strong>Cooldown:</strong> {formState.cooldown ? `${formState.cooldown}s` : '-'}</Box>
+                        </SpaceBetween>
+                    </ExpandableSection>
+                    <ExpandableSection headerText='Advanced options' defaultExpanded={false}>
+                        <SpaceBetween size='xs'>
+                            <Box><strong>S3 artifact path:</strong> {formState.s3Path || '-'}</Box>
+                            <Box><strong>CPU:</strong> {formState.cpu ? `${formState.cpu} units` : '256 units (default)'}</Box>
+                            <Box><strong>Memory:</strong> {formState.memoryLimitMiB ? `${formState.memoryLimitMiB} MiB` : '512 MiB (default)'}</Box>
+                            <Box><strong>Task execution role ARN:</strong> {formState.taskExecutionRoleArn || '-'}</Box>
+                            <Box><strong>Task role ARN:</strong> {formState.taskRoleArn || '-'}</Box>
+                            <Box><strong>Environment variables:</strong> {formState.environment.length ? formState.environment.map(({ key, value }) => `${key}=${value}`).join(', ') : 'None'}</Box>
+                        </SpaceBetween>
+                    </ExpandableSection>
+                    <ExpandableSection headerText='Health checks' defaultExpanded={false}>
+                        <SpaceBetween size='m'>
+                            <div>
+                                <Header variant='h3'>Container Health Check</Header>
+                                <SpaceBetween size='xs'>
+                                    <Box><strong>Command:</strong> {formState.healthCheckCommand}</Box>
+                                    <Box><strong>Interval:</strong> {formState.healthCheckInterval}s</Box>
+                                    <Box><strong>Timeout:</strong> {formState.healthCheckTimeout}s</Box>
+                                    <Box><strong>Retries:</strong> {formState.healthCheckRetries}</Box>
+                                    <Box><strong>Start period:</strong> {formState.healthCheckStartPeriod}s</Box>
+                                </SpaceBetween>
+                            </div>
+                            <div>
+                                <Header variant='h3'>Load Balancer Health Check</Header>
+                                <SpaceBetween size='xs'>
+                                    <Box><strong>Path:</strong> {formState.lbPath}</Box>
+                                    <Box><strong>Interval:</strong> {formState.lbInterval}s</Box>
+                                    <Box><strong>Timeout:</strong> {formState.lbTimeout}s</Box>
+                                    <Box><strong>Healthy threshold:</strong> {formState.lbHealthyThreshold}</Box>
+                                    <Box><strong>Unhealthy threshold:</strong> {formState.lbUnhealthyThreshold}</Box>
+                                </SpaceBetween>
+                            </div>
+                        </SpaceBetween>
+                    </ExpandableSection>
                 </SpaceBetween>
             ),
         },
@@ -657,24 +822,17 @@ export function CreateHostedMcpServerModal ({ visible, setVisible }: CreateHoste
             header='Create hosted MCP server'
             size='large'
         >
-            <SpaceBetween size='m'>
-                {errors.length > 0 && (
-                    <Alert type='error' header='Please address the following issues'>
-                        <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
-                            {errors.map((error) => (
-                                <li key={error}>{error}</li>
-                            ))}
-                        </ul>
-                    </Alert>
-                )}
-                <Wizard
+            <Wizard
                     steps={steps}
                     activeStepIndex={activeStepIndex}
                     submitButtonText='Create server'
                     isLoadingNextStep={isSaving}
+                    allowSkipTo
                     i18nStrings={{
                         stepNumberLabel: (stepNumber) => `Step ${stepNumber}`,
                         collapsedStepsLabel: (stepNumber, stepsCount) => `Step ${stepNumber} of ${stepsCount}`,
+                        skipToButtonLabel: () => 'Skip to Create',
+                        navigationAriaLabel: 'Steps',
                         cancelButton: 'Cancel',
                         previousButton: 'Previous',
                         nextButton: 'Next',
@@ -682,22 +840,21 @@ export function CreateHostedMcpServerModal ({ visible, setVisible }: CreateHoste
                     }}
                     onNavigate={({ detail }) => {
                         const { reason, requestedStepIndex } = detail;
-                        if (reason === 'next') {
+                        if (reason === 'next' || reason === 'skip') {
                             const currentErrors = validateStep(activeStepIndex);
-                            if (currentErrors.length > 0) {
-                                setErrors(currentErrors);
+                            if (Object.keys(currentErrors).length > 0) {
+                                setFieldErrors(currentErrors);
                                 return;
                             }
-                            setErrors([]);
+                            setFieldErrors({});
                         } else if (reason === 'previous' || reason === 'step') {
-                            setErrors([]);
+                            setFieldErrors({});
                         }
                         setActiveStepIndex(requestedStepIndex);
                     }}
                     onCancel={() => setVisible(false)}
                     onSubmit={() => handleSubmit()}
                 />
-            </SpaceBetween>
         </Modal>
     );
 }

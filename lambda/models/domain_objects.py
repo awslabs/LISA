@@ -25,7 +25,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum, StrEnum
-from typing import Annotated, Any, Dict, Generator, List, Optional, Union
+from typing import Annotated, Any, Dict, Generator, List, Optional, TypeAlias, Union
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
@@ -571,11 +571,15 @@ class IngestionJob(BaseModel):
 
     id: str = Field(default_factory=lambda: str(uuid4()))
     s3_path: str
-    collection_id: str
+    collection_id: Optional[str] = Field(
+        default=None, description="Collection ID for full deletion, None for default collection deletion"
+    )
     document_id: Optional[str] = Field(default=None)
     repository_id: str
     chunk_strategy: Optional[ChunkingStrategy] = Field(default=None)
-    embedding_model: Optional[str] = Field(default=None)
+    embedding_model: Optional[str] = Field(
+        default=None, description="Embedding model name, used as index identifier for default collections"
+    )
     username: Optional[str] = Field(default=None)
     status: IngestionStatus = IngestionStatus.INGESTION_PENDING
     created_date: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
@@ -584,12 +588,34 @@ class IngestionJob(BaseModel):
     auto: Optional[bool] = Field(default=None)
     metadata: Optional[dict] = Field(default=None)
     job_type: Optional[JobActionType] = Field(default=None, description="Type of deletion job")
+    collection_deletion: bool = Field(default=False, description="Indicates this is a collection deletion job")
 
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)
 
         self.document_name = self.s3_path.split("/")[-1] if self.s3_path else ""
         self.auto = self.username == "system"
+
+    @model_validator(mode="after")
+    def validate_collection_deletion_identifiers(self) -> Self:
+        """Validate that for collection deletion jobs, exactly one of collection_id or embedding_model is provided."""
+        if self.collection_deletion:
+            has_collection_id = self.collection_id is not None
+            has_embedding_model = self.embedding_model is not None
+
+            # XOR: exactly one must be true
+            if has_collection_id == has_embedding_model:
+                if not has_collection_id and not has_embedding_model:
+                    raise ValueError(
+                        "For collection deletion jobs, either collection_id or embedding_model must be provided"
+                    )
+                else:
+                    raise ValueError(
+                        "For collection deletion jobs, only one of collection_id or "
+                        "embedding_model should be provided, not both"
+                    )
+
+        return self
 
 
 class PaginatedResponse(BaseModel):
@@ -902,6 +928,7 @@ class RagCollectionConfig(BaseModel):
     status: CollectionStatus = Field(default=CollectionStatus.ACTIVE, description="Collection status")
     private: bool = Field(default=False, description="Whether collection is private to creator")
     pipelines: List[PipelineConfig] = Field(default_factory=list, description="Automated ingestion pipelines")
+    default: bool = Field(default=False, description="Indicates if this is a default collection (virtual, no DB entry)")
 
     model_config = ConfigDict(use_enum_values=True, validate_default=True)
 

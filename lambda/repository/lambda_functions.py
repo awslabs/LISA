@@ -385,31 +385,43 @@ def update_collection(event: dict, context: dict) -> Dict[str, Any]:
 @admin_only
 def delete_collection(event: dict, context: dict) -> Dict[str, Any]:
     """
-    Delete a collection within a vector store.
+    Delete a collection (regular or default) within a vector store.
+
+    For regular collections:
+        Path: /repository/{repositoryId}/collection/{collectionId}
+
+    For default collections:
+        Path: /repository/{repositoryId}/collection
+        Query: ?embeddingName=model-name
 
     Args:
         event (dict): The Lambda event object containing:
             - pathParameters.repositoryId: The parent repository ID
-            - pathParameters.collectionId: The collection ID
-            - queryStringParameters.hardDelete (optional): Whether to hard delete (default: false)
+            - pathParameters.collectionId: The collection ID (optional for default collections)
+            - queryStringParameters.embeddingName: Embedding model name (for default collections)
         context (dict): The Lambda context object
 
     Returns:
-        Dict[str, Any]: Empty dictionary (204 No Content)
+        Dict[str, Any]: Dictionary with deletion type and job ID
 
     Raises:
         ValidationError: If validation fails or user lacks permission
         HTTPException: If repository or collection not found or access denied
     """
-    # Extract path parameters
+    # Extract parameters
     path_params = event.get("pathParameters", {})
+    query_params = event.get("queryStringParameters", {}) or {}
+
     repository_id = path_params.get("repositoryId")
-    collection_id = path_params.get("collectionId")
+    collection_id = path_params.get("collectionId")  # May be None for default collections
+    embedding_name = query_params.get("embeddingName")  # For default collections
 
     if not repository_id:
         raise ValidationError("repositoryId is required")
-    if not collection_id:
-        raise ValidationError("collectionId is required")
+
+    # Validate that we have either collectionId or embeddingName
+    if not collection_id and not embedding_name:
+        raise ValidationError("Either collectionId or embeddingName must be provided")
 
     # Get user context
     username, is_admin, groups = get_user_context(event)
@@ -417,17 +429,17 @@ def delete_collection(event: dict, context: dict) -> Dict[str, Any]:
     # Ensure repository exists and user has access
     _ = get_repository(event, repository_id=repository_id)
 
-    # Delete collection via service (includes access control check)
-    collection_service.delete_collection(
-        collection_id=collection_id,
+    # Delete collection via service
+    result = collection_service.delete_collection(
         repository_id=repository_id,
+        collection_id=collection_id,  # None for default collections
+        embedding_name=embedding_name,  # None for regular collections
         username=username,
         user_groups=groups,
         is_admin=is_admin,
     )
 
-    # Return empty response for 204 No Content
-    return {}
+    return result
 
 
 @api_wrapper

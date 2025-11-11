@@ -233,6 +233,7 @@ class CollectionService:
                 metadata=CollectionMetadata(tags=["default"], customFields={}),
                 allowChunkingOverride=True,
                 pipelines=[],
+                default=True,  # Mark as default collection
             )
 
             logger.info(f"Created virtual default collection for repository {repository_id}")
@@ -307,34 +308,64 @@ class CollectionService:
     def delete_collection(
         self,
         repository_id: str,
-        collection_id: str,
+        collection_id: Optional[str],
+        embedding_name: Optional[str],
         username: str,
         user_groups: List[str],
         is_admin: bool,
-    ) -> None:
-        """Delete a collection with access control."""
-        collection = self.collection_repo.find_by_id(collection_id, repository_id)
-        if not collection:
-            raise ValidationError(f"Collection {collection_id} not found")
-        if not self.has_access(collection, username, user_groups, is_admin, require_write=True):
-            raise ValidationError(f"Permission denied to delete collection {collection_id}")
+    ) -> Dict[str, Any]:
+        """Delete a collection with access control.
 
-        logger.info(f"Starting deletion of collection {collection_id} in repository {repository_id}")
+        Args:
+            repository_id: Repository ID
+            collection_id: Collection ID (None for default collections)
+            embedding_name: Embedding model name (None for regular collections)
+            username: Username for access control
+            user_groups: User groups for access control
+            is_admin: Whether user is admin
 
-        # Update collection status to DELETE_IN_PROGRESS
-        self.collection_repo.update(collection_id, repository_id, {"status": CollectionStatus.DELETE_IN_PROGRESS})
+        Returns:
+            Dictionary with deletion type and job ID
+        """
+        # Validate that at least one identifier is provided
+        if not collection_id and not embedding_name:
+            raise ValidationError("Either collection_id or embedding_name must be provided")
 
-        # Submit batch deletion job for documents and vector store cleanup
+        # Determine deletion type
+        is_default_collection = collection_id is None
+        deletion_type = "partial" if is_default_collection else "full"
+
+        logger.info(
+            f"Starting {deletion_type} deletion for repository {repository_id}, "
+            f"collection_id={collection_id}, embedding_name={embedding_name}"
+        )
+
+        # For regular collections, verify access and update status
+        if not is_default_collection:
+            collection = self.collection_repo.find_by_id(collection_id, repository_id)
+            if not collection:
+                raise ValidationError(f"Collection {collection_id} not found")
+            if not self.has_access(collection, username, user_groups, is_admin, require_write=True):
+                raise ValidationError(f"Permission denied to delete collection {collection_id}")
+
+            # Update collection status to DELETE_IN_PROGRESS
+            self.collection_repo.update(collection_id, repository_id, {"status": CollectionStatus.DELETE_IN_PROGRESS})
+
+            embedding_model = None  # Don't set embedding_model for regular collections
+        else:
+            # For default collections, use embedding_name directly
+            embedding_model = embedding_name
+
+        # Create deletion job
         try:
             ingestion_job_repo = IngestionJobRepository()
             ingestion_service = DocumentIngestionService()
 
-            # Create deletion job for the collection
             deletion_job = IngestionJob(
                 repository_id=repository_id,
-                collection_id=collection_id,
+                collection_id=collection_id,  # None for default collections
                 s3_path="",  # Not applicable for collection deletion
-                embedding_model=collection.embeddingModel,
+                embedding_model=embedding_model,  # Only set for default collections
                 username=username,
                 status=IngestionStatus.DELETE_PENDING,
                 job_type=JobActionType.COLLECTION_DELETION,
@@ -345,15 +376,22 @@ class CollectionService:
             ingestion_job_repo.save(deletion_job)
             ingestion_service.create_delete_job(deletion_job)
 
-            logger.info(f"Submitted batch deletion job for collection {collection_id}")
+            logger.info(f"Submitted {deletion_type} deletion job {deletion_job.id} " f"for repository {repository_id}")
+
+            return {
+                "jobId": deletion_job.id,
+                "deletionType": deletion_type,
+                "status": deletion_job.status,
+            }
 
         except Exception as e:
-            logger.error(f"Failed to submit batch deletion job: {e}", exc_info=True)
-            # Update collection status to DELETE_FAILED
-            self.collection_repo.update(collection_id, repository_id, {"status": CollectionStatus.DELETE_FAILED})
-            raise
+            logger.error(f"Failed to submit deletion job: {e}", exc_info=True)
 
-        logger.info(f"Collection {collection_id} deletion initiated successfully")
+            # Update collection status to DELETE_FAILED (only for regular collections)
+            if not is_default_collection:
+                self.collection_repo.update(collection_id, repository_id, {"status": CollectionStatus.DELETE_FAILED})
+
+            raise
 
     def get_collection_by_name(
         self,

@@ -45,6 +45,7 @@ export function expandAdminMenu () {
             expect(labels).to.deep.equal([
                 'Configuration',
                 'Model Management',
+                'MCP Management',
             ]);
         });
 }

@@ -33,9 +33,14 @@ export const COLLECTION_COLUMN_DEFINITIONS: ReadonlyArray<CollectionTableRow> = 
         id: 'name',
         header: 'Collection Name',
         cell: (collection) => (
-            <Link href={`#/document-library/${collection.repositoryId}/${collection.collectionId}`}>
-                {collection.name || collection.collectionId}
-            </Link>
+            <>
+                <Link href={`#/document-library/${collection.repositoryId}/${collection.collectionId}`}>
+                    {collection.name || collection.collectionId}
+                </Link>
+                {(collection as any).default === true && (
+                    <> <Badge color='blue'>Global</Badge></>
+                )}
+            </>
         ),
         sortingField: 'name',
         visible: true,

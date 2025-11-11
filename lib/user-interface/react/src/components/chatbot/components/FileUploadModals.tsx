@@ -17,6 +17,7 @@
 import {
     Box,
     Button,
+    Checkbox,
     FileUpload,
     Modal,
     ProgressBar,
@@ -217,6 +218,7 @@ export const RagUploadModal = ({
     const [ingestingFiles, setIngestingFiles] = useState(false);
     const [ingestionStatus, setIngestionStatus] = useState('');
     const [ingestionType, setIngestionType] = useState(StatusTypes.LOADING);
+    const [overrideChunkingStrategy, setOverrideChunkingStrategy] = useState(false);
     const [chunkingStrategy, setChunkingStrategy] = useState<ChunkingStrategy | undefined>({
         type: ChunkingStrategyType.FIXED,
         size: 512,
@@ -259,7 +261,7 @@ export const RagUploadModal = ({
                 repositoryId: ragConfig.repositoryId,
                 collectionId: ragConfig.collection?.collectionId,
                 repostiroyType: ragConfig.repositoryType,
-                chunkingStrategy,
+                chunkingStrategy: overrideChunkingStrategy ? chunkingStrategy : undefined,
             });
 
             if ('error' in ingestResp) {
@@ -334,27 +336,37 @@ export const RagUploadModal = ({
                     </p>
                 </TextContent>
 
-                {/* Chunking Strategy Form */}
-                <ChunkingConfigForm
-                    item={chunkingStrategy}
-                    setFields={(values) => {
-                        if (values.chunkingStrategy !== undefined) {
-                            setChunkingStrategy(values.chunkingStrategy);
-                        } else if (values['chunkingStrategy.size'] !== undefined) {
-                            setChunkingStrategy({
-                                ...chunkingStrategy,
-                                size: values['chunkingStrategy.size'],
-                            });
-                        } else if (values['chunkingStrategy.overlap'] !== undefined) {
-                            setChunkingStrategy({
-                                ...chunkingStrategy,
-                                overlap: values['chunkingStrategy.overlap'],
-                            });
-                        }
-                    }}
-                    touchFields={() => {}}
-                    formErrors={{}}
-                />
+                {/* Chunking Strategy Override Checkbox */}
+                <Checkbox
+                    checked={overrideChunkingStrategy}
+                    onChange={({ detail }) => setOverrideChunkingStrategy(detail.checked)}
+                >
+                    Override default chunking strategy
+                </Checkbox>
+
+                {/* Chunking Strategy Form - Only shown when override is enabled */}
+                {overrideChunkingStrategy && (
+                    <ChunkingConfigForm
+                        item={chunkingStrategy}
+                        setFields={(values) => {
+                            if (values.chunkingStrategy !== undefined) {
+                                setChunkingStrategy(values.chunkingStrategy);
+                            } else if (values['chunkingStrategy.size'] !== undefined) {
+                                setChunkingStrategy({
+                                    ...chunkingStrategy,
+                                    size: values['chunkingStrategy.size'],
+                                });
+                            } else if (values['chunkingStrategy.overlap'] !== undefined) {
+                                setChunkingStrategy({
+                                    ...chunkingStrategy,
+                                    overlap: values['chunkingStrategy.overlap'],
+                                });
+                            }
+                        }}
+                        touchFields={() => {}}
+                        formErrors={{}}
+                    />
+                )}
 
                 <FileUpload
                     onChange={({ detail }) => setSelectedFiles(detail.value)}

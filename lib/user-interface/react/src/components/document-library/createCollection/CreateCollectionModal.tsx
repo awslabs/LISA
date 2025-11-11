@@ -122,9 +122,20 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
 
     const changesDiff = useMemo(() => {
         if (isEdit && selectedItems.length > 0) {
-            return getJsonDifference({
-                ...selectedItems[0],
-            }, toSubmit);
+            // Only compare editable fields to avoid showing undefined values
+            const originalEditableFields = {
+                repositoryId: selectedItems[0].repositoryId,
+                name: selectedItems[0].name || '',
+                description: selectedItems[0].description || '',
+                embeddingModel: selectedItems[0].embeddingModel,
+                chunkingStrategy: selectedItems[0].chunkingStrategy,
+                allowedGroups: selectedItems[0].allowedGroups || [],
+                metadata: selectedItems[0].metadata || { tags: [], customFields: {} },
+                allowChunkingOverride: selectedItems[0].allowChunkingOverride !== undefined
+                    ? selectedItems[0].allowChunkingOverride
+                    : true,
+            };
+            return getJsonDifference(originalEditableFields, toSubmit);
         }
         return getJsonDifference({}, toSubmit);
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -260,8 +271,10 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
                 <ReviewChanges
                     jsonDiff={changesDiff}
                     error={reviewError}
+                    info={isEdit && _.isEmpty(changesDiff) ? 'No changes detected. Modify the collection configuration to enable submission.' : undefined}
                 />
             ),
+            isOptional: false,
         },
     ];
 

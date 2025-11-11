@@ -36,7 +36,7 @@ import Configuration from './pages/Configuration';
 import { useGetConfigurationQuery } from './shared/reducers/configuration.reducer';
 import { IConfiguration } from './shared/model/configuration.model';
 import DocumentLibrary from './pages/DocumentLibrary';
-import RepositoryLibrary from './pages/RepositoryLibrary';
+import CollectionLibrary from './pages/CollectionLibrary';
 import { Breadcrumbs } from './shared/breadcrumb/breadcrumbs';
 import BreadcrumbsDefaultChangeListener from './shared/breadcrumb/breadcrumbs-change-listener';
 import PromptTemplatesLibrary from './pages/PromptTemplatesLibrary';
@@ -192,7 +192,7 @@ function App () {
                                         path='document-library'
                                         element={
                                             <PrivateRoute showConfig='showRagLibrary' configs={config}>
-                                                <RepositoryLibrary setNav={setNav} />
+                                                <CollectionLibrary setNav={setNav} />
                                             </PrivateRoute>
                                         }
                                     />

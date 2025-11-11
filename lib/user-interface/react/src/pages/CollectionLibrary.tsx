@@ -17,7 +17,7 @@
 import { ReactElement, useEffect } from 'react';
 import CollectionLibraryComponent from '../components/document-library/CollectionLibraryComponent';
 
-export function RepositoryLibrary ({ setNav }): ReactElement {
+export function CollectionLibrary ({ setNav }): ReactElement {
     useEffect(() => {
         setNav(null);
     }, [setNav]);
@@ -25,4 +25,4 @@ export function RepositoryLibrary ({ setNav }): ReactElement {
     return <CollectionLibraryComponent />;
 }
 
-export default RepositoryLibrary;
+export default CollectionLibrary;

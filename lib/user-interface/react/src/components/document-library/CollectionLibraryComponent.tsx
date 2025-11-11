@@ -78,6 +78,9 @@ export function CollectionLibraryComponent ({ admin = false }: CollectionLibrary
         }
     );
 
+    const selectedCollection = collectionProps.selectedItems.length === 1 ? collectionProps.selectedItems[0] : null;
+    const isDefaultCollection = (selectedCollection as any)?.default === true;
+
     const handleSelectionChange = ({ detail }) => {
         if (admin) {
             actions.setSelectedItems(detail.selectedItems);
@@ -93,7 +96,8 @@ export function CollectionLibraryComponent ({ admin = false }: CollectionLibrary
                 break;
             }
             case 'delete': {
-                const selectedCollection = collectionProps.selectedItems[0];
+                if (!selectedCollection) return;
+
                 dispatch(
                     setConfirmationModal({
                         action: 'Delete',
@@ -102,6 +106,8 @@ export function CollectionLibraryComponent ({ admin = false }: CollectionLibrary
                             deleteCollection({
                                 repositoryId: selectedCollection.repositoryId,
                                 collectionId: selectedCollection.collectionId,
+                                embeddingModel: selectedCollection.embeddingModel,
+                                default: (selectedCollection as any).default,
                             }),
                         description: (
                             <div>
@@ -109,7 +115,16 @@ export function CollectionLibraryComponent ({ admin = false }: CollectionLibrary
                                 <strong>{selectedCollection.name || selectedCollection.collectionId}</strong>?
                                 <br />
                                 <br />
-                                This action cannot be undone.
+                                {isDefaultCollection ? (
+                                    <>
+                                        <strong>Note:</strong> This will remove all documents in the default collection,
+                                        but the collection will remain visible in the Collection Library. This is a clean up operation.
+                                        <br />
+                                        <br />
+                                    </>
+                                ) : (
+                                    <>This action cannot be undone.</>
+                                )}
                             </div>
                         ),
                     }),
@@ -180,16 +195,16 @@ export function CollectionLibraryComponent ({ admin = false }: CollectionLibrary
                                                 {
                                                     id: 'edit',
                                                     text: 'Edit',
-                                                    disabled: collectionProps.selectedItems.length === 0,
+                                                    disabled: !selectedCollection || isDefaultCollection,
                                                 },
                                                 {
                                                     id: 'delete',
                                                     text: 'Delete',
-                                                    disabled: collectionProps.selectedItems.length === 0,
+                                                    disabled: !selectedCollection,
                                                 },
                                             ]}
                                             loading={isDeleteLoading}
-                                            disabled={collectionProps.selectedItems.length === 0}
+                                            disabled={!selectedCollection}
                                             onItemClick={handleAction}
                                         >
                                             Actions

@@ -26,10 +26,6 @@ vi.mock('../../shared/reducers/rag.reducer', async () => {
             data: [],
             isLoading: false,
         })),
-        useGetRagStatusQuery: vi.fn(() => ({
-            data: {},
-            isFetching: false,
-        })),
         ragApi: {
             ...actual.ragApi,
             util: {

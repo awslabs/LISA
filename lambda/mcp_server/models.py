@@ -106,7 +106,7 @@ class ContainerHealthCheckConfig(BaseModel):
 
     command: Union[str, List[str]]
     interval: int = Field(gt=0)
-    startPeriod: int = Field(gt=0)
+    startPeriod: int = Field(ge=0)
     timeout: int = Field(gt=0)
     retries: int = Field(gt=0)
 

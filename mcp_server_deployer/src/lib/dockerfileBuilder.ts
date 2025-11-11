@@ -50,7 +50,7 @@ fi
 exec /root/.local/bin/mcp-proxy \\
     --stateless \\
     --transport streamablehttp \\
-    --allow-origins="*" \\
+    --allow-origin="*" \\
     --port=8080 \\
     --host=0.0.0.0 \\
     ${startCommand}

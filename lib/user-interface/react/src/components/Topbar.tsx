@@ -136,6 +136,15 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                 external: false,
                                 href: '/model-management',
                             } as ButtonDropdownProps.Item,
+                            {
+                                id: 'mcp-management',
+                                type: 'button',
+                                variant: 'link',
+                                text: 'MCP Management',
+                                disableUtilityCollapse: false,
+                                external: false,
+                                href: '/mcp-management',
+                            } as ButtonDropdownProps.Item,
                             ...(configs?.configuration.enabledComponents?.showMcpWorkbench ? [{
                                 id: 'mcp-workbench',
                                 type: 'button',

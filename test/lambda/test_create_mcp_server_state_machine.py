@@ -141,18 +141,28 @@ def test_handle_set_server_to_creating_missing_id(mcp_servers_table):
         handle_set_server_to_creating(event, None)
 
 
-def test_handle_deploy_server_success(sample_mcp_server_event):
+def test_handle_deploy_server_success(mcp_servers_table, sample_mcp_server_event):
     """Test successful deployment of server."""
     from mcp_server.state_machine.create_mcp_server import handle_deploy_server
 
-    with patch("mcp_server.state_machine.create_mcp_server.lambdaClient") as mock_lambda:
+    with patch("mcp_server.state_machine.create_mcp_server.lambdaClient") as mock_lambda, patch(
+        "mcp_server.state_machine.create_mcp_server.cfnClient"
+    ) as mock_cfn:
         mock_response = MagicMock()
         mock_response.read.return_value = json.dumps({"stackName": "test-stack-name"}).encode()
         mock_lambda.invoke.return_value = {"Payload": mock_response}
+        mock_cfn.describe_stacks.return_value = {
+            "Stacks": [
+                {
+                    "StackId": "arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack-name/abc123",
+                }
+            ]
+        }
 
         result = handle_deploy_server(sample_mcp_server_event, None)
 
         assert result["stack_name"] == "test-stack-name"
+        assert result["stack_arn"] == "arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack-name/abc123"
         assert result["poll_count"] == 0
         assert result["continue_polling"] is True
 
@@ -180,7 +190,7 @@ def test_handle_deploy_server_missing_stack_name(sample_mcp_server_event):
             handle_deploy_server(sample_mcp_server_event, None)
 
 
-def test_handle_deploy_server_with_optional_fields(sample_mcp_server_event):
+def test_handle_deploy_server_with_optional_fields(mcp_servers_table, sample_mcp_server_event):
     """Test deployment with optional fields."""
     from mcp_server.state_machine.create_mcp_server import handle_deploy_server
 
@@ -191,14 +201,24 @@ def test_handle_deploy_server_with_optional_fields(sample_mcp_server_event):
     event_with_options["loadBalancerConfig"] = {"healthCheckConfig": {"path": "/health"}}
     event_with_options["containerHealthCheckConfig"] = {"command": "curl localhost:8000"}
 
-    with patch("mcp_server.state_machine.create_mcp_server.lambdaClient") as mock_lambda:
+    with patch("mcp_server.state_machine.create_mcp_server.lambdaClient") as mock_lambda, patch(
+        "mcp_server.state_machine.create_mcp_server.cfnClient"
+    ) as mock_cfn:
         mock_response = MagicMock()
         mock_response.read.return_value = json.dumps({"stackName": "test-stack"}).encode()
         mock_lambda.invoke.return_value = {"Payload": mock_response}
+        mock_cfn.describe_stacks.return_value = {
+            "Stacks": [
+                {
+                    "StackId": "arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack/abc123",
+                }
+            ]
+        }
 
         result = handle_deploy_server(event_with_options, None)
 
         assert result["stack_name"] == "test-stack"
+        assert result["stack_arn"] == "arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack/abc123"
 
         # Verify optional fields were passed
         call_args = mock_lambda.invoke.call_args

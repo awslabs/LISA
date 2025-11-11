@@ -116,7 +116,23 @@ def handle_deploy_server(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         logger.error(f"MCP Server Deployer response: {payload}")
         raise ValueError(f"Failed to create MCP server stack: {payload}")
 
+    response = cfnClient.describe_stacks(StackName=stack_name)
+    stack_arn = response["Stacks"][0]["StackId"]
+
+    mcp_servers_table.update_item(
+        Key={"id": event.get("id")},
+        UpdateExpression="SET #status = :status, stack_name = :stack_name, stack_arn = :stack_arn, last_modified = :lm",
+        ExpressionAttributeNames={"#status": "status"},
+        ExpressionAttributeValues={
+            ":status": HostedMcpServerStatus.IN_SERVICE,
+            ":stack_name": stack_name,
+            ":stack_arn": stack_arn,
+            ":lm": int(datetime.now(UTC).timestamp()),
+        },
+    )
+
     output_dict["stack_name"] = stack_name
+    output_dict["stack_arn"] = stack_arn
     output_dict["poll_count"] = 0
     output_dict["continue_polling"] = True
     return output_dict
@@ -265,24 +281,45 @@ def handle_add_server_to_active(event: Dict[str, Any], context: Any) -> Dict[str
 
 def handle_failure(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Handle failure in the state machine."""
-    logger.error(f"MCP server creation failed: {event.get('id')}")
+    logger.error(f"Handling MCP server creation failure: {event}")
 
-    server_id = event.get("id")
+    # Update server status to failed
+    try:
+        # Parse the error from Step Functions
+        cause_data = json.loads(event["Cause"])
+        error_message = cause_data["errorMessage"]
 
-    if server_id:
-        # Update server status to failed
+        # Try to parse the error message as JSON (for our custom exceptions)
         try:
-            mcp_servers_table.update_item(
-                Key={"id": server_id},
-                UpdateExpression="SET #status = :status, error_message = :error, last_modified = :lm",
-                ExpressionAttributeNames={"#status": "status"},
-                ExpressionAttributeValues={
-                    ":status": HostedMcpServerStatus.FAILED,
-                    ":error": event.get("error", "Unknown error"),
-                    ":lm": int(datetime.now(UTC).timestamp()),
-                },
-            )
-        except Exception as e:
-            logger.error(f"Failed to update server status: {str(e)}")
+            error_dict = json.loads(error_message)
+            if isinstance(error_dict, dict) and "error" in error_dict:
+                error_reason = error_dict["error"]
+                original_event = error_dict.get("event", event)
+            else:
+                # If it's not our expected format, use the raw error message
+                error_reason = str(error_dict) if error_dict else "Unknown error"
+                original_event = event
+        except (json.JSONDecodeError, TypeError):
+            # If error_message is not JSON, use it directly
+            error_reason = error_message
+            original_event = event
+
+    except (json.JSONDecodeError, KeyError, TypeError) as e:
+        logger.error(f"Error parsing failure event: {str(e)}")
+        error_reason = f"Failed to parse error details: {str(e)}"
+        original_event = event
+
+    logger.error(f"Failure reason: {error_reason}, ServerId: {original_event.get('id', 'unknown')}")
+
+    mcp_servers_table.update_item(
+        Key={"id": original_event.get("id", "unknown")},
+        UpdateExpression="SET #status = :status, error_message = :error, last_modified = :lm",
+        ExpressionAttributeNames={"#status": "status"},
+        ExpressionAttributeValues={
+            ":status": HostedMcpServerStatus.FAILED,
+            ":error": event.get("error", "Unknown error"),
+            ":lm": int(datetime.now(UTC).timestamp()),
+        },
+    )
 
     return event

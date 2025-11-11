@@ -38,6 +38,7 @@ mcp_servers_table = ddbResource.Table(os.environ["MCP_SERVERS_TABLE_NAME"])
 
 # DDB and Payload fields
 STACK_NAME = "stack_name"
+STACK_ARN = "cloudformation_stack_arn"
 
 
 def _get_mcp_connections_table_name(deployment_prefix: str) -> Optional[str]:
@@ -67,14 +68,13 @@ def handle_set_server_to_deleting(event: Dict[str, Any], context: Any) -> Dict[s
     if not item:
         raise RuntimeError(f"Requested MCP server '{server_id}' was not found in DynamoDB table.")
     stack_name = item.get(STACK_NAME, None)
+    stack_arn = item.get(STACK_ARN, None)
     # Convert stack name to ARN if stack_name exists
     if stack_name:
-        # CloudFormation stack ARN format: arn:aws:cloudformation:region:account:stack/stack-name/id
-        # For simplicity, we'll use the stack name directly and let CloudFormation handle it
         output_dict[STACK_NAME] = stack_name
-        output_dict["cloudformation_stack_arn"] = stack_name  # Use stack name as ARN
+        output_dict[STACK_ARN] = stack_arn  # Use stack name as ARN
     else:
-        output_dict["cloudformation_stack_arn"] = None
+        output_dict[STACK_ARN] = None
 
     mcp_servers_table.update_item(
         Key=server_key,
@@ -91,41 +91,26 @@ def handle_set_server_to_deleting(event: Dict[str, Any], context: Any) -> Dict[s
 def handle_delete_stack(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Initialize stack deletion."""
     output_dict = deepcopy(event)
-    stack_name = event.get(STACK_NAME) or event.get("cloudformation_stack_arn")
-    if not stack_name:
-        raise ValueError("Stack name not found in event")
+    stack_arn = event.get(STACK_ARN)
+    if not stack_arn:
+        raise ValueError("Stack arn not found in event")
 
     # Get the actual stack ARN before deleting
-    try:
-        stack_metadata = cfnClient.describe_stacks(StackName=stack_name)["Stacks"][0]
-        stack_arn = stack_metadata["StackId"]  # StackId is the ARN
-        logger.info(f"Retrieved stack ARN: {stack_arn} for stack name: {stack_name}")
-        output_dict["cloudformation_stack_arn"] = stack_arn
-    except ClientError as e:
-        error_code = e.response.get("Error", {}).get("Code", "")
-        if error_code == "ValidationError":
-            # Stack doesn't exist - this shouldn't happen at delete time, but handle gracefully
-            logger.warning(f"Stack {stack_name} not found when trying to get ARN")
-            raise RuntimeError(f"Stack {stack_name} does not exist and cannot be deleted")
-        else:
-            # Re-raise unexpected errors
-            logger.error(f"Error getting stack ARN: {str(e)}")
-            raise
 
-    logger.info(f"Deleting CloudFormation stack: {stack_name} (ARN: {stack_arn})")
+    logger.info(f"Deleting CloudFormation stack: {stack_arn}")
     client_request_token = str(uuid4())
     cfnClient.delete_stack(
-        StackName=stack_name,  # Can use name or ARN
+        StackName=stack_arn,
         ClientRequestToken=client_request_token,
     )
-    return output_dict  # Return with ARN set
+    return output_dict
 
 
 def handle_monitor_delete_stack(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Get stack status while it is being deleted and evaluate if state machine should continue polling."""
     output_dict = deepcopy(event)
     # Prefer ARN if available, fall back to stack name
-    stack_identifier = event.get("cloudformation_stack_arn") or event.get(STACK_NAME)
+    stack_identifier = event.get(STACK_ARN) or event.get(STACK_NAME)
     if not stack_identifier:
         raise ValueError("Stack ARN or name not found in event")
 

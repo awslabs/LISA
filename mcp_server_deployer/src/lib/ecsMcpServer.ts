@@ -717,11 +717,11 @@ ENTRYPOINT ["/entrypoint.sh"]
             // Use eval to properly handle commands with spaces and arguments
             bashScript += `START_CMD='${mcpServerConfig.startCommand.replace(/'/g, '\'\\\'\'')}'; `;
             bashScript += 'if [ -f /root/.local/bin/mcp-proxy ]; then ';
-            bashScript += 'eval exec /root/.local/bin/mcp-proxy --stateless --transport streamablehttp --port=8080 --host=0.0.0.0 "$START_CMD"; ';
+            bashScript += 'eval exec /root/.local/bin/mcp-proxy --stateless --transport streamablehttp --port=8080 --host=0.0.0.0 --allow-origins="*" "$START_CMD"; ';
             bashScript += 'elif [ -f /root/.cargo/bin/mcp-proxy ]; then ';
-            bashScript += 'eval exec /root/.cargo/bin/mcp-proxy --stateless --transport streamablehttp --port=8080 --host=0.0.0.0 "$START_CMD"; ';
+            bashScript += 'eval exec /root/.cargo/bin/mcp-proxy --stateless --transport streamablehttp --port=8080 --host=0.0.0.0 --allow-origins="*" "$START_CMD"; ';
             bashScript += 'elif command -v mcp-proxy >/dev/null 2>&1; then ';
-            bashScript += 'eval exec mcp-proxy --stateless --transport streamablehttp --port=8080 --host=0.0.0.0 "$START_CMD"; ';
+            bashScript += 'eval exec mcp-proxy --stateless --transport streamablehttp --port=8080 --host=0.0.0.0 --allow-origins="*" "$START_CMD"; ';
             bashScript += 'else ';
             bashScript += 'echo "ERROR: mcp-proxy not found. Please ensure mcp-proxy is installed in your Docker image."; ';
             bashScript += 'exit 1; ';

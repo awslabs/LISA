@@ -271,8 +271,8 @@ export class EcsMcpServer extends Construct {
             {
                 statusCode: '200',
                 responseParameters: {
-                    'method.response.header.Access-Control-Allow-Origin': "'*'",
-                    'method.response.header.Access-Control-Allow-Credentials': "'false'",
+                    'method.response.header.Access-Control-Allow-Origin': '\'*\'',
+                    'method.response.header.Access-Control-Allow-Credentials': '\'false\'',
                 },
             },
         ];
@@ -459,8 +459,8 @@ export class EcsMcpServer extends Construct {
                             'application/json': '{"message": "Method Not Allowed"}',
                         },
                         responseParameters: {
-                            'method.response.header.Access-Control-Allow-Origin': "'*'",
-                            'method.response.header.Access-Control-Allow-Credentials': "'false'",
+                            'method.response.header.Access-Control-Allow-Origin': '\'*\'',
+                            'method.response.header.Access-Control-Allow-Credentials': '\'false\'',
                         },
                     },
                 ],

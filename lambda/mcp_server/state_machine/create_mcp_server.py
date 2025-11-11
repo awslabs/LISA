@@ -121,7 +121,8 @@ def handle_deploy_server(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
     mcp_servers_table.update_item(
         Key={"id": event.get("id")},
-        UpdateExpression="SET #status = :status, stack_name = :stack_name, cloudformation_stack_arn = :stack_arn, last_modified = :lm",
+        UpdateExpression="SET #status = :status, stack_name = :stack_name, cloudformation_stack_arn = :stack_arn,"
+        + " last_modified = :lm",
         ExpressionAttributeNames={"#status": "status"},
         ExpressionAttributeValues={
             ":status": HostedMcpServerStatus.IN_SERVICE,

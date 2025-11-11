@@ -332,7 +332,7 @@ class CollectionService:
             raise ValidationError("Either collection_id or embedding_name must be provided")
 
         # Determine deletion type
-        is_default_collection = collection_id is None
+        is_default_collection = embedding_name is not None
         deletion_type = "partial" if is_default_collection else "full"
 
         logger.info(
@@ -363,7 +363,7 @@ class CollectionService:
 
             deletion_job = IngestionJob(
                 repository_id=repository_id,
-                collection_id=collection_id,  # None for default collections
+                collection_id=collection_id if not is_default_collection else None,
                 s3_path="",  # Not applicable for collection deletion
                 embedding_model=embedding_model,  # Only set for default collections
                 username=username,

@@ -267,7 +267,6 @@ def create_collection(event: dict, context: dict) -> Dict[str, Any]:
         repository=repository,
         collection=collection,
         username=username,
-        is_admin=is_admin,
     )
 
     # Return collection configuration

@@ -49,7 +49,6 @@ fi
 # The command can contain spaces, so we execute it properly
 exec /root/.local/bin/mcp-proxy \\
     --stateless \\
-    --allow-origins='*' \\
     --transport streamablehttp \\
     --port=8080 \\
     --host=0.0.0.0 \\

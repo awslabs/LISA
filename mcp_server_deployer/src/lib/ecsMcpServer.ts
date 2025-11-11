@@ -244,6 +244,15 @@ export class EcsMcpServer extends Construct {
         // Track all methods created to ensure deployment depends on them
         const createdMethods: any[] = [];
 
+        const allowedCorsHeaders = Array.from(new Set([
+            ...Cors.DEFAULT_HEADERS,
+            'Accept',
+            'Mcp-Session-Id',
+            'Last-Event-Id',
+            'mcp-protocol-version',
+            'X-Amz-User-Agent',
+        ]));
+
         // Create or get server-specific resource
         let serverResource = mcpResource.getResource(identifier);
         if (!serverResource) {
@@ -251,12 +260,38 @@ export class EcsMcpServer extends Construct {
             // Add CORS preflight support (creates OPTIONS method automatically)
             serverResource.addCorsPreflight({
                 allowOrigins: Cors.ALL_ORIGINS,
-                allowHeaders: Cors.DEFAULT_HEADERS,
+                allowHeaders: allowedCorsHeaders,
             });
         }
 
         // Define methods list for reuse (exclude OPTIONS since CORS preflight handles it)
         const methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'];
+
+        const corsIntegrationResponses = [
+            {
+                statusCode: '200',
+                responseParameters: {
+                    'method.response.header.Access-Control-Allow-Origin': "'*'",
+                    'method.response.header.Access-Control-Allow-Credentials': "'false'",
+                },
+            },
+        ];
+
+        const corsMethodResponse = {
+            statusCode: '200',
+            responseParameters: {
+                'method.response.header.Access-Control-Allow-Origin': true,
+                'method.response.header.Access-Control-Allow-Credentials': true,
+            },
+        };
+
+        const cors405MethodResponse = {
+            statusCode: '405',
+            responseParameters: {
+                'method.response.header.Access-Control-Allow-Origin': true,
+                'method.response.header.Access-Control-Allow-Credentials': true,
+            },
+        };
 
         // Create or get proxy resource FIRST (before /health) to ensure proper routing
         // The proxy resource will catch all paths except exact matches like /health
@@ -266,7 +301,7 @@ export class EcsMcpServer extends Construct {
             // Add CORS preflight support (creates OPTIONS method automatically)
             proxyResource.addCorsPreflight({
                 allowOrigins: Cors.ALL_ORIGINS,
-                allowHeaders: Cors.DEFAULT_HEADERS,
+                allowHeaders: allowedCorsHeaders,
             });
         }
 
@@ -287,6 +322,7 @@ export class EcsMcpServer extends Construct {
                         'integration.request.header.X-Forwarded-Proto': '\'https\'',
                         'integration.request.header.X-Forwarded-Path': 'method.request.path.proxy',
                     },
+                    integrationResponses: corsIntegrationResponses,
                 },
             },
         );
@@ -300,6 +336,7 @@ export class EcsMcpServer extends Construct {
                     'method.request.path.proxy': true,
                     'method.request.header.Accept': true,
                 },
+                methodResponses: [corsMethodResponse],
             };
 
             // Apply authorizer if provided
@@ -335,6 +372,7 @@ export class EcsMcpServer extends Construct {
                         'integration.request.header.X-Forwarded-Proto': '\'https\'',
                         // Note: Authorization header is NOT included, which prevents it from being forwarded
                     },
+                    integrationResponses: corsIntegrationResponses,
                 },
             },
         );
@@ -345,6 +383,7 @@ export class EcsMcpServer extends Construct {
                 requestParameters: {
                     'method.request.header.Accept': true,
                 },
+                methodResponses: [corsMethodResponse],
             };
 
             // Apply authorizer if provided
@@ -373,7 +412,7 @@ export class EcsMcpServer extends Construct {
             // Add CORS preflight support (creates OPTIONS method automatically)
             mcpChildResource.addCorsPreflight({
                 allowOrigins: Cors.ALL_ORIGINS,
-                allowHeaders: Cors.DEFAULT_HEADERS,
+                allowHeaders: allowedCorsHeaders,
             });
         }
 
@@ -393,6 +432,7 @@ export class EcsMcpServer extends Construct {
                         'integration.request.header.X-Forwarded-Host': 'context.domainName',
                         'integration.request.header.X-Forwarded-Proto': '\'https\'',
                     },
+                    integrationResponses: corsIntegrationResponses,
                 },
             },
         );
@@ -401,6 +441,7 @@ export class EcsMcpServer extends Construct {
                 requestParameters: {
                     'method.request.header.Accept': true,
                 },
+                methodResponses: [corsMethodResponse],
             };
 
             if (authorizerId) {
@@ -417,6 +458,10 @@ export class EcsMcpServer extends Construct {
                         responseTemplates: {
                             'application/json': '{"message": "Method Not Allowed"}',
                         },
+                        responseParameters: {
+                            'method.response.header.Access-Control-Allow-Origin': "'*'",
+                            'method.response.header.Access-Control-Allow-Credentials': "'false'",
+                        },
                     },
                 ],
             });
@@ -429,11 +474,7 @@ export class EcsMcpServer extends Construct {
             );
 
             if (useMock405) {
-                methodOptions.methodResponses = [
-                    {
-                        statusCode: '405',
-                    },
-                ];
+                methodOptions.methodResponses = [cors405MethodResponse];
             }
 
             const integrationToUse = useMock405 ? mock405 : mcpChildIntegration;

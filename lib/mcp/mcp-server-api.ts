@@ -396,6 +396,17 @@ export class McpServerApi extends Construct {
                 ],
                 resources: ['*'],  // ECS resources are dynamic and created by CloudFormation
             }),
+            // Allow passing task/execution roles to ECS when registering task definitions
+            new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: ['iam:PassRole'],
+                resources: ['*'],
+                conditions: {
+                    StringEquals: {
+                        'iam:PassedToService': 'ecs-tasks.amazonaws.com'
+                    }
+                }
+            }),
             new PolicyStatement({
                 effect: Effect.ALLOW,
                 actions: [

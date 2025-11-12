@@ -395,7 +395,7 @@ def handle_job_intake(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             # Scale ECS service to min capacity now (will be polled in handle_poll_capacity)
             try:
                 service_arn, cluster_arn, _ = get_ecs_resources_from_stack(stack_name)
-                ecs_client.update_service(cluster=cluster_arn, service=service_arn, desiredCount=min_capacity)
+                ecs_client.update_service(cluster=cluster_arn, service=service_arn, desiredCount=int(min_capacity))
                 logger.info(f"Scaled ECS service to {min_capacity} for server '{server_id}'")
             except Exception as e:
                 logger.error(f"Error scaling ECS service to {min_capacity}: {str(e)}")
@@ -415,6 +415,25 @@ def handle_job_intake(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             try:
                 # Get ECS resources from stack
                 service_arn, cluster_arn, _ = get_ecs_resources_from_stack(stack_name)
+
+                # Also set Application Auto Scaling target min/max to 0 to prevent immediate scale-up by policies
+                try:
+                    service_name = service_arn.split("/")[-1]
+                    cluster_name = cluster_arn.split("/")[-1]
+                    scalable_target_id = f"service/{cluster_name}/{service_name}"
+                    application_autoscaling_client.register_scalable_target(
+                        ServiceNamespace="ecs",
+                        ResourceId=scalable_target_id,
+                        ScalableDimension="ecs:service:DesiredCount",
+                        MinCapacity=0,
+                        MaxCapacity=0,
+                    )
+                    logger.info(
+                        "Updated scalable target to MinCapacity=0, MaxCapacity=0 for server "
+                        + f"'{server_id}' ({scalable_target_id})"
+                    )
+                except Exception as e:
+                    logger.warning(f"Could not update scalable target to 0 for server '{server_id}': {str(e)}")
 
                 # Update service to 0 desired count
                 ecs_client.update_service(cluster=cluster_arn, service=service_arn, desiredCount=0)
@@ -555,7 +574,8 @@ def handle_job_intake(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     ) and server_status == HostedMcpServerStatus.IN_SERVICE
 
     # We only need to poll for activation so that we know when to update the MCP Connections table
-    output_dict["has_capacity_update"] = is_enable
+    # For Hosted MCP servers, also poll on disable to wait for tasks to deprovision fully
+    output_dict["has_capacity_update"] = is_enable or is_disable
     output_dict["is_disable"] = is_disable
     output_dict["needs_ecs_update"] = needs_ecs_update
     output_dict["initial_server_status"] = server_status  # needed for simple metadata updates
@@ -708,7 +728,12 @@ def create_updated_task_definition(
 def update_ecs_service(cluster_arn: str, service_arn: str, task_definition_arn: str) -> None:
     """Update ECS service to use new task definition."""
     try:
-        ecs_client.update_service(cluster=cluster_arn, service=service_arn, taskDefinition=task_definition_arn)
+        ecs_client.update_service(
+            cluster=cluster_arn,
+            service=service_arn,
+            taskDefinition=task_definition_arn,
+            forceNewDeployment=True,
+        )
         logger.info(f"Updated ECS service {service_arn} to use task definition {task_definition_arn}")
 
     except Exception as e:
@@ -732,8 +757,8 @@ def handle_ecs_update(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     logger.info(f"Starting ECS update for server '{server_id}'")
 
     try:
-        # Get current server info from DDB
-        ddb_item = mcp_servers_table.get_item(Key={"id": server_id})["Item"]
+        # Get current server info from DDB (consistent read to ensure we see the latest env/cpu/memory)
+        ddb_item = mcp_servers_table.get_item(Key={"id": server_id}, ConsistentRead=True)["Item"]
         stack_name = ddb_item.get("stack_name")
 
         if not stack_name:

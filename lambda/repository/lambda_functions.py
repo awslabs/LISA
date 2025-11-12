@@ -433,7 +433,7 @@ def delete_collection(event: dict, context: dict) -> Dict[str, Any]:
     # Ensure repository exists and user has access
     repo = get_repository(event, repository_id=repository_id)
 
-    is_default_collection = (repo.embeddingModelId == collection_id)
+    is_default_collection = repo.embeddingModelId == collection_id
     # Delete collection via service
     result = collection_service.delete_collection(
         repository_id=repository_id,

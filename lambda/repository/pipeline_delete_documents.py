@@ -177,10 +177,10 @@ def pipeline_delete_collection(job: IngestionJob) -> None:
         rag_document_repository.delete_all(job.repository_id, job.collection_id)
         logger.info("Successfully deleted all documents from DynamoDB")
 
-        # Update collection status to DELETED
+        # Delete collection DB entry
         is_default_collection = job.embedding_model is not None
         if not is_default_collection:
-            collection_repo.update(job.collection_id, job.repository_id, {"status": CollectionStatus.DELETED})
+            collection_repo.delete(job.collection_id, job.repository_id)
 
         # Update job status
         ingestion_job_repository.update_status(job, IngestionStatus.DELETE_COMPLETED)

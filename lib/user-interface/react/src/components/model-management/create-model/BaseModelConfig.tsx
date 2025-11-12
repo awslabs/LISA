@@ -37,57 +37,57 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
 
     return (
         <SpaceBetween size={'s'}>
-            <FormField 
-                label='Hosting Type' 
+            <FormField
+                label='Hosting Type'
                 description='Choose whether to host the model on LISA infrastructure or use a third-party provider.'
                 errorText={props.formErrors?.lisaHostedModel}
             >
-            <Select
-                selectedOption={{
-                    label: props.item.lisaHostedModel ? 'LISA Hosted' : 'Third Party',
-                    value: props.item.lisaHostedModel ? 'true' : 'false'
-                }}
-                onChange={({ detail }) => {
-                    const isLisaHosted = detail.selectedOption.value === 'true';
-                    const fieldsToUpdate = { 'lisaHostedModel': isLisaHosted };
+                <Select
+                    selectedOption={{
+                        label: props.item.lisaHostedModel ? 'LISA Hosted' : 'Third Party',
+                        value: props.item.lisaHostedModel ? 'true' : 'false'
+                    }}
+                    onChange={({ detail }) => {
+                        const isLisaHosted = detail.selectedOption.value === 'true';
+                        const fieldsToUpdate = { 'lisaHostedModel': isLisaHosted };
 
-                    // If switching to Third Party, clear LISA Hosted specific fields
-                    if (!isLisaHosted) {
-                        fieldsToUpdate['instanceType'] = undefined;
-                        fieldsToUpdate['inferenceContainer'] = undefined;
-                    }
-                    props.setFields(fieldsToUpdate);
-                }}
-                onBlur={() => props.touchFields(['lisaHostedModel'])}
-                options={[
-                    { label: 'Third Party', value: 'false' },
-                    { label: 'LISA Hosted', value: 'true' }
-                ]}
-                disabled={props.isEdit}
-            />
+                        // If switching to Third Party, clear LISA Hosted specific fields
+                        if (!isLisaHosted) {
+                            fieldsToUpdate['instanceType'] = undefined;
+                            fieldsToUpdate['inferenceContainer'] = undefined;
+                        }
+                        props.setFields(fieldsToUpdate);
+                    }}
+                    onBlur={() => props.touchFields(['lisaHostedModel'])}
+                    options={[
+                        { label: 'Third Party', value: 'false' },
+                        { label: 'LISA Hosted', value: 'true' }
+                    ]}
+                    disabled={props.isEdit}
+                />
             </FormField>
             <FormField label='Model ID' errorText={props.formErrors?.modelId} description='The unique model IDs are displayed to users in the "Select a model" drop down. We recommend using a descriptive name like "claude-3-7" or "nova-imagegen"'>
-            <Input value={props.item.modelId} inputMode='text' onBlur={() => props.touchFields(['modelId'])} onChange={({ detail }) => {
-                props.setFields({ 'modelId': detail.value });
-            }} disabled={props.isEdit} placeholder='mistral-vllm'/>
+                <Input value={props.item.modelId} inputMode='text' onBlur={() => props.touchFields(['modelId'])} onChange={({ detail }) => {
+                    props.setFields({ 'modelId': detail.value });
+                }} disabled={props.isEdit} placeholder='mistral-vllm'/>
             </FormField>
             <FormField label='Model Name' errorText={props.formErrors?.modelName}
                 description='The full model name is the repository path, or the third party model provider path. The path format typically will be: {ProviderPath}/{ProviderModelName}. Users do not see this value in the chat assistant user interface.'>
-            <Input value={props.item.modelName} inputMode='text' onBlur={() => props.touchFields(['modelName'])} onChange={({ detail }) => {
-                props.setFields({ 'modelName': detail.value });
-            }} disabled={props.isEdit} placeholder='mistralai/Mistral-7B-Instruct-v0.2'/>
+                <Input value={props.item.modelName} inputMode='text' onBlur={() => props.touchFields(['modelName'])} onChange={({ detail }) => {
+                    props.setFields({ 'modelName': detail.value });
+                }} disabled={props.isEdit} placeholder='mistralai/Mistral-7B-Instruct-v0.2'/>
             </FormField>
-            <FormField 
-                label={<span>Model Description <em>- Optional</em></span>} 
+            <FormField
+                label={<span>Model Description <em>- Optional</em></span>}
                 description='Brief description of the model capabilities, use cases, and characteristics.'
                 errorText={props.formErrors?.modelDescription}
             >
-            <Input value={props.item.modelDescription || ''} inputMode='text' onBlur={() => props.touchFields(['modelDescription'])} onChange={({ detail }) => {
-                props.setFields({ 'modelDescription': detail.value });
-            }} placeholder='Brief description of the model and its capabilities'/>
+                <Input value={props.item.modelDescription || ''} inputMode='text' onBlur={() => props.touchFields(['modelDescription'])} onChange={({ detail }) => {
+                    props.setFields({ 'modelDescription': detail.value });
+                }} placeholder='Brief description of the model and its capabilities'/>
             </FormField>
-            {!props.item.lisaHostedModel && <FormField 
-                label={<span>API Key <em>- Optional</em></span>} 
+            {!props.item.lisaHostedModel && <FormField
+                label={<span>API Key <em>- Optional</em></span>}
                 description='API authentication key for accessing third-party model provider services.'
                 errorText={props.formErrors?.apiKey}
             >
@@ -95,8 +95,8 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     props.setFields({ 'apiKey': detail.value });
                 }} disabled={props.isEdit}/>
             </FormField>}
-            <FormField 
-                label={<span>Model URL <em>- Optional</em></span>} 
+            <FormField
+                label={<span>Model URL <em>- Optional</em></span>}
                 description='Custom endpoint URL for the model API (e.g., for self-hosted or third-party services).'
                 errorText={props.formErrors?.modelUrl}
             >
@@ -104,8 +104,8 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     props.setFields({ 'modelUrl': detail.value });
                 }} disabled={props.isEdit}/>
             </FormField>
-            <FormField 
-                label='Model Type' 
+            <FormField
+                label='Model Type'
                 description='Type of model functionality: text generation, image generation, or text embeddings.'
                 errorText={props.formErrors?.modelType}
             >
@@ -139,8 +139,8 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
             </FormField>
             {props.item.lisaHostedModel && (
                 <>
-                    <FormField 
-                        label='Instance Type' 
+                    <FormField
+                        label='Instance Type'
                         description='EC2 instance type for hosting the model. Choose based on model size and performance requirements.'
                         errorText={props.formErrors?.instanceType}
                     >
@@ -158,8 +158,8 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                             virtualScroll
                         />
                     </FormField>
-                    <FormField 
-                        label='Inference Container' 
+                    <FormField
+                        label='Inference Container'
                         description='Container runtime for model inference (TGI for text generation, TEI for embeddings, vLLM for optimized inference).'
                         errorText={props.formErrors?.inferenceContainer}
                     >
@@ -182,8 +182,8 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                 </>
             )}
             <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }, { colspan: 6 }]}>
-                <FormField 
-                    label='Streaming' 
+                <FormField
+                    label='Streaming'
                     description='Enable streaming responses for real-time token-by-token output generation.'
                     errorText={props.formErrors?.streaming}
                 >
@@ -196,8 +196,8 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                         checked={props.item.streaming}
                     />
                 </FormField>
-                <FormField 
-                    label='Tool Calls' 
+                <FormField
+                    label='Tool Calls'
                     description='Enable function calling capabilities for the model to use external tools and APIs.'
                     errorText={props.formErrors?.features}
                 >
@@ -214,8 +214,8 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                         checked={props.item.features.find((feature) => feature.name === ModelFeatures.TOOL_CALLS) !== undefined}
                     />
                 </FormField>
-                <FormField 
-                    label='Image Input' 
+                <FormField
+                    label='Image Input'
                     description='Enable multimodal capabilities to process and analyze image inputs alongside text.'
                     errorText={props.formErrors?.features}
                 >
@@ -232,8 +232,8 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                         checked={props.item.features.find((feature) => feature.name === ModelFeatures.IMAGE_INPUT) !== undefined}
                     />
                 </FormField>
-                <FormField 
-                    label='Summarization' 
+                <FormField
+                    label='Summarization'
                     description='Enable document summarization capabilities for condensing long text into brief summaries.'
                     errorText={props.formErrors?.features}
                     warningText={props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION) !== undefined ? 'Ensure model context is large enough to support these requests.' : ''}
@@ -252,8 +252,8 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     />
                 </FormField>
             </Grid>
-            <FormField 
-                label={<span>Summarization Capabilities <em>- Optional</em></span>} 
+            <FormField
+                label={<span>Summarization Capabilities <em>- Optional</em></span>}
                 description="Describe the model's summarization strengths, supported document types, and output formats."
                 errorText={props.formErrors?.summarizationCapabilities}
             >

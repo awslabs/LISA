@@ -33,8 +33,8 @@ export function AutoScalingConfig (props: AutoScalingConfigProps) : ReactElement
             <Container
                 header={<Header variant='h3'>Auto Scaling Capacity</Header>}>
                 <SpaceBetween size={'s'}>
-                    <FormField 
-                        label='Block Device Volume Size' 
+                    <FormField
+                        label='Block Device Volume Size'
                         description='Size of the EBS volume attached to each instance for model storage and cache.'
                         errorText={props.formErrors?.autoScalingConfig?.blockDeviceVolumeSize}
                     >
@@ -45,8 +45,8 @@ export function AutoScalingConfig (props: AutoScalingConfigProps) : ReactElement
                             <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>GBs</span>
                         </Grid>
                     </FormField>
-                    <FormField 
-                        label='Min Capacity' 
+                    <FormField
+                        label='Min Capacity'
                         description='Minimum number of instances to maintain in the auto scaling group.'
                         errorText={props.formErrors?.autoScalingConfig?.minCapacity}
                     >
@@ -57,8 +57,8 @@ export function AutoScalingConfig (props: AutoScalingConfigProps) : ReactElement
                             <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>instances</span>
                         </Grid>
                     </FormField>
-                    <FormField 
-                        label='Max Capacity' 
+                    <FormField
+                        label='Max Capacity'
                         description='Maximum number of instances allowed in the auto scaling group.'
                         errorText={props.formErrors?.autoScalingConfig?.maxCapacity}
                     >
@@ -69,8 +69,8 @@ export function AutoScalingConfig (props: AutoScalingConfigProps) : ReactElement
                             <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>instances</span>
                         </Grid>
                     </FormField>
-                    <FormField 
-                        label='Desired Capacity' 
+                    <FormField
+                        label='Desired Capacity'
                         description='Target number of instances to maintain. Must be between min and max capacity.'
                         errorText={props.formErrors?.autoScalingConfig?.desiredCapacity}
                     >
@@ -81,8 +81,8 @@ export function AutoScalingConfig (props: AutoScalingConfigProps) : ReactElement
                             <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>instances</span>
                         </Grid>
                     </FormField>
-                    <FormField 
-                        label='Cooldown' 
+                    <FormField
+                        label='Cooldown'
                         description='Time to wait between scaling activities to allow metrics to stabilize.'
                         errorText={props.formErrors?.autoScalingConfig?.cooldown}
                     >
@@ -93,8 +93,8 @@ export function AutoScalingConfig (props: AutoScalingConfigProps) : ReactElement
                             <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
                         </Grid>
                     </FormField>
-                    <FormField 
-                        label='Default Instance Warmup' 
+                    <FormField
+                        label='Default Instance Warmup'
                         description='Time for new instances to warm up before receiving traffic and contributing to metrics.'
                         errorText={props.formErrors?.autoScalingConfig?.defaultInstanceWarmup}
                     >
@@ -110,8 +110,8 @@ export function AutoScalingConfig (props: AutoScalingConfigProps) : ReactElement
             <Container
                 header={<Header variant='h3'>Metric Config</Header>}>
                 <SpaceBetween size={'s'}>
-                    <FormField 
-                        label='ALB Metric Name' 
+                    <FormField
+                        label='ALB Metric Name'
                         description='CloudWatch metric name for Application Load Balancer scaling decisions (e.g., RequestCountPerTarget).'
                         errorText={props.formErrors?.autoScalingConfig?.metricConfig?.albMetricName}
                     >
@@ -119,8 +119,8 @@ export function AutoScalingConfig (props: AutoScalingConfigProps) : ReactElement
                             props.setFields({ 'autoScalingConfig.metricConfig.albMetricName': detail.value });
                         }}/>
                     </FormField>
-                    <FormField 
-                        label='Target Value' 
+                    <FormField
+                        label='Target Value'
                         description='Target value for the scaling metric. Auto scaling adjusts capacity to maintain this target.'
                         errorText={props.formErrors?.autoScalingConfig?.metricConfig?.targetValue}
                     >
@@ -128,8 +128,8 @@ export function AutoScalingConfig (props: AutoScalingConfigProps) : ReactElement
                             props.setFields({ 'autoScalingConfig.metricConfig.targetValue': Number(detail.value) });
                         }}/>
                     </FormField>
-                    <FormField 
-                        label='Duration' 
+                    <FormField
+                        label='Duration'
                         description='Period length for evaluating the CloudWatch metric before triggering scaling actions.'
                         errorText={props.formErrors?.autoScalingConfig?.metricConfig?.duration}
                     >
@@ -140,8 +140,8 @@ export function AutoScalingConfig (props: AutoScalingConfigProps) : ReactElement
                             <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
                         </Grid>
                     </FormField>
-                    <FormField 
-                        label='Estimated Instance Warmup' 
+                    <FormField
+                        label='Estimated Instance Warmup'
                         description='Estimated time for instances to be ready to serve traffic and contribute to scaling metrics.'
                         errorText={props.formErrors?.autoScalingConfig?.metricConfig?.estimatedInstanceWarmup}
                     >

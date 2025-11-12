@@ -32,7 +32,7 @@ import {
     HostedMcpServerStatus,
     useListHostedMcpServersQuery,
 } from '@/shared/reducers/mcp-server.reducer';
-import { CreateHostedMcpServerModal } from './create-hosted/CreateHostedMcpServerModal';
+import { CreateHostedMcpServerModal } from './hosted-mcp/CreateHostedMcpServerModal';
 import { McpManagementActions } from './McpManagementActions';
 import {
     getDefaultPreferences,
@@ -75,7 +75,9 @@ export function McpManagementComponent (): ReactElement {
         getDefaultPreferences(tableDefinition),
     );
     const [shouldPoll, setShouldPoll] = useState(true);
-    const [createModalVisible, setCreateModalVisible] = useState(false);
+    const [modalVisible, setModalVisible] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [selectedServerForEdit, setSelectedServerForEdit] = useState<HostedMcpServer | null>(null);
 
     const {
         data: hostedServers = [],
@@ -122,11 +124,25 @@ export function McpManagementComponent (): ReactElement {
 
     const selectedItems = (collectionProps.selectedItems as HostedMcpServer[]) ?? [];
 
+    const handleCreate = () => {
+        setIsEditMode(false);
+        setSelectedServerForEdit(null);
+        setModalVisible(true);
+    };
+
+    const handleEdit = (server: HostedMcpServer) => {
+        setIsEditMode(true);
+        setSelectedServerForEdit(server);
+        setModalVisible(true);
+    };
+
     return (
         <>
             <CreateHostedMcpServerModal
-                visible={createModalVisible}
-                setVisible={setCreateModalVisible}
+                visible={modalVisible}
+                setVisible={setModalVisible}
+                isEdit={isEditMode}
+                selectedServer={selectedServerForEdit}
             />
             <Table
                 {...collectionProps}
@@ -150,7 +166,8 @@ export function McpManagementComponent (): ReactElement {
                                 selectedItems={selectedItems}
                                 setSelectedItems={(selected) => actions.setSelectedItems(selected)}
                                 refetch={refetch}
-                                onCreate={() => setCreateModalVisible(true)}
+                                onCreate={handleCreate}
+                                onEdit={handleEdit}
                             />
                         }
                     >

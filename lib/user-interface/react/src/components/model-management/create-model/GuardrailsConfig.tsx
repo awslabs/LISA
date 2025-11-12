@@ -218,31 +218,48 @@ export function GuardrailsConfig (props: GuardrailsConfigProps): ReactElement {
                                             description='Groups that will have this guardrail applied to them. Type a group name and click Add.'
                                         >
                                             <SpaceBetween size='xs'>
-                                            <TokenGroup
-                                                items={
-                                                    (guardrail.allowedGroups || []).map((group) => ({
-                                                        label: group,
-                                                        dismissLabel: `Remove ${group}`
-                                                    }))
-                                                }
-                                                onDismiss={({ detail: { itemIndex } }) => {
-                                                    const newGroups = [...(guardrail.allowedGroups || [])];
-                                                    newGroups.splice(itemIndex, 1);
-                                                    updateGuardrail(key, 'allowedGroups', newGroups);
-                                                }}
-                                                alignment='vertical'
-                                            />
-                                            <Input
-                                                value={groupInputValues[key] || ''}
-                                                placeholder='Enter group name'
-                                                onChange={({ detail }) => {
-                                                    setGroupInputValues((prev) => ({
-                                                        ...prev,
-                                                        [key]: detail.value
-                                                    }));
-                                                }}
-                                                onKeyDown={(event) => {
-                                                    if (event.detail.key === 'Enter') {
+                                                <TokenGroup
+                                                    items={
+                                                        (guardrail.allowedGroups || []).map((group) => ({
+                                                            label: group,
+                                                            dismissLabel: `Remove ${group}`
+                                                        }))
+                                                    }
+                                                    onDismiss={({ detail: { itemIndex } }) => {
+                                                        const newGroups = [...(guardrail.allowedGroups || [])];
+                                                        newGroups.splice(itemIndex, 1);
+                                                        updateGuardrail(key, 'allowedGroups', newGroups);
+                                                    }}
+                                                    alignment='vertical'
+                                                />
+                                                <Input
+                                                    value={groupInputValues[key] || ''}
+                                                    placeholder='Enter group name'
+                                                    onChange={({ detail }) => {
+                                                        setGroupInputValues((prev) => ({
+                                                            ...prev,
+                                                            [key]: detail.value
+                                                        }));
+                                                    }}
+                                                    onKeyDown={(event) => {
+                                                        if (event.detail.key === 'Enter') {
+                                                            const value = (groupInputValues[key] || '').trim();
+                                                            if (value && !(guardrail.allowedGroups || []).includes(value)) {
+                                                                updateGuardrail(key, 'allowedGroups', [
+                                                                    ...(guardrail.allowedGroups || []),
+                                                                    value
+                                                                ]);
+                                                                setGroupInputValues((prev) => ({
+                                                                    ...prev,
+                                                                    [key]: ''
+                                                                }));
+                                                            }
+                                                            event.preventDefault();
+                                                        }
+                                                    }}
+                                                />
+                                                <Button
+                                                    onClick={() => {
                                                         const value = (groupInputValues[key] || '').trim();
                                                         if (value && !(guardrail.allowedGroups || []).includes(value)) {
                                                             updateGuardrail(key, 'allowedGroups', [
@@ -254,27 +271,10 @@ export function GuardrailsConfig (props: GuardrailsConfigProps): ReactElement {
                                                                 [key]: ''
                                                             }));
                                                         }
-                                                        event.preventDefault();
-                                                    }
-                                                }}
-                                            />
-                                            <Button
-                                                onClick={() => {
-                                                    const value = (groupInputValues[key] || '').trim();
-                                                    if (value && !(guardrail.allowedGroups || []).includes(value)) {
-                                                        updateGuardrail(key, 'allowedGroups', [
-                                                            ...(guardrail.allowedGroups || []),
-                                                            value
-                                                        ]);
-                                                        setGroupInputValues((prev) => ({
-                                                            ...prev,
-                                                            [key]: ''
-                                                        }));
-                                                    }
-                                                }}
-                                            >
-                                                Add
-                                            </Button>
+                                                    }}
+                                                >
+                                                    Add
+                                                </Button>
                                             </SpaceBetween>
                                         </FormField>
                                     </SpaceBetween>

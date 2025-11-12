@@ -35,8 +35,8 @@ export function LoadBalancerConfig (props: LoadBalancerConfigProps) : ReactEleme
                 }
             >
                 <SpaceBetween size={'s'}>
-                    <FormField 
-                        label='Path' 
+                    <FormField
+                        label='Path'
                         description='HTTP path for the load balancer health check endpoint (e.g., /health or /status).'
                         errorText={props.formErrors?.loadBalancerConfig?.healthCheckConfig?.path}
                     >
@@ -44,8 +44,8 @@ export function LoadBalancerConfig (props: LoadBalancerConfigProps) : ReactEleme
                             props.setFields({ 'loadBalancerConfig.healthCheckConfig.path': detail.value });
                         }}/>
                     </FormField>
-                    <FormField 
-                        label='Interval' 
+                    <FormField
+                        label='Interval'
                         description='Time between health check requests to each target.'
                         errorText={props.formErrors?.loadBalancerConfig?.healthCheckConfig?.interval}
                     >
@@ -56,8 +56,8 @@ export function LoadBalancerConfig (props: LoadBalancerConfigProps) : ReactEleme
                             <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
                         </Grid>
                     </FormField>
-                    <FormField 
-                        label='Timeout' 
+                    <FormField
+                        label='Timeout'
                         description='Maximum time to wait for a health check response before marking it as failed.'
                         errorText={props.formErrors?.loadBalancerConfig?.healthCheckConfig?.timeout}
                     >
@@ -68,8 +68,8 @@ export function LoadBalancerConfig (props: LoadBalancerConfigProps) : ReactEleme
                             <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
                         </Grid>
                     </FormField>
-                    <FormField 
-                        label='Healthy Threshold Count' 
+                    <FormField
+                        label='Healthy Threshold Count'
                         description='Number of consecutive successful health checks required before marking a target as healthy.'
                         errorText={props.formErrors?.loadBalancerConfig?.healthCheckConfig?.healthyThresholdCount}
                     >
@@ -77,8 +77,8 @@ export function LoadBalancerConfig (props: LoadBalancerConfigProps) : ReactEleme
                             props.setFields({ 'loadBalancerConfig.healthCheckConfig.healthyThresholdCount': Number(detail.value) });
                         }}/>
                     </FormField>
-                    <FormField 
-                        label='Unhealthy Threshold Count' 
+                    <FormField
+                        label='Unhealthy Threshold Count'
                         description='Number of consecutive failed health checks required before marking a target as unhealthy.'
                         errorText={props.formErrors?.loadBalancerConfig?.healthCheckConfig?.unhealthyThresholdCount}
                     >

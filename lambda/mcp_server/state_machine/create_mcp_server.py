@@ -125,7 +125,7 @@ def handle_deploy_server(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         + " last_modified = :lm",
         ExpressionAttributeNames={"#status": "status"},
         ExpressionAttributeValues={
-            ":status": HostedMcpServerStatus.IN_SERVICE,
+            ":status": HostedMcpServerStatus.CREATING,
             ":stack_name": stack_name,
             ":stack_arn": stack_arn,
             ":lm": int(datetime.now(UTC).timestamp()),
@@ -145,19 +145,20 @@ def handle_poll_deployment(event: Dict[str, Any], context: Any) -> Dict[str, Any
     output_dict = deepcopy(event)
 
     stack_name = event.get("stack_name")
+    stack_arn = event.get("stack_arn")
     poll_count = event.get("poll_count", 0)
 
     if poll_count > MAX_POLLS:
         raise Exception(f"Max polls exceeded for stack {stack_name}")
 
     try:
-        response = cfnClient.describe_stacks(StackName=stack_name)
+        response = cfnClient.describe_stacks(StackName=stack_arn)
         stack_status = response["Stacks"][0]["StackStatus"]
 
         logger.info(f"Stack {stack_name} status: {stack_status}")
 
         # Check if stack creation is complete
-        if stack_status.endswith("_COMPLETE"):
+        if stack_status in ["CREATE_COMPLETE", "UPDATE_COMPLETE"]:
             output_dict["continue_polling"] = False
             output_dict["stack_status"] = stack_status
         elif stack_status.endswith("_FAILED") or stack_status.endswith("_ROLLBACK_COMPLETE"):

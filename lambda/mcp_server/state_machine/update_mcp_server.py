@@ -395,7 +395,7 @@ def handle_job_intake(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             # Scale ECS service to min capacity now (will be polled in handle_poll_capacity)
             try:
                 service_arn, cluster_arn, _ = get_ecs_resources_from_stack(stack_name)
-                ecs_client.update_service(cluster=cluster_arn, service=service_arn, desiredCount=min_capacity)
+                ecs_client.update_service(cluster=cluster_arn, service=service_arn, desiredCount=int(min_capacity))
                 logger.info(f"Scaled ECS service to {min_capacity} for server '{server_id}'")
             except Exception as e:
                 logger.error(f"Error scaling ECS service to {min_capacity}: {str(e)}")
@@ -415,6 +415,25 @@ def handle_job_intake(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             try:
                 # Get ECS resources from stack
                 service_arn, cluster_arn, _ = get_ecs_resources_from_stack(stack_name)
+
+                # Also set Application Auto Scaling target min/max to 0 to prevent immediate scale-up by policies
+                try:
+                    service_name = service_arn.split("/")[-1]
+                    cluster_name = cluster_arn.split("/")[-1]
+                    scalable_target_id = f"service/{cluster_name}/{service_name}"
+                    application_autoscaling_client.register_scalable_target(
+                        ServiceNamespace="ecs",
+                        ResourceId=scalable_target_id,
+                        ScalableDimension="ecs:service:DesiredCount",
+                        MinCapacity=0,
+                        MaxCapacity=0,
+                    )
+                    logger.info(
+                        "Updated scalable target to MinCapacity=0, MaxCapacity=0 for server "
+                        + f"'{server_id}' ({scalable_target_id})"
+                    )
+                except Exception as e:
+                    logger.warning(f"Could not update scalable target to 0 for server '{server_id}': {str(e)}")
 
                 # Update service to 0 desired count
                 ecs_client.update_service(cluster=cluster_arn, service=service_arn, desiredCount=0)

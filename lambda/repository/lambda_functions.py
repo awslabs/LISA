@@ -396,12 +396,7 @@ def delete_collection(event: dict, context: dict) -> Dict[str, Any]:
     """
     Delete a collection (regular or default) within a vector store.
 
-    For regular collections:
-        Path: /repository/{repositoryId}/collection/{collectionId}
-
-    For default collections:
-        Path: /repository/{repositoryId}/collection
-        Query: ?embeddingName=model-name
+    Path: /repository/{repositoryId}/collection/{collectionId}
 
     Args:
         event (dict): The Lambda event object containing:
@@ -436,13 +431,14 @@ def delete_collection(event: dict, context: dict) -> Dict[str, Any]:
     username, is_admin, groups = get_user_context(event)
 
     # Ensure repository exists and user has access
-    _ = get_repository(event, repository_id=repository_id)
+    repo = get_repository(event, repository_id=repository_id)
 
+    is_default_collection = (repo.embeddingModelId == collection_id)
     # Delete collection via service
     result = collection_service.delete_collection(
         repository_id=repository_id,
         collection_id=collection_id,  # None for default collections
-        embedding_name=embedding_name,  # None for regular collections
+        embedding_name=embedding_name if is_default_collection else None,  # None for regular collections
         username=username,
         user_groups=groups,
         is_admin=is_admin,
@@ -1227,9 +1223,9 @@ def delete(event: dict, context: dict) -> Any:
             try:
                 logger.info(f"Deleting collection: {collection.collectionId}")
                 collection_service.delete_collection(
-                    collection_id=collection.collectionId if not collection.default else None,
+                    collection_id=collection.collectionId,
                     repository_id=repository_id,
-                    embedding_name=collection.embeddingModel,
+                    embedding_name=collection.embeddingModel if collection.default else None,
                     username="admin",
                     user_groups=[],
                     is_admin=True,

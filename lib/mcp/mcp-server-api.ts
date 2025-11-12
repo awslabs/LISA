@@ -30,6 +30,7 @@ import { LAMBDA_PATH } from '../util';
 import { McpServerDeployer } from './mcp-server-deployer';
 import { CreateMcpServerStateMachine } from './state-machine/create-mcp-server';
 import { DeleteMcpServerStateMachine } from './state-machine/delete-mcp-server';
+import { UpdateMcpServerStateMachine } from './state-machine/update-mcp-server';
 import { Bucket, HttpMethods } from 'aws-cdk-lib/aws-s3';
 import { RemovalPolicy } from 'aws-cdk-lib';
 
@@ -47,6 +48,7 @@ type McpServerApiProps = {
 export class McpServerApi extends Construct {
     readonly createStateMachineArn: string;
     readonly deleteStateMachineArn: string;
+    readonly updateStateMachineArn: string;
     readonly mcpServerDeployerFn: IFunction;
 
     constructor (scope: Construct, id: string, props: McpServerApiProps) {
@@ -182,10 +184,23 @@ export class McpServerApi extends Construct {
 
         this.deleteStateMachineArn = deleteMcpServerStateMachine.stateMachineArn;
 
+        // Create state machine for updating MCP servers
+        const updateMcpServerStateMachine = new UpdateMcpServerStateMachine(this, 'UpdateMcpServerWorkflow', {
+            config: config,
+            mcpServerTable: mcpServersTable,
+            lambdaLayers: lambdaLayers,
+            role: stateMachinesLambdaRole,
+            vpc: vpc,
+            securityGroups: securityGroups,
+        });
+
+        this.updateStateMachineArn = updateMcpServerStateMachine.stateMachineArn;
+
         const env = {
             MCP_SERVERS_TABLE_NAME: mcpServersTable.tableName,
             CREATE_MCP_SERVER_SFN_ARN: createMcpServerStateMachine.stateMachineArn,
             DELETE_MCP_SERVER_SFN_ARN: deleteMcpServerStateMachine.stateMachineArn,
+            UPDATE_MCP_SERVER_SFN_ARN: updateMcpServerStateMachine.stateMachineArn,
             ADMIN_GROUP: config.authConfig?.adminGroup || '',
         };
 
@@ -277,6 +292,27 @@ export class McpServerApi extends Construct {
             lambdaRole,
         );
 
+        // Register PUT endpoint for updating a hosted MCP server by ID
+        registerAPIEndpoint(
+            this,
+            restApi,
+            lambdaPath,
+            lambdaLayers,
+            {
+                name: 'update_hosted_mcp_server',
+                resource: 'mcp_server',
+                description: 'Update LISA MCP hosted server by ID',
+                path: 'mcp/{serverId}',
+                method: 'PUT',
+                environment: env
+            },
+            getDefaultRuntime(),
+            vpc,
+            securityGroups,
+            authorizer,
+            lambdaRole,
+        );
+
         lisaServeEndpointUrlPs.grantRead(lambdaFunction.role!);
 
         // Grant permissions for state machine invocation
@@ -290,6 +326,7 @@ export class McpServerApi extends Construct {
                     resources: [
                         createMcpServerStateMachine.stateMachineArn,
                         deleteMcpServerStateMachine.stateMachineArn,
+                        updateMcpServerStateMachine.stateMachineArn,
                     ],
                 }),
                 new PolicyStatement({
@@ -342,11 +379,31 @@ export class McpServerApi extends Construct {
                     'cloudformation:CreateStack',
                     'cloudformation:DeleteStack',
                     'cloudformation:DescribeStacks',
+                    'cloudformation:DescribeStackResources',
                 ],
                 resources: [
                     // Limit CloudFormation permissions to MCP server stacks that this deployment creates.
                     `arn:${config.partition}:cloudformation:${config.region}:${config.accountNumber}:stack/${config.appName}-${config.deploymentName}-${config.deploymentStage}-mcp-server-*`,
                 ],
+            }),
+            new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: [
+                    'ecs:DescribeTaskDefinition',
+                    'ecs:RegisterTaskDefinition',
+                    'ecs:UpdateService',
+                    'ecs:DescribeServices',
+                ],
+                resources: ['*'],  // ECS resources are dynamic and created by CloudFormation
+            }),
+            new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: [
+                    'application-autoscaling:RegisterScalableTarget',
+                    'application-autoscaling:DescribeScalableTargets',
+                    'application-autoscaling:DeregisterScalableTarget',
+                ],
+                resources: ['*'],  // Application Auto Scaling resources are dynamic
             }),
             new PolicyStatement({
                 effect: Effect.ALLOW,

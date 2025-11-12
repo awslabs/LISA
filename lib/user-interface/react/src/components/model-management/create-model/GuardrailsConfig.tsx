@@ -147,7 +147,7 @@ export function GuardrailsConfig (props: GuardrailsConfigProps): ReactElement {
                                         <FormField
                                             label='Guardrail Name'
                                             errorText={props.formErrors?.guardrailsConfig?.guardrails?.[key]?.guardrailName}
-                                            constraintText='A friendly name for this guardrail.'
+                                            description='A friendly name for this guardrail.'
                                         >
                                             <Input
                                                 value={guardrail.guardrailName}
@@ -159,7 +159,7 @@ export function GuardrailsConfig (props: GuardrailsConfigProps): ReactElement {
                                         <FormField
                                             label='Guardrail Identifier'
                                             errorText={props.formErrors?.guardrailsConfig?.guardrails?.[key]?.guardrailIdentifier}
-                                            constraintText='The ARN or ID of the AWS Bedrock guardrail.'
+                                            description='The ARN or ID of the AWS Bedrock guardrail.'
                                         >
                                             <Input
                                                 value={guardrail.guardrailIdentifier}
@@ -172,7 +172,7 @@ export function GuardrailsConfig (props: GuardrailsConfigProps): ReactElement {
                                         <FormField
                                             label='Guardrail Version'
                                             errorText={props.formErrors?.guardrailsConfig?.guardrails?.[key]?.guardrailVersion}
-                                            constraintText='The version of the guardrail to use. Default is DRAFT.'
+                                            description='The version of the guardrail to use. Default is DRAFT.'
                                         >
                                             <Input
                                                 value={guardrail.guardrailVersion}
@@ -185,7 +185,7 @@ export function GuardrailsConfig (props: GuardrailsConfigProps): ReactElement {
                                         <FormField
                                             label='Mode'
                                             errorText={props.formErrors?.guardrailsConfig?.guardrails?.[key]?.mode}
-                                            constraintText='When the guardrail should be executed.'
+                                            description='When the guardrail should be executed.'
                                         >
                                             <Select
                                                 selectedOption={
@@ -199,9 +199,9 @@ export function GuardrailsConfig (props: GuardrailsConfigProps): ReactElement {
                                         </FormField>
 
                                         <FormField
-                                            label={<span>Description <em>(Optional)</em> </span>}
+                                            label={<span>Description <em> - Optional</em> </span>}
                                             errorText={props.formErrors?.guardrailsConfig?.guardrails?.[key]?.description}
-                                            constraintText='A description of what this guardrail does.'
+                                            description='A description of what this guardrail does.'
                                         >
                                             <Textarea
                                                 value={guardrail.description || ''}
@@ -213,9 +213,9 @@ export function GuardrailsConfig (props: GuardrailsConfigProps): ReactElement {
                                         </FormField>
 
                                         <FormField
-                                            label={<span>Allowed Groups <em>(Optional)</em> </span>}
+                                            label={<span>Allowed Groups <em>- Optional</em> </span>}
                                             errorText={props.formErrors?.guardrailsConfig?.guardrails?.[key]?.allowedGroups}
-                                            constraintText='Groups that will have this guardrail applied to them. Type a group name and click Add.'
+                                            description='Groups that will have this guardrail applied to them. Type a group name and click Add.'
                                         >
                                             <SpaceBetween size='xs'>
                                             <TokenGroup

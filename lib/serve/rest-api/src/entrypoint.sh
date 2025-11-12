@@ -41,11 +41,34 @@ echo "--------------------------------"
 head -20 litellm_config.yaml
 echo "--------------------------------"
 
+# Configure logging behavior based on DEBUG environment variable
+# Set DEBUG=true in ECS task definition to enable debug logging for all services
+if [ "${DEBUG}" = "true" ]; then
+    LOG_LEVEL="DEBUG"
+    GUNICORN_LOG_LEVEL="debug"
+    PRISMA_LOG_LEVEL="info,query"
+else
+    LOG_LEVEL="INFO"
+    GUNICORN_LOG_LEVEL="info"
+    PRISMA_LOG_LEVEL="warn"
+fi
+
+# Configure LiteLLM logging
+export LITELLM_LOG=${LOG_LEVEL}
+export LITELLM_JSON_LOGS=${LITELLM_JSON_LOGS:-false}
+export LITELLM_DISABLE_HEALTH_CHECK_LOGS=${LITELLM_DISABLE_HEALTH_CHECK_LOGS:-false}
+
+# Configure Prisma logging
+export PRISMA_LOG_LEVEL=${PRISMA_LOG_LEVEL}
+
 # Start LiteLLM in the background with better error handling
 echo "🚀 Starting LiteLLM server..."
 echo "   - Config file: litellm_config.yaml"
 echo "   - Port: 4000 (internal)"
 echo "   - Database: Prisma with auto-push enabled"
+echo "   - Debug mode: ${DEBUG:-false}"
+echo "   - Log level: $LOG_LEVEL"
+echo "   - Prisma log level: $PRISMA_LOG_LEVEL"
 
 # Start LiteLLM and capture its PID
 litellm -c litellm_config.yaml --use_prisma_db_push > litellm.log 2>&1 &
@@ -53,6 +76,12 @@ LITELLM_PID=$!
 
 echo "   - LiteLLM PID: $LITELLM_PID"
 echo "   - Log file: litellm.log"
+
+# Tail the log file to stdout so Docker can capture it
+tail -f litellm.log &
+TAIL_PID=$!
+
+echo "   - Log tail PID: $TAIL_PID"
 
 # LiteLLM is starting in the background, proceed with Gunicorn startup
 
@@ -65,5 +94,8 @@ echo "   - Host: $HOST"
 echo "   - Port: $PORT"
 echo "   - Workers: $THREADS"
 echo "   - Timeout: 600 seconds"
+echo "   - Log level: $GUNICORN_LOG_LEVEL"
 
-exec gunicorn -k uvicorn.workers.UvicornWorker -t 600 -w "$THREADS" -b "$HOST:$PORT" "src.main:app"
+exec gunicorn -k uvicorn.workers.UvicornWorker -t 600 -w "$THREADS" -b "$HOST:$PORT" \
+    --log-level "$GUNICORN_LOG_LEVEL" \
+    "src.main:app"

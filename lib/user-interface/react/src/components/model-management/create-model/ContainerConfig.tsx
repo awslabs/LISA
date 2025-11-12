@@ -19,9 +19,8 @@ import { FormProps} from '../../../shared/form/form-props';
 import FormField from '@cloudscape-design/components/form-field';
 import Input from '@cloudscape-design/components/input';
 import { IContainerConfig } from '../../../shared/model/model-management.model';
-import { Container, Grid, Header, Select, SpaceBetween } from '@cloudscape-design/components';
+import { Button, Container, Grid, Header, Icon, Select, SpaceBetween } from '@cloudscape-design/components';
 import { EnvironmentVariables } from '../../../shared/form/environment-variables';
-import { HealthCheckConfig } from '../../../shared/form/health-check-config';
 import { EcsSourceType } from '../../../../../../schema';
 
 type ContainerConfigProps = FormProps<IContainerConfig> & {
@@ -42,60 +41,179 @@ export function ContainerConfig (props: ContainerConfigProps) : ReactElement {
                         description='Amount of shared memory allocated to the container.'
                         errorText={props.formErrors?.containerConfig?.sharedMemorySize}
                     >
+                        <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
+                            <Input
+                                value={props.item.sharedMemorySize.toString()}
+                                type='number'
+                                inputMode='numeric'
+                                onBlur={() => props.touchFields(['containerConfig.sharedMemorySize'])}
+                                onChange={({ detail }) => {
+                                    props.setFields({ 'containerConfig.sharedMemorySize': Number(detail.value) });
+                                }}
+                            />
+                            <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>MiB</span>
+                        </Grid>
                     </FormField>
-                    <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
-                        <Input
-                            value={props.item.sharedMemorySize.toString()}
-                            type='number'
-                            inputMode='numeric'
-                            onBlur={() => props.touchFields(['containerConfig.sharedMemorySize'])}
-                            onChange={({ detail }) => {
-                                props.setFields({ 'containerConfig.sharedMemorySize': Number(detail.value) });
-                            }}
-                        />
-                        <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>MiB</span>
-                    </Grid>
                     <FormField 
                         label='Base Image'
                         description='Base container image used to build model hosting image, e.g. vllm/vllm-openai'
                         errorText={props.formErrors?.containerConfig?.image?.baseImage}
                     >
+                        <Input
+                            value={props.item.image.baseImage}
+                            inputMode='text'
+                            disabled={props.isEdit}
+                            onBlur={() => props.touchFields(['containerConfig.image.baseImage'])}
+                            onChange={({ detail }) => {
+                                props.setFields({ 'containerConfig.image.baseImage': detail.value });
+                            }}
+                        />
                     </FormField>
-                    <Input
-                        value={props.item.image.baseImage}
-                        inputMode='text'
-                        disabled={props.isEdit}
-                        onBlur={() => props.touchFields(['containerConfig.image.baseImage'])}
-                        onChange={({ detail }) => {
-                            props.setFields({ 'containerConfig.image.baseImage': detail.value });
-                        }}
-                    />
                     <FormField 
                         label='Type' 
                         description='Type of container image source.'
                         errorText={props.formErrors?.inferenceContainer}
                     >
+                        <Select
+                            selectedOption={{label: props.item.image.type, value: props.item.image.type}}
+                            onBlur={() => props.touchFields(['containerConfig.image.type'])}
+                            onChange={({ detail }) => {
+                                props.setFields({ 'containerConfig.image.type': detail.selectedOption.value });
+                            }}
+                            options={[
+                                { label: 'asset', value: EcsSourceType.ASSET, description: 'Base container image used to build model hosting image, e.g. \'vllm/vllm-openai\'' },
+                                { label: 'ecr', value: EcsSourceType.ECR, description: 'Prebuilt ECR image url used when deploying to ECS' },
+                            ]}
+                        />
                     </FormField>
-                    <Select
-                        selectedOption={{label: props.item.image.type, value: props.item.image.type}}
-                        onBlur={() => props.touchFields(['containerConfig.image.type'])}
-                        onChange={({ detail }) => {
-                            props.setFields({ 'containerConfig.image.type': detail.selectedOption.value });
-                        }}
-                        options={[
-                            { label: 'asset', value: EcsSourceType.ASSET, description: 'Base container image used to build model hosting image, e.g. \'vllm/vllm-openai\'' },
-                            { label: 'ecr', value: EcsSourceType.ECR, description: 'Prebuilt ECR image url used when deploying to ECS' },
-                        ]}
-                    />
                 </SpaceBetween>
             </Container>
-            <HealthCheckConfig 
-                item={props.item.healthCheckConfig} 
-                setFields={props.setFields} 
-                touchFields={props.touchFields} 
-                formErrors={props.formErrors}
-                propertyPath={['containerConfig', 'healthCheckConfig']}
-            />
+            <Container
+                header={
+                    <Header variant='h2'>Container Health Check Config</Header>
+                }
+            >
+                <SpaceBetween size='s'>
+                    <FormField 
+                        label='Command'
+                        description='Health check command executed inside the container. Multiple command parts can be added.'
+                        errorText={props.formErrors?.containerConfig?.healthCheckConfig?.command}
+                    >
+                        <SpaceBetween size='s'>
+                            {props.item.healthCheckConfig.command.map((cmdItem, index) =>
+                                <Grid 
+                                    gridDefinition={[{ colspan: 10 }, { colspan: 2 }]} 
+                                    key={`health-check-config-command-${index}-grid`}
+                                    disableGutters={true}
+                                >
+                                    <Input 
+                                        value={cmdItem} 
+                                        inputMode='text' 
+                                        key={`health-check-config-command-${index}`} 
+                                        onBlur={() => props.touchFields(['containerConfig.healthCheckConfig.command'])} 
+                                        onChange={({ detail }) => {
+                                            props.setFields({ 
+                                                'containerConfig.healthCheckConfig.command': props.item.healthCheckConfig.command.map((item, i) => 
+                                                    i === index ? detail.value : item
+                                                ) 
+                                            });
+                                        }}
+                                    />
+                                    <Button
+                                        key={`health-check-config-command-${index}-remove-button`}
+                                        onClick={() => {
+                                            props.touchFields(['containerConfig.healthCheckConfig.command']);
+                                            props.item.healthCheckConfig.command.splice(index, 1);
+                                            props.setFields({ 'containerConfig.healthCheckConfig.command': props.item.healthCheckConfig.command });
+                                        }}
+                                        ariaLabel='Remove command element'
+                                    >
+                                        <Icon name='close' key={`health-check-config-command-${index}-icon`} />
+                                    </Button>
+                                </Grid>
+                            )}
+                            <Button
+                                onClick={() => {
+                                    props.setFields({ 'containerConfig.healthCheckConfig.command': [...props.item.healthCheckConfig.command, ''] });
+                                    props.touchFields(['containerConfig.healthCheckConfig.command']);
+                                }}
+                                ariaLabel='Add command element'
+                            >
+                                Add
+                            </Button>
+                        </SpaceBetween>
+                    </FormField>
+                    <FormField 
+                        label='Interval'
+                        description='Time between running the health check.'
+                        errorText={props.formErrors?.containerConfig?.healthCheckConfig?.interval}
+                    >
+                        <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
+                            <Input 
+                                value={props.item.healthCheckConfig.interval.toString()} 
+                                type='number' 
+                                inputMode='numeric' 
+                                onBlur={() => props.touchFields(['containerConfig.healthCheckConfig.interval'])} 
+                                onChange={({ detail }) => {
+                                    props.setFields({ 'containerConfig.healthCheckConfig.interval': Number(detail.value) });
+                                }}
+                            />
+                            <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
+                        </Grid>
+                    </FormField>
+                    <FormField 
+                        label='Start Period'
+                        description='Grace period before failed health checks count towards the maximum number of retries.'
+                        errorText={props.formErrors?.containerConfig?.healthCheckConfig?.startPeriod}
+                    >
+                        <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
+                            <Input 
+                                value={props.item.healthCheckConfig.startPeriod.toString()} 
+                                type='number' 
+                                inputMode='numeric' 
+                                onBlur={() => props.touchFields(['containerConfig.healthCheckConfig.startPeriod'])} 
+                                onChange={({ detail }) => {
+                                    props.setFields({ 'containerConfig.healthCheckConfig.startPeriod': Number(detail.value) });
+                                }}
+                            />
+                            <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
+                        </Grid>
+                    </FormField>
+                    <FormField 
+                        label='Timeout'
+                        description='Time to wait for a health check to succeed before considering it failed.'
+                        errorText={props.formErrors?.containerConfig?.healthCheckConfig?.timeout}
+                    >
+                        <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
+                            <Input 
+                                value={props.item.healthCheckConfig.timeout.toString()} 
+                                type='number' 
+                                inputMode='numeric' 
+                                onBlur={() => props.touchFields(['containerConfig.healthCheckConfig.timeout'])} 
+                                onChange={({ detail }) => {
+                                    props.setFields({ 'containerConfig.healthCheckConfig.timeout': Number(detail.value) });
+                                }}
+                            />
+                            <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
+                        </Grid>
+                    </FormField>
+                    <FormField 
+                        label='Retries'
+                        description='Number of times to retry a failed health check before the container is considered unhealthy.'
+                        errorText={props.formErrors?.containerConfig?.healthCheckConfig?.retries}
+                    >
+                        <Input 
+                            value={props.item.healthCheckConfig.retries.toString()} 
+                            type='number' 
+                            inputMode='numeric' 
+                            onBlur={() => props.touchFields(['containerConfig.healthCheckConfig.retries'])} 
+                            onChange={({ detail }) => {
+                                props.setFields({ 'containerConfig.healthCheckConfig.retries': Number(detail.value) });
+                            }}
+                        />
+                    </FormField>
+                </SpaceBetween>
+            </Container>
             <Container
                 header={
                     <Header variant='h2'>Container Environment</Header>

@@ -36,36 +36,36 @@ export function LoadBalancerConfig (props: LoadBalancerConfigProps) : ReactEleme
             >
                 <SpaceBetween size={'s'}>
                     <FormField label='Path' errorText={props.formErrors?.loadBalancerConfig?.healthCheckConfig?.path}>
+                        <Input value={props.item.healthCheckConfig.path} inputMode='text' disabled={props.isEdit} onBlur={() => props.touchFields(['loadBalancerConfig.healthCheckConfig.path'])} onChange={({ detail }) => {
+                            props.setFields({ 'loadBalancerConfig.healthCheckConfig.path': detail.value });
+                        }}/>
                     </FormField>
-                    <Input value={props.item.healthCheckConfig.path} inputMode='text' disabled={props.isEdit} onBlur={() => props.touchFields(['loadBalancerConfig.healthCheckConfig.path'])} onChange={({ detail }) => {
-                        props.setFields({ 'loadBalancerConfig.healthCheckConfig.path': detail.value });
-                    }}/>
                     <FormField label='Interval' errorText={props.formErrors?.loadBalancerConfig?.healthCheckConfig?.interval}>
+                        <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
+                            <Input value={props.item.healthCheckConfig.interval.toString()} type='number' inputMode='numeric' disabled={props.isEdit} onBlur={() => props.touchFields(['loadBalancerConfig.healthCheckConfig.interval'])} onChange={({ detail }) => {
+                                props.setFields({ 'loadBalancerConfig.healthCheckConfig.interval': Number(detail.value) });
+                            }}/>
+                            <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
+                        </Grid>
                     </FormField>
-                    <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
-                        <Input value={props.item.healthCheckConfig.interval.toString()} type='number' inputMode='numeric' disabled={props.isEdit} onBlur={() => props.touchFields(['loadBalancerConfig.healthCheckConfig.interval'])} onChange={({ detail }) => {
-                            props.setFields({ 'loadBalancerConfig.healthCheckConfig.interval': Number(detail.value) });
-                        }}/>
-                        <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
-                    </Grid>
                     <FormField label='Timeout' errorText={props.formErrors?.loadBalancerConfig?.healthCheckConfig?.timeout}>
+                        <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
+                            <Input value={props.item.healthCheckConfig.timeout.toString()} type='number' inputMode='numeric' disabled={props.isEdit} onBlur={() => props.touchFields(['loadBalancerConfig.healthCheckConfig.timeout'])} onChange={({ detail }) => {
+                                props.setFields({ 'loadBalancerConfig.healthCheckConfig.timeout': Number(detail.value) });
+                            }}/>
+                            <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
+                        </Grid>
                     </FormField>
-                    <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
-                        <Input value={props.item.healthCheckConfig.timeout.toString()} type='number' inputMode='numeric' disabled={props.isEdit} onBlur={() => props.touchFields(['loadBalancerConfig.healthCheckConfig.timeout'])} onChange={({ detail }) => {
-                            props.setFields({ 'loadBalancerConfig.healthCheckConfig.timeout': Number(detail.value) });
-                        }}/>
-                        <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
-                    </Grid>
                     <FormField label='Healthy Threshold Count' errorText={props.formErrors?.loadBalancerConfig?.healthCheckConfig?.healthyThresholdCount}>
+                        <Input value={props.item.healthCheckConfig.healthyThresholdCount.toString()} type='number' inputMode='numeric' disabled={props.isEdit} onBlur={() => props.touchFields(['loadBalancerConfig.healthCheckConfig.healthyThresholdCount'])} onChange={({ detail }) => {
+                            props.setFields({ 'loadBalancerConfig.healthCheckConfig.healthyThresholdCount': Number(detail.value) });
+                        }}/>
                     </FormField>
-                    <Input value={props.item.healthCheckConfig.healthyThresholdCount.toString()} type='number' inputMode='numeric' disabled={props.isEdit} onBlur={() => props.touchFields(['loadBalancerConfig.healthCheckConfig.healthyThresholdCount'])} onChange={({ detail }) => {
-                        props.setFields({ 'loadBalancerConfig.healthCheckConfig.healthyThresholdCount': Number(detail.value) });
-                    }}/>
                     <FormField label='Unhealthy Threshold Count' errorText={props.formErrors?.loadBalancerConfig?.healthCheckConfig?.unhealthyThresholdCount}>
+                        <Input value={props.item.healthCheckConfig.unhealthyThresholdCount.toString()} type='number' inputMode='numeric' disabled={props.isEdit} onBlur={() => props.touchFields(['loadBalancerConfig.healthCheckConfig.unhealthyThresholdCount'])} onChange={({ detail }) => {
+                            props.setFields({ 'loadBalancerConfig.healthCheckConfig.unhealthyThresholdCount': Number(detail.value) });
+                        }}/>
                     </FormField>
-                    <Input value={props.item.healthCheckConfig.unhealthyThresholdCount.toString()} type='number' inputMode='numeric' disabled={props.isEdit} onBlur={() => props.touchFields(['loadBalancerConfig.healthCheckConfig.unhealthyThresholdCount'])} onChange={({ detail }) => {
-                        props.setFields({ 'loadBalancerConfig.healthCheckConfig.unhealthyThresholdCount': Number(detail.value) });
-                    }}/>
                 </SpaceBetween>
             </Container>
         </>

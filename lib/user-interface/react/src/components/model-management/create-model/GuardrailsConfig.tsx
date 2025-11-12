@@ -148,71 +148,76 @@ export function GuardrailsConfig (props: GuardrailsConfigProps): ReactElement {
                                             label='Guardrail Name'
                                             errorText={props.formErrors?.guardrailsConfig?.guardrails?.[key]?.guardrailName}
                                             constraintText='A friendly name for this guardrail.'
-                                        ></FormField>
-                                        <Input
-                                            value={guardrail.guardrailName}
-                                            onChange={({ detail }) => updateGuardrail(key, 'guardrailName', detail.value)}
-                                            onBlur={() => props.touchFields([`guardrailsConfig.guardrails.${key}.guardrailName`])}
-                                            placeholder='Enter guardrail name'
-                                        />
+                                        >
+                                            <Input
+                                                value={guardrail.guardrailName}
+                                                onChange={({ detail }) => updateGuardrail(key, 'guardrailName', detail.value)}
+                                                onBlur={() => props.touchFields([`guardrailsConfig.guardrails.${key}.guardrailName`])}
+                                                placeholder='Enter guardrail name'
+                                            />
+                                        </FormField>
                                         <FormField
                                             label='Guardrail Identifier'
                                             errorText={props.formErrors?.guardrailsConfig?.guardrails?.[key]?.guardrailIdentifier}
                                             constraintText='The ARN or ID of the AWS Bedrock guardrail.'
-                                        > </FormField>
-                                        <Input
-                                            value={guardrail.guardrailIdentifier}
-                                            onChange={({ detail }) => updateGuardrail(key, 'guardrailIdentifier', detail.value)}
-                                            onBlur={() => props.touchFields([`guardrailsConfig.guardrails.${key}.guardrailIdentifier`])}
-                                            placeholder='Enter guardrail identifier (ARN or ID)'
-                                        />
+                                        >
+                                            <Input
+                                                value={guardrail.guardrailIdentifier}
+                                                onChange={({ detail }) => updateGuardrail(key, 'guardrailIdentifier', detail.value)}
+                                                onBlur={() => props.touchFields([`guardrailsConfig.guardrails.${key}.guardrailIdentifier`])}
+                                                placeholder='Enter guardrail identifier (ARN or ID)'
+                                            />
+                                        </FormField>
 
                                         <FormField
                                             label='Guardrail Version'
                                             errorText={props.formErrors?.guardrailsConfig?.guardrails?.[key]?.guardrailVersion}
                                             constraintText='The version of the guardrail to use. Default is DRAFT.'
-                                        ></FormField>
-                                        <Input
-                                            value={guardrail.guardrailVersion}
-                                            onChange={({ detail }) => updateGuardrail(key, 'guardrailVersion', detail.value)}
-                                            onBlur={() => props.touchFields([`guardrailsConfig.guardrails.${key}.guardrailVersion`])}
-                                            placeholder='Enter version (e.g., DRAFT, 1, 2)'
-                                        />
+                                        >
+                                            <Input
+                                                value={guardrail.guardrailVersion}
+                                                onChange={({ detail }) => updateGuardrail(key, 'guardrailVersion', detail.value)}
+                                                onBlur={() => props.touchFields([`guardrailsConfig.guardrails.${key}.guardrailVersion`])}
+                                                placeholder='Enter version (e.g., DRAFT, 1, 2)'
+                                            />
+                                        </FormField>
 
                                         <FormField
                                             label='Mode'
                                             errorText={props.formErrors?.guardrailsConfig?.guardrails?.[key]?.mode}
                                             constraintText='When the guardrail should be executed.'
-                                        ></FormField>
-                                        <Select
-                                            selectedOption={
-                                                modeOptions.find((opt) => opt.value === guardrail.mode) ||
-                                                    modeOptions[0]
-                                            }
-                                            onChange={({ detail }) => updateGuardrail(key, 'mode', detail.selectedOption.value)}
-                                            onBlur={() => props.touchFields([`guardrailsConfig.guardrails.${key}.mode`])}
-                                            options={modeOptions}
-                                        />
+                                        >
+                                            <Select
+                                                selectedOption={
+                                                    modeOptions.find((opt) => opt.value === guardrail.mode) ||
+                                                        modeOptions[0]
+                                                }
+                                                onChange={({ detail }) => updateGuardrail(key, 'mode', detail.selectedOption.value)}
+                                                onBlur={() => props.touchFields([`guardrailsConfig.guardrails.${key}.mode`])}
+                                                options={modeOptions}
+                                            />
+                                        </FormField>
 
                                         <FormField
                                             label={<span>Description <em>(Optional)</em> </span>}
                                             errorText={props.formErrors?.guardrailsConfig?.guardrails?.[key]?.description}
                                             constraintText='A description of what this guardrail does.'
-                                        > </FormField>
-                                        <Textarea
-                                            value={guardrail.description || ''}
-                                            onChange={({ detail }) => updateGuardrail(key, 'description', detail.value)}
-                                            onBlur={() => props.touchFields([`guardrailsConfig.guardrails.${key}.description`])}
-                                            placeholder='Enter description'
-                                            rows={3}
-                                        />
+                                        >
+                                            <Textarea
+                                                value={guardrail.description || ''}
+                                                onChange={({ detail }) => updateGuardrail(key, 'description', detail.value)}
+                                                onBlur={() => props.touchFields([`guardrailsConfig.guardrails.${key}.description`])}
+                                                placeholder='Enter description'
+                                                rows={3}
+                                            />
+                                        </FormField>
 
                                         <FormField
                                             label={<span>Allowed Groups <em>(Optional)</em> </span>}
                                             errorText={props.formErrors?.guardrailsConfig?.guardrails?.[key]?.allowedGroups}
                                             constraintText='Groups that will have this guardrail applied to them. Type a group name and click Add.'
-                                        > </FormField>
-                                        <SpaceBetween size='xs'>
+                                        >
+                                            <SpaceBetween size='xs'>
                                             <TokenGroup
                                                 items={
                                                     (guardrail.allowedGroups || []).map((group) => ({
@@ -270,7 +275,8 @@ export function GuardrailsConfig (props: GuardrailsConfigProps): ReactElement {
                                             >
                                                 Add
                                             </Button>
-                                        </SpaceBetween>
+                                            </SpaceBetween>
+                                        </FormField>
                                     </SpaceBetween>
                                 </Container>
                             );

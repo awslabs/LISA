@@ -37,7 +37,11 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
 
     return (
         <SpaceBetween size={'s'}>
-            <FormField label='Hosting Type' errorText={props.formErrors?.lisaHostedModel}>
+            <FormField 
+                label='Hosting Type' 
+                description='Choose whether to host the model on LISA infrastructure or use a third-party provider.'
+                errorText={props.formErrors?.lisaHostedModel}
+            >
             <Select
                 selectedOption={{
                     label: props.item.lisaHostedModel ? 'LISA Hosted' : 'Third Party',
@@ -73,22 +77,38 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                 props.setFields({ 'modelName': detail.value });
             }} disabled={props.isEdit} placeholder='mistralai/Mistral-7B-Instruct-v0.2'/>
             </FormField>
-            <FormField label={<span>Model Description <em>- Optional</em></span>} errorText={props.formErrors?.modelDescription}>
+            <FormField 
+                label={<span>Model Description <em>- Optional</em></span>} 
+                description='Brief description of the model capabilities, use cases, and characteristics.'
+                errorText={props.formErrors?.modelDescription}
+            >
             <Input value={props.item.modelDescription || ''} inputMode='text' onBlur={() => props.touchFields(['modelDescription'])} onChange={({ detail }) => {
                 props.setFields({ 'modelDescription': detail.value });
             }} placeholder='Brief description of the model and its capabilities'/>
             </FormField>
-            {!props.item.lisaHostedModel && <FormField label={<span>API Key <em>(Optional)</em></span>} errorText={props.formErrors?.apiKey}>
+            {!props.item.lisaHostedModel && <FormField 
+                label={<span>API Key <em>- Optional</em></span>} 
+                description='API authentication key for accessing third-party model provider services.'
+                errorText={props.formErrors?.apiKey}
+            >
                 <Input value={props.item.apiKey} inputMode='text' onBlur={() => props.touchFields(['apiKey'])} onChange={({ detail }) => {
                     props.setFields({ 'apiKey': detail.value });
                 }} disabled={props.isEdit}/>
             </FormField>}
-            <FormField label={<span>Model URL <em>(Optional)</em></span>} errorText={props.formErrors?.modelUrl}>
+            <FormField 
+                label={<span>Model URL <em>- Optional</em></span>} 
+                description='Custom endpoint URL for the model API (e.g., for self-hosted or third-party services).'
+                errorText={props.formErrors?.modelUrl}
+            >
                 <Input value={props.item.modelUrl} inputMode='text' onBlur={() => props.touchFields(['modelUrl'])} onChange={({ detail }) => {
                     props.setFields({ 'modelUrl': detail.value });
                 }} disabled={props.isEdit}/>
             </FormField>
-            <FormField label='Model Type' errorText={props.formErrors?.modelType}>
+            <FormField 
+                label='Model Type' 
+                description='Type of model functionality: text generation, image generation, or text embeddings.'
+                errorText={props.formErrors?.modelType}
+            >
                 <Select
                     selectedOption={{label: props.item.modelType.toUpperCase(), value: props.item.modelType}}
                     onChange={({ detail }) => {
@@ -119,7 +139,11 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
             </FormField>
             {props.item.lisaHostedModel && (
                 <>
-                    <FormField label='Instance Type' errorText={props.formErrors?.instanceType}>
+                    <FormField 
+                        label='Instance Type' 
+                        description='EC2 instance type for hosting the model. Choose based on model size and performance requirements.'
+                        errorText={props.formErrors?.instanceType}
+                    >
                         <Select
                             options={(instances || []).map((instance) => ({value: instance}))}
                             selectedOption={{value: props.item.instanceType}}
@@ -134,7 +158,11 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                             virtualScroll
                         />
                     </FormField>
-                    <FormField label='Inference Container' errorText={props.formErrors?.inferenceContainer}>
+                    <FormField 
+                        label='Inference Container' 
+                        description='Container runtime for model inference (TGI for text generation, TEI for embeddings, vLLM for optimized inference).'
+                        errorText={props.formErrors?.inferenceContainer}
+                    >
                         <Select
                             selectedOption={{label: props.item.inferenceContainer?.toUpperCase(), value: props.item.inferenceContainer}}
                             onBlur={() => props.touchFields(['inferenceContainer'])}
@@ -154,7 +182,11 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                 </>
             )}
             <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }, { colspan: 6 }]}>
-                <FormField label='Streaming' errorText={props.formErrors?.streaming}>
+                <FormField 
+                    label='Streaming' 
+                    description='Enable streaming responses for real-time token-by-token output generation.'
+                    errorText={props.formErrors?.streaming}
+                >
                     <Toggle
                         onChange={({ detail }) =>
                             props.setFields({'streaming': detail.checked})
@@ -164,7 +196,11 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                         checked={props.item.streaming}
                     />
                 </FormField>
-                <FormField label='Tool Calls' errorText={props.formErrors?.features}>
+                <FormField 
+                    label='Tool Calls' 
+                    description='Enable function calling capabilities for the model to use external tools and APIs.'
+                    errorText={props.formErrors?.features}
+                >
                     <Toggle
                         onChange={({ detail }) => {
                             if (detail.checked && props.item.features.find((feature) => feature.name === ModelFeatures.TOOL_CALLS) === undefined) {
@@ -178,7 +214,11 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                         checked={props.item.features.find((feature) => feature.name === ModelFeatures.TOOL_CALLS) !== undefined}
                     />
                 </FormField>
-                <FormField label='Image Input' errorText={props.formErrors?.features}>
+                <FormField 
+                    label='Image Input' 
+                    description='Enable multimodal capabilities to process and analyze image inputs alongside text.'
+                    errorText={props.formErrors?.features}
+                >
                     <Toggle
                         onChange={({ detail }) => {
                             if (detail.checked && props.item.features.find((feature) => feature.name === ModelFeatures.IMAGE_INPUT) === undefined) {
@@ -192,8 +232,12 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                         checked={props.item.features.find((feature) => feature.name === ModelFeatures.IMAGE_INPUT) !== undefined}
                     />
                 </FormField>
-                <FormField label='Summarization' errorText={props.formErrors?.features}
-                    warningText={props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION) !== undefined ? 'Ensure model context is large enough to support these requests.' : ''}>
+                <FormField 
+                    label='Summarization' 
+                    description='Enable document summarization capabilities for condensing long text into brief summaries.'
+                    errorText={props.formErrors?.features}
+                    warningText={props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION) !== undefined ? 'Ensure model context is large enough to support these requests.' : ''}
+                >
                     <Toggle
                         onChange={({ detail }) => {
                             if (detail.checked && props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION) === undefined) {
@@ -208,7 +252,11 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     />
                 </FormField>
             </Grid>
-            <FormField label={<span>Summarization Capabilities <em>(Optional)</em></span>} errorText={props.formErrors?.summarizationCapabilities}>
+            <FormField 
+                label={<span>Summarization Capabilities <em>- Optional</em></span>} 
+                description="Describe the model's summarization strengths, supported document types, and output formats."
+                errorText={props.formErrors?.summarizationCapabilities}
+            >
                 <Input value={props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION) !== undefined ? props.item.features.filter((feature) => feature.name === 'summarization')[0].overview : ''} inputMode='text' onBlur={() => props.touchFields(['features'])} onChange={({ detail }) => {
                     props.setFields({ 'features': [...props.item.features.filter((feature) => feature.name !== ModelFeatures.SUMMARIZATION), {name: ModelFeatures.SUMMARIZATION, overview: detail.value}] });
                 }} disabled={!props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION)} placeholder='Overview of Summarization for Model'/>

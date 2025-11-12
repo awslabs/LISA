@@ -17,7 +17,9 @@ from datetime import datetime
 from enum import Enum
 from typing import Dict, List, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
+from typing_extensions import Self
+from utilities.validators import validate_any_fields_defined
 
 
 class HostedMcpServerStatus(str, Enum):
@@ -122,6 +124,17 @@ class AutoScalingConfig(BaseModel):
     cooldown: Optional[int] = Field(default=None)
 
 
+class AutoScalingConfigUpdate(BaseModel):
+    """Updatable auto-scaling configuration for hosted MCP servers (all fields optional)."""
+
+    minCapacity: Optional[int] = Field(default=None)
+    maxCapacity: Optional[int] = Field(default=None)
+    targetValue: Optional[int] = Field(default=None)
+    metricName: Optional[str] = Field(default=None)
+    duration: Optional[int] = Field(default=None)
+    cooldown: Optional[int] = Field(default=None)
+
+
 class HostedMcpServerModel(BaseModel):
     """
     A Pydantic model representing a hosted MCP server configuration.
@@ -191,3 +204,87 @@ class HostedMcpServerModel(BaseModel):
 
     # Status of the server
     status: Optional[HostedMcpServerStatus] = Field(default=HostedMcpServerStatus.CREATING)
+
+
+class UpdateHostedMcpServerRequest(BaseModel):
+    """Specifies parameters for hosted MCP server update requests."""
+
+    enabled: Optional[bool] = None
+    autoScalingConfig: Optional[AutoScalingConfigUpdate] = None
+    environment: Optional[Dict[str, str]] = None
+    containerHealthCheckConfig: Optional[ContainerHealthCheckConfig] = None
+    loadBalancerConfig: Optional[LoadBalancerConfig] = None
+    cpu: Optional[int] = None
+    memoryLimitMiB: Optional[int] = None
+    description: Optional[str] = None
+    groups: Optional[List[str]] = None
+
+    @model_validator(mode="after")
+    def validate_update_request(self) -> Self:
+        """Validates update request parameters."""
+        fields = [
+            self.enabled,
+            self.autoScalingConfig,
+            self.environment,
+            self.containerHealthCheckConfig,
+            self.loadBalancerConfig,
+            self.cpu,
+            self.memoryLimitMiB,
+            self.description,
+            self.groups,
+        ]
+        if not validate_any_fields_defined(fields):
+            raise ValueError(
+                "At least one field out of enabled, autoScalingConfig, environment, "
+                "containerHealthCheckConfig, loadBalancerConfig, cpu, memoryLimitMiB, "
+                "description, or groups must be defined in request payload."
+            )
+        return self
+
+    @field_validator("autoScalingConfig")
+    @classmethod
+    def validate_autoscaling_config(cls, config: Optional[AutoScalingConfig]) -> Optional[AutoScalingConfig]:
+        """Validates auto-scaling configuration."""
+        if config is not None and not config:
+            raise ValueError("The autoScalingConfig must not be null if defined in request payload.")
+        return config
+
+    @field_validator("containerHealthCheckConfig")
+    @classmethod
+    def validate_container_health_check_config(
+        cls, config: Optional[ContainerHealthCheckConfig]
+    ) -> Optional[ContainerHealthCheckConfig]:
+        """Validates container health check configuration."""
+        if config is not None and not config:
+            raise ValueError("The containerHealthCheckConfig must not be null if defined in request payload.")
+        return config
+
+    @field_validator("loadBalancerConfig")
+    @classmethod
+    def validate_load_balancer_config(cls, config: Optional[LoadBalancerConfig]) -> Optional[LoadBalancerConfig]:
+        """Validates load balancer configuration."""
+        if config is not None and not config:
+            raise ValueError("The loadBalancerConfig must not be null if defined in request payload.")
+        return config
+
+    @field_validator("cpu")
+    @classmethod
+    def validate_cpu(cls, cpu: Optional[int]) -> Optional[int]:
+        """Validates CPU units."""
+        if cpu is not None:
+            # Fargate CPU must be in valid units: 256, 512, 1024, 2048, 4096
+            valid_cpu_values = [256, 512, 1024, 2048, 4096]
+            if cpu not in valid_cpu_values:
+                raise ValueError(f"CPU must be one of {valid_cpu_values}")
+        return cpu
+
+    @field_validator("memoryLimitMiB")
+    @classmethod
+    def validate_memory(cls, memory: Optional[int]) -> Optional[int]:
+        """Validates memory limit."""
+        if memory is not None:
+            if memory < 512:
+                raise ValueError("Memory limit must be at least 512 MiB")
+            if memory > 30720:
+                raise ValueError("Memory limit must be at most 30720 MiB")
+        return memory

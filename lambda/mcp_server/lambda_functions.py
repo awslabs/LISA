@@ -27,7 +27,13 @@ from boto3.dynamodb.conditions import Attr, Key
 from utilities.auth import get_username, is_admin
 from utilities.common_functions import api_wrapper, get_bearer_token, get_groups, get_item, retry_config
 
-from .models import HostedMcpServerModel, HostedMcpServerStatus, McpServerModel, McpServerStatus
+from .models import (
+    HostedMcpServerModel,
+    HostedMcpServerStatus,
+    McpServerModel,
+    McpServerStatus,
+    UpdateHostedMcpServerRequest,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -441,3 +447,100 @@ def delete_hosted_mcp_server(event: dict, context: dict) -> Any:
         return {"message": f"Deletion initiated for hosted MCP server {mcp_server_id}"}
 
     raise ValueError(f"Not authorized to delete hosted MCP server. User {user_id} is not an admin.")
+
+
+@api_wrapper
+def update_hosted_mcp_server(event: dict, context: dict) -> Any:
+    """Trigger the state machine to update a LISA Hosted MCP server."""
+    user_id = get_username(event)
+    mcp_server_id = get_mcp_server_id(event)
+
+    # Check if the user is authorized to update Hosted MCP server
+    if is_admin(event):
+        # Check if server exists
+        response = table.query(KeyConditionExpression=Key("id").eq(mcp_server_id), Limit=1, ScanIndexForward=False)
+        item = get_item(response)
+
+        if item is None:
+            raise ValueError(f"Hosted MCP Server {mcp_server_id} not found.")
+
+        server_status = item.get("status", "")
+
+        # Validate server is not actively mutating or failed before starting
+        if server_status not in (HostedMcpServerStatus.IN_SERVICE, HostedMcpServerStatus.STOPPED):
+            raise ValueError(
+                f"Server cannot be updated when it is not in the '{HostedMcpServerStatus.IN_SERVICE}' or "
+                f"'{HostedMcpServerStatus.STOPPED}' states"
+            )
+
+        # Parse and validate update request
+        body = json.loads(event["body"], parse_float=Decimal)
+        update_request = UpdateHostedMcpServerRequest(**body)
+
+        # Validate enable/disable state transitions
+        if update_request.enabled is not None:
+            # Force capacity changes and enable/disable operations to happen in separate requests
+            if update_request.autoScalingConfig is not None:
+                raise ValueError("Start or Stop operations and AutoScaling changes must happen in separate requests.")
+            # Server cannot be enabled if it isn't already stopped
+            if update_request.enabled and server_status != HostedMcpServerStatus.STOPPED:
+                raise ValueError(
+                    f"Server cannot be enabled when it is not in the '{HostedMcpServerStatus.STOPPED}' state."
+                )
+            # Server cannot be stopped if it isn't already in service
+            elif not update_request.enabled and server_status != HostedMcpServerStatus.IN_SERVICE:
+                raise ValueError(
+                    f"Server cannot be stopped when it is not in the '{HostedMcpServerStatus.IN_SERVICE}' state."
+                )
+
+        # Validate auto-scaling config
+        if update_request.autoScalingConfig is not None:
+            stack_name = item.get("stack_name")
+            if not stack_name:
+                raise ValueError(
+                    "Cannot update AutoScaling Config for server that does not have a CloudFormation stack."
+                )
+
+            asg_config = update_request.autoScalingConfig.model_dump(exclude_none=True)
+            current_asg_config = item.get("autoScalingConfig", {})
+
+            # Validate min <= max
+            min_capacity = asg_config.get("minCapacity", current_asg_config.get("minCapacity", 1))
+            max_capacity = asg_config.get("maxCapacity", current_asg_config.get("maxCapacity", 1))
+
+            if min_capacity > max_capacity:
+                raise ValueError(f"Min capacity ({min_capacity}) cannot be greater than max capacity ({max_capacity}).")
+
+            # Validate min and max are positive
+            if min_capacity < 1:
+                raise ValueError("Min capacity must be at least 1.")
+            if max_capacity < 1:
+                raise ValueError("Max capacity must be at least 1.")
+
+        # Validate container config updates
+        if (
+            update_request.environment is not None
+            or update_request.cpu is not None
+            or update_request.memoryLimitMiB is not None
+            or update_request.containerHealthCheckConfig is not None
+        ):
+            stack_name = item.get("stack_name")
+            if not stack_name:
+                raise ValueError("Cannot update container config for server that does not have a CloudFormation stack.")
+
+        # Kick off state machine
+        sfn_arn = os.environ.get("UPDATE_MCP_SERVER_SFN_ARN")
+        if not sfn_arn:
+            raise ValueError("UPDATE_MCP_SERVER_SFN_ARN not configured")
+
+        # Package server ID and request payload into single payload for step functions
+        state_machine_payload = {"server_id": mcp_server_id, "update_payload": update_request.model_dump()}
+        stepfunctions.start_execution(
+            stateMachineArn=sfn_arn,
+            input=json.dumps(state_machine_payload),
+        )
+
+        # Return current server config (status will be updated by state machine)
+        return item
+
+    raise ValueError(f"Not authorized to update hosted MCP server. User {user_id} is not an admin.")

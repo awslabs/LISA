@@ -103,7 +103,7 @@ function getStatusIndicator (status: CollectionStatus): ReactNode {
         case 'ARCHIVED':
         case 'DELETED':
             type = 'stopped';
-            break
+            break;
         case 'DELETE_FAILED':
             type = 'error';
             break;

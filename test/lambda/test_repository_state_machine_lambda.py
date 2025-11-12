@@ -18,7 +18,7 @@ import os
 import sys
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
-from unittest.mock import MagicMock, create_autospec, patch
+from unittest.mock import MagicMock, patch
 
 import boto3
 import pytest

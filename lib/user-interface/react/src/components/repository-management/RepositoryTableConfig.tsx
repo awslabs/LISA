@@ -77,7 +77,7 @@ export function getTableDefinition (): ReadonlyArray<TableRow> {
 
 function getStatusIcon (status: VectorStoreStatus): ReactNode {
     let type: StatusIndicatorProps.Type;
-        switch (status) {
+    switch (status) {
         case 'CREATE_COMPLETE':
         case 'UPDATE_COMPLETE':
             type = 'success';

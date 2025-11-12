@@ -209,19 +209,18 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
 
 
 def get_repository(event: dict[str, Any], repository_id: str) -> dict:
-    """Ensures a user has access to the repository or else raises an HTTPException.
-    """
+    """Ensures a user has access to the repository or else raises an HTTPException."""
     repo = vs_repo.find_repository_by_id(repository_id)
-    
+
     # Admins have access to all repositories
     if is_admin(event):
         return repo
-    
+
     # Non-admins must have matching group access
     user_groups = get_groups(event)
     if not user_has_group_access(user_groups, repo.get("allowedGroups", [])):
         raise HTTPException(status_code=403, message="User does not have permission to access this repository")
-    
+
     return repo
 
 
@@ -312,16 +311,20 @@ def get_collection(event: dict, context: dict) -> Dict[str, Any]:
     username, is_admin, groups = get_user_context(event)
 
     # Ensure repository exists and user has access
-    _ = get_repository(event, repository_id=repository_id)
+    repo = get_repository(event, repository_id=repository_id)
 
-    # Get collection via service (includes access control check)
-    collection = collection_service.get_collection(
-        repository_id=repository_id,
-        collection_id=collection_id,
-        username=username,
-        user_groups=groups,
-        is_admin=is_admin,
-    )
+    if repo.embeddingModelId == collection_id:
+        # Not a real collection
+        collection = collection_service.create_default_collection(repository_id=repository_id, repository=repo)
+    else:
+        # Get collection via service (includes access control check)
+        collection = collection_service.get_collection(
+            repository_id=repository_id,
+            collection_id=collection_id,
+            username=username,
+            user_groups=groups,
+            is_admin=is_admin,
+        )
 
     # Return collection configuration
     return collection.model_dump(mode="json")

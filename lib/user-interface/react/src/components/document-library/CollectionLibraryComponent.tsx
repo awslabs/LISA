@@ -82,18 +82,18 @@ export function CollectionLibraryComponent ({ admin = false }: CollectionLibrary
     const selectedCollection = collectionProps.selectedItems.length === 1 ? collectionProps.selectedItems[0] : null;
     const isDefaultCollection = (selectedCollection as any)?.default === true;
     const collectionStatus = selectedCollection?.status;
-    
+
     // Determine which actions should be disabled based on status
-    const isEditDisabled = !selectedCollection || 
-                          isDefaultCollection || 
-                          collectionStatus === CollectionStatus.ARCHIVED || 
-                          collectionStatus === CollectionStatus.DELETED || 
+    const isEditDisabled = !selectedCollection ||
+                          isDefaultCollection ||
+                          collectionStatus === CollectionStatus.ARCHIVED ||
+                          collectionStatus === CollectionStatus.DELETED ||
                           collectionStatus === CollectionStatus.DELETE_IN_PROGRESS;
-    
-    const isDeleteDisabled = !selectedCollection || 
-                            collectionStatus === CollectionStatus.DELETED || 
+
+    const isDeleteDisabled = !selectedCollection ||
+                            collectionStatus === CollectionStatus.DELETED ||
                             collectionStatus === CollectionStatus.DELETE_IN_PROGRESS;
-    
+
     const getEditDisabledReason = () => {
         if (!selectedCollection) return 'Please select a collection';
         if (isDefaultCollection) return 'Cannot edit default collection';
@@ -102,7 +102,7 @@ export function CollectionLibraryComponent ({ admin = false }: CollectionLibrary
         if (collectionStatus === CollectionStatus.DELETE_IN_PROGRESS) return 'Cannot edit collection being deleted';
         return undefined;
     };
-    
+
     const getDeleteDisabledReason = () => {
         if (!selectedCollection) return 'Please select a collection';
         if (collectionStatus === CollectionStatus.DELETED) return 'Collection already deleted';

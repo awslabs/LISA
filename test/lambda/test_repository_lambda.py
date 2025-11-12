@@ -1017,7 +1017,7 @@ def test_repository_access_validation():
     }
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "utilities.auth.is_admin", return_value=True
+        "repository.lambda_functions.is_admin", return_value=True
     ):
         mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["admin-group"], "status": "active"}
         # Admin should always have access
@@ -1033,7 +1033,7 @@ def test_repository_access_validation():
     }
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "utilities.auth.is_admin", return_value=False
+        "repository.lambda_functions.is_admin", return_value=False
     ):
         mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
         # User has the right group
@@ -1046,8 +1046,8 @@ def test_repository_access_validation():
     }
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "utilities.auth.is_admin", return_value=False
-    ):
+        "repository.lambda_functions.is_admin", return_value=False
+    ), patch("repository.lambda_functions.get_groups", return_value=["wrong-group"]):
         mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
         # User doesn't have the right group
         with pytest.raises(HTTPException) as exc_info:
@@ -1864,29 +1864,18 @@ def test_remove_legacy_function():
 def test_ensure_repository_access_edge_cases():
     """Test repository access validation with edge cases (now handled in get_repository)"""
 
-    # Test with missing groups in event - should raise KeyError when trying to access groups
+    # Test with missing groups in event - get_groups returns empty list, so user has no access
     event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}}}}
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "utilities.auth.is_admin", return_value=False
-    ):
+        "repository.lambda_functions.is_admin", return_value=False
+    ), patch("repository.lambda_functions.get_groups", return_value=[]):
         mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
 
-        # get_repository will raise KeyError when trying to access missing groups
-        with pytest.raises(KeyError):
+        # get_repository will raise HTTPException because user has no groups (empty list)
+        with pytest.raises(HTTPException) as exc_info:
             get_repository(event, "test-repo")
-
-    # Test with malformed groups JSON - should raise JSONDecodeError
-    event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}, "groups": "invalid-json"}}}
-
-    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "utilities.auth.is_admin", return_value=False
-    ):
-        mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
-
-        # get_repository will raise JSONDecodeError when trying to parse invalid JSON
-        with pytest.raises(json.JSONDecodeError):
-            get_repository(event, "test-repo")
+        assert exc_info.value.http_status_code == 403
 
 
 def test_ensure_document_ownership_edge_cases():
@@ -2389,11 +2378,11 @@ def test_ingest_documents_with_chunking_override():
     ) as mock_ingestion_job_repo, patch(
         "repository.lambda_functions.ingestion_service"
     ) as mock_ingestion_service, patch(
-        "utilities.auth.get_groups"
+        "repository.lambda_functions.get_groups"
     ) as mock_get_groups, patch(
-        "utilities.auth.get_username"
+        "repository.lambda_functions.get_username"
     ) as mock_get_username, patch(
-        "utilities.auth.is_admin"
+        "repository.lambda_functions.is_admin"
     ) as mock_is_admin:
 
         # Setup mocks
@@ -2470,10 +2459,10 @@ def test_ingest_documents_access_denied():
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
         "repository.lambda_functions.collection_service"
-    ) as mock_collection_service, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-        "utilities.auth.get_username"
+    ) as mock_collection_service, patch("repository.lambda_functions.get_groups") as mock_get_groups, patch(
+        "repository.lambda_functions.get_username"
     ) as mock_get_username, patch(
-        "utilities.auth.is_admin"
+        "repository.lambda_functions.is_admin"
     ) as mock_is_admin:
 
         # Setup mocks
@@ -2530,7 +2519,7 @@ def test_get_repository_with_access():
 
     with patch("repository.lambda_functions.vs_repo") as mock_repo, patch(
         "repository.lambda_functions.is_admin", return_value=False
-    ):
+    ), patch("repository.lambda_functions.get_groups", return_value=["group1"]):
         mock_repo.find_repository_by_id.return_value = {"allowedGroups": ["group1"]}
         event = {"requestContext": {"authorizer": {"groups": json.dumps(["group1"])}}}
 

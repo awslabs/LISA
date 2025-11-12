@@ -1227,8 +1227,9 @@ def delete(event: dict, context: dict) -> Any:
             try:
                 logger.info(f"Deleting collection: {collection.collectionId}")
                 collection_service.delete_collection(
-                    collection_id=collection.collectionId,
+                    collection_id=collection.collectionId if not collection.default else None,
                     repository_id=repository_id,
+                    embedding_name=collection.embeddingModel,
                     username="admin",
                     user_groups=[],
                     is_admin=True,

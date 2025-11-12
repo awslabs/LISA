@@ -14,18 +14,14 @@
 
 """Unit tests for MCP server lambda functions."""
 
-import functools
 import json
-import logging
 import os
 import sys
 from datetime import datetime
-from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import boto3
 import pytest
-from botocore.config import Config
 from moto import mock_aws
 
 # Add the lambda directory to the Python path
@@ -41,92 +37,29 @@ os.environ["AWS_REGION"] = "us-east-1"
 os.environ["MCP_SERVERS_TABLE_NAME"] = "mcp-servers-table"
 os.environ["MCP_SERVERS_BY_OWNER_INDEX_NAME"] = "mcp-servers-by-owner-index"
 
-# Create a real retry config
-retry_config = Config(retries=dict(max_attempts=3), defaults_mode="standard")
+from unittest.mock import MagicMock
 
-
-def mock_api_wrapper(func):
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            result = func(*args, **kwargs)
-            if isinstance(result, dict) and "statusCode" in result:
-                return result
-            return {
-                "statusCode": 200,
-                "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
-                "body": json.dumps(result, default=str),
-            }
-        except Exception as e:
-            logging.error(f"Error in {func.__name__}: {str(e)}")
-            return {
-                "statusCode": 500,
-                "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
-                "body": json.dumps({"error": str(e)}),
-            }
-
-    return wrapper
-
-
-# Create mock modules
-mock_common = MagicMock()
-mock_common.get_username.return_value = "test-user"
-mock_common.is_admin.return_value = False
-mock_common.retry_config = retry_config
-mock_common.api_wrapper = mock_api_wrapper
+# Import common fixtures
+from conftest import mock_api_wrapper, retry_config
 
 # Create mock create_env_variables
 mock_create_env = MagicMock()
 
-# Setup patches without .start() to avoid global interference
-patches = [
-    patch.dict("sys.modules", {"create_env_variables": mock_create_env}),
-    patch("utilities.auth.get_username", mock_common.get_username),
-    patch("utilities.auth.is_admin", mock_common.is_admin),
-    patch("utilities.common_functions.retry_config", retry_config),
-    patch("utilities.common_functions.api_wrapper", mock_api_wrapper),
-]
+# Patch before importing
+patch.dict("sys.modules", {"create_env_variables": mock_create_env}).start()
+patch("utilities.common_functions.retry_config", retry_config).start()
+patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()
 
-# Start patches
-for p in patches:
-    p.start()
-
-# Now import the lambda functions
+# Import lambda functions after patching - they will use the mocked auth from conftest.py
 from mcp_server.lambda_functions import _get_mcp_servers, create, delete, get, get_mcp_server_id, list, update
-
-# Stop patches to avoid global interference
-for p in patches:
-    p.stop()
 
 
 @pytest.fixture(autouse=True)
-def setup_mcp_mocks():
-    """Setup mocks for MCP server tests with proper cleanup."""
-    patches = [
-        patch("utilities.auth.get_username", mock_common.get_username),
-        patch("utilities.auth.is_admin", mock_common.is_admin),
-        patch("utilities.common_functions.retry_config", retry_config),
-        patch("utilities.common_functions.api_wrapper", mock_api_wrapper),
-    ]
-
-    for p in patches:
-        p.start()
-
-    yield
-
-    for p in patches:
-        p.stop()
-
-
-@pytest.fixture(scope="function")
-def aws_credentials():
-    """Mocked AWS Credentials for moto."""
-    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
-    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
-    os.environ["AWS_SECURITY_TOKEN"] = "testing"
-    os.environ["AWS_SESSION_TOKEN"] = "testing"
-    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
-    os.environ["AWS_REGION"] = "us-east-1"
+def patch_mcp_module_auth(mock_auth):
+    """Patch auth functions in the mcp_server.lambda_functions module namespace."""
+    with patch("mcp_server.lambda_functions.get_username", mock_auth.get_username):
+        with patch("mcp_server.lambda_functions.get_user_context", mock_auth.get_user_context):
+            yield
 
 
 @pytest.fixture(scope="function")
@@ -157,20 +90,6 @@ def mcp_servers_table(dynamodb):
         ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
     )
     return table
-
-
-@pytest.fixture
-def lambda_context():
-    """Create a mock Lambda context."""
-    return SimpleNamespace(
-        function_name="test_function",
-        function_version="$LATEST",
-        invoked_function_arn="arn:aws:lambda:us-east-1:123456789012:function:test_function",
-        memory_limit_in_mb=128,
-        aws_request_id="test-request-id",
-        log_group_name="/aws/lambda/test_function",
-        log_stream_name="2024/03/27/[$LATEST]test123",
-    )
 
 
 @pytest.fixture
@@ -221,9 +140,10 @@ def test_get_mcp_servers_with_user_filter(mcp_servers_table, sample_mcp_server):
     assert "Items" in result
 
 
-def test_get_mcp_server_success(mcp_servers_table, sample_mcp_server, lambda_context):
+def test_get_mcp_server_success(mcp_servers_table, sample_mcp_server, lambda_context, mock_auth):
     """Test successful retrieval of MCP server by owner."""
     mcp_servers_table.put_item(Item=sample_mcp_server)
+    mock_auth.set_user("test-user", [], False)
 
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
@@ -238,16 +158,15 @@ def test_get_mcp_server_success(mcp_servers_table, sample_mcp_server, lambda_con
     assert body["isOwner"] is True
 
 
-def test_get_global_mcp_server_success(mcp_servers_table, sample_global_mcp_server, lambda_context):
+def test_get_global_mcp_server_success(mcp_servers_table, sample_global_mcp_server, lambda_context, mock_auth):
     """Test successful retrieval of global MCP server by any user."""
     mcp_servers_table.put_item(Item=sample_global_mcp_server)
+    mock_auth.set_user("any-user", [], False)
 
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "any-user"}}},
         "pathParameters": {"serverId": "global-server-id"},
     }
-
-    mock_common.get_username.return_value = "any-user"
 
     response = get(event, lambda_context)
     assert response["statusCode"] == 200
@@ -256,24 +175,19 @@ def test_get_global_mcp_server_success(mcp_servers_table, sample_global_mcp_serv
     assert body["owner"] == "lisa:public"
     assert body["isOwner"] is True
 
-    # Reset mock
-    mock_common.get_username.return_value = "test-user"
 
-
-def test_get_mcp_server_admin_access(mcp_servers_table, sample_mcp_server, lambda_context):
+def test_get_mcp_server_admin_access(mcp_servers_table, sample_mcp_server, lambda_context, mock_auth):
     """Test admin can access any MCP server."""
     # Create a server owned by different user
     other_user_server = sample_mcp_server.copy()
     other_user_server["owner"] = "other-user"
     mcp_servers_table.put_item(Item=other_user_server)
+    mock_auth.set_user("admin-user", [], True)
 
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
         "pathParameters": {"serverId": "test-server-id"},
     }
-
-    mock_common.get_username.return_value = "admin-user"
-    mock_common.is_admin.return_value = True
 
     response = get(event, lambda_context)
     assert response["statusCode"] == 200
@@ -281,30 +195,28 @@ def test_get_mcp_server_admin_access(mcp_servers_table, sample_mcp_server, lambd
     assert body["id"] == "test-server-id"
     assert "isOwner" not in body  # Admin doesn't get isOwner flag
 
-    # Reset mocks
-    mock_common.get_username.return_value = "test-user"
-    mock_common.is_admin.return_value = False
 
-
-def test_get_mcp_server_not_found(mcp_servers_table, lambda_context):
+def test_get_mcp_server_not_found(mcp_servers_table, lambda_context, mock_auth):
     """Test MCP server not found error."""
+    mock_auth.set_user("test-user", [], False)
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
         "pathParameters": {"serverId": "non-existent-server"},
     }
 
     response = get(event, lambda_context)
-    assert response["statusCode"] == 500
+    assert response["statusCode"] == 404
     body = json.loads(response["body"])
     assert "MCP Server non-existent-server not found" in body["error"]
 
 
-def test_get_mcp_server_not_authorized(mcp_servers_table, sample_mcp_server, lambda_context):
+def test_get_mcp_server_not_authorized(mcp_servers_table, sample_mcp_server, lambda_context, mock_auth):
     """Test unauthorized access to MCP server."""
     # Create a server owned by different user
     other_user_server = sample_mcp_server.copy()
     other_user_server["owner"] = "other-user"
     mcp_servers_table.put_item(Item=other_user_server)
+    mock_auth.set_user("test-user", [], False)
 
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
@@ -312,14 +224,15 @@ def test_get_mcp_server_not_authorized(mcp_servers_table, sample_mcp_server, lam
     }
 
     response = get(event, lambda_context)
-    assert response["statusCode"] == 500
+    assert response["statusCode"] == 403
     body = json.loads(response["body"])
     assert "Not authorized to get test-server-id" in body["error"]
 
 
-def test_list_mcp_servers_regular_user(mcp_servers_table, sample_mcp_server, lambda_context):
+def test_list_mcp_servers_regular_user(mcp_servers_table, sample_mcp_server, lambda_context, mock_auth):
     """Test listing MCP servers for regular user."""
     mcp_servers_table.put_item(Item=sample_mcp_server)
+    mock_auth.set_user("test-user", [], False)
 
     event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}}}}
 
@@ -329,27 +242,22 @@ def test_list_mcp_servers_regular_user(mcp_servers_table, sample_mcp_server, lam
     assert "Items" in body
 
 
-def test_list_mcp_servers_admin(mcp_servers_table, sample_mcp_server, lambda_context):
+def test_list_mcp_servers_admin(mcp_servers_table, sample_mcp_server, lambda_context, mock_auth):
     """Test listing MCP servers for admin user."""
     mcp_servers_table.put_item(Item=sample_mcp_server)
+    mock_auth.set_user("admin-user", [], True)
 
     event = {"requestContext": {"authorizer": {"claims": {"username": "admin-user"}}}}
-
-    mock_common.get_username.return_value = "admin-user"
-    mock_common.is_admin.return_value = True
 
     response = list(event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
     assert "Items" in body
 
-    # Reset mocks
-    mock_common.get_username.return_value = "test-user"
-    mock_common.is_admin.return_value = False
 
-
-def test_create_mcp_server_success(mcp_servers_table, lambda_context):
+def test_create_mcp_server_success(mcp_servers_table, lambda_context, mock_auth):
     """Test successful creation of MCP server."""
+    mock_auth.set_user("test-user", [], False)
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
         "body": json.dumps(
@@ -370,8 +278,9 @@ def test_create_mcp_server_success(mcp_servers_table, lambda_context):
     assert "created" in body
 
 
-def test_create_mcp_server_with_owner(mcp_servers_table, lambda_context):
+def test_create_mcp_server_with_owner(mcp_servers_table, lambda_context, mock_auth):
     """Test creation of MCP server with explicit owner."""
+    mock_auth.set_user("test-user", [], False)
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
         "body": json.dumps(
@@ -389,9 +298,10 @@ def test_create_mcp_server_with_owner(mcp_servers_table, lambda_context):
     assert body["owner"] == "test-user"
 
 
-def test_update_mcp_server_success(mcp_servers_table, sample_mcp_server, lambda_context):
+def test_update_mcp_server_success(mcp_servers_table, sample_mcp_server, lambda_context, mock_auth):
     """Test successful update of MCP server."""
     mcp_servers_table.put_item(Item=sample_mcp_server)
+    mock_auth.set_user("test-user", [], False)
 
     updated_server = {
         "id": "test-server-id",
@@ -413,12 +323,13 @@ def test_update_mcp_server_success(mcp_servers_table, sample_mcp_server, lambda_
     assert body["url"] == "https://example.com/updated-mcp-server"
 
 
-def test_update_mcp_server_admin_access(mcp_servers_table, sample_mcp_server, lambda_context):
+def test_update_mcp_server_admin_access(mcp_servers_table, sample_mcp_server, lambda_context, mock_auth):
     """Test admin can update any MCP server."""
     # Create a server owned by different user
     other_user_server = sample_mcp_server.copy()
     other_user_server["owner"] = "other-user"
     mcp_servers_table.put_item(Item=other_user_server)
+    mock_auth.set_user("admin-user", [], True)
 
     updated_server = {
         "id": "test-server-id",
@@ -433,22 +344,16 @@ def test_update_mcp_server_admin_access(mcp_servers_table, sample_mcp_server, la
         "body": json.dumps(updated_server),
     }
 
-    mock_common.get_username.return_value = "admin-user"
-    mock_common.is_admin.return_value = True
-
     response = update(event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
     assert body["name"] == "Admin Updated Server"
 
-    # Reset mocks
-    mock_common.get_username.return_value = "test-user"
-    mock_common.is_admin.return_value = False
 
-
-def test_update_mcp_server_id_mismatch(mcp_servers_table, sample_mcp_server, lambda_context):
+def test_update_mcp_server_id_mismatch(mcp_servers_table, sample_mcp_server, lambda_context, mock_auth):
     """Test update with mismatched IDs."""
     mcp_servers_table.put_item(Item=sample_mcp_server)
+    mock_auth.set_user("test-user", [], False)
 
     updated_server = {
         "id": "different-server-id",  # Different from URL path
@@ -464,13 +369,14 @@ def test_update_mcp_server_id_mismatch(mcp_servers_table, sample_mcp_server, lam
     }
 
     response = update(event, lambda_context)
-    assert response["statusCode"] == 500
+    assert response["statusCode"] == 400
     body = json.loads(response["body"])
     assert "URL id test-server-id doesn't match body id different-server-id" in body["error"]
 
 
-def test_update_mcp_server_not_found(mcp_servers_table, lambda_context):
+def test_update_mcp_server_not_found(mcp_servers_table, lambda_context, mock_auth):
     """Test update of non-existent MCP server."""
+    mock_auth.set_user("test-user", [], False)
     updated_server = {
         "id": "non-existent-server",
         "name": "Updated MCP Server",
@@ -485,17 +391,18 @@ def test_update_mcp_server_not_found(mcp_servers_table, lambda_context):
     }
 
     response = update(event, lambda_context)
-    assert response["statusCode"] == 500
+    assert response["statusCode"] == 404
     body = json.loads(response["body"])
     assert "not found" in body["error"]
 
 
-def test_update_mcp_server_not_authorized(mcp_servers_table, sample_mcp_server, lambda_context):
+def test_update_mcp_server_not_authorized(mcp_servers_table, sample_mcp_server, lambda_context, mock_auth):
     """Test unauthorized update of MCP server."""
     # Create a server owned by different user
     other_user_server = sample_mcp_server.copy()
     other_user_server["owner"] = "other-user"
     mcp_servers_table.put_item(Item=other_user_server)
+    mock_auth.set_user("test-user", [], False)
 
     updated_server = {
         "id": "test-server-id",
@@ -511,14 +418,15 @@ def test_update_mcp_server_not_authorized(mcp_servers_table, sample_mcp_server, 
     }
 
     response = update(event, lambda_context)
-    assert response["statusCode"] == 500
+    assert response["statusCode"] == 403
     body = json.loads(response["body"])
     assert "Not authorized to update test-server-id" in body["error"]
 
 
-def test_delete_mcp_server_success(mcp_servers_table, sample_mcp_server, lambda_context):
+def test_delete_mcp_server_success(mcp_servers_table, sample_mcp_server, lambda_context, mock_auth):
     """Test successful deletion of MCP server."""
     mcp_servers_table.put_item(Item=sample_mcp_server)
+    mock_auth.set_user("test-user", [], False)
 
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
@@ -531,50 +439,46 @@ def test_delete_mcp_server_success(mcp_servers_table, sample_mcp_server, lambda_
     assert body["status"] == "ok"
 
 
-def test_delete_mcp_server_admin_access(mcp_servers_table, sample_mcp_server, lambda_context):
+def test_delete_mcp_server_admin_access(mcp_servers_table, sample_mcp_server, lambda_context, mock_auth):
     """Test admin can delete any MCP server."""
     # Create a server owned by different user
     other_user_server = sample_mcp_server.copy()
     other_user_server["owner"] = "other-user"
     mcp_servers_table.put_item(Item=other_user_server)
+    mock_auth.set_user("admin-user", [], True)
 
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
         "pathParameters": {"serverId": "test-server-id"},
     }
 
-    mock_common.get_username.return_value = "admin-user"
-    mock_common.is_admin.return_value = True
-
     response = delete(event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
     assert body["status"] == "ok"
 
-    # Reset mocks
-    mock_common.get_username.return_value = "test-user"
-    mock_common.is_admin.return_value = False
 
-
-def test_delete_mcp_server_not_found(mcp_servers_table, lambda_context):
+def test_delete_mcp_server_not_found(mcp_servers_table, lambda_context, mock_auth):
     """Test deletion of non-existent MCP server."""
+    mock_auth.set_user("test-user", [], False)
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
         "pathParameters": {"serverId": "non-existent-server"},
     }
 
     response = delete(event, lambda_context)
-    assert response["statusCode"] == 500
+    assert response["statusCode"] == 404
     body = json.loads(response["body"])
     assert "MCP Server non-existent-server not found" in body["error"]
 
 
-def test_delete_mcp_server_not_authorized(mcp_servers_table, sample_mcp_server, lambda_context):
+def test_delete_mcp_server_not_authorized(mcp_servers_table, sample_mcp_server, lambda_context, mock_auth):
     """Test unauthorized deletion of MCP server."""
     # Create a server owned by different user
     other_user_server = sample_mcp_server.copy()
     other_user_server["owner"] = "other-user"
     mcp_servers_table.put_item(Item=other_user_server)
+    mock_auth.set_user("test-user", [], False)
 
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
@@ -582,7 +486,7 @@ def test_delete_mcp_server_not_authorized(mcp_servers_table, sample_mcp_server, 
     }
 
     response = delete(event, lambda_context)
-    assert response["statusCode"] == 500
+    assert response["statusCode"] == 403
     body = json.loads(response["body"])
     assert "Not authorized to delete test-server-id" in body["error"]
 
@@ -620,21 +524,23 @@ def test_get_mcp_server_missing_server_id():
         get_mcp_server_id(event)
 
 
-def test_create_mcp_server_invalid_json(lambda_context):
+def test_create_mcp_server_invalid_json(lambda_context, mock_auth):
     """Test create with invalid JSON body."""
+    mock_auth.set_user("test-user", [], False)
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
         "body": "invalid-json",
     }
 
     response = create(event, lambda_context)
-    assert response["statusCode"] == 500
+    assert response["statusCode"] == 400
     body = json.loads(response["body"])
     assert "error" in body
 
 
-def test_create_mcp_server_missing_fields(lambda_context):
+def test_create_mcp_server_missing_fields(lambda_context, mock_auth):
     """Test create with missing required fields."""
+    mock_auth.set_user("test-user", [], False)
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
         "body": json.dumps(
@@ -646,14 +552,15 @@ def test_create_mcp_server_missing_fields(lambda_context):
     }
 
     response = create(event, lambda_context)
-    assert response["statusCode"] == 500
+    assert response["statusCode"] == 400
     body = json.loads(response["body"])
     assert "error" in body
 
 
-def test_update_mcp_server_invalid_json(mcp_servers_table, sample_mcp_server, lambda_context):
+def test_update_mcp_server_invalid_json(mcp_servers_table, sample_mcp_server, lambda_context, mock_auth):
     """Test update with invalid JSON body."""
     mcp_servers_table.put_item(Item=sample_mcp_server)
+    mock_auth.set_user("test-user", [], False)
 
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
@@ -662,7 +569,7 @@ def test_update_mcp_server_invalid_json(mcp_servers_table, sample_mcp_server, la
     }
 
     response = update(event, lambda_context)
-    assert response["statusCode"] == 500
+    assert response["statusCode"] == 400
     body = json.loads(response["body"])
     assert "error" in body
 
@@ -685,16 +592,15 @@ def test_get_mcp_servers_with_filter_no_match(mcp_servers_table, sample_mcp_serv
     assert "Items" in result
 
 
-def test_get_mcp_server_global_non_owner_access(mcp_servers_table, sample_global_mcp_server, lambda_context):
+def test_get_mcp_server_global_non_owner_access(mcp_servers_table, sample_global_mcp_server, lambda_context, mock_auth):
     """Test that non-owner can access global MCP server."""
     mcp_servers_table.put_item(Item=sample_global_mcp_server)
+    mock_auth.set_user("different-user", [], False)
 
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "different-user"}}},
         "pathParameters": {"serverId": "global-server-id"},
     }
-
-    mock_common.get_username.return_value = "different-user"
 
     response = get(event, lambda_context)
     assert response["statusCode"] == 200
@@ -702,9 +608,6 @@ def test_get_mcp_server_global_non_owner_access(mcp_servers_table, sample_global
     assert body["id"] == "global-server-id"
     assert body["owner"] == "lisa:public"
     assert body["isOwner"] is True  # Global servers are accessible to everyone
-
-    # Reset mock
-    mock_common.get_username.return_value = "test-user"
 
 
 def test_get_mcp_servers_groups_filtering(mcp_servers_table, lambda_context):

@@ -303,7 +303,7 @@ def test_read_not_admin(s3_setup, lambda_context):
 
     # Use the actual function with moto S3 and patched is_admin
     with patch("mcp_workbench.lambda_functions.s3_client", s3_setup), patch(
-        "utilities.common_functions.get_username", return_value="regular-user"
+        "utilities.auth.get_username", return_value="regular-user"
     ), patch("mcp_workbench.lambda_functions.api_wrapper", mock_api_wrapper):
         response = read(event, lambda_context)
 
@@ -409,7 +409,7 @@ def test_list_not_admin(s3_setup, lambda_context):
 
     # Use the actual function with moto S3 and patched is_admin
     with patch("mcp_workbench.lambda_functions.s3_client", s3_setup), patch(
-        "utilities.common_functions.get_username", return_value="regular-user"
+        "utilities.auth.get_username", return_value="regular-user"
     ), patch("mcp_workbench.lambda_functions.api_wrapper", mock_api_wrapper):
         response = list_tools(event, lambda_context)
 
@@ -508,7 +508,7 @@ def test_create_not_admin(s3_setup, lambda_context):
 
     # Use the actual function with moto S3 and patched is_admin
     with patch("mcp_workbench.lambda_functions.s3_client", s3_setup), patch(
-        "utilities.common_functions.get_username", return_value="regular-user"
+        "utilities.auth.get_username", return_value="regular-user"
     ), patch("mcp_workbench.lambda_functions.api_wrapper", mock_api_wrapper):
         response = create(event, lambda_context)
 
@@ -600,7 +600,7 @@ def test_update_not_admin(s3_setup, lambda_context):
 
     # Use the actual function with moto S3 and patched is_admin
     with patch("mcp_workbench.lambda_functions.s3_client", s3_setup), patch(
-        "utilities.common_functions.get_username", return_value="regular-user"
+        "utilities.auth.get_username", return_value="regular-user"
     ), patch("mcp_workbench.lambda_functions.api_wrapper", mock_api_wrapper):
         response = update(event, lambda_context)
 
@@ -747,7 +747,7 @@ def test_delete_not_admin(s3_setup, lambda_context):
 
     # Use the actual function with moto S3 and patched is_admin
     with patch("mcp_workbench.lambda_functions.s3_client", s3_setup), patch(
-        "utilities.common_functions.get_username", return_value="regular-user"
+        "utilities.auth.get_username", return_value="regular-user"
     ), patch("mcp_workbench.lambda_functions.api_wrapper", mock_api_wrapper):
         response = delete(event, lambda_context)
 

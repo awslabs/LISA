@@ -136,6 +136,15 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                 external: false,
                                 href: '/model-management',
                             } as ButtonDropdownProps.Item,
+                            {
+                                id: 'repository-management',
+                                type: 'button',
+                                variant: 'link',
+                                text: 'Repository Management',
+                                disableUtilityCollapse: false,
+                                external: false,
+                                href: '/repository-management',
+                            } as ButtonDropdownProps.Item,
                             ...(configs?.configuration.enabledComponents?.showMcpWorkbench ? [{
                                 id: 'mcp-workbench',
                                 type: 'button',

@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-import React, { ReactElement, useEffect, useState } from 'react';
+import { ReactElement, useEffect, useState } from 'react';
 import {
     Alert,
     Button,
@@ -24,16 +24,16 @@ import {
     Icon,
     SpaceBetween,
 } from '@cloudscape-design/components';
-import { useAppDispatch } from '../../config/store';
-import { useNotificationService } from '../../shared/util/hooks';
-import { INotificationService } from '../../shared/notification/notification.service';
+import { useAppDispatch } from '@/config/store';
+import { useNotificationService } from '@/shared/util/hooks';
+import { INotificationService } from '@/shared/notification/notification.service';
 import { Action, ThunkDispatch } from '@reduxjs/toolkit';
-import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
+import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 import {
     ragApi,
     useCreateRagRepositoryMutation,
     useDeleteRagRepositoryMutation,
-} from '../../shared/reducers/rag.reducer';
+} from '@/shared/reducers/rag.reducer';
 import { RagRepositoryConfig } from '#root/lib/schema';
 
 export type RepositoryActionProps = {
@@ -41,18 +41,21 @@ export type RepositoryActionProps = {
     setSelectedItems: (items: RagRepositoryConfig[]) => void;
     setNewRepositoryModalVisible: (state: boolean) => void;
     setEdit: (state: boolean) => void;
+    refetchRepositories: () => void;
 };
 
 function RepositoryActions (props: RepositoryActionProps): ReactElement {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
-    const { setEdit, setNewRepositoryModalVisible, setSelectedItems } = props;
+    const { setEdit, setNewRepositoryModalVisible, setSelectedItems, refetchRepositories } = props;
     return (
         <SpaceBetween direction='horizontal' size='xs'>
             <Button
-                onClick={() => {
+                onClick={async () => {
                     setSelectedItems([]);
-                    dispatch(ragApi.util.invalidateTags(['repositories', 'repository-status']));
+                    // Invalidate cache and trigger refetch
+                    dispatch(ragApi.util.invalidateTags(['repositories']));
+                    await refetchRepositories();
                 }}
                 ariaLabel={'Refresh repository table'}
             >

@@ -13,9 +13,11 @@
 #   limitations under the License.
 import logging
 import os
+import time
 from typing import Any, cast, List
 
 import boto3
+from models.domain_objects import VectorStoreStatus
 from utilities.common_functions import retry_config
 from utilities.encoders import convert_decimal
 
@@ -30,7 +32,7 @@ class VectorStoreRepository:
         self.table = dynamodb.Table(os.environ["LISA_RAG_VECTOR_STORE_TABLE"])
 
     def get_registered_repositories(self) -> List[dict]:
-        """Get a list of all registered RAG repositories."""
+        """Get a list of all registered RAG repositories with default values for new fields."""
         response = self.table.scan()
         items = response["Items"]
         while "LastEvaluatedKey" in response:
@@ -41,9 +43,21 @@ class VectorStoreRepository:
 
         registered_repositories = []
         for item in items:
+            config = item.get("config", {})
+            config["status"] = item.get("status", VectorStoreStatus.UNKNOWN)
             if item.get("legacy", False):
-                item["config"]["legacy"] = True
-            registered_repositories.append(item["config"])
+                config["legacy"] = True
+
+            # Apply default values for new fields if not present
+            if "allowUserCollections" not in config:
+                config["allowUserCollections"] = True
+
+            if "metadata" not in config:
+                config["metadata"] = {"tags": []}
+            elif isinstance(config["metadata"], dict) and "tags" not in config["metadata"]:
+                config["metadata"]["tags"] = []
+
+            registered_repositories.append(config)
 
         return registered_repositories
 
@@ -74,7 +88,7 @@ class VectorStoreRepository:
             repository_id: The ID of the repository to find.
             raw_config: return the full object in dynamo, instead of just the repository config portion
         Returns:
-            The repository configuration.
+            The repository configuration with default values for new fields.
 
         Raises:
             ValueError: If the repository is not found or the table does not exist.
@@ -90,7 +104,67 @@ class VectorStoreRepository:
             raise ValueError(f"Repository with ID '{repository_id}' not found")
 
         repository: dict[str, Any] = convert_decimal(response.get("Item"))
-        return repository if raw_config else cast(dict[str, Any], repository.get("config", {}))
+
+        if raw_config:
+            return repository
+
+        # Get config and apply defaults for backward compatibility
+        config = cast(dict[str, Any], repository.get("config", {}))
+
+        # Apply default values for new fields if not present
+        if "allowUserCollections" not in config:
+            config["allowUserCollections"] = True
+
+        if "metadata" not in config:
+            config["metadata"] = {"tags": []}
+        elif isinstance(config["metadata"], dict) and "tags" not in config["metadata"]:
+            config["metadata"]["tags"] = []
+
+        return config
+
+    def update(self, repository_id: str, updates: dict[str, Any]) -> dict[str, Any]:
+        """
+        Update a repository configuration.
+
+        Args:
+            repository_id: The ID of the repository to update.
+            updates: Dictionary of fields to update in the config.
+
+        Returns:
+            The updated repository configuration.
+
+        Raises:
+            ValueError: If the update fails or repository not found.
+        """
+        try:
+            # First get the current item
+            current = self.table.get_item(Key={"repositoryId": repository_id})
+            if "Item" not in current:
+                raise ValueError(f"Repository with ID '{repository_id}' not found")
+
+            current_item = convert_decimal(current["Item"])
+            config = current_item.get("config", {})
+
+            # Update the config with new values
+            config.update(updates)
+
+            # Update the item in DynamoDB
+            self.table.update_item(
+                Key={"repositoryId": repository_id},
+                UpdateExpression="SET #config = :config, #updatedAt = :updatedAt",
+                ExpressionAttributeNames={
+                    "#config": "config",
+                    "#updatedAt": "updatedAt",
+                },
+                ExpressionAttributeValues={
+                    ":config": config,
+                    ":updatedAt": int(time.time() * 1000),
+                },
+            )
+
+            return config
+        except Exception as e:
+            raise ValueError(f"Failed to update repository: {repository_id}", e)
 
     def delete(self, repository_id: str) -> bool:
         """

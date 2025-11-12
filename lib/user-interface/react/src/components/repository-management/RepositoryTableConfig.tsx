@@ -14,12 +14,11 @@
  limitations under the License.
  */
 import { CollectionPreferencesProps, TableProps } from '@cloudscape-design/components';
-import { DEFAULT_PAGE_SIZE_OPTIONS } from '../../shared/preferences/common-preferences';
-import { UseQueryHookResult } from '@reduxjs/toolkit/dist/query/react/buildHooks';
-import Spinner from '@cloudscape-design/components/spinner';
-import StatusIndicator from '@cloudscape-design/components/status-indicator';
+import { DEFAULT_PAGE_SIZE_OPTIONS } from '@/shared/preferences/common-preferences';
+import StatusIndicator, { StatusIndicatorProps } from '@cloudscape-design/components/status-indicator';
 import { ReactNode } from 'react';
 import ContentDisplayOption = CollectionPreferencesProps.ContentDisplayOption;
+import { VectorStoreStatus } from '#root/lib/schema';
 
 export const PAGE_SIZE_OPTIONS = DEFAULT_PAGE_SIZE_OPTIONS('Repositories');
 
@@ -30,10 +29,7 @@ export type TableRow = TableProps.ColumnDefinition<any> & {
 
 export type TablePref = { id: string, label: ReactNode };
 
-export function getTableDefinition ({
-    data: ragStatus,
-    isFetching,
-}: UseQueryHookResult<any>): ReadonlyArray<TableRow> {
+export function getTableDefinition (): ReadonlyArray<TableRow> {
     return [
         {
             id: 'repositoryName',
@@ -73,18 +69,17 @@ export function getTableDefinition ({
         {
             id: 'status',
             header: 'Status',
-            cell: (e) => isFetching ? <Spinner /> : getStatusIcon(ragStatus?.[e.repositoryId]),
+            cell: (e) => getStatusIcon(e.status),
             visible: true,
         },
     ];
 }
 
-function getStatusIcon (status: string): ReactNode {
-    let type: 'success' | 'error' | 'warning' | 'in-progress' = 'warning';
+function getStatusIcon (status: VectorStoreStatus): ReactNode {
+    let type: StatusIndicatorProps.Type;
     switch (status) {
         case 'CREATE_COMPLETE':
         case 'UPDATE_COMPLETE':
-        case 'DELETE_COMPLETE':
             type = 'success';
             break;
         case 'CREATE_FAILED':
@@ -93,9 +88,12 @@ function getStatusIcon (status: string): ReactNode {
             break;
         case 'CREATE_IN_PROGRESS':
         case 'DELETE_IN_PROGRESS':
+        case 'UPDATE_IN_PROGRESS':
+        case 'UPDATE_COMPLETE_CLEANUP_IN_PROGRESS':
             type = 'in-progress';
             break;
     }
+
     return <StatusIndicator type={type}>{status}</StatusIndicator>;
 }
 

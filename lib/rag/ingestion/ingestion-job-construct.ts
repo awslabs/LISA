@@ -210,12 +210,16 @@ export class IngestionJobConstruct extends Construct {
             layers: layers,
             role: lambdaRole
         });
+        const scheduleAlias = new lambda.Alias(this, 'ScheduleLambdaAlias', {
+            aliasName: 'live',
+            version: handlePipelineIngestScheduleLambda.currentVersion
+        });
         const scheduleParameterName = `${config.deploymentPrefix}/ingestion/ingest/schedule`;
         new StringParameter(this, 'IngestionJobScheduleLambdaArn', {
             parameterName: scheduleParameterName,
-            stringValue: handlePipelineIngestScheduleLambda.functionArn
+            stringValue: scheduleAlias.functionArn
         });
-        handlePipelineIngestScheduleLambda.addPermission('AllowEventBridgeInvoke', {
+        scheduleAlias.addPermission('AllowEventBridgeInvoke', {
             principal: new iam.ServicePrincipal('events.amazonaws.com'),
             action: 'lambda:InvokeFunction'
         });
@@ -233,12 +237,16 @@ export class IngestionJobConstruct extends Construct {
             layers,
             role: lambdaRole
         });
+        const eventAlias = new lambda.Alias(this, 'EventLambdaAlias', {
+            aliasName: 'live',
+            version: handlePipelineIngestEvent.currentVersion
+        });
         const eventParameterName = `${config.deploymentPrefix}/ingestion/ingest/event`;
         new StringParameter(this, 'IngestionJobEventLambdaArn', {
             parameterName: eventParameterName,
-            stringValue: handlePipelineIngestEvent.functionArn
+            stringValue: eventAlias.functionArn
         });
-        handlePipelineIngestEvent.addPermission('AllowEventBridgeInvoke', {
+        eventAlias.addPermission('AllowEventBridgeInvoke', {
             principal: new iam.ServicePrincipal('events.amazonaws.com'),
             action: 'lambda:InvokeFunction'
         });
@@ -256,13 +264,17 @@ export class IngestionJobConstruct extends Construct {
             layers,
             role: lambdaRole
         });
+        const deleteAlias = new lambda.Alias(this, 'DeleteLambdaAlias', {
+            aliasName: 'live',
+            version: handlePipelineDeleteEvent.currentVersion
+        });
         const deleteParameterName = `${config.deploymentPrefix}/ingestion/delete/event`;
         new StringParameter(this, 'DeletionJobEventLambdaArn', {
             parameterName: deleteParameterName,
-            stringValue: handlePipelineDeleteEvent.functionArn
+            stringValue: deleteAlias.functionArn
         });
 
-        handlePipelineDeleteEvent.addPermission('AllowEventBridgeInvoke', {
+        deleteAlias.addPermission('AllowEventBridgeInvoke', {
             principal: new iam.ServicePrincipal('events.amazonaws.com'),
             action: 'lambda:InvokeFunction'
         });

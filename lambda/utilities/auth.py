@@ -11,14 +11,14 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
+import json
 import logging
 import os
 from functools import wraps
-from typing import Any, Callable, Dict, Tuple
+from typing import Any, Callable, Dict, List, Tuple
 
 import boto3
 from botocore.config import Config
-from utilities.common_functions import get_groups
 from utilities.exceptions import HTTPException
 
 logger = logging.getLogger(__name__)
@@ -40,6 +40,12 @@ def get_username(event: dict) -> str:
     return username
 
 
+def get_groups(event: Any) -> List[str]:
+    """Get user groups from event."""
+    groups: List[str] = json.loads(event.get("requestContext", {}).get("authorizer", {}).get("groups", "[]"))
+    return groups
+
+
 def is_admin(event: dict) -> bool:
     """Get admin status from event."""
     admin_group = os.environ.get("ADMIN_GROUP", "")
@@ -48,9 +54,28 @@ def is_admin(event: dict) -> bool:
     return admin_group in groups
 
 
-def get_user_context(event: Dict[str, Any]) -> Tuple[str, bool]:
+def get_user_context(event: Dict[str, Any]) -> Tuple[str, bool, List[str]]:
     """Extract user context from event."""
-    return get_username(event), is_admin(event)
+    return get_username(event), is_admin(event), get_groups(event)
+
+
+def user_has_group_access(user_groups: List[str], allowed_groups: List[str]) -> bool:
+    """
+    Check if user has access based on group membership.
+
+    Args:
+        user_groups: List of groups the user belongs to
+        allowed_groups: List of groups allowed to access the resource
+
+    Returns:
+        True if user has access (either no restrictions or user has required group)
+    """
+    # Public resource (no group restrictions)
+    if not allowed_groups:
+        return True
+
+    # Check if user has at least one matching group
+    return len(set(user_groups).intersection(set(allowed_groups))) > 0
 
 
 def admin_only(func: Callable) -> Callable:

@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-import React, { ReactElement, useMemo } from 'react';
+import { ReactElement, useMemo } from 'react';
 import {
     Button,
     Container,
@@ -29,26 +29,45 @@ import { FormProps } from '../../../shared/form/form-props';
 
 import { PipelineConfig, RagRepositoryPipeline } from '#root/lib/schema';
 import { getDefaults } from '#root/lib/schema/zodUtil';
-import { useGetAllModelsQuery } from '../../../shared/reducers/model-management.reducer';
-import { ModelStatus, ModelType } from '../../../shared/model/model-management.model';
+import { useListCollectionsQuery } from '@/shared/reducers/rag.reducer';
+import { ChunkingConfigForm } from '@/components/document-library/createCollection/ChunkingConfigForm';
 
 export type PipelineConfigProps = {
-    isEdit: boolean
+    isEdit: boolean;
+    repositoryId?: string;
 };
 
 export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & PipelineConfigProps): ReactElement {
-    const { item, touchFields, setFields, formErrors, isEdit } = props;
+    const { item, touchFields, setFields, formErrors, isEdit, repositoryId } = props;
 
-    const { data: allModels, isFetching: isFetchingModels } = useGetAllModelsQuery(undefined, {
-        refetchOnMountOrArgChange: 5,
-        selectFromResult: (state) => ({
-            isFetching: state.isFetching,
-            data: (state.data || []).filter((model) => model.modelType === ModelType.embedding && model.status === ModelStatus.InService),
-        }),
-    });
-    const embeddingOptions = useMemo(() => {
-        return allModels?.map((model) => ({ value: model.modelId })) || [];
-    }, [allModels]);
+    // Only query collections if we have a repositoryId (editing existing repository)
+    const { data: collections, isFetching: isFetchingCollections } = useListCollectionsQuery(
+        { repositoryId: repositoryId || '' },
+        {
+            skip: !repositoryId || !isEdit,
+            refetchOnMountOrArgChange: 5,
+        }
+    );
+
+    const collectionOptions = useMemo(() => {
+        // For new repositories, show a default option
+        if (!isEdit || !repositoryId) {
+            return [
+                {
+                    value: 'default',
+                    label: 'Default Collection',
+                    description: 'Documents will be ingested into the default collection',
+                }
+            ];
+        }
+
+        // For existing repositories, show actual collections
+        return collections?.map((collection) => ({
+            value: collection.collectionId,
+            label: collection.name || collection.collectionId,
+            description: collection.description,
+        })) || [];
+    }, [collections, isEdit, repositoryId]);
 
     const onChange = (index: number, field: keyof PipelineConfig, value: any) => {
         setFields({ [`pipelines[${index}].${field}`]: value });
@@ -82,50 +101,44 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                         </Header>
                     }>
                     <SpaceBetween size={'s'}>
-                        <FormField
-                            label='Chunk Size'
-                            errorText={formErrors.pipelines?.[index]?.chunkSize}
-                            description={RagRepositoryPipeline.shape.chunkSize.description}
-                        >
-                            <Input
-                                type='number' inputMode='numeric'
-                                value={pipeline.chunkSize?.toString()}
-                                onChange={({ detail }) =>
-                                    onChange(index, 'chunkSize', Number(detail.value))
+                        <ChunkingConfigForm
+                            item={pipeline.chunkingStrategy}
+                            setFields={(values) => {
+                                const updatedFields = {};
+                                // Store using the new chunkingStrategy structure
+                                if (values.chunkingStrategy) {
+                                    updatedFields[`pipelines[${index}].chunkingStrategy`] = values.chunkingStrategy;
                                 }
-                                onBlur={() => touchFields([`pipelines[${index}].chunkSize`])}
-                            />
-                        </FormField>
+                                if (values['chunkingStrategy.size'] !== undefined) {
+                                    updatedFields[`pipelines[${index}].chunkingStrategy.size`] = values['chunkingStrategy.size'];
+                                }
+                                if (values['chunkingStrategy.overlap'] !== undefined) {
+                                    updatedFields[`pipelines[${index}].chunkingStrategy.overlap`] = values['chunkingStrategy.overlap'];
+                                }
+                                setFields(updatedFields);
+                            }}
+                            touchFields={(fields) => {
+                                const updatedFields = fields.map((field) => `pipelines[${index}].${field}`);
+                                touchFields(updatedFields);
+                            }}
+                            formErrors={formErrors.pipelines?.[index]?.chunkingStrategy || {}}
+                        />
 
                         <FormField
-                            label='Chunk Overlap'
-                            errorText={formErrors.pipelines?.[index]?.chunkOverlap}
-                            description={RagRepositoryPipeline.shape.chunkOverlap.description}
-                        >
-                            <Input
-                                type='number' inputMode='numeric'
-                                value={pipeline.chunkOverlap?.toString()}
-                                onChange={({ detail }) =>
-                                    onChange(index, 'chunkOverlap', Number(detail.value))
-                                }
-                                onBlur={() => touchFields([`pipelines[${index}].chunkOverlap`])}
-                            />
-                        </FormField>
-
-                        <FormField
-                            label='Embedding Model'
-                            errorText={formErrors.pipelines?.[index]?.embeddingModel}
-                            description={RagRepositoryPipeline.shape.embeddingModel.description}
+                            label='Collection'
+                            errorText={formErrors.pipelines?.[index]?.collectionId}
+                            description='The collection to ingest documents into'
                         >
                             <Select
-                                options={embeddingOptions}
-                                selectedOption={{ value: pipeline.embeddingModel }}
-                                loadingText='Loading models'
-                                onBlur={() => touchFields([`pipelines[${index}].embeddingModel`])}
+                                options={collectionOptions}
+                                selectedOption={collectionOptions.find((opt) => opt.value === pipeline.collectionId) || null}
+                                loadingText='Loading collections'
+                                placeholder='Select a collection'
+                                onBlur={() => touchFields([`pipelines[${index}].collectionId`])}
                                 filteringType='auto'
                                 onChange={({ detail }) =>
-                                    onChange(index, 'embeddingModel', detail.selectedOption.value)}
-                                statusType={isFetchingModels ? 'loading' : 'finished'}
+                                    onChange(index, 'collectionId', detail.selectedOption.value)}
+                                statusType={isFetchingCollections ? 'loading' : 'finished'}
                                 virtualScroll
                             />
                         </FormField>

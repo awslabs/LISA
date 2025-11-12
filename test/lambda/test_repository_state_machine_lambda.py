@@ -145,14 +145,13 @@ class TestCleanupRepoDocs:
         # Import the function here to avoid import issues
         from repository.state_machine.cleanup_repo_docs import lambda_handler as cleanup_repo_docs_handler
 
-        # Create mock document repository
         mock_doc_repo = MagicMock()
         test_docs = [
             MagicMock(document_id="doc1"),
             MagicMock(document_id="doc2"),
             MagicMock(document_id="doc3"),
         ]
-        mock_doc_repo.list_all.return_value = (test_docs, None)
+        mock_doc_repo.list_all.return_value = (test_docs, None, 3)
         mock_doc_repo.delete_by_id.return_value = None
         mock_doc_repo.delete_s3_docs.return_value = None
 
@@ -190,7 +189,7 @@ class TestCleanupRepoDocs:
         # Create mock document repository
         mock_doc_repo = MagicMock()
         test_docs = [MagicMock(document_id="doc1")]
-        mock_doc_repo.list_all.return_value = (test_docs, "last-key-123")
+        mock_doc_repo.list_all.return_value = (test_docs, "last-key-123", 1)
         mock_doc_repo.delete_by_id.return_value = None
         mock_doc_repo.delete_s3_docs.return_value = None
 
@@ -218,7 +217,7 @@ class TestCleanupRepoDocs:
 
         # Create mock document repository
         mock_doc_repo = MagicMock()
-        mock_doc_repo.list_all.return_value = ([], None)
+        mock_doc_repo.list_all.return_value = ([], None, 0)
         mock_doc_repo.delete_by_id.return_value = None
         mock_doc_repo.delete_s3_docs.return_value = None
 
@@ -248,7 +247,7 @@ class TestCleanupRepoDocs:
 
         # Create mock document repository
         mock_doc_repo = MagicMock()
-        mock_doc_repo.list_all.return_value = ([], None)
+        mock_doc_repo.list_all.return_value = ([], None, 0)
         mock_doc_repo.delete_by_id.return_value = None
         mock_doc_repo.delete_s3_docs.return_value = None
 
@@ -288,7 +287,7 @@ class TestCleanupRepoDocs:
         # Create mock document repository
         mock_doc_repo = MagicMock()
         test_docs = [MagicMock(document_id="doc1")]
-        mock_doc_repo.list_all.return_value = (test_docs, None)
+        mock_doc_repo.list_all.return_value = (test_docs, None, 1)
         mock_doc_repo.delete_by_id.side_effect = Exception("Delete error")
 
         event = {
@@ -308,7 +307,7 @@ class TestCleanupRepoDocs:
         # Create mock document repository
         mock_doc_repo = MagicMock()
         test_docs = [MagicMock(document_id="doc1")]
-        mock_doc_repo.list_all.return_value = (test_docs, None)
+        mock_doc_repo.list_all.return_value = (test_docs, None, 1)
         mock_doc_repo.delete_by_id.return_value = None
         mock_doc_repo.delete_s3_docs.side_effect = Exception("S3 delete error")
 

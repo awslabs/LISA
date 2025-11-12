@@ -41,6 +41,12 @@ export enum InferenceContainer {
     INSTRUCTOR = 'instructor',
 }
 
+export enum ScheduleType {
+    NONE = 'NONE',
+    DAILY = 'DAILY',
+    RECURRING = 'RECURRING'
+}
+
 export enum GuardrailMode {
     PRE_CALL = 'pre_call',
     DURING_CALL = 'during_call',
@@ -103,6 +109,35 @@ export type ILoadBalancerConfig = {
     healthCheckConfig: ILoadBalancerHealthCheckConfig
 };
 
+export type IDaySchedule = {
+    startTime: string;
+    stopTime: string;
+};
+
+export type IWeeklySchedule = {
+    monday?: IDaySchedule[];
+    tuesday?: IDaySchedule[];
+    wednesday?: IDaySchedule[];
+    thursday?: IDaySchedule[];
+    friday?: IDaySchedule[];
+    saturday?: IDaySchedule[];
+    sunday?: IDaySchedule[];
+};
+
+export type IScheduleConfig = {
+    scheduleEnabled: boolean;
+    scheduleType: ScheduleType;
+    timezone: string;
+    weeklySchedule?: IWeeklySchedule;
+    dailySchedule?: IDaySchedule;
+    nextScheduledAction?: string;
+    lastScheduleUpdate?: string;
+    scheduleStatus?: string;
+    scheduleConfigured?: boolean;
+    lastScheduleFailed?: boolean;
+    scheduledActionArns?: string[];
+};
+
 export type IAutoScalingConfig = {
     blockDeviceVolumeSize: number;
     minCapacity: number;
@@ -111,6 +146,7 @@ export type IAutoScalingConfig = {
     cooldown: number;
     defaultInstanceWarmup: number;
     metricConfig: IMetricConfig;
+    scheduling?: IScheduleConfig;
 };
 
 export type IContainerConfig = {
@@ -221,6 +257,95 @@ export const loadBalancerConfigSchema = z.object({
     healthCheckConfig: loadBalancerHealthCheckConfigSchema.default(loadBalancerHealthCheckConfigSchema.parse({})),
 });
 
+const dayScheduleSchema = z.object({
+    startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Must be in HH:MM format'),
+    stopTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Must be in HH:MM format'),
+}).superRefine((value, context) => {
+    // Validate that start time is before stop time and at least 2 hours apart
+    const [startHour, startMin] = value.startTime.split(':').map(Number);
+    const [stopHour, stopMin] = value.stopTime.split(':').map(Number);
+    const startMinutes = startHour * 60 + startMin;
+    const stopMinutes = stopHour * 60 + stopMin;
+
+    // Handle next day scenarios
+    const actualStopMinutes = stopMinutes <= startMinutes ? stopMinutes + 24 * 60 : stopMinutes;
+    const duration = actualStopMinutes - startMinutes;
+
+    if (duration < 120) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Stop time must be at least 2 hours after start time',
+            path: ['stopTime']
+        });
+    }
+});
+
+const weeklyScheduleSchema = z.object({
+    monday: z.array(dayScheduleSchema).optional(),
+    tuesday: z.array(dayScheduleSchema).optional(),
+    wednesday: z.array(dayScheduleSchema).optional(),
+    thursday: z.array(dayScheduleSchema).optional(),
+    friday: z.array(dayScheduleSchema).optional(),
+    saturday: z.array(dayScheduleSchema).optional(),
+    sunday: z.array(dayScheduleSchema).optional(),
+});
+
+export const scheduleConfigSchema = z.object({
+    scheduleEnabled: z.boolean().default(false),
+    scheduleType: z.nativeEnum(ScheduleType).default(ScheduleType.NONE),
+    timezone: z.string().default('UTC'),
+    weeklySchedule: weeklyScheduleSchema.optional(),
+    dailySchedule: dayScheduleSchema.optional(),
+    nextScheduledAction: z.string().optional(),
+    lastScheduleUpdate: z.string().optional(),
+    scheduleStatus: z.string().optional(),
+    scheduleConfigured: z.boolean().optional(),
+    lastScheduleFailed: z.boolean().optional(),
+    scheduledActionArns: z.array(z.string()).optional(),
+}).superRefine((value, context) => {
+    // Validate schedule configuration based on type
+    if (value.scheduleEnabled && value.scheduleType !== ScheduleType.NONE) {
+        // Require timezone when scheduling is enabled
+        if (!value.timezone || value.timezone === '') {
+            context.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'Timezone is required when auto scaling is enabled',
+                path: ['timezone']
+            });
+        }
+
+        if (value.scheduleType === ScheduleType.DAILY) {
+            if (!value.weeklySchedule) {
+                context.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: 'Weekly schedule is required for daily scheduling',
+                    path: ['weeklySchedule']
+                });
+            } else {
+                // Check that at least one day has schedules
+                const hasAnySchedule = Object.values(value.weeklySchedule).some(
+                    (daySchedules) => daySchedules && daySchedules.length > 0
+                );
+                if (!hasAnySchedule) {
+                    context.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        message: 'At least one day must have a schedule configured',
+                        path: ['weeklySchedule']
+                    });
+                }
+            }
+        } else if (value.scheduleType === ScheduleType.RECURRING) {
+            if (!value.dailySchedule) {
+                context.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: 'Recurring schedule must be configured',
+                    path: ['dailySchedule']
+                });
+            }
+        }
+    }
+});
+
 export const autoScalingConfigSchema = z.object({
     blockDeviceVolumeSize: z.number().min(30).default(50),
     minCapacity: z.number().min(1).default(1),
@@ -229,6 +354,7 @@ export const autoScalingConfigSchema = z.object({
     cooldown: z.number().min(1).default(420),
     defaultInstanceWarmup: z.number().default(180),
     metricConfig: metricConfigSchema.default(metricConfigSchema.parse({})),
+    scheduling: scheduleConfigSchema.default(scheduleConfigSchema.parse({})),
 }).superRefine((value, context) => {
     // ensure the desired capacity stays between minCapacity/maxCapacity if not empty
     if (value.desiredCapacity !== undefined && String(value.desiredCapacity).trim().length) {

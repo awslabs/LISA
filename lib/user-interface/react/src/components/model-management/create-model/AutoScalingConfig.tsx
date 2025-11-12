@@ -19,9 +19,10 @@ import { FormProps} from '../../../shared/form/form-props';
 import FormField from '@cloudscape-design/components/form-field';
 import Input from '@cloudscape-design/components/input';
 
-import { IAutoScalingConfig } from '../../../shared/model/model-management.model';
+import { IAutoScalingConfig, ScheduleType } from '../../../shared/model/model-management.model';
 import { Grid, Header, SpaceBetween } from '@cloudscape-design/components';
 import Container from '@cloudscape-design/components/container';
+import { ScheduleConfig } from './ScheduleConfig';
 
 type AutoScalingConfigProps = FormProps<IAutoScalingConfig> & {
     isEdit: boolean
@@ -30,6 +31,26 @@ type AutoScalingConfigProps = FormProps<IAutoScalingConfig> & {
 export function AutoScalingConfig (props: AutoScalingConfigProps) : ReactElement {
     return (
         <SpaceBetween size={'s'}>
+            <ScheduleConfig
+                item={props.item.scheduling || {
+                    scheduleEnabled: false,
+                    scheduleType: ScheduleType.NONE,
+                    timezone: 'UTC'
+                }}
+                setFields={(fields) => {
+                    const scheduleFields: Record<string, any> = {};
+                    Object.entries(fields).forEach(([key, value]) => {
+                        scheduleFields[`autoScalingConfig.scheduling.${key}`] = value;
+                    });
+                    props.setFields(scheduleFields);
+                }}
+                touchFields={(fields) => {
+                    const scheduleFields = fields.map((field) => `autoScalingConfig.scheduling.${field}`);
+                    props.touchFields(scheduleFields);
+                }}
+                formErrors={props.formErrors?.autoScalingConfig?.scheduling}
+                isEdit={props.isEdit}
+            />
             <Container
                 header={<Header variant='h3'>Auto Scaling Capacity</Header>}>
                 <SpaceBetween size={'s'}>

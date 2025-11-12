@@ -350,7 +350,6 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
             content: (
                 <AutoScalingConfig item={state.form.autoScalingConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} isEdit={props.isEdit} />
             ),
-            isOptional: true,
             onEdit: state.form.lisaHostedModel,
             forExternalModel: false
         },

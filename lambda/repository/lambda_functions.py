@@ -43,7 +43,7 @@ from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
 from repository.rag_document_repo import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
-from utilities.auth import admin_only, get_user_context, get_username, is_admin, user_has_group_access
+from utilities.auth import admin_only, get_groups, get_user_context, get_username, is_admin, user_has_group_access
 from utilities.bedrock_kb import retrieve_documents
 from utilities.common_functions import api_wrapper, get_id_token, retry_config
 from utilities.exceptions import HTTPException
@@ -209,12 +209,19 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
 
 
 def get_repository(event: dict[str, Any], repository_id: str) -> dict:
-    """Ensures a user has access to the repository or else raises an HTTPException"""
+    """Ensures a user has access to the repository or else raises an HTTPException.
+    """
     repo = vs_repo.find_repository_by_id(repository_id)
-    if is_admin(event) is False:
-        user_groups = json.loads(event["requestContext"]["authorizer"]["groups"]) or []
-        if not user_has_group_access(user_groups, repo.get("allowedGroups", [])):
-            raise HTTPException(status_code=403, message="User does not have permission to access this repository")
+    
+    # Admins have access to all repositories
+    if is_admin(event):
+        return repo
+    
+    # Non-admins must have matching group access
+    user_groups = get_groups(event)
+    if not user_has_group_access(user_groups, repo.get("allowedGroups", [])):
+        raise HTTPException(status_code=403, message="User does not have permission to access this repository")
+    
     return repo
 
 

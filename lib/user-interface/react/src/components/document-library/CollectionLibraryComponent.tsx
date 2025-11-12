@@ -29,6 +29,7 @@ import { useCollection } from '@cloudscape-design/collection-hooks';
 import { useAppDispatch } from '@/config/store';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 import { CreateCollectionModal } from '@/components/document-library/createCollection/CreateCollectionModal';
+import { CollectionStatus } from '#root/lib/schema/collectionSchema';
 
 type CollectionLibraryComponentProps = {
     admin?: boolean;
@@ -80,6 +81,34 @@ export function CollectionLibraryComponent ({ admin = false }: CollectionLibrary
 
     const selectedCollection = collectionProps.selectedItems.length === 1 ? collectionProps.selectedItems[0] : null;
     const isDefaultCollection = (selectedCollection as any)?.default === true;
+    const collectionStatus = selectedCollection?.status;
+    
+    // Determine which actions should be disabled based on status
+    const isEditDisabled = !selectedCollection || 
+                          isDefaultCollection || 
+                          collectionStatus === CollectionStatus.ARCHIVED || 
+                          collectionStatus === CollectionStatus.DELETED || 
+                          collectionStatus === CollectionStatus.DELETE_IN_PROGRESS;
+    
+    const isDeleteDisabled = !selectedCollection || 
+                            collectionStatus === CollectionStatus.DELETED || 
+                            collectionStatus === CollectionStatus.DELETE_IN_PROGRESS;
+    
+    const getEditDisabledReason = () => {
+        if (!selectedCollection) return 'Please select a collection';
+        if (isDefaultCollection) return 'Cannot edit default collection';
+        if (collectionStatus === CollectionStatus.ARCHIVED) return 'Cannot edit archived collection';
+        if (collectionStatus === CollectionStatus.DELETED) return 'Cannot edit deleted collection';
+        if (collectionStatus === CollectionStatus.DELETE_IN_PROGRESS) return 'Cannot edit collection being deleted';
+        return undefined;
+    };
+    
+    const getDeleteDisabledReason = () => {
+        if (!selectedCollection) return 'Please select a collection';
+        if (collectionStatus === CollectionStatus.DELETED) return 'Collection already deleted';
+        if (collectionStatus === CollectionStatus.DELETE_IN_PROGRESS) return 'Collection deletion in progress';
+        return undefined;
+    };
 
     const handleSelectionChange = ({ detail }) => {
         if (admin) {
@@ -195,12 +224,14 @@ export function CollectionLibraryComponent ({ admin = false }: CollectionLibrary
                                                 {
                                                     id: 'edit',
                                                     text: 'Edit',
-                                                    disabled: !selectedCollection || isDefaultCollection,
+                                                    disabled: isEditDisabled,
+                                                    disabledReason: getEditDisabledReason(),
                                                 },
                                                 {
                                                     id: 'delete',
                                                     text: 'Delete',
-                                                    disabled: !selectedCollection,
+                                                    disabled: isDeleteDisabled,
+                                                    disabledReason: getDeleteDisabledReason(),
                                                 },
                                             ]}
                                             loading={isDeleteLoading}

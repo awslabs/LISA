@@ -253,8 +253,9 @@ export default function Chat ({ sessionId }) {
             repositoryId: ragConfig.repositoryId,
             collectionId: ragConfig.collection?.collectionId,
             topK: ragTopK,
+            modelName: !ragConfig.collection?.collectionId ? ragConfig.embeddingModel?.modelId : undefined,
         });
-    }, [getRelevantDocuments, chatConfiguration.sessionConfiguration, ragConfig.repositoryId, ragConfig.collection]);
+    }, [getRelevantDocuments, chatConfiguration.sessionConfiguration, ragConfig.repositoryId, ragConfig.collection, ragConfig.embeddingModel]);
 
     const { isRunning, setIsRunning, isStreaming, generateResponse, stopGeneration } = useChatGeneration({
         chatConfiguration,

@@ -55,6 +55,7 @@ type RelevantDocRequest = {
     collectionId?: string
     query: string,
     topK: number,
+    modelName?: string,
 };
 
 type ListRagDocumentRequest = {
@@ -171,6 +172,8 @@ export const ragApi = createApi({
 
                 if (request.collectionId) {
                     params.collectionId = request.collectionId;
+                } else if (request.modelName) {
+                    params.modelName = request.modelName;
                 }
 
                 const queryString = new URLSearchParams(params).toString();

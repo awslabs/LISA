@@ -354,7 +354,7 @@ class RagDocumentRepository:
         with self.doc_table.batch_writer() as batch:
             for item in response["Items"]:
                 doc_ids.append(item["document_id"])
-                batch.delete_item(Key={"pk": item["pk"], "document_id": ["document_id"]})
+                batch.delete_item(Key={"pk": item["pk"], "document_id": item["document_id"]})
 
         while "LastEvaluatedKey" in response:
             response = self.doc_table.query(

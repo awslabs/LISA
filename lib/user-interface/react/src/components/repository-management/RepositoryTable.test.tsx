@@ -22,11 +22,6 @@ import { createMockRepositories } from '../../test/factories/repository.factory'
 
 // Mock the API hooks
 const mockRepositories = createMockRepositories(3);
-const mockRagStatus = {
-    'test-repo-1': 'CREATE_COMPLETE',
-    'test-repo-2': 'CREATE_IN_PROGRESS',
-    'test-repo-3': 'CREATE_FAILED',
-};
 
 vi.mock('../../shared/reducers/rag.reducer', async () => {
     const actual: any = await vi.importActual('../../shared/reducers/rag.reducer');
@@ -35,10 +30,6 @@ vi.mock('../../shared/reducers/rag.reducer', async () => {
         useListRagRepositoriesQuery: vi.fn(() => ({
             data: mockRepositories,
             isLoading: false,
-        })),
-        useGetRagStatusQuery: vi.fn(() => ({
-            data: mockRagStatus,
-            isFetching: false,
         })),
         ragApi: {
             ...actual.ragApi,

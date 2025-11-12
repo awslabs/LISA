@@ -20,6 +20,7 @@ import { useGetAllModelsQuery } from '@/shared/reducers/model-management.reducer
 import { IModel, ModelStatus, ModelType } from '@/shared/model/model-management.model';
 import { useListRagRepositoriesQuery, useListCollectionsQuery, RagCollectionConfig } from '@/shared/reducers/rag.reducer';
 import { VectorStoreStatus } from '#root/lib/schema';
+import { CollectionStatus } from '#root/lib/schema/collectionSchema';
 
 export type RagConfig = {
     collection?: RagCollectionConfig;
@@ -72,10 +73,13 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
 
     const collectionOptions = useMemo(() => {
         if (!collections) return [];
-        return collections.map((collection) => ({
-            value: collection.collectionId,
-            label: collection.name,
-        }));
+        // Filter to only show ACTIVE collections
+        return collections
+            .filter((collection) => collection.status === CollectionStatus.ACTIVE)
+            .map((collection) => ({
+                value: collection.collectionId,
+                label: collection.name,
+            }));
     }, [collections]);
 
     // Update useRag flag based on repository and embedding model availability

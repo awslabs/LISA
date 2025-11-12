@@ -123,7 +123,7 @@ def test_list_collections():
 
 
 def test_delete_collection():
-    """Test delete collection"""
+    """Test delete regular collection (full deletion)"""
     from unittest.mock import patch
 
     from repository.collection_service import CollectionService
@@ -156,13 +156,73 @@ def test_delete_collection():
         "repository.collection_service.DocumentIngestionService", return_value=mock_ingestion_service
     ):
 
-        service.delete_collection("test-repo", "test-coll", "user", ["group1"], False)
+        result = service.delete_collection(
+            repository_id="test-repo",
+            collection_id="test-coll",
+            embedding_name=None,
+            username="user",
+            user_groups=["group1"],
+            is_admin=False,
+        )
+
+    # Verify result contains deletion type
+    assert result["deletionType"] == "full"
+    assert "jobId" in result
+    assert "status" in result
 
     # Verify status was updated to DELETE_IN_PROGRESS
     mock_repo.update.assert_called()
     # Verify ingestion job was saved and submitted
     mock_ingestion_job_repo.save.assert_called_once()
     mock_ingestion_service.create_delete_job.assert_called_once()
+
+
+def test_delete_default_collection():
+    """Test delete default collection (partial deletion)"""
+    from unittest.mock import patch
+
+    from repository.collection_service import CollectionService
+
+    mock_repo = Mock()
+    mock_vector_store_repo = Mock()
+    mock_document_repo = Mock()
+    service = CollectionService(mock_repo, mock_vector_store_repo, mock_document_repo)
+
+    # Mock the dependencies created inside delete_collection
+    mock_ingestion_job_repo = Mock()
+    mock_ingestion_service = Mock()
+
+    with patch("repository.collection_service.IngestionJobRepository", return_value=mock_ingestion_job_repo), patch(
+        "repository.collection_service.DocumentIngestionService", return_value=mock_ingestion_service
+    ):
+
+        result = service.delete_collection(
+            repository_id="test-repo",
+            collection_id=None,
+            embedding_name="test-embedding-model",
+            username="user",
+            user_groups=["group1"],
+            is_admin=True,
+        )
+
+    # Verify result contains deletion type
+    assert result["deletionType"] == "partial"
+    assert "jobId" in result
+    assert "status" in result
+
+    # Verify status was NOT updated (no collection_id)
+    mock_repo.update.assert_not_called()
+    mock_repo.find_by_id.assert_not_called()
+
+    # Verify ingestion job was saved and submitted
+    mock_ingestion_job_repo.save.assert_called_once()
+    mock_ingestion_service.create_delete_job.assert_called_once()
+
+    # Verify the ingestion job has correct fields
+    saved_job = mock_ingestion_job_repo.save.call_args[0][0]
+    assert saved_job.collection_id is None
+    assert saved_job.embedding_model == "test-embedding-model"
+    assert saved_job.collection_deletion is True
 
 
 class TestCollectionMetadataMerging:

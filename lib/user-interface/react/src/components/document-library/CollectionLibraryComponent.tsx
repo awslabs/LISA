@@ -29,6 +29,7 @@ import { useCollection } from '@cloudscape-design/collection-hooks';
 import { useAppDispatch } from '@/config/store';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 import { CreateCollectionModal } from '@/components/document-library/createCollection/CreateCollectionModal';
+import { CollectionStatus } from '#root/lib/schema/collectionSchema';
 
 type CollectionLibraryComponentProps = {
     admin?: boolean;
@@ -78,6 +79,37 @@ export function CollectionLibraryComponent ({ admin = false }: CollectionLibrary
         }
     );
 
+    const selectedCollection = collectionProps.selectedItems.length === 1 ? collectionProps.selectedItems[0] : null;
+    const isDefaultCollection = (selectedCollection as any)?.default === true;
+    const collectionStatus = selectedCollection?.status;
+
+    // Determine which actions should be disabled based on status
+    const isEditDisabled = !selectedCollection ||
+                          isDefaultCollection ||
+                          collectionStatus === CollectionStatus.ARCHIVED ||
+                          collectionStatus === CollectionStatus.DELETED ||
+                          collectionStatus === CollectionStatus.DELETE_IN_PROGRESS;
+
+    const isDeleteDisabled = !selectedCollection ||
+                            collectionStatus === CollectionStatus.DELETED ||
+                            collectionStatus === CollectionStatus.DELETE_IN_PROGRESS;
+
+    const getEditDisabledReason = () => {
+        if (!selectedCollection) return 'Please select a collection';
+        if (isDefaultCollection) return 'Cannot edit default collection';
+        if (collectionStatus === CollectionStatus.ARCHIVED) return 'Cannot edit archived collection';
+        if (collectionStatus === CollectionStatus.DELETED) return 'Cannot edit deleted collection';
+        if (collectionStatus === CollectionStatus.DELETE_IN_PROGRESS) return 'Cannot edit collection being deleted';
+        return undefined;
+    };
+
+    const getDeleteDisabledReason = () => {
+        if (!selectedCollection) return 'Please select a collection';
+        if (collectionStatus === CollectionStatus.DELETED) return 'Collection already deleted';
+        if (collectionStatus === CollectionStatus.DELETE_IN_PROGRESS) return 'Collection deletion in progress';
+        return undefined;
+    };
+
     const handleSelectionChange = ({ detail }) => {
         if (admin) {
             actions.setSelectedItems(detail.selectedItems);
@@ -93,7 +125,8 @@ export function CollectionLibraryComponent ({ admin = false }: CollectionLibrary
                 break;
             }
             case 'delete': {
-                const selectedCollection = collectionProps.selectedItems[0];
+                if (!selectedCollection) return;
+
                 dispatch(
                     setConfirmationModal({
                         action: 'Delete',
@@ -102,6 +135,8 @@ export function CollectionLibraryComponent ({ admin = false }: CollectionLibrary
                             deleteCollection({
                                 repositoryId: selectedCollection.repositoryId,
                                 collectionId: selectedCollection.collectionId,
+                                embeddingModel: selectedCollection.embeddingModel,
+                                default: (selectedCollection as any).default,
                             }),
                         description: (
                             <div>
@@ -109,7 +144,16 @@ export function CollectionLibraryComponent ({ admin = false }: CollectionLibrary
                                 <strong>{selectedCollection.name || selectedCollection.collectionId}</strong>?
                                 <br />
                                 <br />
-                                This action cannot be undone.
+                                {isDefaultCollection ? (
+                                    <>
+                                        <strong>Note:</strong> This will remove all documents in the default collection,
+                                        but the collection will remain visible in the Collection Library. This is a clean up operation.
+                                        <br />
+                                        <br />
+                                    </>
+                                ) : (
+                                    <>This action cannot be undone.</>
+                                )}
                             </div>
                         ),
                     }),
@@ -180,16 +224,18 @@ export function CollectionLibraryComponent ({ admin = false }: CollectionLibrary
                                                 {
                                                     id: 'edit',
                                                     text: 'Edit',
-                                                    disabled: collectionProps.selectedItems.length === 0,
+                                                    disabled: isEditDisabled,
+                                                    disabledReason: getEditDisabledReason(),
                                                 },
                                                 {
                                                     id: 'delete',
                                                     text: 'Delete',
-                                                    disabled: collectionProps.selectedItems.length === 0,
+                                                    disabled: isDeleteDisabled,
+                                                    disabledReason: getDeleteDisabledReason(),
                                                 },
                                             ]}
                                             loading={isDeleteLoading}
-                                            disabled={collectionProps.selectedItems.length === 0}
+                                            disabled={!selectedCollection}
                                             onItemClick={handleAction}
                                         >
                                             Actions

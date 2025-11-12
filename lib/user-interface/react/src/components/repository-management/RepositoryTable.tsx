@@ -14,11 +14,10 @@
  limitations under the License.
  */
 
-import * as React from 'react';
-import { ReactElement, useEffect, useState } from 'react';
+import { ReactElement, useState } from 'react';
 import { CollectionPreferences, Header, Pagination, TextFilter } from '@cloudscape-design/components';
 import SpaceBetween from '@cloudscape-design/components/space-between';
-import { useGetRagStatusQuery, useListRagRepositoriesQuery } from '../../shared/reducers/rag.reducer';
+import { useListRagRepositoriesQuery } from '@/shared/reducers/rag.reducer';
 import Table from '@cloudscape-design/components/table';
 import {
     getDefaultPreferences,
@@ -29,41 +28,26 @@ import {
 } from './RepositoryTableConfig';
 import { useCollection } from '@cloudscape-design/collection-hooks';
 import Box from '@cloudscape-design/components/box';
-import { useLocalStorage } from '../../shared/hooks/use-local-storage';
+import { useLocalStorage } from '@/shared/hooks/use-local-storage';
 import { RepositoryActions } from './RepositoryActions';
 import CreateRepositoryModal from './createRepository/CreateRepositoryModal';
-import { Duration } from 'luxon';
 
 export function getMatchesCountText (count: number) {
     return count === 1 ? '1 match' : `${count} matches`;
 }
 
 export function RepositoryTable (): ReactElement {
-    const [shouldPoll, setShouldPoll] = useState(true);
+    const [shouldPoll] = useState(true);
 
     // Use a separate query instance for polling to avoid affecting other components
-    const { data: allRepos, isLoading } = useListRagRepositoriesQuery(undefined, {
+    const { data: allRepos, isLoading, refetch } = useListRagRepositoriesQuery(undefined, {
         refetchOnMountOrArgChange: 30,
-        pollingInterval: shouldPoll ? Duration.fromObject({seconds: 30}) : undefined
-    });
-    const ragStatusHook = useGetRagStatusQuery(undefined, {
-        refetchOnMountOrArgChange: 30,
-        pollingInterval: shouldPoll ? Duration.fromObject({seconds: 30}) : undefined
+        pollingInterval: shouldPoll ? 30 * 1000 : undefined // 30 seconds in milliseconds
     });
     const tableDefinition: ReadonlyArray<TableRow> = getTableDefinition();
     const [preferences, setPreferences] = useLocalStorage('RepositoryPreferences', getDefaultPreferences(tableDefinition));
     const [newRepositoryModalVisible, setNewRepositoryModalVisible] = useState(false);
     const [isEdit, setEdit] = useState(false);
-
-    useEffect(() => {
-        if (ragStatusHook.data) {
-            const finalStatePredicate = ([, value]) => value.match(/_(FAILED|COMPLETE)$/);
-            if (Object.entries(ragStatusHook.data).every(finalStatePredicate)) {
-                setShouldPoll(false);
-            }
-
-        }
-    }, [ragStatusHook.data, setShouldPoll]);
 
     const { items, actions, filteredItemsCount, collectionProps, filterProps, paginationProps } = useCollection(
         allRepos ?? [], {
@@ -121,7 +105,8 @@ export function RepositoryTable (): ReactElement {
                         <RepositoryActions selectedItems={collectionProps.selectedItems}
                             setSelectedItems={actions.setSelectedItems}
                             setNewRepositoryModalVisible={setNewRepositoryModalVisible}
-                            setEdit={setEdit}></RepositoryActions>
+                            setEdit={setEdit}
+                            refetchRepositories={refetch}></RepositoryActions>
                     </SpaceBetween>}
                 >Repositories
                 </Header>}

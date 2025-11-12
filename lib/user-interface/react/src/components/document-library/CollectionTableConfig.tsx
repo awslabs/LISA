@@ -18,8 +18,10 @@ import { CollectionPreferencesProps, TableProps } from '@cloudscape-design/compo
 import { DEFAULT_PAGE_SIZE_OPTIONS } from '@/shared/preferences/common-preferences';
 import Badge from '@cloudscape-design/components/badge';
 import Link from '@cloudscape-design/components/link';
+import StatusIndicator, { StatusIndicatorProps } from '@cloudscape-design/components/status-indicator';
 import { ReactNode } from 'react';
 import { RagCollectionConfig } from '@/shared/reducers/rag.reducer';
+import { CollectionStatus } from '#root/lib/schema';
 
 export const PAGE_SIZE_OPTIONS = DEFAULT_PAGE_SIZE_OPTIONS('Collections');
 
@@ -33,9 +35,14 @@ export const COLLECTION_COLUMN_DEFINITIONS: ReadonlyArray<CollectionTableRow> = 
         id: 'name',
         header: 'Collection Name',
         cell: (collection) => (
-            <Link href={`#/document-library/${collection.repositoryId}/${collection.collectionId}`}>
-                {collection.name || collection.collectionId}
-            </Link>
+            <>
+                <Link href={`#/document-library/${collection.repositoryId}/${collection.collectionId}`}>
+                    {collection.name || collection.collectionId}
+                </Link>
+                {(collection as any).default === true && (
+                    <> <Badge color='blue'>Global</Badge></>
+                )}
+            </>
         ),
         sortingField: 'name',
         visible: true,
@@ -79,25 +86,29 @@ export const COLLECTION_COLUMN_DEFINITIONS: ReadonlyArray<CollectionTableRow> = 
     {
         id: 'status',
         header: 'Status',
-        cell: (collection) => getStatusBadge(collection.status),
+        cell: (collection) => getStatusIndicator(collection.status),
         visible: true,
     },
 ];
 
-function getStatusBadge (status: 'ACTIVE' | 'ARCHIVED' | 'DELETED'): ReactNode {
-    let color: 'green' | 'grey' | 'red' = 'grey';
+function getStatusIndicator (status: CollectionStatus): ReactNode {
+    let type: StatusIndicatorProps.Type;
     switch (status) {
         case 'ACTIVE':
-            color = 'green';
+            type = 'success';
+            break;
+        case 'DELETE_IN_PROGRESS':
+            type = 'pending';
             break;
         case 'ARCHIVED':
-            color = 'grey';
-            break;
         case 'DELETED':
-            color = 'red';
+            type = 'stopped';
+            break;
+        case 'DELETE_FAILED':
+            type = 'error';
             break;
     }
-    return <Badge color={color}>{status}</Badge>;
+    return <StatusIndicator type={type}>{status}</StatusIndicator>;
 }
 
 export function getCollectionTablePreference (): ReadonlyArray<CollectionPreferencesProps.ContentDisplayOption> {

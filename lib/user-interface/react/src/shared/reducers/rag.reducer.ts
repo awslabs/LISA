@@ -23,7 +23,6 @@ import {
     ChunkingStrategy,
     RagCollectionConfig as SchemaRagCollectionConfig,
 } from '#root/lib/schema';
-import { RagStatus } from '@/shared/model/rag.model';
 
 export type S3UploadRequest = {
     url: string;
@@ -56,6 +55,7 @@ type RelevantDocRequest = {
     collectionId?: string
     query: string,
     topK: number,
+    modelName?: string,
 };
 
 type ListRagDocumentRequest = {
@@ -156,12 +156,6 @@ export const ragApi = createApi({
             }),
             invalidatesTags: ['repositories'],
         }),
-        getRagStatus: builder.query<RagStatus, void>({
-            query: () => ({
-                url: '/repository/status',
-            }),
-            providesTags: ['repository-status'],
-        }),
         getPresignedUrl: builder.query<any, string>({
             query: (body) => ({
                 url: '/repository/presigned-url',
@@ -178,6 +172,8 @@ export const ragApi = createApi({
 
                 if (request.collectionId) {
                     params.collectionId = request.collectionId;
+                } else if (request.modelName) {
+                    params.modelName = request.modelName;
                 }
 
                 const queryString = new URLSearchParams(params).toString();
@@ -192,41 +188,25 @@ export const ragApi = createApi({
                 method: 'POST',
                 data: request.body,
             }),
-            transformErrorResponse: (baseQueryReturnValue) => {
-                // transform into SerializedError
-                return {
-                    name: 'Upload to S3 failed',
-                    message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message
-                };
-            },
+            transformErrorResponse: (baseQueryReturnValue) => ({
+                name: 'Upload to S3 failed',
+                message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message
+            }),
         }),
         ingestDocuments: builder.mutation<IngestDocumentResponse, IngestDocumentRequest>({
-            query: (request) => {
-
-                let url = `repository/${request.repositoryId}/bulk`;
-
-                // Add collectionId parameter if provided
-                if (request.collectionId) {
-                    url += `&collectionId=${request.collectionId}`;
+            query: (request) => ({
+                url: `repository/${request.repositoryId}/bulk`,
+                method: 'POST',
+                data: {
+                    keys: request.documents,
+                    collectionId: request.collectionId,
+                    chunkingStrategy: request.chunkingStrategy
                 }
-
-                return {
-                    url,
-                    method: 'POST',
-                    data: {
-                        keys: request.documents,
-                        collectionId: request.collectionId,
-                        chunkingStrategy: request.chunkingStrategy
-                    }
-                };
-            },
-            transformErrorResponse: (baseQueryReturnValue) => {
-                // transform into SerializedError
-                return {
-                    name: 'Upload to S3 failed',
-                    message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message
-                };
-            },
+            }),
+            transformErrorResponse: (baseQueryReturnValue) => ({
+                name: 'Upload to S3 failed',
+                message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message
+            }),
             invalidatesTags: ['jobs'], // Invalidate jobs cache when new ingestion starts
         }),
         listRagDocuments: builder.query<PaginatedDocumentResponse, ListRagDocumentRequest>({
@@ -267,13 +247,10 @@ export const ragApi = createApi({
                     documentIds: request.documentIds,
                 },
             }),
-            transformErrorResponse: (baseQueryReturnValue) => {
-                // transform into SerializedError
-                return {
-                    name: 'Delete RAG Document Error',
-                    message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message,
-                };
-            },
+            transformErrorResponse: (baseQueryReturnValue) => ({
+                name: 'Delete RAG Document Error',
+                message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message,
+            }),
             invalidatesTags: ['docs'],
         }),
         downloadRagDocument: builder.query<string, { documentId: string, repositoryId: string }>({
@@ -308,20 +285,35 @@ export const ragApi = createApi({
                 },
             }),
             transformResponse: (response: ListCollectionsResponse) => response.collections,
-            providesTags: ['collections'],
+            providesTags: (result) => result ?
+                [
+                    ...result.map(({ repositoryId, collectionId }) => ({
+                        type: 'collections' as const,
+                        id: `${repositoryId}/${collectionId}`,
+                    })),
+                    { type: 'collections', id: 'LIST' },
+                ] : [{ type: 'collections', id: 'LIST' }],
         }),
         listAllCollections: builder.query<RagCollectionConfig[], void>({
             query: () => ({
                 url: '/repository/collections',
             }),
             transformResponse: (response: ListCollectionsResponse) => response.collections,
-            providesTags: ['collections'],
+            providesTags: (result) => result ? [
+                ...result.map(({ repositoryId, collectionId }) => ({
+                    type: 'collections' as const,
+                    id: `${repositoryId}/${collectionId}`,
+                })),
+                { type: 'collections', id: 'LIST' },
+            ] : [{ type: 'collections', id: 'LIST' }],
         }),
         getCollection: builder.query<RagCollectionConfig, CollectionRequest>({
             query: (request) => ({
                 url: `/repository/${request.repositoryId}/collection/${request.collectionId}`,
             }),
-            providesTags: ['collections'],
+            providesTags: (result, error, arg) => [
+                { type: 'collections', id: `${arg.repositoryId}/${arg.collectionId}` },
+            ],
         }),
         createCollection: builder.mutation<RagCollectionConfig, RagCollectionConfig>({
             query: (request) => ({
@@ -338,30 +330,33 @@ export const ragApi = createApi({
                     pipelines: request.pipelines,
                 },
             }),
-            transformErrorResponse: (baseQueryReturnValue) => {
-                return {
-                    name: 'Create Collection Error',
-                    message: baseQueryReturnValue.data?.type === 'RequestValidationError'
-                        ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ')
-                        : baseQueryReturnValue.data.message
-                };
-            },
-            invalidatesTags: ['collections'],
+            transformErrorResponse: (baseQueryReturnValue) => ({
+                name: 'Create Collection Error',
+                message: baseQueryReturnValue.data?.type === 'RequestValidationError'
+                    ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ')
+                    : baseQueryReturnValue.data.message
+            }),
+            invalidatesTags: [{ type: 'collections', id: 'LIST' }],
         }),
-        deleteCollection: builder.mutation<void, CollectionRequest>({
+        deleteCollection: builder.mutation<void, CollectionRequest & { embeddingModel?: string; default?: boolean }>({
             query: (request) => ({
                 url: `/repository/${request.repositoryId}/collection/${request.collectionId}`,
                 method: 'DELETE',
+                params: {
+                    // For Default 'Collection', pass in the embedding model name
+                    ...(request.default && { embeddingName: request.embeddingModel })
+                }
             }),
-            transformErrorResponse: (baseQueryReturnValue) => {
-                return {
-                    name: 'Delete Collection Error',
-                    message: baseQueryReturnValue.data?.type === 'RequestValidationError'
-                        ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ')
-                        : baseQueryReturnValue.data.message
-                };
-            },
-            invalidatesTags: ['collections'],
+            transformErrorResponse: (baseQueryReturnValue) => ({
+                name: 'Delete Collection Error',
+                message: baseQueryReturnValue.data?.type === 'RequestValidationError'
+                    ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ')
+                    : baseQueryReturnValue.data.message
+            }),
+            invalidatesTags: (result, error, arg) => [
+                { type: 'collections', id: `${arg.repositoryId}/${arg.collectionId}` },
+                { type: 'collections', id: 'LIST' },
+            ],
         }),
         updateCollection: builder.mutation<RagCollectionConfig, RagCollectionConfig>({
             query: (request) => ({
@@ -379,15 +374,16 @@ export const ragApi = createApi({
                     status: request.status,
                 },
             }),
-            transformErrorResponse: (baseQueryReturnValue) => {
-                return {
-                    name: 'Update Collection Error',
-                    message: baseQueryReturnValue.data?.type === 'RequestValidationError'
-                        ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ')
-                        : baseQueryReturnValue.data.message
-                };
-            },
-            invalidatesTags: ['collections'],
+            transformErrorResponse: (baseQueryReturnValue) => ({
+                name: 'Update Collection Error',
+                message: baseQueryReturnValue.data?.type === 'RequestValidationError'
+                    ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ')
+                    : baseQueryReturnValue.data.message
+            }),
+            invalidatesTags: (result, error, arg) => [
+                { type: 'collections', id: `${arg.repositoryId}/${arg.collectionId}` },
+                { type: 'collections', id: 'LIST' },
+            ],
         }),
     }),
 });
@@ -396,8 +392,6 @@ export const {
     useListRagRepositoriesQuery,
     useCreateRagRepositoryMutation,
     useDeleteRagRepositoryMutation,
-    useGetRagStatusQuery,
-    useLazyGetRagStatusQuery,
     useLazyGetPresignedUrlQuery,
     useUploadToS3Mutation,
     useIngestDocumentsMutation,

@@ -43,7 +43,7 @@ from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
 from repository.rag_document_repo import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
-from utilities.auth import admin_only, get_user_context, get_username, is_admin, user_has_group_access
+from utilities.auth import admin_only, get_groups, get_user_context, get_username, is_admin, user_has_group_access
 from utilities.bedrock_kb import retrieve_documents
 from utilities.common_functions import api_wrapper, get_id_token, retry_config
 from utilities.exceptions import HTTPException
@@ -209,12 +209,18 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
 
 
 def get_repository(event: dict[str, Any], repository_id: str) -> dict:
-    """Ensures a user has access to the repository or else raises an HTTPException"""
+    """Ensures a user has access to the repository or else raises an HTTPException."""
     repo = vs_repo.find_repository_by_id(repository_id)
-    if is_admin(event) is False:
-        user_groups = json.loads(event["requestContext"]["authorizer"]["groups"]) or []
-        if not user_has_group_access(user_groups, repo.get("allowedGroups", [])):
-            raise HTTPException(status_code=403, message="User does not have permission to access this repository")
+
+    # Admins have access to all repositories
+    if is_admin(event):
+        return repo
+
+    # Non-admins must have matching group access
+    user_groups = get_groups(event)
+    if not user_has_group_access(user_groups, repo.get("allowedGroups", [])):
+        raise HTTPException(status_code=403, message="User does not have permission to access this repository")
+
     return repo
 
 
@@ -267,7 +273,6 @@ def create_collection(event: dict, context: dict) -> Dict[str, Any]:
         repository=repository,
         collection=collection,
         username=username,
-        is_admin=is_admin,
     )
 
     # Return collection configuration
@@ -306,16 +311,20 @@ def get_collection(event: dict, context: dict) -> Dict[str, Any]:
     username, is_admin, groups = get_user_context(event)
 
     # Ensure repository exists and user has access
-    _ = get_repository(event, repository_id=repository_id)
+    repo = get_repository(event, repository_id=repository_id)
 
-    # Get collection via service (includes access control check)
-    collection = collection_service.get_collection(
-        repository_id=repository_id,
-        collection_id=collection_id,
-        username=username,
-        user_groups=groups,
-        is_admin=is_admin,
-    )
+    if repo.embeddingModelId == collection_id:
+        # Not a real collection
+        collection = collection_service.create_default_collection(repository_id=repository_id, repository=repo)
+    else:
+        # Get collection via service (includes access control check)
+        collection = collection_service.get_collection(
+            repository_id=repository_id,
+            collection_id=collection_id,
+            username=username,
+            user_groups=groups,
+            is_admin=is_admin,
+        )
 
     # Return collection configuration
     return collection.model_dump(mode="json")
@@ -385,49 +394,57 @@ def update_collection(event: dict, context: dict) -> Dict[str, Any]:
 @admin_only
 def delete_collection(event: dict, context: dict) -> Dict[str, Any]:
     """
-    Delete a collection within a vector store.
+    Delete a collection (regular or default) within a vector store.
+
+    Path: /repository/{repositoryId}/collection/{collectionId}
 
     Args:
         event (dict): The Lambda event object containing:
             - pathParameters.repositoryId: The parent repository ID
-            - pathParameters.collectionId: The collection ID
-            - queryStringParameters.hardDelete (optional): Whether to hard delete (default: false)
+            - pathParameters.collectionId: The collection ID (optional for default collections)
+            - queryStringParameters.embeddingName: Embedding model name (for default collections)
         context (dict): The Lambda context object
 
     Returns:
-        Dict[str, Any]: Empty dictionary (204 No Content)
+        Dict[str, Any]: Dictionary with deletion type and job ID
 
     Raises:
         ValidationError: If validation fails or user lacks permission
         HTTPException: If repository or collection not found or access denied
     """
-    # Extract path parameters
+    # Extract parameters
     path_params = event.get("pathParameters", {})
+    query_params = event.get("queryStringParameters", {}) or {}
+
     repository_id = path_params.get("repositoryId")
-    collection_id = path_params.get("collectionId")
+    collection_id = path_params.get("collectionId")  # May be None for default collections
+    embedding_name = query_params.get("embeddingName")  # For default collections
 
     if not repository_id:
         raise ValidationError("repositoryId is required")
-    if not collection_id:
-        raise ValidationError("collectionId is required")
+
+    # Validate that we have either collectionId or embeddingName
+    if not collection_id and not embedding_name:
+        raise ValidationError("Either collectionId or embeddingName must be provided")
 
     # Get user context
     username, is_admin, groups = get_user_context(event)
 
     # Ensure repository exists and user has access
-    _ = get_repository(event, repository_id=repository_id)
+    repo = get_repository(event, repository_id=repository_id)
 
-    # Delete collection via service (includes access control check)
-    collection_service.delete_collection(
-        collection_id=collection_id,
+    is_default_collection = repo.embeddingModelId == collection_id
+    # Delete collection via service
+    result = collection_service.delete_collection(
         repository_id=repository_id,
+        collection_id=collection_id,  # None for default collections
+        embedding_name=embedding_name if is_default_collection else None,  # None for regular collections
         username=username,
         user_groups=groups,
         is_admin=is_admin,
     )
 
-    # Return empty response for 204 No Content
-    return {}
+    return result
 
 
 @api_wrapper
@@ -1208,6 +1225,7 @@ def delete(event: dict, context: dict) -> Any:
                 collection_service.delete_collection(
                     collection_id=collection.collectionId,
                     repository_id=repository_id,
+                    embedding_name=collection.embeddingModel if collection.default else None,
                     username="admin",
                     user_groups=[],
                     is_admin=True,

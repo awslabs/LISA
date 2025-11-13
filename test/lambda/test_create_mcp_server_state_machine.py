@@ -198,8 +198,22 @@ def test_handle_deploy_server_with_optional_fields(mcp_servers_table, sample_mcp
     event_with_options["image"] = "python:3.12"
     event_with_options["s3Path"] = "s3://bucket/artifacts"
     event_with_options["environment"] = {"ENV_VAR": "value"}
-    event_with_options["loadBalancerConfig"] = {"healthCheckConfig": {"path": "/health"}}
-    event_with_options["containerHealthCheckConfig"] = {"command": "curl localhost:8000"}
+    event_with_options["loadBalancerConfig"] = {
+        "healthCheckConfig": {
+            "path": "/health",
+            "interval": 30,
+            "timeout": 5,
+            "healthyThresholdCount": 2,
+            "unhealthyThresholdCount": 3,
+        }
+    }
+    event_with_options["containerHealthCheckConfig"] = {
+        "command": "curl localhost:8000",
+        "interval": 30,
+        "startPeriod": 0,
+        "timeout": 5,
+        "retries": 3,
+    }
 
     with patch("mcp_server.state_machine.create_mcp_server.lambdaClient") as mock_lambda, patch(
         "mcp_server.state_machine.create_mcp_server.cfnClient"

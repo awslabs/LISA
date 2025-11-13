@@ -24,7 +24,7 @@ from typing import Any, Dict, Optional
 
 import boto3
 from botocore.config import Config
-from mcp_server.models import HostedMcpServerStatus, McpServerStatus
+from mcp_server.models import HostedMcpServerModel, HostedMcpServerStatus, McpServerStatus
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -68,37 +68,12 @@ def handle_deploy_server(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     logger.info(f"Deploying MCP server: {event.get('id')}")
     output_dict = deepcopy(event)
 
-    # Build server config for hosted MCP server deployer
-    # This matches the McpServerConfig interface in TypeScript
-    server_config = {
-        "id": event.get("id"),
-        "name": event.get("name"),
-        "startCommand": event.get("startCommand"),
-        "serverType": event.get("serverType"),
-        "autoScalingConfig": event.get("autoScalingConfig"),
-        "cpu": event.get("cpu"),
-        "memoryLimitMiB": event.get("memoryLimitMiB"),
-    }
-
-    # Add optional fields if present
-    if event.get("port") is not None:
-        server_config["port"] = event.get("port")
-    if event.get("image"):
-        server_config["image"] = event.get("image")
-    if event.get("s3Path"):
-        server_config["s3Path"] = event.get("s3Path")
-    if event.get("environment"):
-        server_config["environment"] = event.get("environment")
-    if event.get("taskExecutionRoleArn"):
-        server_config["taskExecutionRoleArn"] = event.get("taskExecutionRoleArn")
-    if event.get("taskRoleArn"):
-        server_config["taskRoleArn"] = event.get("taskRoleArn")
-    if event.get("loadBalancerConfig"):
-        server_config["loadBalancerConfig"] = event.get("loadBalancerConfig")
-    if event.get("containerHealthCheckConfig"):
-        server_config["containerHealthCheckConfig"] = event.get("containerHealthCheckConfig")
-    if event.get("groups"):
-        server_config["groups"] = event.get("groups")
+    # Validate and build server config using Pydantic model
+    # Exclude fields that the deployer doesn't need (owner, description, created, status)
+    server_config_model = HostedMcpServerModel.model_validate(event)
+    server_config = server_config_model.model_dump(
+        exclude_none=True, exclude={"owner", "description", "created", "status"}
+    )
 
     logger.info(f"Sending server config to deployer: {json.dumps(server_config)}")
 

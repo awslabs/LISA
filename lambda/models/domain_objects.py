@@ -997,6 +997,51 @@ class RepositoryMetadata(BaseModel):
     customFields: Optional[Dict[str, Any]] = Field(default=None, description="Custom metadata fields")
 
 
+class OpenSearchNewClusterConfig(BaseModel):
+    """Configuration for creating a new OpenSearch cluster."""
+
+    dataNodes: int = Field(default=2, ge=1, description="The number of data nodes (instances) to use in the Amazon OpenSearch Service domain.")
+    dataNodeInstanceType: str = Field(default="r7g.large.search", description="The instance type for your data nodes")
+    masterNodes: int = Field(default=0, ge=0, description="The number of instances to use for the master node")
+    masterNodeInstanceType: str = Field(default="r7g.large.search", description="The hardware configuration of the computer that hosts the dedicated master node")
+    volumeSize: int = Field(default=20, ge=20, description="The size (in GiB) of the EBS volume for each data node. The minimum and maximum size of an EBS volume depends on the EBS volume type and the instance type to which it is attached.")
+    volumeType: str = Field(default="gp3", description="The EBS volume type to use with the Amazon OpenSearch Service domain")
+    multiAzWithStandby: bool = Field(default=False, description="Indicates whether Multi-AZ with Standby deployment option is enabled.")
+
+
+class OpenSearchExistingClusterConfig(BaseModel):
+    """Configuration for using an existing OpenSearch cluster."""
+
+    endpoint: str = Field(min_length=1, description="Existing OpenSearch Cluster endpoint")
+
+
+# Union type for OpenSearch configurations
+OpenSearchConfig = Union[OpenSearchNewClusterConfig, OpenSearchExistingClusterConfig]
+
+
+class RdsInstanceConfig(BaseModel):
+    """Configuration schema for RDS Instances needed for LiteLLM scaling or PGVector RAG operations.
+    
+    The optional fields can be omitted to create a new database instance, otherwise fill in all fields 
+    to use an existing database instance.
+    """
+
+    username: str = Field(default="postgres", description="The username used for database connection.")
+    passwordSecretId: Optional[str] = Field(default=None, description="The SecretsManager Secret ID that stores the existing database password.")
+    dbHost: Optional[str] = Field(default=None, description="The database hostname for the existing database instance.")
+    dbName: str = Field(default="postgres", description="The name of the database for the database instance.")
+    dbPort: int = Field(default=5432, description="The port of the existing database instance or the port to be opened on the database instance.")
+
+
+class BedrockKnowledgeBaseConfig(BaseModel):
+    """Configuration for Bedrock Knowledge Base instance."""
+
+    bedrockKnowledgeBaseName: str = Field(description="The name of the Bedrock Knowledge Base.")
+    bedrockKnowledgeBaseId: str = Field(description="The id of the Bedrock Knowledge Base.")
+    bedrockKnowledgeDatasourceName: str = Field(description="The name of the Bedrock Knowledge Datasource.")
+    bedrockKnowledgeDatasourceId: str = Field(description="The id of the Bedrock Knowledge Datasource.")
+    bedrockKnowledgeDatasourceS3Bucket: str = Field(description="The S3 bucket of the Bedrock Knowledge Base.")
+
 class VectorStoreConfig(BaseModel):
     """Represents a vector store/repository configuration."""
 
@@ -1009,33 +1054,17 @@ class VectorStoreConfig(BaseModel):
     metadata: Optional[RepositoryMetadata] = Field(default=None, description="Repository metadata")
     pipelines: Optional[List[PipelineConfig]] = Field(default=None, description="Automated ingestion pipelines")
     # Type-specific configurations
-    opensearchConfig: Optional[Dict[str, Any]] = Field(default=None, description="OpenSearch configuration")
-    rdsConfig: Optional[Dict[str, Any]] = Field(default=None, description="RDS/PGVector configuration")
-    bedrockKnowledgeBaseConfig: Optional[Dict[str, Any]] = Field(
+    opensearchConfig: Optional[Union[OpenSearchNewClusterConfig, OpenSearchExistingClusterConfig]] = Field(
+        default=None, description="OpenSearch configuration"
+    )
+    rdsConfig: Optional[RdsInstanceConfig] = Field(default=None, description="RDS/PGVector configuration")
+    bedrockKnowledgeBaseConfig: Optional[BedrockKnowledgeBaseConfig] = Field(
         default=None, description="Bedrock Knowledge Base configuration"
     )
     # Status and timestamps
     status: Optional[str] = VectorStoreStatus.UNKNOWN
     createdAt: Optional[datetime] = Field(default=None, description="Creation timestamp")
     updatedAt: Optional[datetime] = Field(default=None, description="Last update timestamp")
-
-
-class CreateVectorStoreRequest(BaseModel):
-    """Request model for creating a new vector store."""
-
-    repositoryId: str = Field(description="Unique identifier for the repository")
-    repositoryName: Optional[str] = Field(default=None, description="User-friendly name")
-    embeddingModelId: Optional[str] = Field(default=None, description="Default embedding model ID")
-    type: str = Field(description="Type of vector store")
-    allowedGroups: List[str] = Field(default_factory=list, description="User groups with access")
-    allowUserCollections: bool = Field(default=True, description="Whether non-admin users can create collections")
-    metadata: Optional[RepositoryMetadata] = Field(default=None, description="Repository metadata")
-    pipelines: Optional[List[PipelineConfig]] = Field(default=None, description="Automated ingestion pipelines")
-    opensearchConfig: Optional[Dict[str, Any]] = Field(default=None, description="OpenSearch configuration")
-    rdsConfig: Optional[Dict[str, Any]] = Field(default=None, description="RDS/PGVector configuration")
-    bedrockKnowledgeBaseConfig: Optional[Dict[str, Any]] = Field(
-        default=None, description="Bedrock Knowledge Base configuration"
-    )
 
 
 class UpdateVectorStoreRequest(BaseModel):

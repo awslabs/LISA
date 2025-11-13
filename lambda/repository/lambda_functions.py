@@ -24,15 +24,24 @@ import boto3
 from boto3.dynamodb.types import TypeSerializer
 from botocore.config import Config
 from models.domain_objects import (
+    BedrockKnowledgeBaseConfig,
+    ChunkingStrategyType,
+    VectorStoreConfig,
     FilterParams,
+    FixedChunkingStrategy,
     IngestDocumentRequest,
     IngestionJob,
     IngestionStatus,
     ListJobsResponse,
+    OpenSearchExistingClusterConfig,
+    OpenSearchNewClusterConfig,
     PaginationParams,
     PaginationResult,
+    PipelineConfig,
+    PipelineTrigger,
     RagCollectionConfig,
     RagDocument,
+    RdsInstanceConfig,
     SortParams,
     UpdateVectorStoreRequest,
 )
@@ -44,7 +53,7 @@ from repository.ingestion_service import DocumentIngestionService
 from repository.rag_document_repo import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.auth import admin_only, get_groups, get_user_context, get_username, is_admin, user_has_group_access
-from utilities.bedrock_kb import retrieve_documents
+from utilities.bedrock_kb import retrieve_documents, create_default_pipeline
 from utilities.common_functions import api_wrapper, get_id_token, retry_config
 from utilities.exceptions import HTTPException
 from utilities.repository_types import RepositoryType
@@ -1052,9 +1061,12 @@ def create(event: dict, context: dict) -> Any:
     """
     Create a new process execution using AWS Step Functions. This function is only accessible by administrators.
 
+    For Bedrock Knowledge Base repositories, automatically adds a default pipeline configuration
+    if none is provided, using the datasource S3 bucket for event-driven ingestion.
+
     Args:
         event (dict): The Lambda event object containing:
-            - body: A JSON string with the process creation details.
+            - body: A JSON string with the process creation details containing VectorStoreConfig.
         context (dict): The Lambda context object.
 
     Returns:
@@ -1064,13 +1076,57 @@ def create(event: dict, context: dict) -> Any:
 
     Raises:
         ValueError: If the user is not an administrator.
+        ValidationError: If the request body is invalid.
     """
     # Fetch the Step Function ARN from SSM Parameter Store
     parameter_name = os.environ["LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER"]
     state_machine_arn = ssm_client.get_parameter(Name=parameter_name)
 
-    # Deserialize the event body and prepare input for Step Functions
-    input_data = json.loads(event["body"])
+    # Deserialize the event body and parse as VectorStoreConfig
+    try:
+        body = json.loads(event["body"])
+        vector_store_config = VectorStoreConfig(**body)
+    except json.JSONDecodeError as e:
+        raise ValidationError(f"Invalid JSON in request body: {e}")
+    except Exception as e:
+        raise ValidationError(f"Invalid VectorStoreConfig: {e}")
+
+    # Auto-add default pipeline for Bedrock Knowledge Base repositories
+    if vector_store_config.type == RepositoryType.BEDROCK_KB:
+        bedrock_config = vector_store_config.bedrockKnowledgeBaseConfig
+
+        # Only add default pipeline if no pipelines are configured and we have a bedrock config with datasource bucket
+        if bedrock_config and bedrock_config.bedrockKnowledgeDatasourceS3Bucket and not vector_store_config.pipelines:
+            datasource_bucket = bedrock_config.bedrockKnowledgeDatasourceS3Bucket
+            
+            # Create default chunking strategy
+            default_chunking = FixedChunkingStrategy(
+                type=ChunkingStrategyType.FIXED,
+                size=512,
+                overlap=51,
+            )
+
+            # Create default pipeline configuration
+            default_pipeline = PipelineConfig(
+                s3Bucket=datasource_bucket,
+                s3Prefix="",
+                trigger=PipelineTrigger.EVENT,
+                chunkSize=default_chunking.size,
+                chunkOverlap=default_chunking.overlap,
+                autoRemove=True,
+            )
+
+            vector_store_config.pipelines = [default_pipeline]
+            logger.info(
+                f"Auto-added default pipeline for Bedrock KB repository {vector_store_config.repositoryId} "
+                f"monitoring bucket: {datasource_bucket}"
+            )
+              
+
+    # Convert to dictionary for Step Functions input
+    rag_config = vector_store_config.model_dump(mode="json", exclude_none=True)
+    input_data = {"ragConfig": rag_config}
+
     serializer = TypeSerializer()
 
     # Start Step Function execution
@@ -1079,7 +1135,7 @@ def create(event: dict, context: dict) -> Any:
         input=json.dumps(
             {
                 "body": input_data,
-                "config": {key: serializer.serialize(value) for key, value in input_data["ragConfig"].items()},
+                "config": {key: serializer.serialize(value) for key, value in rag_config.items()},
             }
         ),
     )

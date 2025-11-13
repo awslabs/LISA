@@ -164,7 +164,8 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
                     touchFields={touchFields}
                     formErrors={errors}
                     isEdit={isEdit}
-                    repositoryId={state.form.repositoryId} />
+                    repositoryId={state.form.repositoryId}
+                    repositoryType={state.form.type} />
             ),
             isOptional: true,
             onEdit: true,

@@ -27,7 +27,7 @@ import {
 } from '@cloudscape-design/components';
 import { FormProps } from '../../../shared/form/form-props';
 
-import { PipelineConfig, RagRepositoryPipeline } from '#root/lib/schema';
+import { PipelineConfig, RagRepositoryPipeline, RagRepositoryType } from '#root/lib/schema';
 import { getDefaults } from '#root/lib/schema/zodUtil';
 import { useListCollectionsQuery } from '@/shared/reducers/rag.reducer';
 import { ChunkingConfigForm } from '@/components/document-library/createCollection/ChunkingConfigForm';
@@ -35,10 +35,11 @@ import { ChunkingConfigForm } from '@/components/document-library/createCollecti
 export type PipelineConfigProps = {
     isEdit: boolean;
     repositoryId?: string;
+    repositoryType?: RagRepositoryType;
 };
 
 export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & PipelineConfigProps): ReactElement {
-    const { item, touchFields, setFields, formErrors, isEdit, repositoryId } = props;
+    const { item, touchFields, setFields, formErrors, isEdit, repositoryId, repositoryType } = props;
 
     // Only query collections if we have a repositoryId (editing existing repository)
     const { data: collections, isFetching: isFetchingCollections } = useListCollectionsQuery(
@@ -101,28 +102,30 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                         </Header>
                     }>
                     <SpaceBetween size={'s'}>
-                        <ChunkingConfigForm
-                            item={pipeline.chunkingStrategy}
-                            setFields={(values) => {
-                                const updatedFields = {};
-                                // Store using the new chunkingStrategy structure
-                                if (values.chunkingStrategy) {
-                                    updatedFields[`pipelines[${index}].chunkingStrategy`] = values.chunkingStrategy;
-                                }
-                                if (values['chunkingStrategy.size'] !== undefined) {
-                                    updatedFields[`pipelines[${index}].chunkingStrategy.size`] = values['chunkingStrategy.size'];
-                                }
-                                if (values['chunkingStrategy.overlap'] !== undefined) {
-                                    updatedFields[`pipelines[${index}].chunkingStrategy.overlap`] = values['chunkingStrategy.overlap'];
-                                }
-                                setFields(updatedFields);
-                            }}
-                            touchFields={(fields) => {
-                                const updatedFields = fields.map((field) => `pipelines[${index}].${field}`);
-                                touchFields(updatedFields);
-                            }}
-                            formErrors={formErrors.pipelines?.[index]?.chunkingStrategy || {}}
-                        />
+                        {repositoryType !== RagRepositoryType.BEDROCK_KNOWLEDGE_BASE && (
+                            <ChunkingConfigForm
+                                item={pipeline.chunkingStrategy}
+                                setFields={(values) => {
+                                    const updatedFields = {};
+                                    // Store using the new chunkingStrategy structure
+                                    if (values.chunkingStrategy) {
+                                        updatedFields[`pipelines[${index}].chunkingStrategy`] = values.chunkingStrategy;
+                                    }
+                                    if (values['chunkingStrategy.size'] !== undefined) {
+                                        updatedFields[`pipelines[${index}].chunkingStrategy.size`] = values['chunkingStrategy.size'];
+                                    }
+                                    if (values['chunkingStrategy.overlap'] !== undefined) {
+                                        updatedFields[`pipelines[${index}].chunkingStrategy.overlap`] = values['chunkingStrategy.overlap'];
+                                    }
+                                    setFields(updatedFields);
+                                }}
+                                touchFields={(fields) => {
+                                    const updatedFields = fields.map((field) => `pipelines[${index}].${field}`);
+                                    touchFields(updatedFields);
+                                }}
+                                formErrors={formErrors.pipelines?.[index]?.chunkingStrategy || {}}
+                            />
+                        )}
 
                         <FormField
                             label='Collection'

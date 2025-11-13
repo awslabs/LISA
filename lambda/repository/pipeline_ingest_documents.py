@@ -64,12 +64,19 @@ def pipeline_ingest(job: IngestionJob) -> None:
         # chunk and save chunks in vector store
         repository = vs_repo.find_repository_by_id(job.repository_id)
         if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
+            # BRKB will handle ingesting the document based on S3 event
             ingest_document_to_kb(
                 s3_client=s3,
                 bedrock_agent_client=bedrock_agent,
                 job=job,
                 repository=repository,
             )
+            # update IngstionJob
+            job.status = IngestionStatus.INGESTION_COMPLETED
+            job.document_id = rag_document.document_id
+            ingestion_job_repository.save(job)
+            logging.info(f"Bedrock Knowledge Base will ingest the document {job.s3_path} using default chunking into {job.embedding_model} collection")
+            return
         else:
             documents = generate_chunks(job)
             texts, metadatas = prepare_chunks(documents, job.repository_id, job.collection_id)

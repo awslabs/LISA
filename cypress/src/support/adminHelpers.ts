@@ -37,7 +37,7 @@ export function expandAdminMenu () {
         .should('be.visible');
 
     cy.get('[role="menuitem"]')
-        .should('have.length', 3)
+        .should('have.length', 4)
         .then(($items) => {
             const labels = $items
                 .map((_, el) => Cypress.$(el).text().trim())
@@ -46,6 +46,7 @@ export function expandAdminMenu () {
                 'Configuration',
                 'Model Management',
                 'MCP Management',
+                'Repository Management',
             ]);
         });
 }

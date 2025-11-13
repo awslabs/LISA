@@ -511,3 +511,34 @@ def test_complete_system_user_auth_flow(lambda_context):
     with patch("utilities.auth.get_groups", return_value=[]):
         admin_status = is_admin(event)
         assert admin_status is False
+
+
+def test_get_username(setup_env):
+    from utilities.auth import get_username
+
+    event = {"requestContext": {"authorizer": {"username": "testuser"}}}
+    assert get_username(event) == "testuser"
+
+
+def test_get_username_default(setup_env):
+    from utilities.auth import get_username
+
+    event = {}
+    assert get_username(event) == "system"
+
+
+def test_user_has_group():
+    """Test user_has_group_access helper function"""
+    from utilities.auth import user_has_group_access
+
+    # Test user has group
+    assert user_has_group_access(["group1", "group2"], ["group2", "group3"]) is True
+
+    # Test user doesn't have group
+    assert user_has_group_access(["group1", "group2"], ["group3", "group4"]) is False
+
+    # Test empty user groups
+    assert user_has_group_access([], ["group1"]) is False
+
+    # Test empty allowed groups - this returns True according to the actual implementation
+    assert user_has_group_access(["group1"], []) is True

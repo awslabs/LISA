@@ -17,6 +17,63 @@ import { z } from 'zod';
 import { EbsDeviceVolumeType } from './cdk';
 
 /**
+ * Enum for chunking strategy types
+ */
+export enum ChunkingStrategyType {
+    FIXED = 'fixed',
+}
+
+/**
+ * Fixed size chunking strategy schema
+ */
+export const FixedSizeChunkingStrategySchema = z.object({
+    type: z.literal(ChunkingStrategyType.FIXED).describe('Fixed size chunking strategy type'),
+    size: z.number().min(100).max(10000).default(512).describe('Size of each chunk in characters'),
+    overlap: z.number().min(0).default(51).describe('Overlap between chunks in characters'),
+}).refine(
+    (data) => data.overlap <= data.size / 2,
+    { message: 'overlap must be less than or equal to half of size' }
+);
+
+/**
+ * Union of all chunking strategy types
+ */
+export const ChunkingStrategySchema = FixedSizeChunkingStrategySchema;
+
+export type ChunkingStrategy = z.infer<typeof ChunkingStrategySchema>;
+export type FixedSizeChunkingStrategy = z.infer<typeof FixedSizeChunkingStrategySchema>;
+
+/**
+ * Defines possible states for a vector store deployment.
+ * These statuses are used by both create-store and delete-store state machines.
+ */
+export enum VectorStoreStatus {
+    /** Vector store creation is in progress */
+    CREATE_IN_PROGRESS = 'CREATE_IN_PROGRESS',
+
+    /** Vector store creation completed successfully */
+    CREATE_COMPLETE = 'CREATE_COMPLETE',
+
+    /** Vector store creation failed */
+    CREATE_FAILED = 'CREATE_FAILED',
+
+    /** Vector store update is in progress */
+    UPDATE_IN_PROGRESS = 'UPDATE_IN_PROGRESS',
+
+    /** Vector store update completed successfully */
+    UPDATE_COMPLETE = 'UPDATE_COMPLETE',
+
+    /** Vector store update cleanup is in progress */
+    UPDATE_COMPLETE_CLEANUP_IN_PROGRESS = 'UPDATE_COMPLETE_CLEANUP_IN_PROGRESS',
+
+    /** Vector store deletion is in progress */
+    DELETE_IN_PROGRESS = 'DELETE_IN_PROGRESS',
+
+    /** Vector store deletion failed */
+    DELETE_FAILED = 'DELETE_FAILED',
+}
+
+/**
  * Enum for different types of RAG repositories available
  */
 export enum RagRepositoryType {
@@ -59,7 +116,9 @@ const triggerSchema = z.object({
 export const RagRepositoryPipeline = z.object({
     chunkSize: z.number().default(512).describe('The size of the chunks used for document segmentation.'),
     chunkOverlap: z.number().default(51).describe('The size of the overlap between chunks.'),
+    chunkingStrategy: ChunkingStrategySchema.optional().describe('Chunking strategy for documents in this pipeline.'),
     embeddingModel: z.string().describe('The embedding model used for document ingestion in this pipeline.'),
+    collectionId: z.string().optional().describe('The collection ID to ingest documents into.'),
     s3Bucket: z.string().describe('The S3 bucket monitored by this pipeline for document processing.'),
     s3Prefix: z.string()
         .regex(/^(?!.*(?:^|\/)\.\.?(\/|$)).*/, 'Prefix cannot contain relative path components (ie `.` or `..`)')
@@ -89,6 +148,11 @@ export type RdsConfig = z.infer<typeof RdsInstanceConfig>;
 
 export type BedrockKnowledgeBaseConfig = z.infer<typeof BedrockKnowledgeBaseInstanceConfig>;
 
+export const RagRepositoryMetadata = z.object({
+    tags: z.array(z.string()).default([]).describe('Tags for categorizing and organizing the repository.'),
+    customFields: z.record(z.any()).optional().describe('Custom metadata fields for the repository.'),
+});
+
 export const RagRepositoryConfigSchema = z
     .object({
         repositoryId: z.string()
@@ -104,6 +168,9 @@ export const RagRepositoryConfigSchema = z
         bedrockKnowledgeBaseConfig: BedrockKnowledgeBaseInstanceConfig.optional(),
         pipelines: z.array(RagRepositoryPipeline).optional().default([]).describe('Rag ingestion pipeline for automated inclusion into a vector store from S3'),
         allowedGroups: z.array(z.string().nonempty()).optional().default([]).describe('The groups provided by the Identity Provider that have access to this repository. If no groups are specified, access is granted to everyone.'),
+        allowUserCollections: z.boolean().default(true).describe('Whether non-admin users can create collections in this repository.'),
+        metadata: RagRepositoryMetadata.optional().describe('Metadata for the repository including tags and custom fields.'),
+        status: z.nativeEnum(VectorStoreStatus).optional().describe('Current deployment status of the repository')
     })
     .refine((input) => {
         return !((input.type === RagRepositoryType.OPENSEARCH && input.opensearchConfig === undefined) ||

@@ -9,7 +9,7 @@
     "pack:prod": "cd ./dist && npm i --omit dev",
     "copy-dist": "mkdir -p ../dist/ecs_model_deployer && cp -r ./dist/* ../dist/ecs_model_deployer/",
     "clean": "rm -rf ./dist/",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"No tests for ECS model deployer package\""
   },
   "author": "",
   "license": "Apache-2.0",

@@ -141,6 +141,7 @@ def config_table(dynamodb):
 # Create mock modules
 mock_common = MagicMock()
 mock_common.get_username.return_value = "test-user"
+mock_common.get_user_context.return_value = ("test-user", False, ["test-group"])
 mock_common.retry_config = retry_config
 mock_common.get_session_id.return_value = "test-session"
 mock_common.api_wrapper = mock_api_wrapper
@@ -158,6 +159,7 @@ patch.dict(
 
 # Then patch the specific functions
 patch("utilities.auth.get_username", mock_common.get_username).start()
+patch("utilities.auth.get_user_context", mock_common.get_user_context).start()
 patch("utilities.common_functions.get_session_id", mock_common.get_session_id).start()
 patch("utilities.common_functions.retry_config", retry_config).start()
 patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()
@@ -1082,18 +1084,18 @@ def test_put_session_encryption_error(
         assert "Failed to encrypt session data" in body["error"]
 
 
-@patch("session.lambda_functions.get_groups")
+@patch("session.lambda_functions.get_user_context")
 @patch("session.lambda_functions.sqs_client")
 def test_put_session_sqs_metrics_success(
-    mock_sqs_client, mock_get_groups, dynamodb_table, config_table, sample_session, lambda_context
+    mock_sqs_client, mock_get_user_context, dynamodb_table, config_table, sample_session, lambda_context
 ):
     """Test put_session with successful SQS metrics publishing."""
 
     # Set environment variable for metrics queue
     os.environ["USAGE_METRICS_QUEUE_NAME"] = "test-metrics-queue"
 
-    # Mock get_groups
-    mock_get_groups.return_value = ["group1", "group2"]
+    # Mock get_user_context
+    mock_get_user_context.return_value = ("test-user", False, ["group1", "group2"])
 
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
@@ -1130,18 +1132,18 @@ def test_put_session_sqs_metrics_missing_queue(
         mock_sqs_client.send_message.assert_not_called()
 
 
-@patch("session.lambda_functions.get_groups")
+@patch("session.lambda_functions.get_user_context")
 @patch("session.lambda_functions.sqs_client")
 def test_put_session_sqs_metrics_error(
-    mock_sqs_client, mock_get_groups, dynamodb_table, config_table, sample_session, lambda_context
+    mock_sqs_client, mock_get_user_context, dynamodb_table, config_table, sample_session, lambda_context
 ):
     """Test put_session with SQS metrics publishing error."""
 
     # Set environment variable for metrics queue
     os.environ["USAGE_METRICS_QUEUE_NAME"] = "test-metrics-queue"
 
-    # Mock get_groups
-    mock_get_groups.return_value = ["group1", "group2"]
+    # Mock get_user_context
+    mock_get_user_context.return_value = ("test-user", False, ["group1", "group2"])
 
     # Mock SQS error
     mock_sqs_client.send_message.side_effect = Exception("SQS error")

@@ -14,7 +14,7 @@
  limitations under the License.
  */
 import { Construct } from 'constructs';
-import { BaseProps } from '../../../schema';
+import { BaseProps, VectorStoreStatus,  } from '../../../schema';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
@@ -120,7 +120,7 @@ export class DeleteStoreStateMachine extends Construct {
             updateExpression: 'SET #status = :status',
             expressionAttributeNames: { '#status': 'status' },
             expressionAttributeValues: {
-                ':status': tasks.DynamoAttributeValue.fromString('DELETE_IN_PROGRESS'),
+                ':status': tasks.DynamoAttributeValue.fromString(VectorStoreStatus.DELETE_IN_PROGRESS),
             },
             resultPath: '$.updateDynamoDbResult',
         });
@@ -186,7 +186,7 @@ export class DeleteStoreStateMachine extends Construct {
         }))
             .next(
                 new sfn.Choice(this, 'DeletionSuccessful?')
-                    .when(sfn.Condition.stringEquals('$.checkResult.status', 'DELETE_FAILED'), updateFailureStatus)
+                    .when(sfn.Condition.stringEquals('$.checkResult.status', VectorStoreStatus.DELETE_FAILED), updateFailureStatus)
                     .otherwise(wait.next(checkStackStatus))
             );
         // Define the sequence of tasks and conditions in the state machine

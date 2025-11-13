@@ -20,7 +20,15 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
 import boto3
-from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, IngestionType, RagDocument
+from models.domain_objects import (
+    ChunkingStrategy,
+    FixedChunkingStrategy,
+    IngestionJob,
+    IngestionStatus,
+    IngestionType,
+    RagDocument,
+)
+from repository.collection_service import CollectionService
 from repository.embeddings import RagEmbeddings
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
@@ -38,19 +46,20 @@ ingestion_job_table = dynamodb.Table(os.environ["LISA_INGESTION_JOB_TABLE_NAME"]
 ingestion_service = DocumentIngestionService()
 ingestion_job_repository = IngestionJobRepository()
 vs_repo = VectorStoreRepository()
+rag_document_repository = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"])
+collection_service = CollectionService(vector_store_repo=vs_repo, document_repo=rag_document_repository)
 
 logger = logging.getLogger(__name__)
 session = boto3.Session()
 s3 = boto3.client("s3", region_name=os.environ["AWS_REGION"], config=retry_config)
 bedrock_agent = boto3.client("bedrock-agent", region_name=os.environ["AWS_REGION"], config=retry_config)
 ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
-rag_document_repository = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"])
 
 
 def pipeline_ingest(job: IngestionJob) -> None:
-    texts = []
-    metadatas = []
-    all_ids = []
+    texts: list[str] = []
+    metadatas: list[dict] = []
+    all_ids: list[str] = []
     try:
         # chunk and save chunks in vector store
         repository = vs_repo.find_repository_by_id(job.repository_id)
@@ -63,8 +72,14 @@ def pipeline_ingest(job: IngestionJob) -> None:
             )
         else:
             documents = generate_chunks(job)
-            texts, metadatas = prepare_chunks(documents, job.repository_id)
-            all_ids = store_chunks_in_vectorstore(texts, metadatas, job.repository_id, job.collection_id)
+            texts, metadatas = prepare_chunks(documents, job.repository_id, job.collection_id)
+            all_ids = store_chunks_in_vectorstore(
+                texts=texts,
+                metadatas=metadatas,
+                repository_id=job.repository_id,
+                collection_id=job.collection_id,
+                embedding_model=job.embedding_model,
+            )
 
         # remove old
         for rag_document in rag_document_repository.find_by_source(
@@ -117,7 +132,7 @@ def remove_document_from_vectorstore(doc: RagDocument) -> None:
     embeddings = RagEmbeddings(model_name=doc.collection_id)
     vector_store = get_vector_store_client(
         doc.repository_id,
-        index=doc.collection_id,
+        collection_id=doc.collection_id,
         embeddings=embeddings,
     )
     vector_store.delete(doc.subdocs)
@@ -134,24 +149,37 @@ def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
     key = detail.get("key", None)
     repository_id = detail.get("repositoryId", None)
     pipeline_config = detail.get("pipelineConfig", None)
-    embedding_model = pipeline_config.get("embeddingModel", None)
+    collection_id = pipeline_config.get("collectionId", None)
     s3_path = f"s3://{bucket}/{key}"
-
+    embedding_model = pipeline_config.get("embeddingModel", None)
+    if collection_id:
+        collection = collection_service.get_collection(
+            collection_id=collection_id, repository_id=repository_id, is_admin=True, username="", user_groups=[]
+        )
+        embedding_model = collection.embeddingModel
+    else:
+        collection_id = embedding_model
     logger.info(f"Ingesting object {s3_path} for repository {repository_id}/{embedding_model}")
 
     chunk_strategy = extract_chunk_strategy(pipeline_config)
 
+    # Get repository and metadata
+    repository = vs_repo.find_repository_by_id(repository_id)
+    metadata = collection_service.get_collection_metadata(repository, None)
+
     # create ingestion job and save it to dynamodb
     job = IngestionJob(
         repository_id=repository_id,
-        collection_id=embedding_model,
+        collection_id=collection_id,
+        embedding_model=embedding_model,
         chunk_strategy=chunk_strategy,
         s3_path=s3_path,
         username=username,
         ingestion_type=IngestionType.MANUAL,
+        metadata=metadata,
     )
     ingestion_job_repository.save(job)
-    ingestion_service.create_ingest_job(job)
+    ingestion_service.submit_create_job(job)
 
     logger.info(f"Ingesting document {s3_path} for repository {repository_id}")
 
@@ -219,6 +247,10 @@ def handle_pipline_ingest_schedule(event: Dict[str, Any], context: Any) -> None:
             logger.error(f"Error during S3 list operation: {str(e)}", exc_info=True)
             raise
 
+        # Get repository and metadata
+        repository = vs_repo.find_repository_by_id(repository_id)
+        metadata = collection_service.get_collection_metadata(repository, None)
+
         # create an IngestionJob for every object created/modified
         for key in modified_keys:
             job = IngestionJob(
@@ -228,9 +260,10 @@ def handle_pipline_ingest_schedule(event: Dict[str, Any], context: Any) -> None:
                 s3_path=f"s3://{bucket}/{key}",
                 username=username,
                 ingestion_type=IngestionType.AUTO,
+                metadata=metadata,
             )
             ingestion_job_repository.save(job)
-            ingestion_service.create_ingest_job(job)
+            ingestion_service.submit_create_job(job)
 
         logger.info(f"Found {len(modified_keys)} modified files in {bucket}{prefix}")
     except Exception as e:
@@ -257,15 +290,48 @@ def batch_texts(texts: List[str], metadatas: List[Dict], batch_size: int = 500) 
     return batches
 
 
-def extract_chunk_strategy(pipeline_config: Dict) -> FixedChunkingStrategy:
-    """Extract and validate configuration parameters."""
-    chunk_size = int(pipeline_config["chunkSize"])
-    chunk_overlap = int(pipeline_config["chunkOverlap"])
+def extract_chunk_strategy(pipeline_config: Dict) -> ChunkingStrategy:
+    """
+    Extract and validate chunking strategy from pipeline configuration.
 
-    return FixedChunkingStrategy(size=chunk_size, overlap=chunk_overlap)
+    Supports both new chunkingStrategy object format and legacy flat fields for backward compatibility.
+    Uses Pydantic model validation to ensure data integrity.
+
+    Args:
+        pipeline_config: Pipeline configuration dictionary
+
+    Returns:
+        ChunkingStrategy object (validated Pydantic model)
+
+    Raises:
+        ValueError: If chunking strategy type is unsupported or validation fails
+    """
+    # Check for new chunkingStrategy object format first
+    if "chunkingStrategy" in pipeline_config and pipeline_config["chunkingStrategy"]:
+        chunking_strategy = pipeline_config["chunkingStrategy"]
+        chunk_type = chunking_strategy.get("type", "fixed")
+
+        if chunk_type == "fixed":
+            # Use Pydantic model validation for type safety and validation
+            return FixedChunkingStrategy.model_validate(chunking_strategy)
+        else:
+            # Future: Handle other chunking strategy types (semantic, recursive, etc.)
+            raise ValueError(f"Unsupported chunking strategy type: {chunk_type}")
+
+    # Fall back to legacy flat fields for backward compatibility
+    elif "chunkSize" in pipeline_config and "chunkOverlap" in pipeline_config:
+        chunk_size = int(pipeline_config["chunkSize"])
+        chunk_overlap = int(pipeline_config["chunkOverlap"])
+        # Use Pydantic model for validation
+        return FixedChunkingStrategy(size=chunk_size, overlap=chunk_overlap)
+
+    # Default values if neither format is present
+    else:
+        logger.warning("No chunking strategy found in pipeline config, using defaults")
+        return FixedChunkingStrategy(size=512, overlap=51)
 
 
-def prepare_chunks(docs: List, repository_id: str) -> tuple[List[str], List[Dict]]:
+def prepare_chunks(docs: List, repository_id: str, collection_id: str) -> tuple[List[str], List[Dict]]:
     """Prepare texts and metadata from document chunks."""
     texts = []
     metadatas = []
@@ -273,20 +339,21 @@ def prepare_chunks(docs: List, repository_id: str) -> tuple[List[str], List[Dict
     for doc in docs:
         texts.append(doc.page_content)
         doc.metadata["repository_id"] = repository_id
+        doc.metadata["collection_id"] = collection_id
         metadatas.append(doc.metadata)
 
     return texts, metadatas
 
 
 def store_chunks_in_vectorstore(
-    texts: List[str], metadatas: List[Dict], repository_id: str, embedding_model: str
+    texts: List[str], metadatas: List[Dict], repository_id: str, collection_id: str, embedding_model: str
 ) -> List[str]:
     """Store document chunks in vector store."""
     embeddings = RagEmbeddings(model_name=embedding_model)
     vs = get_vector_store_client(
         repository_id,
-        index=embedding_model,
-        embeddings=embeddings,
+        collection_id,
+        embeddings,
     )
 
     all_ids = []

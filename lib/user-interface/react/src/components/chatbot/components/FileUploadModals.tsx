@@ -17,17 +17,15 @@
 import {
     Box,
     Button,
+    Checkbox,
     FileUpload,
-    FormField,
-    Grid,
-    Input,
     Modal,
     ProgressBar,
     SpaceBetween,
     StatusIndicator,
     TextContent,
 } from '@cloudscape-design/components';
-import { FileTypes, StatusTypes } from '../../types';
+import { FileTypes, StatusTypes } from '@/components/types';
 import React, { useState } from 'react';
 import { RagConfig } from './RagOptions';
 import { useAppDispatch } from '@/config/store';
@@ -37,10 +35,11 @@ import {
     useLazyGetPresignedUrlQuery,
     useUploadToS3Mutation,
 } from '@/shared/reducers/rag.reducer';
-import { uploadToS3Request } from '../../utils';
-import { RagRepositoryPipeline } from '#root/lib/schema';
+import { uploadToS3Request } from '@/components/utils';
+import { ChunkingStrategy, ChunkingStrategyType } from '#root/lib/schema';
 import { IModel } from '@/shared/model/model-management.model';
-import { JobStatusTable } from './JobStatusTable';
+import { JobStatusTable } from '@/components/chatbot/components/JobStatusTable';
+import { ChunkingConfigForm } from '@/components/document-library/createCollection/ChunkingConfigForm';
 
 export const renameFile = (originalFile: File) => {
     // Add timestamp to filename for RAG uploads to not conflict with existing S3 files
@@ -219,8 +218,12 @@ export const RagUploadModal = ({
     const [ingestingFiles, setIngestingFiles] = useState(false);
     const [ingestionStatus, setIngestionStatus] = useState('');
     const [ingestionType, setIngestionType] = useState(StatusTypes.LOADING);
-    const [chunkSize, setChunkSize] = useState(512);
-    const [chunkOverlap, setChunkOverlap] = useState(51);
+    const [overrideChunkingStrategy, setOverrideChunkingStrategy] = useState(false);
+    const [chunkingStrategy, setChunkingStrategy] = useState<ChunkingStrategy | undefined>({
+        type: ChunkingStrategyType.FIXED,
+        size: 512,
+        overlap: 51,
+    });
     const dispatch = useAppDispatch();
     const [getPresignedUrl] = useLazyGetPresignedUrlQuery();
     const notificationService = useNotificationService(dispatch);
@@ -238,7 +241,7 @@ export const RagUploadModal = ({
         const s3UploadRequest = uploadToS3Request(urlResponse.data, file);
 
         const uploadResp = await uploadToS3Mutation(s3UploadRequest);
-        if (uploadResp.error) {
+        if ('error' in uploadResp) {
             handleError(`Error encountered while uploading file ${file.name}`);
             return false;
         }
@@ -253,23 +256,23 @@ export const RagUploadModal = ({
         setIngestionStatus('Ingesting documents into the selected repository...');
         try {
             // Ingest all of the documents which uploaded successfully
-
             const ingestResp = await ingestDocuments({
                 documents: fileKeys,
                 repositoryId: ragConfig.repositoryId,
-                embeddingModel: { id: ragConfig.embeddingModel.modelId, modelType: ragConfig.embeddingModel.modelType, streaming: ragConfig.embeddingModel.streaming },
+                collectionId: ragConfig.collection?.collectionId,
                 repostiroyType: ragConfig.repositoryType,
-                chunkSize,
-                chunkOverlap
+                chunkingStrategy: overrideChunkingStrategy ? chunkingStrategy : undefined,
             });
 
-            if (ingestResp.error) {
+            if ('error' in ingestResp) {
                 throw new Error('Failed to ingest documents into RAG');
             } else {
                 setIngestionType(StatusTypes.SUCCESS);
-                const jobIds = ingestResp.data?.ingestionJobIds || [];
-                setIngestionStatus(`Successfully ingested documents into the selected repository. Job IDs: ${jobIds.join(', ')}`);
-                notificationService.generateNotification(`Successfully ingested ${fileKeys.length} document(s) into the selected repository. Job IDs: ${jobIds.join(', ')}`, 'success');
+                const jobs = ingestResp.data?.jobs || [];
+                const jobIds = jobs.map((job) => job.jobId);
+                const collectionName = ingestResp.data?.collectionName || ingestResp.data?.collectionId || 'repository';
+                setIngestionStatus(`Successfully submitted documents for ingestion into ${collectionName}. Job IDs: ${jobIds.join(', ')}`);
+                notificationService.generateNotification(`Successfully submitted ${fileKeys.length} document(s) for ingestion into ${collectionName}. ${jobs.length} job(s) created.`, 'success');
                 setShowRagUploadModal(false);
             }
         } catch {
@@ -332,38 +335,39 @@ export const RagUploadModal = ({
                         </small>
                     </p>
                 </TextContent>
-                <Grid gridDefinition={[{ colspan: { default: 12, xxs: 6 } }, { colspan: { default: 12, xxs: 6 } }]}>
-                    <FormField label='Chunk Size' description={RagRepositoryPipeline.shape.chunkSize.description}>
-                        <Input
-                            value={chunkSize.toString()}
-                            type='number'
-                            step={1}
-                            inputMode='numeric'
-                            disableBrowserAutocorrect={true}
-                            onChange={(event) => {
-                                const intVal = parseInt(event.detail.value);
-                                if (intVal >= 0) {
-                                    setChunkSize(intVal);
-                                }
-                            }}
-                        />
-                    </FormField>
-                    <FormField label='Chunk Overlap' description={RagRepositoryPipeline.shape.chunkOverlap.description}>
-                        <Input
-                            value={chunkOverlap.toString()}
-                            type='number'
-                            step={1}
-                            inputMode='numeric'
-                            disableBrowserAutocorrect={true}
-                            onChange={(event) => {
-                                const intVal = parseInt(event.detail.value);
-                                if (intVal >= 0) {
-                                    setChunkOverlap(intVal);
-                                }
-                            }}
-                        />
-                    </FormField>
-                </Grid>
+
+                {/* Chunking Strategy Override Checkbox */}
+                <Checkbox
+                    checked={overrideChunkingStrategy}
+                    onChange={({ detail }) => setOverrideChunkingStrategy(detail.checked)}
+                >
+                    Override default chunking strategy
+                </Checkbox>
+
+                {/* Chunking Strategy Form - Only shown when override is enabled */}
+                {overrideChunkingStrategy && (
+                    <ChunkingConfigForm
+                        item={chunkingStrategy}
+                        setFields={(values) => {
+                            if (values.chunkingStrategy !== undefined) {
+                                setChunkingStrategy(values.chunkingStrategy);
+                            } else if (values['chunkingStrategy.size'] !== undefined) {
+                                setChunkingStrategy({
+                                    ...chunkingStrategy,
+                                    size: values['chunkingStrategy.size'],
+                                });
+                            } else if (values['chunkingStrategy.overlap'] !== undefined) {
+                                setChunkingStrategy({
+                                    ...chunkingStrategy,
+                                    overlap: values['chunkingStrategy.overlap'],
+                                });
+                            }
+                        }}
+                        touchFields={() => {}}
+                        formErrors={{}}
+                    />
+                )}
+
                 <FileUpload
                     onChange={({ detail }) => setSelectedFiles(detail.value)}
                     value={selectedFiles}
@@ -394,7 +398,6 @@ export const RagUploadModal = ({
                 <JobStatusTable
                     ragConfig={ragConfig}
                     autoLoad={showRagUploadModal}
-                    showDescription={true}
                     title='Recent Jobs'
                 />
             </SpaceBetween>

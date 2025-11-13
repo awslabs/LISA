@@ -32,7 +32,6 @@ from starlette.types import ASGIApp
 
 # The following are field names, not passwords or tokens
 API_KEY_HEADER_NAMES = [
-    "authorization",
     "Authorization",  # OpenAI Bearer token format, collides with IdP, but that's okay for this use case
     "Api-Key",  # pragma: allowlist secret # Azure key format, can be used with Continue IDE plugin
 ]
@@ -108,7 +107,7 @@ def id_token_is_valid(
             },
         )
         return data
-    except jwt.exceptions.PyJWTError as e:
+    except (jwt.exceptions.PyJWTError, jwt.exceptions.DecodeError) as e:
         logger.exception(e)
         return None
 
@@ -125,7 +124,7 @@ def is_user_in_group(jwt_data: dict[str, Any], group: str, jwt_groups_property: 
     return group in current_node
 
 
-def get_authorization_token(headers: Dict[str, str], header_name: str) -> str:
+def get_authorization_token(headers: Dict[str, str], header_name: str = "Authorization") -> str:
     """Get Bearer token from Authorization headers if it exists."""
     if header_name in headers:
         return headers.get(header_name, "").removeprefix("Bearer").strip()
@@ -165,9 +164,8 @@ class OIDCHTTPBearer(BaseHTTPMiddleware):
             valid = True
         else:
             for header_name in API_KEY_HEADER_NAMES:
-                authorization = request.headers.get(header_name, "").strip()
-                id_token = authorization.split(" ")[-1]
-                if len(id_token) > 0 and id_token_is_valid(
+                id_token = get_authorization_token(request.headers, header_name)
+                if id_token and id_token_is_valid(
                     id_token=id_token,
                     authority=os.environ["AUTHORITY"],
                     client_id=os.environ["CLIENT_ID"],
@@ -181,6 +179,11 @@ class OIDCHTTPBearer(BaseHTTPMiddleware):
             return JSONResponse(
                 status_code=401,
                 content={"detail": "Unauthorized"},
+                headers={
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "*",
+                    "Access-Control-Allow-Headers": "*",
+                },
             )
 
         return await call_next(request)
@@ -206,8 +209,8 @@ class ApiTokenAuthorizer:
     def is_valid_api_token(self, headers: Dict[str, str]) -> bool:
         """Return if API Token from request headers is valid if found."""
         for header_name in API_KEY_HEADER_NAMES:
-            token = headers.get(header_name, "").removeprefix("Bearer").strip()
-            if len(token) > 0:
+            token = get_authorization_token(headers, header_name)
+            if token:
                 token_info = self._get_token_info(token)
                 if token_info:
                     token_expiration = int(token_info.get(TOKEN_EXPIRATION_NAME, datetime.max.timestamp()))
@@ -251,8 +254,8 @@ class ManagementTokenAuthorizer:
         self._refreshTokens()
 
         for header_name in API_KEY_HEADER_NAMES:
-            token = headers.get(header_name, "").strip()
-            if token in self._secret_tokens:
+            token = get_authorization_token(headers, header_name)
+            if token and token in self._secret_tokens:
                 return True
 
         return False

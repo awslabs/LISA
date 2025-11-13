@@ -36,7 +36,7 @@ ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=re
 secretsmanager_client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
 
 
-def get_vector_store_client(repository_id: str, index: str, embeddings: Embeddings) -> VectorStore:
+def get_vector_store_client(repository_id: str, collection_id: str, embeddings: Embeddings) -> VectorStore:
     """Return Langchain VectorStore corresponding to the specified store.
 
     Creates a langchain vector store based on the specified embeddigs adapter and backing store.
@@ -60,7 +60,7 @@ def get_vector_store_client(repository_id: str, index: str, embeddings: Embeddin
 
         return OpenSearchVectorSearch(
             opensearch_url=opensearch_endpoint,
-            index_name=index,
+            index_name=collection_id,
             embedding_function=embeddings,
             http_auth=auth,
             timeout=300,
@@ -89,7 +89,7 @@ def get_vector_store_client(repository_id: str, index: str, embeddings: Embeddin
             password=password,
         )
         return PGVector(
-            collection_name=index,
+            collection_name=collection_id,
             connection_string=connection_string,
             embedding_function=embeddings,
         )

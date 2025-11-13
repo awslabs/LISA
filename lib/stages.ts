@@ -48,6 +48,7 @@ import { McpWorkbenchStack } from './serve/mcpWorkbenchStack';
 import { UserInterfaceStack } from './user-interface';
 import { LisaDocsStack } from './docs';
 import { LisaMetricsStack } from './metrics';
+import { LisaMcpApiStack } from './mcp';
 
 import fs from 'node:fs';
 import { VERSION_PATH } from './util';
@@ -249,6 +250,15 @@ export class LisaServeApplicationStage extends Stage {
         });
         this.stacks.push(coreStack);
 
+        const apiBaseStack = new LisaApiBaseStack(this, 'LisaApiBase', {
+            ...baseStackProps,
+            stackName: createCdkId([config.deploymentName, config.appName, 'API']),
+            description: `LISA-API: ${config.deploymentName}-${config.deploymentStage}`,
+            vpc: networkingStack.vpc
+        });
+        apiBaseStack.addDependency(coreStack);
+        this.stacks.push(apiBaseStack);
+
         const serveStack = new LisaServeApplicationStack(this, 'LisaServe', {
             ...baseStackProps,
             description: `LISA-serve: ${config.deploymentName}-${config.deploymentStage}`,
@@ -259,17 +269,7 @@ export class LisaServeApplicationStage extends Stage {
         this.stacks.push(serveStack);
         serveStack.addDependency(networkingStack);
         serveStack.addDependency(iamStack);
-
-        const apiBaseStack = new LisaApiBaseStack(this, 'LisaApiBase', {
-            ...baseStackProps,
-            tokenTable: serveStack.tokenTable,
-            stackName: createCdkId([config.deploymentName, config.appName, 'API']),
-            description: `LISA-API: ${config.deploymentName}-${config.deploymentStage}`,
-            vpc: networkingStack.vpc
-        });
-        apiBaseStack.addDependency(coreStack);
-        apiBaseStack.addDependency(serveStack);
-        this.stacks.push(apiBaseStack);
+        serveStack.addDependency(apiBaseStack);
 
         const apiDeploymentStack = new LisaApiDeploymentStack(this, 'LisaApiDeployment', {
             ...baseStackProps,
@@ -294,6 +294,22 @@ export class LisaServeApplicationStage extends Stage {
         modelsApiDeploymentStack.addDependency(serveStack);
         apiDeploymentStack.addDependency(modelsApiDeploymentStack);
         this.stacks.push(modelsApiDeploymentStack);
+
+        if (config.deployMcp) {
+            const mcpApiStack = new LisaMcpApiStack(this, 'LisaMcpApi', {
+                ...baseStackProps,
+                authorizer: apiBaseStack.authorizer!,
+                description: `LISA-mcp: ${config.deploymentName}-${config.deploymentStage}`,
+                restApiId: apiBaseStack.restApiId,
+                rootResourceId: apiBaseStack.rootResourceId,
+                stackName: createCdkId([config.deploymentName, config.appName, 'mcp', config.deploymentStage]),
+                securityGroups: [networkingStack.vpc.securityGroups.ecsModelAlbSg],
+                vpc: networkingStack.vpc,
+            });
+            apiDeploymentStack.addDependency(mcpApiStack);
+            mcpApiStack.addDependency(apiBaseStack);
+            this.stacks.push(mcpApiStack);
+        }
 
         if (config.deployMcpWorkbench) {
             const mcpWorkbenchStack = new McpWorkbenchStack(this, 'LisaMcpWorkbench', {

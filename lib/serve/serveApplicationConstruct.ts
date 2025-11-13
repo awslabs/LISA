@@ -14,7 +14,7 @@
  limitations under the License.
  */
 import { Duration, Stack, StackProps } from 'aws-cdk-lib';
-import { AttributeType, BillingMode, ITable, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
+import { ITable, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
@@ -72,19 +72,21 @@ export class LisaServeApplicationConstruct extends Construct {
         super(scope, id);
         const { config, vpc, securityGroups } = props;
 
-        let tokenTable;
+        // TokenTable is now created in API Base, reference it from SSM parameter
+        // API Base stack must be deployed before Serve stack (dependency is set in stages.ts)
+        let tokenTable: ITable | undefined;
         if (config.restApiConfig.internetFacing) {
-            // Create DynamoDB Table for enabling API token usage
-            tokenTable = new Table(scope, 'TokenTable', {
-                tableName: `${config.deploymentName}-LISAApiTokenTable`,
-                partitionKey: {
-                    name: 'token',
-                    type: AttributeType.STRING,
-                },
-                billingMode: BillingMode.PAY_PER_REQUEST,
-                encryption: TableEncryption.AWS_MANAGED,
-                removalPolicy: config.removalPolicy,
-            });
+            const tokenTableNameParameter = StringParameter.fromStringParameterName(
+                scope,
+                'TokenTableNameParameter',
+                `${config.deploymentPrefix}/tokenTableName`
+            );
+            // Reference the table by name (table is created in API Base stack)
+            tokenTable = Table.fromTableName(
+                scope,
+                'TokenTable',
+                tokenTableNameParameter.stringValue
+            );
         }
         this.tokenTable = tokenTable;
 

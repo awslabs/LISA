@@ -206,7 +206,7 @@
         "dynamodb:Query",
         "dynamodb:Scan"
       ],
-      "Resource": "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/*-LISAApiTokenTable"
+      "Resource": "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/*-LISAApi*TokenTable"
     }
   ]
 }

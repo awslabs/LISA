@@ -33,10 +33,9 @@ type HealthChecksConfigProps = {
     formErrors: any;
 };
 
-export function HealthChecksConfig({
+export function HealthChecksConfig ({
     item,
     setFields,
-    touchFields,
     formErrors,
 }: HealthChecksConfigProps): ReactElement {
     const containerHC = item.containerHealthCheckConfig;

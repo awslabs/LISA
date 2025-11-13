@@ -26,7 +26,7 @@ type ScalingConfigProps = {
     formErrors: any;
 };
 
-export function ScalingConfig({ item, setFields, touchFields, formErrors }: ScalingConfigProps): ReactElement {
+export function ScalingConfig ({ item, setFields, touchFields, formErrors }: ScalingConfigProps): ReactElement {
     return (
         <SpaceBetween size='s'>
             <FormField

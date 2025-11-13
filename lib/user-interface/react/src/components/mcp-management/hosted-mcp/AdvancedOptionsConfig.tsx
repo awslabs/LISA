@@ -28,7 +28,7 @@ type AdvancedOptionsConfigProps = {
     isEdit: boolean;
 };
 
-export function AdvancedOptionsConfig({
+export function AdvancedOptionsConfig ({
     item,
     setFields,
     touchFields,

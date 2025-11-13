@@ -19,7 +19,7 @@ import { HostedMcpServer, HostedMcpServerRequest, HostedMcpServerRequestForm } f
 /**
  * Normalizes health check command to API format
  */
-export function normalizeHealthCheckCommand(rawCommand: string): string | string[] {
+export function normalizeHealthCheckCommand (rawCommand: string): string | string[] {
     const trimmed = rawCommand.trim();
     if (!trimmed) return trimmed;
     const prefixRegex = /^cmd-shell\b/i;
@@ -33,7 +33,7 @@ export function normalizeHealthCheckCommand(rawCommand: string): string | string
 /**
  * Converts form data to API payload for submission
  */
-export function formToPayload(
+export function formToPayload (
     form: HostedMcpServerRequestForm,
     isEdit: boolean,
     selectedServer?: HostedMcpServer | null
@@ -41,11 +41,11 @@ export function formToPayload(
     // Handle environment variables
     const environment = form.environment?.length
         ? form.environment.reduce((acc, { key, value }) => {
-              if (key?.trim()) {
-                  acc[key.trim()] = value;
-              }
-              return acc;
-          }, {} as Record<string, string>)
+            if (key?.trim()) {
+                acc[key.trim()] = value;
+            }
+            return acc;
+        }, {} as Record<string, string>)
         : undefined;
 
     // For edit mode, mark deletions
@@ -87,23 +87,23 @@ export function formToPayload(
         },
         containerHealthCheckConfig: form.containerHealthCheckConfig
             ? {
-                  command: normalizeHealthCheckCommand(commandWithPort as string),
-                  interval: form.containerHealthCheckConfig.interval,
-                  timeout: form.containerHealthCheckConfig.timeout,
-                  retries: form.containerHealthCheckConfig.retries,
-                  startPeriod: form.containerHealthCheckConfig.startPeriod,
-              }
+                command: normalizeHealthCheckCommand(commandWithPort as string),
+                interval: form.containerHealthCheckConfig.interval,
+                timeout: form.containerHealthCheckConfig.timeout,
+                retries: form.containerHealthCheckConfig.retries,
+                startPeriod: form.containerHealthCheckConfig.startPeriod,
+            }
             : undefined,
         loadBalancerConfig: form.loadBalancerConfig
             ? {
-                  healthCheckConfig: {
-                      path: form.loadBalancerConfig.healthCheckConfig.path,
-                      interval: form.loadBalancerConfig.healthCheckConfig.interval,
-                      timeout: form.loadBalancerConfig.healthCheckConfig.timeout,
-                      healthyThresholdCount: form.loadBalancerConfig.healthCheckConfig.healthyThresholdCount,
-                      unhealthyThresholdCount: form.loadBalancerConfig.healthCheckConfig.unhealthyThresholdCount,
-                  }
-              }
+                healthCheckConfig: {
+                    path: form.loadBalancerConfig.healthCheckConfig.path,
+                    interval: form.loadBalancerConfig.healthCheckConfig.interval,
+                    timeout: form.loadBalancerConfig.healthCheckConfig.timeout,
+                    healthyThresholdCount: form.loadBalancerConfig.healthCheckConfig.healthyThresholdCount,
+                    unhealthyThresholdCount: form.loadBalancerConfig.healthCheckConfig.unhealthyThresholdCount,
+                }
+            }
             : undefined,
         groups: form.groups,
         environment: finalEnvironment,

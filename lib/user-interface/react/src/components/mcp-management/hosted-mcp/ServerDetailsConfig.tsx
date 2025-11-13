@@ -42,7 +42,7 @@ type ServerDetailsConfigProps = {
     isEdit: boolean;
 };
 
-export function ServerDetailsConfig({
+export function ServerDetailsConfig ({
     item,
     setFields,
     touchFields,
@@ -52,7 +52,7 @@ export function ServerDetailsConfig({
     const [groupInput, setGroupInput] = useState('');
 
     const serverTypeOption = useMemo(() => {
-        return SERVER_TYPE_OPTIONS.find(opt => opt.value === item.serverType) || SERVER_TYPE_OPTIONS[0];
+        return SERVER_TYPE_OPTIONS.find((opt) => opt.value === item.serverType) || SERVER_TYPE_OPTIONS[0];
     }, [item.serverType]);
 
     const tokens = useMemo(() => {

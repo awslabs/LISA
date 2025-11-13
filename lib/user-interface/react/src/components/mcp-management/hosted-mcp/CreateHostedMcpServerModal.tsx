@@ -20,7 +20,6 @@ import { Box, ExpandableSection, Header, Modal, SpaceBetween, Wizard } from '@cl
 import { useAppDispatch } from '@/config/store';
 import {
     HostedMcpServer,
-    HostedMcpServerRequest,
     HostedMcpServerRequestSchema,
     HostedMcpServerRequestForm,
 } from '@/shared/model/hosted-mcp-server.model';
@@ -46,7 +45,7 @@ type CreateHostedMcpServerModalProps = {
     selectedServer?: HostedMcpServer | null;
 };
 
-export function CreateHostedMcpServerModal({
+export function CreateHostedMcpServerModal ({
     visible,
     setVisible,
     isEdit,
@@ -109,23 +108,23 @@ export function CreateHostedMcpServerModal({
                     },
                     containerHealthCheckConfig: selectedServer.containerHealthCheckConfig
                         ? {
-                              command: healthCheckCommand || initialForm.containerHealthCheckConfig?.command || '',
-                              interval: selectedServer.containerHealthCheckConfig.interval ?? initialForm.containerHealthCheckConfig?.interval ?? 30,
-                              timeout: selectedServer.containerHealthCheckConfig.timeout ?? initialForm.containerHealthCheckConfig?.timeout ?? 10,
-                              retries: selectedServer.containerHealthCheckConfig.retries ?? initialForm.containerHealthCheckConfig?.retries ?? 3,
-                              startPeriod: selectedServer.containerHealthCheckConfig.startPeriod ?? initialForm.containerHealthCheckConfig?.startPeriod ?? 0,
-                          }
+                            command: healthCheckCommand || initialForm.containerHealthCheckConfig?.command || '',
+                            interval: selectedServer.containerHealthCheckConfig.interval ?? initialForm.containerHealthCheckConfig?.interval ?? 30,
+                            timeout: selectedServer.containerHealthCheckConfig.timeout ?? initialForm.containerHealthCheckConfig?.timeout ?? 10,
+                            retries: selectedServer.containerHealthCheckConfig.retries ?? initialForm.containerHealthCheckConfig?.retries ?? 3,
+                            startPeriod: selectedServer.containerHealthCheckConfig.startPeriod ?? initialForm.containerHealthCheckConfig?.startPeriod ?? 0,
+                        }
                         : initialForm.containerHealthCheckConfig,
                     loadBalancerConfig: selectedServer.loadBalancerConfig
                         ? {
-                              healthCheckConfig: {
-                                  path: selectedServer.loadBalancerConfig.healthCheckConfig?.path ?? initialForm.loadBalancerConfig?.healthCheckConfig.path ?? '/status',
-                                  interval: selectedServer.loadBalancerConfig.healthCheckConfig?.interval ?? initialForm.loadBalancerConfig?.healthCheckConfig.interval ?? 30,
-                                  timeout: selectedServer.loadBalancerConfig.healthCheckConfig?.timeout ?? initialForm.loadBalancerConfig?.healthCheckConfig.timeout ?? 5,
-                                  healthyThresholdCount: selectedServer.loadBalancerConfig.healthCheckConfig?.healthyThresholdCount ?? initialForm.loadBalancerConfig?.healthCheckConfig.healthyThresholdCount ?? 3,
-                                  unhealthyThresholdCount: selectedServer.loadBalancerConfig.healthCheckConfig?.unhealthyThresholdCount ?? initialForm.loadBalancerConfig?.healthCheckConfig.unhealthyThresholdCount ?? 3,
-                              }
-                          }
+                            healthCheckConfig: {
+                                path: selectedServer.loadBalancerConfig.healthCheckConfig?.path ?? initialForm.loadBalancerConfig?.healthCheckConfig.path ?? '/status',
+                                interval: selectedServer.loadBalancerConfig.healthCheckConfig?.interval ?? initialForm.loadBalancerConfig?.healthCheckConfig.interval ?? 30,
+                                timeout: selectedServer.loadBalancerConfig.healthCheckConfig?.timeout ?? initialForm.loadBalancerConfig?.healthCheckConfig.timeout ?? 5,
+                                healthyThresholdCount: selectedServer.loadBalancerConfig.healthCheckConfig?.healthyThresholdCount ?? initialForm.loadBalancerConfig?.healthCheckConfig.healthyThresholdCount ?? 3,
+                                unhealthyThresholdCount: selectedServer.loadBalancerConfig.healthCheckConfig?.unhealthyThresholdCount ?? initialForm.loadBalancerConfig?.healthCheckConfig.unhealthyThresholdCount ?? 3,
+                            }
+                        }
                         : initialForm.loadBalancerConfig,
                     groups: selectedServer.groups ?? [],
                     environment: selectedServer.environment

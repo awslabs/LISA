@@ -21,6 +21,7 @@ import {
     HostedMcpServer,
     HostedMcpServerStatus,
     useDeleteHostedMcpServerMutation,
+    useUpdateHostedMcpServerMutation,
 } from '@/shared/reducers/mcp-server.reducer';
 import { useNotificationService } from '@/shared/util/hooks';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
@@ -29,6 +30,7 @@ type McpManagementActionsProps = {
     selectedItems: HostedMcpServer[];
     setSelectedItems: (items: HostedMcpServer[]) => void;
     onCreate: () => void;
+    onEdit: (server: HostedMcpServer) => void;
     refetch: () => void;
 };
 
@@ -38,7 +40,7 @@ const DELETABLE_STATUSES = new Set<HostedMcpServerStatus | undefined>([
     HostedMcpServerStatus.Failed,
 ]);
 
-export function McpManagementActions ({ selectedItems, setSelectedItems, refetch, onCreate }: McpManagementActionsProps): ReactElement {
+export function McpManagementActions ({ selectedItems, setSelectedItems, refetch, onCreate, onEdit }: McpManagementActionsProps): ReactElement {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
 
@@ -48,6 +50,11 @@ export function McpManagementActions ({ selectedItems, setSelectedItems, refetch
         deleteHostedServer,
         { isLoading: isDeleting, isSuccess: isDeleteSuccess, isError: isDeleteError, error: deleteError }
     ] = useDeleteHostedMcpServerMutation();
+
+    const [
+        updateHostedServer,
+        { isLoading: isUpdating, isSuccess: isUpdateSuccess, isError: isUpdateError, error: updateError }
+    ] = useUpdateHostedMcpServerMutation();
 
     useEffect(() => {
         if (!isDeleting && isDeleteSuccess && selectedServer) {
@@ -62,6 +69,23 @@ export function McpManagementActions ({ selectedItems, setSelectedItems, refetch
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isDeleting, isDeleteSuccess, isDeleteError, deleteError]);
 
+    useEffect(() => {
+        if (!isUpdating && isUpdateSuccess && selectedServer) {
+            notificationService.generateNotification(`Updated MCP server ${selectedServer.name}`, 'success');
+            refetch();
+        } else if (!isUpdating && isUpdateError) {
+            const message = updateError && 'data' in updateError
+                ? updateError.data?.message ?? updateError.data
+                : 'Unknown error updating MCP server';
+            notificationService.generateNotification(`Failed to update MCP server: ${message}`, 'error');
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isUpdating, isUpdateSuccess, isUpdateError, updateError]);
+
+    const canStart = selectedServer?.status === HostedMcpServerStatus.Stopped;
+    const canStop = selectedServer?.status === HostedMcpServerStatus.InService;
+    const canUpdate = selectedServer?.status === HostedMcpServerStatus.InService || selectedServer?.status === HostedMcpServerStatus.Stopped;
+
     const items = [
         {
             id: 'delete',
@@ -74,54 +98,80 @@ export function McpManagementActions ({ selectedItems, setSelectedItems, refetch
         {
             id: 'start',
             text: 'Start',
-            disabled: true,
-            disabledReason: 'Start is not yet available',
+            disabled: !canStart,
+            disabledReason: !selectedServer
+                ? 'Select an MCP server to start'
+                : 'Server must be Stopped to start',
         },
         {
             id: 'stop',
             text: 'Stop',
-            disabled: true,
-            disabledReason: 'Stop is not yet available',
+            disabled: !canStop,
+            disabledReason: !selectedServer
+                ? 'Select an MCP server to stop'
+                : 'Server must be InService to stop',
         },
         {
             id: 'update',
             text: 'Update',
-            disabled: true,
-            disabledReason: 'Update is not yet available',
+            disabled: !canUpdate,
+            disabledReason: !selectedServer
+                ? 'Select an MCP server to update'
+                : 'Server must be InService or Stopped to update',
         },
     ];
 
     return (
-        <SpaceBetween direction='horizontal' size='xs'>
-            <Button
-                ariaLabel='Refresh MCP servers'
-                onClick={() => {
-                    setSelectedItems([]);
-                    refetch();
-                }}
-            >
-                <Icon name='refresh' />
-            </Button>
-            <ButtonDropdown
-                items={items}
-                disabled={items.every((item) => item.disabled)}
-                onItemClick={({ detail }) => {
-                    if (detail.id === 'delete' && selectedServer) {
-                        dispatch(setConfirmationModal({
-                            action: 'Delete',
-                            resourceName: 'MCP server',
-                            onConfirm: () => deleteHostedServer(selectedServer.id),
-                            description: `This will delete the hosted MCP server "${selectedServer.name}".`,
-                        }));
-                    }
-                }}
-                loading={isDeleting}
-            >
-                Actions
-            </ButtonDropdown>
-            <Button variant='primary' onClick={onCreate}>
-                Create MCP server
-            </Button>
-        </SpaceBetween>
+        <>
+            <SpaceBetween direction='horizontal' size='xs'>
+                <Button
+                    ariaLabel='Refresh MCP servers'
+                    onClick={() => {
+                        setSelectedItems([]);
+                        refetch();
+                    }}
+                >
+                    <Icon name='refresh' />
+                </Button>
+                <ButtonDropdown
+                    items={items}
+                    disabled={items.every((item) => item.disabled)}
+                    onItemClick={({ detail }) => {
+                        if (!selectedServer) return;
+
+                        if (detail.id === 'delete') {
+                            dispatch(setConfirmationModal({
+                                action: 'Delete',
+                                resourceName: 'MCP server',
+                                onConfirm: () => deleteHostedServer(selectedServer.id),
+                                description: `This will delete the hosted MCP server "${selectedServer.name}".`,
+                            }));
+                        } else if (detail.id === 'start') {
+                            dispatch(setConfirmationModal({
+                                action: 'Start',
+                                resourceName: 'MCP server',
+                                onConfirm: () => updateHostedServer({ serverId: selectedServer.id, payload: { enabled: true } }),
+                                description: `This will start the hosted MCP server "${selectedServer.name}".`,
+                            }));
+                        } else if (detail.id === 'stop') {
+                            dispatch(setConfirmationModal({
+                                action: 'Stop',
+                                resourceName: 'MCP server',
+                                onConfirm: () => updateHostedServer({ serverId: selectedServer.id, payload: { enabled: false } }),
+                                description: `This will stop the hosted MCP server "${selectedServer.name}".`,
+                            }));
+                        } else if (detail.id === 'update') {
+                            onEdit(selectedServer);
+                        }
+                    }}
+                    loading={isDeleting || isUpdating}
+                >
+                    Actions
+                </ButtonDropdown>
+                <Button variant='primary' onClick={onCreate}>
+                    Create MCP server
+                </Button>
+            </SpaceBetween>
+        </>
     );
 }

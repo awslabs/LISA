@@ -145,6 +145,15 @@ export const mcpServerApi = createApi({
             transformErrorResponse: (baseQueryReturnValue) => normalizeError('Delete Hosted MCP Server', baseQueryReturnValue),
             invalidatesTags: ['mcpServers']
         }),
+        updateHostedMcpServer: builder.mutation<HostedMcpServer, { serverId: string; payload: Partial<HostedMcpServerRequest> & { enabled?: boolean } }>({
+            query: ({ serverId, payload }) => ({
+                url: `/mcp/${serverId}`,
+                method: 'PUT',
+                data: payload,
+            }),
+            transformErrorResponse: (baseQueryReturnValue) => normalizeError('Update Hosted MCP Server', baseQueryReturnValue),
+            invalidatesTags: ['mcpServers']
+        }),
     })
 
 });
@@ -158,6 +167,7 @@ export const {
     useListHostedMcpServersQuery,
     useCreateHostedMcpServerMutation,
     useDeleteHostedMcpServerMutation,
+    useUpdateHostedMcpServerMutation,
 } = mcpServerApi;
 
 export { HostedMcpServerStatus };

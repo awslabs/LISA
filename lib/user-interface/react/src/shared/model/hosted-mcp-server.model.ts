@@ -14,6 +14,9 @@
   limitations under the License.
 */
 
+import { z } from 'zod';
+import { AttributeEditorSchema } from '../form/environment-variables';
+
 export enum HostedMcpServerStatus {
     Creating = 'Creating',
     InService = 'InService',
@@ -83,6 +86,65 @@ export type HostedMcpServerRequest = Omit<HostedMcpServer, 'id' | 'owner' | 'cre
 export type HostedMcpServerListResponse = {
     Items: HostedMcpServer[];
 };
+
+// Zod Schemas
+const hostedMcpContainerHealthCheckConfigSchema = z.object({
+    command: z.union([z.string(), z.array(z.string())]).default('CMD-SHELL curl --fail http://localhost:{{PORT}}/status || exit 1'),
+    interval: z.number().min(1).default(30),
+    startPeriod: z.number().min(0).default(0),
+    timeout: z.number().min(1).default(10),
+    retries: z.number().min(1).default(3),
+});
+
+const hostedMcpLoadBalancerHealthCheckConfigSchema = z.object({
+    path: z.string().min(1).default('/status'),
+    interval: z.number().min(1).default(30),
+    timeout: z.number().min(1).default(5),
+    healthyThresholdCount: z.number().min(1).default(3),
+    unhealthyThresholdCount: z.number().min(1).default(3),
+});
+
+const hostedMcpLoadBalancerConfigSchema = z.object({
+    healthCheckConfig: hostedMcpLoadBalancerHealthCheckConfigSchema.default(hostedMcpLoadBalancerHealthCheckConfigSchema.parse({})),
+});
+
+const hostedMcpAutoScalingConfigSchema = z.object({
+    minCapacity: z.number().min(1).default(1),
+    maxCapacity: z.number().min(1).default(1),
+    targetValue: z.number().optional().default(10),
+    metricName: z.string().optional().default('RequestCountPerTarget'),
+    duration: z.number().optional().default(60),
+    cooldown: z.number().optional().default(60),
+}).superRefine((value, context) => {
+    if (value.minCapacity > value.maxCapacity) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Minimum capacity must be less than or equal to maximum capacity',
+            path: ['maxCapacity'],
+        });
+    }
+});
+
+export const HostedMcpServerRequestSchema = z.object({
+    name: z.string().min(1, { message: 'Name is required' }).default(''),
+    description: z.string().optional().default(''),
+    startCommand: z.string().min(1, { message: 'Start command is required' }).default(''),
+    serverType: z.enum(['stdio', 'http', 'sse']).default('stdio'),
+    port: z.number().optional(),
+    cpu: z.number().min(256).default(256),
+    memoryLimitMiB: z.number().min(512).default(512),
+    autoScalingConfig: hostedMcpAutoScalingConfigSchema.default(hostedMcpAutoScalingConfigSchema.parse({})),
+    containerHealthCheckConfig: hostedMcpContainerHealthCheckConfigSchema.optional(),
+    loadBalancerConfig: hostedMcpLoadBalancerConfigSchema.optional(),
+    groups: z.array(z.string()).optional().default([]),
+    environment: AttributeEditorSchema,
+    image: z.string().optional(),
+    s3Path: z.string().optional(),
+    taskExecutionRoleArn: z.string().optional(),
+    taskRoleArn: z.string().optional(),
+});
+
+export type HostedMcpServerRequestForm = z.infer<typeof HostedMcpServerRequestSchema>;
 
 export const DEFAULT_HOSTED_MCP_SERVER_REQUEST: HostedMcpServerRequest = {
     name: '',

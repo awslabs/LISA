@@ -44,6 +44,7 @@ export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElemen
     // Chunking type options
     const chunkingTypeOptions = [
         { label: 'Fixed Size', value: ChunkingStrategyType.FIXED },
+        { label: 'None (No Chunking)', value: ChunkingStrategyType.NONE },
         // Future: { label: 'Semantic', value: ChunkingStrategyType.SEMANTIC },
         // Future: { label: 'Recursive', value: ChunkingStrategyType.RECURSIVE },
     ];
@@ -58,14 +59,20 @@ export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElemen
             >
                 <Select
                     selectedOption={
-                        item?.type
-                            ? { label: 'Fixed Size', value: item.type }
-                            : { label: 'Fixed Size', value: ChunkingStrategyType.FIXED }
+                        item?.type === ChunkingStrategyType.NONE
+                            ? { label: 'None (No Chunking)', value: ChunkingStrategyType.NONE }
+                            : item?.type
+                                ? { label: 'Fixed Size', value: item.type }
+                                : { label: 'Fixed Size', value: ChunkingStrategyType.FIXED }
                     }
                     onChange={({ detail }) => {
                         if (detail.selectedOption.value === ChunkingStrategyType.FIXED) {
                             setFields({
                                 chunkingStrategy: createDefaultChunkingStrategy()
+                            });
+                        } else if (detail.selectedOption.value === ChunkingStrategyType.NONE) {
+                            setFields({
+                                chunkingStrategy: { type: ChunkingStrategyType.NONE }
                             });
                         }
                     }}

@@ -79,17 +79,25 @@ const timeToMinutes = (time: string): number => {
     return hours * 60 + minutes;
 };
 
-const isEndTimeAtLeastTwoHoursAfterStart = (startTime: string, endTime: string): boolean => {
-    if (!startTime || !endTime) return true; // Skip validation if either time is empty
-    if (!isValidTimeFormat(startTime) || !isValidTimeFormat(endTime)) return false;
+// Enhanced validation function with clearer error messages
+const validateTimePair = (startTime: string, endTime: string): string | undefined => {
+    if (!startTime || !endTime) return undefined; // Skip validation if either time is empty
+    if (!isValidTimeFormat(startTime) || !isValidTimeFormat(endTime)) return undefined;
 
     const startMinutes = timeToMinutes(startTime);
     const endMinutes = timeToMinutes(endTime);
 
-    // Handle case where end time is on the same day
-    if (endMinutes <= startMinutes) return false; // End time must be after start time on same day
+    // Check if end time is earlier than start time (invalid for same-day scheduling)
+    if (endMinutes <= startMinutes) {
+        return 'Stop time must be later than Start time on the same day.';
+    }
 
-    return endMinutes - startMinutes >= 120; // At least 2 hours (120 minutes)
+    // Check minimum 2-hour gap
+    if (endMinutes - startMinutes < 120) {
+        return 'Stop time must be at least 2 hours after Start time.';
+    }
+
+    return undefined; // Valid
 };
 
 const validateDailySchedule = (dailySchedule?: IDaySchedule): string | undefined => {
@@ -107,9 +115,9 @@ const validateDailySchedule = (dailySchedule?: IDaySchedule): string | undefined
     if (!isValidTimeFormat(startTime)) return 'Start time must be in HH:MM format (24-hour).';
     if (!isValidTimeFormat(stopTime)) return 'Stop time must be in HH:MM format (24-hour).';
 
-    if (!isEndTimeAtLeastTwoHoursAfterStart(startTime, stopTime)) {
-        return 'Stop time must be at least 2 hours after start time and on the same day.';
-    }
+    // Use enhanced validation for time pair
+    const timePairError = validateTimePair(startTime, stopTime);
+    if (timePairError) return timePairError;
 
     return undefined;
 };
@@ -135,12 +143,12 @@ const validateWeeklySchedule = (weeklySchedule?: IWeeklySchedule): { [key: strin
 
                 // If start time is provided, stop time must also be provided
                 if (startTime && !stopTime) {
-                    errors[`${day}_${index}_stopTime`] = 'Stop time is required when start time is provided.';
+                    errors[`${day}_${index}_stopTime`] = 'Stop time is required when Start time is provided.';
                 }
 
                 // If stop time is provided, start time must also be provided
                 if (stopTime && !startTime) {
-                    errors[`${day}_${index}_startTime`] = 'Start time is required when stop time is provided.';
+                    errors[`${day}_${index}_startTime`] = 'Start time is required when Stop time is provided.';
                 }
 
                 // Validate time formats
@@ -152,10 +160,11 @@ const validateWeeklySchedule = (weeklySchedule?: IWeeklySchedule): { [key: strin
                     errors[`${day}_${index}_stopTime`] = 'Stop time must be in HH:MM format (24-hour).';
                 }
 
-                // Validate 2-hour minimum gap
+                // Use enhanced validation for time pair with clearer error messages
                 if (startTime && stopTime && isValidTimeFormat(startTime) && isValidTimeFormat(stopTime)) {
-                    if (!isEndTimeAtLeastTwoHoursAfterStart(startTime, stopTime)) {
-                        errors[`${day}_${index}_times`] = 'Stop time must be at least 2 hours after start time and on the same day.';
+                    const timePairError = validateTimePair(startTime, stopTime);
+                    if (timePairError) {
+                        errors[`${day}_${index}_times`] = timePairError;
                     }
                 }
             });
@@ -278,7 +287,7 @@ export function ScheduleConfig (props: ScheduleConfigProps): ReactElement {
                             statusIconAriaLabel='Warning'
                             type='warning'
                         >
-                            When Auto Scaling is deactivated then model will run 24/7.
+                            When Auto Scaling is deactivated, the model will run 24/7
                         </Alert>
                     )}
 
@@ -332,14 +341,6 @@ export function ScheduleConfig (props: ScheduleConfigProps): ReactElement {
                                 <Box>
                                     <p>Set a Start and a Stop time to be applied to every day of the week.</p>
                                 </Box>
-                                {validationErrors.dailySchedule && (
-                                    <Alert
-                                        statusIconAriaLabel='Error'
-                                        type='error'
-                                    >
-                                        {validationErrors.dailySchedule}
-                                    </Alert>
-                                )}
                             </SpaceBetween>
 
                             <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }]}>
@@ -367,7 +368,7 @@ export function ScheduleConfig (props: ScheduleConfigProps): ReactElement {
                                 <FormField
                                     label='Stop Time'
                                     description='Time to scale down the model (must be at least 2 hours after start time)'
-                                    errorText={props.formErrors?.dailySchedule?.stopTime}
+                                    errorText={props.formErrors?.dailySchedule?.stopTime || validationErrors.dailySchedule}
                                 >
                                     <TimeInput
                                         value={props.item.dailySchedule?.stopTime || ''}
@@ -393,16 +394,6 @@ export function ScheduleConfig (props: ScheduleConfigProps): ReactElement {
                             <SpaceBetween size='s'>
                                 <Header variant='h3'>Daily Schedule</Header>
                                 <p>Set both a Start and a Stop time for each day of the week as needed. The model will not be available on days without a defined schedule.</p>
-
-                                {/* General validation error for weekly schedule */}
-                                {validationErrors.general && (
-                                    <Alert
-                                        statusIconAriaLabel='Error'
-                                        type='error'
-                                    >
-                                        {validationErrors.general}
-                                    </Alert>
-                                )}
 
                                 {/* Table Header */}
                                 <Grid gridDefinition={[{ colspan: 4 }, { colspan: 4 }, { colspan: 4 }]}>

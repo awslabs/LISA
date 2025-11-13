@@ -13,6 +13,7 @@
 #   limitations under the License.
 import logging
 import os
+from concurrent.futures import as_completed, ThreadPoolExecutor
 from typing import Generator, Optional
 
 import boto3
@@ -338,20 +339,104 @@ class RagDocumentRepository:
             logging.error(f"Error deleting S3 object: {e.response['Error']['Message']}")
             raise
 
+    def delete_all(self, repository_id: str, collection_id: str) -> None:
+        """Delete all documents and subdocuments for a collection.
+
+        Args:
+            repository_id: Repository ID
+            collection_id: Collection ID
+        """
+        pk = RagDocument.createPartitionKey(repository_id, collection_id)
+        doc_ids = []
+
+        # Query and delete documents, collecting doc_ids in single pass
+        response = self.doc_table.query(KeyConditionExpression=Key("pk").eq(pk), ProjectionExpression="pk,document_id")
+        with self.doc_table.batch_writer() as batch:
+            for item in response["Items"]:
+                doc_ids.append(item["document_id"])
+                batch.delete_item(Key={"pk": item["pk"], "document_id": item["document_id"]})
+
+        while "LastEvaluatedKey" in response:
+            response = self.doc_table.query(
+                KeyConditionExpression=Key("pk").eq(pk),
+                ProjectionExpression="pk,document_id",
+                ExclusiveStartKey=response["LastEvaluatedKey"],
+            )
+            with self.doc_table.batch_writer() as batch:
+                for item in response["Items"]:
+                    doc_ids.append(item["document_id"])
+                    batch.delete_item(Key={"pk": item["pk"], "document_id": item["document_id"]})
+
+        # Delete subdocuments in parallel
+        def delete_subdocs(doc_id: str) -> None:
+            response = self.subdoc_table.query(
+                KeyConditionExpression=Key("document_id").eq(doc_id), ProjectionExpression="document_id,sk"
+            )
+            with self.subdoc_table.batch_writer() as batch:
+                for item in response["Items"]:
+                    batch.delete_item(Key={"document_id": item["document_id"], "sk": item["sk"]})
+            while "LastEvaluatedKey" in response:
+                response = self.subdoc_table.query(
+                    KeyConditionExpression=Key("document_id").eq(doc_id),
+                    ProjectionExpression="document_id,sk",
+                    ExclusiveStartKey=response["LastEvaluatedKey"],
+                )
+                with self.subdoc_table.batch_writer() as batch:
+                    for item in response["Items"]:
+                        batch.delete_item(Key={"document_id": item["document_id"], "sk": item["sk"]})
+
+        if doc_ids:
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                futures = [executor.submit(delete_subdocs, doc_id) for doc_id in doc_ids]
+                for future in as_completed(futures):
+                    future.result()
+
     def delete_s3_docs(self, repository_id: str, docs: list[RagDocument]) -> list[str]:
-        """Remove documents from S3"""
+        """Remove documents from S3.
+
+        Args:
+            repository_id: The repository ID
+            docs: List of RagDocument objects
+
+        Returns:
+            List of S3 URIs that were removed
+        """
         repo = self.vs_repo.find_repository_by_id(repository_id=repository_id)
+
+        # Build mapping of embedding models to autoRemove setting
         pipelines = {
             pipeline.get("embeddingModel"): pipeline.get("autoRemove", False) is True
             for pipeline in repo.get("pipelines", [])
         }
-        removed_source: list[str] = [
-            doc.source
-            for doc in docs
-            if doc and (doc.ingestion_type != IngestionType.AUTO or pipelines.get(doc.collection_id))
-        ]
+
+        # Determine which documents should be removed from S3
+        removed_source: list[str] = []
+        for doc in docs:
+            if not doc:
+                continue
+
+            doc_source = doc.source
+            doc_ingestion_type = doc.ingestion_type
+            doc_collection_id = doc.collection_id
+
+            if not doc_source:
+                continue
+
+            # Manual ingestion: always remove from S3
+            if doc_ingestion_type != IngestionType.AUTO:
+                removed_source.append(doc_source)
+            # Auto ingestion: only remove if pipeline has autoRemove enabled
+            # Check if the collection's pipeline has autoRemove enabled
+            elif doc_collection_id and pipelines.get(doc_collection_id):
+                removed_source.append(doc_source)
+
+        # Delete from S3
         for source in removed_source:
-            logging.info(f"Removing S3 doc: {source}")
-            self.delete_s3_object(uri=source)
+            try:
+                logging.info(f"Removing S3 doc: {source}")
+                self.delete_s3_object(uri=source)
+            except Exception as e:
+                logging.error(f"Failed to delete S3 object {source}: {e}")
+                # Continue with other deletions
 
         return removed_source

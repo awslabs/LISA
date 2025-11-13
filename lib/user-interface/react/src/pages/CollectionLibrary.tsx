@@ -15,14 +15,14 @@
  */
 
 import { ReactElement, useEffect } from 'react';
-import RepositoryLibraryComponent from '../components/document-library/RepositoryLibraryComponent';
+import CollectionLibraryComponent from '../components/document-library/CollectionLibraryComponent';
 
-export function RepositoryLibrary ({ setNav }): ReactElement {
+export function CollectionLibrary ({ setNav }): ReactElement {
     useEffect(() => {
         setNav(null);
     }, [setNav]);
 
-    return <RepositoryLibraryComponent />;
+    return <CollectionLibraryComponent />;
 }
 
-export default RepositoryLibrary;
+export default CollectionLibrary;

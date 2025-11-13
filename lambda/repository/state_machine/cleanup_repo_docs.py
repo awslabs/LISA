@@ -37,7 +37,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any] | Any:
     stack_name = event.get("stackName")
     last_evaluated = event.get("lastEvaluated")
 
-    docs, last_evaluated = doc_repo.list_all(repository_id=repository_id, last_evaluated_key=last_evaluated)
+    docs, last_evaluated, _ = doc_repo.list_all(repository_id=repository_id, last_evaluated_key=last_evaluated)
     for doc in docs:
         doc_repo.delete_by_id(doc.document_id)
 

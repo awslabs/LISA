@@ -15,11 +15,14 @@
  */
 
 import { createApi } from '@reduxjs/toolkit/query/react';
-import { lisaBaseQuery } from './reducer.utils';
-import { Model, PaginatedDocumentResponse } from '../../components/types';
+import { lisaBaseQuery } from '@/shared/reducers/reducer.utils';
+import { PaginatedDocumentResponse } from '@/components/types';
 import { Document } from '@langchain/core/documents';
-import { RagRepositoryConfig } from '#root/lib/schema';
-import { RagStatus } from '../model/rag.model';
+import {
+    RagRepositoryConfig,
+    ChunkingStrategy,
+    RagCollectionConfig as SchemaRagCollectionConfig,
+} from '#root/lib/schema';
 
 export type S3UploadRequest = {
     url: string;
@@ -29,18 +32,30 @@ export type S3UploadRequest = {
 type IngestDocumentRequest = {
     documents: string[],
     repositoryId: string,
-    embeddingModel: Model,
+    collectionId?: string,
     repostiroyType: string,
-    chunkSize: number,
-    chunkOverlap: number
+    chunkingStrategy?: ChunkingStrategy;
+};
+
+type IngestDocumentJob = {
+    jobId: string;
+    documentId: string;
+    status: string;
+    s3Path: string;
+};
+
+type IngestDocumentResponse = {
+    jobs: IngestDocumentJob[];
+    collectionId: string;
+    collectionName?: string;
 };
 
 type RelevantDocRequest = {
     repositoryId: string,
+    collectionId?: string
     query: string,
-    modelName: string,
-    repositoryType: string,
-    topK: number
+    topK: number,
+    modelName?: string,
 };
 
 type ListRagDocumentRequest = {
@@ -69,11 +84,7 @@ export type IngestionJob = {
     collection_id: string;
     document_id: string;
     repository_id: string;
-    chunk_strategy: {
-        type: string;
-        size: number;
-        overlap: number;
-    };
+    chunk_strategy: ChunkingStrategy;
     username: string;
     status: string;
     created_date: string;
@@ -96,10 +107,31 @@ export type PaginatedIngestionJobsResponse = {
     hasPreviousPage?: boolean;
 };
 
+// Collection types - using schema definitions
+export type RagCollectionConfig = SchemaRagCollectionConfig;
+
+type ListCollectionsRequest = {
+    repositoryId: string;
+    pageSize?: number;
+    lastEvaluatedKey?: any;
+};
+
+type ListCollectionsResponse = {
+    collections: RagCollectionConfig[];
+    totalCount?: number;
+    hasNextPage?: boolean;
+    lastEvaluatedKey?: any;
+};
+
+type CollectionRequest = {
+    repositoryId: string;
+    collectionId: string;
+};
+
 export const ragApi = createApi({
     reducerPath: 'rag',
     baseQuery: lisaBaseQuery(),
-    tagTypes: ['repositories', 'docs', 'repository-status', 'jobs'],
+    tagTypes: ['repositories', 'docs', 'repository-status', 'jobs', 'collections'],
     refetchOnFocus: true,
     refetchOnReconnect: true,
     endpoints: (builder) => ({
@@ -124,12 +156,6 @@ export const ragApi = createApi({
             }),
             invalidatesTags: ['repositories'],
         }),
-        getRagStatus: builder.query<RagStatus, void>({
-            query: () => ({
-                url: '/repository/status',
-            }),
-            providesTags: ['repository-status'],
-        }),
         getPresignedUrl: builder.query<any, string>({
             query: (body) => ({
                 url: '/repository/presigned-url',
@@ -138,9 +164,23 @@ export const ragApi = createApi({
             }),
         }),
         getRelevantDocuments: builder.query<Document[], RelevantDocRequest>({
-            query: (request) => ({
-                url: `repository/${request.repositoryId}/similaritySearch?query=${request.query}&modelName=${request.modelName}&repositoryType=${request.repositoryType}&topK=${request.topK}`,
-            }),
+            query: (request) => {
+                const params: any = {
+                    query: request.query,
+                    topK: request.topK
+                };
+
+                if (request.collectionId) {
+                    params.collectionId = request.collectionId;
+                } else if (request.modelName) {
+                    params.modelName = request.modelName;
+                }
+
+                const queryString = new URLSearchParams(params).toString();
+                return {
+                    url: `repository/${request.repositoryId}/similaritySearch?${queryString}`,
+                };
+            },
         }),
         uploadToS3: builder.mutation<void, S3UploadRequest>({
             query: (request) => ({
@@ -148,32 +188,26 @@ export const ragApi = createApi({
                 method: 'POST',
                 data: request.body,
             }),
-            transformErrorResponse: (baseQueryReturnValue) => {
-                // transform into SerializedError
-                return {
-                    name: 'Upload to S3 failed',
-                    message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message
-                };
-            },
+            transformErrorResponse: (baseQueryReturnValue) => ({
+                name: 'Upload to S3 failed',
+                message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message
+            }),
         }),
-        ingestDocuments: builder.mutation<{ ingestionJobIds: string[] }, IngestDocumentRequest>({
+        ingestDocuments: builder.mutation<IngestDocumentResponse, IngestDocumentRequest>({
             query: (request) => ({
-                url: `repository/${request.repositoryId}/bulk?repositoryType=${request.repostiroyType}&chunkSize=${request.chunkSize}&chunkOverlap=${request.chunkOverlap}`,
+                url: `repository/${request.repositoryId}/bulk`,
                 method: 'POST',
                 data: {
-                    embeddingModel: {
-                        modelName: request.embeddingModel.id
-                    },
-                    keys: request.documents
+                    keys: request.documents,
+                    collectionId: request.collectionId,
+                    chunkingStrategy: request.chunkingStrategy
                 }
             }),
-            transformErrorResponse: (baseQueryReturnValue) => {
-                // transform into SerializedError
-                return {
-                    name: 'Upload to S3 failed',
-                    message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message
-                };
-            },
+            transformErrorResponse: (baseQueryReturnValue) => ({
+                name: 'Upload to S3 failed',
+                message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message
+            }),
+            invalidatesTags: ['jobs'], // Invalidate jobs cache when new ingestion starts
         }),
         listRagDocuments: builder.query<PaginatedDocumentResponse, ListRagDocumentRequest>({
             query: (request) => {
@@ -213,13 +247,10 @@ export const ragApi = createApi({
                     documentIds: request.documentIds,
                 },
             }),
-            transformErrorResponse: (baseQueryReturnValue) => {
-                // transform into SerializedError
-                return {
-                    name: 'Delete RAG Document Error',
-                    message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message,
-                };
-            },
+            transformErrorResponse: (baseQueryReturnValue) => ({
+                name: 'Delete RAG Document Error',
+                message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message,
+            }),
             invalidatesTags: ['docs'],
         }),
         downloadRagDocument: builder.query<string, { documentId: string, repositoryId: string }>({
@@ -245,6 +276,115 @@ export const ragApi = createApi({
             },
             providesTags: ['jobs'], // Add cache tags for invalidation
         }),
+        listCollections: builder.query<RagCollectionConfig[], ListCollectionsRequest>({
+            query: (request) => ({
+                url: `/repository/${request.repositoryId}/collection`,
+                params: {
+                    pageSize: request.pageSize,
+                    lastEvaluatedKey: request.lastEvaluatedKey,
+                },
+            }),
+            transformResponse: (response: ListCollectionsResponse) => response.collections,
+            providesTags: (result) => result ?
+                [
+                    ...result.map(({ repositoryId, collectionId }) => ({
+                        type: 'collections' as const,
+                        id: `${repositoryId}/${collectionId}`,
+                    })),
+                    { type: 'collections', id: 'LIST' },
+                ] : [{ type: 'collections', id: 'LIST' }],
+        }),
+        listAllCollections: builder.query<RagCollectionConfig[], void>({
+            query: () => ({
+                url: '/repository/collections',
+            }),
+            transformResponse: (response: ListCollectionsResponse) => response.collections,
+            providesTags: (result) => result ? [
+                ...result.map(({ repositoryId, collectionId }) => ({
+                    type: 'collections' as const,
+                    id: `${repositoryId}/${collectionId}`,
+                })),
+                { type: 'collections', id: 'LIST' },
+            ] : [{ type: 'collections', id: 'LIST' }],
+        }),
+        getCollection: builder.query<RagCollectionConfig, CollectionRequest>({
+            query: (request) => ({
+                url: `/repository/${request.repositoryId}/collection/${request.collectionId}`,
+            }),
+            providesTags: (result, error, arg) => [
+                { type: 'collections', id: `${arg.repositoryId}/${arg.collectionId}` },
+            ],
+        }),
+        createCollection: builder.mutation<RagCollectionConfig, RagCollectionConfig>({
+            query: (request) => ({
+                url: `/repository/${request.repositoryId}/collection`,
+                method: 'POST',
+                data: {
+                    name: request.name,
+                    description: request.description,
+                    embeddingModel: request.embeddingModel,
+                    chunkingStrategy: request.chunkingStrategy,
+                    allowedGroups: request.allowedGroups,
+                    metadata: request.metadata,
+                    private: request.private,
+                    pipelines: request.pipelines,
+                },
+            }),
+            transformErrorResponse: (baseQueryReturnValue) => ({
+                name: 'Create Collection Error',
+                message: baseQueryReturnValue.data?.type === 'RequestValidationError'
+                    ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ')
+                    : baseQueryReturnValue.data.message
+            }),
+            invalidatesTags: [{ type: 'collections', id: 'LIST' }],
+        }),
+        deleteCollection: builder.mutation<void, CollectionRequest & { embeddingModel?: string; default?: boolean }>({
+            query: (request) => ({
+                url: `/repository/${request.repositoryId}/collection/${request.collectionId}`,
+                method: 'DELETE',
+                params: {
+                    // For Default 'Collection', pass in the embedding model name
+                    ...(request.default && { embeddingName: request.embeddingModel })
+                }
+            }),
+            transformErrorResponse: (baseQueryReturnValue) => ({
+                name: 'Delete Collection Error',
+                message: baseQueryReturnValue.data?.type === 'RequestValidationError'
+                    ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ')
+                    : baseQueryReturnValue.data.message
+            }),
+            invalidatesTags: (result, error, arg) => [
+                { type: 'collections', id: `${arg.repositoryId}/${arg.collectionId}` },
+                { type: 'collections', id: 'LIST' },
+            ],
+        }),
+        updateCollection: builder.mutation<RagCollectionConfig, RagCollectionConfig>({
+            query: (request) => ({
+                url: `/repository/${request.repositoryId}/collection/${request.collectionId}`,
+                method: 'PUT',
+                data: {
+                    name: request.name,
+                    description: request.description,
+                    chunkingStrategy: request.chunkingStrategy,
+                    allowedGroups: request.allowedGroups,
+                    metadata: request.metadata,
+                    private: request.private,
+                    allowChunkingOverride: request.allowChunkingOverride,
+                    pipelines: request.pipelines,
+                    status: request.status,
+                },
+            }),
+            transformErrorResponse: (baseQueryReturnValue) => ({
+                name: 'Update Collection Error',
+                message: baseQueryReturnValue.data?.type === 'RequestValidationError'
+                    ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ')
+                    : baseQueryReturnValue.data.message
+            }),
+            invalidatesTags: (result, error, arg) => [
+                { type: 'collections', id: `${arg.repositoryId}/${arg.collectionId}` },
+                { type: 'collections', id: 'LIST' },
+            ],
+        }),
     }),
 });
 
@@ -252,8 +392,6 @@ export const {
     useListRagRepositoriesQuery,
     useCreateRagRepositoryMutation,
     useDeleteRagRepositoryMutation,
-    useGetRagStatusQuery,
-    useLazyGetRagStatusQuery,
     useLazyGetPresignedUrlQuery,
     useUploadToS3Mutation,
     useIngestDocumentsMutation,
@@ -263,4 +401,10 @@ export const {
     useLazyDownloadRagDocumentQuery,
     useGetIngestionJobsQuery,
     useLazyGetIngestionJobsQuery,
+    useListCollectionsQuery,
+    useListAllCollectionsQuery,
+    useGetCollectionQuery,
+    useCreateCollectionMutation,
+    useUpdateCollectionMutation,
+    useDeleteCollectionMutation,
 } = ragApi;

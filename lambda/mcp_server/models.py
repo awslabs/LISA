@@ -14,20 +14,16 @@
 
 import uuid
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 from typing_extensions import Self
-from utilities.validators import validate_any_fields_defined
+from utilities.validation import validate_any_fields_defined
 
 
-class HostedMcpServerStatus(str, Enum):
+class HostedMcpServerStatus(StrEnum):
     """Defines possible MCP server deployment states."""
-
-    def __str__(self) -> str:
-        """Represent the enum as a string."""
-        return str(self.value)
 
     CREATING = "Creating"
     IN_SERVICE = "InService"
@@ -39,12 +35,8 @@ class HostedMcpServerStatus(str, Enum):
     FAILED = "Failed"
 
 
-class McpServerStatus(str, Enum):
-    """Defines possible MCP server deployment states."""
-
-    def __str__(self) -> str:
-        """Represent the enum as a string."""
-        return str(self.value)
+class McpServerStatus(StrEnum):
+    """Enum representing the prompt template type."""
 
     ACTIVE = "active"
     INACTIVE = "inactive"

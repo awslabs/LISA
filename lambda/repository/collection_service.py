@@ -222,20 +222,39 @@ class CollectionService:
                 logger.info(f"Repository {repository_id} has no default embedding model")
                 return None
 
+            # Check if this is a Bedrock Knowledge Base repository
+            is_bedrock_kb = RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB)
+            
+            # For Bedrock KB, use the KB ID as collection ID and include special metadata
+            if is_bedrock_kb:
+                bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
+                collection_id = bedrock_config.get("bedrockKnowledgeBaseId", embedding_model)
+                description = "Default Bedrock Knowledge Base collection"
+                tags = ["default", "bedrock_knowledge_base"]
+                allow_chunking_override = False
+            else:
+                collection_id = embedding_model
+                description = "Default collection using repository's embedding model"
+                tags = ["default"]
+                allow_chunking_override = True
+
+            # Sanitize name to only include allowed characters (alphanumeric, spaces, hyphens, underscores)
+            sanitized_name = f"{repository_id}-{embedding_model}".replace(".", "-")
+            
             default_collection = RagCollectionConfig(
-                collectionId=embedding_model,  # Use embedding model name as collection ID
+                collectionId=collection_id,
                 repositoryId=repository_id,
-                name=f"{repository_id}-{embedding_model}",
-                description="Default collection using repository's embedding model",
+                name=sanitized_name,
+                description=description,
                 embeddingModel=embedding_model,
                 chunkingStrategy=repository.get("chunkingStrategy"),
                 allowedGroups=repository.get("allowedGroups", []),
                 createdBy=repository.get("createdBy", "system"),
                 status="ACTIVE",
                 private=False,
-                metadata=CollectionMetadata(tags=["default"], customFields={}),
-                allowChunkingOverride=True,
-                pipelines=[],
+                metadata=CollectionMetadata(tags=tags, customFields={}),
+                allowChunkingOverride=allow_chunking_override,
+                pipelines=repository.get("pipelines", []),
                 default=True,  # Mark as default collection
             )
 

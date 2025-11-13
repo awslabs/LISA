@@ -1760,7 +1760,7 @@ def test_real_create_function():
     from repository.lambda_functions import create
 
     with patch("repository.lambda_functions.step_functions_client") as mock_sf, patch(
-        "repository.embeddings.ssm_client"
+        "repository.lambda_functions.ssm_client"
     ) as mock_ssm, patch("utilities.auth.is_admin") as mock_is_admin:
 
         # Setup mocks
@@ -1771,7 +1771,7 @@ def test_real_create_function():
         event = {
             "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
             "body": json.dumps(
-                {"ragConfig": {"name": "Test Repository", "type": "opensearch", "allowedGroups": ["test-group"]}}
+                {"type": "opensearch", "repositoryId": "test-repo", "embeddingModelId": "test-model"}
             ),
         }
 
@@ -2803,11 +2803,15 @@ def test_create_success():
 
     with patch("repository.lambda_functions.ssm_client") as mock_ssm, patch(
         "repository.lambda_functions.step_functions_client"
-    ) as mock_sf:
+    ) as mock_sf, patch("utilities.auth.is_admin") as mock_is_admin:
+        mock_is_admin.return_value = True
         mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "arn:test"}}
         mock_sf.start_execution.return_value = {"executionArn": "arn:execution"}
 
-        event = {"body": json.dumps({"ragConfig": {"name": "test"}})}
+        event = {
+            "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
+            "body": json.dumps({"type": "opensearch", "repositoryId": "test-repo"}),
+        }
         context = SimpleNamespace(function_name="test", aws_request_id="123")
 
         result = create(event, context)

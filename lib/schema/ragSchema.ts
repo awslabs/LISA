@@ -21,6 +21,7 @@ import { EbsDeviceVolumeType } from './cdk';
  */
 export enum ChunkingStrategyType {
     FIXED = 'fixed',
+    NONE = 'none',
 }
 
 /**
@@ -36,12 +37,23 @@ export const FixedSizeChunkingStrategySchema = z.object({
 );
 
 /**
+ * None chunking strategy schema - documents ingested as-is without chunking
+ */
+export const NoneChunkingStrategySchema = z.object({
+    type: z.literal(ChunkingStrategyType.NONE).describe('No chunking - documents ingested as-is'),
+});
+
+/**
  * Union of all chunking strategy types
  */
-export const ChunkingStrategySchema = FixedSizeChunkingStrategySchema;
+export const ChunkingStrategySchema = z.union([
+    FixedSizeChunkingStrategySchema,
+    NoneChunkingStrategySchema,
+]);
 
 export type ChunkingStrategy = z.infer<typeof ChunkingStrategySchema>;
 export type FixedSizeChunkingStrategy = z.infer<typeof FixedSizeChunkingStrategySchema>;
+export type NoneChunkingStrategy = z.infer<typeof NoneChunkingStrategySchema>;
 
 /**
  * Defines possible states for a vector store deployment.
@@ -82,6 +94,13 @@ export enum RagRepositoryType {
     BEDROCK_KNOWLEDGE_BASE = 'bedrock_knowledge_base',
 }
 
+export const BedrockKnowledgeBaseInstanceConfig = z.object({
+    bedrockKnowledgeBaseName: z.string().describe('The name of the Bedrock Knowledge Base.'),
+    bedrockKnowledgeBaseId: z.string().describe('The id of the Bedrock Knowledge Base.'),
+    bedrockKnowledgeDatasourceName: z.string().describe('The name of the Bedrock Knowledge Datasource.'),
+    bedrockKnowledgeDatasourceId: z.string().describe('The id of the Bedrock Knowledge Datasource.'),
+    bedrockKnowledgeDatasourceS3Bucket: z.string().describe('The S3 bucket of the Bedrock Knowledge Base.'),
+});
 
 export const OpenSearchNewClusterConfig = z.object({
     dataNodes: z.number().min(1).default(2).describe('The number of data nodes (instances) to use in the Amazon OpenSearch Service domain.'),

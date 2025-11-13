@@ -24,7 +24,7 @@ import urllib.parse
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from enum import Enum, StrEnum
+from enum import auto, Enum, StrEnum
 from typing import Annotated, Any, Dict, Generator, List, Optional, TypeAlias, Union
 from uuid import uuid4
 
@@ -45,9 +45,9 @@ logger = logging.getLogger(__name__)
 class InferenceContainer(StrEnum):
     """Defines supported inference container types."""
 
-    TGI = "tgi"
-    TEI = "tei"
-    VLLM = "vllm"
+    TGI = auto()
+    TEI = auto()
+    VLLM = auto()
 
 
 class ModelStatus(StrEnum):
@@ -66,21 +66,17 @@ class ModelStatus(StrEnum):
 class ModelType(StrEnum):
     """Defines supported model categories."""
 
-    TEXTGEN = "textgen"
-    IMAGEGEN = "imagegen"
-    EMBEDDING = "embedding"
+    TEXTGEN = auto()
+    IMAGEGEN = auto()
+    EMBEDDING = auto()
 
 
-class GuardrailMode(str, Enum):
+class GuardrailMode(StrEnum):
     """Defines supported guardrail execution modes."""
 
-    def __str__(self) -> str:
-        """Returns string representation of the enum value."""
-        return str(self.value)
-
-    PRE_CALL = "pre_call"
-    DURING_CALL = "during_call"
-    POST_CALL = "post_call"
+    PRE_CALL = auto()
+    DURING_CALL = auto()
+    POST_CALL = auto()
 
 
 class GuardrailConfig(BaseModel):
@@ -423,27 +419,31 @@ class DeleteModelResponse(ApiResponseBase):
     pass
 
 
-class IngestionType(str, Enum):
+class IngestionType(StrEnum):
     """Specifies whether ingestion was automatic or manual."""
 
-    AUTO = "auto"
-    MANUAL = "manual"
+    AUTO = auto()
+    MANUAL = auto()
 
 
-class JobActionType(str, Enum):
+class JobActionType(StrEnum):
     """Defines deletion job types."""
 
-    DOCUMENT_DELETION = "DOCUMENT_DELETION"
-    COLLECTION_DELETION = "COLLECTION_DELETION"
+    DOCUMENT_INGESTION = auto()
+    DOCUMENT_BATCH_INGESTION = auto()
+    DOCUMENT_DELETION = auto()
+    DOCUMENT_BATCH_DELETION = auto()
+    COLLECTION_DELETION = auto()
 
 
 RagDocumentDict = Dict[str, Any]
 
 
-class ChunkingStrategyType(str, Enum):
+class ChunkingStrategyType(StrEnum):
     """Defines supported document chunking strategies."""
 
-    FIXED = "fixed"
+    FIXED = auto()
+    NONE = auto()
 
 
 class IngestionStatus(str, Enum):
@@ -493,7 +493,13 @@ class FixedChunkingStrategy(BaseModel):
         return self
 
 
-ChunkingStrategy = FixedChunkingStrategy
+class NoneChunkingStrategy(BaseModel):
+    """Defines parameters for no-chunking strategy - documents ingested as-is."""
+
+    type: ChunkingStrategyType = ChunkingStrategyType.NONE
+
+
+ChunkingStrategy = Union[FixedChunkingStrategy, NoneChunkingStrategy]
 
 
 class RagSubDocument(BaseModel):
@@ -589,6 +595,9 @@ class IngestionJob(BaseModel):
     metadata: Optional[dict] = Field(default=None)
     job_type: Optional[JobActionType] = Field(default=None, description="Type of deletion job")
     collection_deletion: bool = Field(default=False, description="Indicates this is a collection deletion job")
+    document_ids: Optional[List[str]] = Field(
+        default=None, description="List of document IDs or S3 paths for batch operations"
+    )
 
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)
@@ -838,11 +847,11 @@ class VectorStoreStatus(StrEnum):
     UNKNOWN = "UNKNOWN"
 
 
-class PipelineTrigger(str, Enum):
+class PipelineTrigger(StrEnum):
     """Defines trigger types for collection pipelines."""
 
-    EVENT = "event"
-    SCHEDULE = "schedule"
+    EVENT = auto()
+    SCHEDULE = auto()
 
 
 class PipelineConfig(BaseModel):
@@ -1000,13 +1009,28 @@ class RepositoryMetadata(BaseModel):
 class OpenSearchNewClusterConfig(BaseModel):
     """Configuration for creating a new OpenSearch cluster."""
 
-    dataNodes: int = Field(default=2, ge=1, description="The number of data nodes (instances) to use in the Amazon OpenSearch Service domain.")
+    dataNodes: int = Field(
+        default=2,
+        ge=1,
+        description="The number of data nodes (instances) to use in the Amazon OpenSearch Service domain.",
+    )
     dataNodeInstanceType: str = Field(default="r7g.large.search", description="The instance type for your data nodes")
     masterNodes: int = Field(default=0, ge=0, description="The number of instances to use for the master node")
-    masterNodeInstanceType: str = Field(default="r7g.large.search", description="The hardware configuration of the computer that hosts the dedicated master node")
-    volumeSize: int = Field(default=20, ge=20, description="The size (in GiB) of the EBS volume for each data node. The minimum and maximum size of an EBS volume depends on the EBS volume type and the instance type to which it is attached.")
-    volumeType: str = Field(default="gp3", description="The EBS volume type to use with the Amazon OpenSearch Service domain")
-    multiAzWithStandby: bool = Field(default=False, description="Indicates whether Multi-AZ with Standby deployment option is enabled.")
+    masterNodeInstanceType: str = Field(
+        default="r7g.large.search",
+        description="The hardware configuration of the computer that hosts the dedicated master node",
+    )
+    volumeSize: int = Field(
+        default=20,
+        ge=20,
+        description="The size (in GiB) of the EBS volume for each data node. The minimum and maximum size of an EBS volume depends on the EBS volume type and the instance type to which it is attached.",
+    )
+    volumeType: str = Field(
+        default="gp3", description="The EBS volume type to use with the Amazon OpenSearch Service domain"
+    )
+    multiAzWithStandby: bool = Field(
+        default=False, description="Indicates whether Multi-AZ with Standby deployment option is enabled."
+    )
 
 
 class OpenSearchExistingClusterConfig(BaseModel):
@@ -1021,26 +1045,36 @@ OpenSearchConfig = Union[OpenSearchNewClusterConfig, OpenSearchExistingClusterCo
 
 class RdsInstanceConfig(BaseModel):
     """Configuration schema for RDS Instances needed for LiteLLM scaling or PGVector RAG operations.
-    
-    The optional fields can be omitted to create a new database instance, otherwise fill in all fields 
+
+    The optional fields can be omitted to create a new database instance, otherwise fill in all fields
     to use an existing database instance.
     """
 
     username: str = Field(default="postgres", description="The username used for database connection.")
-    passwordSecretId: Optional[str] = Field(default=None, description="The SecretsManager Secret ID that stores the existing database password.")
+    passwordSecretId: Optional[str] = Field(
+        default=None, description="The SecretsManager Secret ID that stores the existing database password."
+    )
     dbHost: Optional[str] = Field(default=None, description="The database hostname for the existing database instance.")
     dbName: str = Field(default="postgres", description="The name of the database for the database instance.")
-    dbPort: int = Field(default=5432, description="The port of the existing database instance or the port to be opened on the database instance.")
+    dbPort: int = Field(
+        default=5432,
+        description="The port of the existing database instance or the port to be opened on the database instance.",
+    )
 
 
 class BedrockKnowledgeBaseConfig(BaseModel):
     """Configuration for Bedrock Knowledge Base instance."""
 
-    bedrockKnowledgeBaseName: str = Field(description="The name of the Bedrock Knowledge Base.")
-    bedrockKnowledgeBaseId: str = Field(description="The id of the Bedrock Knowledge Base.")
-    bedrockKnowledgeDatasourceName: str = Field(description="The name of the Bedrock Knowledge Datasource.")
-    bedrockKnowledgeDatasourceId: str = Field(description="The id of the Bedrock Knowledge Datasource.")
-    bedrockKnowledgeDatasourceS3Bucket: str = Field(description="The S3 bucket of the Bedrock Knowledge Base.")
+    bedrockKnowledgeBaseName: str = Field(min_length=1, description="The name of the Bedrock Knowledge Base.")
+    bedrockKnowledgeBaseId: str = Field(min_length=1, description="The id of the Bedrock Knowledge Base.")
+    bedrockKnowledgeDatasourceName: str = Field(
+        min_length=1, description="The name of the Bedrock Knowledge Datasource."
+    )
+    bedrockKnowledgeDatasourceId: str = Field(min_length=1, description="The id of the Bedrock Knowledge Datasource.")
+    bedrockKnowledgeDatasourceS3Bucket: str = Field(
+        min_length=1, description="The S3 bucket of the Bedrock Knowledge Base."
+    )
+
 
 class VectorStoreConfig(BaseModel):
     """Represents a vector store/repository configuration."""

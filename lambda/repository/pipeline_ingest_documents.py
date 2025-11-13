@@ -26,6 +26,7 @@ from models.domain_objects import (
     IngestionJob,
     IngestionStatus,
     IngestionType,
+    JobActionType,
     RagDocument,
 )
 from repository.collection_service import CollectionService
@@ -57,6 +58,19 @@ ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=re
 
 
 def pipeline_ingest(job: IngestionJob) -> None:
+    """
+    Ingest a single document or batch of documents.
+
+    Routes to appropriate handler based on job type.
+    """
+    if job.job_type == JobActionType.DOCUMENT_BATCH_INGESTION:
+        pipeline_ingest_documents(job)
+    else:
+        pipeline_ingest_document(job)
+
+
+def pipeline_ingest_document(job: IngestionJob) -> None:
+    """Ingest a single document."""
     texts: list[str] = []
     metadatas: list[dict] = []
     all_ids: list[str] = []
@@ -71,22 +85,40 @@ def pipeline_ingest(job: IngestionJob) -> None:
                 job=job,
                 repository=repository,
             )
-            # update IngstionJob
+
+            # Create RagDocument for tracking
+            ingestion_type = IngestionType.AUTO if job.username == "system" else IngestionType.MANUAL
+            rag_document = RagDocument(
+                repository_id=job.repository_id,
+                collection_id=job.collection_id,
+                document_name=os.path.basename(job.s3_path),
+                source=job.s3_path,
+                subdocs=[],  # Bedrock KB manages embeddings internally
+                chunk_strategy=job.chunk_strategy,
+                username=job.username,
+                ingestion_type=ingestion_type,
+            )
+            rag_document_repository.save(rag_document)
+
+            # update IngestionJob
             job.status = IngestionStatus.INGESTION_COMPLETED
             job.document_id = rag_document.document_id
             ingestion_job_repository.save(job)
-            logging.info(f"Bedrock Knowledge Base will ingest the document {job.s3_path} using default chunking into {job.embedding_model} collection")
-            return
-        else:
-            documents = generate_chunks(job)
-            texts, metadatas = prepare_chunks(documents, job.repository_id, job.collection_id)
-            all_ids = store_chunks_in_vectorstore(
-                texts=texts,
-                metadatas=metadatas,
-                repository_id=job.repository_id,
-                collection_id=job.collection_id,
-                embedding_model=job.embedding_model,
+            logging.info(
+                f"Bedrock Knowledge Base will ingest the document {job.s3_path} using default chunking into {job.embedding_model} collection"
             )
+            return  # Early return for Bedrock KB path
+
+        # Non-Bedrock KB path
+        documents = generate_chunks(job)
+        texts, metadatas = prepare_chunks(documents, job.repository_id, job.collection_id)
+        all_ids = store_chunks_in_vectorstore(
+            texts=texts,
+            metadatas=metadatas,
+            repository_id=job.repository_id,
+            collection_id=job.collection_id,
+            embedding_model=job.embedding_model,
+        )
 
         # remove old
         for rag_document in rag_document_repository.find_by_source(
@@ -134,6 +166,83 @@ def pipeline_ingest(job: IngestionJob) -> None:
         raise Exception(error_msg)
 
 
+def pipeline_ingest_documents(job: IngestionJob) -> None:
+    """
+    Ingest multiple documents in batch (up to 100 at a time).
+
+    Processes documents from document_ids field containing list of S3 paths.
+    """
+    try:
+        logger.info(f"Starting batch ingestion for job {job.id}")
+
+        # Extract document list from document_ids field
+        if not job.document_ids:
+            raise ValueError("Batch ingestion job missing 'document_ids' field")
+
+        document_paths = job.document_ids
+        if not isinstance(document_paths, list):
+            raise ValueError("'document_ids' must be a list")
+
+        if len(document_paths) > 100:
+            raise ValueError(f"Batch size {len(document_paths)} exceeds maximum of 100 documents")
+
+        logger.info(f"Processing {len(document_paths)} documents in batch")
+
+        # Update job status
+        ingestion_job_repository.update_status(job, IngestionStatus.INGESTION_IN_PROGRESS)
+
+        # Process each document
+        successful = 0
+        failed = 0
+        errors = []
+
+        for s3_path in document_paths:
+            try:
+                # Create individual job for each document
+                doc_job = IngestionJob(
+                    repository_id=job.repository_id,
+                    collection_id=job.collection_id,
+                    embedding_model=job.embedding_model,
+                    chunk_strategy=job.chunk_strategy,
+                    s3_path=s3_path,
+                    username=job.username,
+                    metadata=job.metadata,
+                )
+
+                # Process the document
+                pipeline_ingest_document(doc_job)
+                successful += 1
+                logger.info(f"Successfully ingested document {s3_path}")
+
+            except Exception as e:
+                failed += 1
+                error_msg = f"Failed to ingest {s3_path}: {str(e)}"
+                logger.error(error_msg, exc_info=True)
+                errors.append(error_msg)
+
+        # Update job with results in metadata
+        if not job.metadata:
+            job.metadata = {}
+        job.metadata["results"] = {
+            "successful": successful,
+            "failed": failed,
+            "errors": errors[:10],  # Limit error messages
+        }
+
+        if failed == 0:
+            ingestion_job_repository.update_status(job, IngestionStatus.INGESTION_COMPLETED)
+            logger.info(f"Batch ingestion completed: {successful} successful, {failed} failed")
+        else:
+            ingestion_job_repository.update_status(job, IngestionStatus.INGESTION_FAILED)
+            logger.warning(f"Batch ingestion completed with errors: {successful} successful, {failed} failed")
+
+    except Exception as e:
+        ingestion_job_repository.update_status(job, IngestionStatus.INGESTION_FAILED)
+        error_msg = f"Failed to process batch ingestion: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        raise Exception(error_msg)
+
+
 def remove_document_from_vectorstore(doc: RagDocument) -> None:
     # Delete from the Vector Store
     embeddings = RagEmbeddings(model_name=doc.collection_id)
@@ -163,7 +272,9 @@ def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
         collection = collection_service.get_collection(
             collection_id=collection_id, repository_id=repository_id, is_admin=True, username="", user_groups=[]
         )
-        embedding_model = collection.embeddingModel
+
+        if collection.embeddingModel != None:
+            embedding_model = collection.embeddingModel
     else:
         collection_id = embedding_model
     logger.info(f"Ingesting object {s3_path} for repository {repository_id}/{embedding_model}")

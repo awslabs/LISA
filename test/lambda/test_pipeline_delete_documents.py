@@ -29,6 +29,10 @@ def setup_env(monkeypatch):
     monkeypatch.setenv("AWS_REGION", "us-east-1")
     monkeypatch.setenv("RAG_DOCUMENT_TABLE", "test-doc-table")
     monkeypatch.setenv("RAG_SUB_DOCUMENT_TABLE", "test-subdoc-table")
+    monkeypatch.setenv("LISA_INGESTION_JOB_TABLE_NAME", "test-job-table")
+    monkeypatch.setenv("LISA_INGESTION_JOB_QUEUE_NAME", "test-queue")
+    monkeypatch.setenv("LISA_INGESTION_JOB_DEFINITION_NAME", "test-job-def")
+    monkeypatch.setenv("LISA_RAG_VECTOR_STORE_TABLE", "test-vector-store-table")
 
 
 def test_drop_opensearch_index(setup_env):
@@ -346,3 +350,137 @@ def test_pipeline_delete_routes_to_document_deletion(setup_env):
         pipeline_delete(job)
 
         mock_delete_document.assert_called_once_with(job)
+
+
+def test_pipeline_delete_documents_batch(setup_env):
+    """Test pipeline_delete_documents processes batch deletion."""
+    from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, JobActionType, RagDocument
+    from utilities.repository_types import RepositoryType
+
+    job = IngestionJob(
+        repository_id="repo1",
+        collection_id="col1",
+        s3_path="",
+        embedding_model="model1",
+        username="user1",
+        job_type=JobActionType.DOCUMENT_BATCH_DELETION,
+        document_ids=["doc1", "doc2", "doc3"],
+    )
+
+    rag_docs = [
+        RagDocument(
+            repository_id="repo1",
+            collection_id="col1",
+            document_id=f"doc{i}",
+            document_name=f"test{i}.txt",
+            source=f"s3://bucket/key{i}",
+            subdocs=[f"sub{i}"],
+            username="user1",
+            chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
+        )
+        for i in range(1, 4)
+    ]
+
+    with patch("repository.pipeline_delete_documents.rag_document_repository") as mock_doc_repo, patch(
+        "repository.pipeline_delete_documents.vs_repo"
+    ) as mock_vs_repo, patch("repository.pipeline_delete_documents.remove_document_from_vectorstore"), patch(
+        "repository.pipeline_delete_documents.ingestion_job_repository"
+    ) as mock_job_repo:
+
+        mock_doc_repo.find_by_id.side_effect = rag_docs
+        mock_vs_repo.find_repository_by_id.return_value = {"type": RepositoryType.OPENSEARCH}
+
+        from repository.pipeline_delete_documents import pipeline_delete_documents
+
+        pipeline_delete_documents(job)
+
+        assert mock_doc_repo.delete_by_id.call_count == 3
+        mock_job_repo.update_status.assert_called_with(job, IngestionStatus.DELETE_COMPLETED)
+
+
+def test_pipeline_delete_documents_batch_with_failures(setup_env):
+    """Test pipeline_delete_documents handles partial failures."""
+    from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, JobActionType, RagDocument
+    from utilities.repository_types import RepositoryType
+
+    job = IngestionJob(
+        repository_id="repo1",
+        collection_id="col1",
+        s3_path="",
+        embedding_model="model1",
+        username="user1",
+        job_type=JobActionType.DOCUMENT_BATCH_DELETION,
+        document_ids=["doc1", "doc2", "doc3"],
+    )
+
+    rag_doc1 = RagDocument(
+        repository_id="repo1",
+        collection_id="col1",
+        document_id="doc1",
+        document_name="test1.txt",
+        source="s3://bucket/key1",
+        subdocs=["sub1"],
+        username="user1",
+        chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
+    )
+
+    with patch("repository.pipeline_delete_documents.rag_document_repository") as mock_doc_repo, patch(
+        "repository.pipeline_delete_documents.vs_repo"
+    ) as mock_vs_repo, patch("repository.pipeline_delete_documents.remove_document_from_vectorstore"), patch(
+        "repository.pipeline_delete_documents.ingestion_job_repository"
+    ) as mock_job_repo:
+
+        # First succeeds, second fails, third succeeds
+        mock_doc_repo.find_by_id.side_effect = [rag_doc1, Exception("Delete failed"), rag_doc1]
+        mock_vs_repo.find_repository_by_id.return_value = {"type": RepositoryType.OPENSEARCH}
+
+        from repository.pipeline_delete_documents import pipeline_delete_documents
+
+        pipeline_delete_documents(job)
+
+        mock_job_repo.update_status.assert_called_with(job, IngestionStatus.DELETE_FAILED)
+
+
+def test_pipeline_delete_documents_batch_exceeds_limit(setup_env):
+    """Test pipeline_delete_documents rejects batch over 100 documents."""
+    from models.domain_objects import IngestionJob, JobActionType
+
+    job = IngestionJob(
+        repository_id="repo1",
+        collection_id="col1",
+        s3_path="",
+        embedding_model="model1",
+        username="user1",
+        job_type=JobActionType.DOCUMENT_BATCH_DELETION,
+        document_ids=[f"doc{i}" for i in range(101)],
+    )
+
+    with patch("repository.pipeline_delete_documents.ingestion_job_repository") as mock_job_repo:
+        from repository.pipeline_delete_documents import pipeline_delete_documents
+
+        with pytest.raises(Exception):
+            pipeline_delete_documents(job)
+
+        mock_job_repo.update_status.assert_called()
+
+
+def test_pipeline_delete_routes_to_batch_deletion(setup_env):
+    """Test pipeline_delete routes to batch document deletion."""
+    from models.domain_objects import IngestionJob, JobActionType
+
+    job = IngestionJob(
+        repository_id="repo1",
+        collection_id="col1",
+        s3_path="",
+        embedding_model="model1",
+        username="user1",
+        job_type=JobActionType.DOCUMENT_BATCH_DELETION,
+        document_ids=["doc1", "doc2"],
+    )
+
+    with patch("repository.pipeline_delete_documents.pipeline_delete_documents") as mock_delete_documents:
+        from repository.pipeline_delete_documents import pipeline_delete
+
+        pipeline_delete(job)
+
+        mock_delete_documents.assert_called_once_with(job)

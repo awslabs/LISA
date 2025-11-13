@@ -30,6 +30,10 @@ def setup_env(monkeypatch):
     monkeypatch.setenv("AWS_REGION", "us-east-1")
     monkeypatch.setenv("RAG_DOCUMENT_TABLE", "test-doc-table")
     monkeypatch.setenv("RAG_SUB_DOCUMENT_TABLE", "test-subdoc-table")
+    monkeypatch.setenv("LISA_INGESTION_JOB_TABLE_NAME", "test-job-table")
+    monkeypatch.setenv("LISA_INGESTION_JOB_QUEUE_NAME", "test-queue")
+    monkeypatch.setenv("LISA_INGESTION_JOB_DEFINITION_NAME", "test-job-def")
+    monkeypatch.setenv("LISA_RAG_VECTOR_STORE_TABLE", "test-vector-store-table")
 
 
 def test_extract_chunk_strategy_new_format(setup_env):
@@ -374,3 +378,152 @@ def test_remove_document_from_vectorstore(setup_env):
         remove_document_from_vectorstore(doc)
 
         mock_vs.delete.assert_called_once_with(["sub1", "sub2"])
+
+
+def test_pipeline_ingest_documents_batch(setup_env):
+    """Test pipeline_ingest_documents processes batch ingestion."""
+    from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, JobActionType
+
+    job = IngestionJob(
+        repository_id="repo1",
+        collection_id="col1",
+        s3_path="",
+        embedding_model="model1",
+        username="user1",
+        job_type=JobActionType.DOCUMENT_BATCH_INGESTION,
+        chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
+        document_ids=["s3://bucket/key1", "s3://bucket/key2", "s3://bucket/key3"],
+    )
+
+    with patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo, patch(
+        "repository.pipeline_ingest_documents.pipeline_ingest_document"
+    ) as mock_ingest_doc:
+
+        from repository.pipeline_ingest_documents import pipeline_ingest_documents
+
+        pipeline_ingest_documents(job)
+
+        assert mock_ingest_doc.call_count == 3
+        mock_job_repo.update_status.assert_called_with(job, IngestionStatus.INGESTION_COMPLETED)
+
+
+def test_pipeline_ingest_documents_batch_with_failures(setup_env):
+    """Test pipeline_ingest_documents handles partial failures."""
+    from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, JobActionType
+
+    job = IngestionJob(
+        repository_id="repo1",
+        collection_id="col1",
+        s3_path="",
+        embedding_model="model1",
+        username="user1",
+        job_type=JobActionType.DOCUMENT_BATCH_INGESTION,
+        chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
+        document_ids=["s3://bucket/key1", "s3://bucket/key2", "s3://bucket/key3"],
+    )
+
+    with patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo, patch(
+        "repository.pipeline_ingest_documents.pipeline_ingest_document"
+    ) as mock_ingest_doc:
+
+        # First succeeds, second fails, third succeeds
+        mock_ingest_doc.side_effect = [None, Exception("Ingest failed"), None]
+
+        from repository.pipeline_ingest_documents import pipeline_ingest_documents
+
+        pipeline_ingest_documents(job)
+
+        assert mock_ingest_doc.call_count == 3
+        mock_job_repo.update_status.assert_called_with(job, IngestionStatus.INGESTION_FAILED)
+
+
+def test_pipeline_ingest_documents_batch_exceeds_limit(setup_env):
+    """Test pipeline_ingest_documents rejects batch over 100 documents."""
+    from models.domain_objects import FixedChunkingStrategy, IngestionJob, JobActionType
+
+    job = IngestionJob(
+        repository_id="repo1",
+        collection_id="col1",
+        s3_path="",
+        embedding_model="model1",
+        username="user1",
+        job_type=JobActionType.DOCUMENT_BATCH_INGESTION,
+        chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
+        document_ids=[f"s3://bucket/key{i}" for i in range(101)],
+    )
+
+    with patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo:
+        from repository.pipeline_ingest_documents import pipeline_ingest_documents
+
+        with pytest.raises(Exception):
+            pipeline_ingest_documents(job)
+
+        mock_job_repo.update_status.assert_called()
+
+
+def test_pipeline_ingest_documents_batch_missing_metadata(setup_env):
+    """Test pipeline_ingest_documents raises error when document_ids missing."""
+    from models.domain_objects import FixedChunkingStrategy, IngestionJob, JobActionType
+
+    job = IngestionJob(
+        repository_id="repo1",
+        collection_id="col1",
+        s3_path="",
+        embedding_model="model1",
+        username="user1",
+        job_type=JobActionType.DOCUMENT_BATCH_INGESTION,
+        chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
+        document_ids=None,
+    )
+
+    with patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo:
+        from repository.pipeline_ingest_documents import pipeline_ingest_documents
+
+        with pytest.raises(Exception):
+            pipeline_ingest_documents(job)
+
+        mock_job_repo.update_status.assert_called()
+
+
+def test_pipeline_ingest_routes_to_batch_ingestion(setup_env):
+    """Test pipeline_ingest routes to batch document ingestion."""
+    from models.domain_objects import FixedChunkingStrategy, IngestionJob, JobActionType
+
+    job = IngestionJob(
+        repository_id="repo1",
+        collection_id="col1",
+        s3_path="",
+        embedding_model="model1",
+        username="user1",
+        job_type=JobActionType.DOCUMENT_BATCH_INGESTION,
+        chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
+        document_ids=["s3://bucket/key1"],
+    )
+
+    with patch("repository.pipeline_ingest_documents.pipeline_ingest_documents") as mock_ingest_documents:
+        from repository.pipeline_ingest_documents import pipeline_ingest
+
+        pipeline_ingest(job)
+
+        mock_ingest_documents.assert_called_once_with(job)
+
+
+def test_pipeline_ingest_routes_to_single_ingestion(setup_env):
+    """Test pipeline_ingest routes to single document ingestion."""
+    from models.domain_objects import FixedChunkingStrategy, IngestionJob
+
+    job = IngestionJob(
+        repository_id="repo1",
+        collection_id="col1",
+        s3_path="s3://bucket/key",
+        embedding_model="model1",
+        username="user1",
+        chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
+    )
+
+    with patch("repository.pipeline_ingest_documents.pipeline_ingest_document") as mock_ingest_document:
+        from repository.pipeline_ingest_documents import pipeline_ingest
+
+        pipeline_ingest(job)
+
+        mock_ingest_document.assert_called_once_with(job)

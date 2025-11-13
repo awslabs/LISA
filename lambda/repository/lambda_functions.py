@@ -24,26 +24,20 @@ import boto3
 from boto3.dynamodb.types import TypeSerializer
 from botocore.config import Config
 from models.domain_objects import (
-    BedrockKnowledgeBaseConfig,
-    ChunkingStrategyType,
-    VectorStoreConfig,
     FilterParams,
-    FixedChunkingStrategy,
     IngestDocumentRequest,
     IngestionJob,
     IngestionStatus,
     ListJobsResponse,
-    OpenSearchExistingClusterConfig,
-    OpenSearchNewClusterConfig,
     PaginationParams,
     PaginationResult,
     PipelineConfig,
     PipelineTrigger,
     RagCollectionConfig,
     RagDocument,
-    RdsInstanceConfig,
     SortParams,
     UpdateVectorStoreRequest,
+    VectorStoreConfig,
 )
 from repository.collection_service import CollectionService
 from repository.config.params import ListJobsParams
@@ -53,7 +47,7 @@ from repository.ingestion_service import DocumentIngestionService
 from repository.rag_document_repo import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.auth import admin_only, get_groups, get_user_context, get_username, is_admin, user_has_group_access
-from utilities.bedrock_kb import retrieve_documents, create_default_pipeline
+from utilities.bedrock_kb import retrieve_documents
 from utilities.common_functions import api_wrapper, get_id_token, retry_config
 from utilities.exceptions import HTTPException
 from utilities.repository_types import RepositoryType
@@ -1094,34 +1088,30 @@ def create(event: dict, context: dict) -> Any:
     # Auto-add default pipeline for Bedrock Knowledge Base repositories
     if vector_store_config.type == RepositoryType.BEDROCK_KB:
         bedrock_config = vector_store_config.bedrockKnowledgeBaseConfig
+        if not bedrock_config:
+            raise ValidationError("Bedrock Config must be supplied")
 
         # Only add default pipeline if no pipelines are configured and we have a bedrock config with datasource bucket
-        if bedrock_config and bedrock_config.bedrockKnowledgeDatasourceS3Bucket and not vector_store_config.pipelines:
-            datasource_bucket = bedrock_config.bedrockKnowledgeDatasourceS3Bucket
-            
-            # Create default chunking strategy
-            default_chunking = FixedChunkingStrategy(
-                type=ChunkingStrategyType.FIXED,
-                size=512,
-                overlap=51,
-            )
+        datasource_bucket = bedrock_config.bedrockKnowledgeDatasourceS3Bucket
 
-            # Create default pipeline configuration
-            default_pipeline = PipelineConfig(
-                s3Bucket=datasource_bucket,
-                s3Prefix="",
-                trigger=PipelineTrigger.EVENT,
-                chunkSize=default_chunking.size,
-                chunkOverlap=default_chunking.overlap,
-                autoRemove=True,
-            )
+        # Create default pipeline configuration
+        default_pipeline = PipelineConfig(
+            s3Bucket=datasource_bucket,
+            s3Prefix="",
+            trigger=PipelineTrigger.EVENT,
+            autoRemove=True,
+            chunk_strategy=NoneChunkingStrategy()
+        )
 
+        if vector_store_config.pipelines:
+            vector_store_config.pipelines.add(default_pipeline)
+        else:
             vector_store_config.pipelines = [default_pipeline]
-            logger.info(
-                f"Auto-added default pipeline for Bedrock KB repository {vector_store_config.repositoryId} "
-                f"monitoring bucket: {datasource_bucket}"
-            )
-              
+
+        logger.info(
+            f"Auto-added default pipeline for Bedrock KB repository {vector_store_config.repositoryId} "
+            f"monitoring bucket: {datasource_bucket}"
+        )
 
     # Convert to dictionary for Step Functions input
     rag_config = vector_store_config.model_dump(mode="json", exclude_none=True)

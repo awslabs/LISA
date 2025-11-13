@@ -210,8 +210,11 @@ def pipeline_delete(job: IngestionJob) -> None:
     if job.job_type == JobActionType.COLLECTION_DELETION:
         logger.info(f"Routing to collection deletion for job {job.id}")
         pipeline_delete_collection(job)
+    elif job.job_type == JobActionType.DOCUMENT_BATCH_DELETION:
+        logger.info(f"Routing to batch document deletion for job {job.id}")
+        pipeline_delete_documents(job)
     else:
-        # Default to document deletion
+        # Default to single document deletion
         logger.info(f"Routing to document deletion for job {job.id}")
         pipeline_delete_document(job)
 
@@ -255,6 +258,111 @@ def pipeline_delete_document(job: IngestionJob) -> None:
         ingestion_job_repository.update_status(job, IngestionStatus.DELETE_FAILED)
 
         error_msg = f"Failed to delete document: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        raise Exception(error_msg)
+
+
+def pipeline_delete_documents(job: IngestionJob) -> None:
+    """
+    Delete multiple documents in batch (up to 100 at a time).
+
+    Processes documents from document_ids field containing list of document IDs.
+
+    Args:
+        job: Ingestion job with batch deletion details
+    """
+    try:
+        logger.info(f"Starting batch deletion for job {job.id}")
+
+        # Extract document list from document_ids field
+        if not job.document_ids:
+            raise ValueError("Batch deletion job missing 'document_ids' field")
+
+        document_ids = job.document_ids
+        if not isinstance(document_ids, list):
+            raise ValueError("'document_ids' must be a list")
+
+        if len(document_ids) > 100:
+            raise ValueError(f"Batch size {len(document_ids)} exceeds maximum of 100 documents")
+
+        logger.info(f"Processing {len(document_ids)} documents in batch deletion")
+
+        # Update job status
+        ingestion_job_repository.update_status(job, IngestionStatus.DELETE_IN_PROGRESS)
+
+        # Get repository for vector store operations
+        repository = vs_repo.find_repository_by_id(job.repository_id)
+        is_bedrock_kb = RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB)
+
+        # Process each document
+        successful = 0
+        failed = 0
+        errors = []
+        s3_paths_for_kb = []
+
+        for document_id in document_ids:
+            try:
+                # Find associated RagDocument
+                rag_document = rag_document_repository.find_by_id(document_id, join_docs=True)
+
+                if rag_document:
+                    # For Bedrock KB, collect S3 paths for bulk deletion
+                    if is_bedrock_kb:
+                        s3_paths_for_kb.append(rag_document.source)
+                    else:
+                        # Remove from vector store immediately for non-Bedrock
+                        remove_document_from_vectorstore(rag_document)
+
+                    # Remove from DDB
+                    rag_document_repository.delete_by_id(rag_document.document_id)
+                    successful += 1
+                    logger.info(f"Successfully deleted document {document_id}")
+                else:
+                    # Document not found, count as successful (idempotent)
+                    successful += 1
+                    logger.warning(f"Document {document_id} not found, skipping")
+
+            except Exception as e:
+                failed += 1
+                error_msg = f"Failed to delete document {document_id}: {str(e)}"
+                logger.error(error_msg, exc_info=True)
+                errors.append(error_msg)
+
+        # For Bedrock KB, perform bulk deletion
+        if is_bedrock_kb and s3_paths_for_kb:
+            try:
+                from utilities.bedrock_kb import bulk_delete_documents_from_kb
+
+                bulk_delete_documents_from_kb(
+                    s3_client=s3,
+                    bedrock_agent_client=bedrock_agent,
+                    repository=repository,
+                    s3_paths=s3_paths_for_kb,
+                )
+                logger.info(f"Successfully bulk deleted {len(s3_paths_for_kb)} documents from Bedrock KB")
+            except Exception as e:
+                logger.error(f"Failed to bulk delete from Bedrock KB: {e}", exc_info=True)
+                # Documents already deleted from DynamoDB, log error but don't fail job
+
+        # Update job with results in metadata
+        if not job.metadata:
+            job.metadata = {}
+        job.metadata["results"] = {
+            "successful": successful,
+            "failed": failed,
+            "errors": errors[:10],  # Limit error messages
+        }
+
+        if failed == 0:
+            ingestion_job_repository.update_status(job, IngestionStatus.DELETE_COMPLETED)
+            logger.info(f"Batch deletion completed: {successful} successful, {failed} failed")
+        else:
+            ingestion_job_repository.update_status(job, IngestionStatus.DELETE_FAILED)
+            logger.warning(f"Batch deletion completed with errors: {successful} successful, {failed} failed")
+
+    except Exception as e:
+        ingestion_job_repository.update_status(job, IngestionStatus.DELETE_FAILED)
+        error_msg = f"Failed to process batch deletion: {str(e)}"
         logger.error(error_msg, exc_info=True)
         raise Exception(error_msg)
 

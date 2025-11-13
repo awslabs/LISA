@@ -143,17 +143,25 @@ def bulk_delete_documents_from_kb(
         dataSourceId=bedrock_config.get("bedrockKnowledgeDatasourceId"),
     )
 
-def create_default_pipeline(bedrock_config: dict) -> dict:
-    embedding_model = rag_config.get("embeddingModelId", "default")
 
-    # aws bedrock-agent list-data-sources --knowledge-base-id HSMZEBEPIT                   
+def create_default_pipeline(bedrock_config: dict) -> dict:
+    """Create default pipeline configuration for Bedrock Knowledge Base.
+
+    Args:
+        bedrock_config: Bedrock Knowledge Base configuration
+
+    Returns:
+        Default pipeline configuration dictionary
+    """
+    datasource_bucket = bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket", "")
+
+    # aws bedrock-agent list-data-sources --knowledge-base-id HSMZEBEPIT
     # aws bedrock-agent get-data-source --knowledge-base-id HSMZEBEPIT --data-source-id UBYFSOJCIK
 
-bedrockKnowledgeBaseConfig
     default_pipeline = {
         "s3Bucket": datasource_bucket,
         "s3Prefix": "",
         "trigger": "event",
         "autoRemove": True,
     }
-    return {}
+    return default_pipeline

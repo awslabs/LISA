@@ -184,7 +184,6 @@ def generate_chunks(ingestion_job: IngestionJob) -> list[Document]:
     ]
 
     # Use factory to chunk documents based on strategy
-    logger.info(f"Processing document with chunking strategy: {ingestion_job.chunk_strategy.type}")
     doc_chunks = ChunkingStrategyFactory.chunk_documents(docs, ingestion_job.chunk_strategy)
 
     # Update part number of doc metadata

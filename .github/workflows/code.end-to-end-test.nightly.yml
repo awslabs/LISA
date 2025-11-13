@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Send “E2E Tests Starting” to Slack
-        uses: rtCamp/action-slack-notify@cdf0a2130cbcdfd82ba5fcac8e076370bf381b36 # v2
+        uses: rtCamp/action-slack-notify@e31e87e03dd19038e411e38ae27cbad084a90661 # v2
         env:
           SLACK_TITLE: 'E2E Tests Starting'
           MSG_MINIMAL: true
@@ -32,7 +32,7 @@ jobs:
         with:
             ref: develop
       - name: Setup Node.js
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v4
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v4
         with:
           node-version: '18'
           cache: 'npm'
@@ -44,7 +44,7 @@ jobs:
         run: npx cypress run --config-file cypress/cypress.e2e.config.ts
       - name: Archive Cypress videos & screenshots
         if: failure() || always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v4
         with:
           name: cypress-e2e-artifacts
           path: |
@@ -58,7 +58,7 @@ jobs:
     if: always()
     steps:
       - name: Notify E2E results to Slack
-        uses: rtCamp/action-slack-notify@cdf0a2130cbcdfd82ba5fcac8e076370bf381b36 # v2
+        uses: rtCamp/action-slack-notify@e31e87e03dd19038e411e38ae27cbad084a90661 # v2
         env:
           SLACK_COLOR: ${{ needs.e2e.result == 'success' && 'good' || 'danger' }}
           SLACK_TITLE: 'E2E Tests Finished'

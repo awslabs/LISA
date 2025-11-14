@@ -5,7 +5,7 @@
 LISA MCP lets administrators run first-party Model Context Protocol (MCP) services directly inside a LISA
 deployment. Each server is provisioned on ECS Fargate, fronted by Application/Network Load Balancers, and published
 through the existing API Gateway so chat sessions can securely invoke MCP tools without leaving your VPC. Every route
-is still protected by the same API Gateway Lambda authorizer that guards the rest of LISA, so API Keys, IDP lockdown, 
+is still protected by the same API Gateway Lambda authorizer that guards the rest of LISA, so API Keys, IDP lockdown,
 and JWT group enforcement continue to apply without extra work. Because the endpoints are standard HTTP
 routes behind API Gateway, you can also share them with trusted third-party agents, copilots, or workflow engines
 outside of LISA while keeping the same auth store/issue them API keys, short-lived JWTs, or IDP credentials and they
@@ -251,5 +251,3 @@ Response (truncated):
 - **Cause:** The `UpdateHostedMcpServerRequest` validator requires at least one field; it also blocks simultaneous
   enable/disable and auto scaling changes.
 - **Resolution:** Split enable/disable operations from scaling updates, and include only the fields you intend to change.
-
-

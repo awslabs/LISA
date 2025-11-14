@@ -1770,9 +1770,7 @@ def test_real_create_function():
 
         event = {
             "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
-            "body": json.dumps(
-                {"type": "opensearch", "repositoryId": "test-repo", "embeddingModelId": "test-model"}
-            ),
+            "body": json.dumps({"type": "opensearch", "repositoryId": "test-repo", "embeddingModelId": "test-model"}),
         }
 
         result = create(event, SimpleNamespace())

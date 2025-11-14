@@ -32,7 +32,7 @@ describe('ChunkingConfigForm', () => {
     describe('Dropdown Options', () => {
         it('displays FIXED and NONE options in dropdown', async () => {
             const user = userEvent.setup();
-            
+
             render(
                 <ChunkingConfigForm
                     item={undefined}
@@ -49,7 +49,7 @@ describe('ChunkingConfigForm', () => {
             // Verify both options are present using getAllByText since they appear multiple times
             const fixedOptions = screen.getAllByText('Fixed Size');
             const noneOptions = screen.getAllByText('None (No Chunking)');
-            
+
             expect(fixedOptions.length).toBeGreaterThan(0);
             expect(noneOptions.length).toBeGreaterThan(0);
         });
@@ -90,7 +90,7 @@ describe('ChunkingConfigForm', () => {
 
         it('calls setFields when size is changed', async () => {
             const user = userEvent.setup();
-            
+
             render(
                 <ChunkingConfigForm
                     item={{ type: ChunkingStrategyType.FIXED, size: 512, overlap: 51 }}
@@ -101,7 +101,7 @@ describe('ChunkingConfigForm', () => {
             );
 
             const sizeInput = screen.getByLabelText(/chunk size/i);
-            
+
             // Type directly without clearing (which triggers onChange for each character)
             await user.click(sizeInput);
             await user.keyboard('{Control>}a{/Control}'); // Select all
@@ -109,10 +109,10 @@ describe('ChunkingConfigForm', () => {
 
             // Verify setFields was called (it will be called multiple times during typing)
             expect(mockSetFields).toHaveBeenCalled();
-            
+
             // Verify at least one call contains the size field
             const calls = mockSetFields.mock.calls;
-            const hasSizeCall = calls.some(call => 
+            const hasSizeCall = calls.some((call) =>
                 call[0] && typeof call[0]['chunkingStrategy.size'] === 'number'
             );
             expect(hasSizeCall).toBe(true);
@@ -120,7 +120,7 @@ describe('ChunkingConfigForm', () => {
 
         it('calls setFields when overlap is changed', async () => {
             const user = userEvent.setup();
-            
+
             render(
                 <ChunkingConfigForm
                     item={{ type: ChunkingStrategyType.FIXED, size: 512, overlap: 51 }}
@@ -131,7 +131,7 @@ describe('ChunkingConfigForm', () => {
             );
 
             const overlapInput = screen.getByLabelText(/chunk overlap/i);
-            
+
             // Type directly without clearing (which triggers onChange for each character)
             await user.click(overlapInput);
             await user.keyboard('{Control>}a{/Control}'); // Select all
@@ -139,10 +139,10 @@ describe('ChunkingConfigForm', () => {
 
             // Verify setFields was called (it will be called multiple times during typing)
             expect(mockSetFields).toHaveBeenCalled();
-            
+
             // Verify at least one call contains the overlap field
             const calls = mockSetFields.mock.calls;
-            const hasOverlapCall = calls.some(call => 
+            const hasOverlapCall = calls.some((call) =>
                 call[0] && typeof call[0]['chunkingStrategy.overlap'] === 'number'
             );
             expect(hasOverlapCall).toBe(true);
@@ -181,7 +181,7 @@ describe('ChunkingConfigForm', () => {
 
         it('calls setFields with NONE strategy when NONE is selected', async () => {
             const user = userEvent.setup();
-            
+
             render(
                 <ChunkingConfigForm
                     item={{ type: ChunkingStrategyType.FIXED, size: 512, overlap: 51 }}
@@ -194,7 +194,7 @@ describe('ChunkingConfigForm', () => {
             // Click dropdown and select NONE
             const dropdown = screen.getByRole('button');
             await user.click(dropdown);
-            
+
             const noneOption = screen.getByText('None (No Chunking)');
             await user.click(noneOption);
 
@@ -206,8 +206,6 @@ describe('ChunkingConfigForm', () => {
 
     describe('Strategy Switching', () => {
         it('switches from FIXED to NONE and hides fields', async () => {
-            const user = userEvent.setup();
-            
             const { rerender } = render(
                 <ChunkingConfigForm
                     item={{ type: ChunkingStrategyType.FIXED, size: 512, overlap: 51 }}
@@ -236,8 +234,6 @@ describe('ChunkingConfigForm', () => {
         });
 
         it('switches from NONE to FIXED and shows fields', async () => {
-            const user = userEvent.setup();
-            
             const { rerender } = render(
                 <ChunkingConfigForm
                     item={{ type: ChunkingStrategyType.NONE }}
@@ -267,7 +263,7 @@ describe('ChunkingConfigForm', () => {
 
         it('calls setFields with default FIXED values when switching to FIXED', async () => {
             const user = userEvent.setup();
-            
+
             render(
                 <ChunkingConfigForm
                     item={{ type: ChunkingStrategyType.NONE }}
@@ -280,7 +276,7 @@ describe('ChunkingConfigForm', () => {
             // Click dropdown and select FIXED
             const dropdown = screen.getByRole('button');
             await user.click(dropdown);
-            
+
             const fixedOption = screen.getByText('Fixed Size');
             await user.click(fixedOption);
 
@@ -323,7 +319,7 @@ describe('ChunkingConfigForm', () => {
 
         it('calls touchFields when size input loses focus', async () => {
             const user = userEvent.setup();
-            
+
             render(
                 <ChunkingConfigForm
                     item={{ type: ChunkingStrategyType.FIXED, size: 512, overlap: 51 }}
@@ -342,7 +338,7 @@ describe('ChunkingConfigForm', () => {
 
         it('calls touchFields when overlap input loses focus', async () => {
             const user = userEvent.setup();
-            
+
             render(
                 <ChunkingConfigForm
                     item={{ type: ChunkingStrategyType.FIXED, size: 512, overlap: 51 }}

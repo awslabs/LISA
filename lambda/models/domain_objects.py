@@ -1023,7 +1023,10 @@ class OpenSearchNewClusterConfig(BaseModel):
     volumeSize: int = Field(
         default=20,
         ge=20,
-        description="The size (in GiB) of the EBS volume for each data node. The minimum and maximum size of an EBS volume depends on the EBS volume type and the instance type to which it is attached.",
+        description=(
+            "The size (in GiB) of the EBS volume for each data node. The minimum and maximum size of "
+            "an EBS volume depends on the EBS volume type and the instance type to which it is attached."
+        ),
     )
     volumeType: str = Field(
         default="gp3", description="The EBS volume type to use with the Amazon OpenSearch Service domain"

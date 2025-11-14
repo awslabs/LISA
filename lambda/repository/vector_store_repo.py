@@ -110,6 +110,7 @@ class VectorStoreRepository:
 
         # Get config and apply defaults for backward compatibility
         config = cast(dict[str, Any], repository.get("config", {}))
+        config["status"] = repository.get("status")
 
         # Apply default values for new fields if not present
         if "allowUserCollections" not in config:

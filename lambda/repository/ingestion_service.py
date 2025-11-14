@@ -16,7 +16,7 @@ import os
 from typing import Optional
 
 import boto3
-from models.domain_objects import Enum, IngestDocumentRequest, IngestionJob
+from models.domain_objects import Enum, FixedChunkingStrategy, IngestDocumentRequest, IngestionJob
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,6 @@ class DocumentIngestionService:
         s3_path: str,
         username: str,
     ) -> IngestionJob:
-        from models.domain_objects import FixedChunkingStrategy
 
         # Determine collection_id
         collection_id = (

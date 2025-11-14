@@ -31,8 +31,6 @@ from models.domain_objects import (
     ListJobsResponse,
     PaginationParams,
     PaginationResult,
-    PipelineConfig,
-    PipelineTrigger,
     RagCollectionConfig,
     RagDocument,
     SortParams,
@@ -47,7 +45,7 @@ from repository.ingestion_service import DocumentIngestionService
 from repository.rag_document_repo import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.auth import admin_only, get_groups, get_user_context, get_username, is_admin, user_has_group_access
-from utilities.bedrock_kb import retrieve_documents
+from utilities.bedrock_kb import add_default_pipeline_for_bedrock_kb, retrieve_documents
 from utilities.common_functions import api_wrapper, get_id_token, retry_config
 from utilities.exceptions import HTTPException
 from utilities.repository_types import RepositoryType
@@ -211,9 +209,9 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     return doc_return
 
 
-def get_repository(event: dict[str, Any], repository_id: str) -> dict:
+def get_repository(event: dict[str, Any], repository_id: str) -> dict[str, Any]:
     """Ensures a user has access to the repository or else raises an HTTPException."""
-    repo = vs_repo.find_repository_by_id(repository_id)
+    repo: dict[str, Any] = vs_repo.find_repository_by_id(repository_id)
 
     # Admins have access to all repositories
     if is_admin(event):
@@ -279,7 +277,8 @@ def create_collection(event: dict, context: dict) -> Dict[str, Any]:
     )
 
     # Return collection configuration
-    return created_collection.model_dump(mode="json")
+    result: dict[str, Any] = created_collection.model_dump(mode="json")
+    return result
 
 
 @api_wrapper
@@ -316,7 +315,7 @@ def get_collection(event: dict, context: dict) -> Dict[str, Any]:
     # Ensure repository exists and user has access
     repo = get_repository(event, repository_id=repository_id)
 
-    if repo.embeddingModelId == collection_id:
+    if repo.get("embeddingModelId") == collection_id:
         # Not a real collection
         collection = collection_service.create_default_collection(repository_id=repository_id, repository=repo)
     else:
@@ -329,8 +328,14 @@ def get_collection(event: dict, context: dict) -> Dict[str, Any]:
             is_admin=is_admin,
         )
 
+    if collection is None:
+        raise HTTPException(
+            status_code=404, message=f"Collection '{collection_id}' not found in repository '{repository_id}'"
+        )
+
     # Return collection configuration
-    return collection.model_dump(mode="json")
+    result: dict[str, Any] = collection.model_dump(mode="json")
+    return result
 
 
 @api_wrapper
@@ -390,7 +395,8 @@ def update_collection(event: dict, context: dict) -> Dict[str, Any]:
         is_admin=is_admin,
     )
 
-    return updated_collection.model_dump(mode="json")
+    result: dict[str, Any] = updated_collection.model_dump(mode="json")
+    return result
 
 
 @api_wrapper
@@ -436,9 +442,9 @@ def delete_collection(event: dict, context: dict) -> Dict[str, Any]:
     # Ensure repository exists and user has access
     repo = get_repository(event, repository_id=repository_id)
 
-    is_default_collection = repo.embeddingModelId == collection_id
+    is_default_collection = repo.get("embeddingModelId") == collection_id
     # Delete collection via service
-    result = collection_service.delete_collection(
+    result: Dict[str, Any] = collection_service.delete_collection(
         repository_id=repository_id,
         collection_id=collection_id,  # None for default collections
         embedding_name=embedding_name if is_default_collection else None,  # None for regular collections
@@ -696,6 +702,8 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
 
     if not document_ids:
         raise ValidationError("No 'documentIds' parameter supplied")
+    if not repository_id:
+        raise ValidationError("repositoryId is required")
 
     # Ensure repo access
     _ = get_repository(event, repository_id=repository_id)
@@ -804,7 +812,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
     repository = get_repository(event, repository_id=repository_id)
 
     # Get collection if specified
-    collection = None
+    collection: Optional[dict[str, Any]] = None
     if request.collectionId:
         collection = collection_service.get_collection(
             collection_id=request.collectionId,
@@ -812,12 +820,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
             username=username,
             user_groups=groups,
             is_admin=is_admin,
-        )
-        collection = collection.model_dump() if hasattr(collection, "model_dump") else collection
-        logger.info(
-            f"""Collection retrieved for ingestion: {collection.get('collectionId')},
-            embeddingModel: {collection.get('embeddingModel')}"""
-        )
+        ).model_dump()
 
     # Create jobs
     jobs = []
@@ -835,8 +838,13 @@ def ingest_documents(event: dict, context: dict) -> dict:
         jobs.append({"jobId": job.id, "documentId": job.document_id, "status": job.status, "s3Path": job.s3_path})
 
     collection_id = job.collection_id
-    collection_name = collection.get("name") if collection else collection_id
-    return {"jobs": jobs, "collectionId": collection_id, "collectionName": collection_name}
+    collection_name: Optional[str] = None
+    if collection:
+        collection_name = collection.get("name")
+    if not collection_name:
+        collection_name = collection_id
+    result: dict[str, Any] = {"jobs": jobs, "collectionId": collection_id, "collectionName": collection_name}
+    return result
 
 
 @api_wrapper
@@ -857,10 +865,13 @@ def get_document(event: dict, context: dict) -> Dict[str, Any]:
     document_id = path_params.get("documentId")
     if repository_id is None or document_id is None:
         raise ValidationError("Must set the repositoryId and documentId")
+    if not isinstance(repository_id, str):
+        raise ValidationError("repositoryId must be a string")
     _ = get_repository(event, repository_id=repository_id)
     doc = doc_repo.find_by_id(document_id=document_id)
 
-    return doc.model_dump()
+    result: dict[str, Any] = doc.model_dump()
+    return result
 
 
 @api_wrapper
@@ -882,6 +893,8 @@ def download_document(event: dict, context: dict) -> str:
     repository_id = path_params.get("repositoryId")
     document_id = path_params.get("documentId")
 
+    if not repository_id:
+        raise ValidationError("repositoryId is required")
     _ = get_repository(event, repository_id=repository_id)
     doc = doc_repo.find_by_id(document_id=document_id)
 
@@ -964,6 +977,8 @@ def list_docs(event: dict, context: dict) -> dict[str, Any]:
 
     last_evaluated: Optional[dict[str, Optional[str]]] = None
 
+    if not repository_id:
+        raise ValidationError("repositoryId is required")
     # Validate repository access
     _ = get_repository(event, repository_id=repository_id)
 
@@ -1018,6 +1033,8 @@ def list_jobs(event: Dict[str, Any], context: dict) -> Dict[str, Any]:
     # Extract and validate parameters
     params = ListJobsParams.from_event(event)
 
+    if not params.repository_id:
+        raise ValidationError("repositoryId is required")
     # Validate repository access
     _ = get_repository(event, repository_id=params.repository_id)
 
@@ -1046,7 +1063,8 @@ def list_jobs(event: Dict[str, Any], context: dict) -> Dict[str, Any]:
         hasPreviousPage=pagination.has_previous_page,
     )
 
-    return response.model_dump()
+    result: dict[str, Any] = response.model_dump()
+    return result
 
 
 @api_wrapper
@@ -1087,31 +1105,9 @@ def create(event: dict, context: dict) -> Any:
 
     # Auto-add default pipeline for Bedrock Knowledge Base repositories
     if vector_store_config.type == RepositoryType.BEDROCK_KB:
-        bedrock_config = vector_store_config.bedrockKnowledgeBaseConfig
-        if not bedrock_config:
+        if not vector_store_config.bedrockKnowledgeBaseConfig:
             raise ValidationError("Bedrock Config must be supplied")
-
-        # Only add default pipeline if no pipelines are configured and we have a bedrock config with datasource bucket
-        datasource_bucket = bedrock_config.bedrockKnowledgeDatasourceS3Bucket
-
-        # Create default pipeline configuration
-        default_pipeline = PipelineConfig(
-            s3Bucket=datasource_bucket,
-            s3Prefix="",
-            trigger=PipelineTrigger.EVENT,
-            autoRemove=True,
-            chunk_strategy=NoneChunkingStrategy()
-        )
-
-        if vector_store_config.pipelines:
-            vector_store_config.pipelines.add(default_pipeline)
-        else:
-            vector_store_config.pipelines = [default_pipeline]
-
-        logger.info(
-            f"Auto-added default pipeline for Bedrock KB repository {vector_store_config.repositoryId} "
-            f"monitoring bucket: {datasource_bucket}"
-        )
+        add_default_pipeline_for_bedrock_kb(vector_store_config)
 
     # Convert to dictionary for Step Functions input
     rag_config = vector_store_config.model_dump(mode="json", exclude_none=True)
@@ -1159,7 +1155,7 @@ def get_repository_by_id(event: dict, context: dict) -> Dict[str, Any]:
         raise ValidationError("repositoryId is required")
 
     # Get repository and check access
-    repository = get_repository(event, repository_id)
+    repository: dict[str, Any] = get_repository(event, repository_id)
 
     return repository
 
@@ -1220,7 +1216,7 @@ def update_repository(event: dict, context: dict) -> Dict[str, Any]:
         updates["pipelines"] = [p.model_dump() if hasattr(p, "model_dump") else p for p in request.pipelines]
 
     # Update repository
-    updated_config = vs_repo.update(repository_id, updates)
+    updated_config: dict[str, Any] = vs_repo.update(repository_id, updates)
 
     return updated_config
 
@@ -1317,7 +1313,7 @@ def _remove_legacy(repository_id: str) -> None:
         )
 
 
-def _similarity_search(vs, query: str, top_k: int) -> list[dict[str, Any]]:
+def _similarity_search(vs: Any, query: str, top_k: int) -> list[dict[str, Any]]:
     """Perform similarity search without scores.
 
     Args:
@@ -1336,7 +1332,7 @@ def _similarity_search(vs, query: str, top_k: int) -> list[dict[str, Any]]:
     return [{"page_content": doc.page_content, "metadata": doc.metadata} for doc, score in results]
 
 
-def _similarity_search_with_score(vs, query: str, top_k: int, repository: dict) -> list[dict[str, Any]]:
+def _similarity_search_with_score(vs: Any, query: str, top_k: int, repository: dict[str, Any]) -> list[dict[str, Any]]:
     """Perform similarity search with normalized scores.
 
     Args:

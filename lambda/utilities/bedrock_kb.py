@@ -20,10 +20,13 @@ This module centralizes logic related to repositories of type
 
 from __future__ import annotations
 
+import logging
 import os
 from typing import Any, Dict, List
 
-from models.domain_objects import IngestionJob
+from models.domain_objects import IngestionJob, PipelineConfig, PipelineTrigger, VectorStoreConfig
+
+logger = logging.getLogger(__name__)
 
 
 def retrieve_documents(
@@ -77,15 +80,23 @@ def ingest_document_to_kb(
     job: IngestionJob,
     repository: Dict[str, Any],
 ) -> None:
-    """Copy the source object into the KB datasource bucket and trigger ingestion."""
+    """
+    Copy the source object into the KB datasource bucket and trigger ingestion. S3 will
+    kick off another IngestionJob to store the document in the collection DB
+    """
     bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
 
     source_bucket = job.s3_path.split("/")[2]
+    source_key = job.s3_path.split(source_bucket + "/")[1]
+
     s3_client.copy_object(
-        CopySource={"Bucket": source_bucket, "Key": job.s3_path.split(source_bucket + "/")[1]},
+        CopySource={"Bucket": source_bucket, "Key": source_key},
         Bucket=bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket", None),
         Key=os.path.basename(job.s3_path),
     )
+
+    s3_client.delete_object(Bucket=source_bucket, Key=source_key)
+
     bedrock_agent_client.start_ingestion_job(
         knowledgeBaseId=bedrock_config.get("bedrockKnowledgeBaseId", None),
         dataSourceId=bedrock_config.get("bedrockKnowledgeDatasourceId", None),
@@ -144,24 +155,32 @@ def bulk_delete_documents_from_kb(
     )
 
 
-def create_default_pipeline(bedrock_config: dict) -> dict:
-    """Create default pipeline configuration for Bedrock Knowledge Base.
+def add_default_pipeline_for_bedrock_kb(vector_store_config: VectorStoreConfig) -> None:
+    """Add default pipeline configuration for Bedrock Knowledge Base repositories.
+
+    Automatically adds a default event-driven pipeline if none exists, using the
+    datasource S3 bucket for monitoring.
 
     Args:
-        bedrock_config: Bedrock Knowledge Base configuration
-
-    Returns:
-        Default pipeline configuration dictionary
+        vector_store_config: Vector store configuration to modify in-place
     """
-    datasource_bucket = bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket", "")
+    bedrock_config = vector_store_config.bedrockKnowledgeBaseConfig
+    if not bedrock_config:
+        return
 
-    # aws bedrock-agent list-data-sources --knowledge-base-id HSMZEBEPIT
-    # aws bedrock-agent get-data-source --knowledge-base-id HSMZEBEPIT --data-source-id UBYFSOJCIK
+    datasource_bucket = bedrock_config.bedrockKnowledgeDatasourceS3Bucket
 
-    default_pipeline = {
-        "s3Bucket": datasource_bucket,
-        "s3Prefix": "",
-        "trigger": "event",
-        "autoRemove": True,
-    }
-    return default_pipeline
+    default_pipeline = PipelineConfig(
+        s3Bucket=datasource_bucket,
+        s3Prefix="",
+        trigger=PipelineTrigger.EVENT,
+        autoRemove=True,
+        chunkSize=1000,
+        chunkOverlap=0,
+    )
+
+    if vector_store_config.pipelines:
+        vector_store_config.pipelines.append(default_pipeline)
+    else:
+        vector_store_config.pipelines = [default_pipeline]
+    logger.info(f"Auto-added default pipeline for Bedrock KB repository {vector_store_config.repositoryId}")

@@ -222,25 +222,14 @@ class CollectionService:
                 logger.info(f"Repository {repository_id} has no default embedding model")
                 return None
 
-            # Check if this is a Bedrock Knowledge Base repository
-            is_bedrock_kb = RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB)
-            
-            # For Bedrock KB, use the KB ID as collection ID and include special metadata
-            if is_bedrock_kb:
-                bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
-                collection_id = bedrock_config.get("bedrockKnowledgeBaseId", embedding_model)
-                description = "Default Bedrock Knowledge Base collection"
-                tags = ["default", "bedrock_knowledge_base"]
-                allow_chunking_override = False
-            else:
-                collection_id = embedding_model
-                description = "Default collection using repository's embedding model"
-                tags = ["default"]
-                allow_chunking_override = True
+            collection_id = embedding_model
+            description = "Default collection using repository's embedding model"
+            tags = ["default"]
+            allow_chunking_override = True
 
             # Sanitize name to only include allowed characters (alphanumeric, spaces, hyphens, underscores)
             sanitized_name = f"{repository_id}-{embedding_model}".replace(".", "-")
-            
+
             default_collection = RagCollectionConfig(
                 collectionId=collection_id,
                 repositoryId=repository_id,
@@ -250,7 +239,7 @@ class CollectionService:
                 chunkingStrategy=repository.get("chunkingStrategy"),
                 allowedGroups=repository.get("allowedGroups", []),
                 createdBy=repository.get("createdBy", "system"),
-                status="ACTIVE",
+                status=CollectionStatus.ACTIVE,
                 private=False,
                 metadata=CollectionMetadata(tags=tags, customFields={}),
                 allowChunkingOverride=allow_chunking_override,

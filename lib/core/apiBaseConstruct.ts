@@ -113,6 +113,7 @@ export class LisaApiBaseConstruct extends Construct {
                 securityGroups: [vpc.securityGroups.lambdaSg],
                 tokenTable: this.tokenTable,
                 vpc,
+                managementKeySecretName: this.managementKeySecretName,
                 ...(config.roles &&
                 {
                     role: Role.fromRoleName(scope, 'AuthorizerRole', config.roles.RestApiAuthorizerRole),

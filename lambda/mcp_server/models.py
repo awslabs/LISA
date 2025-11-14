@@ -73,7 +73,7 @@ class McpServerModel(BaseModel):
     clientConfig: Optional[dict] = Field(default_factory=lambda: None)
 
     # Status of the server set by admins
-    status: Optional[HostedMcpServerStatus] = Field(default=HostedMcpServerStatus.STOPPED)
+    status: Optional[McpServerStatus] = Field(default=McpServerStatus.ACTIVE)
 
     # Groups of the MCP server
     groups: Optional[List[str]] = Field(default_factory=lambda: None)

@@ -76,8 +76,6 @@ export class CustomAuthorizer extends Construct {
             StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/authorizer`),
         );
 
-        const managementKeySecretNameStringParameter = StringParameter.fromStringParameterName(this, createCdkId([id, 'managementKeyStringParameter']), `${config.deploymentPrefix}/appManagementKeySecretName`);
-
         // Create Lambda authorizer
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         const authorizerLambda = new Function(this, 'AuthorizerLambda', {

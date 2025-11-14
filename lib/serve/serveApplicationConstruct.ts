@@ -84,7 +84,7 @@ export class LisaServeApplicationConstruct extends Construct {
         );
         this.tokenTable = tokenTable;
 
-        const managementKeySecretNameStringParameter = StringParameter.fromStringParameterName(this, createCdkId([id, 'managementKeyStringParameter']), `${config.deploymentPrefix}/managementKeySecretName`);
+        const managementKeySecretNameStringParameter = StringParameter.fromStringParameterName(this, createCdkId([id, 'managementKeyStringParameter']), `${config.deploymentPrefix}/appManagementKeySecretName`);
 
         // Create guardrails table in serve stack to avoid circular dependency
         const guardrailsTableConstruct = new GuardrailsTable(scope, 'GuardrailsTable', {

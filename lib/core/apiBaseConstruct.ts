@@ -143,10 +143,10 @@ export class LisaApiBaseConstruct extends Construct {
     }
 
     private createManagementKeySecret (scope: Stack, config: Config, vpc: Vpc, securityGroups: ISecurityGroup[]): { managementKeySecretName: string } {
-        const managementKeySecretName = `${config.deploymentName}-lisa-management-key`;
+        const managementKeySecretName = `${config.deploymentName}-management-key`;
 
         const managementEventBus = new EventBus(scope, createCdkId([scope.node.id, 'managementEventBus']), {
-            eventBusName: `${config.deploymentName}-lisa-management-events`,
+            eventBusName: `${config.deploymentName}-management-events`,
         });
 
         const managementKeySecret = new Secret(scope, createCdkId([scope.node.id, 'managementKeySecret']), {
@@ -203,8 +203,8 @@ export class LisaApiBaseConstruct extends Construct {
             rotationLambda: rotationLambda
         });
 
-        new StringParameter(scope, createCdkId(['ManagementKeySecretName']), {
-            parameterName: `${config.deploymentPrefix}/managementKeySecretName`,
+        new StringParameter(scope, createCdkId(['AppManagementKeySecretName']), {
+            parameterName: `${config.deploymentPrefix}/appManagementKeySecretName`,
             stringValue: managementKeySecret.secretName,
         });
 

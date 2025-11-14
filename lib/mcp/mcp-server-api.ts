@@ -72,7 +72,7 @@ export class McpServerApi extends Construct {
         const lambdaLayers = [commonLambdaLayer, fastapiLambdaLayer];
 
         // Get management key name
-        const managementKeyName = StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/managementKeySecretName`);
+        const managementKeyName = StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/appManagementKeySecretName`);
 
         const mcpServersTable = new dynamodb.Table(this, 'HostMcpServerTable', {
             partitionKey: {
@@ -433,7 +433,7 @@ export class McpServerApi extends Construct {
                 ],
                 resources: [
                     `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/lisaServeRestApiUri`,
-                    `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/LISA-lisa-management-key`,
+                    `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/LISA-management-key`,
                 ],
             }),
         ];

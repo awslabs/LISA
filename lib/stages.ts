@@ -259,18 +259,6 @@ export class LisaServeApplicationStage extends Stage {
         apiBaseStack.addDependency(coreStack);
         this.stacks.push(apiBaseStack);
 
-        const serveStack = new LisaServeApplicationStack(this, 'LisaServe', {
-            ...baseStackProps,
-            description: `LISA-serve: ${config.deploymentName}-${config.deploymentStage}`,
-            stackName: createCdkId([config.deploymentName, config.appName, 'serve', config.deploymentStage]),
-            vpc: networkingStack.vpc,
-            securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
-        });
-        this.stacks.push(serveStack);
-        serveStack.addDependency(networkingStack);
-        serveStack.addDependency(iamStack);
-        serveStack.addDependency(apiBaseStack);
-
         const apiDeploymentStack = new LisaApiDeploymentStack(this, 'LisaApiDeployment', {
             ...baseStackProps,
             description: `LISA-api-deployment: ${config.deploymentName}-${config.deploymentStage}`,
@@ -278,22 +266,6 @@ export class LisaServeApplicationStage extends Stage {
             restApiId: apiBaseStack.restApiId,
         });
         apiDeploymentStack.addDependency(apiBaseStack);
-
-        const modelsApiDeploymentStack = new LisaModelsApiStack(this, 'LisaModelsApiDeployment', {
-            ...baseStackProps,
-            authorizer: apiBaseStack.authorizer,
-            description: `LISA-models: ${config.deploymentName}-${config.deploymentStage}`,
-            guardrailsTable: serveStack.guardrailsTable,
-            lisaServeEndpointUrlPs: config.restApiConfig.internetFacing ? serveStack.endpointUrl : undefined,
-            restApiId: apiBaseStack.restApiId,
-            rootResourceId: apiBaseStack.rootResourceId,
-            stackName: createCdkId([config.deploymentName, config.appName, 'models', config.deploymentStage]),
-            securityGroups: [networkingStack.vpc.securityGroups.ecsModelAlbSg],
-            vpc: networkingStack.vpc,
-        });
-        modelsApiDeploymentStack.addDependency(serveStack);
-        apiDeploymentStack.addDependency(modelsApiDeploymentStack);
-        this.stacks.push(modelsApiDeploymentStack);
 
         if (config.deployMcp) {
             const mcpApiStack = new LisaMcpApiStack(this, 'LisaMcpApi', {
@@ -311,98 +283,132 @@ export class LisaServeApplicationStage extends Stage {
             this.stacks.push(mcpApiStack);
         }
 
-        if (config.deployMcpWorkbench) {
-            const mcpWorkbenchStack = new McpWorkbenchStack(this, 'LisaMcpWorkbench', {
+
+
+        if (config.deployServe) {
+            const serveStack = new LisaServeApplicationStack(this, 'LisaServe', {
                 ...baseStackProps,
-                stackName: createCdkId([config.deploymentName, config.appName, 'mcp-workbench', config.deploymentStage]),
-                description: `LISA-mcp-workbench: ${config.deploymentName}-${config.deploymentStage}`,
+                description: `LISA-serve: ${config.deploymentName}-${config.deploymentStage}`,
+                stackName: createCdkId([config.deploymentName, config.appName, 'serve', config.deploymentStage]),
                 vpc: networkingStack.vpc,
-                restApiId: apiBaseStack.restApiId,
-                rootResourceId: apiBaseStack.rootResourceId,
-                apiCluster: serveStack.restApi.apiCluster,
+                securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
+            });
+            this.stacks.push(serveStack);
+            serveStack.addDependency(networkingStack);
+            serveStack.addDependency(iamStack);
+            serveStack.addDependency(apiBaseStack);
+
+            const modelsApiDeploymentStack = new LisaModelsApiStack(this, 'LisaModelsApiDeployment', {
+                ...baseStackProps,
                 authorizer: apiBaseStack.authorizer,
-            });
-            mcpWorkbenchStack.addDependency(coreStack);
-            mcpWorkbenchStack.addDependency(apiBaseStack);
-            mcpWorkbenchStack.addDependency(serveStack);
-            apiDeploymentStack.addDependency(mcpWorkbenchStack);
-            this.stacks.push(mcpWorkbenchStack);
-        }
-
-        if (config.deployRag) {
-            const ragStack = new LisaRagStack(this, 'LisaRAG', {
-                ...baseStackProps,
-                authorizer: apiBaseStack.authorizer!,
-                description: `LISA-rag: ${config.deploymentName}-${config.deploymentStage}`,
+                description: `LISA-models: ${config.deploymentName}-${config.deploymentStage}`,
+                guardrailsTable: serveStack.guardrailsTable,
+                lisaServeEndpointUrlPs: config.restApiConfig.internetFacing ? serveStack.endpointUrl : undefined,
                 restApiId: apiBaseStack.restApiId,
                 rootResourceId: apiBaseStack.rootResourceId,
-                endpointUrl: config.restApiConfig.internetFacing ? serveStack.endpointUrl : undefined,
-                modelsPs: config.restApiConfig.internetFacing ? serveStack.modelsPs : undefined,
-                stackName: createCdkId([config.deploymentName, config.appName, 'rag', config.deploymentStage]),
-                securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
+                stackName: createCdkId([config.deploymentName, config.appName, 'models', config.deploymentStage]),
+                securityGroups: [networkingStack.vpc.securityGroups.ecsModelAlbSg],
                 vpc: networkingStack.vpc,
             });
-            ragStack.addDependency(coreStack);
-            ragStack.addDependency(iamStack);
-            ragStack.addDependency(apiBaseStack);
-            this.stacks.push(ragStack);
-            apiDeploymentStack.addDependency(ragStack);
-        }
+            modelsApiDeploymentStack.addDependency(serveStack);
+            apiDeploymentStack.addDependency(modelsApiDeploymentStack);
+            this.stacks.push(modelsApiDeploymentStack);
 
-        // Declare metricsStack here so that we can reference it in chatStack
-        let metricsStack: LisaMetricsStack | undefined;
-        if (config.deployMetrics) {
-            metricsStack = new LisaMetricsStack(this, 'LisaMetrics', {
-                ...baseStackProps,
-                authorizer: apiBaseStack.authorizer!,
-                stackName: createCdkId([config.deploymentName, config.appName, 'metrics', config.deploymentStage]),
-                description: `LISA-metrics: ${config.deploymentName}-${config.deploymentStage}`,
-                restApiId: apiBaseStack.restApiId,
-                rootResourceId: apiBaseStack.rootResourceId,
-                securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
-                vpc: networkingStack.vpc,
-            });
-            metricsStack.addDependency(apiBaseStack);
-            metricsStack.addDependency(coreStack);
-            apiDeploymentStack.addDependency(metricsStack);
-            this.stacks.push(metricsStack);
-        }
-
-        if (config.deployChat) {
-            const chatStack = new LisaChatApplicationStack(this, 'LisaChat', {
-                ...baseStackProps,
-                authorizer: apiBaseStack.authorizer!,
-                stackName: createCdkId([config.deploymentName, config.appName, 'chat', config.deploymentStage]),
-                description: `LISA-chat: ${config.deploymentName}-${config.deploymentStage}`,
-                restApiId: apiBaseStack.restApiId,
-                rootResourceId: apiBaseStack.rootResourceId,
-                securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
-                vpc: networkingStack.vpc,
-            });
-            chatStack.addDependency(apiBaseStack);
-            chatStack.addDependency(coreStack);
-            if (metricsStack) {
-                chatStack.addDependency(metricsStack);
-            }
-            apiDeploymentStack.addDependency(chatStack);
-            this.stacks.push(chatStack);
-
-            if (config.deployUi) {
-                const uiStack = new UserInterfaceStack(this, 'LisaUserInterface', {
+            if (config.deployMcpWorkbench) {
+                const mcpWorkbenchStack = new McpWorkbenchStack(this, 'LisaMcpWorkbench', {
                     ...baseStackProps,
-                    architecture: ARCHITECTURE,
-                    stackName: createCdkId([config.deploymentName, config.appName, 'ui', config.deploymentStage]),
-                    description: `LISA-user-interface: ${config.deploymentName}-${config.deploymentStage}`,
+                    stackName: createCdkId([config.deploymentName, config.appName, 'mcp-workbench', config.deploymentStage]),
+                    description: `LISA-mcp-workbench: ${config.deploymentName}-${config.deploymentStage}`,
+                    vpc: networkingStack.vpc,
                     restApiId: apiBaseStack.restApiId,
                     rootResourceId: apiBaseStack.rootResourceId,
+                    apiCluster: serveStack.restApi.apiCluster,
+                    authorizer: apiBaseStack.authorizer,
                 });
-                uiStack.addDependency(chatStack);
-                uiStack.addDependency(serveStack);
-                uiStack.addDependency(apiBaseStack);
-                apiDeploymentStack.addDependency(uiStack);
-                this.stacks.push(uiStack);
+                mcpWorkbenchStack.addDependency(coreStack);
+                mcpWorkbenchStack.addDependency(apiBaseStack);
+                mcpWorkbenchStack.addDependency(serveStack);
+                apiDeploymentStack.addDependency(mcpWorkbenchStack);
+                this.stacks.push(mcpWorkbenchStack);
             }
+
+            if (config.deployRag) {
+                const ragStack = new LisaRagStack(this, 'LisaRAG', {
+                    ...baseStackProps,
+                    authorizer: apiBaseStack.authorizer!,
+                    description: `LISA-rag: ${config.deploymentName}-${config.deploymentStage}`,
+                    restApiId: apiBaseStack.restApiId,
+                    rootResourceId: apiBaseStack.rootResourceId,
+                    endpointUrl: config.restApiConfig.internetFacing ? serveStack.endpointUrl : undefined,
+                    modelsPs: config.restApiConfig.internetFacing ? serveStack.modelsPs : undefined,
+                    stackName: createCdkId([config.deploymentName, config.appName, 'rag', config.deploymentStage]),
+                    securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
+                    vpc: networkingStack.vpc,
+                });
+                ragStack.addDependency(coreStack);
+                ragStack.addDependency(iamStack);
+                ragStack.addDependency(apiBaseStack);
+                this.stacks.push(ragStack);
+                apiDeploymentStack.addDependency(ragStack);
+            }
+
+            // Declare metricsStack here so that we can reference it in chatStack
+            let metricsStack: LisaMetricsStack | undefined;
+            if (config.deployMetrics) {
+                metricsStack = new LisaMetricsStack(this, 'LisaMetrics', {
+                    ...baseStackProps,
+                    authorizer: apiBaseStack.authorizer!,
+                    stackName: createCdkId([config.deploymentName, config.appName, 'metrics', config.deploymentStage]),
+                    description: `LISA-metrics: ${config.deploymentName}-${config.deploymentStage}`,
+                    restApiId: apiBaseStack.restApiId,
+                    rootResourceId: apiBaseStack.rootResourceId,
+                    securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
+                    vpc: networkingStack.vpc,
+                });
+                metricsStack.addDependency(apiBaseStack);
+                metricsStack.addDependency(coreStack);
+                apiDeploymentStack.addDependency(metricsStack);
+                this.stacks.push(metricsStack);
+            }
+
+            if (config.deployChat) {
+                const chatStack = new LisaChatApplicationStack(this, 'LisaChat', {
+                    ...baseStackProps,
+                    authorizer: apiBaseStack.authorizer!,
+                    stackName: createCdkId([config.deploymentName, config.appName, 'chat', config.deploymentStage]),
+                    description: `LISA-chat: ${config.deploymentName}-${config.deploymentStage}`,
+                    restApiId: apiBaseStack.restApiId,
+                    rootResourceId: apiBaseStack.rootResourceId,
+                    securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
+                    vpc: networkingStack.vpc,
+                });
+                chatStack.addDependency(apiBaseStack);
+                chatStack.addDependency(coreStack);
+                if (metricsStack) {
+                    chatStack.addDependency(metricsStack);
+                }
+                apiDeploymentStack.addDependency(chatStack);
+                this.stacks.push(chatStack);
+
+                if (config.deployUi) {
+                    const uiStack = new UserInterfaceStack(this, 'LisaUserInterface', {
+                        ...baseStackProps,
+                        architecture: ARCHITECTURE,
+                        stackName: createCdkId([config.deploymentName, config.appName, 'ui', config.deploymentStage]),
+                        description: `LISA-user-interface: ${config.deploymentName}-${config.deploymentStage}`,
+                        restApiId: apiBaseStack.restApiId,
+                        rootResourceId: apiBaseStack.rootResourceId,
+                    });
+                    uiStack.addDependency(chatStack);
+                    uiStack.addDependency(serveStack);
+                    uiStack.addDependency(apiBaseStack);
+                    apiDeploymentStack.addDependency(uiStack);
+                    this.stacks.push(uiStack);
+                }
+            }
+
         }
+
 
         if (config.deployDocs) {
             const docsStack = new LisaDocsStack(this, 'LisaDocs', {

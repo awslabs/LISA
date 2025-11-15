@@ -390,7 +390,7 @@ export class LisaRagConstruct extends Construct {
         );
 
         // Add REST API Lambdas to APIGW
-        const repositoryApi = new RepositoryApi(scope, 'RepositoryApi', {
+        new RepositoryApi(scope, 'RepositoryApi', {
             authorizer,
             baseEnvironment,
             config,

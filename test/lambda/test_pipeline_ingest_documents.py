@@ -157,7 +157,7 @@ def test_store_chunks_in_vectorstore_failure(setup_env):
 
 def test_pipeline_ingest_bedrock_kb(setup_env):
     """Test pipeline_ingest with Bedrock KB repository - only tracks documents."""
-    from models.domain_objects import NoneChunkingStrategy, IngestionJob, IngestionStatus
+    from models.domain_objects import IngestionJob, IngestionStatus, NoneChunkingStrategy
     from utilities.repository_types import RepositoryType
 
     job = IngestionJob(
@@ -173,13 +173,13 @@ def test_pipeline_ingest_bedrock_kb(setup_env):
         "type": RepositoryType.BEDROCK_KB,
         "bedrockKnowledgeBaseConfig": {
             "bedrockKnowledgeDatasourceS3Bucket": "kb-bucket",
-            "bedrockKnowledgeDatasourceId": "ds-123"
-        }
+            "bedrockKnowledgeDatasourceId": "ds-123",
+        },
     }
 
-    with patch("repository.pipeline_ingest_documents.vs_repo") as mock_vs_repo, \
-         patch("repository.pipeline_ingest_documents.rag_document_repository") as mock_doc_repo, \
-         patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo:
+    with patch("repository.pipeline_ingest_documents.vs_repo") as mock_vs_repo, patch(
+        "repository.pipeline_ingest_documents.rag_document_repository"
+    ) as mock_doc_repo, patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo:
 
         mock_vs_repo.find_repository_by_id.return_value = bedrock_kb_repo
         mock_doc_repo.find_by_source.return_value = []

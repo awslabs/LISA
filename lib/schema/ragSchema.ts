@@ -60,29 +60,15 @@ export type NoneChunkingStrategy = z.infer<typeof NoneChunkingStrategySchema>;
  * These statuses are used by both create-store and delete-store state machines.
  */
 export enum VectorStoreStatus {
-    /** Vector store creation is in progress */
     CREATE_IN_PROGRESS = 'CREATE_IN_PROGRESS',
-
-    /** Vector store creation completed successfully */
     CREATE_COMPLETE = 'CREATE_COMPLETE',
-
-    /** Vector store creation failed */
     CREATE_FAILED = 'CREATE_FAILED',
-
-    /** Vector store update is in progress */
     UPDATE_IN_PROGRESS = 'UPDATE_IN_PROGRESS',
-
-    /** Vector store update completed successfully */
     UPDATE_COMPLETE = 'UPDATE_COMPLETE',
-
-    /** Vector store update cleanup is in progress */
     UPDATE_COMPLETE_CLEANUP_IN_PROGRESS = 'UPDATE_COMPLETE_CLEANUP_IN_PROGRESS',
-
-    /** Vector store deletion is in progress */
     DELETE_IN_PROGRESS = 'DELETE_IN_PROGRESS',
-
-    /** Vector store deletion failed */
     DELETE_FAILED = 'DELETE_FAILED',
+    UNKNOWN = 'UNKNOWN',
 }
 
 /**
@@ -126,10 +112,10 @@ const triggerSchema = z.object({
 });
 
 export const RagRepositoryPipeline = z.object({
-    chunkSize: z.number().default(512).describe('The size of the chunks used for document segmentation.'),
-    chunkOverlap: z.number().default(51).describe('The size of the overlap between chunks.'),
+    chunkSize: z.number().optional().default(512).describe('The size of the chunks used for document segmentation.'),
+    chunkOverlap: z.number().optional().default(51).describe('The size of the overlap between chunks.'),
     chunkingStrategy: ChunkingStrategySchema.optional().describe('Chunking strategy for documents in this pipeline.'),
-    embeddingModel: z.string().describe('The embedding model used for document ingestion in this pipeline.'),
+    embeddingModel: z.string().optional().describe('The embedding model used for document ingestion in this pipeline.'),
     collectionId: z.string().optional().describe('The collection ID to ingest documents into.'),
     s3Bucket: z.string().describe('The S3 bucket monitored by this pipeline for document processing.'),
     s3Prefix: z.string()

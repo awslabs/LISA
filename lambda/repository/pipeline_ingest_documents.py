@@ -199,18 +199,18 @@ def pipeline_ingest_documents(job: IngestionJob) -> None:
     """
     Ingest multiple documents in batch (up to 100 at a time).
 
-    Processes documents from document_ids field containing list of S3 paths.
+    Processes documents from s3_paths field containing list of S3 paths.
     """
     try:
         logger.info(f"Starting batch ingestion for job {job.id}")
 
-        # Extract document list from document_ids field
-        if not job.document_ids:
-            raise ValueError("Batch ingestion job missing 'document_ids' field")
+        # Extract document list from s3_paths field
+        if not job.s3_paths:
+            raise ValueError("Batch ingestion job missing 's3_paths' field")
 
-        document_paths = job.document_ids
+        document_paths = job.s3_paths
         if not isinstance(document_paths, list):
-            raise ValueError("'document_ids' must be a list")
+            raise ValueError("'s3_paths' must be a list")
 
         if len(document_paths) > 100:
             raise ValueError(f"Batch size {len(document_paths)} exceeds maximum of 100 documents")
@@ -220,10 +220,11 @@ def pipeline_ingest_documents(job: IngestionJob) -> None:
         # Update job status
         ingestion_job_repository.update_status(job, IngestionStatus.INGESTION_IN_PROGRESS)
 
-        # Process each document
+        # Process each document and collect document IDs
         successful = 0
         failed = 0
         errors = []
+        document_ids = []
 
         for s3_path in document_paths:
             try:
@@ -241,6 +242,7 @@ def pipeline_ingest_documents(job: IngestionJob) -> None:
                 # Process the document
                 pipeline_ingest_document(doc_job)
                 successful += 1
+                document_ids.append(doc_job.document_id)
                 logger.info(f"Successfully ingested document {s3_path}")
 
             except Exception as e:
@@ -249,7 +251,8 @@ def pipeline_ingest_documents(job: IngestionJob) -> None:
                 logger.error(error_msg, exc_info=True)
                 errors.append(error_msg)
 
-        # Update job with results in metadata
+        # Update job with document IDs and results
+        job.document_ids = document_ids
         if not job.metadata:
             job.metadata = {}
         job.metadata["results"] = {

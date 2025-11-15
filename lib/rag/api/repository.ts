@@ -118,10 +118,20 @@ export class RepositoryApi extends Construct {
                 },
             },
             {
+                name: 'get_repository_by_id',
+                resource: 'repository',
+                description: 'Get a repository by ID',
+                path: 'repository/{repositoryId}',
+                method: 'GET',
+                environment: {
+                    ...baseEnvironment,
+                },
+            },
+            {
                 name: 'update_repository',
                 resource: 'repository',
-                description: 'Update a new repository',
-                path: 'repository',
+                description: 'Update a repository',
+                path: 'repository/{repositoryId}',
                 method: 'PUT',
                 environment: {
                     ...baseEnvironment,

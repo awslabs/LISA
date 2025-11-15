@@ -27,34 +27,33 @@ logger = logging.getLogger(__name__)
 def validate_bedrock_kb_exists(kb_id: str, bedrock_agent_client: Optional[Any] = None) -> Dict[str, Any]:
     """
     Validate that a Bedrock Knowledge Base exists and is accessible.
-    
+
     Args:
         kb_id: Knowledge Base ID to validate
         bedrock_agent_client: Optional boto3 bedrock-agent client (creates one if not provided)
-        
+
     Returns:
         Knowledge Base configuration dictionary
-        
+
     Raises:
         ValidationError: If KB doesn't exist or is not accessible
     """
     if not bedrock_agent_client:
         bedrock_agent_client = boto3.client("bedrock-agent")
-    
+
     try:
         response = bedrock_agent_client.get_knowledge_base(knowledgeBaseId=kb_id)
         kb_config = response.get("knowledgeBase", {})
-        
+
         logger.info(f"Validated Knowledge Base {kb_id}: {kb_config.get('name')}")
         return kb_config
-        
+
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "")
-        
+
         if error_code == "ResourceNotFoundException":
             raise ValidationError(
-                f"Knowledge Base '{kb_id}' not found. "
-                f"Please verify the KB ID in the AWS Bedrock console."
+                f"Knowledge Base '{kb_id}' not found. " f"Please verify the KB ID in the AWS Bedrock console."
             )
         elif error_code == "AccessDeniedException":
             raise ValidationError(
@@ -62,53 +61,41 @@ def validate_bedrock_kb_exists(kb_id: str, bedrock_agent_client: Optional[Any] =
                 f"Please check IAM permissions for bedrock:GetKnowledgeBase."
             )
         else:
-            raise ValidationError(
-                f"Failed to validate Knowledge Base '{kb_id}': {str(e)}"
-            )
+            raise ValidationError(f"Failed to validate Knowledge Base '{kb_id}': {str(e)}")
     except Exception as e:
-        raise ValidationError(
-            f"Unexpected error validating Knowledge Base '{kb_id}': {str(e)}"
-        )
+        raise ValidationError(f"Unexpected error validating Knowledge Base '{kb_id}': {str(e)}")
 
 
 def validate_data_source_exists(
-    kb_id: str,
-    data_source_id: str,
-    bedrock_agent_client: Optional[Any] = None
+    kb_id: str, data_source_id: str, bedrock_agent_client: Optional[Any] = None
 ) -> Dict[str, Any]:
     """
     Validate that a data source exists in a Bedrock Knowledge Base.
-    
+
     Args:
         kb_id: Knowledge Base ID
         data_source_id: Data Source ID to validate
         bedrock_agent_client: Optional boto3 bedrock-agent client
-        
+
     Returns:
         Data source configuration dictionary
-        
+
     Raises:
         ValidationError: If data source doesn't exist or is not accessible
     """
     if not bedrock_agent_client:
         bedrock_agent_client = boto3.client("bedrock-agent")
-    
+
     try:
-        response = bedrock_agent_client.get_data_source(
-            knowledgeBaseId=kb_id,
-            dataSourceId=data_source_id
-        )
+        response = bedrock_agent_client.get_data_source(knowledgeBaseId=kb_id, dataSourceId=data_source_id)
         data_source_config = response.get("dataSource", {})
-        
-        logger.info(
-            f"Validated Data Source {data_source_id} in KB {kb_id}: "
-            f"{data_source_config.get('name')}"
-        )
+
+        logger.info(f"Validated Data Source {data_source_id} in KB {kb_id}: " f"{data_source_config.get('name')}")
         return data_source_config
-        
+
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "")
-        
+
         if error_code == "ResourceNotFoundException":
             raise ValidationError(
                 f"Data Source '{data_source_id}' not found in Knowledge Base '{kb_id}'. "
@@ -120,45 +107,37 @@ def validate_data_source_exists(
                 f"Please check IAM permissions for bedrock:GetDataSource."
             )
         else:
-            raise ValidationError(
-                f"Failed to validate Data Source '{data_source_id}': {str(e)}"
-            )
+            raise ValidationError(f"Failed to validate Data Source '{data_source_id}': {str(e)}")
     except Exception as e:
-        raise ValidationError(
-            f"Unexpected error validating Data Source '{data_source_id}': {str(e)}"
-        )
+        raise ValidationError(f"Unexpected error validating Data Source '{data_source_id}': {str(e)}")
 
 
 def validate_bedrock_kb_repository(
-    kb_id: str,
-    data_source_id: str,
-    bedrock_agent_client: Optional[Any] = None
+    kb_id: str, data_source_id: str, bedrock_agent_client: Optional[Any] = None
 ) -> tuple[Dict[str, Any], Dict[str, Any]]:
     """
     Validate both Knowledge Base and Data Source exist.
-    
+
     Args:
         kb_id: Knowledge Base ID
         data_source_id: Data Source ID
         bedrock_agent_client: Optional boto3 bedrock-agent client
-        
+
     Returns:
         Tuple of (kb_config, data_source_config)
-        
+
     Raises:
         ValidationError: If validation fails
     """
     if not bedrock_agent_client:
         bedrock_agent_client = boto3.client("bedrock-agent")
-    
+
     # Validate KB exists
     kb_config = validate_bedrock_kb_exists(kb_id, bedrock_agent_client)
-    
+
     # Validate data source exists
     data_source_config = validate_data_source_exists(kb_id, data_source_id, bedrock_agent_client)
-    
-    logger.info(
-        f"Successfully validated Bedrock KB repository: KB={kb_id}, DataSource={data_source_id}"
-    )
-    
+
+    logger.info(f"Successfully validated Bedrock KB repository: KB={kb_id}, DataSource={data_source_id}")
+
     return kb_config, data_source_config

@@ -115,13 +115,14 @@ class VectorStoreRepository:
 
         return config
 
-    def update(self, repository_id: str, updates: dict[str, Any]) -> dict[str, Any]:
+    def update(self, repository_id: str, updates: dict[str, Any], status: str | None = None) -> dict[str, Any]:
         """
         Update a repository configuration.
 
         Args:
             repository_id: The ID of the repository to update.
             updates: Dictionary of fields to update in the config.
+            status: Optional status to set (if None, status is not updated).
 
         Returns:
             The updated repository configuration.
@@ -130,29 +131,28 @@ class VectorStoreRepository:
             ValueError: If the update fails or repository not found.
         """
         try:
-            # First get the current item
             current = self.table.get_item(Key={"repositoryId": repository_id})
             if "Item" not in current:
                 raise ValueError(f"Repository with ID '{repository_id}' not found")
 
-            current_item = convert_decimal(current["Item"])
-            config = current_item.get("config", {})
-
-            # Update the config with new values
+            # Keep original config with Decimal types intact
+            config: dict[str, Any] = current["Item"].get("config", {})
             config.update(updates)
 
-            # Update the item in DynamoDB
+            update_expr = "SET #config = :config, #updatedAt = :updatedAt"
+            expr_names = {"#config": "config", "#updatedAt": "updatedAt"}
+            expr_values = {":config": config, ":updatedAt": int(time.time() * 1000)}
+
+            if status is not None:
+                update_expr += ", #status = :status"
+                expr_names["#status"] = "status"
+                expr_values[":status"] = status
+
             self.table.update_item(
                 Key={"repositoryId": repository_id},
-                UpdateExpression="SET #config = :config, #updatedAt = :updatedAt",
-                ExpressionAttributeNames={
-                    "#config": "config",
-                    "#updatedAt": "updatedAt",
-                },
-                ExpressionAttributeValues={
-                    ":config": config,
-                    ":updatedAt": int(time.time() * 1000),
-                },
+                UpdateExpression=update_expr,
+                ExpressionAttributeNames=expr_names,
+                ExpressionAttributeValues=expr_values,
             )
 
             return config

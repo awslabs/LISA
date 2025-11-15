@@ -27,6 +27,7 @@ from typing import Any, Dict, List
 from models.domain_objects import (
     ChunkingStrategyType,
     IngestionJob,
+    JobActionType,
     NoneChunkingStrategy,
     PipelineConfig,
     PipelineTrigger,
@@ -190,3 +191,77 @@ def add_default_pipeline_for_bedrock_kb(vector_store_config: VectorStoreConfig) 
     else:
         vector_store_config.pipelines = [default_pipeline]
     logger.info(f"Auto-added default pipeline for Bedrock KB repository {vector_store_config.repositoryId}")
+
+
+def ingest_bedrock_s3_documents(
+    s3_client: Any,
+    ingestion_job_repository: Any,
+    ingestion_service: Any,
+    repository_id: str,
+    collection_id: str,
+    s3_bucket: str,
+    embedding_model: str,
+) -> None:
+    """
+    Scan S3 bucket and create batch ingestion jobs for documents.
+
+    Only scans depth 1 (root level) and ignores metadata files.
+    Creates multiple batch jobs if more than 100 documents found.
+
+    Args:
+        s3_client: boto3 S3 client
+        ingestion_job_repository: Repository for saving ingestion jobs
+        ingestion_service: Service for submitting jobs
+        repository_id: Repository identifier
+        collection_id: Collection identifier
+        s3_bucket: S3 bucket to scan
+        embedding_model: Embedding model identifier
+    """
+    try:
+        # List objects at root level only
+        response = s3_client.list_objects_v2(Bucket=s3_bucket, Delimiter="/")
+
+        if "Contents" not in response:
+            logger.info(f"No documents found in S3 bucket {s3_bucket}")
+            return
+
+        # Filter out metadata files and collect document paths
+        document_paths = []
+        for obj in response["Contents"]:
+            key = obj["Key"]
+            # Skip metadata files and directories
+            if key.endswith("/") or key.endswith(".metadata.json"):
+                continue
+            document_paths.append(f"s3://{s3_bucket}/{key}")
+
+        if not document_paths:
+            logger.info(f"No valid documents found in S3 bucket {s3_bucket}")
+            return
+
+        logger.info(f"Found {len(document_paths)} documents to ingest")
+
+        # Create batch jobs (max 100 documents per job)
+        batch_size = 100
+        for i in range(0, len(document_paths), batch_size):
+            batch = document_paths[i : i + batch_size]
+
+            job = IngestionJob(
+                repository_id=repository_id,
+                collection_id=collection_id,
+                embedding_model=embedding_model,
+                chunk_strategy=NoneChunkingStrategy(),
+                s3_path="",  # Not used for batch jobs
+                username="system",
+                job_type=JobActionType.DOCUMENT_BATCH_INGESTION,
+                s3_paths=batch,
+            )
+
+            ingestion_job_repository.save(job)
+            ingestion_service.submit_create_job(job)
+            logger.info(
+                f"Created batch ingestion job {job.id} for {len(batch)} documents (batch {i // batch_size + 1})"
+            )
+
+    except Exception as e:
+        logger.error(f"Failed to scan S3 bucket {s3_bucket}: {str(e)}", exc_info=True)
+        # Don't raise - collection creation should succeed even if ingestion fails

@@ -46,7 +46,7 @@ from repository.ingestion_service import DocumentIngestionService
 from repository.rag_document_repo import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.auth import admin_only, get_groups, get_user_context, get_username, is_admin, user_has_group_access
-from utilities.bedrock_kb import add_default_pipeline_for_bedrock_kb, retrieve_documents
+from utilities.bedrock_kb import add_default_pipeline_for_bedrock_kb, ingest_bedrock_s3_documents, retrieve_documents
 from utilities.common_functions import api_wrapper, get_id_token, retry_config
 from utilities.exceptions import HTTPException
 from utilities.repository_types import RepositoryType
@@ -286,6 +286,22 @@ def create_bedrock_collection(event: dict, context: dict) -> Dict[str, Any]:
             raise ValidationError(f"Failed to create default collection for repository {repository_id}")
 
         logger.info(f"Successfully created default collection: {collection.collectionId}")
+
+        # Ingest existing documents from S3 bucket if s3pipeline is configured
+        bedrock_config = rag_config.get("bedrockKnowledgeBaseConfig", {})
+        s3_bucket = bedrock_config.get("s3pipeline")
+
+        if s3_bucket:
+            logger.info(f"Scanning S3 bucket {s3_bucket} for existing documents")
+            ingest_bedrock_s3_documents(
+                s3_client=s3,
+                ingestion_job_repository=ingestion_job_repository,
+                ingestion_service=ingestion_service,
+                repository_id=repository_id,
+                collection_id=collection.collectionId,
+                s3_bucket=s3_bucket,
+                embedding_model=repository.get("embeddingModelId"),
+            )
 
         # Return collection configuration
         result: dict[str, Any] = collection.model_dump(mode="json")
@@ -1274,17 +1290,17 @@ def update_repository(event: dict, context: dict) -> Dict[str, Any]:
     current_config = current_repo.get("config", {})
     current_pipelines = current_config.get("pipelines")
 
+    # Build updates dictionary (only include fields that were provided)
+    updates = request.model_dump(exclude_none=True, mode="json")
+
     # Check if pipeline configuration has changed
     require_deployment = request.pipelines is not None and request.pipelines != current_pipelines
 
-    # Build updates dictionary (only include fields that were provided)
-    updates = request.model_dump(exclude_none=True, mode="json")
-    updates["status"] = (
-        VectorStoreStatus.UPDATE_IN_PROGRESS if require_deployment else VectorStoreStatus.UPDATE_COMPLETE
-    )
+    # Set status based on deployment requirement
+    status = VectorStoreStatus.UPDATE_IN_PROGRESS if require_deployment else VectorStoreStatus.UPDATE_COMPLETE
 
     # Update repository
-    updated_config: dict[str, Any] = vs_repo.update(repository_id, updates)
+    updated_config: dict[str, Any] = vs_repo.update(repository_id, updates, status=status)
 
     # Trigger infrastructure deployment if pipeline changed
     if require_deployment:
@@ -1298,6 +1314,8 @@ def update_repository(event: dict, context: dict) -> Dict[str, Any]:
         serializer = TypeSerializer()
         rag_config = updated_config.copy()
         rag_config["repositoryId"] = repository_id
+        # Remove status field - it will be set by the state machine
+        rag_config.pop("status", None)
 
         input_data = {"ragConfig": rag_config}
 

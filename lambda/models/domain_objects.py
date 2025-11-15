@@ -858,9 +858,18 @@ class PipelineConfig(BaseModel):
     """Defines pipeline configuration for automated document ingestion."""
 
     autoRemove: bool = Field(default=True, description="Automatically remove documents after ingestion")
-    chunkOverlap: Optional[int] = Field(default=None, ge=0, description="Chunk overlap for pipeline ingestion (deprecated, use chunkingStrategy)")
-    chunkSize: Optional[int] = Field(default=None, ge=100, le=10000, description="Chunk size for pipeline ingestion (deprecated, use chunkingStrategy)")
-    chunkingStrategy: Optional[ChunkingStrategy] = Field(default=None, description="Chunking strategy for documents in this pipeline")
+    chunkOverlap: Optional[int] = Field(
+        default=None, ge=0, description="Chunk overlap for pipeline ingestion (deprecated, use chunkingStrategy)"
+    )
+    chunkSize: Optional[int] = Field(
+        default=None,
+        ge=100,
+        le=10000,
+        description="Chunk size for pipeline ingestion (deprecated, use chunkingStrategy)",
+    )
+    chunkingStrategy: Optional[ChunkingStrategy] = Field(
+        default=None, description="Chunking strategy for documents in this pipeline"
+    )
     s3Bucket: str = Field(min_length=1, description="S3 bucket for pipeline source")
     s3Prefix: str = Field(description="S3 prefix for pipeline source")
     trigger: PipelineTrigger = Field(description="Pipeline trigger type")
@@ -870,18 +879,16 @@ class PipelineConfig(BaseModel):
         """Validates that either chunkingStrategy or legacy chunk fields are provided."""
         has_legacy = self.chunkSize is not None and self.chunkOverlap is not None
         has_new = self.chunkingStrategy is not None
-        
+
         if not has_legacy and not has_new:
             raise ValueError("Either chunkingStrategy or both chunkSize and chunkOverlap must be provided")
-        
+
         # If legacy fields provided but no chunkingStrategy, create one
         if has_legacy and not has_new:
             self.chunkingStrategy = FixedChunkingStrategy(
-                type=ChunkingStrategyType.FIXED,
-                size=self.chunkSize,
-                overlap=self.chunkOverlap
+                type=ChunkingStrategyType.FIXED, size=self.chunkSize, overlap=self.chunkOverlap
             )
-        
+
         return self
 
 
@@ -1121,7 +1128,7 @@ class VectorStoreConfig(BaseModel):
         default=None, description="Bedrock Knowledge Base configuration"
     )
     # Status and timestamps
-    status: Optional[str] = VectorStoreStatus.UNKNOWN
+    status: Optional[VectorStoreStatus] = Field(default=None, description=" Repository Status")
     createdAt: Optional[datetime] = Field(default=None, description="Creation timestamp")
     updatedAt: Optional[datetime] = Field(default=None, description="Last update timestamp")
 

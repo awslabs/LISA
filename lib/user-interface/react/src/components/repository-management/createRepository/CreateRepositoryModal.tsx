@@ -116,7 +116,7 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
             if (submissionData.type === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE) {
                 delete submissionData.pipelines;
             }
-            
+
             if (isEdit) {
                 resetUpdate();
                 // For updates, only send the changed fields

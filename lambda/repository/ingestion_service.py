@@ -17,6 +17,7 @@ from typing import Optional
 
 import boto3
 from models.domain_objects import Enum, FixedChunkingStrategy, IngestDocumentRequest, IngestionJob
+from repository.collection_service import CollectionService
 
 logger = logging.getLogger(__name__)
 
@@ -86,8 +87,6 @@ class DocumentIngestionService:
         logger.info(f"Using embedding model for ingestion: {embedding_model} (from {source})")
 
         # Get metadata tags
-        from repository.collection_service import CollectionService
-
         collection_service = CollectionService()
         metadata = collection_service.get_collection_metadata(repository, collection, request.metadata)
 

@@ -59,9 +59,7 @@ class CollectionMixin(BaseMixin):
             "chunkingStrategy": chunking_strategy,
             "allowedGroups": allowed_groups,
             "metadata": metadata,
-            "private": private,
             "allowChunkingOverride": allow_chunking_override,
-            "pipelines": pipelines,
         }
 
         # Remove None values
@@ -129,9 +127,7 @@ class CollectionMixin(BaseMixin):
             "chunkingStrategy": chunking_strategy,
             "allowedGroups": allowed_groups,
             "metadata": metadata,
-            "private": private,
             "allowChunkingOverride": allow_chunking_override,
-            "pipelines": pipelines,
             "status": status,
         }
 

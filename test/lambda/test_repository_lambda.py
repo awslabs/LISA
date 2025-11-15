@@ -2795,6 +2795,144 @@ def test_update_repository_missing_id():
     assert result["statusCode"] == 400
 
 
+def test_update_repository_with_pipeline_change():
+    """Test update_repository triggers state machine when pipeline changes"""
+    from repository.lambda_functions import update_repository
+
+    with patch("repository.lambda_functions.vs_repo") as mock_vs, patch(
+        "repository.lambda_functions.ssm_client"
+    ) as mock_ssm, patch("repository.lambda_functions.step_functions_client") as mock_sf, patch(
+        "utilities.auth.is_admin"
+    ) as mock_is_admin:
+        # Mock admin access
+        mock_is_admin.return_value = True
+
+        # Mock current repository with existing pipeline
+        current_repo = {
+            "repositoryId": "repo1",
+            "config": {
+                "repositoryId": "repo1",
+                "repositoryName": "Test Repo",
+                "pipelines": [
+                    {
+                        "autoRemove": True,
+                        "trigger": "event",
+                        "s3Bucket": "test-bucket",
+                        "s3Prefix": "test-prefix",
+                        "chunkSize": 512,
+                        "chunkOverlap": 51,
+                    }
+                ],
+            },
+        }
+        mock_vs.find_repository_by_id.return_value = current_repo
+
+        # Mock updated config
+        updated_config = {
+            "repositoryId": "repo1",
+            "repositoryName": "Test Repo",
+            "pipelines": [
+                {
+                    "autoRemove": False,
+                    "trigger": "schedule",
+                    "s3Bucket": "test-bucket",
+                    "s3Prefix": "test-prefix",
+                    "chunkSize": 512,
+                    "chunkOverlap": 51,
+                }
+            ],
+            "status": "UPDATE_IN_PROGRESS",
+        }
+        mock_vs.update.return_value = updated_config
+
+        # Mock SSM and Step Functions
+        mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "arn:test-state-machine"}}
+        mock_sf.start_execution.return_value = {"executionArn": "arn:execution:123"}
+
+        # Create event with pipeline change
+        event = {
+            "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
+            "pathParameters": {"repositoryId": "repo1"},
+            "body": json.dumps(
+                {
+                    "pipelines": [
+                        {
+                            "autoRemove": False,
+                            "trigger": "schedule",
+                            "s3Bucket": "test-bucket",
+                            "s3Prefix": "test-prefix",
+                            "chunkSize": 512,
+                            "chunkOverlap": 51,
+                        }
+                    ]
+                }
+            ),
+        }
+        context = SimpleNamespace(function_name="test", aws_request_id="123")
+
+        result = update_repository(event, context)
+
+        # Verify state machine was triggered
+        assert result["statusCode"] == 200
+        response_body = json.loads(result["body"])
+        assert "executionArn" in response_body
+        assert response_body["executionArn"] == "arn:execution:123"
+
+        # Verify state machine was called with correct parameters
+        mock_sf.start_execution.assert_called_once()
+        call_args = mock_sf.start_execution.call_args
+        assert call_args[1]["stateMachineArn"] == "arn:test-state-machine"
+
+
+def test_update_repository_without_pipeline_change():
+    """Test update_repository does not trigger state machine when pipeline unchanged"""
+    from repository.lambda_functions import update_repository
+
+    with patch("repository.lambda_functions.vs_repo") as mock_vs, patch(
+        "repository.lambda_functions.step_functions_client"
+    ) as mock_sf, patch("utilities.auth.is_admin") as mock_is_admin:
+        # Mock admin access
+        mock_is_admin.return_value = True
+
+        # Mock current repository
+        current_repo = {
+            "repositoryId": "repo1",
+            "config": {
+                "repositoryId": "repo1",
+                "repositoryName": "Test Repo",
+                "pipelines": [{"autoRemove": True}],
+            },
+        }
+        mock_vs.find_repository_by_id.return_value = current_repo
+
+        # Mock updated config (no pipeline change)
+        updated_config = {
+            "repositoryId": "repo1",
+            "repositoryName": "Updated Name",
+            "pipelines": [{"autoRemove": True}],
+            "status": "UPDATE_COMPLETE",
+        }
+        mock_vs.update.return_value = updated_config
+
+        # Create event without pipeline change
+        event = {
+            "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
+            "pathParameters": {"repositoryId": "repo1"},
+            "body": json.dumps({"repositoryName": "Updated Name"}),
+        }
+        context = SimpleNamespace(function_name="test", aws_request_id="123")
+
+        result = update_repository(event, context)
+
+        # Verify state machine was NOT triggered
+        assert result["statusCode"] == 200
+        response_body = json.loads(result["body"])
+        assert "executionArn" not in response_body
+
+        # Verify state machine was not called
+        mock_sf.start_execution.assert_not_called()
+
+
 def test_create_success():
     """Test create repository"""
     from repository.lambda_functions import create

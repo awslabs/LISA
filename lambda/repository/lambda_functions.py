@@ -36,6 +36,7 @@ from models.domain_objects import (
     SortParams,
     UpdateVectorStoreRequest,
     VectorStoreConfig,
+    VectorStoreStatus,
 )
 from repository.collection_service import CollectionService
 from repository.config.params import ListJobsParams
@@ -1236,6 +1237,9 @@ def update_repository(event: dict, context: dict) -> Dict[str, Any]:
     """
     Update a vector store configuration. This function is only accessible by administrators.
 
+    If the pipeline configuration has changed, this will trigger an infrastructure deployment
+    using the state machine, similar to repository creation.
+
     Args:
         event (dict): The Lambda event object containing:
             - pathParameters.repositoryId: The repository ID to update
@@ -1243,7 +1247,7 @@ def update_repository(event: dict, context: dict) -> Dict[str, Any]:
         context (dict): The Lambda context object
 
     Returns:
-        Dict[str, Any]: The updated repository configuration
+        Dict[str, Any]: The updated repository configuration with executionArn if deployment triggered
 
     Raises:
         ValidationError: If validation fails
@@ -1265,28 +1269,51 @@ def update_repository(event: dict, context: dict) -> Dict[str, Any]:
     except Exception as e:
         raise ValidationError(f"Invalid request: {e}")
 
-    # Ensure repository exists
-    _ = vs_repo.find_repository_by_id(repository_id)
+    # Get current repository configuration to check for pipeline changes
+    current_repo = vs_repo.find_repository_by_id(repository_id, raw_config=True)
+    current_config = current_repo.get("config", {})
+    current_pipelines = current_config.get("pipelines")
+
+    # Check if pipeline configuration has changed
+    require_deployment = request.pipelines is not None and request.pipelines != current_pipelines
 
     # Build updates dictionary (only include fields that were provided)
-    updates = {}
-    if request.repositoryName is not None:
-        updates["repositoryName"] = request.repositoryName
-    if request.description is not None:
-        updates["description"] = request.description
-    if request.embeddingModelId is not None:
-        updates["embeddingModelId"] = request.embeddingModelId
-    if request.allowedGroups is not None:
-        updates["allowedGroups"] = request.allowedGroups
-    if request.metadata is not None:
-        updates["metadata"] = (
-            request.metadata.model_dump() if hasattr(request.metadata, "model_dump") else request.metadata
-        )
-    if request.pipelines is not None:
-        updates["pipelines"] = [p.model_dump() if hasattr(p, "model_dump") else p for p in request.pipelines]
+    updates = request.model_dump(exclude_none=True, mode="json")
+    updates["status"] = (
+        VectorStoreStatus.UPDATE_IN_PROGRESS if require_deployment else VectorStoreStatus.UPDATE_COMPLETE
+    )
 
     # Update repository
     updated_config: dict[str, Any] = vs_repo.update(repository_id, updates)
+
+    # Trigger infrastructure deployment if pipeline changed
+    if require_deployment:
+        logger.info(f"Pipeline configuration changed for repository {repository_id}, triggering deployment")
+
+        # Fetch the Step Function ARN from SSM Parameter Store
+        parameter_name = os.environ["LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER"]
+        state_machine_arn = ssm_client.get_parameter(Name=parameter_name)
+
+        # Prepare input data for state machine (similar to create)
+        serializer = TypeSerializer()
+        rag_config = updated_config.copy()
+        rag_config["repositoryId"] = repository_id
+
+        input_data = {"ragConfig": rag_config}
+
+        # Start Step Function execution
+        response = step_functions_client.start_execution(
+            stateMachineArn=state_machine_arn["Parameter"]["Value"],
+            input=json.dumps(
+                {
+                    "body": input_data,
+                    "config": {key: serializer.serialize(value) for key, value in rag_config.items()},
+                }
+            ),
+        )
+
+        logger.info(f"Started state machine execution: {response['executionArn']}")
+        updated_config["executionArn"] = response["executionArn"]
 
     return updated_config
 

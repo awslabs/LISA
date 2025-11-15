@@ -36,10 +36,11 @@ export type ChunkingConfigFormProps = {
     setFields(values: { [key: string]: any }, method?: ModifyMethod): void;
     touchFields(fields: string[], method?: ModifyMethod): void;
     formErrors: any;
+    disabled?: boolean;
 };
 
 export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElement {
-    const { item, touchFields, setFields, formErrors } = props;
+    const { item, touchFields, setFields, formErrors, disabled = false } = props;
 
     // Chunking type options
     const chunkingTypeOptions = [
@@ -55,7 +56,9 @@ export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElemen
             <FormField
                 label='Chunking Type'
                 errorText={formErrors?.['chunkingStrategy.type'] || formErrors?.chunkingStrategy?.type}
-                description='How documents should be split into chunks'
+                description={disabled
+                    ? 'Chunking is managed by Bedrock Knowledge Base'
+                    : 'How documents should be split into chunks'}
             >
                 <Select
                     selectedOption={
@@ -78,6 +81,7 @@ export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElemen
                     }}
                     options={chunkingTypeOptions}
                     placeholder='Select chunking type'
+                    disabled={disabled}
                 />
             </FormField>
 
@@ -98,6 +102,7 @@ export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElemen
                                 });
                             }}
                             onBlur={() => touchFields(['chunkingStrategy.size'])}
+                            disabled={disabled}
                         />
                     </FormField>
 
@@ -115,6 +120,7 @@ export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElemen
                                 });
                             }}
                             onBlur={() => touchFields(['chunkingStrategy.overlap'])}
+                            disabled={disabled}
                         />
                     </FormField>
                 </>

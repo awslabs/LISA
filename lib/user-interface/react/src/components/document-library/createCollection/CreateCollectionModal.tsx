@@ -223,11 +223,16 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
     }, [isCreating, isUpdating, isCreateSuccess, isUpdateSuccess]);
 
 
+    // Check if editing a default collection
+    const isDefaultCollection = isEdit && selectedItems.length > 0 && (selectedItems[0] as any).default === true;
+
     // Wizard steps configuration
     const steps = [
         {
             title: 'Collection Configuration',
-            description: 'Define your collection\'s basic settings',
+            description: isDefaultCollection
+                ? 'Edit collection name and description (other fields are locked for default collections)'
+                : 'Define your collection\'s basic settings',
             content: (
                 <CollectionConfigForm
                     item={state.form}
@@ -235,18 +240,22 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
                     touchFields={touchFields}
                     formErrors={errors}
                     isEdit={isEdit}
+                    isDefaultCollection={isDefaultCollection}
                 />
             ),
         },
         {
             title: 'Chunking Configuration',
-            description: 'Configure how documents are split into chunks',
+            description: isDefaultCollection
+                ? 'Chunking is managed by Bedrock Knowledge Base for default collections'
+                : 'Configure how documents are split into chunks',
             content: (
                 <ChunkingConfigForm
                     item={state.form.chunkingStrategy}
                     setFields={setFields}
                     touchFields={touchFields}
                     formErrors={errors}
+                    disabled={isDefaultCollection}
                 />
             ),
             isOptional: true,

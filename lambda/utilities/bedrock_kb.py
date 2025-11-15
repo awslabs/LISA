@@ -171,12 +171,7 @@ def add_default_pipeline_for_bedrock_kb(vector_store_config: VectorStoreConfig) 
     datasource_bucket = bedrock_config.bedrockKnowledgeDatasourceS3Bucket
 
     default_pipeline = PipelineConfig(
-        s3Bucket=datasource_bucket,
-        s3Prefix="",
-        trigger=PipelineTrigger.EVENT,
-        autoRemove=True,
-        chunkSize=1000,
-        chunkOverlap=0,
+        s3Bucket=datasource_bucket, s3Prefix="", trigger=PipelineTrigger.EVENT, autoRemove=True
     )
 
     if vector_store_config.pipelines:

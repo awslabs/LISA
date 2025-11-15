@@ -377,15 +377,6 @@ export class LisaRagConstruct extends Construct {
             layers,
         });
 
-        new VectorStoreCreator(scope, 'VectorStoreCreatorStack', {
-            config,
-            vpc,
-            ragVectorStoreTable,
-            stackName: createCdkId([config.appName, config.deploymentName, config.deploymentStage, 'vectorstore-creator']),
-            baseEnvironment,
-            layers
-        });
-
         this.legacyRepositories(
             config,
             vpc,
@@ -399,7 +390,7 @@ export class LisaRagConstruct extends Construct {
         );
 
         // Add REST API Lambdas to APIGW
-        new RepositoryApi(scope, 'RepositoryApi', {
+        const repositoryApi = new RepositoryApi(scope, 'RepositoryApi', {
             authorizer,
             baseEnvironment,
             config,
@@ -409,6 +400,15 @@ export class LisaRagConstruct extends Construct {
             rootResourceId,
             securityGroups,
             lambdaExecutionRole: lambdaRole,
+        });
+
+        new VectorStoreCreator(scope, 'VectorStoreCreatorStack', {
+            config,
+            vpc,
+            ragVectorStoreTable,
+            stackName: createCdkId([config.appName, config.deploymentName, config.deploymentStage, 'vectorstore-creator']),
+            baseEnvironment,
+            layers
         });
 
         modelsPs.grantRead(lambdaRole);

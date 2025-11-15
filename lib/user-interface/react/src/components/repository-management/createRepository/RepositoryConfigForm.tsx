@@ -69,7 +69,7 @@ export function RepositoryConfigForm (props: FormProps<RagRepositoryConfig> & Re
                 setFields={setFields}
                 touchFields={touchFields}
                 formErrors={formErrors}
-                showEmbeddingModel={true}
+                showEmbeddingModel={item.type !== RagRepositoryType.BEDROCK_KNOWLEDGE_BASE}
                 showAllowedGroups={false}
             />
 

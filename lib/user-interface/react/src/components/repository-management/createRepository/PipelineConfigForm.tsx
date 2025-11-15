@@ -83,6 +83,32 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
         setFields({ pipelines: pipelines });
     };
 
+    // Hide pipeline configuration for Bedrock KB - it's managed automatically
+    if (repositoryType === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE) {
+        return (
+            <Container
+                header={
+                    <Header variant='h2' info={
+                        <span>Pipeline configuration is automatically managed for Bedrock Knowledge Base repositories</span>
+                    }>
+                        Pipeline Configuration
+                    </Header>
+                }>
+                <SpaceBetween size='s'>
+                    <div>
+                        <strong>Automatic Configuration:</strong>
+                        <ul style={{ marginTop: '8px', marginLeft: '20px' }}>
+                            <li>EventBridge rules are created automatically for the KB data source S3 bucket</li>
+                            <li>Documents are tracked when uploaded to the data source bucket</li>
+                            <li>Document removal is tracked automatically</li>
+                            <li>No manual pipeline configuration needed</li>
+                        </ul>
+                    </div>
+                </SpaceBetween>
+            </Container>
+        );
+    }
+
     return (
         <SpaceBetween size={'s'}>
             {item?.map((pipeline, index) => (
@@ -102,30 +128,29 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                         </Header>
                     }>
                     <SpaceBetween size={'s'}>
-                        {repositoryType !== RagRepositoryType.BEDROCK_KNOWLEDGE_BASE && (
-                            <ChunkingConfigForm
-                                item={pipeline.chunkingStrategy}
-                                setFields={(values) => {
-                                    const updatedFields = {};
-                                    // Store using the new chunkingStrategy structure
-                                    if (values.chunkingStrategy) {
-                                        updatedFields[`pipelines[${index}].chunkingStrategy`] = values.chunkingStrategy;
-                                    }
-                                    if (values['chunkingStrategy.size'] !== undefined) {
-                                        updatedFields[`pipelines[${index}].chunkingStrategy.size`] = values['chunkingStrategy.size'];
-                                    }
-                                    if (values['chunkingStrategy.overlap'] !== undefined) {
-                                        updatedFields[`pipelines[${index}].chunkingStrategy.overlap`] = values['chunkingStrategy.overlap'];
-                                    }
-                                    setFields(updatedFields);
-                                }}
-                                touchFields={(fields) => {
-                                    const updatedFields = fields.map((field) => `pipelines[${index}].${field}`);
-                                    touchFields(updatedFields);
-                                }}
-                                formErrors={formErrors.pipelines?.[index]?.chunkingStrategy || {}}
-                            />
-                        )}
+                        <ChunkingConfigForm
+                            item={pipeline.chunkingStrategy}
+                            setFields={(values) => {
+                                const updatedFields = {};
+                                // Store using the new chunkingStrategy structure
+                                if (values.chunkingStrategy) {
+                                    updatedFields[`pipelines[${index}].chunkingStrategy`] = values.chunkingStrategy;
+                                }
+                                if (values['chunkingStrategy.size'] !== undefined) {
+                                    updatedFields[`pipelines[${index}].chunkingStrategy.size`] = values['chunkingStrategy.size'];
+                                }
+                                if (values['chunkingStrategy.overlap'] !== undefined) {
+                                    updatedFields[`pipelines[${index}].chunkingStrategy.overlap`] = values['chunkingStrategy.overlap'];
+                                }
+                                setFields(updatedFields);
+                            }}
+                            touchFields={(fields) => {
+                                const updatedFields = fields.map((field) => `pipelines[${index}].${field}`);
+                                touchFields(updatedFields);
+                            }}
+                            formErrors={formErrors.pipelines?.[index]?.chunkingStrategy || {}}
+                        />
+                        )
 
                         <FormField
                             label='Collection'

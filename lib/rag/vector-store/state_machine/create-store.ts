@@ -25,6 +25,7 @@ import { Vpc } from '../../../networking/vpc';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 
 type CreateStoreStateMachineProps = BaseProps & {
+    createBedrockCollectionFnArn: string;
     executionRole: iam.IRole;
     parameterName: string,
     role?: iam.IRole,
@@ -40,7 +41,14 @@ export class CreateStoreStateMachine extends Construct {
     constructor (scope: Construct, id: string, props: CreateStoreStateMachineProps) {
         super(scope, id);
 
-        const { config, executionRole, parameterName, role, vectorStoreConfigTable, vectorStoreDeployerFnArn } = props;
+        const { config, createBedrockCollectionFnArn, executionRole, parameterName, role, vectorStoreConfigTable, vectorStoreDeployerFnArn } = props;
+
+        // Get reference to the Bedrock collection creation Lambda
+        const createBedrockCollectionFn = lambda.Function.fromFunctionArn(
+            this,
+            'CreateBedrockCollectionFunction',
+            createBedrockCollectionFnArn
+        );
 
         // Task to create an entry in DynamoDB for the vector store
         const createVectorStoreEntry = new tasks.DynamoPutItem(this, 'CreateVectorStoreEntry', {
@@ -87,6 +95,15 @@ export class CreateStoreStateMachine extends Construct {
             time: sfn.WaitTime.duration(Duration.seconds(30)),
         });
 
+        // Task to create default collection for Bedrock KB
+        const createDefaultCollectionTask = new tasks.LambdaInvoke(this, 'CreateDefaultCollection', {
+            lambdaFunction: createBedrockCollectionFn,
+            payload: sfn.TaskInput.fromObject({
+                ragConfig: sfn.JsonPath.objectAt('$.body.ragConfig'),
+            }),
+            resultPath: '$.collectionResult',
+        });
+
         // Task to update the status of the vector store entry to 'COMPLETED' on successful deployment
         const updateBedrockKBSuccess = new tasks.DynamoUpdateItem(this, 'UpdateBedrockKBSuccess', {
             table: vectorStoreConfigTable,
@@ -123,10 +140,13 @@ export class CreateStoreStateMachine extends Construct {
         });
 
         // Define the sequence of tasks and conditions in the state machine
+        // For Bedrock KB without pipelines, create default collection then update status
+        const bedrockKBPath = createDefaultCollectionTask.next(updateBedrockKBSuccess);
+
         const definition = createVectorStoreEntry
             .next(createVectorStoreInfraChoice
                 .when(sfn.Condition.and(sfn.Condition.stringEquals('$.body.ragConfig.type', 'bedrock_knowledge_base'),
-                    sfn.Condition.isNotPresent('$.body.ragConfig.pipelines[0]')), updateBedrockKBSuccess)
+                    sfn.Condition.isNotPresent('$.body.ragConfig.pipelines[0]')), bedrockKBPath)
                 .otherwise(deployVectorStore.addCatch(updateFailureStatus)
                     .next(
                         checkDeploymentStatus.next(

@@ -156,34 +156,41 @@ def test_store_chunks_in_vectorstore_failure(setup_env):
 
 
 def test_pipeline_ingest_bedrock_kb(setup_env):
-    """Test pipeline_ingest with Bedrock KB repository."""
-    from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus
+    """Test pipeline_ingest with Bedrock KB repository - only tracks documents."""
+    from models.domain_objects import NoneChunkingStrategy, IngestionJob, IngestionStatus
     from utilities.repository_types import RepositoryType
 
     job = IngestionJob(
         repository_id="repo1",
-        collection_id="col1",
-        s3_path="s3://bucket/key",
+        collection_id="ds-123",  # Data source ID
+        s3_path="s3://kb-bucket/document.pdf",
         embedding_model="model1",
-        username="user1",
-        chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
+        username="system",
+        chunk_strategy=NoneChunkingStrategy(),
     )
 
-    with patch("repository.pipeline_ingest_documents.vs_repo") as mock_vs_repo, patch(
-        "repository.pipeline_ingest_documents.ingest_document_to_kb"
-    ) as mock_ingest, patch("repository.pipeline_ingest_documents.rag_document_repository") as mock_doc_repo, patch(
-        "repository.pipeline_ingest_documents.ingestion_job_repository"
-    ):
+    bedrock_kb_repo = {
+        "type": RepositoryType.BEDROCK_KB,
+        "bedrockKnowledgeBaseConfig": {
+            "bedrockKnowledgeDatasourceS3Bucket": "kb-bucket",
+            "bedrockKnowledgeDatasourceId": "ds-123"
+        }
+    }
 
-        mock_vs_repo.find_repository_by_id.return_value = {"type": RepositoryType.BEDROCK_KB}
+    with patch("repository.pipeline_ingest_documents.vs_repo") as mock_vs_repo, \
+         patch("repository.pipeline_ingest_documents.rag_document_repository") as mock_doc_repo, \
+         patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo:
+
+        mock_vs_repo.find_repository_by_id.return_value = bedrock_kb_repo
         mock_doc_repo.find_by_source.return_value = []
 
         from repository.pipeline_ingest_documents import pipeline_ingest
 
         pipeline_ingest(job)
 
-        mock_ingest.assert_called_once()
+        # For Bedrock KB, we only track the document, no chunking or embedding
         mock_doc_repo.save.assert_called_once()
+        mock_job_repo.save.assert_called()
         assert job.status == IngestionStatus.INGESTION_COMPLETED
 
 

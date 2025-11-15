@@ -18,7 +18,7 @@ import { Duration } from 'aws-cdk-lib';
 import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { IRole } from 'aws-cdk-lib/aws-iam';
-import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { IFunction, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 
 import { getDefaultRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
@@ -53,6 +53,8 @@ type RepositoryApiProps = {
  * API for RAG repository operations
  */
 export class RepositoryApi extends Construct {
+    public createCollectionFunction: IFunction;
+
     constructor (scope: Construct, id: string, props: RepositoryApiProps) {
         super(scope, id);
 
@@ -250,7 +252,7 @@ export class RepositoryApi extends Construct {
 
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         apis.forEach((f) => {
-            registerAPIEndpoint(
+            const lambdaFunction = registerAPIEndpoint(
                 this,
                 restApi,
                 lambdaPath,
@@ -262,6 +264,11 @@ export class RepositoryApi extends Construct {
                 authorizer,
                 lambdaExecutionRole,
             );
+
+            // Capture create_collection Lambda for backward compatibility
+            if (f.name === 'create_collection') {
+                this.createCollectionFunction = lambdaFunction;
+            }
         });
     }
 }

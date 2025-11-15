@@ -37,7 +37,6 @@ from repository.ingestion_service import DocumentIngestionService
 from repository.rag_document_repo import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.auth import get_username
-from utilities.bedrock_kb import ingest_document_to_kb
 from utilities.common_functions import retry_config
 from utilities.file_processing import generate_chunks
 from utilities.repository_types import RepositoryType
@@ -79,12 +78,26 @@ def pipeline_ingest_document(job: IngestionJob) -> None:
         # chunk and save chunks in vector store
         repository = vs_repo.find_repository_by_id(job.repository_id)
         if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
+            # Bedrock KB path: Only track documents, KB handles ingestion
             bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
             kb_bucket = bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket")
-            source_bucket = job.s3_path.split("/")[2]
-            kb_s3_path = f"s3://{kb_bucket}/{os.path.basename(job.s3_path)}"
 
-            # Check if document already exists in KB bucket location
+            # Use KB S3 bucket path as canonical source
+            # The job.s3_path should already be from the KB bucket since we only
+            # monitor KB bucket events (no custom S3 buckets)
+            kb_s3_path = job.s3_path
+
+            # Validate that the path is from the KB bucket
+            source_bucket = job.s3_path.split("/")[2]
+            if source_bucket != kb_bucket:
+                logger.warning(
+                    f"Document {job.s3_path} is not from KB bucket {kb_bucket}. "
+                    f"Bedrock KB repositories should only receive events from KB data source bucket."
+                )
+                # Normalize to KB bucket path
+                kb_s3_path = f"s3://{kb_bucket}/{os.path.basename(job.s3_path)}"
+
+            # Check if document already exists (idempotent operation)
             existing_docs = rag_document_repository.find_by_source(
                 job.repository_id, job.collection_id, kb_s3_path, join_docs=False
             )
@@ -98,29 +111,19 @@ def pipeline_ingest_document(job: IngestionJob) -> None:
                 job.status = IngestionStatus.INGESTION_COMPLETED
                 job.document_id = existing_doc.document_id
                 ingestion_job_repository.save(job)
-                logging.info(f"Document {kb_s3_path} already tracked, updated upload_date")
+                logger.info(f"Document {kb_s3_path} already tracked, updated upload_date")
                 return
 
-            # Check if file needs to be copied from custom bucket to KB bucket
-            if source_bucket != kb_bucket:
-                # Copy from custom bucket to KB bucket and trigger ingestion
-                ingest_document_to_kb(
-                    s3_client=s3,
-                    bedrock_agent_client=bedrock_agent,
-                    job=job,
-                    repository=repository,
-                )
-            # else: File already in KB bucket, KB will auto-ingest via S3 event
-
             # Create RagDocument for tracking with KB bucket location
+            # KB handles all ingestion, chunking, and embedding internally
             ingestion_type = IngestionType.AUTO if job.username == "system" else IngestionType.MANUAL
             rag_document = RagDocument(
                 repository_id=job.repository_id,
                 collection_id=job.collection_id,
-                document_name=os.path.basename(job.s3_path),
-                source=kb_s3_path,
-                subdocs=[],  # Bedrock KB manages embeddings internally
-                chunk_strategy=job.chunk_strategy or NoneChunkingStrategy(),
+                document_name=os.path.basename(kb_s3_path),
+                source=kb_s3_path,  # Use KB bucket path as canonical source
+                subdocs=[],  # Empty - KB manages chunks internally
+                chunk_strategy=NoneChunkingStrategy(),  # KB manages chunking
                 username=job.username,
                 ingestion_type=ingestion_type,
             )
@@ -129,9 +132,9 @@ def pipeline_ingest_document(job: IngestionJob) -> None:
             job.status = IngestionStatus.INGESTION_COMPLETED
             job.document_id = rag_document.document_id
             ingestion_job_repository.save(job)
-            logging.info(
-                f"Bedrock Knowledge Base will ingest the document {job.s3_path} "
-                f"using default chunking into {job.embedding_model} collection"
+            logger.info(
+                f"Tracked document {kb_s3_path} for Bedrock KB repository {job.repository_id}. "
+                f"KB will handle ingestion automatically."
             )
             return  # Early return for Bedrock KB path
 
@@ -291,27 +294,55 @@ def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
     key = detail.get("key", None)
     repository_id = detail.get("repositoryId", None)
     pipeline_config = detail.get("pipelineConfig", None)
-    collection_id = pipeline_config.get("collectionId", None)
     s3_path = f"s3://{bucket}/{key}"
-    embedding_model = pipeline_config.get("embeddingModel", None)
-    if collection_id:
-        collection = collection_service.get_collection(
-            collection_id=collection_id, repository_id=repository_id, is_admin=True, username="", user_groups=[]
-        )
 
-        if collection.embeddingModel is not None:
-            embedding_model = collection.embeddingModel
-    else:
-        collection_id = embedding_model
-    logger.info(f"Ingesting object {s3_path} for repository {repository_id}/{embedding_model}")
-
-    chunk_strategy = extract_chunk_strategy(pipeline_config)
-
-    # Get repository and metadata
+    # Get repository to determine type and configuration
     repository = vs_repo.find_repository_by_id(repository_id)
+
+    # For Bedrock KB repositories, use data source ID as collection ID
+    if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
+        bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
+        data_source_id = bedrock_config.get("bedrockKnowledgeDatasourceId")
+
+        if not data_source_id:
+            logger.error(f"Bedrock KB repository {repository_id} missing data source ID")
+            return
+
+        collection_id = data_source_id
+        embedding_model = repository.get("embeddingModelId")
+        chunk_strategy = NoneChunkingStrategy()  # KB manages chunking
+
+        # Set username to "system" for auto-ingestion from KB bucket
+        username = "system"
+        ingestion_type = IngestionType.AUTO
+
+        logger.info(
+            f"Processing Bedrock KB document {s3_path} for repository {repository_id}, " f"collection {collection_id}"
+        )
+    else:
+        # Non-Bedrock KB path (existing logic)
+        collection_id = pipeline_config.get("collectionId", None)
+        embedding_model = pipeline_config.get("embeddingModel", None)
+
+        if collection_id:
+            collection = collection_service.get_collection(
+                collection_id=collection_id, repository_id=repository_id, is_admin=True, username="", user_groups=[]
+            )
+
+            if collection.embeddingModel is not None:
+                embedding_model = collection.embeddingModel
+        else:
+            collection_id = embedding_model
+
+        chunk_strategy = extract_chunk_strategy(pipeline_config)
+        ingestion_type = IngestionType.MANUAL
+
+        logger.info(f"Ingesting object {s3_path} for repository {repository_id}/{embedding_model}")
+
+    # Get repository metadata
     metadata = collection_service.get_collection_metadata(repository, None)
 
-    # create ingestion job and save it to dynamodb
+    # Create ingestion job and save it to dynamodb
     job = IngestionJob(
         repository_id=repository_id,
         collection_id=collection_id,
@@ -319,13 +350,13 @@ def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
         chunk_strategy=chunk_strategy,
         s3_path=s3_path,
         username=username,
-        ingestion_type=IngestionType.MANUAL,
+        ingestion_type=ingestion_type,
         metadata=metadata,
     )
     ingestion_job_repository.save(job)
     ingestion_service.submit_create_job(job)
 
-    logger.info(f"Ingesting document {s3_path} for repository {repository_id}")
+    logger.info(f"Submitted ingestion job for document {s3_path} in repository {repository_id}")
 
 
 def handle_pipline_ingest_schedule(event: Dict[str, Any], context: Any) -> None:

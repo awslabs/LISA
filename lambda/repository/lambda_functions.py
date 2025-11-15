@@ -169,13 +169,33 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
 
     docs: List[Dict[str, Any]] = []
     if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
-        docs = retrieve_documents(
+        # Query Bedrock KB
+        kb_docs = retrieve_documents(
             bedrock_runtime_client=bedrock_client,
             repository=repository,
             query=query,
-            top_k=int(top_k),
+            top_k=int(top_k) * 2,  # Request more to account for filtering
             repository_id=repository_id,
         )
+
+        # Filter by collection if specified
+        if collection_id:
+            # Get collection documents for filtering
+            collection_docs = doc_repo.list_by_collection(repository_id=repository_id, collection_id=collection_id)
+            collection_sources = {doc.source for doc in collection_docs}
+
+            # Filter KB results to only include documents in this collection
+            docs = [doc for doc in kb_docs if doc.get("metadata", {}).get("source") in collection_sources]
+
+            # Trim to requested top_k after filtering
+            docs = docs[: int(top_k)]
+
+            logger.info(
+                f"Filtered Bedrock KB results: {len(kb_docs)} total, " f"{len(docs)} in collection {collection_id}"
+            )
+        else:
+            # No collection filter, return all results
+            docs = kb_docs[: int(top_k)]
     else:
         # Use collection_id as vector store index if provided, otherwise use model_name
         collection_id = collection_id or model_name
@@ -223,6 +243,56 @@ def get_repository(event: dict[str, Any], repository_id: str) -> dict[str, Any]:
         raise HTTPException(status_code=403, message="User does not have permission to access this repository")
 
     return repo
+
+
+def create_bedrock_collection(event: dict, context: dict) -> Dict[str, Any]:
+    """
+    Create a default collection for a Bedrock Knowledge Base repository.
+    This is called by the state machine during repository creation.
+
+    Args:
+        event (dict): The Lambda event object containing:
+            - ragConfig: Repository configuration with repositoryId
+        context (dict): The Lambda context object
+
+    Returns:
+        Dict[str, Any]: A dictionary containing the created collection configuration
+
+    Raises:
+        ValidationError: If validation fails
+        HTTPException: If repository not found
+    """
+    try:
+        # Extract repository config from state machine input
+        rag_config = event.get("ragConfig", {})
+        repository_id = rag_config.get("repositoryId")
+
+        if not repository_id:
+            raise ValidationError("repositoryId is required in ragConfig")
+
+        logger.info(f"Creating default collection for Bedrock KB repository: {repository_id}")
+
+        # Get repository configuration
+        repository = vs_repo.find_repository_by_id(repository_id=repository_id)
+
+        # Create default collection using the service
+        collection = collection_service.create_default_collection(
+            repository_id=repository_id,
+            repository=repository,
+        )
+
+        if collection is None:
+            raise ValidationError(f"Failed to create default collection for repository {repository_id}")
+
+        logger.info(f"Successfully created default collection: {collection.collectionId}")
+
+        # Return collection configuration
+        result: dict[str, Any] = collection.model_dump(mode="json")
+        return result
+
+    except Exception as e:
+        logger.error(f"Error creating Bedrock collection: {str(e)}")
+        raise
 
 
 @api_wrapper

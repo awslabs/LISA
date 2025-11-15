@@ -14,16 +14,13 @@
 
 """Tests for Bedrock Knowledge Base collection support."""
 
-import json
-import os
 from typing import Any, Dict
-from unittest.mock import create_autospec, MagicMock, patch
+from unittest.mock import create_autospec, MagicMock
 
 import pytest
 from models.domain_objects import CollectionMetadata, RagCollectionConfig, VectorStoreStatus
 from repository.collection_service import CollectionService
 from repository.vector_store_repo import VectorStoreRepository
-from utilities.repository_types import RepositoryType
 from utilities.validation import ValidationError
 
 
@@ -37,10 +34,9 @@ def mock_vector_store_repo():
 
 @pytest.fixture(scope="function")
 def mock_document_repo():
-    """Create a mock RagDocumentRepository with autospec."""
-    from repository.rag_document_repo import RagDocumentRepository
-
-    mock = create_autospec(RagDocumentRepository, instance=True)
+    """Create a mock RagDocumentRepository."""
+    # Use MagicMock instead of autospec to avoid import order issues in full test suite
+    mock = MagicMock()
     # Configure default return values for common methods
     mock.list_all.return_value = ([], None, 0)
     mock.delete_by_id.return_value = None
@@ -50,9 +46,7 @@ def mock_document_repo():
 @pytest.fixture(scope="function")
 def collection_service(mock_vector_store_repo, mock_document_repo):
     """Create CollectionService with mocked dependencies."""
-    return CollectionService(
-        vector_store_repo=mock_vector_store_repo, document_repo=mock_document_repo
-    )
+    return CollectionService(vector_store_repo=mock_vector_store_repo, document_repo=mock_document_repo)
 
 
 @pytest.fixture
@@ -106,11 +100,11 @@ class TestBedrockKBDefaultCollection:
         assert collection is not None
         assert collection.default is True
         assert collection.repositoryId == "test-bedrock-kb"
-        assert collection.collectionId == "KB123456"  # Uses KB ID as collection ID
+        assert collection.collectionId == "DS123456"  # Uses data source ID as collection ID
         assert collection.embeddingModel == "amazon.titan-embed-text-v1"
-        assert collection.description == "Default Bedrock Knowledge Base collection"
+        assert collection.description == "Default collection for Bedrock Knowledge Base"
         assert collection.allowChunkingOverride is False  # Bedrock KB doesn't allow override
-        assert "bedrock_knowledge_base" in collection.metadata.tags
+        assert "bedrock-kb" in collection.metadata.tags
         assert "default" in collection.metadata.tags
 
     def test_default_collection_includes_pipelines(
@@ -306,7 +300,7 @@ class TestBedrockKBCollectionMetadata:
         # Assert
         assert isinstance(collection.metadata, CollectionMetadata)
         assert "default" in collection.metadata.tags
-        assert "bedrock_knowledge_base" in collection.metadata.tags
+        assert "bedrock-kb" in collection.metadata.tags
 
     def test_default_collection_inherits_repository_access_control(
         self, collection_service, mock_vector_store_repo, bedrock_kb_repository

@@ -937,7 +937,10 @@ class RagCollectionConfig(BaseModel):
     status: CollectionStatus = Field(default=CollectionStatus.ACTIVE, description="Collection status")
     private: bool = Field(default=False, description="Whether collection is private to creator")
     pipelines: List[PipelineConfig] = Field(default_factory=list, description="Automated ingestion pipelines")
-    default: bool = Field(default=False, description="Indicates if this is a default collection (virtual, no DB entry)")
+    default: bool = Field(default=False, description="Indicates if this is a default collection for Bedrock KB")
+    dataSourceId: Optional[str] = Field(
+        default=None, description="Bedrock KB data source ID for filtering (Bedrock KB only)"
+    )
 
     model_config = ConfigDict(use_enum_values=True, validate_default=True)
 

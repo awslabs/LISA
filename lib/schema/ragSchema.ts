@@ -173,6 +173,7 @@ export const RagRepositoryConfigSchema = z
             .regex(/^(?!-).*(?<!-)$/, 'Cannot start or end with a \'-\'.')
             .describe('A unique identifier for the repository, used in API calls and the UI. It must be distinct across all repositories.'),
         repositoryName: z.string().optional().describe('The user-friendly name displayed in the UI.'),
+        description: z.string().optional().describe('Description of the repository.'),
         embeddingModelId: z.string().optional().describe('The default embedding model to be used when selecting repository.'),
         type: z.nativeEnum(RagRepositoryType).describe('The vector store designated for this repository.'),
         opensearchConfig: z.union([OpenSearchExistingClusterConfig, OpenSearchNewClusterConfig]).optional(),
@@ -180,7 +181,6 @@ export const RagRepositoryConfigSchema = z
         bedrockKnowledgeBaseConfig: BedrockKnowledgeBaseInstanceConfig.optional(),
         pipelines: z.array(RagRepositoryPipeline).optional().default([]).describe('Rag ingestion pipeline for automated inclusion into a vector store from S3'),
         allowedGroups: z.array(z.string().nonempty()).optional().default([]).describe('The groups provided by the Identity Provider that have access to this repository. If no groups are specified, access is granted to everyone.'),
-        allowUserCollections: z.boolean().default(true).describe('Whether non-admin users can create collections in this repository.'),
         metadata: RagRepositoryMetadata.optional().describe('Metadata for the repository including tags and custom fields.'),
         status: z.nativeEnum(VectorStoreStatus).optional().describe('Current deployment status of the repository')
     })

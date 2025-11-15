@@ -56,7 +56,6 @@ describe('CollectionConfigForm', () => {
         chunkingStrategy: undefined,
         allowedGroups: [],
         metadata: { tags: [], customFields: {} },
-        private: false,
         allowChunkingOverride: true,
         pipelines: [],
     };

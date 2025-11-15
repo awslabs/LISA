@@ -24,7 +24,14 @@ import logging
 import os
 from typing import Any, Dict, List
 
-from models.domain_objects import IngestionJob, PipelineConfig, PipelineTrigger, VectorStoreConfig
+from models.domain_objects import (
+    ChunkingStrategyType,
+    IngestionJob,
+    NoneChunkingStrategy,
+    PipelineConfig,
+    PipelineTrigger,
+    VectorStoreConfig,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -171,7 +178,11 @@ def add_default_pipeline_for_bedrock_kb(vector_store_config: VectorStoreConfig) 
     datasource_bucket = bedrock_config.bedrockKnowledgeDatasourceS3Bucket
 
     default_pipeline = PipelineConfig(
-        s3Bucket=datasource_bucket, s3Prefix="", trigger=PipelineTrigger.EVENT, autoRemove=True
+        s3Bucket=datasource_bucket,
+        s3Prefix="",
+        trigger=PipelineTrigger.EVENT,
+        autoRemove=True,
+        chunkingStrategy=NoneChunkingStrategy(type=ChunkingStrategyType.NONE),
     )
 
     if vector_store_config.pipelines:

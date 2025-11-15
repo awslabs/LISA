@@ -131,46 +131,6 @@ export function CollectionConfigForm (
                 />
             )}
 
-            {/* Private Checkbox */}
-            {/* <FormField
-                label='Privacy'
-                description='Private collections are only accessible to the creator and administrators'
-            >
-                <Checkbox
-                    checked={item.private || false}
-                    onChange={({ detail }) => setFields({ private: detail.checked })}
-                    disabled={isEdit}
-                >
-                    Make this collection private
-                </Checkbox>
-            </FormField> */}
-
-            {/* Pipeline Configuration */}
-            {/* <FormField
-                label='Pipeline Configuration'
-                description='Optional: Configure automatic ingestion from S3'
-            >
-                <Checkbox
-                    checked={item.pipelines && item.pipelines.length > 0}
-                    onChange={({ detail }) => {
-                        if (detail.checked) {
-                            setFields({
-                                pipelines: [{
-                                    s3Bucket: '',
-                                    s3Prefix: '',
-                                    trigger: 'event' as const,
-                                    autoRemove: true,
-                                }]
-                            });
-                        } else {
-                            setFields({ pipelines: [] });
-                        }
-                    }}
-                >
-                    Enable S3 pipeline ingestion
-                </Checkbox>
-            </FormField> */}
-
             {/* S3 Bucket - only show if pipeline is enabled */}
             {item.pipelines && item.pipelines.length > 0 && (
                 <>

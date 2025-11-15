@@ -858,11 +858,31 @@ class PipelineConfig(BaseModel):
     """Defines pipeline configuration for automated document ingestion."""
 
     autoRemove: bool = Field(default=True, description="Automatically remove documents after ingestion")
-    chunkOverlap: int = Field(ge=0, description="Chunk overlap for pipeline ingestion")
-    chunkSize: int = Field(ge=100, le=10000, description="Chunk size for pipeline ingestion")
+    chunkOverlap: Optional[int] = Field(default=None, ge=0, description="Chunk overlap for pipeline ingestion (deprecated, use chunkingStrategy)")
+    chunkSize: Optional[int] = Field(default=None, ge=100, le=10000, description="Chunk size for pipeline ingestion (deprecated, use chunkingStrategy)")
+    chunkingStrategy: Optional[ChunkingStrategy] = Field(default=None, description="Chunking strategy for documents in this pipeline")
     s3Bucket: str = Field(min_length=1, description="S3 bucket for pipeline source")
     s3Prefix: str = Field(description="S3 prefix for pipeline source")
     trigger: PipelineTrigger = Field(description="Pipeline trigger type")
+
+    @model_validator(mode="after")
+    def validate_chunking_config(self) -> Self:
+        """Validates that either chunkingStrategy or legacy chunk fields are provided."""
+        has_legacy = self.chunkSize is not None and self.chunkOverlap is not None
+        has_new = self.chunkingStrategy is not None
+        
+        if not has_legacy and not has_new:
+            raise ValueError("Either chunkingStrategy or both chunkSize and chunkOverlap must be provided")
+        
+        # If legacy fields provided but no chunkingStrategy, create one
+        if has_legacy and not has_new:
+            self.chunkingStrategy = FixedChunkingStrategy(
+                type=ChunkingStrategyType.FIXED,
+                size=self.chunkSize,
+                overlap=self.chunkOverlap
+            )
+        
+        return self
 
 
 class CollectionMetadata(BaseModel):
@@ -935,7 +955,6 @@ class RagCollectionConfig(BaseModel):
     createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Creation timestamp")
     updatedAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Last update timestamp")
     status: CollectionStatus = Field(default=CollectionStatus.ACTIVE, description="Collection status")
-    private: bool = Field(default=False, description="Whether collection is private to creator")
     pipelines: List[PipelineConfig] = Field(default_factory=list, description="Automated ingestion pipelines")
     default: bool = Field(default=False, description="Indicates if this is a default collection for Bedrock KB")
     dataSourceId: Optional[str] = Field(
@@ -1087,10 +1106,10 @@ class VectorStoreConfig(BaseModel):
 
     repositoryId: str = Field(description="Unique identifier for the repository")
     repositoryName: Optional[str] = Field(default=None, description="User-friendly name for the repository")
+    description: Optional[str] = Field(default=None, description="Description of the repository")
     embeddingModelId: Optional[str] = Field(default=None, description="Default embedding model ID")
     type: str = Field(description="Type of vector store (opensearch, pgvector, bedrock_knowledge_base)")
     allowedGroups: List[str] = Field(default_factory=list, description="User groups with access to this repository")
-    allowUserCollections: bool = Field(default=True, description="Whether non-admin users can create collections")
     metadata: Optional[RepositoryMetadata] = Field(default=None, description="Repository metadata")
     pipelines: Optional[List[PipelineConfig]] = Field(default=None, description="Automated ingestion pipelines")
     # Type-specific configurations
@@ -1111,10 +1130,8 @@ class UpdateVectorStoreRequest(BaseModel):
     """Request model for updating a vector store."""
 
     repositoryName: Optional[str] = Field(default=None, description="User-friendly name")
+    description: Optional[str] = Field(default=None, description="Description of the repository")
     embeddingModelId: Optional[str] = Field(default=None, description="Default embedding model ID")
     allowedGroups: Optional[List[str]] = Field(default=None, description="User groups with access")
-    allowUserCollections: Optional[bool] = Field(
-        default=None, description="Whether non-admin users can create collections"
-    )
     metadata: Optional[RepositoryMetadata] = Field(default=None, description="Repository metadata")
     pipelines: Optional[List[PipelineConfig]] = Field(default=None, description="Automated ingestion pipelines")

@@ -20,7 +20,7 @@ import { scrollToInvalid, useValidationReducer } from '../../../shared/validatio
 import { useAppDispatch } from '../../../config/store';
 import { useNotificationService } from '../../../shared/util/hooks';
 import { setConfirmationModal } from '../../../shared/reducers/modal.reducer';
-import { useCreateRagRepositoryMutation } from '../../../shared/reducers/rag.reducer';
+import { useCreateRagRepositoryMutation, useUpdateRagRepositoryMutation } from '../../../shared/reducers/rag.reducer';
 import { RepositoryConfigForm } from './RepositoryConfigForm';
 import { ReviewChanges } from '../../../shared/modal/ReviewChanges';
 import { getJsonDifference, normalizeError } from '../../../shared/util/validationUtils';
@@ -28,7 +28,7 @@ import { ModifyMethod } from '../../../shared/validation/modify-method';
 import { PipelineConfigForm } from './PipelineConfigForm';
 import _ from 'lodash';
 import { getDefaults } from '#root/lib/schema/zodUtil';
-import { RagRepositoryConfig, RagRepositoryConfigSchema } from '#root/lib/schema';
+import { RagRepositoryConfig, RagRepositoryConfigSchema, RagRepositoryType } from '#root/lib/schema';
 
 export type CreateRepositoryModalProps = {
     visible: boolean;
@@ -58,6 +58,16 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
             reset: resetCreate,
         },
     ] = useCreateRagRepositoryMutation();
+
+    const [
+        updateRepositoryMutation,
+        {
+            isSuccess: isUpdateSuccess,
+            error: updateError,
+            isLoading: isUpdating,
+            reset: resetUpdate,
+        },
+    ] = useUpdateRagRepositoryMutation();
 
     const initialForm: RagRepositoryConfig = {
         ...getDefaults(RagRepositoryConfigSchema),
@@ -94,15 +104,30 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [toSubmit, initialForm, isEdit]);
 
-    const reviewError = normalizeError('Repository', createError);
+    const reviewError = normalizeError('Repository', isEdit ? updateError : createError);
 
     const requiredFields = [['repositoryId', 'type', 'rdsConfig.username', 'rdsConfig.dbName', 'rdsConfig.dbPort', 'opensearchConfig.dataNodes', 'opensearchConfig.dataNodes', 'opensearchConfig.dataNodeInstanceType'], []];
 
 
     function handleSubmit () {
         if (isValid && !_.isEmpty(changesDiff)) {
-            resetCreate();
-            createRepositoryMutation({ ragConfig: toSubmit });
+            // For Bedrock Knowledge Base repositories, remove pipelines - they're managed by the backend
+            const submissionData = { ...toSubmit };
+            if (submissionData.type === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE) {
+                delete submissionData.pipelines;
+            }
+            
+            if (isEdit) {
+                resetUpdate();
+                // For updates, only send the changed fields
+                updateRepositoryMutation({
+                    repositoryId: submissionData.repositoryId,
+                    updates: changesDiff,
+                });
+            } else {
+                resetCreate();
+                createRepositoryMutation(submissionData);
+            }
         }
     }
 
@@ -142,6 +167,16 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isCreating, isCreateSuccess]);
+
+    useEffect(() => {
+        if (!isUpdating && isUpdateSuccess) {
+            notificationService.generateNotification(`Successfully updated repository: ${state.form.repositoryId}`, 'success');
+            setVisible(false);
+            setIsEdit(false);
+            resetState();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isUpdating, isUpdateSuccess]);
 
     const steps = [
         {
@@ -192,6 +227,7 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
             activeStepIndex: 0,
         }, ModifyMethod.Set);
         resetCreate();
+        resetUpdate();
     }
 
     return (
@@ -259,7 +295,7 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
                 }}
                 onSubmit={() => handleSubmit()}
                 activeStepIndex={state.activeStepIndex}
-                isLoadingNextStep={isCreating}
+                isLoadingNextStep={isCreating || isUpdating}
                 allowSkipTo
                 steps={steps}
             />

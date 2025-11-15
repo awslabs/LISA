@@ -48,10 +48,6 @@ class VectorStoreRepository:
             if item.get("legacy", False):
                 config["legacy"] = True
 
-            # Apply default values for new fields if not present
-            if "allowUserCollections" not in config:
-                config["allowUserCollections"] = True
-
             if "metadata" not in config:
                 config["metadata"] = {"tags": []}
             elif isinstance(config["metadata"], dict) and "tags" not in config["metadata"]:
@@ -111,10 +107,6 @@ class VectorStoreRepository:
         # Get config and apply defaults for backward compatibility
         config = cast(dict[str, Any], repository.get("config", {}))
         config["status"] = repository.get("status")
-
-        # Apply default values for new fields if not present
-        if "allowUserCollections" not in config:
-            config["allowUserCollections"] = True
 
         if "metadata" not in config:
             config["metadata"] = {"tags": []}

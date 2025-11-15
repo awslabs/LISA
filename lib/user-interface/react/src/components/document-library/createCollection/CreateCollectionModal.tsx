@@ -91,8 +91,6 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
         allowedGroups: [],
         metadata: { tags: [], customFields: {} },
         allowChunkingOverride: true,
-        // private: false,
-        // pipelines: [],
     };
 
     const dispatch = useAppDispatch();
@@ -162,8 +160,6 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
                     allowedGroups: toSubmit.allowedGroups,
                     metadata: toSubmit.metadata,
                     allowChunkingOverride: toSubmit.allowChunkingOverride,
-                    // private: toSubmit.private,
-                    // pipelines: toSubmit.pipelines,
                 });
             } else {
                 resetCreate();
@@ -176,8 +172,6 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
                     allowedGroups: toSubmit.allowedGroups,
                     metadata: toSubmit.metadata,
                     allowChunkingOverride: toSubmit.allowChunkingOverride,
-                    // private: toSubmit.private,
-                    // pipelines: toSubmit.pipelines,
                 });
             }
         }
@@ -200,8 +194,6 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
                     allowChunkingOverride: selectedCollection.allowChunkingOverride !== undefined
                         ? selectedCollection.allowChunkingOverride
                         : true,
-                    // private: selectedCollection.private,
-                    // pipelines: selectedCollection.pipelines || [],
                 },
             });
         }

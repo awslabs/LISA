@@ -63,6 +63,16 @@ export function RepositoryConfigForm (props: FormProps<RagRepositoryConfig> & Re
                     }} placeholder='Postgres RAG' />
             </FormField>
 
+            <FormField label='Description - optional'
+                errorText={formErrors?.description}
+                description={shape.description.description}>
+                <Input value={item.description} inputMode='text'
+                    onBlur={() => touchFields(['description'])}
+                    onChange={({ detail }) => {
+                        setFields({ 'description': detail.value });
+                    }} placeholder='A repository for storing RAG documents' />
+            </FormField>
+
             {/* Common Fields: Embedding Model */}
             <CommonFieldsForm
                 item={item}

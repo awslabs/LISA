@@ -1272,12 +1272,12 @@ def update_repository(event: dict, context: dict) -> Dict[str, Any]:
     updates = {}
     if request.repositoryName is not None:
         updates["repositoryName"] = request.repositoryName
+    if request.description is not None:
+        updates["description"] = request.description
     if request.embeddingModelId is not None:
         updates["embeddingModelId"] = request.embeddingModelId
     if request.allowedGroups is not None:
         updates["allowedGroups"] = request.allowedGroups
-    if request.allowUserCollections is not None:
-        updates["allowUserCollections"] = request.allowUserCollections
     if request.metadata is not None:
         updates["metadata"] = (
             request.metadata.model_dump() if hasattr(request.metadata, "model_dump") else request.metadata

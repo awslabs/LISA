@@ -79,10 +79,6 @@ class CollectionService:
         if require_write:
             return False
 
-        # Private collections are only accessible to creator and admins
-        if collection.private:
-            return False
-
         # Public collection (empty allowedGroups means accessible to all)
         allowed_groups = collection.allowedGroups or []
         if not allowed_groups:

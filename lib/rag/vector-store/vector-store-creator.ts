@@ -181,8 +181,8 @@ export class VectorStoreCreatorStack extends Construct {
         const createBedrockCollectionFn = new lambda.Function(this, 'CreateBedrockCollectionFn', {
             functionName: createCdkId([config.deploymentName, config.deploymentStage, 'create_bedrock_collection']),
             runtime: getDefaultRuntime(),
-            handler: 'lambda_functions.create_bedrock_collection',
-            code: lambda.Code.fromAsset(`${config.lambdaPath || LAMBDA_PATH}/repository`),
+            handler: 'repository.lambda_functions.create_bedrock_collection',
+            code: lambda.Code.fromAsset(config.lambdaPath || LAMBDA_PATH),
             timeout: Duration.minutes(5),
             memorySize: 512,
             role: lambdaExecutionRole,

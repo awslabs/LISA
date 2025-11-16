@@ -40,6 +40,7 @@ from repository.rag_document_repo import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.repository_types import RepositoryType
 from utilities.validation import ValidationError
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +93,6 @@ class CollectionService:
 
     def create_collection(
         self,
-        repository: dict,
         collection: RagCollectionConfig,
         username: str,
     ) -> RagCollectionConfig:
@@ -109,12 +109,6 @@ class CollectionService:
         Raises:
             ValidationError: If collection name already exists in repository
         """
-        if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
-            raise ValidationError(
-                f"Bedrock Knowledge Base repositories only support the default collection. "
-                f"User-created collections are not allowed for repository type: {RepositoryType.BEDROCK_KB}"
-            )
-
         # Check if collection name already exists in this repository
         existing = self.collection_repo.find_by_name(collection.repositoryId, collection.name)
         if existing:
@@ -157,16 +151,16 @@ class CollectionService:
                 VectorStoreStatus.UPDATE_COMPLETE_CLEANUP_IN_PROGRESS,
                 VectorStoreStatus.UPDATE_IN_PROGRESS,
             ]
-            if not active:
+
+            is_bedrock_kb = RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB)
+            if not active and not is_bedrock_kb:
                 logger.info(f"Repository {repository_id} is not active")
                 return None
 
             embedding_model = repository.get("embeddingModelId")
-            if not embedding_model:
+            if not embedding_model and not is_bedrock_kb:
                 logger.info(f"Repository {repository_id} has no default embedding model")
                 return None
-
-            is_bedrock_kb = RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB)
 
             # For Bedrock KB repositories, use data source ID as collection ID
             if is_bedrock_kb:
@@ -179,18 +173,16 @@ class CollectionService:
 
                 collection_id = data_source_id
                 description = "Default collection for Bedrock Knowledge Base"
-                tags = ["default", "bedrock-kb"]
+                tags = ["default"]
                 allow_chunking_override = False  # KB controls chunking
-                sanitized_name = f"{repository_id}-default"
+                sanitized_name = f"{repository.get('name', repository_id)}-{data_source_id}"
             else:
                 # For other repository types, use embedding model as collection ID
                 collection_id = embedding_model
                 description = "Default collection using repository's embedding model"
                 tags = ["default"]
                 allow_chunking_override = True
-                sanitized_name = f"{repository_id}-{embedding_model}".replace(".", "-")
-
-            from datetime import datetime, timezone
+                sanitized_name = f"{repository.get('name', repository_id)}-{embedding_model}".replace(".", "-")
 
             default_collection = RagCollectionConfig(
                 collectionId=collection_id,
@@ -768,7 +760,11 @@ class CollectionService:
                 accessible = [c for c in collections if self.has_access(c, username, user_groups, is_admin)]
 
                 # Check if default collection needs to be added
-                default_collection = self.create_default_collection(repo_id, repo)
+                default_collection = (
+                    self.create_default_collection(repo_id, repo)
+                    if not RepositoryType.is_type(repo, RepositoryType.BEDROCK_KB)
+                    else None
+                )
                 if default_collection:
                     # Check if a collection with the default embedding model ID already exists
                     existing_ids = {c.collectionId for c in accessible}
@@ -945,7 +941,7 @@ class CollectionService:
                     seen_collection_ids[repo_id].add(c.collectionId)
 
                 # On first fetch for this repository, check if default collection needs to be added
-                if not cursor["lastEvaluatedKey"]:
+                if not cursor["lastEvaluatedKey"] and not RepositoryType.is_type(repo, RepositoryType.BEDROCK_KB):
                     default_collection = self.create_default_collection(repo_id, repo)
                     if default_collection:
                         # Check if we've seen a collection with the default embedding model ID

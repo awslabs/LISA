@@ -176,7 +176,6 @@ class TestBedrockKBCollectionRestrictions:
         # Act & Assert
         with pytest.raises(ValidationError) as exc_info:
             collection_service.create_collection(
-                repository=bedrock_kb_repository,
                 collection=new_collection,
                 username="testuser",
             )

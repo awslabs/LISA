@@ -595,8 +595,11 @@ class IngestionJob(BaseModel):
     metadata: Optional[dict] = Field(default=None)
     job_type: Optional[JobActionType] = Field(default=None, description="Type of deletion job")
     collection_deletion: bool = Field(default=False, description="Indicates this is a collection deletion job")
+    s3_paths: Optional[List[str]] = Field(
+        default=None, description="List of S3 paths for batch ingestion operations"
+    )
     document_ids: Optional[List[str]] = Field(
-        default=None, description="List of document IDs or S3 paths for batch operations"
+        default=None, description="List of document IDs from completed batch operations"
     )
 
     def __init__(self, **data: Any) -> None:
@@ -955,9 +958,7 @@ class RagCollectionConfig(BaseModel):
         default=None, description="Collection-specific metadata (merged with parent)"
     )
     allowedGroups: Optional[List[str]] = Field(default=None, description="User groups with access to collection")
-    embeddingModel: str = Field(
-        min_length=1, description="Embedding model ID (can be set at creation, immutable after)"
-    )
+    embeddingModel: Optional[str] = Field(description="Embedding model ID (can be set at creation, immutable after)")
     createdBy: str = Field(min_length=1, description="User ID of creator")
     createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Creation timestamp")
     updatedAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Last update timestamp")

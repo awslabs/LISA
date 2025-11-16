@@ -98,8 +98,10 @@ def pipeline_ingest_document(job: IngestionJob) -> None:
                 kb_s3_path = f"s3://{kb_bucket}/{os.path.basename(job.s3_path)}"
 
             # Check if document already exists (idempotent operation)
-            existing_docs = rag_document_repository.find_by_source(
-                job.repository_id, job.collection_id, kb_s3_path, join_docs=False
+            existing_docs = list(
+                rag_document_repository.find_by_source(
+                    job.repository_id, job.collection_id, kb_s3_path, join_docs=False
+                )
             )
 
             if existing_docs:
@@ -150,8 +152,8 @@ def pipeline_ingest_document(job: IngestionJob) -> None:
         )
 
         # remove old
-        for rag_document in rag_document_repository.find_by_source(
-            job.repository_id, job.collection_id, job.s3_path, join_docs=True
+        for rag_document in list(
+            rag_document_repository.find_by_source(job.repository_id, job.collection_id, job.s3_path, join_docs=True)
         ):
             prev_job = ingestion_job_repository.find_by_document(rag_document.document_id)
 

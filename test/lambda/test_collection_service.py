@@ -61,7 +61,7 @@ def test_create_collection():
 
     mock_repo.find_by_name.return_value = None  # No existing collection
     mock_repo.create.return_value = collection
-    result = service.create_collection(repository, collection, "user")
+    result = service.create_collection(collection, "user")
 
     assert result.collectionId == "test-coll"
     mock_repo.create.assert_called_once()

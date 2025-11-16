@@ -284,12 +284,12 @@ def create_bedrock_collection(event: dict, context: dict) -> Dict[str, Any]:
 
         if collection is None:
             raise ValidationError(f"Failed to create default collection for repository {repository_id}")
-
+        collection_service.create_collection(collection=collection, username='system')
         logger.info(f"Successfully created default collection: {collection.collectionId}")
 
         # Ingest existing documents from S3 bucket if s3pipeline is configured
         bedrock_config = rag_config.get("bedrockKnowledgeBaseConfig", {})
-        s3_bucket = bedrock_config.get("s3pipeline")
+        s3_bucket = bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket")
 
         if s3_bucket:
             logger.info(f"Scanning S3 bucket {s3_bucket} for existing documents")
@@ -339,10 +339,10 @@ def create_collection(event: dict, context: dict) -> Dict[str, Any]:
         raise ValidationError("repositoryId is required")
 
     # Get user context
-    username, is_admin, groups = get_user_context(event)
+    username, _, _ = get_user_context(event)
 
     # Ensure repository exists and user has access
-    repository = get_repository(event, repository_id=repository_id)
+    _ = get_repository(event, repository_id=repository_id)
 
     # Parse request body
     try:
@@ -358,7 +358,6 @@ def create_collection(event: dict, context: dict) -> Dict[str, Any]:
 
     # Create collection via service
     created_collection = collection_service.create_collection(
-        repository=repository,
         collection=collection,
         username=username,
     )
@@ -909,6 +908,9 @@ def ingest_documents(event: dict, context: dict) -> dict:
             is_admin=is_admin,
         ).model_dump()
 
+    # Get metadata
+    metadata = collection_service.get_collection_metadata(repository, collection, request.metadata)
+
     # Create jobs
     jobs = []
     for key in request.keys:
@@ -919,6 +921,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
             query_params=query_params,
             s3_path=f"s3://{bucket}/{key}",
             username=username,
+            metadata=metadata,
         )
         ingestion_job_repository.save(job)
         ingestion_service.submit_create_job(job)

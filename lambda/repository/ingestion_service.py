@@ -13,11 +13,10 @@
 #   limitations under the License.
 import logging
 import os
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import boto3
 from models.domain_objects import Enum, FixedChunkingStrategy, IngestDocumentRequest, IngestionJob
-from repository.collection_service import CollectionService
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +52,7 @@ class DocumentIngestionService:
         query_params: dict,
         s3_path: str,
         username: str,
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> IngestionJob:
 
         # Determine collection_id
@@ -85,10 +85,6 @@ class DocumentIngestionService:
         embedding_model = collection.get("embeddingModel") if collection else repository.get("embeddingModelId")
         source = "collection" if collection else "repository"
         logger.info(f"Using embedding model for ingestion: {embedding_model} (from {source})")
-
-        # Get metadata tags
-        collection_service = CollectionService()
-        metadata = collection_service.get_collection_metadata(repository, collection, request.metadata)
 
         job = IngestionJob(
             repository_id=repository.get("repositoryId"),

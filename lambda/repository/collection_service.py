@@ -18,6 +18,7 @@
 import heapq
 import logging
 import os
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 import boto3
@@ -27,6 +28,7 @@ from models.domain_objects import (
     CollectionStatus,
     IngestionJob,
     IngestionStatus,
+    IngestionType,
     JobActionType,
     RagCollectionConfig,
     SortOrder,
@@ -40,7 +42,6 @@ from repository.rag_document_repo import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.repository_types import RepositoryType
 from utilities.validation import ValidationError
-from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -397,6 +398,23 @@ class CollectionService:
             # For default collections, use embedding_name directly
             embedding_model = embedding_name
 
+        # Get document counts by ingestion type for summary
+        try:
+            all_docs, _, _ = self.document_repo.list_all(
+                repository_id=repository_id,
+                collection_id=collection_id if not is_default_collection else embedding_name,
+                limit=10000,  # Get all documents for accurate count
+            )
+
+            lisa_managed_count = sum(
+                1 for d in all_docs if d.ingestion_type in [IngestionType.MANUAL, IngestionType.AUTO]
+            )
+            user_managed_count = sum(1 for d in all_docs if d.ingestion_type == IngestionType.EXISTING)
+        except Exception as e:
+            logger.warning(f"Failed to get document counts: {e}")
+            lisa_managed_count = None
+            user_managed_count = None
+
         # Create deletion job
         try:
             ingestion_job_repo = IngestionJobRepository()
@@ -419,11 +437,24 @@ class CollectionService:
 
             logger.info(f"Submitted {deletion_type} deletion job {deletion_job.id} " f"for repository {repository_id}")
 
-            return {
+            response = {
                 "jobId": deletion_job.id,
                 "deletionType": deletion_type,
                 "status": deletion_job.status,
             }
+
+            # Add summary if counts available
+            if lisa_managed_count is not None and user_managed_count is not None:
+                response["summary"] = {
+                    "lisaManagedDocuments": lisa_managed_count,
+                    "userManagedDocuments": user_managed_count,
+                    "action": (
+                        "LISA-managed documents (MANUAL/AUTO) will be deleted, "
+                        "user-managed documents (EXISTING) preserved"
+                    ),
+                }
+
+            return response
 
         except Exception as e:
             logger.error(f"Failed to submit deletion job: {e}", exc_info=True)

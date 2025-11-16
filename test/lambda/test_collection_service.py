@@ -42,11 +42,6 @@ def test_create_collection():
     mock_document_repo = Mock()
     service = CollectionService(mock_repo, mock_vector_store_repo, mock_document_repo)
 
-    repository = {
-        "repositoryId": "test-repo",
-        "type": RepositoryType.OPENSEARCH,
-    }
-
     collection = RagCollectionConfig(
         collectionId="test-coll",
         repositoryId="test-repo",

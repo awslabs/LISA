@@ -420,10 +420,11 @@ class DeleteModelResponse(ApiResponseBase):
 
 
 class IngestionType(StrEnum):
-    """Specifies whether ingestion was automatic or manual."""
+    """Specifies how document was ingested into the system."""
 
-    AUTO = auto()
-    MANUAL = auto()
+    AUTO = auto()  # Automatic ingestion via pipeline (event-driven)
+    MANUAL = auto()  # Manual ingestion via API (user-initiated)
+    EXISTING = auto()  # Pre-existing document discovered in KB (user-managed)
 
 
 class JobActionType(StrEnum):
@@ -587,6 +588,9 @@ class IngestionJob(BaseModel):
         default=None, description="Embedding model name, used as index identifier for default collections"
     )
     username: Optional[str] = Field(default=None)
+    ingestion_type: IngestionType = Field(
+        default=IngestionType.MANUAL, description="How the document was ingested (MANUAL, AUTO, or EXISTING)"
+    )
     status: IngestionStatus = IngestionStatus.INGESTION_PENDING
     created_date: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     error_message: Optional[str] = Field(default=None)
@@ -595,9 +599,7 @@ class IngestionJob(BaseModel):
     metadata: Optional[dict] = Field(default=None)
     job_type: Optional[JobActionType] = Field(default=None, description="Type of deletion job")
     collection_deletion: bool = Field(default=False, description="Indicates this is a collection deletion job")
-    s3_paths: Optional[List[str]] = Field(
-        default=None, description="List of S3 paths for batch ingestion operations"
-    )
+    s3_paths: Optional[List[str]] = Field(default=None, description="List of S3 paths for batch ingestion operations")
     document_ids: Optional[List[str]] = Field(
         default=None, description="List of document IDs from completed batch operations"
     )

@@ -392,7 +392,10 @@ class RagDocumentRepository:
                     future.result()
 
     def delete_s3_docs(self, repository_id: str, docs: list[RagDocument]) -> list[str]:
-        """Remove documents from S3.
+        """Remove documents from S3 based on ingestion type.
+
+        Only deletes S3 objects for MANUAL and AUTO ingestion types.
+        EXISTING documents are preserved in S3 (user-managed).
 
         Args:
             repository_id: The repository ID
@@ -411,6 +414,8 @@ class RagDocumentRepository:
 
         # Determine which documents should be removed from S3
         removed_source: list[str] = []
+        preserved_count = 0
+
         for doc in docs:
             if not doc:
                 continue
@@ -422,13 +427,24 @@ class RagDocumentRepository:
             if not doc_source:
                 continue
 
-            # Manual ingestion: always remove from S3
-            if doc_ingestion_type != IngestionType.AUTO:
+            # EXISTING documents: never remove from S3 (user-managed)
+            if doc_ingestion_type == IngestionType.EXISTING:
+                logging.info(f"Preserving user-managed document in S3: {doc_source}")
+                preserved_count += 1
+                continue
+
+            # MANUAL ingestion: always remove from S3
+            if doc_ingestion_type == IngestionType.MANUAL:
                 removed_source.append(doc_source)
-            # Auto ingestion: only remove if pipeline has autoRemove enabled
-            # Check if the collection's pipeline has autoRemove enabled
-            elif doc_collection_id and pipelines.get(doc_collection_id):
-                removed_source.append(doc_source)
+                continue
+
+            # AUTO ingestion: only remove if pipeline has autoRemove enabled
+            if doc_ingestion_type == IngestionType.AUTO:
+                if doc_collection_id and pipelines.get(doc_collection_id):
+                    removed_source.append(doc_source)
+                else:
+                    logging.info(f"Preserving AUTO document (autoRemove=False): {doc_source}")
+                    preserved_count += 1
 
         # Delete from S3
         for source in removed_source:
@@ -438,5 +454,7 @@ class RagDocumentRepository:
             except Exception as e:
                 logging.error(f"Failed to delete S3 object {source}: {e}")
                 # Continue with other deletions
+
+        logging.info(f"S3 deletion complete: deleted={len(removed_source)}, preserved={preserved_count}")
 
         return removed_source

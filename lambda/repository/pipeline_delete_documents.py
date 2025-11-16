@@ -137,7 +137,8 @@ def pipeline_delete_collection(job: IngestionJob) -> None:
             drop_pgvector_collection(job.repository_id, job.collection_id)
         elif RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
             # For Bedrock KB, use bulk delete for efficiency
-            logger.info("Bedrock KB collection - bulk deleting documents from knowledge base")
+            # Only delete LISA-managed documents (MANUAL/AUTO), preserve EXISTING
+            logger.info("Bedrock KB collection - bulk deleting LISA-managed documents from knowledge base")
             pk = f"{job.repository_id}#{job.collection_id}"
 
             dynamodb = boto3.resource("dynamodb")
@@ -153,10 +154,19 @@ def pipeline_delete_collection(job: IngestionJob) -> None:
                 )
                 documents.extend(response.get("Items", []))
 
-            logger.info(f"Found {len(documents)} documents to bulk delete from Bedrock KB")
+            logger.info(f"Found {len(documents)} total documents in collection")
 
-            # Extract S3 paths for bulk deletion
-            s3_paths = [doc.get("source", "") for doc in documents if doc.get("source")]
+            # Separate by ingestion type
+            lisa_managed = [doc for doc in documents if doc.get("ingestion_type") in ["manual", "auto"]]
+            user_managed = [doc for doc in documents if doc.get("ingestion_type") == "existing"]
+
+            logger.info(
+                f"Collection {job.collection_id}: "
+                f"lisa_managed={len(lisa_managed)}, user_managed={len(user_managed)}"
+            )
+
+            # Extract S3 paths for LISA-managed documents only
+            s3_paths = [doc.get("source", "") for doc in lisa_managed if doc.get("source")]
 
             if s3_paths:
                 try:
@@ -166,10 +176,15 @@ def pipeline_delete_collection(job: IngestionJob) -> None:
                         repository=repository,
                         s3_paths=s3_paths,
                     )
-                    logger.info(f"Successfully bulk deleted {len(s3_paths)} documents from Bedrock KB")
+                    logger.info(
+                        f"Successfully bulk deleted {len(s3_paths)} LISA-managed documents from KB, "
+                        f"preserved {len(user_managed)} user-managed documents"
+                    )
                 except Exception as e:
                     logger.error(f"Failed to bulk delete documents from Bedrock KB: {e}")
                     # Continue with DynamoDB deletion even if KB deletion fails
+            else:
+                logger.info("No LISA-managed documents to delete from KB")
 
         # Delete all documents and subdocuments from DynamoDB
         # This method handles pagination and batch deletion

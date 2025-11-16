@@ -284,7 +284,7 @@ def create_bedrock_collection(event: dict, context: dict) -> Dict[str, Any]:
 
         if collection is None:
             raise ValidationError(f"Failed to create default collection for repository {repository_id}")
-        collection_service.create_collection(collection=collection, username='system')
+        collection_service.create_collection(collection=collection, username="system")
         logger.info(f"Successfully created default collection: {collection.collectionId}")
 
         # Ingest existing documents from S3 bucket if s3pipeline is configured
@@ -293,7 +293,7 @@ def create_bedrock_collection(event: dict, context: dict) -> Dict[str, Any]:
 
         if s3_bucket:
             logger.info(f"Scanning S3 bucket {s3_bucket} for existing documents")
-            ingest_bedrock_s3_documents(
+            discovered, skipped = ingest_bedrock_s3_documents(
                 s3_client=s3,
                 ingestion_job_repository=ingestion_job_repository,
                 ingestion_service=ingestion_service,
@@ -301,6 +301,10 @@ def create_bedrock_collection(event: dict, context: dict) -> Dict[str, Any]:
                 collection_id=collection.collectionId,
                 s3_bucket=s3_bucket,
                 embedding_model=repository.get("embeddingModelId"),
+            )
+            logger.info(
+                f"Document discovery complete for repository {repository_id}: "
+                f"discovered={discovered}, skipped={skipped}"
             )
 
         # Return collection configuration

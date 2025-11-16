@@ -15,7 +15,7 @@
  */
 
 import Container from '@cloudscape-design/components/container';
-import { Header, SpaceBetween } from '@cloudscape-design/components';
+import { Header, SpaceBetween, Alert } from '@cloudscape-design/components';
 import FormField from '@cloudscape-design/components/form-field';
 import Input from '@cloudscape-design/components/input';
 import React, { ReactElement } from 'react';
@@ -32,6 +32,12 @@ export function BedrockKnowledgeBaseConfigForm (props: FormProps<BedrockKnowledg
     return (
         <Container header={<Header variant='h2'>Bedrock Knowledge Base Config</Header>}>
             <SpaceBetween direction='vertical' size='s'>
+                <Alert type='info' header='How LISA manages your Knowledge Base documents'>
+                    LISA tracks document ownership to preserve your existing data. Documents already in your Knowledge Base
+                    are marked as user-managed and will never be deleted by LISA. Only documents uploaded through LISA
+                    (via manual upload or automated pipelines) can be removed when you delete a collection. This ensures
+                    LISA only manages its own documents while respecting your pre-existing Knowledge Base content.
+                </Alert>
                 <FormField label='Knowledge Base Name' key={'bedrockKnowledgeBaseName'}
                     errorText={formErrors?.bedrockKnowledgeBaseConfig?.bedrockKnowledgeBaseName}
                     description={BedrockKnowledgeBaseInstanceConfig.shape.bedrockKnowledgeBaseName.description}>

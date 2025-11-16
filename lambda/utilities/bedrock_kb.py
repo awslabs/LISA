@@ -27,6 +27,7 @@ from typing import Any, Dict, List
 from models.domain_objects import (
     ChunkingStrategyType,
     IngestionJob,
+    IngestionType,
     JobActionType,
     NoneChunkingStrategy,
     PipelineConfig,
@@ -201,9 +202,12 @@ def ingest_bedrock_s3_documents(
     collection_id: str,
     s3_bucket: str,
     embedding_model: str,
-) -> None:
+) -> tuple[int, int]:
     """
-    Scan S3 bucket and create batch ingestion jobs for documents.
+    Discover and index existing documents in Bedrock KB S3 bucket.
+
+    Scans S3 bucket for existing documents and creates tracking records
+    with ingestion_type=EXISTING to indicate they are user-managed.
 
     Only scans depth 1 (root level) and ignores metadata files.
     Creates multiple batch jobs if more than 100 documents found.
@@ -216,14 +220,20 @@ def ingest_bedrock_s3_documents(
         collection_id: Collection identifier
         s3_bucket: S3 bucket to scan
         embedding_model: Embedding model identifier
+
+    Returns:
+        Tuple of (discovered_count, skipped_count)
     """
+    discovered_count = 0
+    skipped_count = 0
+
     try:
         # List objects at root level only
         response = s3_client.list_objects_v2(Bucket=s3_bucket, Delimiter="/")
 
         if "Contents" not in response:
             logger.info(f"No documents found in S3 bucket {s3_bucket}")
-            return
+            return (0, 0)
 
         # Filter out metadata files and collect document paths
         document_paths = []
@@ -231,16 +241,19 @@ def ingest_bedrock_s3_documents(
             key = obj["Key"]
             # Skip metadata files and directories
             if key.endswith("/") or key.endswith(".metadata.json"):
+                skipped_count += 1
                 continue
             document_paths.append(f"s3://{s3_bucket}/{key}")
 
         if not document_paths:
             logger.info(f"No valid documents found in S3 bucket {s3_bucket}")
-            return
+            return (0, skipped_count)
 
-        logger.info(f"Found {len(document_paths)} documents to ingest")
+        logger.info(f"Found {len(document_paths)} documents to discover and index")
+        discovered_count = len(document_paths)
 
         # Create batch jobs (max 100 documents per job)
+        # Mark as EXISTING to indicate pre-existing user-managed documents
         batch_size = 100
         for i in range(0, len(document_paths), batch_size):
             batch = document_paths[i : i + batch_size]
@@ -251,7 +264,8 @@ def ingest_bedrock_s3_documents(
                 embedding_model=embedding_model,
                 chunk_strategy=NoneChunkingStrategy(),
                 s3_path="",  # Not used for batch jobs
-                username="system",
+                username="system",  # System-discovered
+                ingestion_type=IngestionType.EXISTING,  # Mark as pre-existing
                 job_type=JobActionType.DOCUMENT_BATCH_INGESTION,
                 s3_paths=batch,
             )
@@ -259,9 +273,13 @@ def ingest_bedrock_s3_documents(
             ingestion_job_repository.save(job)
             ingestion_service.submit_create_job(job)
             logger.info(
-                f"Created batch ingestion job {job.id} for {len(batch)} documents (batch {i // batch_size + 1})"
+                f"Created discovery job {job.id} for {len(batch)} EXISTING documents " f"(batch {i // batch_size + 1})"
             )
+
+        logger.info(f"Document discovery complete: discovered={discovered_count}, skipped={skipped_count}")
+        return (discovered_count, skipped_count)
 
     except Exception as e:
         logger.error(f"Failed to scan S3 bucket {s3_bucket}: {str(e)}", exc_info=True)
-        # Don't raise - collection creation should succeed even if ingestion fails
+        # Don't raise - collection creation should succeed even if discovery fails
+        return (discovered_count, skipped_count)

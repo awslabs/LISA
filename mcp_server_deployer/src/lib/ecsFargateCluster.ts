@@ -163,7 +163,7 @@ export class ECSFargateCluster extends Construct {
                 interval: Duration.seconds(30),
                 retries: 3,
                 timeout: Duration.seconds(10),
-                startPeriod: Duration.seconds(0),
+                startPeriod: Duration.seconds(90),
             };
         }
 

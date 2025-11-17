@@ -22,6 +22,8 @@ import {
 } from 'aws-cdk-lib/aws-ecs';
 import { Role } from 'aws-cdk-lib/aws-iam';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
+import * as fs from 'fs';
+import * as path from 'path';
 import {
     AuthorizationType,
     ConnectionType,
@@ -609,115 +611,19 @@ export class EcsMcpServer extends Construct {
         if (isS3Based) {
             if (mcpServerConfig.serverType === 'stdio') {
                 // For STDIO servers with S3, install mcp-proxy and set up entrypoint
-                let bashScript = 'set -e; ';
-
-                // Install dependencies if not already present
-                bashScript += 'if ! command -v aws >/dev/null 2>&1; then ';
-                bashScript += 'apt-get update && apt-get install -y --no-install-recommends awscli && apt-get clean && rm -rf /var/lib/apt/lists/*; ';
-                bashScript += 'fi; ';
-
-                // Install mcp-proxy if not present
-                bashScript += 'if ! command -v mcp-proxy >/dev/null 2>&1 && [ ! -f /root/.local/bin/mcp-proxy ]; then ';
-                bashScript += 'if ! command -v curl >/dev/null 2>&1; then apt-get update && apt-get install -y --no-install-recommends curl && apt-get clean && rm -rf /var/lib/apt/lists/*; fi; ';
-                bashScript += 'if ! command -v nodejs >/dev/null 2>&1; then apt-get update && apt-get install -y --no-install-recommends nodejs npm && apt-get clean && rm -rf /var/lib/apt/lists/*; fi; ';
-                bashScript += 'curl -LsSf https://astral.sh/uv/install.sh | sh || true; ';
-                bashScript += 'export PATH="/root/.local/bin:$PATH"; ';
-                bashScript += '/root/.local/bin/uv tool install mcp-proxy || true; ';
-                bashScript += 'fi; ';
-
-                // Create working directory
-                bashScript += 'mkdir -p /app/server; ';
-
-                // Download from S3
-                bashScript += 'if [ -n "$S3_BUCKET" ] && [ -n "$S3_PATH" ]; then ';
-                bashScript += 'echo "Downloading server files from s3://$S3_BUCKET/$S3_PATH..."; ';
-                bashScript += 'aws s3 sync "s3://$S3_BUCKET/$S3_PATH" /app/server/; ';
-                bashScript += 'chmod +x /app/server/* 2>/dev/null || true; ';
-                bashScript += 'fi; ';
-
-                // Change to server directory if files were downloaded
-                bashScript += 'if [ -d /app/server ] && [ "$(ls -A /app/server)" ]; then cd /app/server; fi; ';
-
-                // Execute with mcp-proxy
-                bashScript += `START_CMD='${mcpServerConfig.startCommand.replace(/'/g, '\'\\\'\'')}'; `;
-                bashScript += 'export PATH="/root/.local/bin:$PATH"; ';
-                bashScript += 'if [ -f /root/.local/bin/mcp-proxy ]; then ';
-                bashScript += 'eval exec /root/.local/bin/mcp-proxy --stateless --transport streamablehttp --port=8080 --host=0.0.0.0 --allow-origin="*" "$START_CMD"; ';
-                bashScript += 'elif [ -f /root/.cargo/bin/mcp-proxy ]; then ';
-                bashScript += 'eval exec /root/.cargo/bin/mcp-proxy --stateless --transport streamablehttp --port=8080 --host=0.0.0.0 --allow-origin="*" "$START_CMD"; ';
-                bashScript += 'elif command -v mcp-proxy >/dev/null 2>&1; then ';
-                bashScript += 'eval exec mcp-proxy --stateless --transport streamablehttp --port=8080 --host=0.0.0.0 --allow-origin="*" "$START_CMD"; ';
-                bashScript += 'else ';
-                bashScript += 'echo "ERROR: mcp-proxy not found. Attempting to install..."; ';
-                bashScript += 'curl -LsSf https://astral.sh/uv/install.sh | sh && /root/.local/bin/uv tool install mcp-proxy && eval exec /root/.local/bin/mcp-proxy --stateless --transport streamablehttp --port=8080 --host=0.0.0.0 --allow-origin="*" "$START_CMD"; ';
-                bashScript += 'fi';
-
+                const bashScript = fs.readFileSync(path.join(__dirname, 'scripts', 'stdio-s3-entrypoint.sh'), 'utf-8');
                 entryPoint = ['/bin/bash', '-c'];
                 command = [bashScript];
             } else {
                 // For HTTP/SSE servers with S3, download files and execute start command
-                let bashScript = 'set -e; ';
-
-                // Install AWS CLI if not present
-                bashScript += 'if ! command -v aws >/dev/null 2>&1; then ';
-                bashScript += 'apt-get update && apt-get install -y --no-install-recommends awscli && apt-get clean && rm -rf /var/lib/apt/lists/*; ';
-                bashScript += 'fi; ';
-
-                // Create working directory
-                bashScript += 'mkdir -p /app/server; ';
-
-                // Download from S3
-                bashScript += 'if [ -n "$S3_BUCKET" ] && [ -n "$S3_PATH" ]; then ';
-                bashScript += 'echo "Downloading server files from s3://$S3_BUCKET/$S3_PATH..."; ';
-                bashScript += 'aws s3 sync "s3://$S3_BUCKET/$S3_PATH" /app/server/; ';
-                bashScript += 'chmod +x /app/server/* 2>/dev/null || true; ';
-                bashScript += 'export PATH="/app/server:$PATH"; ';
-                bashScript += 'fi; ';
-
-                // Change to server directory if files were downloaded, otherwise stay in /app
-                bashScript += 'if [ -d /app/server ] && [ "$(ls -A /app/server)" ]; then cd /app/server; else cd /app; fi; ';
-
-                // Execute the start command
-                bashScript += `exec ${mcpServerConfig.startCommand}`;
-
+                const bashScript = fs.readFileSync(path.join(__dirname, 'scripts', 'http-s3-entrypoint.sh'), 'utf-8');
                 entryPoint = ['/bin/bash', '-c'];
                 command = [bashScript];
             }
         } else if (isPrebuiltImage && mcpServerConfig.serverType === 'stdio') {
             // For pre-built STDIO images, we need to override with mcp-proxy wrapper
-            // Build a bash script that:
-            // 1. Downloads from S3 if configured (with environment variable substitution)
-            // 2. Wraps the startCommand with mcp-proxy
-            // Use a single-line script for ECS command array
-            let bashScript = 'set -e; ';
-
-            // Add S3 download logic if s3Path is provided
-            if (mcpServerConfig.s3Path) {
-                bashScript += 'if [ -n "$S3_BUCKET" ] && [ -n "$S3_PATH" ]; then ';
-                bashScript += 'echo "Downloading server files from s3://$S3_BUCKET/$S3_PATH..."; ';
-                bashScript += 'aws s3 sync "s3://$S3_BUCKET/$S3_PATH" /app/server/; ';
-                bashScript += 'chmod +x /app/server/* 2>/dev/null || true; ';
-                bashScript += 'fi; ';
-                bashScript += 'if [ -d /app/server ] && [ "$(ls -A /app/server)" ]; then cd /app/server; fi; ';
-            }
-
-            // Add mcp-proxy execution with fallback paths
-            // mcp-proxy expects the command as a positional argument (after --port and --host), not --command flag
-            // The startCommand may contain spaces, so we need to evaluate it properly in the shell context
-            // Use eval to properly handle commands with spaces and arguments
-            bashScript += `START_CMD='${mcpServerConfig.startCommand.replace(/'/g, '\'\\\'\'')}'; `;
-            bashScript += 'if [ -f /root/.local/bin/mcp-proxy ]; then ';
-            bashScript += 'eval exec /root/.local/bin/mcp-proxy --stateless --transport streamablehttp --port=8080 --host=0.0.0.0 --allow-origin="*" "$START_CMD"; ';
-            bashScript += 'elif [ -f /root/.cargo/bin/mcp-proxy ]; then ';
-            bashScript += 'eval exec /root/.cargo/bin/mcp-proxy --stateless --transport streamablehttp --port=8080 --host=0.0.0.0 --allow-origin="*" "$START_CMD"; ';
-            bashScript += 'elif command -v mcp-proxy >/dev/null 2>&1; then ';
-            bashScript += 'eval exec mcp-proxy --stateless --transport streamablehttp --port=8080 --host=0.0.0.0 --allow-origin="*" "$START_CMD"; ';
-            bashScript += 'else ';
-            bashScript += 'echo "ERROR: mcp-proxy not found. Please ensure mcp-proxy is installed in your Docker image."; ';
-            bashScript += 'exit 1; ';
-            bashScript += 'fi';
-
-            // Use bash to execute the script
+            // The script handles S3 download if env vars are set (safe no-op if not)
+            const bashScript = fs.readFileSync(path.join(__dirname, 'scripts', 'stdio-prebuilt-s3-entrypoint.sh'), 'utf-8');
             entryPoint = ['/bin/bash', '-c'];
             command = [bashScript];
         }

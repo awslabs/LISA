@@ -9,6 +9,15 @@ export all existing API keys before upgrading** and then create the correspondin
 deployment completes. If you rely on programmatic API access (admin keys, service accounts, automations, etc.),
 make sure to capture the current values so they can be re-added once the new table exists.
 
+Additionally, the LISA management key secret has been moved from the Serve stack to the API Base stack, and the secret
+name has changed from `${deploymentName}-lisa-management-key` to `${deploymentName}-management-key` (removed the
+`lisa-` prefix). The new secret will be auto-generated with a new value during deployment. **If you have scripts,
+automations, or integrations that reference the management key by its secret name, you must update them to use the new
+name.** If you need to preserve the existing management key value, export it from AWS Secrets Manager before upgrading
+and manually update the new secret after deployment completes. The SSM parameter `${deploymentPrefix}/appManagementKeySecretName`
+will automatically point to the new secret name, so code that references the secret via this parameter will continue to
+work without changes.
+
 
 ## v4.0.0
 

@@ -71,15 +71,8 @@ export class McpServerApi extends Construct {
 
         const lambdaLayers = [commonLambdaLayer, fastapiLambdaLayer];
 
-        // Get lisa serve endpoint URL parameter
-        const lisaServeEndpointUrlPs = StringParameter.fromStringParameterName(
-            this,
-            'lisaServeEndpointUrlPs',
-            `${config.deploymentPrefix}/lisaServeRestApiUri`
-        );
-
         // Get management key name
-        const managementKeyName = StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/managementKeySecretName`);
+        const managementKeyName = StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/appManagementKeySecretName`);
 
         const mcpServersTable = new dynamodb.Table(this, 'HostMcpServerTable', {
             partitionKey: {
@@ -153,7 +146,6 @@ export class McpServerApi extends Construct {
         const stateMachinesLambdaRole = this.createStateMachineLambdaRole(
             mcpServersTable.tableArn,
             mcpServerDeployer.mcpServerDeployerFn.functionArn,
-            lisaServeEndpointUrlPs.parameterArn,
             managementKeyName,
             config
         );
@@ -313,8 +305,6 @@ export class McpServerApi extends Construct {
             lambdaRole,
         );
 
-        lisaServeEndpointUrlPs.grantRead(lambdaFunction.role!);
-
         // Grant permissions for state machine invocation
         const workflowPermissions = new Policy(this, 'McpServerApiStateMachinePerms', {
             statements: [
@@ -352,12 +342,11 @@ export class McpServerApi extends Construct {
      * Creates a role for the state machine lambdas
      * @param mcpServerTableArn - Arn of the MCP server table
      * @param mcpServerDeployerFnArn - Arn of the MCP server deployer lambda
-     * @param lisaServeEndpointUrlParamArn - Arn of the lisa serve endpoint url parameter
      * @param managementKeyName - Name of the management key secret
      * @param config - Config object
      * @returns The created role
      */
-    createStateMachineLambdaRole (mcpServerTableArn: string, mcpServerDeployerFnArn: string, lisaServeEndpointUrlParamArn: string, managementKeyName: string, config: any): IRole {
+    createStateMachineLambdaRole (mcpServerTableArn: string, mcpServerDeployerFnArn: string, managementKeyName: string, config: any): IRole {
         const statements: PolicyStatement[] = [
             new PolicyStatement({
                 effect: Effect.ALLOW,
@@ -443,9 +432,8 @@ export class McpServerApi extends Construct {
                     'ssm:GetParameter',
                 ],
                 resources: [
-                    lisaServeEndpointUrlParamArn,
                     `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/lisaServeRestApiUri`,
-                    `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/LISA-lisa-management-key`,
+                    `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/LISA-management-key`,
                 ],
             }),
         ];

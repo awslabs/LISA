@@ -91,6 +91,7 @@ export default class MockApp {
             ...baseStackProps,
             stackName: 'LisaApiBase',
             vpc: networkingStack.vpc,
+            securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
         });
         const metricsStack = new LisaMetricsStack(app, 'LisaMetrics', {
             ...baseStackProps,

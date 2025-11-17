@@ -218,7 +218,7 @@ export class LisaRagConstruct extends Construct {
             LISA_API_URL_PS_NAME: endpointUrl.parameterName,
             LISA_RAG_COLLECTIONS_TABLE: collectionsTable.tableName,
             LOG_LEVEL: config.logLevel,
-            MANAGEMENT_KEY_SECRET_NAME_PS: `${config.deploymentPrefix}/managementKeySecretName`,
+            MANAGEMENT_KEY_SECRET_NAME_PS: `${config.deploymentPrefix}/appManagementKeySecretName`,
             MODEL_TABLE_NAME: modelTableNameStringParameter.stringValue,
             RAG_DOCUMENT_TABLE: docMetaTable.tableName,
             RAG_SUB_DOCUMENT_TABLE: subDocTable.tableName,

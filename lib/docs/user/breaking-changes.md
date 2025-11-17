@@ -1,5 +1,24 @@
 # Breaking Changes
 
+## v6.0.0
+
+Beginning with LISA v6.0.0, the API token table is no longer owned by the Serve stack—it's been moved into the API Base
+stack so MCP hosting and future API workloads can scale independently. As part of this move the DynamoDB table is renamed
+(`LisaServeTokenTable` → `LisaApiBaseTokenTable`). CloudFormation cannot migrate the data automatically, so **admins must
+export all existing API keys before upgrading** and then create the corresponding records in the new table after the
+deployment completes. If you rely on programmatic API access (admin keys, service accounts, automations, etc.),
+make sure to capture the current values so they can be re-added once the new table exists.
+
+Additionally, the LISA management key secret has been moved from the Serve stack to the API Base stack, and the secret
+name has changed from `${deploymentName}-lisa-management-key` to `${deploymentName}-management-key` (removed the
+`lisa-` prefix). The new secret will be auto-generated with a new value during deployment. **If you have scripts,
+automations, or integrations that reference the management key by its secret name, you must update them to use the new
+name.** If you need to preserve the existing management key value, export it from AWS Secrets Manager before upgrading
+and manually update the new secret after deployment completes. The SSM parameter `${deploymentPrefix}/appManagementKeySecretName`
+will automatically point to the new secret name, so code that references the secret via this parameter will continue to
+work without changes.
+
+
 ## v4.0.0
 
 With the release of LISA v4.0, we introduced a significant update to the configuration and functionality of RAG

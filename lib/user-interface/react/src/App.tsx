@@ -28,6 +28,7 @@ import SystemBanner from './components/system-banner/system-banner';
 import { useAppSelector } from './config/store';
 import { selectCurrentUserIsAdmin, selectCurrentUserIsUser } from './shared/reducers/user.reducer';
 import ModelManagement from './pages/ModelManagement';
+import McpManagement from './pages/McpManagement';
 import ModelLibrary from './pages/ModelLibrary';
 import RepositoryManagement from './pages/RepositoryManagement';
 import NotificationBanner from './shared/notification/notification';
@@ -167,6 +168,14 @@ function App () {
                                 element={
                                     <AdminRoute>
                                         <ModelManagement setNav={setNav} />
+                                    </AdminRoute>
+                                }
+                            />
+                            <Route
+                                path='mcp-management'
+                                element={
+                                    <AdminRoute>
+                                        <McpManagement setNav={setNav} />
                                     </AdminRoute>
                                 }
                             />

@@ -14,7 +14,7 @@
  limitations under the License.
  */
 import { Duration, Stack, StackProps } from 'aws-cdk-lib';
-import { AttributeType, BillingMode, ITable, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
+import { ITable, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
@@ -26,14 +26,13 @@ import { Vpc } from '../networking/vpc';
 import { BaseProps, Config } from '../schema';
 import {
     Effect,
-    ManagedPolicy,
     Policy,
     PolicyDocument,
     PolicyStatement,
     Role,
     ServicePrincipal,
 } from 'aws-cdk-lib/aws-iam';
-import { HostedRotation, ISecret, Secret } from 'aws-cdk-lib/aws-secretsmanager';
+import { HostedRotation, ISecret } from 'aws-cdk-lib/aws-secretsmanager';
 import { SecurityGroupEnum } from '../core/iam/SecurityGroups';
 import { SecurityGroupFactory } from '../networking/vpc/security-group-factory';
 import { LAMBDA_PATH, REST_API_PATH } from '../util';
@@ -41,7 +40,6 @@ import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resour
 import { getDefaultRuntime } from '../api-base/utils';
 import { ISecurityGroup, Port } from 'aws-cdk-lib/aws-ec2';
 import { ECSTasks } from '../api-base/ecsCluster';
-import { EventBus } from 'aws-cdk-lib/aws-events';
 import { GuardrailsTable } from '../models/guardrails-table';
 
 export type LisaServeApplicationProps = {
@@ -59,7 +57,6 @@ export class LisaServeApplicationConstruct extends Construct {
     public readonly endpointUrl: StringParameter;
     public readonly tokenTable?: ITable;
     public readonly ecsCluster: ECSCluster;
-    public readonly managementKeySecretName: string;
     public readonly guardrailsTableNamePs: StringParameter;
     public readonly guardrailsTable: ITable;
 
@@ -72,24 +69,22 @@ export class LisaServeApplicationConstruct extends Construct {
         super(scope, id);
         const { config, vpc, securityGroups } = props;
 
-        let tokenTable;
-        if (config.restApiConfig.internetFacing) {
-            // Create DynamoDB Table for enabling API token usage
-            tokenTable = new Table(scope, 'TokenTable', {
-                tableName: `${config.deploymentName}-LISAApiTokenTable`,
-                partitionKey: {
-                    name: 'token',
-                    type: AttributeType.STRING,
-                },
-                billingMode: BillingMode.PAY_PER_REQUEST,
-                encryption: TableEncryption.AWS_MANAGED,
-                removalPolicy: config.removalPolicy,
-            });
-        }
+        // TokenTable is now created in API Base, reference it from SSM parameter
+        // API Base stack must be deployed before Serve stack (dependency is set in stages.ts)
+        const tokenTableNameParameter = StringParameter.fromStringParameterName(
+            scope,
+            'TokenTableNameParameter',
+            `${config.deploymentPrefix}/tokenTableName`
+        );
+        // Reference the table by name (table is created in API Base stack)
+        let tokenTable = Table.fromTableName(
+            scope,
+            'TokenTable',
+            tokenTableNameParameter.stringValue
+        );
         this.tokenTable = tokenTable;
 
-        const { managementKeySecretName } = this.createManagementKeySecret(scope, config, vpc, securityGroups);
-        this.managementKeySecretName = managementKeySecretName;
+        const managementKeySecretNameStringParameter = StringParameter.fromStringParameterName(this, createCdkId([id, 'managementKeyStringParameter']), `${config.deploymentPrefix}/appManagementKeySecretName`);
 
         // Create guardrails table in serve stack to avoid circular dependency
         const guardrailsTableConstruct = new GuardrailsTable(scope, 'GuardrailsTable', {
@@ -112,7 +107,7 @@ export class LisaServeApplicationConstruct extends Construct {
             securityGroup: vpc.securityGroups.restApiAlbSg,
             tokenTable: tokenTable,
             vpc: vpc,
-            managementKeyName: managementKeySecretName
+            managementKeyName: managementKeySecretNameStringParameter.stringValue
         });
 
         // LiteLLM requires a PostgreSQL database to support multiple-instance scaling with dynamic model management.
@@ -371,75 +366,6 @@ export class LisaServeApplicationConstruct extends Construct {
             'LISAServeCommonLayerVersion',
             StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/layerVersion/common`),
         );
-    }
-
-    private createManagementKeySecret (scope: Stack, config: Config, vpc: Vpc, securityGroups: ISecurityGroup[]): { managementKeySecretName: string } {
-        const managementKeySecretName = `${config.deploymentName}-lisa-management-key`;
-
-        const managementEventBus = new EventBus(scope, createCdkId([scope.node.id, 'managementEventBus']), {
-            eventBusName: `${config.deploymentName}-lisa-management-events`,
-        });
-
-        const managementKeySecret = new Secret(scope, createCdkId([scope.node.id, 'managementKeySecret']), {
-            secretName: managementKeySecretName,
-            description: 'LISA management key secret',
-            generateSecretString: {
-                excludePunctuation: true,
-                passwordLength: 16
-            },
-            removalPolicy: config.removalPolicy
-        });
-
-        const rotationLambda = new Function(scope, createCdkId([scope.node.id, 'managementKeyRotationLambda']), {
-            runtime: getDefaultRuntime(),
-            handler: 'management_key.handler',
-            code: Code.fromAsset(config.lambdaPath || LAMBDA_PATH),
-            timeout: Duration.minutes(5),
-            environment: {
-                EVENT_BUS_NAME: managementEventBus.eventBusName,
-            },
-            role: new Role(scope, createCdkId([scope.node.id, 'managementKeyRotationRole']), {
-                assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
-                managedPolicies: [
-                    ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaVPCAccessExecutionRole'),
-                ],
-                inlinePolicies: {
-                    'SecretsManagerRotation': new PolicyDocument({
-                        statements: [
-                            new PolicyStatement({
-                                effect: Effect.ALLOW,
-                                actions: [
-                                    'secretsmanager:DescribeSecret',
-                                    'secretsmanager:GetSecretValue',
-                                    'secretsmanager:PutSecretValue',
-                                    'secretsmanager:UpdateSecretVersionStage'
-                                ],
-                                resources: [managementKeySecret.secretArn]
-                            }),
-                            new PolicyStatement({
-                                effect: Effect.ALLOW,
-                                actions: ['events:PutEvents'],
-                                resources: [managementEventBus.eventBusArn]
-                            })
-                        ]
-                    })
-                }
-            }),
-            securityGroups: securityGroups,
-            vpc: vpc.vpc,
-        });
-
-        managementKeySecret.addRotationSchedule('RotationSchedule', {
-            automaticallyAfter: Duration.days(30),
-            rotationLambda: rotationLambda
-        });
-
-        new StringParameter(scope, createCdkId(['ManagementKeySecretName']), {
-            parameterName: `${config.deploymentPrefix}/managementKeySecretName`,
-            stringValue: managementKeySecret.secretName,
-        });
-
-        return { managementKeySecretName };
     }
 
 }

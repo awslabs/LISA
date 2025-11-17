@@ -166,7 +166,7 @@ export class CreateMcpServerStateMachine extends Construct {
         });
         deployServer.next(pollDeployment);
         pollDeployment.addCatch(handleFailureState, {
-            errors: ['MaxPollsExceededException', 'UnexpectedCloudFormationStateException'],
+            errors: ['States.TaskFailed'],
         });
         pollDeployment.next(pollDeploymentChoice);
         pollDeploymentChoice

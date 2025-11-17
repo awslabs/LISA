@@ -136,7 +136,7 @@ def handle_poll_deployment(event: Dict[str, Any], context: Any) -> Dict[str, Any
         if stack_status in ["CREATE_COMPLETE", "UPDATE_COMPLETE"]:
             output_dict["continue_polling"] = False
             output_dict["stack_status"] = stack_status
-        elif stack_status.endswith("_FAILED") or stack_status.endswith("_ROLLBACK_COMPLETE"):
+        elif stack_status.endswith("_FAILED") or stack_status.endswith("ROLLBACK_COMPLETE"):
             raise Exception(f"Stack {stack_name} failed with status: {stack_status}")
         else:
             # Still in progress

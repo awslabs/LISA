@@ -37,13 +37,10 @@ import {
 import { NetworkLoadBalancer, Protocol as ELBProtocol, ApplicationListener } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import { AlbListenerTarget } from 'aws-cdk-lib/aws-elasticloadbalancingv2-targets';
 import { Construct } from 'constructs';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 
 import { PartialConfig } from '../../../lib/schema';
 import { ECSFargateCluster } from './ecsFargateCluster';
 import { getMcpServerIdentifier, McpServerConfig } from './utils';
-import { DockerfileBuilder } from './dockerfileBuilder';
 import { createCdkId } from '../../../lib/core/utils';
 
 /**
@@ -530,152 +527,24 @@ export class EcsMcpServer extends Construct {
             return ContainerImage.fromRegistry(mcpServerConfig.image);
         }
 
-        // If s3Path is provided, build container from S3 artifacts
+        // If s3Path is provided, use a base image and configure via command/entryPoint overrides
+        // This avoids requiring Docker during CDK synthesis
         // (image may be provided as baseImage if both image and s3Path are present)
         if (mcpServerConfig.s3Path) {
             const hostingBucketArn = process.env['LISA_HOSTING_BUCKET_ARN'];
             if (!hostingBucketArn) {
                 throw new Error('LISA_HOSTING_BUCKET_ARN environment variable is required when s3Path is provided');
             }
-            return this.buildContainerFromS3(mcpServerConfig);
+            // Use the provided image as base, or default to a suitable base image
+            const baseImage = mcpServerConfig.image || (mcpServerConfig.serverType === 'stdio'
+                ? 'python:3.12-slim-bookworm'
+                : 'python:3.12-slim-bookworm');
+            return ContainerImage.fromRegistry(baseImage);
         }
 
         // Default: use a common base image
         // This should be replaced with a proper base image for MCP servers
         return ContainerImage.fromRegistry('node:20-slim');
-    }
-
-    /**
-     * Builds a container image from S3 artifacts by creating a Dockerfile and building it
-     */
-    private buildContainerFromS3 (
-        mcpServerConfig: McpServerConfig
-    ): ContainerImage {
-        const identifier = getMcpServerIdentifier(mcpServerConfig);
-        const buildDir = `/tmp/mcp-build-${identifier}`;
-
-        // Create build directory
-        if (!fs.existsSync(buildDir)) {
-            fs.mkdirSync(buildDir, { recursive: true });
-        }
-
-        // Generate Dockerfile
-        const dockerfile = this.generateDockerfile(mcpServerConfig);
-        const dockerfilePath = path.join(buildDir, 'Dockerfile');
-        fs.writeFileSync(dockerfilePath, dockerfile);
-
-        // Generate and write entrypoint script
-        const entrypointScript = mcpServerConfig.serverType === 'stdio'
-            ? DockerfileBuilder.generateStdioEntrypointScript(mcpServerConfig)
-            : DockerfileBuilder.generateEntrypointScript(mcpServerConfig);
-        const scriptName = mcpServerConfig.serverType === 'stdio' ? 'entrypoint-stdio.sh' : 'entrypoint.sh';
-        const scriptPath = path.join(buildDir, scriptName);
-        fs.writeFileSync(scriptPath, entrypointScript);
-        fs.chmodSync(scriptPath, 0o755);
-
-        // Build container image from the Dockerfile
-        return ContainerImage.fromAsset(buildDir, {
-            file: 'Dockerfile',
-        });
-    }
-
-    /**
-     * Generates Dockerfile content based on server type
-     */
-    private generateDockerfile (
-        mcpServerConfig: McpServerConfig
-    ): string {
-        if (mcpServerConfig.serverType === 'stdio') {
-            return this.generateStdioDockerfile(mcpServerConfig);
-        } else {
-            return this.generateHttpDockerfile(mcpServerConfig);
-        }
-    }
-
-    /**
-     * Generates Dockerfile for STDIO servers with mcp-proxy
-     */
-    private generateStdioDockerfile (mcpServerConfig: McpServerConfig): string {
-        // Use provided image as baseImage if s3Path is present (image is base, not prebuilt)
-        // Otherwise fall back to detection
-        let baseImage = mcpServerConfig.image && mcpServerConfig.s3Path
-            ? mcpServerConfig.image
-            : undefined;
-
-        if (!baseImage) {
-            baseImage = 'python:3.12-slim-bookworm';
-
-        }
-
-        // Check if base image contains Python (for dependency installation)
-        const isPython = baseImage.toLowerCase().includes('python');
-
-        return `FROM ${baseImage}
-
-# Install dependencies and mcp-proxy
-RUN apt-get update && apt-get install -y --no-install-recommends \\
-  nodejs npm curl awscli && \\
-  curl -LsSf https://astral.sh/uv/install.sh | sh && \\
-  apt-get clean && rm -rf /var/lib/apt/lists/* /root/.npm /root/.cache
-
-ENV PATH="/root/.local/bin:$PATH"
-
-# Install mcp-proxy
-RUN /root/.local/bin/uv tool install mcp-proxy
-
-${isPython ? '\n# Install Python dependencies\nRUN pip install --no-cache-dir boto3\n' : ''}
-
-# Set working directory
-WORKDIR /app
-
-# Create directory for server files
-RUN mkdir -p /app/server
-
-# Copy entrypoint script
-COPY entrypoint-stdio.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
-EXPOSE 8080
-
-ENTRYPOINT ["/entrypoint.sh"]
-`;
-    }
-
-    /**
-     * Generates Dockerfile for HTTP/SSE servers
-     */
-    private generateHttpDockerfile (mcpServerConfig: McpServerConfig): string {
-        // Use provided image as baseImage if s3Path is present (image is base, not prebuilt)
-        // Otherwise fall back to default
-        let baseImage = mcpServerConfig.image && mcpServerConfig.s3Path
-            ? mcpServerConfig.image
-            : 'python:3.12-slim-bookworm';
-
-        const port = mcpServerConfig.port || 8000;
-
-        return `FROM ${baseImage}
-
-# Install AWS CLI for S3 access
-RUN apt-get update && apt-get install -y --no-install-recommends \\
-  curl awscli && \\
-  apt-get clean && rm -rf /var/lib/apt/lists/*
-
-${baseImage.toLowerCase().includes('python') ? '\n# Install Python dependencies\nRUN pip install --no-cache-dir boto3\n' : ''}
-
-# Set working directory
-WORKDIR /app
-
-# Create directory for server files
-RUN mkdir -p /app/server
-
-# Copy entrypoint script
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
-EXPOSE ${port}
-
-ENTRYPOINT ["/entrypoint.sh"]
-`;
     }
 
     /**
@@ -726,15 +595,95 @@ ENTRYPOINT ["/entrypoint.sh"]
                 ? [{ containerPort: 8080, protocol: Protocol.TCP }] // mcp-proxy port
                 : [{ containerPort: 8000, protocol: Protocol.TCP }];
 
-        // For pre-built images with STDIO servers, we need to override the command
-        // to wrap with mcp-proxy. The image may have its own ENTRYPOINT, but we override it.
+        // For pre-built images with STDIO servers, or S3-based deployments, we need to override the command
+        // to handle S3 downloads and wrap with mcp-proxy if needed. The image may have its own ENTRYPOINT, but we override it.
         let command: string[] | undefined;
         let entryPoint: string[] | undefined;
 
         // Check if this is a pre-built image (image provided without s3Path)
         const isPrebuiltImage = mcpServerConfig.image && !mcpServerConfig.s3Path;
+        // Check if this is an S3-based deployment (s3Path provided)
+        const isS3Based = !!mcpServerConfig.s3Path;
 
-        if (isPrebuiltImage && mcpServerConfig.serverType === 'stdio') {
+        // For S3-based deployments, we need to install dependencies and set up the entrypoint
+        if (isS3Based) {
+            if (mcpServerConfig.serverType === 'stdio') {
+                // For STDIO servers with S3, install mcp-proxy and set up entrypoint
+                let bashScript = 'set -e; ';
+
+                // Install dependencies if not already present
+                bashScript += 'if ! command -v aws >/dev/null 2>&1; then ';
+                bashScript += 'apt-get update && apt-get install -y --no-install-recommends awscli && apt-get clean && rm -rf /var/lib/apt/lists/*; ';
+                bashScript += 'fi; ';
+
+                // Install mcp-proxy if not present
+                bashScript += 'if ! command -v mcp-proxy >/dev/null 2>&1 && [ ! -f /root/.local/bin/mcp-proxy ]; then ';
+                bashScript += 'if ! command -v curl >/dev/null 2>&1; then apt-get update && apt-get install -y --no-install-recommends curl && apt-get clean && rm -rf /var/lib/apt/lists/*; fi; ';
+                bashScript += 'if ! command -v nodejs >/dev/null 2>&1; then apt-get update && apt-get install -y --no-install-recommends nodejs npm && apt-get clean && rm -rf /var/lib/apt/lists/*; fi; ';
+                bashScript += 'curl -LsSf https://astral.sh/uv/install.sh | sh || true; ';
+                bashScript += 'export PATH="/root/.local/bin:$PATH"; ';
+                bashScript += '/root/.local/bin/uv tool install mcp-proxy || true; ';
+                bashScript += 'fi; ';
+
+                // Create working directory
+                bashScript += 'mkdir -p /app/server; ';
+
+                // Download from S3
+                bashScript += 'if [ -n "$S3_BUCKET" ] && [ -n "$S3_PATH" ]; then ';
+                bashScript += 'echo "Downloading server files from s3://$S3_BUCKET/$S3_PATH..."; ';
+                bashScript += 'aws s3 sync "s3://$S3_BUCKET/$S3_PATH" /app/server/; ';
+                bashScript += 'chmod +x /app/server/* 2>/dev/null || true; ';
+                bashScript += 'fi; ';
+
+                // Change to server directory if files were downloaded
+                bashScript += 'if [ -d /app/server ] && [ "$(ls -A /app/server)" ]; then cd /app/server; fi; ';
+
+                // Execute with mcp-proxy
+                bashScript += `START_CMD='${mcpServerConfig.startCommand.replace(/'/g, '\'\\\'\'')}'; `;
+                bashScript += 'export PATH="/root/.local/bin:$PATH"; ';
+                bashScript += 'if [ -f /root/.local/bin/mcp-proxy ]; then ';
+                bashScript += 'eval exec /root/.local/bin/mcp-proxy --stateless --transport streamablehttp --port=8080 --host=0.0.0.0 --allow-origin="*" "$START_CMD"; ';
+                bashScript += 'elif [ -f /root/.cargo/bin/mcp-proxy ]; then ';
+                bashScript += 'eval exec /root/.cargo/bin/mcp-proxy --stateless --transport streamablehttp --port=8080 --host=0.0.0.0 --allow-origin="*" "$START_CMD"; ';
+                bashScript += 'elif command -v mcp-proxy >/dev/null 2>&1; then ';
+                bashScript += 'eval exec mcp-proxy --stateless --transport streamablehttp --port=8080 --host=0.0.0.0 --allow-origin="*" "$START_CMD"; ';
+                bashScript += 'else ';
+                bashScript += 'echo "ERROR: mcp-proxy not found. Attempting to install..."; ';
+                bashScript += 'curl -LsSf https://astral.sh/uv/install.sh | sh && /root/.local/bin/uv tool install mcp-proxy && eval exec /root/.local/bin/mcp-proxy --stateless --transport streamablehttp --port=8080 --host=0.0.0.0 --allow-origin="*" "$START_CMD"; ';
+                bashScript += 'fi';
+
+                entryPoint = ['/bin/bash', '-c'];
+                command = [bashScript];
+            } else {
+                // For HTTP/SSE servers with S3, download files and execute start command
+                let bashScript = 'set -e; ';
+
+                // Install AWS CLI if not present
+                bashScript += 'if ! command -v aws >/dev/null 2>&1; then ';
+                bashScript += 'apt-get update && apt-get install -y --no-install-recommends awscli && apt-get clean && rm -rf /var/lib/apt/lists/*; ';
+                bashScript += 'fi; ';
+
+                // Create working directory
+                bashScript += 'mkdir -p /app/server; ';
+
+                // Download from S3
+                bashScript += 'if [ -n "$S3_BUCKET" ] && [ -n "$S3_PATH" ]; then ';
+                bashScript += 'echo "Downloading server files from s3://$S3_BUCKET/$S3_PATH..."; ';
+                bashScript += 'aws s3 sync "s3://$S3_BUCKET/$S3_PATH" /app/server/; ';
+                bashScript += 'chmod +x /app/server/* 2>/dev/null || true; ';
+                bashScript += 'export PATH="/app/server:$PATH"; ';
+                bashScript += 'fi; ';
+
+                // Change to server directory if files were downloaded, otherwise stay in /app
+                bashScript += 'if [ -d /app/server ] && [ "$(ls -A /app/server)" ]; then cd /app/server; else cd /app; fi; ';
+
+                // Execute the start command
+                bashScript += `exec ${mcpServerConfig.startCommand}`;
+
+                entryPoint = ['/bin/bash', '-c'];
+                command = [bashScript];
+            }
+        } else if (isPrebuiltImage && mcpServerConfig.serverType === 'stdio') {
             // For pre-built STDIO images, we need to override with mcp-proxy wrapper
             // Build a bash script that:
             // 1. Downloads from S3 if configured (with environment variable substitution)

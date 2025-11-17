@@ -112,7 +112,7 @@ export function CreateHostedMcpServerModal ({
                             interval: selectedServer.containerHealthCheckConfig.interval ?? initialForm.containerHealthCheckConfig?.interval ?? 30,
                             timeout: selectedServer.containerHealthCheckConfig.timeout ?? initialForm.containerHealthCheckConfig?.timeout ?? 10,
                             retries: selectedServer.containerHealthCheckConfig.retries ?? initialForm.containerHealthCheckConfig?.retries ?? 3,
-                            startPeriod: selectedServer.containerHealthCheckConfig.startPeriod ?? initialForm.containerHealthCheckConfig?.startPeriod ?? 0,
+                            startPeriod: selectedServer.containerHealthCheckConfig.startPeriod ?? initialForm.containerHealthCheckConfig?.startPeriod ?? 180,
                         }
                         : initialForm.containerHealthCheckConfig,
                     loadBalancerConfig: selectedServer.loadBalancerConfig

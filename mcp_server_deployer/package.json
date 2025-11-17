@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "node esbuild.js && npm run copy-assets && npm run pack:prod && npm run copy-dist",
-    "copy-assets": "cp package.json ./src/cdk*json ../VERSION ./dist",
+    "copy-assets": "cp package.json ./src/cdk*json ../VERSION ./dist && mkdir -p ./dist/lib/scripts && cp -r ./src/lib/scripts/* ./dist/lib/scripts/",
     "pack:prod": "cd ./dist && npm i --omit dev",
     "copy-dist": "mkdir -p ../dist/mcp_server_deployer && cp -r ./dist/* ../dist/mcp_server_deployer/",
     "clean": "rm -rf ./dist ./node_modules",

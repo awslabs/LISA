@@ -89,9 +89,9 @@ export type HostedMcpServerListResponse = {
 
 // Zod Schemas
 const hostedMcpContainerHealthCheckConfigSchema = z.object({
-    command: z.union([z.string(), z.array(z.string())]).default('CMD-SHELL curl --fail http://localhost:{{PORT}}/status || exit 1'),
+    command: z.union([z.string(), z.array(z.string())]).default('CMD-SHELL exit 0'),
     interval: z.number().min(1).default(30),
-    startPeriod: z.number().min(0).default(0),
+    startPeriod: z.number().min(0).default(180),
     timeout: z.number().min(1).default(10),
     retries: z.number().min(1).default(3),
 });

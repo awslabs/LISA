@@ -212,7 +212,7 @@ export function Sessions ({ newSession }) {
                 <Header
                     actions={
                         <div className='mr-10'>
-                            <SpaceBetween direction='horizontal' size='s'>
+                            <SpaceBetween direction='horizontal' size='xl'>
                                 <Popover
                                     size='large'
                                     position='bottom'

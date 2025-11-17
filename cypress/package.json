@@ -3,10 +3,10 @@
     "description": "E2E tests for LISA",
     "version": "1.0.0",
     "devDependencies": {
-        "cypress": "^14.3.0",
-        "lint-staged": "^15.5.1",
+        "cypress": "^15.6.0",
+        "lint-staged": "^16.2.6",
         "lodash": "^4.17.21",
-        "@types/node": "^22.14.1"
+        "@types/node": "^24.10.1"
     },
     "scripts": {
         "build": "echo \"Nothing to build\"",

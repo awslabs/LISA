@@ -47,7 +47,7 @@ from repository.ingestion_service import DocumentIngestionService
 from repository.rag_document_repo import RagDocumentRepository
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.auth import admin_only, get_groups, get_user_context, get_username, is_admin, user_has_group_access
-from utilities.bedrock_kb import add_default_pipeline_for_bedrock_kb, ingest_bedrock_s3_documents, retrieve_documents
+from utilities.bedrock_kb import add_default_pipeline_for_bedrock_kb, retrieve_documents
 from utilities.common_functions import api_wrapper, get_id_token, retry_config
 from utilities.exceptions import HTTPException
 from utilities.repository_types import RepositoryType
@@ -287,26 +287,6 @@ def create_bedrock_collection(event: dict, context: dict) -> Dict[str, Any]:
             raise ValidationError(f"Failed to create default collection for repository {repository_id}")
         collection_service.create_collection(collection=collection, username="system")
         logger.info(f"Successfully created default collection: {collection.collectionId}")
-
-        # Ingest existing documents from S3 bucket if s3pipeline is configured
-        bedrock_config = rag_config.get("bedrockKnowledgeBaseConfig", {})
-        s3_bucket = bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket")
-
-        if s3_bucket:
-            logger.info(f"Scanning S3 bucket {s3_bucket} for existing documents")
-            discovered, skipped = ingest_bedrock_s3_documents(
-                s3_client=s3,
-                ingestion_job_repository=ingestion_job_repository,
-                ingestion_service=ingestion_service,
-                repository_id=repository_id,
-                collection_id=collection.collectionId,
-                s3_bucket=s3_bucket,
-                embedding_model=repository.get("embeddingModelId"),
-            )
-            logger.info(
-                f"Document discovery complete for repository {repository_id}: "
-                f"discovered={discovered}, skipped={skipped}"
-            )
 
         # Return collection configuration
         result: dict[str, Any] = collection.model_dump(mode="json")

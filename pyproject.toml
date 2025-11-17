@@ -6,11 +6,7 @@ exclude_dirs = [
     "cdk.out"
 ]
 skips = [
-    "B104",
-    "B108",
-    "B110",
-    "B403",
-    "B608"
+    "B403"
 ]
 
 [tool.black]

@@ -14,9 +14,7 @@
 
 """Unit tests for Bedrock KB document discovery."""
 
-from unittest.mock import MagicMock, create_autospec
-
-import pytest
+from unittest.mock import MagicMock
 
 from models.domain_objects import IngestionType
 from utilities.bedrock_kb import ingest_bedrock_s3_documents
@@ -121,9 +119,7 @@ class TestDocumentDiscovery:
         """Test that large numbers of documents are batched."""
         # Create 250 documents (should create 3 batches: 100, 100, 50)
         mock_s3 = MagicMock()
-        mock_s3.list_objects_v2.return_value = {
-            "Contents": [{"Key": f"doc{i}.pdf"} for i in range(250)]
-        }
+        mock_s3.list_objects_v2.return_value = {"Contents": [{"Key": f"doc{i}.pdf"} for i in range(250)]}
 
         mock_job_repo = MagicMock()
         mock_service = MagicMock()

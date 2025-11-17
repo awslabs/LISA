@@ -141,7 +141,7 @@ export abstract class PipelineStack extends Stack {
 
         const collectionName = `${repositoryId}-${pipelineConfig.collectionId ?? pipelineConfig.embeddingModel}`;
         // Create a new EventBridge rule for the S3 event pattern
-        return new Rule(this, `${repositoryId}-S3Event${eventName}Rule-${disambiguator}`, {            
+        return new Rule(this, `${repositoryId}-S3Event${eventName}Rule-${disambiguator}`, {
             ruleName: `${config.deploymentName}-${config.deploymentStage}-${config.appName}-${collectionName}-S3${eventName}Rule-${disambiguator}`.substring(0,127),
             eventPattern,
             // Define the state machine target with input transformation

@@ -399,7 +399,7 @@ def test_pipeline_ingest_documents_batch(setup_env):
         username="user1",
         job_type=JobActionType.DOCUMENT_BATCH_INGESTION,
         chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
-        document_ids=["s3://bucket/key1", "s3://bucket/key2", "s3://bucket/key3"],
+        s3_paths=["s3://bucket/key1", "s3://bucket/key2", "s3://bucket/key3"],
     )
 
     with patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo, patch(
@@ -426,7 +426,7 @@ def test_pipeline_ingest_documents_batch_with_failures(setup_env):
         username="user1",
         job_type=JobActionType.DOCUMENT_BATCH_INGESTION,
         chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
-        document_ids=["s3://bucket/key1", "s3://bucket/key2", "s3://bucket/key3"],
+        s3_paths=["s3://bucket/key1", "s3://bucket/key2", "s3://bucket/key3"],
     )
 
     with patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo, patch(
@@ -456,7 +456,7 @@ def test_pipeline_ingest_documents_batch_exceeds_limit(setup_env):
         username="user1",
         job_type=JobActionType.DOCUMENT_BATCH_INGESTION,
         chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
-        document_ids=[f"s3://bucket/key{i}" for i in range(101)],
+        s3_paths=[f"s3://bucket/key{i}" for i in range(101)],
     )
 
     with patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo:
@@ -469,7 +469,7 @@ def test_pipeline_ingest_documents_batch_exceeds_limit(setup_env):
 
 
 def test_pipeline_ingest_documents_batch_missing_metadata(setup_env):
-    """Test pipeline_ingest_documents raises error when document_ids missing."""
+    """Test pipeline_ingest_documents raises error when s3_paths missing."""
     from models.domain_objects import FixedChunkingStrategy, IngestionJob, JobActionType
 
     job = IngestionJob(
@@ -480,7 +480,7 @@ def test_pipeline_ingest_documents_batch_missing_metadata(setup_env):
         username="user1",
         job_type=JobActionType.DOCUMENT_BATCH_INGESTION,
         chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
-        document_ids=None,
+        s3_paths=None,
     )
 
     with patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo:
@@ -504,7 +504,7 @@ def test_pipeline_ingest_routes_to_batch_ingestion(setup_env):
         username="user1",
         job_type=JobActionType.DOCUMENT_BATCH_INGESTION,
         chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
-        document_ids=["s3://bucket/key1"],
+        s3_paths=["s3://bucket/key1"],
     )
 
     with patch("repository.pipeline_ingest_documents.pipeline_ingest_documents") as mock_ingest_documents:

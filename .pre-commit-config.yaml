@@ -9,7 +9,7 @@ repos:
       entry: scripts/verify-config.sh
       verbose: true
       language: script
-      files: config.yaml
+      files: config-custom.yaml
 
 - repo: https://github.com/PyCQA/bandit
   rev: '1.7.10'

@@ -78,6 +78,7 @@ class CollectionService:
             return True
         if collection.createdBy == username:
             return True
+
         if require_write:
             return False
 
@@ -108,8 +109,16 @@ class CollectionService:
             Created collection
 
         Raises:
-            ValidationError: If collection name already exists in repository
+            ValidationError: If collection name already exists in repository or if repository is Bedrock KB
         """
+        # Check if repository is Bedrock KB - only default collections allowed
+        repository = self.vector_store_repo.find_repository_by_id(collection.repositoryId)
+        if repository and RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
+            raise ValidationError(
+                "Bedrock Knowledge Base repositories (type: BEDROCK_KB) only support the default collection. "
+                "User-created collections are not allowed."
+            )
+
         # Check if collection name already exists in this repository
         existing = self.collection_repo.find_by_name(collection.repositoryId, collection.name)
         if existing:
@@ -154,7 +163,7 @@ class CollectionService:
             ]
 
             is_bedrock_kb = RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB)
-            if not active and not is_bedrock_kb:
+            if not active:
                 logger.info(f"Repository {repository_id} is not active")
                 return None
 
@@ -174,7 +183,7 @@ class CollectionService:
 
                 collection_id = data_source_id
                 description = "Default collection for Bedrock Knowledge Base"
-                tags = ["default"]
+                tags = ["default", "bedrock-kb"]
                 allow_chunking_override = False  # KB controls chunking
                 sanitized_name = f"{repository.get('name', repository_id)}-{data_source_id}"
             else:
@@ -311,7 +320,6 @@ class CollectionService:
             "chunkingStrategy",
             "allowedGroups",
             "metadata",
-            "private",
             "allowChunkingOverride",
             "pipelines",
         ]

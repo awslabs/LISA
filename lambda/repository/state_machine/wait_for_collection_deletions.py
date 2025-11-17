@@ -15,7 +15,6 @@
 """Wait for all collection deletion jobs to complete before deleting repository."""
 
 import logging
-import os
 from typing import Any, Dict
 
 from repository.ingestion_job_repo import IngestionJobRepository
@@ -48,9 +47,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     all_complete = pending_count == 0
 
     logger.info(
-        f"Repository {repository_id}: "
-        f"pending_collection_deletions={pending_count}, "
-        f"all_complete={all_complete}"
+        f"Repository {repository_id}: " f"pending_collection_deletions={pending_count}, " f"all_complete={all_complete}"
     )
 
     return {

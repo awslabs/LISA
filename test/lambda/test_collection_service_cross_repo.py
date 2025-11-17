@@ -47,6 +47,9 @@ def setup_env(monkeypatch):
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
     monkeypatch.setenv("AWS_REGION", "us-east-1")
     monkeypatch.setenv("LISA_RAG_COLLECTIONS_TABLE", "test-collections-table")
+    monkeypatch.setenv("RAG_DOCUMENT_TABLE", "test-document-table")
+    monkeypatch.setenv("RAG_SUB_DOCUMENT_TABLE", "test-sub-document-table")
+    monkeypatch.setenv("LISA_RAG_VECTOR_STORE_TABLE", "test-vector-store-table")
 
 
 @pytest.fixture
@@ -120,7 +123,6 @@ def sample_collections():
             createdAt=now,
             updatedAt=now,
             status=CollectionStatus.ACTIVE,
-            private=False,
         ),
         RagCollectionConfig(
             collectionId="coll-2",
@@ -134,7 +136,6 @@ def sample_collections():
             createdAt=now,
             updatedAt=now,
             status=CollectionStatus.ACTIVE,
-            private=True,  # Private collection
         ),
         RagCollectionConfig(
             collectionId="coll-3",
@@ -148,7 +149,6 @@ def sample_collections():
             createdAt=now,
             updatedAt=now,
             status=CollectionStatus.ACTIVE,
-            private=False,
         ),
     ]
 
@@ -269,13 +269,13 @@ def test_list_all_user_collections_private_collections_workflow(
     collection_service, mock_vector_store_repo, mock_collection_repo, sample_repositories, sample_collections
 ):
     """
-    Complete workflow: User sees own private collections, not others'.
+    Complete workflow: User sees collections based on ownership and group access.
 
     Workflow:
-    1. User2 (owner of private coll-2) requests collections
+    1. User2 (owner of coll-2) requests collections
     2. Service queries accessible repositories
-    3. Service filters collections by ownership and privacy
-    4. Returns user's own private collection
+    3. Service filters collections by ownership and group membership
+    4. Returns collections user owns or has group access to
     """
     # Setup: Configure mocks
     mock_vector_store_repo.get_registered_repositories.return_value = sample_repositories
@@ -287,7 +287,7 @@ def test_list_all_user_collections_private_collections_workflow(
     mock_collection_repo.list_by_repository.side_effect = mock_list_by_repo
     mock_collection_repo.count_by_repository.return_value = 10
 
-    # Execute: User2 requests collections (owns private coll-2)
+    # Execute: User2 requests collections (owns coll-2)
     collections, next_token = collection_service.list_all_user_collections(
         username="user2",
         user_groups=["group2"],  # Has access to repo-1 and repo-2
@@ -298,11 +298,11 @@ def test_list_all_user_collections_private_collections_workflow(
         sort_params=SortParams(sort_by=CollectionSortBy.CREATED_AT, sort_order=SortOrder.DESC),
     )
 
-    # Verify: User sees their own private collection
+    # Verify: User sees their own collection
     collection_ids = [c["collectionId"] for c in collections]
-    assert "coll-2" in collection_ids  # User's own private collection
+    assert "coll-2" in collection_ids  # User's own collection
 
-    # Execute: User1 requests collections (does NOT own private coll-2)
+    # Execute: User1 requests collections (does NOT own coll-2)
     collections, next_token = collection_service.list_all_user_collections(
         username="user1",
         user_groups=["group1", "group2"],  # Has access to repo-1 and repo-2
@@ -313,11 +313,11 @@ def test_list_all_user_collections_private_collections_workflow(
         sort_params=SortParams(sort_by=CollectionSortBy.CREATED_AT, sort_order=SortOrder.DESC),
     )
 
-    # Verify: User1 should NOT see user2's private collection
+    # Verify: User1 sees collections they own or have group access to
     collection_ids = [c["collectionId"] for c in collections]
-    assert "coll-2" not in collection_ids  # Private collection owned by user2
-    assert "coll-1" in collection_ids  # User1's own public collection in repo-1
-    assert "coll-3" in collection_ids  # User1's own public collection in repo-2 (creator always has access)
+    assert "coll-2" in collection_ids  # User1 has group2 access to coll-2
+    assert "coll-1" in collection_ids  # User1's own collection in repo-1
+    assert "coll-3" in collection_ids  # User1's own collection in repo-2
 
 
 def test_pagination_strategy_selection_workflow(

@@ -95,7 +95,7 @@ class DocumentIngestionService:
             s3_path=s3_path,
             username=username,
             metadata=metadata,
-            ingestion_type=ingestion_type
+            ingestion_type=ingestion_type,
         )
         logger.info(f"Created ingestion job with embedding_model: {embedding_model}")
 

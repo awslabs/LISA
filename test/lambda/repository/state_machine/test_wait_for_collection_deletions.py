@@ -32,7 +32,6 @@ def setup_env(monkeypatch):
 
 def test_all_deletions_complete(setup_env):
     """Test when all collection deletions are complete."""
-    from models.domain_objects import IngestionJob
     from repository.ingestion_job_repo import IngestionJobRepository
     from repository.state_machine.wait_for_collection_deletions import lambda_handler
 

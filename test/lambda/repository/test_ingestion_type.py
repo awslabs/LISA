@@ -14,9 +14,7 @@
 
 """Unit tests for IngestionType enum and document provenance tracking."""
 
-import pytest
-
-from models.domain_objects import IngestionType, RagDocument, NoneChunkingStrategy
+from models.domain_objects import IngestionType, NoneChunkingStrategy, RagDocument
 
 
 class TestIngestionType:
@@ -143,9 +141,7 @@ class TestIngestionType:
                 source=f"s3://bucket/doc{i}.pdf",
                 username="user1" if i % 3 == 0 else "system",
                 ingestion_type=(
-                    IngestionType.MANUAL
-                    if i % 3 == 0
-                    else IngestionType.AUTO if i % 3 == 1 else IngestionType.EXISTING
+                    IngestionType.MANUAL if i % 3 == 0 else IngestionType.AUTO if i % 3 == 1 else IngestionType.EXISTING
                 ),
                 chunk_strategy=NoneChunkingStrategy(),
             )

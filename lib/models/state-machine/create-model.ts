@@ -196,6 +196,26 @@ export class CreateModelStateMachine extends Construct {
             time: POLLING_TIMEOUT,
         });
 
+        const createSchedule = new LambdaInvoke(this, 'CreateSchedule', {
+            lambdaFunction: new Function(this, 'CreateScheduleFunc', {
+                runtime: getDefaultRuntime(),
+                handler: 'models.state_machine.schedule_handlers.handle_schedule_creation',
+                code: Code.fromAsset(lambdaPath),
+                timeout: LAMBDA_TIMEOUT,
+                memorySize: LAMBDA_MEMORY,
+                role: role,
+                vpc: vpc.vpc,
+                vpcSubnets: vpc.subnetSelection,
+                securityGroups: securityGroups,
+                layers: lambdaLayers,
+                environment: {
+                    ...environment,
+                    SCHEDULE_MANAGEMENT_FUNCTION_NAME: `${config.deploymentName}-${config.deploymentStage}-ScheduleManagement`,
+                },
+            }),
+            outputPath: OUTPUT_PATH,
+        });
+
         const addModelToLitellm = new LambdaInvoke(this, 'AddModelToLitellm', {
             lambdaFunction: new Function(this, 'AddModelToLitellmFunc', {
                 runtime: getDefaultRuntime(),
@@ -278,8 +298,11 @@ export class CreateModelStateMachine extends Construct {
         });
         pollCreateStackChoice
             .when(Condition.booleanEquals('$.continue_polling_stack', true), waitBeforePollingCreateStack)
-            .otherwise(addModelToLitellm);
+            .otherwise(createSchedule);
         waitBeforePollingCreateStack.next(pollCreateStack);
+
+        // Create schedule after stack is created
+        createSchedule.next(addModelToLitellm);
 
         // Check for guardrails and add them if present
         addModelToLitellm.next(checkGuardrailsChoice);

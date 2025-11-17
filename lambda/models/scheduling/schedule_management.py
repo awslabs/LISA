@@ -242,7 +242,7 @@ def create_daily_scheduled_actions(
     capacity_config = get_existing_asg_capacity(auto_scaling_group)
 
     # Create start action
-    start_cron = convert_to_utc_cron(day_schedule.startTime, timezone_name)
+    start_cron = time_to_cron(day_schedule.startTime)
     start_action_name = f"{model_id}-daily-start"
 
     try:
@@ -250,6 +250,7 @@ def create_daily_scheduled_actions(
             AutoScalingGroupName=auto_scaling_group,
             ScheduledActionName=start_action_name,
             Recurrence=start_cron,
+            TimeZone=timezone_name,
             MinSize=capacity_config["MinSize"],
             MaxSize=capacity_config["MaxSize"],
             DesiredCapacity=capacity_config["DesiredCapacity"],
@@ -264,7 +265,7 @@ def create_daily_scheduled_actions(
         raise
 
     # Create stop action
-    stop_cron = convert_to_utc_cron(day_schedule.stopTime, timezone_name)
+    stop_cron = time_to_cron(day_schedule.stopTime)
     stop_action_name = f"{model_id}-daily-stop"
 
     try:
@@ -272,6 +273,7 @@ def create_daily_scheduled_actions(
             AutoScalingGroupName=auto_scaling_group,
             ScheduledActionName=stop_action_name,
             Recurrence=stop_cron,
+            TimeZone=timezone_name,
             MinSize=0,
             MaxSize=0,
             DesiredCapacity=0,
@@ -319,7 +321,7 @@ def create_weekly_scheduled_actions(
             continue
 
         # Create start action for this day
-        start_cron = convert_to_utc_cron_with_day(day_schedule.startTime, timezone_name, day_num)
+        start_cron = time_to_cron_with_day(day_schedule.startTime, day_num)
         start_action_name = f"{model_id}-{day_name}-start"
 
         try:
@@ -327,6 +329,7 @@ def create_weekly_scheduled_actions(
                 AutoScalingGroupName=auto_scaling_group,
                 ScheduledActionName=start_action_name,
                 Recurrence=start_cron,
+                TimeZone=timezone_name,
                 MinSize=capacity_config["MinSize"],
                 MaxSize=capacity_config["MaxSize"],
                 DesiredCapacity=capacity_config["DesiredCapacity"],
@@ -342,7 +345,7 @@ def create_weekly_scheduled_actions(
             raise
 
         # Create stop action for this day
-        stop_cron = convert_to_utc_cron_with_day(day_schedule.stopTime, timezone_name, day_num)
+        stop_cron = time_to_cron_with_day(day_schedule.stopTime, day_num)
         stop_action_name = f"{model_id}-{day_name}-stop"
 
         try:
@@ -350,6 +353,7 @@ def create_weekly_scheduled_actions(
                 AutoScalingGroupName=auto_scaling_group,
                 ScheduledActionName=stop_action_name,
                 Recurrence=stop_cron,
+                TimeZone=timezone_name,
                 MinSize=0,
                 MaxSize=0,
                 DesiredCapacity=0,
@@ -367,61 +371,16 @@ def create_weekly_scheduled_actions(
     return scheduled_action_arns
 
 
-def convert_to_utc_cron(time_str: str, timezone_name: str) -> str:
-    """Convert local time to UTC cron expression"""
-    from zoneinfo import ZoneInfo
-
-    # Parse time
+def time_to_cron(time_str: str) -> str:
+    """Convert time string (HH:MM) to cron expression"""
     hour, minute = map(int, time_str.split(":"))
-
-    # Create timezone-aware datetime for today
-    tz = ZoneInfo(timezone_name)
-    today = datetime.now(tz).date()
-    local_dt = datetime.combine(today, datetime.min.time().replace(hour=hour, minute=minute), tzinfo=tz)
-
-    # Convert to UTC
-    utc_dt = local_dt.astimezone(dt_timezone.utc)
-
-    # Return cron expression (minute hour * * *)
-    return f"{utc_dt.minute} {utc_dt.hour} * * *"
+    return f"{minute} {hour} * * *"
 
 
-def convert_to_utc_cron_weekdays(time_str: str, timezone_name: str) -> str:
-    """Convert local time to UTC cron expression for weekdays only (Mon-Fri)"""
-    from zoneinfo import ZoneInfo
-
-    # Parse time
+def time_to_cron_with_day(time_str: str, day_of_week: int) -> str:
+    """Convert time string (HH:MM) to cron expression with day"""  
     hour, minute = map(int, time_str.split(":"))
-
-    # Create timezone-aware datetime
-    tz = ZoneInfo(timezone_name)
-    today = datetime.now(tz).date()
-    local_dt = datetime.combine(today, datetime.min.time().replace(hour=hour, minute=minute), tzinfo=tz)
-
-    # Convert to UTC
-    utc_dt = local_dt.astimezone(dt_timezone.utc)
-
-    # Return cron expression with weekdays (minute hour * * 1-5)
-    return f"{utc_dt.minute} {utc_dt.hour} * * 1-5"
-
-
-def convert_to_utc_cron_with_day(time_str: str, timezone_name: str, day_of_week: int) -> str:
-    """Convert local time to UTC cron expression with specific day of week"""
-    from zoneinfo import ZoneInfo
-
-    # Parse time
-    hour, minute = map(int, time_str.split(":"))
-
-    # Create timezone-aware datetime
-    tz = ZoneInfo(timezone_name)
-    today = datetime.now(tz).date()
-    local_dt = datetime.combine(today, datetime.min.time().replace(hour=hour, minute=minute), tzinfo=tz)
-
-    # Convert to UTC
-    utc_dt = local_dt.astimezone(dt_timezone.utc)
-
-    # Return cron expression with day of week (minute hour * * day)
-    return f"{utc_dt.minute} {utc_dt.hour} * * {day_of_week}"
+    return f"{minute} {hour} * * {day_of_week}"
 
 
 def construct_scheduled_action_arn(auto_scaling_group: str, action_name: str) -> str:

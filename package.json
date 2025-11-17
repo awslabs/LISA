@@ -2,16 +2,6 @@
   "name": "@awslabs/lisa",
   "version": "5.4.0",
   "description": "A scalable infrastructure-as-code solution for self-hosting and orchestrating LLM inference with RAG capabilities, providing low-latency access to generative AI and embedding models across multiple providers.",
-  "homepage": "https://awslabs.github.io/LISA/",
-  "license": "Apache-2.0",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/awslabs/lisa.git"
-  },
-  "bugs": {
-    "url": "https://github.com/awslabs/lisa/issues"
-  },
-  "author": "Amazon Web Services (https://aws.amazon.com)",
   "keywords": [
     "aws",
     "bedrock",
@@ -24,6 +14,33 @@
     "openai",
     "rag",
     "retrieval-augmented-generation"
+  ],
+  "homepage": "https://awslabs.github.io/LISA/",
+  "bugs": {
+    "url": "https://github.com/awslabs/lisa/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/awslabs/lisa.git"
+  },
+  "license": "Apache-2.0",
+  "author": "Amazon Web Services (https://aws.amazon.com)",
+  "type": "commonjs",
+  "main": "jest.config.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "files": [
+    "VERSION",
+    "bin",
+    "lib",
+    "lisa-sdk",
+    "lambda",
+    "scripts",
+    "ecs_model_deployer",
+    "vector_store_deployer",
+    "dist"
   ],
   "workspaces": [
     "lib/user-interface/react",
@@ -46,6 +63,18 @@
     "prepublishOnly": "npm run build && npm run copy-dist -ws",
     "migrate-properties": "node ./scripts/migrate-properties.mjs",
     "generateSchemaDocs": "npx zod2md -c ./lib/zod2md.config.ts && npx zod2md -c ./lib/zod2md.rag.ts"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.214.0",
+    "aws-sdk": "^2.1692.0",
+    "cdk-ecr-deployment": "^4.0.1",
+    "cdk-nag": "^2.35.5",
+    "constructs": "^10.4.2",
+    "js-yaml": "^4.1.0",
+    "lodash": "^4.17.21",
+    "source-map-support": "^0.5.21",
+    "util": "^0.12.5",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.38.0",
@@ -81,18 +110,6 @@
     "wait-on": "^8.0.3",
     "zod2md": "^0.1.9"
   },
-  "dependencies": {
-    "aws-cdk-lib": "^2.214.0",
-    "aws-sdk": "^2.1692.0",
-    "cdk-ecr-deployment": "^4.0.1",
-    "cdk-nag": "^2.35.5",
-    "constructs": "^10.4.2",
-    "js-yaml": "^4.1.0",
-    "lodash": "^4.17.21",
-    "source-map-support": "^0.5.21",
-    "util": "^0.12.5",
-    "zod": "^3.24.1"
-  },
   "peerDependencies": {
     "@cfworker/json-schema": "^4.1.0",
     "@types/lodash": "^4.17.14",
@@ -114,21 +131,5 @@
     "esm": true,
     "experimentalSpecifierResolution": "node",
     "experimentalSpecifiers": true
-  },
-  "main": "jest.config.js",
-  "directories": {
-    "lib": "lib",
-    "test": "test"
-  },
-  "files": [
-    "VERSION",
-    "bin",
-    "lib",
-    "lisa-sdk",
-    "lambda",
-    "scripts",
-    "ecs_model_deployer",
-    "vector_store_deployer",
-    "dist"
-  ]
+  }
 }

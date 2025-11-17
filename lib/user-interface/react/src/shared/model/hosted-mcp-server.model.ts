@@ -91,7 +91,7 @@ export type HostedMcpServerListResponse = {
 const hostedMcpContainerHealthCheckConfigSchema = z.object({
     command: z.union([z.string(), z.array(z.string())]).default('CMD-SHELL curl --fail http://localhost:{{PORT}}/status || exit 1'),
     interval: z.number().min(1).default(30),
-    startPeriod: z.number().min(0).default(90),
+    startPeriod: z.number().min(0).default(180),
     timeout: z.number().min(1).default(10),
     retries: z.number().min(1).default(3),
 });

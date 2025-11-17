@@ -259,6 +259,16 @@ export class RepositoryApi extends Construct {
                 },
             },
             {
+                name: 'update_collection',
+                resource: 'repository',
+                description: 'Update a collection within a repository',
+                path: 'repository/{repositoryId}/collection/{collectionId}',
+                method: 'PUT',
+                environment: {
+                    ...baseEnvironment,
+                },
+            },
+            {
                 name: 'delete_collection',
                 resource: 'repository',
                 description: 'Delete a collection within a repository',

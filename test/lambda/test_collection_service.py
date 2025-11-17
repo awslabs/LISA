@@ -35,7 +35,6 @@ def setup_env(monkeypatch):
 def test_create_collection():
     """Test collection creation"""
     from repository.collection_service import CollectionService
-    from utilities.repository_types import RepositoryType
 
     mock_repo = Mock()
     mock_vector_store_repo = Mock()

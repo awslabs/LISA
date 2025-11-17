@@ -150,9 +150,22 @@ export class DeleteStoreStateMachine extends Construct {
             role: executionRole,
         });
 
-        // Allow the Step Functions role to invoke the cleanup lambda
+        const waitForCollectionDeletionsFunc = new Function(this, 'WaitForCollectionDeletionsFunc', {
+            runtime: getDefaultRuntime(),
+            handler: 'repository.state_machine.wait_for_collection_deletions.lambda_handler',
+            code: Code.fromAsset(lambdaPath),
+            timeout: Duration.seconds(30),
+            memorySize: LAMBDA_MEMORY,
+            vpc: vpc.vpc,
+            environment: environment,
+            layers: lambdaLayers,
+            role: executionRole,
+        });
+
+        // Allow the Step Functions role to invoke the lambdas
         if (role) {
             cleanupDocsFunc.grantInvoke(role);
+            waitForCollectionDeletionsFunc.grantInvoke(role);
         }
 
         const hasMoreDocs = new Choice(this, 'HasMoreDocs')
@@ -176,10 +189,30 @@ export class DeleteStoreStateMachine extends Construct {
             outputPath: OUTPUT_PATH,
         });
 
+        // Wait for collection deletions to complete
+        const waitForCollectionDeletions = new LambdaInvoke(this, 'WaitForCollectionDeletions', {
+            lambdaFunction: waitForCollectionDeletionsFunc,
+            payload: sfn.TaskInput.fromObject({
+                'repositoryId.$': '$.repositoryId',
+                'stackName.$': '$.stackName',
+            }),
+            outputPath: OUTPUT_PATH,
+        });
+
+        const waitForCollectionDeletionsRetry = new sfn.Wait(this, 'WaitForCollectionDeletionsRetry', {
+            time: sfn.WaitTime.duration(Duration.seconds(10)),
+        }).next(waitForCollectionDeletions);
+
+        const checkCollectionDeletionsComplete = new Choice(this, 'CheckCollectionDeletionsComplete')
+            .when(Condition.booleanEquals('$.allCollectionDeletionsComplete', true), cleanupDocs.next(hasMoreDocs))
+            .otherwise(waitForCollectionDeletionsRetry);
+
+        waitForCollectionDeletions.next(checkCollectionDeletionsComplete);
+
         const shouldSkipCleanup = new Choice(this, 'ShouldSkipCleanup')
             .when(Condition.and(Condition.isPresent('$.skipDocumentRemoval'), Condition.booleanEquals('$.skipDocumentRemoval', true)),
                 handleCleanupBedrockKnowledgeBase)
-            .otherwise(cleanupDocs.next(hasMoreDocs));
+            .otherwise(waitForCollectionDeletions);
 
         deleteStack.next(checkStackStatus.addCatch(deleteDynamoDbEntry, {
             resultPath: '$.error'

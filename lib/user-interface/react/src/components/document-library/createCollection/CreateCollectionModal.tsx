@@ -141,8 +141,14 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
 
     const reviewError = normalizeError('Collection', isEdit ? updateError : createError);
 
+    // Check if editing a default collection
+    const isDefaultCollection = isEdit && selectedItems.length > 0 && (selectedItems[0] as any).default === true;
+
+    // For default collections, embeddingModel is not editable and should not be required
     const requiredFields = [
-        ['name', 'repositoryId', 'embeddingModel'], // Step 1: Collection Configuration
+        isDefaultCollection
+            ? ['name', 'repositoryId'] // Step 1: Collection Configuration (default collection)
+            : ['name', 'repositoryId', 'embeddingModel'], // Step 1: Collection Configuration
         [], // Step 2: Chunking Configuration (optional)
         [], // Step 3: Access Control (optional)
     ];
@@ -213,10 +219,6 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isCreating, isUpdating, isCreateSuccess, isUpdateSuccess]);
-
-
-    // Check if editing a default collection
-    const isDefaultCollection = isEdit && selectedItems.length > 0 && (selectedItems[0] as any).default === true;
 
     // Wizard steps configuration
     const steps = [

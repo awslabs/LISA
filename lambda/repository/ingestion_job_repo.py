@@ -227,3 +227,32 @@ class IngestionJobRepository:
                 logger.debug(f"Error listing jobs with status {status}: {e}")
 
         return None
+
+    def find_pending_collection_deletions(self, repository_id: str) -> list[IngestionJob]:
+        """Find all pending collection deletion jobs for a repository.
+
+        Args:
+            repository_id: Repository ID
+
+        Returns:
+            List of pending collection deletion jobs
+        """
+        try:
+            response = _get_ingestion_job_table().query(
+                IndexName="repository_id-created_date-index",
+                KeyConditionExpression="repository_id = :repo_id",
+                FilterExpression="collection_deletion = :true AND (#status = :pending OR #status = :in_progress)",
+                ExpressionAttributeNames={"#status": "status"},
+                ExpressionAttributeValues={
+                    ":repo_id": repository_id,
+                    ":true": True,
+                    ":pending": IngestionStatus.DELETE_PENDING,
+                    ":in_progress": IngestionStatus.DELETE_IN_PROGRESS,
+                },
+            )
+
+            items = response.get("Items", [])
+            return [IngestionJob(**item) for item in items]
+        except Exception as e:
+            logger.error(f"Error finding pending collection deletions for repository {repository_id}: {e}")
+            return []

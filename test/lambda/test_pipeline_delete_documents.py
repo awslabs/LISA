@@ -146,8 +146,8 @@ def test_pipeline_delete_collection_bedrock_kb(setup_env):
         mock_table = Mock()
         mock_table.query.return_value = {
             "Items": [
-                {"pk": "repo1#col1", "source": "s3://bucket/key1"},
-                {"pk": "repo1#col1", "source": "s3://bucket/key2"},
+                {"pk": "repo1#col1", "source": "s3://bucket/key1", "ingestion_type": "manual"},
+                {"pk": "repo1#col1", "source": "s3://bucket/key2", "ingestion_type": "auto"},
             ]
         }
         mock_dynamodb.Table.return_value = mock_table

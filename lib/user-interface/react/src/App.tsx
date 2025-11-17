@@ -143,7 +143,7 @@ function App () {
                     notifications={<NotificationBanner />}
                     stickyNotifications={true}
                     navigation={nav}
-                    navigationWidth={450}
+                    navigationWidth={300}
                     content={
                         <Routes>
                             <Route

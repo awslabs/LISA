@@ -40,3 +40,6 @@ dev:
     #Docs
     DocsRole: TestDocsRole
     DocsDeployerRole: TestDocsRole
+
+    #MCP Server Deployer
+    McpServerDeployerRole: TestMcpServerDeployerRole

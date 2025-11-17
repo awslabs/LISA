@@ -30,8 +30,9 @@ import { Config } from '../../../lib/schema';
 import { LisaDocsStack } from '../../../lib/docs';
 import { LisaModelsApiStack } from '../../../lib/models';
 import { LisaRagStack } from '../../../lib/rag';
+import { LisaMcpApiStack } from '../../../lib/mcp';
 import fs from 'node:fs';
-import { DOCS_DIST_PATH, ECS_MODEL_DEPLOYER_DIST_PATH, VECTOR_STORE_DEPLOYER_DIST_PATH, WEBAPP_DIST_PATH } from '../../../lib/util';
+import { DOCS_DIST_PATH, ECS_MODEL_DEPLOYER_DIST_PATH, MCP_SERVER_DEPLOYER_DIST_PATH, VECTOR_STORE_DEPLOYER_DIST_PATH, WEBAPP_DIST_PATH } from '../../../lib/util';
 
 const TEST_LAYER_DIR = './test/cdk/mocks/layers';
 export default class MockApp {
@@ -72,7 +73,7 @@ export default class MockApp {
         };
 
         // Create dist folders to ensure stack creation
-        [VECTOR_STORE_DEPLOYER_DIST_PATH, ECS_MODEL_DEPLOYER_DIST_PATH, DOCS_DIST_PATH, WEBAPP_DIST_PATH, TEST_LAYER_DIR].forEach((distFolder) =>
+        [VECTOR_STORE_DEPLOYER_DIST_PATH, ECS_MODEL_DEPLOYER_DIST_PATH, MCP_SERVER_DEPLOYER_DIST_PATH, DOCS_DIST_PATH, WEBAPP_DIST_PATH, TEST_LAYER_DIR].forEach((distFolder) =>
             fs.mkdirSync(distFolder, { recursive: true })
         );
 
@@ -88,9 +89,9 @@ export default class MockApp {
         });
         const apiBaseStack = new LisaApiBaseStack(app, 'LisaApiBase', {
             ...baseStackProps,
-            tokenTable: serveStack.tokenTable,
             stackName: 'LisaApiBase',
             vpc: networkingStack.vpc,
+            securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
         });
         const metricsStack = new LisaMetricsStack(app, 'LisaMetrics', {
             ...baseStackProps,
@@ -171,6 +172,16 @@ export default class MockApp {
             authorizer: apiBaseStack.authorizer
         });
 
+        const mcpApiStack = new LisaMcpApiStack(app, 'LisaMcpApi', {
+            ...baseStackProps,
+            stackName: 'LisaMcpApi',
+            authorizer: apiBaseStack.authorizer!,
+            restApiId: apiBaseStack.restApiId,
+            rootResourceId: apiBaseStack.rootResourceId,
+            securityGroups: [networkingStack.vpc.securityGroups.ecsModelAlbSg],
+            vpc: networkingStack.vpc,
+        });
+
         const stacks: cdk.Stack[] = [
             networkingStack,
             iamStack,
@@ -184,7 +195,8 @@ export default class MockApp {
             coreStack,
             modelsStack,
             ragStack,
-            mcpWorkbenchStack
+            mcpWorkbenchStack,
+            mcpApiStack
         ];
 
         return { app, stacks };

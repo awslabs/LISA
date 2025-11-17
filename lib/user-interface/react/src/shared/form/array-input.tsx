@@ -43,11 +43,9 @@ export function ArrayInputField (props: ArrayInputProps): ReactElement {
     };
 
     return (
-        <SpaceBetween size='s'>
-            <FormField
-                {...formFieldProps}
-            >
-            </FormField>
+        <FormField
+            {...formFieldProps}
+        >
             <SpaceBetween size='s'>
                 {values.map((value, index) => (
                     <SpaceBetween direction='horizontal' size='xs' key={index}>
@@ -70,6 +68,6 @@ export function ArrayInputField (props: ArrayInputProps): ReactElement {
                     Add new
                 </Button>
             </SpaceBetween>
-        </SpaceBetween>
+        </FormField>
     );
 }

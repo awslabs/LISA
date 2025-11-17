@@ -16,7 +16,7 @@ import os
 from typing import Any, Dict, Optional
 
 import boto3
-from models.domain_objects import Enum, FixedChunkingStrategy, IngestDocumentRequest, IngestionJob
+from models.domain_objects import Enum, FixedChunkingStrategy, IngestDocumentRequest, IngestionJob, IngestionType
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +53,7 @@ class DocumentIngestionService:
         s3_path: str,
         username: str,
         metadata: Optional[Dict[str, Any]] = None,
+        ingestion_type: IngestionType = IngestionType.MANUAL,
     ) -> IngestionJob:
 
         # Determine collection_id
@@ -94,6 +95,7 @@ class DocumentIngestionService:
             s3_path=s3_path,
             username=username,
             metadata=metadata,
+            ingestion_type=ingestion_type
         )
         logger.info(f"Created ingestion job with embedding_model: {embedding_model}")
 

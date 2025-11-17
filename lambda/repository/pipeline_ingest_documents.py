@@ -116,9 +116,6 @@ def pipeline_ingest_document(job: IngestionJob) -> None:
                 logger.info(f"Document {kb_s3_path} already tracked, updated upload_date")
                 return
 
-            # Create RagDocument for tracking with KB bucket location
-            # KB handles all ingestion, chunking, and embedding internally
-            ingestion_type = IngestionType.AUTO if job.username == "system" else IngestionType.MANUAL
             rag_document = RagDocument(
                 repository_id=job.repository_id,
                 collection_id=job.collection_id,
@@ -127,7 +124,7 @@ def pipeline_ingest_document(job: IngestionJob) -> None:
                 subdocs=[],  # Empty - KB manages chunks internally
                 chunk_strategy=NoneChunkingStrategy(),  # KB manages chunking
                 username=job.username,
-                ingestion_type=ingestion_type,
+                ingestion_type=job.ingestion_type,
             )
             rag_document_repository.save(rag_document)
 
@@ -239,6 +236,8 @@ def pipeline_ingest_documents(job: IngestionJob) -> None:
                     s3_path=s3_path,
                     username=job.username,
                     metadata=job.metadata,
+                    ingestion_type=job.ingestion_type,
+                    job_type=JobActionType.DOCUMENT_INGESTION,
                 )
 
                 # Process the document

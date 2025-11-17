@@ -28,6 +28,7 @@ from models.domain_objects import (
     IngestDocumentRequest,
     IngestionJob,
     IngestionStatus,
+    IngestionType,
     ListJobsResponse,
     PaginationParams,
     PaginationResult,
@@ -926,6 +927,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
             s3_path=f"s3://{bucket}/{key}",
             username=username,
             metadata=metadata,
+            ingestion_type=IngestionType.MANUAL
         )
         ingestion_job_repository.save(job)
         ingestion_service.submit_create_job(job)

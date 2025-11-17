@@ -125,16 +125,15 @@ export class DeleteStoreStateMachine extends Construct {
             resultPath: '$.updateDynamoDbResult',
         });
 
-        const handleCleanupBedrockKnowledgeBase = new Choice(this, 'BedrockKnowledgeBase')
-            .when(sfn.Condition.and(sfn.Condition.stringEquals('$.ddbResult.Item.config.M.type.S', 'bedrock_knowledge_base'),
-                sfn.Condition.isNull('$.stackName')), deleteDynamoDbEntry)
-            .otherwise(deleteStack);
+        const handleStackDeletion = new Choice(this, 'HasStackName')
+            .when(sfn.Condition.isPresent('$.stackName'), deleteStack)
+            .otherwise(deleteDynamoDbEntry);
 
         const getRepoFromDdb = new tasks.DynamoGetItem(this, 'GetRepoFromDdb', {
             table: ragVectorStoreTable,
             key: { repositoryId: tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.repositoryId')) },
             resultPath: '$.ddbResult',
-        }).next(handleCleanupBedrockKnowledgeBase);
+        }).next(handleStackDeletion);
 
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
 
@@ -211,7 +210,7 @@ export class DeleteStoreStateMachine extends Construct {
 
         const shouldSkipCleanup = new Choice(this, 'ShouldSkipCleanup')
             .when(Condition.and(Condition.isPresent('$.skipDocumentRemoval'), Condition.booleanEquals('$.skipDocumentRemoval', true)),
-                handleCleanupBedrockKnowledgeBase)
+                getRepoFromDdb)
             .otherwise(waitForCollectionDeletions);
 
         deleteStack.next(checkStackStatus.addCatch(deleteDynamoDbEntry, {

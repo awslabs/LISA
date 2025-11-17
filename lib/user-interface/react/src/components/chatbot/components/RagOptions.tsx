@@ -86,8 +86,11 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
     useEffect(() => {
         const hasRepository = !!ragConfig?.repositoryId;
         const hasEmbeddingModel = !!ragConfig?.embeddingModel;
-        setUseRag(hasRepository && hasEmbeddingModel);
-    }, [ragConfig?.repositoryId, ragConfig?.embeddingModel, setUseRag]);
+        const hasCollection = !!ragConfig?.collection;
+        
+        // Enable RAG if repository is selected AND (embedding model is set OR collection is selected)
+        setUseRag(hasRepository && (hasEmbeddingModel || hasCollection));
+    }, [ragConfig?.repositoryId, ragConfig?.embeddingModel, ragConfig?.collection, setUseRag]);
 
     // Effect for handling repository changes and default embedding model selection
     useEffect(() => {

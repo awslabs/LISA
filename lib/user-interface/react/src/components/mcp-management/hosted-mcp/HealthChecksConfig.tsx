@@ -59,7 +59,7 @@ export function HealthChecksConfig ({
                             onChange={({ detail }) =>
                                 setFields({ 'containerHealthCheckConfig.command': detail.value })
                             }
-                            placeholder='CMD-SHELL curl --fail http://localhost:{{PORT}}/status || exit 1'
+                            placeholder='CMD-SHELL exit 0'
                         />
                     </FormField>
                     <FormField

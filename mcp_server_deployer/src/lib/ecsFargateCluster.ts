@@ -156,14 +156,14 @@ export class ECSFargateCluster extends Construct {
             };
         } else {
             // Default container health check
-            // Use a command that works with Python images (wget is often available, or use Python)
-            // Try wget first, then curl, then Python as fallback
+            // Simple check that container is running - rely on ALB health checks for actual service health
             // If S3 artifacts are used, increase startPeriod to allow time for download + pip install
             // S3 download + pip install can take 2-3 minutes, so use 180 seconds for S3, 90 for pre-built
             const defaultStartPeriod = mcpServerConfig.s3Path ? 180 : 90;
             containerOptions.healthCheck = {
                 command: [
-                    `curl --fail http://localhost:${containerPort}/status || exit 1`
+                    'CMD-SHELL',
+                    'exit 0'
                 ],
                 interval: Duration.seconds(30),
                 retries: 3,

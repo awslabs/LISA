@@ -89,12 +89,13 @@ class TestBedrockKBDefaultCollection:
     ):
         """Test that default collection is created for Bedrock KB repository."""
         # Arrange
+        from repository.services import RepositoryServiceFactory
+
         mock_vector_store_repo.find_repository_by_id.return_value = bedrock_kb_repository
 
         # Act
-        collection = collection_service.create_default_collection(
-            repository_id="test-bedrock-kb", repository=bedrock_kb_repository
-        )
+        service = RepositoryServiceFactory.create_service(bedrock_kb_repository)
+        collection = service.create_default_collection()
 
         # Assert
         assert collection is not None
@@ -112,12 +113,13 @@ class TestBedrockKBDefaultCollection:
     ):
         """Test that default collection includes repository pipelines."""
         # Arrange
+        from repository.services import RepositoryServiceFactory
+
         mock_vector_store_repo.find_repository_by_id.return_value = bedrock_kb_repository
 
         # Act
-        collection = collection_service.create_default_collection(
-            repository_id="test-bedrock-kb", repository=bedrock_kb_repository
-        )
+        service = RepositoryServiceFactory.create_service(bedrock_kb_repository)
+        collection = service.create_default_collection()
 
         # Assert
         assert len(collection.pipelines) == 1
@@ -129,20 +131,6 @@ class TestBedrockKBDefaultCollection:
         else:
             assert pipeline.s3Bucket == "test-kb-bucket"
             assert pipeline.trigger == "event"
-
-    def test_default_collection_not_created_for_inactive_repository(
-        self, collection_service, mock_vector_store_repo, bedrock_kb_repository
-    ):
-        """Test that default collection is not created for inactive repositories."""
-        # Arrange
-        bedrock_kb_repository["status"] = VectorStoreStatus.CREATE_IN_PROGRESS
-        mock_vector_store_repo.find_repository_by_id.return_value = bedrock_kb_repository
-
-        # Act
-        collection = collection_service.create_default_collection(repository_id="test-bedrock-kb")
-
-        # Assert
-        assert collection is None
 
 
 class TestBedrockKBCollectionRestrictions:
@@ -291,12 +279,13 @@ class TestBedrockKBCollectionMetadata:
     ):
         """Test that default collection has appropriate metadata tags."""
         # Arrange
+        from repository.services import RepositoryServiceFactory
+
         mock_vector_store_repo.find_repository_by_id.return_value = bedrock_kb_repository
 
         # Act
-        collection = collection_service.create_default_collection(
-            repository_id="test-bedrock-kb", repository=bedrock_kb_repository
-        )
+        service = RepositoryServiceFactory.create_service(bedrock_kb_repository)
+        collection = service.create_default_collection()
 
         # Assert
         assert isinstance(collection.metadata, CollectionMetadata)
@@ -308,12 +297,13 @@ class TestBedrockKBCollectionMetadata:
     ):
         """Test that default collection inherits repository access control."""
         # Arrange
+        from repository.services import RepositoryServiceFactory
+
         mock_vector_store_repo.find_repository_by_id.return_value = bedrock_kb_repository
 
         # Act
-        collection = collection_service.create_default_collection(
-            repository_id="test-bedrock-kb", repository=bedrock_kb_repository
-        )
+        service = RepositoryServiceFactory.create_service(bedrock_kb_repository)
+        collection = service.create_default_collection()
 
         # Assert
         assert collection.allowedGroups == ["admin", "users"]

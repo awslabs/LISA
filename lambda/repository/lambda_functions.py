@@ -45,6 +45,7 @@ from repository.embeddings import RagEmbeddings
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
 from repository.rag_document_repo import RagDocumentRepository
+from repository.services import RepositoryServiceFactory
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.auth import admin_only, get_groups, get_user_context, get_username, is_admin, user_has_group_access
 from utilities.bedrock_kb import add_default_pipeline_for_bedrock_kb, retrieve_documents
@@ -277,14 +278,14 @@ def create_bedrock_collection(event: dict, context: dict) -> Dict[str, Any]:
         # Get repository configuration
         repository = vs_repo.find_repository_by_id(repository_id=repository_id)
 
-        # Create default collection using the service
-        collection = collection_service.create_default_collection(
-            repository_id=repository_id,
-            repository=repository,
-        )
+        # Use repository service to create default collection
+        service = RepositoryServiceFactory.create_service(repository)
+        collection = service.create_default_collection()
 
         if collection is None:
             raise ValidationError(f"Failed to create default collection for repository {repository_id}")
+
+        # Save the collection
         collection_service.create_collection(collection=collection, username="system")
         logger.info(f"Successfully created default collection: {collection.collectionId}")
 
@@ -387,8 +388,9 @@ def get_collection(event: dict, context: dict) -> Dict[str, Any]:
     repo = get_repository(event, repository_id=repository_id)
 
     if repo.get("embeddingModelId") == collection_id:
-        # Not a real collection
-        collection = collection_service.create_default_collection(repository_id=repository_id, repository=repo)
+        # Not a real collection - create virtual default collection
+        service = RepositoryServiceFactory.create_service(repo)
+        collection = service.create_default_collection()
     else:
         # Get collection via service (includes access control check)
         collection = collection_service.get_collection(

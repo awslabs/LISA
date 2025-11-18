@@ -14,7 +14,7 @@
 
 """Tests for Bedrock Knowledge Base utilities."""
 
-from unittest.mock import MagicMock, create_autospec
+from unittest.mock import MagicMock
 
 import pytest
 from models.domain_objects import (
@@ -450,9 +450,7 @@ class TestIngestBedrockS3Documents:
         """Create mock ingestion service."""
         return MagicMock()
 
-    def test_ingest_existing_documents_success(
-        self, mock_s3_client, mock_ingestion_job_repo, mock_ingestion_service
-    ):
+    def test_ingest_existing_documents_success(self, mock_s3_client, mock_ingestion_job_repo, mock_ingestion_service):
         """Test successful discovery and ingestion of existing documents."""
         # Arrange
         mock_s3_client.list_objects_v2.return_value = {

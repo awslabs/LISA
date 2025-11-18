@@ -103,8 +103,6 @@ class TestValidateBedrockKBExists:
         assert "Unexpected error" in str(exc_info.value)
 
 
-
-
 class TestValidateDataSourceExists:
     """Test Data Source existence validation."""
 
@@ -268,5 +266,3 @@ class TestValidateBedrockKBRepository:
         assert "not found" in str(exc_info.value)
         # KB should be validated first
         mock_bedrock_agent_client.get_knowledge_base.assert_called_once()
-
-

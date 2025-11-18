@@ -55,45 +55,45 @@ def service(setup_env):
     return CollectionService(mock_collection_repo, mock_vector_store_repo, mock_document_repo)
 
 
-def testcreate_default_collection_no_repository(service):
-    """Test create_default_collection when repository not found."""
-    service.vector_store_repo.get_registered_repositories.return_value = []
-
-    result = service.create_default_collection("nonexistent-repo")
-    assert result is None
-
-
 def testcreate_default_collection_inactive_repository(service):
     """Test create_default_collection with inactive repository."""
-    service.vector_store_repo.get_registered_repositories.return_value = [
-        {"repositoryId": "repo1", "status": VectorStoreStatus.CREATE_FAILED, "embeddingModelId": "model1"}
-    ]
+    from repository.services import RepositoryServiceFactory
 
-    result = service.create_default_collection("repo1")
+    test_repo = {
+        "repositoryId": "repo1",
+        "type": "opensearch",
+        "status": VectorStoreStatus.CREATE_FAILED,
+        "embeddingModelId": "model1",
+    }
+    repo_service = RepositoryServiceFactory.create_service(test_repo)
+    result = repo_service.create_default_collection()
     assert result is None
 
 
 def testcreate_default_collection_no_embedding_model(service):
     """Test create_default_collection when repository has no embedding model."""
-    service.vector_store_repo.get_registered_repositories.return_value = [
-        {"repositoryId": "repo1", "status": VectorStoreStatus.CREATE_COMPLETE}
-    ]
+    from repository.services import RepositoryServiceFactory
 
-    result = service.create_default_collection("repo1")
+    test_repo = {"repositoryId": "repo1", "type": "opensearch", "status": VectorStoreStatus.CREATE_COMPLETE}
+    repo_service = RepositoryServiceFactory.create_service(test_repo)
+    result = repo_service.create_default_collection()
     assert result is None
 
 
 def testcreate_default_collection_success(service):
     """Test create_default_collection creates virtual collection."""
-    service.vector_store_repo.find_repository_by_id.return_value = {
+    from repository.services import RepositoryServiceFactory
+
+    test_repo = {
         "repositoryId": "repo1",
+        "type": "opensearch",
         "status": VectorStoreStatus.CREATE_COMPLETE,
         "embeddingModelId": "model1",
         "chunkingStrategy": FixedChunkingStrategy(size=1000, overlap=100),
         "allowedGroups": ["group1"],
     }
-
-    result = service.create_default_collection("repo1")
+    repo_service = RepositoryServiceFactory.create_service(test_repo)
+    result = repo_service.create_default_collection()
     assert result is not None
     assert result.collectionId == "model1"
     assert result.name == f"{result.repositoryId}-{result.collectionId}"

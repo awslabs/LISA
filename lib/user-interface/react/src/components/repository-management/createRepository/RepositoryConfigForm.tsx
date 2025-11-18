@@ -46,7 +46,8 @@ export function RepositoryConfigForm (props: FormProps<RagRepositoryConfig> & Re
         <SpaceBetween size={'s'}>
             <FormField label='Repository ID'
                 errorText={formErrors?.repositoryId}
-                description={shape.repositoryId.description}>
+                description={shape.repositoryId.description}
+                constraintText='Required. Only lowercase alphanumeric characters and hyphens allowed.'>
                 <Input value={item.repositoryId} inputMode='text'
                     onBlur={() => touchFields(['repositoryId'])}
                     onChange={({ detail }) => {

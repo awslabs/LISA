@@ -328,7 +328,14 @@ def create_collection(event: dict, context: dict) -> Dict[str, Any]:
     username, _, _ = get_user_context(event)
 
     # Ensure repository exists and user has access
-    _ = get_repository(event, repository_id=repository_id)
+    repository = get_repository(event, repository_id=repository_id)
+
+    # Block user-created collections for Bedrock Knowledge Base repositories
+    if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
+        raise ValidationError(
+            "Bedrock Knowledge Base repositories do not support user created collections. "
+            "Update the repository to add a new datasource collection."
+        )
 
     # Parse request body
     try:

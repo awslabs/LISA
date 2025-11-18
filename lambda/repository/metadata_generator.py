@@ -44,13 +44,13 @@ class MetadataGenerator:
 
     def __init__(self, cloudwatch_client=None):
         """Initialize metadata generator with caching.
-        
+
         Args:
             cloudwatch_client: Optional CloudWatch client for metrics (defaults to creating one)
         """
         self._collection_cache: Dict[str, Dict[str, Any]] = {}
         self._cache_ttl = 300  # 5 minutes
-        self.cloudwatch_client = cloudwatch_client or boto3.client('cloudwatch')
+        self.cloudwatch_client = cloudwatch_client or boto3.client("cloudwatch")
 
     def _emit_metric(
         self,
@@ -60,7 +60,7 @@ class MetadataGenerator:
         collection_id: Optional[str] = None,
     ) -> None:
         """Emit CloudWatch metric.
-        
+
         Args:
             metric_name: Name of the metric
             value: Metric value
@@ -70,23 +70,20 @@ class MetadataGenerator:
         try:
             dimensions = []
             if repository_id:
-                dimensions.append({'Name': 'RepositoryId', 'Value': repository_id})
+                dimensions.append({"Name": "RepositoryId", "Value": repository_id})
             if collection_id:
-                dimensions.append({'Name': 'CollectionId', 'Value': collection_id})
-            
+                dimensions.append({"Name": "CollectionId", "Value": collection_id})
+
             metric_data = {
-                'MetricName': metric_name,
-                'Value': value,
-                'Unit': 'Count',
+                "MetricName": metric_name,
+                "Value": value,
+                "Unit": "Count",
             }
-            
+
             if dimensions:
-                metric_data['Dimensions'] = dimensions
-            
-            self.cloudwatch_client.put_metric_data(
-                Namespace='LISA/BedrockKB',
-                MetricData=[metric_data]
-            )
+                metric_data["Dimensions"] = dimensions
+
+            self.cloudwatch_client.put_metric_data(Namespace="LISA/BedrockKB", MetricData=[metric_data])
         except Exception as e:
             logger.warning(f"Failed to emit CloudWatch metric {metric_name}: {e}")
 
@@ -185,7 +182,7 @@ class MetadataGenerator:
             metadata_json = json.dumps(metadata)
             metadata_size = len(metadata_json.encode("utf-8"))
             if metadata_size > MAX_METADATA_SIZE_BYTES:
-                self._emit_metric('MetadataValidationFailed', 1.0, repository_id, collection_id)
+                self._emit_metric("MetadataValidationFailed", 1.0, repository_id, collection_id)
                 raise ValidationError(
                     f"Metadata size ({metadata_size} bytes) exceeds limit ({MAX_METADATA_SIZE_BYTES} bytes)"
                 )
@@ -200,7 +197,7 @@ class MetadataGenerator:
 
             return True
         except ValidationError:
-            self._emit_metric('MetadataValidationFailed', 1.0, repository_id, collection_id)
+            self._emit_metric("MetadataValidationFailed", 1.0, repository_id, collection_id)
             raise
 
     def _validate_metadata_key(self, key: str) -> None:

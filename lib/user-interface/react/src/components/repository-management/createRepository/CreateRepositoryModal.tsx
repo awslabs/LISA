@@ -110,11 +110,18 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
 
 
     function handleSubmit () {
+        // Validate all fields before submission
         if (isValid && !_.isEmpty(changesDiff)) {
             // For Bedrock Knowledge Base repositories, remove pipelines - they're managed by the backend
             const submissionData = { ...toSubmit };
             if (submissionData.type === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE) {
                 delete submissionData.pipelines;
+            }
+
+            // Additional validation: ensure repositoryId is not empty
+            if (!isEdit && (!submissionData.repositoryId || submissionData.repositoryId.trim() === '')) {
+                notificationService.generateNotification('Repository ID is required', 'error');
+                return;
             }
 
             if (isEdit) {

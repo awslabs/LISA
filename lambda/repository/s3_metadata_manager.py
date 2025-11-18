@@ -33,11 +33,11 @@ class S3MetadataManager:
 
     def __init__(self, cloudwatch_client=None):
         """Initialize S3 metadata manager.
-        
+
         Args:
             cloudwatch_client: Optional CloudWatch client for metrics (defaults to creating one)
         """
-        self.cloudwatch_client = cloudwatch_client or boto3.client('cloudwatch')
+        self.cloudwatch_client = cloudwatch_client or boto3.client("cloudwatch")
 
     def _emit_metric(
         self,
@@ -47,7 +47,7 @@ class S3MetadataManager:
         collection_id: Optional[str] = None,
     ) -> None:
         """Emit CloudWatch metric.
-        
+
         Args:
             metric_name: Name of the metric
             value: Metric value
@@ -57,23 +57,20 @@ class S3MetadataManager:
         try:
             dimensions = []
             if repository_id:
-                dimensions.append({'Name': 'RepositoryId', 'Value': repository_id})
+                dimensions.append({"Name": "RepositoryId", "Value": repository_id})
             if collection_id:
-                dimensions.append({'Name': 'CollectionId', 'Value': collection_id})
-            
+                dimensions.append({"Name": "CollectionId", "Value": collection_id})
+
             metric_data = {
-                'MetricName': metric_name,
-                'Value': value,
-                'Unit': 'Count',
+                "MetricName": metric_name,
+                "Value": value,
+                "Unit": "Count",
             }
-            
+
             if dimensions:
-                metric_data['Dimensions'] = dimensions
-            
-            self.cloudwatch_client.put_metric_data(
-                Namespace='LISA/BedrockKB',
-                MetricData=[metric_data]
-            )
+                metric_data["Dimensions"] = dimensions
+
+            self.cloudwatch_client.put_metric_data(Namespace="LISA/BedrockKB", MetricData=[metric_data])
         except Exception as e:
             logger.warning(f"Failed to emit CloudWatch metric {metric_name}: {e}")
 
@@ -108,11 +105,11 @@ class S3MetadataManager:
         logger.info(
             f"Uploading metadata file: s3://{bucket}/{metadata_key}",
             extra={
-                'repository_id': repository_id,
-                'collection_id': collection_id,
-                'document_key': document_key,
-                'metadata_key': metadata_key,
-            }
+                "repository_id": repository_id,
+                "collection_id": collection_id,
+                "document_key": document_key,
+                "metadata_key": metadata_key,
+            },
         )
 
         # Upload with retries
@@ -125,10 +122,10 @@ class S3MetadataManager:
                     ContentType="application/json",
                 )
                 logger.info(f"Successfully uploaded metadata file: {metadata_key}")
-                
+
                 # Emit success metric
-                self._emit_metric('MetadataFileCreated', 1.0, repository_id, collection_id)
-                
+                self._emit_metric("MetadataFileCreated", 1.0, repository_id, collection_id)
+
                 return metadata_key
 
             except ClientError as e:
@@ -137,7 +134,7 @@ class S3MetadataManager:
                 # Don't retry on permission errors
                 if error_code == "AccessDenied":
                     logger.error(f"Access denied uploading metadata file: {metadata_key}")
-                    self._emit_metric('MetadataFileUploadFailed', 1.0, repository_id, collection_id)
+                    self._emit_metric("MetadataFileUploadFailed", 1.0, repository_id, collection_id)
                     raise
 
                 # Retry on transient errors
@@ -146,7 +143,7 @@ class S3MetadataManager:
                     continue
                 else:
                     logger.error(f"Failed to upload metadata file after {MAX_RETRIES} attempts: {metadata_key}")
-                    self._emit_metric('MetadataFileUploadFailed', 1.0, repository_id, collection_id)
+                    self._emit_metric("MetadataFileUploadFailed", 1.0, repository_id, collection_id)
                     raise
 
     def delete_metadata_file(
@@ -174,19 +171,19 @@ class S3MetadataManager:
         logger.info(
             f"Deleting metadata file: s3://{bucket}/{metadata_key}",
             extra={
-                'repository_id': repository_id,
-                'collection_id': collection_id,
-                'document_key': document_key,
-                'metadata_key': metadata_key,
-            }
+                "repository_id": repository_id,
+                "collection_id": collection_id,
+                "document_key": document_key,
+                "metadata_key": metadata_key,
+            },
         )
 
         try:
             s3_client.delete_object(Bucket=bucket, Key=metadata_key)
             logger.info(f"Successfully deleted metadata file: {metadata_key}")
-            
+
             # Emit success metric
-            self._emit_metric('MetadataFileDeleted', 1.0, repository_id, collection_id)
+            self._emit_metric("MetadataFileDeleted", 1.0, repository_id, collection_id)
 
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
@@ -199,9 +196,7 @@ class S3MetadataManager:
             # Log other errors but don't fail
             logger.warning(f"Failed to delete metadata file: {metadata_key}, error: {e}")
 
-    def batch_upload_metadata(
-        self, s3_client, bucket: str, documents: List[Tuple[str, Dict[str, Any]]]
-    ) -> List[str]:
+    def batch_upload_metadata(self, s3_client, bucket: str, documents: List[Tuple[str, Dict[str, Any]]]) -> List[str]:
         """Upload multiple metadata files in batch.
 
         Args:

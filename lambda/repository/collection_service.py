@@ -39,7 +39,6 @@ from repository.ingestion_service import DocumentIngestionService
 from repository.rag_document_repo import RagDocumentRepository
 from repository.services import RepositoryServiceFactory
 from repository.vector_store_repo import VectorStoreRepository
-from utilities.repository_types import RepositoryType
 from utilities.validation import ValidationError
 
 logger = logging.getLogger(__name__)
@@ -108,15 +107,8 @@ class CollectionService:
             Created collection
 
         Raises:
-            ValidationError: If collection name already exists in repository or if repository is Bedrock KB
+            ValidationError: If collection name already exists in repository
         """
-        # Check if repository is Bedrock KB - only default collections allowed
-        repository = self.vector_store_repo.find_repository_by_id(collection.repositoryId)
-        if repository and RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
-            raise ValidationError(
-                "Bedrock Knowledge Base repositories (type: BEDROCK_KB) only support the default collection. "
-                "User-created collections are not allowed."
-            )
 
         # Check if collection name already exists in this repository
         existing = self.collection_repo.find_by_name(collection.repositoryId, collection.name)

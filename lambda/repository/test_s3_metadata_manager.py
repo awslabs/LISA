@@ -14,8 +14,7 @@
 
 """Unit tests for S3MetadataManager."""
 
-import json
-from unittest.mock import create_autospec, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 from botocore.exceptions import ClientError

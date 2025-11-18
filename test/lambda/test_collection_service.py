@@ -90,6 +90,7 @@ def test_get_collection():
 
 def test_list_collections():
     """Test list collections"""
+    from unittest.mock import patch
     from repository.collection_service import CollectionService
 
     mock_repo = Mock()
@@ -109,11 +110,23 @@ def test_list_collections():
         private=False,
     )
 
+    # Mock repository with proper structure for service factory
+    mock_repository = {
+        "repositoryId": "test-repo",
+        "type": "opensearch",
+        "status": "CREATE_COMPLETE",
+        "embeddingModelId": "model"
+    }
+    mock_vector_store_repo.find_repository_by_id.return_value = mock_repository
     mock_repo.list_by_repository.return_value = ([collection], None)
+    
     result, key = service.list_collections("test-repo", "user", ["group1"], False)
 
-    assert len(result) == 1
-    assert result[0].collectionId == "test-coll"
+    # Should return 2 collections: the test collection + default collection
+    assert len(result) == 2
+    # Find the test collection (not the default one)
+    test_coll = [c for c in result if c.collectionId == "test-coll"][0]
+    assert test_coll.collectionId == "test-coll"
 
 
 def test_delete_collection():

@@ -45,6 +45,8 @@ def setup_env(monkeypatch):
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
     monkeypatch.setenv("AWS_REGION", "us-east-1")
     monkeypatch.setenv("LISA_RAG_COLLECTIONS_TABLE", "test-collections-table")
+    monkeypatch.setenv("RAG_DOCUMENT_TABLE", "test-document-table")
+    monkeypatch.setenv("RAG_SUB_DOCUMENT_TABLE", "test-sub-document-table")
     monkeypatch.setenv("LISA_RAG_VECTOR_STORE_TABLE", "test-vector-store-table")
 
 
@@ -62,16 +64,19 @@ def mock_dynamodb_tables():
         {
             "repositoryId": "repo-1",
             "repositoryName": "Repository 1",
+            "type": "pgvector",
             "allowedGroups": ["group1", "group2"],
         },
         {
             "repositoryId": "repo-2",
             "repositoryName": "Repository 2",
+            "type": "pgvector",
             "allowedGroups": ["group2", "group3"],
         },
         {
             "repositoryId": "repo-3",
             "repositoryName": "Repository 3",
+            "type": "pgvector",
             "allowedGroups": [],  # Public
         },
     ]

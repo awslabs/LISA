@@ -90,16 +90,19 @@ def sample_repositories():
         {
             "repositoryId": "repo-1",
             "repositoryName": "Repository 1",
+            "type": "pgvector",
             "allowedGroups": ["group1", "group2"],
         },
         {
             "repositoryId": "repo-2",
             "repositoryName": "Repository 2",
+            "type": "pgvector",
             "allowedGroups": ["group2", "group3"],
         },
         {
             "repositoryId": "repo-3",
             "repositoryName": "Repository 3",
+            "type": "pgvector",
             "allowedGroups": [],  # Public repository
         },
     ]

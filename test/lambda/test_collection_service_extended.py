@@ -166,7 +166,7 @@ def test_list_all_user_collections_no_repositories(service):
 def test_list_all_user_collections_simple_pagination(service):
     """Test list_all_user_collections with simple pagination strategy."""
     service.vector_store_repo.get_registered_repositories.return_value = [
-        {"repositoryId": "repo1", "repositoryName": "Repo 1", "allowedGroups": ["group1"]}
+        {"repositoryId": "repo1", "repositoryName": "Repo 1", "type": "pgvector", "allowedGroups": ["group1"]}
     ]
 
     collection = RagCollectionConfig(
@@ -191,7 +191,7 @@ def test_list_all_user_collections_simple_pagination(service):
 def test_list_all_user_collections_with_filter(service):
     """Test list_all_user_collections with text filter."""
     service.vector_store_repo.get_registered_repositories.return_value = [
-        {"repositoryId": "repo1", "repositoryName": "Repo 1", "allowedGroups": []}
+        {"repositoryId": "repo1", "repositoryName": "Repo 1", "type": "pgvector", "allowedGroups": []}
     ]
 
     collection1 = RagCollectionConfig(

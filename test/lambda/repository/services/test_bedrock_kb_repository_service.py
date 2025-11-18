@@ -103,10 +103,6 @@ class TestBedrockKBRepositoryService:
         
         assert client is None
 
-    @patch.dict(os.environ, {
-        "RAG_DOCUMENT_TABLE": "test-doc-table",
-        "RAG_SUB_DOCUMENT_TABLE": "test-subdoc-table"
-    })
     def test_ingest_document_new(self, bedrock_kb_service, mock_rag_document_repo):
         """Test ingesting a new document to Bedrock KB."""
         job = IngestionJob(
@@ -121,8 +117,12 @@ class TestBedrockKBRepositoryService:
         # Mock repository to return no existing documents
         mock_rag_document_repo.find_by_source.return_value = iter([])
         
-        with patch("repository.services.bedrock_kb_repository_service.RagDocumentRepository",
-                   return_value=mock_rag_document_repo):
+        # Patch at module level since import is at top
+        with patch.dict(os.environ, {
+            "RAG_DOCUMENT_TABLE": "test-doc-table",
+            "RAG_SUB_DOCUMENT_TABLE": "test-subdoc-table"
+        }), patch("repository.rag_document_repo.RagDocumentRepository",
+                  return_value=mock_rag_document_repo):
             result = bedrock_kb_service.ingest_document(job, [], [])
         
         # Verify document was saved

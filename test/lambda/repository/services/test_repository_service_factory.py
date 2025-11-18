@@ -14,7 +14,15 @@
 
 """Tests for repository service factory."""
 
+import os
+
 import pytest
+
+# Set required environment variables BEFORE any imports
+os.environ.setdefault("AWS_REGION", "us-east-1")
+os.environ.setdefault("RAG_DOCUMENT_TABLE", "test-doc-table")
+os.environ.setdefault("RAG_SUB_DOCUMENT_TABLE", "test-subdoc-table")
+
 from repository.services.bedrock_kb_repository_service import BedrockKBRepositoryService
 from repository.services.opensearch_repository_service import OpenSearchRepositoryService
 from repository.services.pgvector_repository_service import PGVectorRepositoryService
@@ -78,7 +86,7 @@ class TestRepositoryServiceFactory:
             "type": "unsupported_type"
         }
         
-        with pytest.raises(ValueError, match="Unsupported repository type"):
+        with pytest.raises(ValueError, match="'unsupported_type' is not a valid RepositoryType"):
             RepositoryServiceFactory.create_service(repository)
 
     def test_get_supported_types(self):
@@ -101,11 +109,37 @@ class TestRepositoryServiceFactory:
             def should_create_default_collection(self):
                 return False
             
-            # Implement other abstract methods...
+            def get_collection_id_from_config(self, pipeline_config):
+                return "custom-id"
+            
+            def ingest_document(self, job, texts, metadatas):
+                pass
+            
+            def delete_document(self, document, s3_client, bedrock_agent_client=None):
+                pass
+            
+            def delete_collection(self, collection_id, s3_client, bedrock_agent_client=None):
+                pass
+            
+            def retrieve_documents(self, query, collection_id, top_k, bedrock_agent_client=None):
+                return []
+            
+            def validate_document_source(self, s3_path):
+                return s3_path
+            
+            def get_vector_store_client(self, collection_id, embeddings):
+                return None
+            
+            def create_default_collection(self):
+                return None
         
-        # Register custom service
-        custom_type = RepositoryType("custom_type")
-        RepositoryServiceFactory.register_service(custom_type, CustomRepositoryService)
+        # Register custom service using existing enum value for testing
+        # (Can't create new enum values dynamically)
+        original_service = RepositoryServiceFactory._services.get(RepositoryType.OPENSEARCH)
+        RepositoryServiceFactory.register_service(RepositoryType.OPENSEARCH, CustomRepositoryService)
         
         # Verify registration
-        assert custom_type in RepositoryServiceFactory.get_supported_types()
+        assert RepositoryServiceFactory._services[RepositoryType.OPENSEARCH] == CustomRepositoryService
+        
+        # Restore original
+        RepositoryServiceFactory._services[RepositoryType.OPENSEARCH] = original_service

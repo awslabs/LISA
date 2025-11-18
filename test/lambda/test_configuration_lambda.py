@@ -315,7 +315,7 @@ def test_get_configuration_resource_not_found_specific(config_table, lambda_cont
             # Verify the response
             assert response["statusCode"] == 200
             body = json.loads(response["body"])
-            assert body == {}  # The response is an empty dict here because we mock at a lower level
+            assert body == []  # The response is an empty list when no items found
 
             # Verify that logger.warning was called with the expected message
             mock_logger.warning.assert_called_once_with("No record found with session id: system")
@@ -455,7 +455,7 @@ def test_get_configuration_other_client_error_specific(config_table, lambda_cont
             # Verify the response
             assert response["statusCode"] == 200
             body = json.loads(response["body"])
-            assert body == {}
+            assert body == []
 
             # Verify that logger.exception was called with the expected message
             mock_logger.exception.assert_called_once_with("Error fetching session")

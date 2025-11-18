@@ -146,7 +146,9 @@ def user_preferences_table(dynamodb):
         AttributeDefinitions=[{"AttributeName": "user", "AttributeType": "S"}],
         ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
     )
-    return table
+    # Patch the module-level table with our test fixture
+    with patch("user_preferences.lambda_functions.table", table):
+        yield table
 
 
 @pytest.fixture

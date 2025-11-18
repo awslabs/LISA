@@ -117,7 +117,9 @@ def dynamodb_table(dynamodb):
         ],
         ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
     )
-    return table
+    # Patch the module-level table with our test fixture
+    with patch("session.lambda_functions.table", table):
+        yield table
 
 
 @pytest.fixture(scope="function")
@@ -136,7 +138,9 @@ def config_table(dynamodb):
         BillingMode="PAY_PER_REQUEST",
     )
     table.wait_until_exists()
-    return table
+    # Patch the module-level config_table with our test fixture
+    with patch("session.lambda_functions.config_table", table):
+        yield table
 
 
 # Create mock modules

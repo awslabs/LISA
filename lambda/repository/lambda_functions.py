@@ -898,6 +898,46 @@ def ingest_documents(event: dict, context: dict) -> dict:
     # Get metadata
     metadata = collection_service.get_collection_metadata(repository, collection, request.metadata)
 
+    # For Bedrock KB repositories, upload metadata files BEFORE documents
+    is_bedrock_kb = RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB)
+    if is_bedrock_kb:
+        from repository.metadata_generator import MetadataGenerator
+        from repository.s3_metadata_manager import S3MetadataManager
+
+        metadata_generator = MetadataGenerator()
+        s3_metadata_manager = S3MetadataManager()
+
+        # Get collection object for metadata generation
+        collection_obj = None
+        if request.collectionId:
+            try:
+                collection_obj = collection_service.get_collection(
+                    collection_id=request.collectionId,
+                    repository_id=repository_id,
+                    username=username,
+                    user_groups=groups,
+                    is_admin=is_admin,
+                )
+            except Exception as e:
+                logger.warning(f"Could not fetch collection for metadata: {e}")
+
+        # Upload metadata files first
+        for key in request.keys:
+            try:
+                # Generate metadata content
+                metadata_content = metadata_generator.generate_metadata_json(
+                    repository=repository, collection=collection_obj, document_metadata=metadata
+                )
+
+                # Upload metadata file
+                s3_metadata_manager.upload_metadata_file(
+                    s3_client=s3, bucket=bucket, document_key=key, metadata_content=metadata_content
+                )
+                logger.info(f"Uploaded metadata file for {key}")
+            except Exception as e:
+                logger.error(f"Failed to upload metadata file for {key}: {e}")
+                # Continue with document upload even if metadata fails
+
     # Create jobs
     jobs = []
     for key in request.keys:

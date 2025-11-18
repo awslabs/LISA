@@ -42,10 +42,10 @@ logger = logging.getLogger(__name__)
 
 class VectorStoreRepositoryService(RepositoryService):
     """Base implementation for vector store-based repository services.
-    
+
     Provides common functionality for OpenSearch and PGVector repositories
     that share similar ingestion, deletion, and retrieval patterns.
-    
+
     Subclasses only need to implement repository-specific operations like
     index/collection dropping and score normalization.
     """
@@ -79,7 +79,7 @@ class VectorStoreRepositoryService(RepositoryService):
             collection_id=job.collection_id,
             embedding_model=job.embedding_model,
         )
-        
+
         # Create document record
         rag_document = RagDocument(
             repository_id=job.repository_id,
@@ -91,14 +91,14 @@ class VectorStoreRepositoryService(RepositoryService):
             username=job.username,
             ingestion_type=job.ingestion_type,
         )
-        
+
         from repository.rag_document_repo import RagDocumentRepository
+
         rag_document_repository = RagDocumentRepository(
-            os.environ["RAG_DOCUMENT_TABLE"],
-            os.environ["RAG_SUB_DOCUMENT_TABLE"]
+            os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"]
         )
         rag_document_repository.save(rag_document)
-        
+
         logger.info(
             f"Ingested document {job.s3_path} ({len(all_ids)} chunks) "
             f"into {self.repository.get('type')} collection {job.collection_id}"
@@ -127,7 +127,7 @@ class VectorStoreRepositoryService(RepositoryService):
         bedrock_agent_client: Optional[Any] = None,
     ) -> None:
         """Delete collection from vector store.
-        
+
         Delegates to subclass-specific implementation for dropping
         indexes/collections.
         """
@@ -147,19 +147,21 @@ class VectorStoreRepositoryService(RepositoryService):
             collection_id=collection_id,
             embeddings=embeddings,
         )
-        
+
         results = vector_store.similarity_search_with_score(query, k=top_k)
-        
+
         documents = []
         for doc, score in results:
             # Normalize score based on repository type
             normalized_score = self._normalize_similarity_score(score)
-            documents.append({
-                "content": doc.page_content,
-                "metadata": doc.metadata,
-                "score": normalized_score,
-            })
-        
+            documents.append(
+                {
+                    "content": doc.page_content,
+                    "metadata": doc.metadata,
+                    "score": normalized_score,
+                }
+            )
+
         return documents
 
     def validate_document_source(self, s3_path: str) -> str:
@@ -181,7 +183,7 @@ class VectorStoreRepositoryService(RepositoryService):
     @abstractmethod
     def _drop_collection_index(self, collection_id: str) -> None:
         """Drop collection index/table (repository-specific).
-        
+
         Args:
             collection_id: Collection to drop
         """
@@ -189,13 +191,13 @@ class VectorStoreRepositoryService(RepositoryService):
 
     def _normalize_similarity_score(self, score: float) -> float:
         """Normalize similarity score to 0-1 range.
-        
+
         Default implementation returns score as-is (for OpenSearch).
         Subclasses can override for different scoring systems (e.g., PGVector).
-        
+
         Args:
             score: Raw similarity score from vector store
-            
+
         Returns:
             Normalized score in 0-1 range
         """
@@ -203,7 +205,7 @@ class VectorStoreRepositoryService(RepositoryService):
 
     def create_default_collection(self) -> Optional[RagCollectionConfig]:
         """Create a default collection for vector store repositories.
-        
+
         Returns:
             Default collection configuration using repository's embedding model
         """
@@ -215,20 +217,20 @@ class VectorStoreRepositoryService(RepositoryService):
                 VectorStoreStatus.UPDATE_COMPLETE_CLEANUP_IN_PROGRESS,
                 VectorStoreStatus.UPDATE_IN_PROGRESS,
             ]
-            
+
             if not active:
                 logger.info(f"Repository {self.repository_id} is not active")
                 return None
-            
+
             embedding_model = self.repository.get("embeddingModelId")
             if not embedding_model:
                 logger.info(f"Repository {self.repository_id} has no default embedding model")
                 return None
-            
+
             # Use embedding model as collection ID
             collection_id = embedding_model
             sanitized_name = f"{self.repository.get('name', self.repository_id)}-{embedding_model}".replace(".", "-")
-            
+
             default_collection = RagCollectionConfig(
                 collectionId=collection_id,
                 repositoryId=self.repository_id,
@@ -246,10 +248,10 @@ class VectorStoreRepositoryService(RepositoryService):
                 createdAt=datetime.now(timezone.utc),
                 updatedAt=datetime.now(timezone.utc),
             )
-            
+
             logger.info(f"Created virtual default collection for repository {self.repository_id}")
             return default_collection
-            
+
         except Exception as e:
             logger.error(f"Failed to create default collection for repository {self.repository_id}: {e}")
             return None
@@ -268,25 +270,22 @@ class VectorStoreRepositoryService(RepositoryService):
             collection_id,
             embeddings,
         )
-        
+
         all_ids = []
         batch_size = 500
-        
+
         for i in range(0, len(texts), batch_size):
-            text_batch = texts[i:i + batch_size]
-            metadata_batch = metadatas[i:i + batch_size]
-            
-            batch_ids = vector_store.add_texts(
-                texts=text_batch,
-                metadatas=metadata_batch
-            )
-            
+            text_batch = texts[i : i + batch_size]
+            metadata_batch = metadatas[i : i + batch_size]
+
+            batch_ids = vector_store.add_texts(texts=text_batch, metadatas=metadata_batch)
+
             if not batch_ids:
                 raise Exception(f"Failed to store batch {i // batch_size + 1}")
-            
+
             all_ids.extend(batch_ids)
-        
+
         if not all_ids:
             raise Exception("Failed to store any documents in vector store")
-        
+
         return all_ids

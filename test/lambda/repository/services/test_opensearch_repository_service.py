@@ -55,11 +55,14 @@ class TestOpenSearchRepositoryService:
         mock_vector_store = MagicMock()
         mock_vector_store.client.indices.exists.return_value = True
         mock_vector_store.client.indices.delete.return_value = {"acknowledged": True}
-        
+
         with patch("repository.services.opensearch_repository_service.RagEmbeddings"):
-            with patch("repository.services.opensearch_repository_service.get_vector_store_client", return_value=mock_vector_store):
+            with patch(
+                "repository.services.opensearch_repository_service.get_vector_store_client",
+                return_value=mock_vector_store,
+            ):
                 opensearch_service._drop_collection_index("test-collection")
-                
+
                 mock_vector_store.client.indices.exists.assert_called_once()
                 mock_vector_store.client.indices.delete.assert_called_once()
 
@@ -67,20 +70,26 @@ class TestOpenSearchRepositoryService:
         """Test dropping OpenSearch index that doesn't exist."""
         mock_vector_store = MagicMock()
         mock_vector_store.client.indices.exists.return_value = False
-        
+
         with patch("repository.services.opensearch_repository_service.RagEmbeddings"):
-            with patch("repository.services.opensearch_repository_service.get_vector_store_client", return_value=mock_vector_store):
+            with patch(
+                "repository.services.opensearch_repository_service.get_vector_store_client",
+                return_value=mock_vector_store,
+            ):
                 opensearch_service._drop_collection_index("test-collection")
-                
+
                 mock_vector_store.client.indices.exists.assert_called_once()
                 mock_vector_store.client.indices.delete.assert_not_called()
 
     def test_drop_collection_index_no_client_support(self, opensearch_service):
         """Test dropping index when vector store doesn't support index operations."""
         mock_vector_store = MagicMock(spec=[])  # No client attribute
-        
+
         with patch("repository.services.opensearch_repository_service.RagEmbeddings"):
-            with patch("repository.services.opensearch_repository_service.get_vector_store_client", return_value=mock_vector_store):
+            with patch(
+                "repository.services.opensearch_repository_service.get_vector_store_client",
+                return_value=mock_vector_store,
+            ):
                 # Should not raise exception
                 opensearch_service._drop_collection_index("test-collection")
 
@@ -88,8 +97,11 @@ class TestOpenSearchRepositoryService:
         """Test dropping index handles exceptions gracefully."""
         mock_vector_store = MagicMock()
         mock_vector_store.client.indices.exists.side_effect = Exception("Connection error")
-        
+
         with patch("repository.services.opensearch_repository_service.RagEmbeddings"):
-            with patch("repository.services.opensearch_repository_service.get_vector_store_client", return_value=mock_vector_store):
+            with patch(
+                "repository.services.opensearch_repository_service.get_vector_store_client",
+                return_value=mock_vector_store,
+            ):
                 # Should not raise exception
                 opensearch_service._drop_collection_index("test-collection")

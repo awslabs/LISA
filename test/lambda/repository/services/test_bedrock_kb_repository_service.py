@@ -15,8 +15,7 @@
 """Tests for Bedrock KB repository service."""
 
 import os
-from datetime import datetime, timezone
-from unittest.mock import MagicMock, create_autospec, patch
+from unittest.mock import create_autospec, MagicMock, patch
 
 import pytest
 
@@ -25,13 +24,7 @@ os.environ.setdefault("AWS_REGION", "us-east-1")
 os.environ.setdefault("RAG_DOCUMENT_TABLE", "test-doc-table")
 os.environ.setdefault("RAG_SUB_DOCUMENT_TABLE", "test-subdoc-table")
 
-from models.domain_objects import (
-    CollectionStatus,
-    IngestionJob,
-    IngestionType,
-    NoneChunkingStrategy,
-    RagDocument,
-)
+from models.domain_objects import CollectionStatus, IngestionJob, IngestionType, NoneChunkingStrategy, RagDocument
 from repository.rag_document_repo import RagDocumentRepository
 from repository.services.bedrock_kb_repository_service import BedrockKBRepositoryService
 
@@ -49,8 +42,8 @@ def bedrock_kb_repository():
         "bedrockKnowledgeBaseConfig": {
             "bedrockKnowledgeBaseId": "kb-123",
             "bedrockKnowledgeDatasourceId": "ds-456",
-            "bedrockKnowledgeDatasourceS3Bucket": "test-kb-bucket"
-        }
+            "bedrockKnowledgeDatasourceS3Bucket": "test-kb-bucket",
+        },
     }
 
 
@@ -92,10 +85,10 @@ class TestBedrockKBRepositoryService:
         repository = {
             "repositoryId": "test-kb-repo",
             "type": "bedrock_knowledge_base",
-            "bedrockKnowledgeBaseConfig": {}
+            "bedrockKnowledgeBaseConfig": {},
         }
         service = BedrockKBRepositoryService(repository)
-        
+
         with pytest.raises(ValueError, match="missing data source ID"):
             service.get_collection_id_from_config({})
 
@@ -103,10 +96,10 @@ class TestBedrockKBRepositoryService:
         """Test ingesting a new document."""
         mock_rag_document_repo.find_by_source.return_value = iter([])
         mock_rag_document_repo.save.return_value = None
-        
+
         with patch("repository.rag_document_repo.RagDocumentRepository", return_value=mock_rag_document_repo):
             result = bedrock_kb_service.ingest_document(sample_ingestion_job, [], [])
-            
+
             assert result.repository_id == "test-kb-repo"
             assert result.collection_id == "ds-456"
             assert result.source == "s3://test-kb-bucket/document.pdf"
@@ -128,10 +121,10 @@ class TestBedrockKBRepositoryService:
         original_timestamp = existing_doc.upload_date
         mock_rag_document_repo.find_by_source.return_value = iter([existing_doc])
         mock_rag_document_repo.save.return_value = None
-        
+
         with patch("repository.rag_document_repo.RagDocumentRepository", return_value=mock_rag_document_repo):
             result = bedrock_kb_service.ingest_document(sample_ingestion_job, [], [])
-            
+
             assert result.document_id == existing_doc.document_id
             assert result.upload_date >= original_timestamp
             mock_rag_document_repo.save.assert_called_once()
@@ -148,10 +141,10 @@ class TestBedrockKBRepositoryService:
             username="test-user",
             ingestion_type=IngestionType.MANUAL,
         )
-        
+
         mock_s3_client = MagicMock()
         mock_bedrock_agent_client = MagicMock()
-        
+
         with patch("repository.services.bedrock_kb_repository_service.delete_document_from_kb") as mock_delete:
             bedrock_kb_service.delete_document(document, mock_s3_client, mock_bedrock_agent_client)
             mock_delete.assert_called_once()
@@ -168,7 +161,7 @@ class TestBedrockKBRepositoryService:
             username="test-user",
             ingestion_type=IngestionType.MANUAL,
         )
-        
+
         with pytest.raises(ValueError, match="Bedrock agent client required"):
             bedrock_kb_service.delete_document(document, MagicMock(), None)
 
@@ -176,7 +169,7 @@ class TestBedrockKBRepositoryService:
         """Test deleting a collection."""
         mock_s3_client = MagicMock()
         mock_bedrock_agent_client = MagicMock()
-        
+
         mock_table = MagicMock()
         mock_table.query.return_value = {
             "Items": [
@@ -185,14 +178,16 @@ class TestBedrockKBRepositoryService:
                 {"pk": "test-kb-repo#ds-456", "source": "s3://test-kb-bucket/doc3.pdf", "ingestion_type": "existing"},
             ]
         }
-        
+
         mock_dynamodb = MagicMock()
         mock_dynamodb.Table.return_value = mock_table
-        
+
         with patch("boto3.resource", return_value=mock_dynamodb):
-            with patch("repository.services.bedrock_kb_repository_service.bulk_delete_documents_from_kb") as mock_bulk_delete:
+            with patch(
+                "repository.services.bedrock_kb_repository_service.bulk_delete_documents_from_kb"
+            ) as mock_bulk_delete:
                 bedrock_kb_service.delete_collection("ds-456", mock_s3_client, mock_bedrock_agent_client)
-                
+
                 # Should only delete LISA-managed documents (manual and auto)
                 call_args = mock_bulk_delete.call_args
                 s3_paths = call_args[1]["s3_paths"]
@@ -214,24 +209,19 @@ class TestBedrockKBRepositoryService:
                     "content": {"text": "Test content 1"},
                     "metadata": {"source": "doc1.pdf"},
                     "score": 0.95,
-                    "location": {"s3Location": {"uri": "s3://bucket/doc1.pdf"}}
+                    "location": {"s3Location": {"uri": "s3://bucket/doc1.pdf"}},
                 },
                 {
                     "content": {"text": "Test content 2"},
                     "metadata": {"source": "doc2.pdf"},
                     "score": 0.85,
-                    "location": {"s3Location": {"uri": "s3://bucket/doc2.pdf"}}
-                }
+                    "location": {"s3Location": {"uri": "s3://bucket/doc2.pdf"}},
+                },
             ]
         }
-        
-        results = bedrock_kb_service.retrieve_documents(
-            "test query",
-            "ds-456",
-            5,
-            mock_bedrock_agent_client
-        )
-        
+
+        results = bedrock_kb_service.retrieve_documents("test query", "ds-456", 5, mock_bedrock_agent_client)
+
         assert len(results) == 2
         assert results[0]["content"] == "Test content 1"
         assert results[0]["score"] == 0.95
@@ -247,12 +237,10 @@ class TestBedrockKBRepositoryService:
         repository = {
             "repositoryId": "test-kb-repo",
             "type": "bedrock_knowledge_base",
-            "bedrockKnowledgeBaseConfig": {
-                "bedrockKnowledgeDatasourceId": "ds-456"
-            }
+            "bedrockKnowledgeBaseConfig": {"bedrockKnowledgeDatasourceId": "ds-456"},
         }
         service = BedrockKBRepositoryService(repository)
-        
+
         with pytest.raises(ValueError, match="missing KB ID"):
             service.retrieve_documents("query", "ds-456", 5, MagicMock())
 
@@ -276,7 +264,7 @@ class TestBedrockKBRepositoryService:
     def test_create_default_collection(self, bedrock_kb_service):
         """Test creating default collection for Bedrock KB."""
         collection = bedrock_kb_service.create_default_collection()
-        
+
         assert collection is not None
         assert collection.collectionId == "ds-456"
         assert collection.repositoryId == "test-kb-repo"
@@ -291,10 +279,10 @@ class TestBedrockKBRepositoryService:
         repository = {
             "repositoryId": "test-kb-repo",
             "type": "bedrock_knowledge_base",
-            "bedrockKnowledgeBaseConfig": {}
+            "bedrockKnowledgeBaseConfig": {},
         }
         service = BedrockKBRepositoryService(repository)
-        
+
         collection = service.create_default_collection()
         assert collection is None
 

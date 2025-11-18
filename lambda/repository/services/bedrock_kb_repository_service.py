@@ -24,11 +24,9 @@ from models.domain_objects import (
     CollectionMetadata,
     CollectionStatus,
     IngestionJob,
-    IngestionType,
     NoneChunkingStrategy,
     RagCollectionConfig,
     RagDocument,
-    VectorStoreStatus,
 )
 from utilities.bedrock_kb import bulk_delete_documents_from_kb, delete_document_from_kb
 
@@ -39,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 class BedrockKBRepositoryService(RepositoryService):
     """Service for Bedrock Knowledge Base repository operations.
-    
+
     Bedrock KB manages its own ingestion, chunking, and embedding pipeline.
     LISA only tracks documents and delegates actual operations to Bedrock.
     """
@@ -56,12 +54,10 @@ class BedrockKBRepositoryService(RepositoryService):
         """For Bedrock KB, collection ID is the data source ID."""
         bedrock_config = self.repository.get("bedrockKnowledgeBaseConfig", {})
         data_source_id = bedrock_config.get("bedrockKnowledgeDatasourceId")
-        
+
         if not data_source_id:
-            raise ValueError(
-                f"Bedrock KB repository {self.repository_id} missing data source ID"
-            )
-        
+            raise ValueError(f"Bedrock KB repository {self.repository_id} missing data source ID")
+
         return data_source_id
 
     def ingest_document(
@@ -71,32 +67,27 @@ class BedrockKBRepositoryService(RepositoryService):
         metadatas: List[Dict[str, Any]],
     ) -> RagDocument:
         """Track document for Bedrock KB - KB handles actual ingestion.
-        
+
         Bedrock KB automatically ingests documents from its S3 data source.
         LISA only tracks the document metadata for querying and management.
         """
         bedrock_config = self.repository.get("bedrockKnowledgeBaseConfig", {})
         kb_bucket = bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket")
-        
+
         # Validate document is from KB bucket
         kb_s3_path = self._validate_and_normalize_path(job.s3_path, kb_bucket)
-        
+
         # Check if document already tracked (idempotent)
         from repository.rag_document_repo import RagDocumentRepository
+
         rag_document_repository = RagDocumentRepository(
-            os.environ["RAG_DOCUMENT_TABLE"],
-            os.environ["RAG_SUB_DOCUMENT_TABLE"]
+            os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"]
         )
-        
+
         existing_docs = list(
-            rag_document_repository.find_by_source(
-                job.repository_id,
-                job.collection_id,
-                kb_s3_path,
-                join_docs=False
-            )
+            rag_document_repository.find_by_source(job.repository_id, job.collection_id, kb_s3_path, join_docs=False)
         )
-        
+
         if existing_docs:
             # Update existing document timestamp
             existing_doc = existing_docs[0]
@@ -104,7 +95,7 @@ class BedrockKBRepositoryService(RepositoryService):
             rag_document_repository.save(existing_doc)
             logger.info(f"Document {kb_s3_path} already tracked, updated timestamp")
             return existing_doc
-        
+
         # Create new document tracking entry
         rag_document = RagDocument(
             repository_id=job.repository_id,
@@ -117,11 +108,8 @@ class BedrockKBRepositoryService(RepositoryService):
             ingestion_type=job.ingestion_type,
         )
         rag_document_repository.save(rag_document)
-        
-        logger.info(
-            f"Tracked document {kb_s3_path} for Bedrock KB. "
-            f"KB will handle ingestion automatically."
-        )
+
+        logger.info(f"Tracked document {kb_s3_path} for Bedrock KB. " f"KB will handle ingestion automatically.")
         return rag_document
 
     def delete_document(
@@ -133,7 +121,7 @@ class BedrockKBRepositoryService(RepositoryService):
         """Delete document from Bedrock KB."""
         if not bedrock_agent_client:
             raise ValueError("Bedrock agent client required for KB operations")
-        
+
         # Create minimal job for deletion
         job = IngestionJob(
             repository_id=document.repository_id,
@@ -142,7 +130,7 @@ class BedrockKBRepositoryService(RepositoryService):
             username=document.username,
             ingestion_type=document.ingestion_type,
         )
-        
+
         delete_document_from_kb(
             s3_client=s3_client,
             bedrock_agent_client=bedrock_agent_client,
@@ -157,55 +145,44 @@ class BedrockKBRepositoryService(RepositoryService):
         bedrock_agent_client: Optional[Any] = None,
     ) -> None:
         """Delete all LISA-managed documents from Bedrock KB collection.
-        
+
         Only deletes documents with ingestion_type MANUAL or AUTO.
         Preserves user-managed documents (ingestion_type EXISTING).
         """
         if not bedrock_agent_client:
             raise ValueError("Bedrock agent client required for KB operations")
-        
+
         import boto3
+
         dynamodb = boto3.resource("dynamodb")
         doc_table = dynamodb.Table(os.environ["RAG_DOCUMENT_TABLE"])
-        
+
         pk = f"{self.repository_id}#{collection_id}"
-        
+
         # Query all documents in collection
         response = doc_table.query(KeyConditionExpression=Key("pk").eq(pk))
         documents = response.get("Items", [])
-        
+
         # Handle pagination
         while "LastEvaluatedKey" in response:
             response = doc_table.query(
-                KeyConditionExpression=Key("pk").eq(pk),
-                ExclusiveStartKey=response["LastEvaluatedKey"]
+                KeyConditionExpression=Key("pk").eq(pk), ExclusiveStartKey=response["LastEvaluatedKey"]
             )
             documents.extend(response.get("Items", []))
-        
+
         logger.info(f"Found {len(documents)} total documents in collection")
-        
+
         # Separate by ingestion type
-        lisa_managed = [
-            doc for doc in documents
-            if doc.get("ingestion_type") in ["manual", "auto"]
-        ]
-        user_managed = [
-            doc for doc in documents
-            if doc.get("ingestion_type") == "existing"
-        ]
-        
+        lisa_managed = [doc for doc in documents if doc.get("ingestion_type") in ["manual", "auto"]]
+        user_managed = [doc for doc in documents if doc.get("ingestion_type") == "existing"]
+
         logger.info(
-            f"Collection {collection_id}: "
-            f"lisa_managed={len(lisa_managed)}, user_managed={len(user_managed)}"
+            f"Collection {collection_id}: " f"lisa_managed={len(lisa_managed)}, user_managed={len(user_managed)}"
         )
-        
+
         # Extract S3 paths for LISA-managed documents
-        s3_paths = [
-            doc.get("source", "")
-            for doc in lisa_managed
-            if doc.get("source")
-        ]
-        
+        s3_paths = [doc.get("source", "") for doc in lisa_managed if doc.get("source")]
+
         if s3_paths:
             bulk_delete_documents_from_kb(
                 s3_client=s3_client,
@@ -230,41 +207,39 @@ class BedrockKBRepositoryService(RepositoryService):
         """Retrieve documents from Bedrock KB using retrieve API."""
         if not bedrock_agent_client:
             raise ValueError("Bedrock agent client required for KB operations")
-        
+
         bedrock_config = self.repository.get("bedrockKnowledgeBaseConfig", {})
         kb_id = bedrock_config.get("bedrockKnowledgeBaseId")
-        
+
         if not kb_id:
             raise ValueError(f"Bedrock KB repository {self.repository_id} missing KB ID")
-        
+
         # Use Bedrock retrieve API
         response = bedrock_agent_client.retrieve(
             knowledgeBaseId=kb_id,
             retrievalQuery={"text": query},
-            retrievalConfiguration={
-                "vectorSearchConfiguration": {
-                    "numberOfResults": top_k
-                }
-            }
+            retrievalConfiguration={"vectorSearchConfiguration": {"numberOfResults": top_k}},
         )
-        
+
         # Transform Bedrock results to standard format
         documents = []
         for result in response.get("retrievalResults", []):
-            documents.append({
-                "content": result.get("content", {}).get("text", ""),
-                "metadata": result.get("metadata", {}),
-                "score": result.get("score", 0.0),
-                "location": result.get("location", {}),
-            })
-        
+            documents.append(
+                {
+                    "content": result.get("content", {}).get("text", ""),
+                    "metadata": result.get("metadata", {}),
+                    "score": result.get("score", 0.0),
+                    "location": result.get("location", {}),
+                }
+            )
+
         return documents
 
     def validate_document_source(self, s3_path: str) -> str:
         """Validate document is from KB data source bucket."""
         bedrock_config = self.repository.get("bedrockKnowledgeBaseConfig", {})
         kb_bucket = bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket")
-        
+
         return self._validate_and_normalize_path(s3_path, kb_bucket)
 
     def get_vector_store_client(self, collection_id: str, embeddings: Any) -> Optional[Any]:
@@ -273,23 +248,23 @@ class BedrockKBRepositoryService(RepositoryService):
 
     def create_default_collection(self) -> Optional[RagCollectionConfig]:
         """Create a default collection for Bedrock KB repository.
-        
+
         For Bedrock KB, the collection ID is the data source ID.
-        
+
         Returns:
             Default collection configuration for Bedrock KB
         """
         try:
             bedrock_config = self.repository.get("bedrockKnowledgeBaseConfig", {})
             data_source_id = bedrock_config.get("bedrockKnowledgeDatasourceId")
-            
+
             if not data_source_id:
                 logger.warning(f"Bedrock KB repository {self.repository_id} missing data source ID")
                 return None
-            
+
             embedding_model = self.repository.get("embeddingModelId")
             sanitized_name = f"{self.repository.get('name', self.repository_id)}-{data_source_id}"
-            
+
             default_collection = RagCollectionConfig(
                 collectionId=data_source_id,
                 repositoryId=self.repository_id,
@@ -308,10 +283,10 @@ class BedrockKBRepositoryService(RepositoryService):
                 createdAt=datetime.now(timezone.utc),
                 updatedAt=datetime.now(timezone.utc),
             )
-            
+
             logger.info(f"Created virtual default collection for Bedrock KB repository {self.repository_id}")
             return default_collection
-            
+
         except Exception as e:
             logger.error(f"Failed to create default collection for Bedrock KB repository {self.repository_id}: {e}")
             return None
@@ -319,13 +294,12 @@ class BedrockKBRepositoryService(RepositoryService):
     def _validate_and_normalize_path(self, s3_path: str, expected_bucket: str) -> str:
         """Validate S3 path is from expected bucket and normalize."""
         source_bucket = s3_path.split("/")[2] if s3_path.startswith("s3://") else None
-        
+
         if source_bucket != expected_bucket:
             logger.warning(
-                f"Document {s3_path} not from KB bucket {expected_bucket}. "
-                f"Normalizing to KB bucket path."
+                f"Document {s3_path} not from KB bucket {expected_bucket}. " f"Normalizing to KB bucket path."
             )
             # Normalize to KB bucket path
             return f"s3://{expected_bucket}/{os.path.basename(s3_path)}"
-        
+
         return s3_path

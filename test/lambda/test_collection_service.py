@@ -90,7 +90,7 @@ def test_get_collection():
 
 def test_list_collections():
     """Test list collections"""
-    from unittest.mock import patch
+
     from repository.collection_service import CollectionService
 
     mock_repo = Mock()
@@ -115,11 +115,11 @@ def test_list_collections():
         "repositoryId": "test-repo",
         "type": "opensearch",
         "status": "CREATE_COMPLETE",
-        "embeddingModelId": "model"
+        "embeddingModelId": "model",
     }
     mock_vector_store_repo.find_repository_by_id.return_value = mock_repository
     mock_repo.list_by_repository.return_value = ([collection], None)
-    
+
     result, key = service.list_collections("test-repo", "user", ["group1"], False)
 
     # Should return 2 collections: the test collection + default collection

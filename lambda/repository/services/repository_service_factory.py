@@ -26,7 +26,7 @@ from .repository_service import RepositoryService
 
 class RepositoryServiceFactory:
     """Factory for creating repository-specific service instances.
-    
+
     Encapsulates repository-specific behavior, eliminating the need for
     conditional logic throughout the codebase.
     """
@@ -41,38 +41,33 @@ class RepositoryServiceFactory:
     @classmethod
     def create_service(cls, repository: Dict[str, Any]) -> RepositoryService:
         """Create appropriate service instance for repository type.
-        
+
         Args:
             repository: Repository configuration dictionary
-            
+
         Returns:
             Service instance for the repository type
-            
+
         Raises:
             ValueError: If repository type is not supported
         """
         repo_type = RepositoryType.get_type(repository)
-        
+
         service_class = cls._services.get(repo_type)
         if not service_class:
             raise ValueError(
-                f"Unsupported repository type: {repo_type}. "
-                f"Supported types: {list(cls._services.keys())}"
+                f"Unsupported repository type: {repo_type}. " f"Supported types: {list(cls._services.keys())}"
             )
-        
+
         return service_class(repository)
 
     @classmethod
-    def register_service(
-        cls,
-        repo_type: RepositoryType,
-        service_class: Type[RepositoryService]
-    ) -> None:
+    def register_service(cls, repo_type: RepositoryType, service_class: Type[RepositoryService]) -> None:
         """Register a new service class for a repository type.
-        
+
         Allows extending the factory with new repository types without
         modifying the factory code (Open/Closed Principle).
-        
+
         Args:
             repo_type: Repository type to register
             service_class: Service class to use for this type
@@ -82,7 +77,7 @@ class RepositoryServiceFactory:
     @classmethod
     def get_supported_types(cls) -> list[RepositoryType]:
         """Get list of supported repository types.
-        
+
         Returns:
             List of registered repository types
         """

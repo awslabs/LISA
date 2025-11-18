@@ -326,15 +326,28 @@ class RagDocumentRepository:
         return [doc for entry in entries for doc in entry.subdocs]
 
     def delete_s3_object(self, uri: str) -> None:
-        """Delete an object from S3.
+        """Delete an object and its metadata file from S3.
 
         Args:
-            key: The key of the object to delete
+            uri: The S3 URI of the object to delete (s3://bucket/key)
         """
         try:
             bucket, key = uri.replace("s3://", "").split("/", 1)
+
+            # Delete document
             logging.info(f"Deleting S3 object: {bucket}/{key}")
             self.s3_client.delete_object(Bucket=bucket, Key=key)
+
+            # Delete metadata file
+            metadata_key = f"{key}.metadata.json"
+            try:
+                logging.info(f"Deleting metadata file: {bucket}/{metadata_key}")
+                self.s3_client.delete_object(Bucket=bucket, Key=metadata_key)
+            except ClientError as e:
+                # Metadata file may not exist (idempotent)
+                if e.response["Error"]["Code"] != "NoSuchKey":
+                    logging.warning(f"Failed to delete metadata file: {e}")
+
         except ClientError as e:
             logging.error(f"Error deleting S3 object: {e.response['Error']['Message']}")
             raise

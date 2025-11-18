@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 class OpenSearchRepositoryService(VectorStoreRepositoryService):
     """Service for OpenSearch repository operations.
-    
+
     Inherits common vector store behavior from VectorStoreRepositoryService.
     Only implements OpenSearch-specific index management.
     """
@@ -35,14 +35,14 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
         """Drop OpenSearch index for collection."""
         try:
             logger.info(f"Dropping OpenSearch index for collection {collection_id}")
-            
+
             embeddings = RagEmbeddings(model_name=collection_id)
             vector_store = get_vector_store_client(
                 self.repository_id,
                 collection_id=collection_id,
                 embeddings=embeddings,
             )
-            
+
             # Drop the index if it exists
             if hasattr(vector_store, "client") and hasattr(vector_store.client, "indices"):
                 index_name = f"{self.repository_id}_{collection_id}".lower()
@@ -53,7 +53,7 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
                     logger.info(f"OpenSearch index {index_name} does not exist")
             else:
                 logger.warning("Vector store client does not support index operations")
-                
+
         except Exception as e:
             logger.error(f"Failed to drop OpenSearch index: {e}", exc_info=True)
             # Don't raise - continue with document deletion

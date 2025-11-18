@@ -126,9 +126,28 @@ export abstract class PipelineStack extends Stack {
         // Add prefix filter if not root
         if (pipelineConfig.s3Prefix !== '') {
             detail.object = {
-                key: [{
-                    prefix: pipelineConfig.s3Prefix
-                }]
+                key: [
+                    {
+                        prefix: pipelineConfig.s3Prefix
+                    },
+                    {
+                        // Exclude metadata files from triggering events
+                        'anything-but': {
+                            suffix: '.metadata.json'
+                        }
+                    }
+                ]
+            };
+        } else {
+            // No prefix, but still exclude metadata files
+            detail.object = {
+                key: [
+                    {
+                        'anything-but': {
+                            suffix: '.metadata.json'
+                        }
+                    }
+                ]
             };
         }
 

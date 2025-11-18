@@ -97,26 +97,19 @@ class TestRepositoryService:
 
     def test_initialization(self):
         """Test service initialization with repository config."""
-        repository = {
-            "repositoryId": "test-repo",
-            "type": "opensearch",
-            "name": "Test Repository"
-        }
-        
+        repository = {"repositoryId": "test-repo", "type": "opensearch", "name": "Test Repository"}
+
         service = ConcreteRepositoryService(repository)
-        
+
         assert service.repository == repository
         assert service.repository_id == "test-repo"
 
     def test_initialization_missing_repository_id(self):
         """Test service initialization without repository ID."""
-        repository = {
-            "type": "opensearch",
-            "name": "Test Repository"
-        }
-        
+        repository = {"type": "opensearch", "name": "Test Repository"}
+
         service = ConcreteRepositoryService(repository)
-        
+
         assert service.repository == repository
         assert service.repository_id is None
 
@@ -130,7 +123,7 @@ class TestRepositoryService:
         """Test that concrete implementation provides all required methods."""
         repository = {"repositoryId": "test-repo"}
         service = ConcreteRepositoryService(repository)
-        
+
         # Test all abstract methods are implemented
         assert service.supports_custom_collections() is True
         assert service.should_create_default_collection() is True

@@ -128,6 +128,45 @@ def pipeline_ingest_document(job: IngestionJob) -> None:
             )
             rag_document_repository.save(rag_document)
 
+            # Generate and upload metadata.json file for Bedrock KB
+            try:
+                from repository.metadata_generator import MetadataGenerator
+                from repository.s3_metadata_manager import S3MetadataManager
+
+                metadata_generator = MetadataGenerator()
+                s3_metadata_manager = S3MetadataManager()
+
+                # Get collection for metadata
+                collection = None
+                try:
+                    collection = collection_service.get_collection(
+                        collection_id=job.collection_id,
+                        repository_id=job.repository_id,
+                        username="system",
+                        user_groups=[],
+                        is_admin=True,
+                    )
+                except Exception as e:
+                    logger.warning(f"Could not fetch collection for metadata: {e}")
+
+                # Generate metadata content
+                metadata_content = metadata_generator.generate_metadata_json(
+                    repository=repository, collection=collection, document_metadata=job.metadata
+                )
+
+                # Extract bucket and key from S3 path
+                bucket_name = kb_s3_path.split("/")[2]
+                document_key = "/".join(kb_s3_path.split("/")[3:])
+
+                # Upload metadata file
+                s3_metadata_manager.upload_metadata_file(
+                    s3_client=s3, bucket=bucket_name, document_key=document_key, metadata_content=metadata_content
+                )
+                logger.info(f"Created metadata file for {kb_s3_path}")
+            except Exception as e:
+                logger.error(f"Failed to create metadata file for {kb_s3_path}: {e}")
+                # Continue with ingestion even if metadata fails
+
             job.status = IngestionStatus.INGESTION_COMPLETED
             job.document_id = rag_document.document_id
             ingestion_job_repository.save(job)
@@ -296,6 +335,11 @@ def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
     bucket = detail.get("bucket", None)
     username = get_username(event)
     key = detail.get("key", None)
+
+    # Safety check: filter out metadata files (should be filtered by EventBridge)
+    if key and key.endswith(".metadata.json"):
+        logger.warning(f"Metadata file event reached Lambda (should be filtered by EventBridge): {key}")
+        return
     repository_id = detail.get("repositoryId", None)
     pipeline_config = detail.get("pipelineConfig", None)
     s3_path = f"s3://{bucket}/{key}"

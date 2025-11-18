@@ -202,9 +202,21 @@ class BedrockKBRepositoryService(RepositoryService):
         query: str,
         collection_id: str,
         top_k: int,
+        include_score: bool = False,
         bedrock_agent_client: Optional[Any] = None,
     ) -> List[Dict[str, Any]]:
-        """Retrieve documents from Bedrock KB using retrieve API."""
+        """Retrieve documents from Bedrock KB using retrieve API.
+
+        Args:
+            query: Search query
+            collection_id: Collection to search (data source ID)
+            top_k: Number of results to return
+            include_score: Whether to include similarity scores in metadata
+            bedrock_agent_client: Bedrock agent client for KB operations
+
+        Returns:
+            List of documents with page_content and metadata
+        """
         if not bedrock_agent_client:
             raise ValueError("Bedrock agent client required for KB operations")
 
@@ -224,12 +236,21 @@ class BedrockKBRepositoryService(RepositoryService):
         # Transform Bedrock results to standard format
         documents = []
         for result in response.get("retrievalResults", []):
+            metadata = result.get("metadata", {}).copy()
+
+            # Add score to metadata if requested
+            if include_score:
+                metadata["similarity_score"] = result.get("score", 0.0)
+
+            # Add location info to metadata
+            location = result.get("location", {})
+            if location:
+                metadata["source"] = location.get("s3Location", {}).get("uri", "")
+
             documents.append(
                 {
-                    "content": result.get("content", {}).get("text", ""),
-                    "metadata": result.get("metadata", {}),
-                    "score": result.get("score", 0.0),
-                    "location": result.get("location", {}),
+                    "page_content": result.get("content", {}).get("text", ""),
+                    "metadata": metadata,
                 }
             )
 

@@ -138,9 +138,21 @@ class VectorStoreRepositoryService(RepositoryService):
         query: str,
         collection_id: str,
         top_k: int,
+        include_score: bool = False,
         bedrock_agent_client: Optional[Any] = None,
     ) -> List[Dict[str, Any]]:
-        """Retrieve documents from vector store using similarity search."""
+        """Retrieve documents from vector store using similarity search.
+
+        Args:
+            query: Search query
+            collection_id: Collection to search
+            top_k: Number of results to return
+            include_score: Whether to include similarity scores in metadata
+            bedrock_agent_client: Not used for vector stores
+
+        Returns:
+            List of documents with page_content and metadata
+        """
         embeddings = RagEmbeddings(model_name=collection_id)
         vector_store = get_vector_store_client(
             self.repository_id,
@@ -151,16 +163,32 @@ class VectorStoreRepositoryService(RepositoryService):
         results = vector_store.similarity_search_with_score(query, k=top_k)
 
         documents = []
-        for doc, score in results:
-            # Normalize score based on repository type
-            normalized_score = self._normalize_similarity_score(score)
-            documents.append(
-                {
-                    "content": doc.page_content,
-                    "metadata": doc.metadata,
-                    "score": normalized_score,
-                }
-            )
+        for i, (doc, score) in enumerate(results):
+            doc_dict = {
+                "page_content": doc.page_content,
+                "metadata": doc.metadata.copy() if doc.metadata else {},
+            }
+
+            if include_score:
+                # Normalize score based on repository type
+                normalized_score = self._normalize_similarity_score(score)
+                doc_dict["metadata"]["similarity_score"] = normalized_score
+
+                logger.info(
+                    f"Result {i + 1}: Raw Score={score:.4f}, Similarity={normalized_score:.4f}, "
+                    f"Content: {doc.page_content[:200]}..."
+                )
+                logger.info(f"Result {i + 1} metadata: {doc.metadata}")
+
+            documents.append(doc_dict)
+
+        # Warn if all scores are low (possible embedding model mismatch)
+        if include_score and results:
+            max_score = max(self._normalize_similarity_score(score) for _, score in results)
+            if max_score < 0.3:
+                logger.warning(
+                    f"All similarity scores < 0.3 for query '{query}' - " "possible embedding model mismatch"
+                )
 
         return documents
 

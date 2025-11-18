@@ -18,6 +18,7 @@ import json
 import logging
 import os
 import urllib.parse
+from types import SimpleNamespace
 from typing import Any, cast, Dict, List, Optional
 
 import boto3
@@ -48,8 +49,8 @@ from repository.rag_document_repo import RagDocumentRepository
 from repository.services import RepositoryServiceFactory
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.auth import admin_only, get_groups, get_user_context, get_username, is_admin, user_has_group_access
-from utilities.bedrock_kb import add_default_pipeline_for_bedrock_kb, retrieve_documents
-from utilities.common_functions import api_wrapper, get_id_token, retry_config
+from utilities.bedrock_kb import add_default_pipeline_for_bedrock_kb
+from utilities.common_functions import api_wrapper, retry_config
 from utilities.exceptions import HTTPException
 from utilities.repository_types import RepositoryType
 from utilities.validation import ValidationError
@@ -140,11 +141,12 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     Raises:
         ValidationError: If required parameters are missing or invalid
     """
-    query_string_params = event["queryStringParameters"]
-    query = query_string_params["query"]
-    top_k = query_string_params.get("topK", 3)
+    query_string_params = event.get("queryStringParameters")
+    path_params = event.get("pathParameters")
+    query = query_string_params.get("query")
+    top_k = int(query_string_params.get("topK", 3))
     include_score = query_string_params.get("score", "false").lower() == "true"
-    repository_id = event["pathParameters"]["repositoryId"]
+    repository_id = path_params.get("repositoryId")
     collection_id = query_string_params.get("collectionId")
 
     repository = get_repository(event, repository_id=repository_id)
@@ -165,20 +167,22 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
         else query_string_params.get("modelName")
     )
 
-    if not model_name:
+    if not model_name and not RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
         raise ValidationError("modelName is required when collectionId is not provided")
 
-    id_token = get_id_token(event)
+    # Use repository service for similarity search
+    service = RepositoryServiceFactory.create_service(repository)
 
     docs: List[Dict[str, Any]] = []
+
     if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
-        # Query Bedrock KB
-        kb_docs = retrieve_documents(
-            bedrock_runtime_client=bedrock_client,
-            repository=repository,
+        # Query Bedrock KB - request more to account for filtering
+        kb_docs = service.retrieve_documents(
             query=query,
-            top_k=int(top_k) * 2,  # Request more to account for filtering
-            repository_id=repository_id,
+            collection_id=collection_id or model_name,
+            top_k=top_k * 2,
+            include_score=include_score,
+            bedrock_agent_client=bedrock_client,
         )
 
         # Filter by collection if specified
@@ -191,32 +195,41 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
             docs = [doc for doc in kb_docs if doc.get("metadata", {}).get("source") in collection_sources]
 
             # Trim to requested top_k after filtering
-            docs = docs[: int(top_k)]
+            docs = docs[:top_k]
 
-            logger.info(
-                f"Filtered Bedrock KB results: {len(kb_docs)} total, " f"{len(docs)} in collection {collection_id}"
-            )
+            logger.info(f"Filtered Bedrock KB results: {len(kb_docs)} total, {len(docs)} in collection {collection_id}")
         else:
             # No collection filter, return all results
-            docs = kb_docs[: int(top_k)]
+            docs = kb_docs[:top_k]
     else:
         # Use collection_id as vector store index if provided, otherwise use model_name
-        collection_id = collection_id or model_name
-        logger.info(f"Searching in collection: {collection_id} with embedding model: {model_name}")
-        embeddings = RagEmbeddings(model_name=model_name, id_token=id_token)
-        vs = get_vector_store_client(repository_id, collection_id=collection_id, embeddings=embeddings)
+        search_collection_id = collection_id or model_name
+        logger.info(f"Searching in collection: {search_collection_id} with embedding model: {model_name}")
 
-        # empty vector stores do not have an initialize index. Return empty docs
-        if RepositoryType.is_type(repository, RepositoryType.OPENSEARCH) and not vs.client.indices.exists(
-            index=collection_id
-        ):
-            logger.info(f"Collection {collection_id} does not exist. Returning empty docs.")
+        # Check if OpenSearch index exists
+        if RepositoryType.is_type(repository, RepositoryType.OPENSEARCH):
+            embeddings = RagEmbeddings(model_name=model_name)
+            vs = get_vector_store_client(repository_id, collection_id=search_collection_id, embeddings=embeddings)
+
+            if not vs.client.indices.exists(index=search_collection_id):
+                logger.info(f"Collection {search_collection_id} does not exist. Returning empty docs.")
+                docs = []
+            else:
+                docs = service.retrieve_documents(
+                    query=query,
+                    collection_id=search_collection_id,
+                    top_k=top_k,
+                    include_score=include_score,
+                )
         else:
-            docs = (
-                _similarity_search_with_score(vs, query, top_k, repository)
-                if include_score
-                else _similarity_search(vs, query, top_k)
+            # PGVector or other vector stores
+            docs = service.retrieve_documents(
+                query=query,
+                collection_id=search_collection_id,
+                top_k=top_k,
+                include_score=include_score,
             )
+
     doc_content = [
         {
             "Document": {
@@ -450,26 +463,27 @@ def update_collection(event: dict, context: dict) -> Dict[str, Any]:
     if not collection_id:
         raise ValidationError("collectionId is required")
 
-    # Parse request body
-    try:
-        body = json.loads(event.get("body", {}))
-        request = RagCollectionConfig(**body)
-    except json.JSONDecodeError as e:
-        raise ValidationError(f"Invalid JSON in request body: {e}")
-    except Exception as e:
-        raise ValidationError(f"Invalid request: {e}")
-
     # Get user context
     username, is_admin, groups = get_user_context(event)
 
     # Ensure repository exists and user has access
     _ = get_repository(event, repository_id=repository_id)
 
+    # Parse request body - accept partial updates as a dictionary
+    try:
+        body = json.loads(event.get("body", {}))
+    except json.JSONDecodeError as e:
+        raise ValidationError(f"Invalid JSON in request body: {e}")
+
+    # Create a simple namespace object to hold the update fields
+    # The service layer expects an object with attributes, not a dict
+    request = SimpleNamespace(**body)
+
     # Update collection via service (includes access control check)
     updated_collection = collection_service.update_collection(
         collection_id=collection_id,
         repository_id=repository_id,
-        request=request,
+        collection_data=request,
         username=username,
         user_groups=groups,
         is_admin=is_admin,
@@ -1464,59 +1478,3 @@ def _remove_legacy(repository_id: str) -> None:
             Type="String",
             Overwrite=True,
         )
-
-
-def _similarity_search(vs: Any, query: str, top_k: int) -> list[dict[str, Any]]:
-    """Perform similarity search without scores.
-
-    Args:
-        vs: Vector store instance
-        query: Search query string
-        top_k: Number of top results to return
-
-    Returns:
-        List of documents with page_content and metadata
-    """
-    results = vs.similarity_search_with_score(
-        query,
-        k=top_k,
-    )
-
-    return [{"page_content": doc.page_content, "metadata": doc.metadata} for doc, score in results]
-
-
-def _similarity_search_with_score(vs: Any, query: str, top_k: int, repository: dict[str, Any]) -> list[dict[str, Any]]:
-    """Perform similarity search with normalized scores.
-
-    Args:
-        vs: Vector store instance
-        query: Search query string
-        top_k: Number of top results to return
-        repository: Repository configuration dict
-
-    Returns:
-        List of documents with page_content, metadata, and similarity_score
-    """
-    results = vs.similarity_search_with_score(
-        query,
-        k=top_k,
-    )
-    docs = []
-    for i, (doc, score) in enumerate(results):
-        similarity_score = RepositoryType.get_type(repository=repository).calculate_similarity_score(score)
-        logger.info(
-            f"Result {i + 1}: Raw Score={score:.4f}, Similarity={similarity_score:.4f}, "
-            + f"Content: {doc.page_content[:200]}..."
-        )
-        logger.info(f"Result {i + 1} metadata: {doc.metadata}")
-        docs.append(
-            {
-                "page_content": doc.page_content,
-                "metadata": {**doc.metadata, "similarity_score": similarity_score},
-            }
-        )
-
-    if results and max(score for _, score in results) < 0.3:
-        logger.warning(f"All similarity < 0.3 for query '{query}' - possible embedding model mismatch")
-
-    return docs

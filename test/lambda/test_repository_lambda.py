@@ -2541,8 +2541,11 @@ def test_get_repository_no_access():
 
 
 def test_similarity_search_with_score():
-    """Test _similarity_search_with_score function"""
-    from repository.lambda_functions import _similarity_search_with_score
+    """Test retrieve_documents with score via service layer"""
+    from repository.services.opensearch_repository_service import OpenSearchRepositoryService
+
+    repository = {"repositoryId": "test-repo", "type": "opensearch"}
+    service = OpenSearchRepositoryService(repository)
 
     mock_vs = MagicMock()
     mock_doc = MagicMock()
@@ -2550,16 +2553,20 @@ def test_similarity_search_with_score():
     mock_doc.metadata = {"source": "test"}
     mock_vs.similarity_search_with_score.return_value = [(mock_doc, 0.9)]
 
-    repository = {"type": "opensearch"}
-    result = _similarity_search_with_score(mock_vs, "query", 3, repository)
+    with patch("repository.services.vector_store_repository_service.RagEmbeddings"):
+        with patch("repository.services.vector_store_repository_service.get_vector_store_client", return_value=mock_vs):
+            result = service.retrieve_documents("query", "test-collection", 3, include_score=True)
 
     assert len(result) == 1
     assert "similarity_score" in result[0]["metadata"]
 
 
 def test_similarity_search_without_score():
-    """Test _similarity_search function"""
-    from repository.lambda_functions import _similarity_search
+    """Test retrieve_documents without score via service layer"""
+    from repository.services.opensearch_repository_service import OpenSearchRepositoryService
+
+    repository = {"repositoryId": "test-repo", "type": "opensearch"}
+    service = OpenSearchRepositoryService(repository)
 
     mock_vs = MagicMock()
     mock_doc = MagicMock()
@@ -2567,7 +2574,9 @@ def test_similarity_search_without_score():
     mock_doc.metadata = {"source": "test"}
     mock_vs.similarity_search_with_score.return_value = [(mock_doc, 0.9)]
 
-    result = _similarity_search(mock_vs, "query", 3)
+    with patch("repository.services.vector_store_repository_service.RagEmbeddings"):
+        with patch("repository.services.vector_store_repository_service.get_vector_store_client", return_value=mock_vs):
+            result = service.retrieve_documents("query", "test-collection", 3, include_score=False)
 
     assert len(result) == 1
     assert result[0]["page_content"] == "test content"
@@ -2995,11 +3004,15 @@ def test_delete_non_legacy_repository():
 
 # Additional coverage tests for repository lambda functions
 def test_similarity_search_helpers():
+    """Test retrieve_documents via service layer"""
     import os
     from unittest.mock import MagicMock, patch
 
+    from repository.services.opensearch_repository_service import OpenSearchRepositoryService
+
     with patch.dict(os.environ, {"LISA_RAG_VECTOR_STORE_TABLE": "test-table"}, clear=False):
-        from repository.lambda_functions import _similarity_search
+        repository = {"repositoryId": "test-repo", "type": "opensearch"}
+        service = OpenSearchRepositoryService(repository)
 
         mock_vs = MagicMock()
         mock_doc = MagicMock()
@@ -3007,7 +3020,12 @@ def test_similarity_search_helpers():
         mock_doc.metadata = {"key": "value"}
         mock_vs.similarity_search_with_score.return_value = [(mock_doc, 0.9)]
 
-        results = _similarity_search(mock_vs, "query", 3)
+        with patch("repository.services.vector_store_repository_service.RagEmbeddings"):
+            with patch(
+                "repository.services.vector_store_repository_service.get_vector_store_client", return_value=mock_vs
+            ):
+                results = service.retrieve_documents("query", "test-collection", 3, include_score=False)
+
         assert len(results) == 1
         assert results[0]["page_content"] == "test content"
 

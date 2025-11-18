@@ -177,11 +177,11 @@ class CollectionService:
                 service = RepositoryServiceFactory.create_service(repository)
                 if service.should_create_default_collection():
                     default_collection = service.create_default_collection()
-                if default_collection:
-                    # Check if a collection with the default embedding model ID already exists
-                    existing_ids = {c.collectionId for c in filtered}
-                    if default_collection.collectionId not in existing_ids:
-                        filtered.append(default_collection)
+                    if default_collection:
+                        # Check if a collection with the default embedding model ID already exists
+                        existing_ids = {c.collectionId for c in filtered}
+                        if default_collection.collectionId not in existing_ids:
+                            filtered.append(default_collection)
 
         return filtered, key
 
@@ -189,7 +189,7 @@ class CollectionService:
         self,
         collection_id: str,
         repository_id: str,
-        request: Any,
+        collection_data: Any,
         username: str,
         user_groups: List[str],
         is_admin: bool,
@@ -229,17 +229,17 @@ class CollectionService:
 
         # Build updates dictionary from request
         updates = {
-            field: getattr(request, field)
+            field: getattr(collection_data, field)
             for field in updatable_fields
-            if hasattr(request, field) and getattr(request, field) is not None
+            if hasattr(collection_data, field) and getattr(collection_data, field) is not None
         }
 
         # For default collections, prevent changing immutable fields
         if collection.default:
             # Prevent changing default status or data source ID
-            if hasattr(request, "default") and request.default != collection.default:
+            if hasattr(collection_data, "default") and collection_data.default != collection.default:
                 raise ValidationError("Cannot change default status of a default collection")
-            if hasattr(request, "dataSourceId") and request.dataSourceId != collection.dataSourceId:
+            if hasattr(collection_data, "dataSourceId") and collection_data.dataSourceId != collection.dataSourceId:
                 raise ValidationError("Cannot change data source ID of a default collection")
 
             # Remove these fields from updates if present
@@ -886,11 +886,11 @@ class CollectionService:
                     service = RepositoryServiceFactory.create_service(repo)
                     if service.should_create_default_collection():
                         default_collection = service.create_default_collection()
-                    if default_collection:
-                        # Check if we've seen a collection with the default embedding model ID
-                        if default_collection.collectionId not in seen_collection_ids[repo_id]:
-                            accessible.append(default_collection)
-                            seen_collection_ids[repo_id].add(default_collection.collectionId)
+                        if default_collection:
+                            # Check if we've seen a collection with the default embedding model ID
+                            if default_collection.collectionId not in seen_collection_ids[repo_id]:
+                                accessible.append(default_collection)
+                                seen_collection_ids[repo_id].add(default_collection.collectionId)
 
                 # Apply text filtering
                 if filter_text:

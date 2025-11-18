@@ -123,6 +123,7 @@ class RepositoryService(ABC):
         query: str,
         collection_id: str,
         top_k: int,
+        include_score: bool = False,
         bedrock_agent_client: Optional[Any] = None,
     ) -> List[Dict[str, Any]]:
         """Retrieve documents matching a query.
@@ -131,10 +132,11 @@ class RepositoryService(ABC):
             query: Search query
             collection_id: Collection to search
             top_k: Number of results to return
+            include_score: Whether to include similarity scores in results
             bedrock_agent_client: Bedrock agent client (for Bedrock KB only)
 
         Returns:
-            List of matching documents with metadata
+            List of matching documents with page_content and metadata
         """
         pass
 

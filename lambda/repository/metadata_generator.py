@@ -298,10 +298,13 @@ class MetadataGenerator:
             if collection and collection.metadata:
                 metadata = collection.metadata
                 if isinstance(metadata, CollectionMetadata):
-                    metadata_dict = {
-                        "tags": metadata.tags,
-                        "customFields": metadata.customFields,
-                    }
+                    # Flatten metadata for Bedrock KB compatibility
+                    metadata_dict = {}
+                    # Add tags as an array field
+                    if metadata.tags:
+                        metadata_dict["tags"] = metadata.tags
+                    # Flatten customFields into top-level fields
+                    metadata_dict.update(metadata.customFields)
                 else:
                     metadata_dict = metadata
 

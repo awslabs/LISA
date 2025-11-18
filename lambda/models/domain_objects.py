@@ -66,17 +66,17 @@ class ModelStatus(StrEnum):
 class ModelType(StrEnum):
     """Defines supported model categories."""
 
-    TEXTGEN = auto()
-    IMAGEGEN = auto()
-    EMBEDDING = auto()
+    TEXTGEN = "textgen"
+    IMAGEGEN = "imagegen"
+    EMBEDDING = "embedding"
 
 
 class GuardrailMode(StrEnum):
     """Defines supported guardrail execution modes."""
 
-    PRE_CALL = auto()
-    DURING_CALL = auto()
-    POST_CALL = auto()
+    PRE_CALL = "pre_call"
+    DURING_CALL = "during_call"
+    POST_CALL = "post_call"
 
 
 class GuardrailConfig(BaseModel):
@@ -443,8 +443,8 @@ RagDocumentDict = Dict[str, Any]
 class ChunkingStrategyType(StrEnum):
     """Defines supported document chunking strategies."""
 
-    FIXED = auto()
-    NONE = auto()
+    FIXED = "fixed"
+    NONE = "none"
 
 
 class IngestionStatus(str, Enum):
@@ -886,7 +886,13 @@ class PipelineConfig(BaseModel):
         has_new = self.chunkingStrategy is not None
 
         if not has_legacy and not has_new:
-            raise ValueError("Either chunkingStrategy or both chunkSize and chunkOverlap must be provided")
+            raise ValueError(
+                "Chunking configuration required: provide either 'chunkingStrategy' or both 'chunkSize' and 'chunkOverlap'"
+            )
+
+        # Validate that if one legacy field is provided, both must be provided
+        if (self.chunkSize is not None or self.chunkOverlap is not None) and not has_legacy:
+            raise ValueError("When using legacy chunking fields, both 'chunkSize' and 'chunkOverlap' must be provided")
 
         # If legacy fields provided but no chunkingStrategy, create one
         if has_legacy and not has_new:
@@ -1131,7 +1137,7 @@ class VectorStoreConfig(BaseModel):
         default=None, description="Bedrock Knowledge Base configuration"
     )
     # Status and timestamps
-    status: Optional[VectorStoreStatus] = Field(default=None, description=" Repository Status")
+    status: Optional[VectorStoreStatus] = Field(default=None, description="Repository Status")
     createdAt: Optional[datetime] = Field(default=None, description="Creation timestamp")
     updatedAt: Optional[datetime] = Field(default=None, description="Last update timestamp")
 

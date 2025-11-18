@@ -241,7 +241,7 @@ class IngestionJobRepository:
             response = _get_ingestion_job_table().query(
                 IndexName="repository_id-created_date-index",
                 KeyConditionExpression="repository_id = :repo_id",
-                FilterExpression="collection_deletion = :true AND (#status = :pending OR #status = :in_progress)",
+                FilterExpression="attribute_exists(collection_deletion) AND collection_deletion = :true AND (#status = :pending OR #status = :in_progress)",
                 ExpressionAttributeNames={"#status": "status"},
                 ExpressionAttributeValues={
                     ":repo_id": repository_id,

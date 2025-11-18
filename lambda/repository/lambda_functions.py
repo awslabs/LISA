@@ -187,8 +187,20 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
 
         # Filter by collection if specified
         if collection_id:
-            # Get collection documents for filtering
-            collection_docs = doc_repo.list_by_collection(repository_id=repository_id, collection_id=collection_id)
+            # Get collection documents for filtering - handle pagination to get all documents
+            collection_docs = []
+            next_key = None
+            while True:
+                docs_batch, next_key, _ = doc_repo.list_all(
+                    repository_id=repository_id, 
+                    collection_id=collection_id,
+                    last_evaluated_key=next_key,
+                    limit=100
+                )
+                collection_docs.extend(docs_batch)
+                if not next_key:
+                    break
+            
             collection_sources = {doc.source for doc in collection_docs}
 
             # Filter KB results to only include documents in this collection

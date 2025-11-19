@@ -171,8 +171,8 @@ class BedrockKBRepositoryService(RepositoryService):
         logger.info(f"Found {len(documents)} total documents in collection")
 
         # Separate by ingestion type
-        lisa_managed = [doc for doc in documents if doc.get("ingestion_type") in ["manual", "auto"]]
-        user_managed = [doc for doc in documents if doc.get("ingestion_type") == "existing"]
+        lisa_managed = [doc for doc in documents if doc.get("ingestion_type") in [IngestionType.MANUAL, IngestionType.AUTO]]
+        user_managed = [doc for doc in documents if doc.get("ingestion_type") == IngestionType.EXISTING]
 
         logger.info(
             f"Collection {collection_id}: " f"lisa_managed={len(lisa_managed)}, user_managed={len(user_managed)}"

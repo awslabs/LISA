@@ -148,6 +148,11 @@ class MetadataGenerator:
         if document_metadata:
             merged_metadata.update(document_metadata)
 
+        # Create comma-separated tags from all tag_ fields
+        tag_keys = [key[4:] for key in merged_metadata.keys() if key.startswith("tag_")]
+        if tag_keys:
+            merged_metadata["tags"] = ",".join(sorted(tag_keys))
+
         # Validate merged metadata
         self.validate_metadata(merged_metadata)
 

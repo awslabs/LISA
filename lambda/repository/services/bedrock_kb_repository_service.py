@@ -224,11 +224,21 @@ class BedrockKBRepositoryService(RepositoryService):
         if not kb_id:
             raise ValueError(f"Bedrock KB repository {self.repository_id} missing KB ID")
 
-        # Use Bedrock retrieve API
+        # Use Bedrock retrieve API with data source filter
         response = bedrock_agent_client.retrieve(
             knowledgeBaseId=kb_id,
             retrievalQuery={"text": query},
-            retrievalConfiguration={"vectorSearchConfiguration": {"numberOfResults": top_k}},
+            retrievalConfiguration={
+                "vectorSearchConfiguration": {
+                    "numberOfResults": top_k,
+                    "filter": {
+                        "equals": {
+                            "key": "x-amz-bedrock-kb-data-source-id",
+                            "value": collection_id,
+                        }
+                    },
+                }
+            },
         )
 
         # Transform Bedrock results to standard format

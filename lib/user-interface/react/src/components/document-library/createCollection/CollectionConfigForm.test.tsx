@@ -18,7 +18,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CollectionConfigForm } from './CollectionConfigForm';
-import { renderWithProviders } from '../../../test/helpers/render';
+import { renderWithProviders, createMockQueryHook } from '../../../test/helpers/render';
 import * as ragReducer from '../../../shared/reducers/rag.reducer';
 import * as modelManagementReducer from '../../../shared/reducers/model-management.reducer';
 import { ModelStatus, ModelType } from '../../../shared/model/model-management.model';
@@ -71,14 +71,9 @@ describe('CollectionConfigForm', () => {
             refetch: vi.fn(),
         } as any);
 
-        vi.spyOn(modelManagementReducer, 'useGetAllModelsQuery').mockReturnValue({
-            data: mockEmbeddingModels,
-            isFetching: false,
-            isLoading: false,
-            isError: false,
-            error: undefined,
-            refetch: vi.fn(),
-        } as any);
+        vi.spyOn(modelManagementReducer, 'useGetAllModelsQuery').mockImplementation(
+            createMockQueryHook(mockEmbeddingModels) as any
+        );
     });
 
     describe('Rendering', () => {

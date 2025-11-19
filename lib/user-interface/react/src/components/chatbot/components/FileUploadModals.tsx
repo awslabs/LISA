@@ -336,16 +336,18 @@ export const RagUploadModal = ({
                     </p>
                 </TextContent>
 
-                {/* Chunking Strategy Override Checkbox */}
-                <Checkbox
-                    checked={overrideChunkingStrategy}
-                    onChange={({ detail }) => setOverrideChunkingStrategy(detail.checked)}
-                >
-                    Override default chunking strategy
-                </Checkbox>
+                {/* Chunking Strategy Override Checkbox - Hidden for Bedrock repositories */}
+                {ragConfig.repositoryType !== 'bedrock' && (
+                    <Checkbox
+                        checked={overrideChunkingStrategy}
+                        onChange={({ detail }) => setOverrideChunkingStrategy(detail.checked)}
+                    >
+                        Override default chunking strategy
+                    </Checkbox>
+                )}
 
-                {/* Chunking Strategy Form - Only shown when override is enabled */}
-                {overrideChunkingStrategy && (
+                {/* Chunking Strategy Form - Only shown when override is enabled and not Bedrock */}
+                {overrideChunkingStrategy && ragConfig.repositoryType !== 'bedrock' && (
                     <ChunkingConfigForm
                         item={chunkingStrategy}
                         setFields={(values) => {

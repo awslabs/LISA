@@ -67,27 +67,27 @@ const dependencies: DependencyMap<{
     libraryOptions: typeof libraryOptions;
     advancedOptions: typeof advancedOptions;
 }> = {
-    showMcpWorkbench: {prerequisites: ['mcpConnections'] },
-    mcpConnections: {dependents: ['showMcpWorkbench']}
+    showMcpWorkbench: { prerequisites: ['mcpConnections'] },
+    mcpConnections: { dependents: ['showMcpWorkbench'] }
 };
 
 const configurableOperations = [{
-    header: 'RAG Components',
+    header: 'RAG',
     items: ragOptions
 },
 {
-    header: 'Library Components',
+    header: 'Library',
     items: libraryOptions
 },
 {
-    header: 'In-Context Components',
+    header: 'In-Context',
     items: inContextOptions
 },
 {
-    header: 'Advanced Components',
+    header: 'Advanced',
     items: advancedOptions
 }, {
-    header: 'MCP Components',
+    header: 'MCP',
     items: mcpOptions
 }];
 
@@ -96,7 +96,7 @@ export type ActivatedComponentConfigurationProps = {
     enabledComponents: { [key: string]: boolean };
 };
 
-export function ActivatedUserComponents (props: ActivatedComponentConfigurationProps) {
+export function ActivatedUserComponents(props: ActivatedComponentConfigurationProps) {
     const { setFields } = props;
     // Helper function to check if an option should be disabled based on prerequisites
     const isOptionDisabled = useCallback((optionKey: string): boolean => {
@@ -141,7 +141,7 @@ export function ActivatedUserComponents (props: ActivatedComponentConfigurationP
         <Container
             header={
                 <Header variant='h2'>
-                    Activated Chat UI Components
+                    Chat Features
                 </Header>
             }>
             <SpaceBetween direction='vertical' size='m'>

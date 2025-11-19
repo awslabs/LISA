@@ -37,7 +37,7 @@ export type ConfigState = {
     formSubmitting: boolean;
 };
 
-export function ConfigurationComponent (): ReactElement {
+export function ConfigurationComponent(): ReactElement {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
     const {
@@ -78,7 +78,7 @@ export function ConfigurationComponent (): ReactElement {
      * @param {object} [json={}] - The JSON object to be converted.
      * @returns {React.ReactNode[]} - An array of React nodes representing the outline structure.
      */
-    function jsonToOutline (json = {}) {
+    function jsonToOutline(json = {}) {
         const output: React.ReactNode[] = [];
 
         for (const key in json) {
@@ -127,7 +127,7 @@ export function ConfigurationComponent (): ReactElement {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isUpdateSuccess, isUpdating, isUpdateError, updateError]);
 
-    function handleSubmit () {
+    function handleSubmit() {
         if (isValid && !_.isEmpty(changesDiff)) {
             const toSubmit: IConfiguration = {
                 configuration: state.form,
@@ -150,9 +150,9 @@ export function ConfigurationComponent (): ReactElement {
         <SpaceBetween size={'m'}>
             <Header
                 variant='h1'
-                description={'The current configuration of LISA'}
+                description={'Activate and deactivate platform features'}
             >
-                LISA App Configuration
+                LISA Feature Configuration
             </Header>
             <ActivatedUserComponents setFields={setFields} enabledComponents={state.form.enabledComponents} />
             <SystemBannerConfiguration setFields={setFields}

@@ -40,6 +40,8 @@ import {
     getTablePreference,
     PAGE_SIZE_OPTIONS,
 } from './McpManagementTableConfig';
+import { setBreadcrumbs } from '@/shared/reducers/breadcrumbs.reducer';
+import { useAppDispatch } from '@/config/store';
 
 type Preferences = ReturnType<typeof getDefaultPreferences>;
 
@@ -68,7 +70,8 @@ const NO_MATCH_STATE = (onClear: () => void) => (
     </Box>
 );
 
-export function McpManagementComponent (): ReactElement {
+export function McpManagementComponent(): ReactElement {
+    const dispatch = useAppDispatch();
     const tableDefinition = useMemo(() => getTableDefinition(), []);
     const [preferences, setPreferences] = useLocalStorage<Preferences>(
         'HostedMcpServerPreferences',
@@ -97,6 +100,13 @@ export function McpManagementComponent (): ReactElement {
             setShouldPoll(shouldContinuePolling);
         }
     }, [hostedServers]);
+
+    useEffect(() => {
+        dispatch(setBreadcrumbs([
+            { text: 'MCP Management', href: '/mcp-management' }
+        ]));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const {
         items,
@@ -171,7 +181,7 @@ export function McpManagementComponent (): ReactElement {
                             />
                         }
                     >
-                        MCP servers
+                        LISA MCP servers
                     </Header>
                 }
                 filter={

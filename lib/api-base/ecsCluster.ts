@@ -431,7 +431,7 @@ export class ECSCluster extends Construct {
     /**
      * Create a scheduled scaling action for the Auto Scaling Group
      */
-    public createScheduledAction(
+    public createScheduledAction (
         actionName: string,
         schedule: string,
         minSize?: number,
@@ -459,21 +459,21 @@ export class ECSCluster extends Construct {
     /**
      * Get Auto Scaling Group name for external schedule management
      */
-    public getAutoScalingGroupName(): string {
+    public getAutoScalingGroupName (): string {
         return this.autoScalingGroup.autoScalingGroupName;
     }
 
     /**
      * Get Auto Scaling Group ARN for external schedule management
      */
-    public getAutoScalingGroupArn(): string {
+    public getAutoScalingGroupArn (): string {
         return this.autoScalingGroup.autoScalingGroupArn;
     }
 
     /**
      * Add schedule-aware service discovery capabilities
      */
-    public addScheduleAwareService(
+    public addScheduleAwareService (
         taskName: ECSTasks,
         taskDefinition: TaskDefinition,
         scheduleConfig?: {
@@ -483,7 +483,7 @@ export class ECSCluster extends Construct {
         }
     ): { service: Ec2Service; targetGroup?: ApplicationTargetGroup } {
         const result = this.addTask(taskName, taskDefinition);
-        const { service, targetGroup } = result;
+        const { service } = result;
 
         // Add schedule-related tags to the service
         if (scheduleConfig?.scheduleEnabled) {
@@ -512,7 +512,7 @@ export class ECSCluster extends Construct {
     /**
      * Get service discovery information for schedule management
      */
-    public getServiceDiscoveryInfo(taskName: ECSTasks): {
+    public getServiceDiscoveryInfo (taskName: ECSTasks): {
         serviceName: string;
         serviceArn: string;
         clusterName: string;

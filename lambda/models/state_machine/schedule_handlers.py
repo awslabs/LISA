@@ -127,7 +127,7 @@ def handle_schedule_update(event: Dict[str, Any], context: Any) -> Dict[str, Any
         }
 
         response = lambda_client.invoke(
-            FunctionName=os.environ.get("SCHEDULE_MANAGEMENT_FUNCTION_NAME", "LISA-ScheduleManagement"),
+            FunctionName=os.environ.get("SCHEDULE_MANAGEMENT_FUNCTION_NAME"),
             InvocationType="RequestResponse",
             Payload=json.dumps(payload),
         )
@@ -174,7 +174,7 @@ def handle_cleanup_schedule(event: Dict[str, Any], context: Any) -> Dict[str, An
         payload = {"operation": "delete", "modelId": model_id}
 
         response = lambda_client.invoke(
-            FunctionName=os.environ.get("SCHEDULE_MANAGEMENT_FUNCTION_NAME", "LISA-ScheduleManagement"),
+            FunctionName=os.environ.get("SCHEDULE_MANAGEMENT_FUNCTION_NAME"),
             InvocationType="RequestResponse",
             Payload=json.dumps(payload),
         )

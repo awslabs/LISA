@@ -134,40 +134,36 @@ const validateWeeklySchedule = (weeklySchedule?: IWeeklySchedule): { [key: strin
     let hasAtLeastOneDay = false;
 
     daysOfWeek.forEach((day) => {
-        const daySchedules = weeklySchedule[day];
-        if (daySchedules && daySchedules.length > 0) {
+        const daySchedule = weeklySchedule[day];
+        if (daySchedule && daySchedule.startTime && daySchedule.stopTime) {
             hasAtLeastOneDay = true;
 
-            daySchedules.forEach((schedule, index) => {
-                const { startTime, stopTime } = schedule;
+            const { startTime, stopTime } = daySchedule;
 
-                // If start time is provided, stop time must also be provided
-                if (startTime && !stopTime) {
-                    errors[`${day}_${index}_stopTime`] = 'Stop time is required when Start time is provided.';
-                }
+            // Validate time formats
+            if (startTime && !isValidTimeFormat(startTime)) {
+                errors[`${day}_startTime`] = 'Start time must be in HH:MM format (24-hour).';
+            }
 
-                // If stop time is provided, start time must also be provided
-                if (stopTime && !startTime) {
-                    errors[`${day}_${index}_startTime`] = 'Start time is required when Stop time is provided.';
-                }
+            if (stopTime && !isValidTimeFormat(stopTime)) {
+                errors[`${day}_stopTime`] = 'Stop time must be in HH:MM format (24-hour).';
+            }
 
-                // Validate time formats
-                if (startTime && !isValidTimeFormat(startTime)) {
-                    errors[`${day}_${index}_startTime`] = 'Start time must be in HH:MM format (24-hour).';
+            // Use enhanced validation for time pair with clearer error messages
+            if (startTime && stopTime && isValidTimeFormat(startTime) && isValidTimeFormat(stopTime)) {
+                const timePairError = validateTimePair(startTime, stopTime);
+                if (timePairError) {
+                    errors[`${day}_times`] = timePairError;
                 }
-
-                if (stopTime && !isValidTimeFormat(stopTime)) {
-                    errors[`${day}_${index}_stopTime`] = 'Stop time must be in HH:MM format (24-hour).';
-                }
-
-                // Use enhanced validation for time pair with clearer error messages
-                if (startTime && stopTime && isValidTimeFormat(startTime) && isValidTimeFormat(stopTime)) {
-                    const timePairError = validateTimePair(startTime, stopTime);
-                    if (timePairError) {
-                        errors[`${day}_${index}_times`] = timePairError;
-                    }
-                }
-            });
+            }
+        } else if (daySchedule && (daySchedule.startTime || daySchedule.stopTime)) {
+            // Partial schedule validation
+            if (daySchedule.startTime && !daySchedule.stopTime) {
+                errors[`${day}_stopTime`] = 'Stop time is required when Start time is provided.';
+            }
+            if (daySchedule.stopTime && !daySchedule.startTime) {
+                errors[`${day}_startTime`] = 'Start time is required when Stop time is provided.';
+            }
         }
     });
 
@@ -217,22 +213,22 @@ export function ScheduleConfig (props: ScheduleConfigProps): ReactElement {
 
     // Helper functions for weekly schedule management
     const getDefaultWeeklySchedule = (): IWeeklySchedule => ({
-        monday: [],
-        tuesday: [],
-        wednesday: [],
-        thursday: [],
-        friday: [],
-        saturday: [],
-        sunday: [],
+        monday: undefined,
+        tuesday: undefined,
+        wednesday: undefined,
+        thursday: undefined,
+        friday: undefined,
+        saturday: undefined,
+        sunday: undefined,
     });
 
     const weeklySchedule = props.item.weeklySchedule || getDefaultWeeklySchedule();
 
     // Helper functions for day schedule management
-    const updateDaySchedules = (dayName: keyof IWeeklySchedule, daySchedules: IDaySchedule[]) => {
+    const updateDaySchedule = (dayName: keyof IWeeklySchedule, daySchedule: IDaySchedule | undefined) => {
         const updatedWeeklySchedule = {
             ...weeklySchedule,
-            [dayName]: daySchedules
+            [dayName]: daySchedule
         };
         props.setFields({ 'weeklySchedule': updatedWeeklySchedule });
     };
@@ -404,10 +400,10 @@ export function ScheduleConfig (props: ScheduleConfigProps): ReactElement {
 
                                 {/* Table Rows */}
                                 {getDaysOfWeek().map((day) => {
-                                    const daySchedule = weeklySchedule[day.key]?.[0]; // Only use first schedule slot
-                                    const startTimeError = validationErrors[`${day.key}_0_startTime`];
-                                    const stopTimeError = validationErrors[`${day.key}_0_stopTime`];
-                                    const timesError = validationErrors[`${day.key}_0_times`];
+                                    const daySchedule = weeklySchedule[day.key];
+                                    const startTimeError = validationErrors[`${day.key}_startTime`];
+                                    const stopTimeError = validationErrors[`${day.key}_stopTime`];
+                                    const timesError = validationErrors[`${day.key}_times`];
 
                                     return (
                                         <Grid key={day.key} gridDefinition={[{ colspan: 4 }, { colspan: 4 }, { colspan: 4 }]}>
@@ -420,11 +416,11 @@ export function ScheduleConfig (props: ScheduleConfigProps): ReactElement {
                                                 <TimeInput
                                                     value={daySchedule?.startTime || ''}
                                                     onChange={({ detail }) => {
-                                                        const newSchedule = detail.value ? [{
+                                                        const newSchedule = detail.value ? {
                                                             startTime: detail.value,
                                                             stopTime: daySchedule?.stopTime || ''
-                                                        }] : [];
-                                                        updateDaySchedules(day.key, newSchedule);
+                                                        } : undefined;
+                                                        updateDaySchedule(day.key, newSchedule);
                                                     }}
                                                     format='hh:mm'
                                                     placeholder='HH:MM'
@@ -436,11 +432,11 @@ export function ScheduleConfig (props: ScheduleConfigProps): ReactElement {
                                                 <TimeInput
                                                     value={daySchedule?.stopTime || ''}
                                                     onChange={({ detail }) => {
-                                                        const newSchedule = detail.value ? [{
+                                                        const newSchedule = detail.value ? {
                                                             startTime: daySchedule?.startTime || '',
                                                             stopTime: detail.value
-                                                        }] : [];
-                                                        updateDaySchedules(day.key, newSchedule);
+                                                        } : undefined;
+                                                        updateDaySchedule(day.key, newSchedule);
                                                     }}
                                                     format='hh:mm'
                                                     placeholder='HH:MM'

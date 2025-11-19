@@ -39,7 +39,7 @@ RUN python -m prisma version
 # Copy the source code into the container
 COPY src/ ./src
 
-COPY ./TIKTOKEN_CACHE ./TIKTOKEN_CACHE
+COPY TIKTOKEN_CACHE ./TIKTOKEN_CACHE
 
 # LiteLLM will handle Prisma setup at runtime with --use_prisma_db_push flag
 

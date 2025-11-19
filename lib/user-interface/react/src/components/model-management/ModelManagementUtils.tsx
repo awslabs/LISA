@@ -37,11 +37,11 @@ export const MODEL_STATUS_LOOKUP: EnumDictionary<ModelStatus, StatusIndicatorPro
 // Utility functions for schedule display
 const formatScheduleType = (model: IModel): string => {
     const scheduling = model.autoScalingConfig?.scheduling;
-    
+
     if (!scheduling?.scheduleEnabled || !scheduling?.scheduleType || scheduling.scheduleType === ScheduleType.NONE) {
         return '24/7';
     }
-    
+
     switch (scheduling.scheduleType) {
         case ScheduleType.DAILY:
             return 'Daily Schedule';
@@ -54,17 +54,17 @@ const formatScheduleType = (model: IModel): string => {
 
 const formatScheduleDetails = (model: IModel) => {
     const scheduling = model.autoScalingConfig?.scheduling;
-    
+
     if (!scheduling?.scheduleEnabled || !scheduling?.scheduleType || scheduling.scheduleType === ScheduleType.NONE) {
         return (
-            <Box color="text-status-inactive">
+            <Box color='text-status-inactive'>
                 <em>Model runs continuously without scheduled downtime</em>
             </Box>
         );
     }
-    
+
     const timezone = scheduling.timezone || 'UTC';
-    
+
     if (scheduling.scheduleType === ScheduleType.RECURRING && scheduling.dailySchedule) {
         const { startTime, stopTime } = scheduling.dailySchedule;
         return (
@@ -74,24 +74,23 @@ const formatScheduleDetails = (model: IModel) => {
             </Box>
         );
     }
-    
+
     if (scheduling.scheduleType === ScheduleType.DAILY && scheduling.weeklySchedule) {
         const daysWithSchedule = Object.entries(scheduling.weeklySchedule)
-            .filter(([_, daySchedules]) => daySchedules && daySchedules.length > 0)
-            .map(([day, daySchedules]) => {
-                const schedule = daySchedules![0]; // Use first schedule for each day
+            .filter(([, daySchedule]) => daySchedule && daySchedule.startTime && daySchedule.stopTime)
+            .map(([day, daySchedule]) => {
                 const dayName = day.charAt(0).toUpperCase() + day.slice(1);
-                return `${dayName}: ${schedule.startTime} - ${schedule.stopTime}`;
+                return `${dayName}: ${daySchedule!.startTime} - ${daySchedule!.stopTime}`;
             });
-        
+
         if (daysWithSchedule.length === 0) {
             return (
-                <Box color="text-status-inactive">
+                <Box color='text-status-inactive'>
                     <em>No days configured - Model runs 24/7</em>
                 </Box>
             );
         }
-        
+
         return (
             <Box>
                 {daysWithSchedule.map((daySchedule, index) => (
@@ -101,9 +100,9 @@ const formatScheduleDetails = (model: IModel) => {
             </Box>
         );
     }
-    
+
     return (
-        <Box color="text-status-inactive">
+        <Box color='text-status-inactive'>
             <em>Schedule configured but details unavailable</em>
         </Box>
     );

@@ -49,6 +49,7 @@ type CreateModelStateMachineProps = BaseProps & {
     securityGroups: ISecurityGroup[];
     restApiContainerEndpointPs: IStringParameter;
     managementKeyName: string;
+    scheduleManagementFunctionName: string;
     role?: IRole,
     executionRole?: IRole;
 };
@@ -210,7 +211,7 @@ export class CreateModelStateMachine extends Construct {
                 layers: lambdaLayers,
                 environment: {
                     ...environment,
-                    SCHEDULE_MANAGEMENT_FUNCTION_NAME: `${config.deploymentName}-${config.deploymentStage}-ScheduleManagement`,
+                    SCHEDULE_MANAGEMENT_FUNCTION_NAME: props.scheduleManagementFunctionName,
                 },
             }),
             outputPath: OUTPUT_PATH,

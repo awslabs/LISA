@@ -24,7 +24,7 @@ import urllib.parse
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Annotated, Any, Dict, Generator, List, Optional, TypeAlias, Union
 from uuid import uuid4
 from zoneinfo import ZoneInfo
@@ -163,8 +163,8 @@ class ScheduleType(str, Enum):
         """Returns string representation of the enum value"""
         return str(self.value)
 
-    EACH_DAY = "EACH_DAY"
-    RECURRING_DAILY = "RECURRING_DAILY"
+    DAILY = "DAILY"
+    RECURRING = "RECURRING"
 
 
 class DaySchedule(BaseModel):
@@ -257,10 +257,10 @@ class SchedulingConfig(BaseModel):
     scheduleType: Optional[ScheduleType] = None
     timezone: str = Field(default="UTC")
 
-    # Weekly schedule (for EACH_DAY type)
+    # Weekly schedule (for DAILY type)
     weeklySchedule: Optional[WeeklySchedule] = None
 
-    # Daily schedule (for RECURRING_DAILY and WEEKDAYS_ONLY types)
+    # Daily schedule (for RECURRING type)
     dailySchedule: Optional[DaySchedule] = None
 
     # Schedule metadata and tracking
@@ -295,12 +295,12 @@ class SchedulingConfig(BaseModel):
         if self.scheduleType is None:
             return self
 
-        if self.scheduleType == ScheduleType.EACH_DAY:
+        if self.scheduleType == ScheduleType.DAILY:
             if not self.weeklySchedule:
-                raise ValueError("weeklySchedule required for EACH_DAY type")
+                raise ValueError("weeklySchedule required for DAILY type")
             if self.dailySchedule:
-                raise ValueError("dailySchedule not allowed for EACH_DAY type")
-        elif self.scheduleType == ScheduleType.RECURRING_DAILY:
+                raise ValueError("dailySchedule not allowed for DAILY type")
+        elif self.scheduleType == ScheduleType.RECURRING:
             if not self.dailySchedule:
                 raise ValueError(f"dailySchedule required for {self.scheduleType} type")
             if self.weeklySchedule:

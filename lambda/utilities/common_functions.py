@@ -22,7 +22,7 @@ import tempfile
 from contextvars import ContextVar
 from decimal import Decimal
 from functools import cache
-from typing import Any, Callable, cast, Dict, Optional, TypeVar, Union
+from typing import Any, Callable, cast, Dict, List, Optional, TypeVar, Union
 
 import boto3
 from botocore.config import Config

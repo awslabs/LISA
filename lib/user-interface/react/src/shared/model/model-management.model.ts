@@ -115,13 +115,13 @@ export type IDaySchedule = {
 };
 
 export type IWeeklySchedule = {
-    monday?: IDaySchedule[];
-    tuesday?: IDaySchedule[];
-    wednesday?: IDaySchedule[];
-    thursday?: IDaySchedule[];
-    friday?: IDaySchedule[];
-    saturday?: IDaySchedule[];
-    sunday?: IDaySchedule[];
+    monday?: IDaySchedule;
+    tuesday?: IDaySchedule;
+    wednesday?: IDaySchedule;
+    thursday?: IDaySchedule;
+    friday?: IDaySchedule;
+    saturday?: IDaySchedule;
+    sunday?: IDaySchedule;
 };
 
 export type IScheduleConfig = {
@@ -281,13 +281,13 @@ const dayScheduleSchema = z.object({
 });
 
 const weeklyScheduleSchema = z.object({
-    monday: z.array(dayScheduleSchema).optional(),
-    tuesday: z.array(dayScheduleSchema).optional(),
-    wednesday: z.array(dayScheduleSchema).optional(),
-    thursday: z.array(dayScheduleSchema).optional(),
-    friday: z.array(dayScheduleSchema).optional(),
-    saturday: z.array(dayScheduleSchema).optional(),
-    sunday: z.array(dayScheduleSchema).optional(),
+    monday: dayScheduleSchema.optional(),
+    tuesday: dayScheduleSchema.optional(),
+    wednesday: dayScheduleSchema.optional(),
+    thursday: dayScheduleSchema.optional(),
+    friday: dayScheduleSchema.optional(),
+    saturday: dayScheduleSchema.optional(),
+    sunday: dayScheduleSchema.optional(),
 });
 
 export const scheduleConfigSchema = z.object({
@@ -324,7 +324,7 @@ export const scheduleConfigSchema = z.object({
             } else {
                 // Check that at least one day has schedules
                 const hasAnySchedule = Object.values(value.weeklySchedule).some(
-                    (daySchedules) => daySchedules && daySchedules.length > 0
+                    (daySchedule) => daySchedule && daySchedule.startTime && daySchedule.stopTime
                 );
                 if (!hasAnySchedule) {
                     context.addIssue({

@@ -18,6 +18,7 @@ import os
 from datetime import datetime
 from datetime import timezone as dt_timezone
 from typing import Any, Dict, List, Optional
+from zoneinfo import ZoneInfo
 
 import boto3
 from botocore.config import Config
@@ -165,16 +166,9 @@ def get_schedule(event: Dict[str, Any]) -> Dict[str, Any]:
         auto_scaling_config = model_item.get("autoScalingConfig", {})
         scheduling_config = auto_scaling_config.get("scheduling", {})
 
-        # Calculate next scheduled action if schedule is active
-        next_action = None
-        if scheduling_config.get("scheduleEnabled", False):
-            next_action = calculate_next_scheduled_action(scheduling_config)
-
         return {
             "statusCode": 200,
-            "body": json.dumps(
-                {"modelId": model_id, "scheduling": scheduling_config, "nextScheduledAction": next_action}, default=str
-            ),
+            "body": json.dumps({"modelId": model_id, "scheduling": scheduling_config}, default=str),
         }
 
     except Exception as e:
@@ -186,10 +180,10 @@ def create_scheduled_actions(model_id: str, auto_scaling_group: str, schedule_co
     """Create Auto Scaling scheduled actions based on schedule configuration"""
     scheduled_action_arns = []
 
-    if schedule_config.scheduleType == ScheduleType.RECURRING_DAILY:
+    if schedule_config.scheduleType == ScheduleType.RECURRING:
         # Create daily recurring schedule
         if not schedule_config.dailySchedule:
-            raise ValueError("dailySchedule required for RECURRING_DAILY type")
+            raise ValueError("dailySchedule required for RECURRING type")
 
         scheduled_action_arns.extend(
             create_daily_scheduled_actions(
@@ -197,10 +191,10 @@ def create_scheduled_actions(model_id: str, auto_scaling_group: str, schedule_co
             )
         )
 
-    elif schedule_config.scheduleType == ScheduleType.EACH_DAY:
+    elif schedule_config.scheduleType == ScheduleType.DAILY:
         # Create individual day schedules
         if not schedule_config.weeklySchedule:
-            raise ValueError("weeklySchedule required for EACH_DAY type")
+            raise ValueError("weeklySchedule required for DAILY type")
 
         scheduled_action_arns.extend(
             create_weekly_scheduled_actions(
@@ -232,6 +226,52 @@ def get_existing_asg_capacity(auto_scaling_group: str) -> Dict[str, int]:
         raise ScheduleManagementError(f"Failed to get ASG capacity: {str(e)}")
 
 
+def scale_immediately(
+    auto_scaling_group: str, day_schedule: DaySchedule, timezone_name: str, capacity_config: Dict[str, int]
+) -> None:
+    """Check current time and immediately scale ASG if outside scheduled window"""
+    try:
+        tz = ZoneInfo(timezone_name)
+        now = datetime.now(tz)
+        current_time = now.time()
+
+        # Parse schedule times
+        start_hour, start_minute = map(int, day_schedule.startTime.split(":"))
+        stop_hour, stop_minute = map(int, day_schedule.stopTime.split(":"))
+
+        start_time_obj = datetime.min.time().replace(hour=start_hour, minute=start_minute)
+        stop_time_obj = datetime.min.time().replace(hour=stop_hour, minute=stop_minute)
+
+        # Handle schedules that cross midnight
+        if start_time_obj <= stop_time_obj:
+            # Normal schedule within same day
+            is_within_window = start_time_obj <= current_time <= stop_time_obj
+        else:
+            # Schedule crosses midnight
+            is_within_window = current_time >= start_time_obj or current_time <= stop_time_obj
+
+        if not is_within_window:
+            logger.info(
+                f"Current time {current_time} is outside scheduled window "
+                f"({day_schedule.startTime} - {day_schedule.stopTime}). Scaling down to 0 instances."
+            )
+
+            # Scale down immediately
+            autoscaling_client.update_auto_scaling_group(
+                AutoScalingGroupName=auto_scaling_group, MinSize=0, MaxSize=0, DesiredCapacity=0
+            )
+
+            logger.info(f"Successfully scaled down ASG {auto_scaling_group} to 0 instances")
+        else:
+            logger.info(
+                f"Current time {current_time} is within scheduled window "
+                f"({day_schedule.startTime} - {day_schedule.stopTime}). No immediate scaling needed."
+            )
+
+    except Exception as e:
+        logger.error(f"Failed to check/apply immediate scaling for ASG {auto_scaling_group}: {e}")
+
+
 def create_daily_scheduled_actions(
     model_id: str, auto_scaling_group: str, day_schedule: DaySchedule, timezone_name: str
 ) -> List[str]:
@@ -240,6 +280,9 @@ def create_daily_scheduled_actions(
 
     # Get ASG capacity config
     capacity_config = get_existing_asg_capacity(auto_scaling_group)
+
+    # Check current time and scale immediately if outside scheduled window
+    scale_immediately(auto_scaling_group, day_schedule, timezone_name, capacity_config)
 
     # Create start action
     start_cron = time_to_cron(day_schedule.startTime)
@@ -378,7 +421,7 @@ def time_to_cron(time_str: str) -> str:
 
 
 def time_to_cron_with_day(time_str: str, day_of_week: int) -> str:
-    """Convert time string (HH:MM) to cron expression with day"""  
+    """Convert time string (HH:MM) to cron expression with day"""
     hour, minute = map(int, time_str.split(":"))
     return f"{minute} {hour} * * {day_of_week}"
 
@@ -479,12 +522,6 @@ def update_model_schedule_record(
             schedule_data["scheduleConfigured"] = enabled
             schedule_data["lastScheduleFailed"] = False
 
-            # Calculate next scheduled action
-            if enabled:
-                next_action = calculate_next_scheduled_action(schedule_data)
-                if next_action:
-                    schedule_data["nextScheduledAction"] = next_action
-
             if auto_scaling_config_exists:
                 # Update existing autoScalingConfig.scheduling
                 model_table.update_item(
@@ -512,47 +549,3 @@ def update_model_schedule_record(
     except Exception as e:
         logger.error(f"Failed to update schedule record for model {model_id}: {e}")
         raise
-
-
-def calculate_next_scheduled_action(schedule_data: Dict[str, Any]) -> Optional[Dict[str, str]]:
-    """Calculate the next scheduled action for a model."""
-    try:
-        schedule_type = schedule_data.get("scheduleType")
-        timezone_name = schedule_data.get("timezone", "UTC")
-
-        # None scheduling means always run
-        if not schedule_data or schedule_type is None:
-            return None
-
-        from zoneinfo import ZoneInfo
-
-        tz = ZoneInfo(timezone_name)
-        now = datetime.now(tz)
-        current_time = now.time()
-
-        # Get the schedule times
-        if schedule_type == ScheduleType.RECURRING_DAILY:
-            daily_schedule = schedule_data.get("dailySchedule", {})
-            start_time = daily_schedule.get("startTime")
-            stop_time = daily_schedule.get("stopTime")
-
-            if start_time and stop_time:
-                start_hour, start_minute = map(int, start_time.split(":"))
-                stop_hour, stop_minute = map(int, stop_time.split(":"))
-
-                start_time_obj = datetime.min.time().replace(hour=start_hour, minute=start_minute)
-                stop_time_obj = datetime.min.time().replace(hour=stop_hour, minute=stop_minute)
-
-                # Simple logic: if we're between start and stop, next action is STOP
-                # Otherwise, next action is START
-                if start_time_obj <= current_time <= stop_time_obj:
-                    return {"action": "STOP"}
-                else:
-                    return {"action": "START"}
-
-        # For EACH_DAY, just return START as default
-        return {"action": "START"}
-
-    except Exception as e:
-        logger.error(f"Failed to calculate next scheduled action: {e}")
-        return {"action": "START"}

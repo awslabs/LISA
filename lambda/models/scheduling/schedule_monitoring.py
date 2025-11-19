@@ -22,7 +22,9 @@ from typing import Any, Dict, Optional
 import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
+from models.clients.litellm_client import LiteLLMClient
 from models.domain_objects import ModelStatus
+from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +33,6 @@ retry_config = Config(
     region_name=os.environ.get("AWS_REGION", "us-east-1"), retries={"max_attempts": 3, "mode": "adaptive"}
 )
 autoscaling_client = boto3.client("autoscaling", config=retry_config)
-ecs_client = boto3.client("ecs", config=retry_config)
 dynamodb = boto3.resource("dynamodb", config=retry_config)
 model_table = dynamodb.Table(os.environ.get("MODEL_TABLE_NAME", "LISAModels"))
 
@@ -94,28 +95,46 @@ def handle_autoscaling_event(event: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def handle_successful_scaling(model_id: str, auto_scaling_group: str, detail: Dict[str, Any]) -> Dict[str, Any]:
-    """Handle successful Auto Scaling actions"""
+    """Handle successful Auto Scaling actions using ASG state"""
     try:
-        # Get current ECS service state to determine model status
-        ecs_service_arn = get_ecs_service_name(model_id)
-        if not ecs_service_arn:
-            logger.warning(f"Could not find ECS service for model {model_id}")
-            return {"statusCode": 200, "message": "ECS service not found"}
+        logger.info(f"Processing successful scaling for model {model_id}, ASG: {auto_scaling_group}")
+        # Check ASG state directly since we already have the ASG name from the event
+        try:
+            response = autoscaling_client.describe_auto_scaling_groups(AutoScalingGroupNames=[auto_scaling_group])
 
-        # Check ECS service running count (ECS API accepts ARNs)
-        running_count = get_ecs_service_running_count(ecs_service_arn)
+            if not response["AutoScalingGroups"]:
+                logger.error(f"ASG {auto_scaling_group} not found")
+                return {"statusCode": 200, "message": "ASG not found"}
 
-        # Determine new model status based on running count
-        if running_count == 0:
-            new_status = ModelStatus.STOPPED
-        elif running_count > 0:
-            new_status = ModelStatus.IN_SERVICE
-        else:
-            logger.warning(f"Unexpected running count {running_count} for model {model_id}")
-            return {"statusCode": 200, "message": "Unexpected ECS service state"}
+            asg = response["AutoScalingGroups"][0]
+            instances = asg.get("Instances", [])
+            in_service_count = len([i for i in instances if i.get("LifecycleState") == "InService"])
+            total_count = len(instances)
+            desired_capacity = asg.get("DesiredCapacity", 0)
+
+            logger.info(f"ASG state: total={total_count}, in_service={in_service_count}, desired={desired_capacity}")
+
+            # Determine new model status based on ASG instance state
+            if in_service_count > 0:
+                new_status = ModelStatus.IN_SERVICE
+                reason = f"Auto Scaling completed: ASG has {in_service_count} instances in service"
+            else:
+                new_status = ModelStatus.STOPPED
+                reason = "Auto Scaling completed: ASG has no instances in service"
+
+        except ClientError as e:
+            logger.error(f"Failed to check ASG state: {e}")
+            return {"statusCode": 500, "message": f"Failed to check ASG state: {str(e)}"}
 
         # Update model status in DynamoDB
-        update_model_status(model_id, new_status, "Auto Scaling action completed successfully")
+        update_model_status(model_id, new_status, reason)
+
+        if new_status == ModelStatus.IN_SERVICE:
+            # Model scaled up, register with LiteLLM
+            register_litellm(model_id)
+        elif new_status == ModelStatus.STOPPED:
+            # Model scaled down, de-register with LiteLLM
+            remove_litellm(model_id)
 
         logger.info(f"Successfully updated model {model_id} status to {new_status}")
 
@@ -126,7 +145,9 @@ def handle_successful_scaling(model_id: str, auto_scaling_group: str, detail: Di
                     "message": "Scaling event processed successfully",
                     "modelId": model_id,
                     "newStatus": new_status,
-                    "runningCount": running_count,
+                    "asgName": auto_scaling_group,
+                    "inServiceCount": in_service_count,
+                    "desiredCapacity": desired_capacity,
                 }
             ),
         }
@@ -190,29 +211,54 @@ def handle_failed_scaling(model_id: str, auto_scaling_group: str, detail: Dict[s
 
 
 def sync_model_status(event: Dict[str, Any]) -> Dict[str, Any]:
-    """Manually sync model status with ECS service state"""
+    """Manually sync model status using ASG state"""
     model_id = event.get("modelId")
     if not model_id:
         raise ValueError("modelId is required for sync_status operation")
 
     try:
-        # Get ECS service state
-        ecs_service_arn = get_ecs_service_name(model_id)
-        if not ecs_service_arn:
-            raise ValueError(f"ECS service not found for model {model_id}")
+        logger.info(f"Syncing status for model {model_id}")
 
-        running_count = get_ecs_service_running_count(ecs_service_arn)
+        # Get model info
+        model_info = get_model_info(model_id)
+        if not model_info:
+            raise ValueError(f"Model {model_id} not found")
 
-        # Determine correct status
-        if running_count == 0:
-            new_status = ModelStatus.STOPPED
-        elif running_count > 0:
-            new_status = ModelStatus.IN_SERVICE
-        else:
-            raise ValueError(f"Invalid running count: {running_count}")
+        # Get ASG name from model record
+        asg_name = model_info.get("auto_scaling_group") or model_info.get("autoScalingGroup")
+
+        if not asg_name:
+            raise ValueError(f"No ASG information found for model {model_id}")
+
+        logger.info(f"Checking ASG state: {asg_name}")
+
+        try:
+            response = autoscaling_client.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
+
+            if not response["AutoScalingGroups"]:
+                raise ValueError(f"ASG {asg_name} not found")
+
+            asg = response["AutoScalingGroups"][0]
+            instances = asg.get("Instances", [])
+            in_service_count = len([i for i in instances if i.get("LifecycleState") == "InService"])
+            total_count = len(instances)
+            desired_capacity = asg.get("DesiredCapacity", 0)
+
+            logger.info(f"ASG state: total={total_count}, in_service={in_service_count}, desired={desired_capacity}")
+
+            if in_service_count > 0:
+                new_status = ModelStatus.IN_SERVICE
+                reason = f"ASG has {in_service_count} instances in service (desired: {desired_capacity})"
+            else:
+                new_status = ModelStatus.STOPPED
+                reason = f"ASG has no instances in service (desired: {desired_capacity})"
+
+        except ClientError as e:
+            logger.error(f"Failed to check ASG state: {e}")
+            raise ValueError(f"Failed to check ASG {asg_name}: {str(e)}")
 
         # Update model status
-        update_model_status(model_id, new_status, "Manual status synchronization")
+        update_model_status(model_id, new_status, f"Manual sync: {reason}")
 
         return {
             "statusCode": 200,
@@ -221,7 +267,7 @@ def sync_model_status(event: Dict[str, Any]) -> Dict[str, Any]:
                     "message": "Status synchronized successfully",
                     "modelId": model_id,
                     "newStatus": new_status,
-                    "runningCount": running_count,
+                    "reason": reason,
                 }
             ),
         }
@@ -264,7 +310,7 @@ def find_model_by_asg_name(asg_name: str) -> Optional[str]:
     """Find model ID by looking up which model uses the given Auto Scaling Group"""
     try:
         response = model_table.scan(
-            FilterExpression="autoScalingGroup = :asg_name",
+            FilterExpression="auto_scaling_group = :asg_name",
             ExpressionAttributeValues={":asg_name": asg_name},
             ProjectionExpression="model_id",
         )
@@ -279,53 +325,12 @@ def find_model_by_asg_name(asg_name: str) -> Optional[str]:
         return None
 
 
-def get_ecs_service_name(model_id: str) -> Optional[str]:
-    """Get ECS service ARN for a model"""
-    try:
-        response = model_table.get_item(Key={"model_id": model_id})
-
-        if "Item" not in response:
-            return None
-
-        model_item = response["Item"]
-
-        # Check common field names for ECS service
-        return model_item.get("ecs_service_arn")
-
-    except Exception as e:
-        logger.error(f"Failed to get ECS service ARN for model {model_id}: {e}")
-        return None
-
-
-def get_ecs_service_running_count(service_arn: str) -> int:
-    """Get the running task count for an ECS service"""
-    try:
-        cluster_name = os.environ.get("ECS_CLUSTER_NAME")
-
-        response = ecs_client.describe_services(cluster=cluster_name, services=[service_arn])
-
-        if not response["services"]:
-            logger.warning(f"ECS service {service_arn} not found")
-            return 0
-
-        service = response["services"][0]
-        return service.get("runningCount", 0)
-
-    except ClientError as e:
-        logger.error(f"Failed to get ECS service running count for {service_arn}: {e}")
-        return 0
-    except Exception as e:
-        logger.error(f"Unexpected error getting ECS service running count: {e}")
-        return 0
-
-
 def update_model_status(model_id: str, new_status: ModelStatus, reason: str) -> None:
     """Update model status in DynamoDB"""
     try:
         model_table.update_item(
             Key={"model_id": model_id},
-            UpdateExpression="SET #status = :status, lastStatusUpdate = :timestamp, statusReason = :reason",
-            ExpressionAttributeNames={"#status": "status"},
+            UpdateExpression="SET model_status = :status, lastStatusUpdate = :timestamp, statusReason = :reason",
             ExpressionAttributeValues={
                 ":status": new_status,
                 ":timestamp": datetime.now(dt_timezone.utc).isoformat(),
@@ -333,7 +338,7 @@ def update_model_status(model_id: str, new_status: ModelStatus, reason: str) -> 
             },
         )
 
-        logger.info(f"Updated model {model_id} status to {new_status}: {reason}")
+        logger.info(f"Updated model {model_id} model_status to {new_status}: {reason}")
 
     except Exception as e:
         logger.error(f"Failed to update model status for {model_id}: {e}")
@@ -430,6 +435,126 @@ def reset_retry_count(model_id: str) -> None:
 
     except Exception as e:
         logger.error(f"Failed to reset retry count for model {model_id}: {e}")
+
+
+def register_litellm(model_id: str) -> None:
+    """Register model with LiteLLM if missing (mimics update_model.py handle_finish_update)"""
+    try:
+        model_key = {"model_id": model_id}
+        ddb_item = model_table.get_item(Key=model_key, ConsistentRead=True).get("Item")
+
+        if not ddb_item:
+            logger.warning(f"Model {model_id} not found in DynamoDB")
+            return
+
+        # Check if already registered
+        if ddb_item.get("litellm_id"):
+            logger.info(f"Model {model_id} already has litellm_id: {ddb_item['litellm_id']}")
+            return
+
+        model_url = ddb_item.get("model_url")
+        if not model_url:
+            logger.warning(f"Model {model_id} has no model_url, cannot register with LiteLLM")
+            return
+
+        logger.info(f"Re-registering model {model_id} with LiteLLM (ASG scaled up)")
+
+        # Initialize LiteLLM client (exact same as update_model.py)
+        secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
+        iam_client = boto3.client("iam", region_name=os.environ["AWS_REGION"], config=retry_config)
+
+        litellm_client = LiteLLMClient(
+            base_uri=get_rest_api_container_endpoint(),
+            verify=get_cert_path(iam_client),
+            headers={
+                "Authorization": secrets_manager.get_secret_value(
+                    SecretId=os.environ.get("MANAGEMENT_KEY_NAME"), VersionStage="AWSCURRENT"
+                )["SecretString"],
+                "Content-Type": "application/json",
+            },
+        )
+
+        litellm_config_str = os.environ.get("LITELLM_CONFIG_OBJ", json.dumps({}))
+        try:
+            litellm_params = json.loads(litellm_config_str)
+            litellm_params = litellm_params.get("litellm_settings", {})
+        except json.JSONDecodeError:
+            litellm_params = {}
+
+        litellm_params["model"] = f"openai/{ddb_item['model_config']['modelName']}"
+        litellm_params["api_base"] = model_url
+
+        # Register with LiteLLM
+        litellm_response = litellm_client.add_model(
+            model_name=model_id,
+            litellm_params=litellm_params,
+        )
+
+        litellm_id = litellm_response["model_info"]["id"]
+
+        # Update DynamoDB with new litellm_id
+        model_table.update_item(
+            Key=model_key,
+            UpdateExpression="SET litellm_id = :lid",
+            ExpressionAttributeValues={":lid": litellm_id},
+        )
+
+        logger.info(f"Successfully registered {model_id} with LiteLLM ID: {litellm_id}")
+
+    except Exception as e:
+        logger.error(f"Failed to register {model_id} with LiteLLM: {e}")
+
+
+def remove_litellm(model_id: str) -> None:
+    """Remove model from LiteLLM if registered (mimics update_model.py disable behavior)"""
+    try:
+        model_key = {"model_id": model_id}
+        ddb_item = model_table.get_item(Key=model_key, ConsistentRead=True).get("Item")
+
+        if not ddb_item:
+            logger.warning(f"Model {model_id} not found in DynamoDB")
+            return
+
+        litellm_id = ddb_item.get("litellm_id")
+        if not litellm_id:
+            logger.info(f"Model {model_id} has no litellm_id, nothing to remove from LiteLLM")
+            return
+
+        logger.info(f"Removing model {model_id} from LiteLLM (ASG scaled down)")
+
+        try:
+            # Initialize LiteLLM client
+            secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
+            iam_client = boto3.client("iam", region_name=os.environ["AWS_REGION"], config=retry_config)
+
+            litellm_client = LiteLLMClient(
+                base_uri=get_rest_api_container_endpoint(),
+                verify=get_cert_path(iam_client),
+                headers={
+                    "Authorization": secrets_manager.get_secret_value(
+                        SecretId=os.environ.get("MANAGEMENT_KEY_NAME"), VersionStage="AWSCURRENT"
+                    )["SecretString"],
+                    "Content-Type": "application/json",
+                },
+            )
+
+            # Remove from LiteLLM
+            litellm_client.delete_model(identifier=litellm_id)
+
+            # Clear litellm_id from DynamoDB
+            model_table.update_item(
+                Key=model_key,
+                UpdateExpression="SET litellm_id = :li",
+                ExpressionAttributeValues={":li": None},
+            )
+
+            logger.info(f"Successfully removed model {model_id} from LiteLLM and cleared ID")
+
+        except Exception as e:
+            logger.error(f"Failed to remove {model_id} from LiteLLM: {e}")
+
+    except Exception as e:
+        logger.error(f"Error in remove_from_litellm_if_registered for {model_id}: {e}")
 
 
 def get_model_info(model_id: str) -> Optional[Dict[str, Any]]:

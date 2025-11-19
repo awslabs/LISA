@@ -169,7 +169,7 @@ export function McpManagementActions ({ selectedItems, setSelectedItems, refetch
                     Actions
                 </ButtonDropdown>
                 <Button variant='primary' onClick={onCreate}>
-                    Create MCP server
+                    Create MCP Server
                 </Button>
             </SpaceBetween>
         </>

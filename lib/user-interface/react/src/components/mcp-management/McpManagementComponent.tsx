@@ -180,6 +180,7 @@ export function McpManagementComponent (): ReactElement {
                                 onEdit={handleEdit}
                             />
                         }
+                        description='Host MCP servers within LISA MCP infrastructure.'
                     >
                         LISA MCP servers
                     </Header>

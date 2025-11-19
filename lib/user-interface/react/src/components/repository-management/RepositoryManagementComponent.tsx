@@ -35,7 +35,7 @@ export function RepositoryManagementComponent (): ReactElement {
                 variant='h1'
                 description='Manage RAG repositories and vector stores'
             >
-                Rag Management
+                RAG Management
             </Header>
             <RepositoryTable />
         </SpaceBetween>

@@ -40,6 +40,8 @@ from models.domain_objects import (
     VectorStoreConfig,
     VectorStoreStatus,
 )
+from repository.metadata_generator import MetadataGenerator
+from repository.s3_metadata_manager import S3MetadataManager
 from repository.collection_service import CollectionService
 from repository.config.params import ListJobsParams
 from repository.embeddings import RagEmbeddings
@@ -928,15 +930,10 @@ def ingest_documents(event: dict, context: dict) -> dict:
             is_admin=is_admin,
         ).model_dump()
 
-    # Get metadata
-    metadata = collection_service.get_collection_metadata(repository, collection, request.metadata)
-
     # For Bedrock KB repositories, upload metadata files BEFORE documents
     is_bedrock_kb = RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB)
     if is_bedrock_kb:
-        from repository.metadata_generator import MetadataGenerator
-        from repository.s3_metadata_manager import S3MetadataManager
-
+    
         metadata_generator = MetadataGenerator()
         s3_metadata_manager = S3MetadataManager()
 
@@ -959,7 +956,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
             try:
                 # Generate metadata content
                 metadata_content = metadata_generator.generate_metadata_json(
-                    repository=repository, collection=collection_obj, document_metadata=metadata
+                    repository=repository, collection=collection_obj, document_metadata=None
                 )
 
                 # Upload metadata file
@@ -981,7 +978,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
             query_params=query_params,
             s3_path=f"s3://{bucket}/{key}",
             username=username,
-            metadata=metadata,
+            metadata=None,
             ingestion_type=IngestionType.MANUAL,
         )
         ingestion_job_repository.save(job)

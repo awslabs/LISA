@@ -118,12 +118,10 @@ class MetadataGenerator:
         repo_metadata = repository.get("metadata")
         if repo_metadata:
             if isinstance(repo_metadata, dict):
-                merged_metadata.update(repo_metadata.get("customFields", {}))
                 # Add tags as individual fields
                 for tag in repo_metadata.get("tags", []):
                     merged_metadata[f"tag_{tag}"] = True
-            elif hasattr(repo_metadata, "customFields"):
-                merged_metadata.update(repo_metadata.customFields)
+            elif hasattr(repo_metadata, "tags"):
                 for tag in repo_metadata.tags:
                     merged_metadata[f"tag_{tag}"] = True
 
@@ -131,12 +129,10 @@ class MetadataGenerator:
         if collection and collection.metadata:
             coll_metadata = collection.metadata
             if isinstance(coll_metadata, CollectionMetadata):
-                merged_metadata.update(coll_metadata.customFields)
                 # Add tags as individual fields
                 for tag in coll_metadata.tags:
                     merged_metadata[f"tag_{tag}"] = True
             elif isinstance(coll_metadata, dict):
-                merged_metadata.update(coll_metadata.get("customFields", {}))
                 for tag in coll_metadata.get("tags", []):
                     merged_metadata[f"tag_{tag}"] = True
 
@@ -303,8 +299,6 @@ class MetadataGenerator:
                     # Add tags as an array field
                     if metadata.tags:
                         metadata_dict["tags"] = metadata.tags
-                    # Flatten customFields into top-level fields
-                    metadata_dict.update(metadata.customFields)
                 else:
                     metadata_dict = metadata
 

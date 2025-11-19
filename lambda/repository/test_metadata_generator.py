@@ -42,7 +42,6 @@ def sample_repository():
         "repositoryName": "Test Repository",
         "metadata": {
             "tags": ["engineering"],
-            "customFields": {"department": "Engineering"},
         },
     }
 
@@ -56,7 +55,7 @@ def sample_collection():
         name="Test Collection",
         createdBy="test-user",
         embeddingModel="amazon.titan-embed-text-v1",
-        metadata=CollectionMetadata(tags=["api", "documentation"], customFields={"classification": "internal"}),
+        metadata=CollectionMetadata(tags=["api", "documentation"]),
     )
 
 
@@ -72,14 +71,12 @@ def test_generate_metadata_json_with_all_sources(metadata_generator, sample_repo
     assert "metadataAttributes" in result
     metadata = result["metadataAttributes"]
 
-    # Verify repository metadata
-    assert metadata["department"] == "Engineering"
+    # Verify repository metadata (tags only, customFields removed)
     assert metadata["tag_engineering"] is True
 
     # Verify collection metadata
     assert metadata["collectionId"] == "col-456"
     assert metadata["collectionName"] == "Test Collection"
-    assert metadata["classification"] == "internal"
     assert metadata["tag_api"] is True
     assert metadata["tag_documentation"] is True
 
@@ -92,11 +89,8 @@ def test_generate_metadata_json_with_all_sources(metadata_generator, sample_repo
 
 
 def test_generate_metadata_json_precedence(metadata_generator, sample_repository, sample_collection):
-    """Test that document metadata overrides collection and repository metadata."""
-    # Add conflicting field in repository
-    sample_repository["metadata"]["customFields"]["classification"] = "public"
-
-    # Document metadata should override
+    """Test that document metadata is included in generated metadata."""
+    # Document metadata should be included
     document_metadata = {"classification": "confidential"}
 
     result = metadata_generator.generate_metadata_json(
@@ -104,7 +98,7 @@ def test_generate_metadata_json_precedence(metadata_generator, sample_repository
     )
 
     metadata = result["metadataAttributes"]
-    # Document metadata wins
+    # Document metadata is included
     assert metadata["classification"] == "confidential"
 
 
@@ -113,7 +107,7 @@ def test_generate_metadata_json_without_collection(metadata_generator, sample_re
     result = metadata_generator.generate_metadata_json(repository=sample_repository, collection=None)
 
     metadata = result["metadataAttributes"]
-    assert metadata["department"] == "Engineering"
+    assert metadata["tag_engineering"] is True
     assert metadata["repositoryId"] == "repo-123"
     assert "collectionId" not in metadata
 
@@ -125,7 +119,7 @@ def test_generate_metadata_json_without_document_metadata(metadata_generator, sa
     )
 
     metadata = result["metadataAttributes"]
-    assert metadata["department"] == "Engineering"
+    assert metadata["tag_engineering"] is True
     assert metadata["collectionId"] == "col-456"
 
 
@@ -233,7 +227,7 @@ def test_cache_functionality(metadata_generator):
     # Mock collection repo
     mock_collection_repo = MagicMock()
     mock_collection = MagicMock()
-    mock_collection.metadata = CollectionMetadata(tags=["test"], customFields={"field": "value"})
+    mock_collection.metadata = CollectionMetadata(tags=["test"])
     mock_collection_repo.find_by_id.return_value = mock_collection
 
     # First call - should fetch from repo

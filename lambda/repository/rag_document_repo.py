@@ -453,8 +453,8 @@ class RagDocumentRepository:
 
             # AUTO ingestion: only remove if pipeline has autoRemove enabled
             if doc_ingestion_type == IngestionType.AUTO:
-                pipeline = pipelines.get(doc_collection_id) if doc_collection_id else None
-                if pipeline and pipeline.get("autoRemove", True):
+                auto_remove = pipelines.get(doc_collection_id, False) if doc_collection_id else False
+                if auto_remove:
                     removed_source.append(doc_source)
                 else:
                     logging.info(f"Preserving AUTO document (autoRemove=False or no pipeline): {doc_source}")

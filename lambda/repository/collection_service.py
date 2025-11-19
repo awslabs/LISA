@@ -434,40 +434,7 @@ class CollectionService:
         embedding_model_id = repository.get("embeddingModelId")
         return str(embedding_model_id) if embedding_model_id is not None else None
 
-    def get_collection_metadata(
-        self,
-        repository: VectorStoreRepository,
-        collection: RagCollectionConfig,
-        metadata: Optional[CollectionMetadata] = None,
-    ) -> Dict[str, Any]:
-        """Get collection metadata with merges from repository."""
-        merged_metadata: Dict[str, Any] = {}
 
-        # Repository metadata
-        repo_metadata = repository.get("metadata") if isinstance(repository, dict) else None
-        if repo_metadata:
-            if isinstance(repo_metadata, CollectionMetadata):
-                merged_metadata.update(repo_metadata.customFields)
-            elif isinstance(repo_metadata, dict):
-                merged_metadata.update(repo_metadata)
-
-        # Collection metadata
-        if collection:
-            coll_metadata = collection.get("metadata") if isinstance(collection, dict) else collection.metadata
-            if coll_metadata:
-                if isinstance(coll_metadata, CollectionMetadata):
-                    merged_metadata.update(coll_metadata.customFields)
-                elif isinstance(coll_metadata, dict):
-                    merged_metadata.update(coll_metadata)
-
-        # Passed metadata
-        if metadata:
-            if isinstance(metadata, CollectionMetadata):
-                merged_metadata.update(metadata.customFields)
-            elif isinstance(metadata, dict):
-                merged_metadata.update(metadata)
-
-        return merged_metadata
 
     def list_all_user_collections(
         self,

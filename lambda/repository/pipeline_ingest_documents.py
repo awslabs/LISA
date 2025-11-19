@@ -387,9 +387,6 @@ def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
 
         logger.info(f"Ingesting object {s3_path} for repository {repository_id}/{embedding_model}")
 
-    # Get repository metadata
-    metadata = collection_service.get_collection_metadata(repository, None)
-
     # Create ingestion job and save it to dynamodb
     job = IngestionJob(
         repository_id=repository_id,
@@ -399,7 +396,7 @@ def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
         s3_path=s3_path,
         username=username,
         ingestion_type=ingestion_type,
-        metadata=metadata,
+        metadata=None,
     )
     ingestion_job_repository.save(job)
     ingestion_service.submit_create_job(job)
@@ -470,9 +467,8 @@ def handle_pipline_ingest_schedule(event: Dict[str, Any], context: Any) -> None:
             logger.error(f"Error during S3 list operation: {str(e)}", exc_info=True)
             raise
 
-        # Get repository and metadata
+        # Get repository
         repository = vs_repo.find_repository_by_id(repository_id)
-        metadata = collection_service.get_collection_metadata(repository, None)
 
         # create an IngestionJob for every object created/modified
         for key in modified_keys:
@@ -483,7 +479,7 @@ def handle_pipline_ingest_schedule(event: Dict[str, Any], context: Any) -> None:
                 s3_path=f"s3://{bucket}/{key}",
                 username=username,
                 ingestion_type=IngestionType.AUTO,
-                metadata=metadata,
+                metadata=None,
             )
             ingestion_job_repository.save(job)
             ingestion_service.submit_create_job(job)

@@ -164,9 +164,9 @@ class TestVectorStoreRepositoryService:
                 results = vector_store_service.retrieve_documents("test query", "test-collection", 5)
 
                 assert len(results) == 2
-                assert results[0]["content"] == "Content 1"
-                assert results[0]["score"] == 0.95
-                assert results[1]["content"] == "Content 2"
+                assert results[0]["page_content"] == "Content 1"
+                assert results[0]["metadata"]["source"] == "doc1.pdf"
+                assert results[1]["page_content"] == "Content 2"
 
     def test_validate_document_source_valid(self, vector_store_service):
         """Test validating valid S3 path."""

@@ -28,7 +28,7 @@ describe('RepositoryManagementComponent', () => {
     it('should render page header with correct title', () => {
         renderWithProviders(<RepositoryManagementComponent />);
 
-        expect(screen.getByText('RAG Management')).toBeInTheDocument();
+        expect(screen.getByText('Repository Management')).toBeInTheDocument();
     });
 
     it('should render page header with description', () => {

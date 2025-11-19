@@ -453,10 +453,11 @@ class RagDocumentRepository:
 
             # AUTO ingestion: only remove if pipeline has autoRemove enabled
             if doc_ingestion_type == IngestionType.AUTO:
-                if doc_collection_id and pipelines.get(doc_collection_id):
+                pipeline = pipelines.get(doc_collection_id) if doc_collection_id else None
+                if pipeline and pipeline.get("autoRemove", True):
                     removed_source.append(doc_source)
                 else:
-                    logging.info(f"Preserving AUTO document (autoRemove=False): {doc_source}")
+                    logging.info(f"Preserving AUTO document (autoRemove=False or no pipeline): {doc_source}")
                     preserved_count += 1
 
         # Delete from S3

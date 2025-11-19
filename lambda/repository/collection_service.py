@@ -99,7 +99,6 @@ class CollectionService:
         """Create a new collection with name uniqueness validation.
 
         Args:
-            repository: Repository configuration dictionary
             collection: Collection configuration to create
             username: Username creating the collection
 

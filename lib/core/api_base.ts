@@ -15,6 +15,7 @@
 */
 import { Stack } from 'aws-cdk-lib';
 import { Authorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
+import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
 import { LisaApiBaseConstruct, LisaApiBaseProps } from './apiBaseConstruct';
 
@@ -22,6 +23,7 @@ import { LisaApiBaseConstruct, LisaApiBaseProps } from './apiBaseConstruct';
  * LisaApiBase Stack
  */
 export class LisaApiBaseStack extends Stack {
+    public readonly tokenTable?: ITable;
     public readonly restApi: RestApi;
     public readonly authorizer?: Authorizer;
     public readonly restApiId: string;
@@ -38,5 +40,6 @@ export class LisaApiBaseStack extends Stack {
         this.restApiId = api.restApi.restApiId;
         this.rootResourceId = api.restApi.restApiRootResourceId;
         this.restApiUrl = api.restApi.url;
+        this.tokenTable = api.tokenTable;
     }
 }

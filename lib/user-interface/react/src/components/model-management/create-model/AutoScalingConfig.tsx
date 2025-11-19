@@ -54,85 +54,125 @@ export function AutoScalingConfig (props: AutoScalingConfigProps) : ReactElement
             <Container
                 header={<Header variant='h3'>Auto Scaling Capacity</Header>}>
                 <SpaceBetween size={'s'}>
-                    <FormField label='Block Device Volume Size' errorText={props.formErrors?.autoScalingConfig?.blockDeviceVolumeSize}>
+                    <FormField
+                        label='Block Device Volume Size'
+                        description='Size of the EBS volume attached to each instance for model storage and cache.'
+                        errorText={props.formErrors?.autoScalingConfig?.blockDeviceVolumeSize}
+                    >
+                        <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
+                            <Input value={props.item.blockDeviceVolumeSize.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.blockDeviceVolumeSize'])} disabled={props.isEdit} onChange={({ detail }) => {
+                                props.setFields({ 'autoScalingConfig.blockDeviceVolumeSize': Number(detail.value) });
+                            }}/>
+                            <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>GBs</span>
+                        </Grid>
                     </FormField>
-                    <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
-                        <Input value={props.item.blockDeviceVolumeSize.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.blockDeviceVolumeSize'])} disabled={props.isEdit} onChange={({ detail }) => {
-                            props.setFields({ 'autoScalingConfig.blockDeviceVolumeSize': Number(detail.value) });
-                        }}/>
-                        <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>GBs</span>
-                    </Grid>
-                    <FormField label='Min Capacity' errorText={props.formErrors?.autoScalingConfig?.minCapacity}>
+                    <FormField
+                        label='Min Capacity'
+                        description='Minimum number of instances to maintain in the auto scaling group.'
+                        errorText={props.formErrors?.autoScalingConfig?.minCapacity}
+                    >
+                        <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
+                            <Input value={props.item.minCapacity.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.minCapacity'])} onChange={({ detail }) => {
+                                props.setFields({ 'autoScalingConfig.minCapacity': Number(detail.value) });
+                            }}/>
+                            <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>instances</span>
+                        </Grid>
                     </FormField>
-                    <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
-                        <Input value={props.item.minCapacity.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.minCapacity'])} onChange={({ detail }) => {
-                            props.setFields({ 'autoScalingConfig.minCapacity': Number(detail.value) });
-                        }}/>
-                        <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>instances</span>
-                    </Grid>
-                    <FormField label='Max Capacity' errorText={props.formErrors?.autoScalingConfig?.maxCapacity}>
+                    <FormField
+                        label='Max Capacity'
+                        description='Maximum number of instances allowed in the auto scaling group.'
+                        errorText={props.formErrors?.autoScalingConfig?.maxCapacity}
+                    >
+                        <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
+                            <Input value={props.item.maxCapacity.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.maxCapacity'])} onChange={({ detail }) => {
+                                props.setFields({ 'autoScalingConfig.maxCapacity': Number(detail.value) });
+                            }}/>
+                            <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>instances</span>
+                        </Grid>
                     </FormField>
-                    <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
-                        <Input value={props.item.maxCapacity.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.maxCapacity'])} onChange={({ detail }) => {
-                            props.setFields({ 'autoScalingConfig.maxCapacity': Number(detail.value) });
-                        }}/>
-                        <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>instances</span>
-                    </Grid>
-                    <FormField label='Desired Capacity' errorText={props.formErrors?.autoScalingConfig?.desiredCapacity}>
+                    <FormField
+                        label='Desired Capacity'
+                        description='Target number of instances to maintain. Must be between min and max capacity.'
+                        errorText={props.formErrors?.autoScalingConfig?.desiredCapacity}
+                    >
+                        <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
+                            <Input value={String(props.item.desiredCapacity)} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.desiredCapacity'])} onChange={({ detail }) => {
+                                props.setFields({ 'autoScalingConfig.desiredCapacity': detail.value.trim().length > 0 ? Number(detail.value) : undefined });
+                            }}/>
+                            <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>instances</span>
+                        </Grid>
                     </FormField>
-                    <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
-                        <Input value={String(props.item.desiredCapacity)} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.desiredCapacity'])} onChange={({ detail }) => {
-                            props.setFields({ 'autoScalingConfig.desiredCapacity': detail.value.trim().length > 0 ? Number(detail.value) : undefined });
-                        }}/>
-                        <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>instances</span>
-                    </Grid>
-                    <FormField label='Cooldown' errorText={props.formErrors?.autoScalingConfig?.cooldown}>
+                    <FormField
+                        label='Cooldown'
+                        description='Time to wait between scaling activities to allow metrics to stabilize.'
+                        errorText={props.formErrors?.autoScalingConfig?.cooldown}
+                    >
+                        <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
+                            <Input value={props.item.cooldown.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.cooldown'])} onChange={({ detail }) => {
+                                props.setFields({ 'autoScalingConfig.cooldown': Number(detail.value) });
+                            }}/>
+                            <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
+                        </Grid>
                     </FormField>
-                    <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
-                        <Input value={props.item.cooldown.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.cooldown'])} onChange={({ detail }) => {
-                            props.setFields({ 'autoScalingConfig.cooldown': Number(detail.value) });
-                        }}/>
-                        <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
-                    </Grid>
-                    <FormField label='Default Instance Warmup' errorText={props.formErrors?.autoScalingConfig?.defaultInstanceWarmup}>
+                    <FormField
+                        label='Default Instance Warmup'
+                        description='Time for new instances to warm up before receiving traffic and contributing to metrics.'
+                        errorText={props.formErrors?.autoScalingConfig?.defaultInstanceWarmup}
+                    >
+                        <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
+                            <Input value={props.item.defaultInstanceWarmup.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.defaultInstanceWarmup'])} onChange={({ detail }) => {
+                                props.setFields({ 'autoScalingConfig.defaultInstanceWarmup': Number(detail.value) });
+                            }}/>
+                            <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
+                        </Grid>
                     </FormField>
-                    <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
-                        <Input value={props.item.defaultInstanceWarmup.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.defaultInstanceWarmup'])} onChange={({ detail }) => {
-                            props.setFields({ 'autoScalingConfig.defaultInstanceWarmup': Number(detail.value) });
-                        }}/>
-                        <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
-                    </Grid>
                 </SpaceBetween>
             </Container>
             <Container
                 header={<Header variant='h3'>Metric Config</Header>}>
                 <SpaceBetween size={'s'}>
-                    <FormField label='ALB Metric Name' errorText={props.formErrors?.autoScalingConfig?.metricConfig?.albMetricName}>
-                    </FormField>
-                    <Input value={props.item.metricConfig.albMetricName} inputMode='text' onBlur={() => props.touchFields(['autoScalingConfig.metricConfig.albMetricName'])} disabled={props.isEdit} onChange={({ detail }) => {
-                        props.setFields({ 'autoScalingConfig.metricConfig.albMetricName': detail.value });
-                    }}/>
-                    <FormField label='Target Value' errorText={props.formErrors?.autoScalingConfig?.metricConfig?.targetValue}>
-                    </FormField>
-                    <Input value={props.item.metricConfig.targetValue.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.metricConfig.targetValue'])} disabled={props.isEdit} onChange={({ detail }) => {
-                        props.setFields({ 'autoScalingConfig.metricConfig.targetValue': Number(detail.value) });
-                    }}/>
-                    <FormField label='Duration' errorText={props.formErrors?.autoScalingConfig?.metricConfig?.duration}>
-                    </FormField>
-                    <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
-                        <Input value={props.item.metricConfig.duration.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.metricConfig.duration'])} disabled={props.isEdit} onChange={({ detail }) => {
-                            props.setFields({ 'autoScalingConfig.metricConfig.duration': Number(detail.value) });
+                    <FormField
+                        label='ALB Metric Name'
+                        description='CloudWatch metric name for Application Load Balancer scaling decisions (e.g., RequestCountPerTarget).'
+                        errorText={props.formErrors?.autoScalingConfig?.metricConfig?.albMetricName}
+                    >
+                        <Input value={props.item.metricConfig.albMetricName} inputMode='text' onBlur={() => props.touchFields(['autoScalingConfig.metricConfig.albMetricName'])} disabled={props.isEdit} onChange={({ detail }) => {
+                            props.setFields({ 'autoScalingConfig.metricConfig.albMetricName': detail.value });
                         }}/>
-                        <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
-                    </Grid>
-                    <FormField label='Estimated Instance Warmup' errorText={props.formErrors?.autoScalingConfig?.metricConfig?.estimatedInstanceWarmup}>
                     </FormField>
-                    <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
-                        <Input value={props.item.metricConfig.estimatedInstanceWarmup.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.metricConfig.estimatedInstanceWarmup'])} disabled={props.isEdit} onChange={({ detail }) => {
-                            props.setFields({ 'autoScalingConfig.metricConfig.estimatedInstanceWarmup': Number(detail.value) });
+                    <FormField
+                        label='Target Value'
+                        description='Target value for the scaling metric. Auto scaling adjusts capacity to maintain this target.'
+                        errorText={props.formErrors?.autoScalingConfig?.metricConfig?.targetValue}
+                    >
+                        <Input value={props.item.metricConfig.targetValue.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.metricConfig.targetValue'])} disabled={props.isEdit} onChange={({ detail }) => {
+                            props.setFields({ 'autoScalingConfig.metricConfig.targetValue': Number(detail.value) });
                         }}/>
-                        <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
-                    </Grid>
+                    </FormField>
+                    <FormField
+                        label='Duration'
+                        description='Period length for evaluating the CloudWatch metric before triggering scaling actions.'
+                        errorText={props.formErrors?.autoScalingConfig?.metricConfig?.duration}
+                    >
+                        <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
+                            <Input value={props.item.metricConfig.duration.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.metricConfig.duration'])} disabled={props.isEdit} onChange={({ detail }) => {
+                                props.setFields({ 'autoScalingConfig.metricConfig.duration': Number(detail.value) });
+                            }}/>
+                            <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
+                        </Grid>
+                    </FormField>
+                    <FormField
+                        label='Estimated Instance Warmup'
+                        description='Estimated time for instances to be ready to serve traffic and contribute to scaling metrics.'
+                        errorText={props.formErrors?.autoScalingConfig?.metricConfig?.estimatedInstanceWarmup}
+                    >
+                        <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
+                            <Input value={props.item.metricConfig.estimatedInstanceWarmup.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.metricConfig.estimatedInstanceWarmup'])} disabled={props.isEdit} onChange={({ detail }) => {
+                                props.setFields({ 'autoScalingConfig.metricConfig.estimatedInstanceWarmup': Number(detail.value) });
+                            }}/>
+                            <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
+                        </Grid>
+                    </FormField>
                 </SpaceBetween>
             </Container>
         </SpaceBetween>

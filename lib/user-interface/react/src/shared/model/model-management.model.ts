@@ -246,7 +246,7 @@ export const metricConfigSchema = z.object({
 });
 
 export const loadBalancerHealthCheckConfigSchema = z.object({
-    path: z.string().default('/health'),
+    path: z.string().default('/status'),
     interval: z.number().default(60),
     timeout: z.number().default(30),
     healthyThresholdCount: z.number().default(2),

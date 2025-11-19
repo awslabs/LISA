@@ -47,6 +47,7 @@
     "lib/docs",
     "ecs_model_deployer",
     "vector_store_deployer",
+    "mcp_server_deployer",
     "cypress"
   ],
   "scripts": {

@@ -40,7 +40,7 @@ const DELETABLE_STATUSES = new Set<HostedMcpServerStatus | undefined>([
     HostedMcpServerStatus.Failed,
 ]);
 
-export function McpManagementActions({ selectedItems, setSelectedItems, refetch, onCreate, onEdit }: McpManagementActionsProps): ReactElement {
+export function McpManagementActions ({ selectedItems, setSelectedItems, refetch, onCreate, onEdit }: McpManagementActionsProps): ReactElement {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
 

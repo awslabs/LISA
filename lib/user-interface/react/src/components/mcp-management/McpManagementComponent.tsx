@@ -70,7 +70,7 @@ const NO_MATCH_STATE = (onClear: () => void) => (
     </Box>
 );
 
-export function McpManagementComponent(): ReactElement {
+export function McpManagementComponent (): ReactElement {
     const dispatch = useAppDispatch();
     const tableDefinition = useMemo(() => getTableDefinition(), []);
     const [preferences, setPreferences] = useLocalStorage<Preferences>(

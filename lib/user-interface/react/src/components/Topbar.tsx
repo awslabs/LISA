@@ -32,7 +32,7 @@ export type TopbarProps = {
     configs?: IConfiguration
 };
 
-function Topbar({ configs }: TopbarProps): ReactElement {
+function Topbar ({ configs }: TopbarProps): ReactElement {
     const navigate = useNavigate();
     const auth = useAuth();
     const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);

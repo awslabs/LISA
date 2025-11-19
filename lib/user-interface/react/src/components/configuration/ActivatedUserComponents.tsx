@@ -96,7 +96,7 @@ export type ActivatedComponentConfigurationProps = {
     enabledComponents: { [key: string]: boolean };
 };
 
-export function ActivatedUserComponents(props: ActivatedComponentConfigurationProps) {
+export function ActivatedUserComponents (props: ActivatedComponentConfigurationProps) {
     const { setFields } = props;
     // Helper function to check if an option should be disabled based on prerequisites
     const isOptionDisabled = useCallback((optionKey: string): boolean => {

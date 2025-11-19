@@ -46,7 +46,7 @@ type CreateHostedMcpServerModalProps = {
     selectedServer?: HostedMcpServer | null;
 };
 
-export function CreateHostedMcpServerModal({
+export function CreateHostedMcpServerModal ({
     visible,
     setVisible,
     isEdit,
@@ -386,7 +386,7 @@ export function CreateHostedMcpServerModal({
                         action: 'Discard',
                         resourceName: 'LISA Hosted MCP Server',
                         onConfirm: () => {
-                            setVisible(false)
+                            setVisible(false);
                         },
                         description: 'Are you sure you want to discard your changes?'
                     }));
@@ -419,7 +419,7 @@ export function CreateHostedMcpServerModal({
                             action: 'Discard',
                             resourceName: 'LISA Hosted MCP Server',
                             onConfirm: () => {
-                                setVisible(false)
+                                setVisible(false);
                             },
                             description: 'Are you sure you want to discard your changes?'
                         }));

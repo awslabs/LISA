@@ -194,6 +194,66 @@ def test_pipeline_ingest_bedrock_kb(setup_env):
         assert job.status == IngestionStatus.INGESTION_COMPLETED
 
 
+def test_pipeline_ingest_bedrock_kb_copy_from_lisa_bucket(setup_env):
+    """Test pipeline_ingest with Bedrock KB repository - copies from LISA bucket to KB bucket."""
+    from models.domain_objects import IngestionJob, IngestionStatus, NoneChunkingStrategy
+    from utilities.repository_types import RepositoryType
+
+    job = IngestionJob(
+        repository_id="repo1",
+        collection_id="ds-123",  # Data source ID
+        s3_path="s3://lisa-bucket/document.pdf",  # Document in LISA bucket
+        embedding_model="model1",
+        username="user1",
+        chunk_strategy=NoneChunkingStrategy(),
+    )
+
+    bedrock_kb_repo = {
+        "type": RepositoryType.BEDROCK_KB,
+        "bedrockKnowledgeBaseConfig": {
+            "bedrockKnowledgeDatasourceS3Bucket": "kb-bucket",
+            "bedrockKnowledgeDatasourceId": "ds-123",
+            "bedrockKnowledgeBaseId": "kb-123",
+        },
+    }
+
+    with patch("repository.pipeline_ingest_documents.vs_repo") as mock_vs_repo, patch(
+        "repository.pipeline_ingest_documents.rag_document_repository"
+    ) as mock_doc_repo, patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo, patch(
+        "repository.pipeline_ingest_documents.s3"
+    ) as mock_s3, patch(
+        "repository.pipeline_ingest_documents.bedrock_agent"
+    ) as mock_bedrock_agent:
+
+        mock_vs_repo.find_repository_by_id.return_value = bedrock_kb_repo
+        mock_doc_repo.find_by_source.return_value = []
+
+        from repository.pipeline_ingest_documents import pipeline_ingest
+
+        pipeline_ingest(job)
+
+        # Verify document was copied from LISA bucket to KB bucket
+        mock_s3.copy_object.assert_called_once_with(
+            CopySource={"Bucket": "lisa-bucket", "Key": "document.pdf"},
+            Bucket="kb-bucket",
+            Key="document.pdf",
+        )
+
+        # Verify source file was deleted from LISA bucket
+        mock_s3.delete_object.assert_called_once_with(Bucket="lisa-bucket", Key="document.pdf")
+
+        # Verify KB ingestion was triggered
+        mock_bedrock_agent.start_ingestion_job.assert_called_once_with(knowledgeBaseId="kb-123", dataSourceId="ds-123")
+
+        # Verify document was tracked with KB bucket path
+        mock_doc_repo.save.assert_called_once()
+        saved_doc = mock_doc_repo.save.call_args[0][0]
+        assert saved_doc.source == "s3://kb-bucket/document.pdf"
+
+        mock_job_repo.save.assert_called()
+        assert job.status == IngestionStatus.INGESTION_COMPLETED
+
+
 def test_pipeline_ingest_with_previous_document(setup_env):
     """Test pipeline_ingest removes previous document version."""
     from models.domain_objects import FixedChunkingStrategy, IngestionJob, RagDocument

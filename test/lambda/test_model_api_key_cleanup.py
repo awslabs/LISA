@@ -72,8 +72,6 @@ def test_get_all_dynamodb_models_no_prefix(monkeypatch):
 
 
 def test_get_database_connection_success(setup_env):
-    from models.model_api_key_cleanup import get_database_connection
-
     with patch("boto3.client") as mock_client:
         mock_ssm = MagicMock()
         mock_secrets = MagicMock()
@@ -99,8 +97,11 @@ def test_get_database_connection_success(setup_env):
         }
         mock_secrets.get_secret_value.return_value = {"SecretString": json.dumps({"password": "pass"})}
 
-        with patch("psycopg2.connect") as mock_connect:
+        with patch("models.model_api_key_cleanup.connect") as mock_connect:
             mock_connect.return_value = MagicMock()
+
+            from models.model_api_key_cleanup import get_database_connection
+
             conn = get_database_connection()
             assert conn is not None
 

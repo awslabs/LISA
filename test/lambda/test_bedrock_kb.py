@@ -395,6 +395,7 @@ class TestAddDefaultPipelineForBedrockKB:
         existing_pipeline = PipelineConfig(
             s3Bucket="custom-bucket",
             s3Prefix="custom/",
+            collectinoId=bedrock_config.bedrockKnowledgeDatasourceId,
             trigger=PipelineTrigger.SCHEDULE,
             autoRemove=False,
             chunkingStrategy=NoneChunkingStrategy(type=ChunkingStrategyType.NONE),

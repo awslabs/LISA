@@ -34,14 +34,17 @@ strict_optional = true
 show_error_codes = true
 
 [tool.ruff]
-lint.ignore = ["D401"]
-lint.select = ["PLC0415"]  # Flag imports outside top-level
 line-length = 120
+
+[tool.ruff.lint]
+ignore = ["D401"]
+select = ["E", "F", "W", "PLC0415"]  # Enable pycodestyle errors, pyflakes, warnings, and import-outside-toplevel
 
 [tool.ruff.lint.per-file-ignores]
 # Allow imports in functions for test files
-"test/**/*.py" = ["PLC0415"]
-"**/test_*.py" = ["PLC0415"]
+"test/lambda/test_session_lambda.py" = ["E402", "PLC0415"]
+"test/**/*.py" = ["E402", "PLC0415"]
+"**/test_*.py" = ["E402", "PLC0415"]
 
 [tool.pytest.ini_options]
 addopts = "--strict-markers -vv -x"

@@ -910,7 +910,10 @@ def test_attach_image_to_session_success(lambda_context):
     """Test attach_image_to_session with valid image data."""
 
     # Create a simple base64 encoded image
-    image_data = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+    image_data = (
+        "data:image/png;base64,"
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+    )
 
     event = {
         "pathParameters": {"sessionId": "test-session"},
@@ -950,7 +953,7 @@ def test_attach_image_to_session_missing_message(lambda_context):
 def test_attach_image_to_session_s3_upload_error(lambda_context):
     """Test attach_image_to_session with S3 upload error."""
 
-    image_data = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+    image_data = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB"
 
     event = {
         "pathParameters": {"sessionId": "test-session"},

@@ -97,7 +97,10 @@ class TestBedrockKBRepositoryService:
         mock_rag_document_repo.find_by_source.return_value = iter([])
         mock_rag_document_repo.save.return_value = None
 
-        with patch("repository.rag_document_repo.RagDocumentRepository", return_value=mock_rag_document_repo):
+        with patch(
+            "repository.services.bedrock_kb_repository_service.RagDocumentRepository",
+            return_value=mock_rag_document_repo,
+        ):
             result = bedrock_kb_service.ingest_document(sample_ingestion_job, [], [])
 
             assert result.repository_id == "test-kb-repo"
@@ -122,7 +125,10 @@ class TestBedrockKBRepositoryService:
         mock_rag_document_repo.find_by_source.return_value = iter([existing_doc])
         mock_rag_document_repo.save.return_value = None
 
-        with patch("repository.rag_document_repo.RagDocumentRepository", return_value=mock_rag_document_repo):
+        with patch(
+            "repository.services.bedrock_kb_repository_service.RagDocumentRepository",
+            return_value=mock_rag_document_repo,
+        ):
             result = bedrock_kb_service.ingest_document(sample_ingestion_job, [], [])
 
             assert result.document_id == existing_doc.document_id

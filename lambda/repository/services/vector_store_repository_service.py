@@ -33,6 +33,7 @@ from models.domain_objects import (
     VectorStoreStatus,
 )
 from repository.embeddings import RagEmbeddings
+from repository.rag_document_repo import RagDocumentRepository
 from utilities.vector_store import get_vector_store_client
 
 from .repository_service import RepositoryService
@@ -91,8 +92,6 @@ class VectorStoreRepositoryService(RepositoryService):
             username=job.username,
             ingestion_type=job.ingestion_type,
         )
-
-        from repository.rag_document_repo import RagDocumentRepository
 
         rag_document_repository = RagDocumentRepository(
             os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"]

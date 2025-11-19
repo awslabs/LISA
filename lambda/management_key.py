@@ -132,7 +132,8 @@ def test_secret(secret_arn: str, token: str) -> None:
             raise ValueError("New secret is invalid - too short or empty")
 
         # Additional validation - ensure it doesn't contain punctuation (as per generation config)
-        if any(char in new_secret for char in "!@#$%^&*()_+-=[]{}|;:,.<>?"):  # noqa: P103
+        punctuation_chars = "!@#$%^&*()_+-=[]{}|;:,.<>?"  # noqa: P103
+        if any(char in new_secret for char in punctuation_chars):
             raise ValueError("New secret contains punctuation when it shouldn't")
 
         logger.info(f"Secret test passed for version {token}")

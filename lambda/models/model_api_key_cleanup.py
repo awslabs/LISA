@@ -27,6 +27,7 @@ The cleanup runs automatically during CDK deployment via a CustomResource.
 import json
 import os
 import sys
+import traceback
 from typing import Any, Dict, List
 
 import boto3
@@ -187,7 +188,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Query all models from the LiteLLM database using the found table (use quotes for case-sensitive names)
 
         # Use psycopg2's identifier quoting to prevent SQL injection
-        cursor.execute(sql.SQL("SELECT * FROM {} LIMIT 1").format(sql.Identifier(litellm_table)))  # noqa: P103
+        cursor.execute(sql.SQL("SELECT * FROM {} LIMIT 1").format(sql.Identifier(litellm_table)))  # noqa: S608, P103
         columns = [desc[0] for desc in cursor.description]
         print(f"Table {litellm_table} columns: {columns}")
 
@@ -205,7 +206,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         # Query all models from the LiteLLM database
         cursor.execute(
-            sql.SQL("SELECT {}, {}, {} FROM {}").format(  # noqa: P103
+            sql.SQL("SELECT {}, {}, {} FROM {}").format(  # noqa: S608, P103
                 sql.Identifier(model_id_col),
                 sql.Identifier(model_name_col),
                 sql.Identifier(litellm_params_col),
@@ -271,7 +272,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     # Update the model in the database
                     clean_params_json = json.dumps(clean_params)
                     cursor.execute(
-                        sql.SQL("UPDATE {} SET {} = %s WHERE {} = %s").format(  # noqa: P103
+                        sql.SQL("UPDATE {} SET {} = %s WHERE {} = %s").format(  # noqa: S608, P103
                             sql.Identifier(litellm_table),
                             sql.Identifier(litellm_params_col),
                             sql.Identifier(model_id_col),
@@ -306,8 +307,6 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     except Exception as e:
         # Handle unexpected errors
         print(f"Cleanup failed: {e}")
-        import traceback
-
         print(f"Traceback: {traceback.format_exc()}")
 
         # Rollback any pending database changes

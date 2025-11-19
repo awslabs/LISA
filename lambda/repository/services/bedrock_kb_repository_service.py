@@ -19,6 +19,7 @@ import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+import boto3
 from boto3.dynamodb.conditions import Key
 from models.domain_objects import (
     CollectionMetadata,
@@ -28,6 +29,7 @@ from models.domain_objects import (
     RagCollectionConfig,
     RagDocument,
 )
+from repository.rag_document_repo import RagDocumentRepository
 from utilities.bedrock_kb import bulk_delete_documents_from_kb, delete_document_from_kb
 
 from .repository_service import RepositoryService
@@ -78,8 +80,6 @@ class BedrockKBRepositoryService(RepositoryService):
         kb_s3_path = self._validate_and_normalize_path(job.s3_path, kb_bucket)
 
         # Check if document already tracked (idempotent)
-        from repository.rag_document_repo import RagDocumentRepository
-
         rag_document_repository = RagDocumentRepository(
             os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"]
         )
@@ -151,8 +151,6 @@ class BedrockKBRepositoryService(RepositoryService):
         """
         if not bedrock_agent_client:
             raise ValueError("Bedrock agent client required for KB operations")
-
-        import boto3
 
         dynamodb = boto3.resource("dynamodb")
         doc_table = dynamodb.Table(os.environ["RAG_DOCUMENT_TABLE"])

@@ -109,7 +109,10 @@ class TestVectorStoreRepositoryService:
                 "repository.services.vector_store_repository_service.get_vector_store_client",
                 return_value=mock_vector_store,
             ):
-                with patch("repository.rag_document_repo.RagDocumentRepository", return_value=mock_rag_document_repo):
+                with patch(
+                    "repository.services.vector_store_repository_service.RagDocumentRepository",
+                    return_value=mock_rag_document_repo,
+                ):
                     result = vector_store_service.ingest_document(sample_ingestion_job, texts, metadatas)
 
                     assert result.repository_id == "test-vector-repo"

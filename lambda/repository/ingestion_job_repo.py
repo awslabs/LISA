@@ -143,10 +143,6 @@ class IngestionJobRepository:
         Returns:
             Tuple of (list of job dictionaries, last_evaluated_key for next page)
         """
-        import logging
-
-        logger = logging.getLogger(__name__)
-
         time_threshold = datetime.now(timezone.utc) - timedelta(hours=time_limit_hours)
         time_threshold_str = time_threshold.isoformat()
 

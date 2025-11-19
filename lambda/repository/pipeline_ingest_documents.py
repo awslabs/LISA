@@ -34,9 +34,12 @@ from repository.collection_service import CollectionService
 from repository.embeddings import RagEmbeddings
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
+from repository.metadata_generator import MetadataGenerator
 from repository.rag_document_repo import RagDocumentRepository
+from repository.s3_metadata_manager import S3MetadataManager
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.auth import get_username
+from utilities.bedrock_kb import ingest_document_to_kb
 from utilities.common_functions import retry_config
 from utilities.file_processing import generate_chunks
 from utilities.repository_types import RepositoryType
@@ -78,24 +81,22 @@ def pipeline_ingest_document(job: IngestionJob) -> None:
         # chunk and save chunks in vector store
         repository = vs_repo.find_repository_by_id(job.repository_id)
         if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
-            # Bedrock KB path: Only track documents, KB handles ingestion
+            # Bedrock KB path: Copy document to KB bucket and track
             bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
             kb_bucket = bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket")
 
-            # Use KB S3 bucket path as canonical source
-            # The job.s3_path should already be from the KB bucket since we only
-            # monitor KB bucket events (no custom S3 buckets)
-            kb_s3_path = job.s3_path
-
-            # Validate that the path is from the KB bucket
+            # Determine if document needs to be copied to KB bucket
             source_bucket = job.s3_path.split("/")[2]
-            if source_bucket != kb_bucket:
-                logger.warning(
-                    f"Document {job.s3_path} is not from KB bucket {kb_bucket}. "
-                    f"Bedrock KB repositories should only receive events from KB data source bucket."
+            needs_copy = source_bucket != kb_bucket
+
+            # Set canonical KB path
+            kb_s3_path = f"s3://{kb_bucket}/{os.path.basename(job.s3_path)}"
+
+            if needs_copy:
+                # Document uploaded to LISA bucket, needs to be copied to KB bucket
+                logger.info(
+                    f"Document {job.s3_path} uploaded to LISA bucket. " f"Copying to KB data source bucket {kb_bucket}"
                 )
-                # Normalize to KB bucket path
-                kb_s3_path = f"s3://{kb_bucket}/{os.path.basename(job.s3_path)}"
 
             # Check if document already exists (idempotent operation)
             existing_docs = list(
@@ -104,8 +105,8 @@ def pipeline_ingest_document(job: IngestionJob) -> None:
                 )
             )
 
-            if existing_docs:
-                # Document already tracked, update upload_date and return
+            if existing_docs and not needs_copy:
+                # Document already tracked and in KB bucket, update upload_date and return
                 existing_doc = existing_docs[0]
                 existing_doc.upload_date = int(datetime.now(timezone.utc).timestamp() * 1000)
                 rag_document_repository.save(existing_doc)
@@ -115,6 +116,21 @@ def pipeline_ingest_document(job: IngestionJob) -> None:
                 ingestion_job_repository.save(job)
                 logger.info(f"Document {kb_s3_path} already tracked, updated upload_date")
                 return
+
+            # Copy document to KB bucket if needed (user upload via LISA)
+            if needs_copy:
+                try:
+                    # This will copy file to KB bucket, delete from source, and trigger KB ingestion
+                    ingest_document_to_kb(
+                        s3_client=s3,
+                        bedrock_agent_client=bedrock_agent,
+                        job=job,
+                        repository=repository,
+                    )
+                    logger.info(f"Copied document from {job.s3_path} to {kb_s3_path}")
+                except Exception as e:
+                    logger.error(f"Failed to copy document to KB bucket: {e}")
+                    raise
 
             rag_document = RagDocument(
                 repository_id=job.repository_id,
@@ -130,9 +146,6 @@ def pipeline_ingest_document(job: IngestionJob) -> None:
 
             # Generate and upload metadata.json file for Bedrock KB
             try:
-                from repository.metadata_generator import MetadataGenerator
-                from repository.s3_metadata_manager import S3MetadataManager
-
                 metadata_generator = MetadataGenerator()
                 s3_metadata_manager = S3MetadataManager()
 

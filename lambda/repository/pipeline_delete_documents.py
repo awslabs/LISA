@@ -346,8 +346,6 @@ def pipeline_delete_documents(job: IngestionJob) -> None:
         # For Bedrock KB, perform bulk deletion
         if is_bedrock_kb and s3_paths_for_kb:
             try:
-                from utilities.bedrock_kb import bulk_delete_documents_from_kb
-
                 bulk_delete_documents_from_kb(
                     s3_client=s3,
                     bedrock_agent_client=bedrock_agent,

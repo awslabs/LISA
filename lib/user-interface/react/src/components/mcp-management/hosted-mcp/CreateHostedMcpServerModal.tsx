@@ -37,6 +37,7 @@ import { ScalingConfig } from './ScalingConfig';
 import { AdvancedOptionsConfig } from './AdvancedOptionsConfig';
 import { HealthChecksConfig } from './HealthChecksConfig';
 import { formToPayload } from './formHelpers';
+import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 
 type CreateHostedMcpServerModalProps = {
     visible: boolean;
@@ -255,8 +256,8 @@ export function CreateHostedMcpServerModal ({
 
     const steps = [
         {
-            title: 'Server details',
-            description: 'Configure name, type, and start command for your hosted MCP server.',
+            title: 'MCP server details',
+            description: 'Configure name, type, and start command for your new LISA hosted MCP server.',
             content: (
                 <ServerDetailsConfig
                     item={state.form}
@@ -269,7 +270,7 @@ export function CreateHostedMcpServerModal ({
         },
         {
             title: 'Scaling configuration',
-            description: 'Define auto scaling parameters and optional metrics for the server.',
+            description: 'Define auto scaling parameters and optional metrics for the new ECS Fargate cluster for this MCP server.',
             isOptional: true,
             content: (
                 <ScalingConfig
@@ -379,8 +380,18 @@ export function CreateHostedMcpServerModal ({
     return (
         <Modal
             visible={visible}
-            onDismiss={() => setVisible(false)}
-            header={isEdit ? `Update hosted MCP server: ${selectedServer?.name}` : 'Create hosted MCP server'}
+            onDismiss={() => {
+                dispatch(
+                    setConfirmationModal({
+                        action: 'Discard',
+                        resourceName: 'LISA Hosted MCP Server',
+                        onConfirm: () => {
+                            setVisible(false);
+                        },
+                        description: 'Are you sure you want to discard your changes?'
+                    }));
+            }}
+            header={isEdit ? `Update LISA Hosted MCP server: ${selectedServer?.name}` : 'Create LISA Hosted MCP Server'}
             size='large'
         >
             <Wizard
@@ -402,7 +413,18 @@ export function CreateHostedMcpServerModal ({
                 onNavigate={({ detail }) => {
                     setState({ activeStepIndex: detail.requestedStepIndex });
                 }}
-                onCancel={() => setVisible(false)}
+                onCancel={() => {
+                    dispatch(
+                        setConfirmationModal({
+                            action: 'Discard',
+                            resourceName: 'LISA Hosted MCP Server',
+                            onConfirm: () => {
+                                setVisible(false);
+                            },
+                            description: 'Are you sure you want to discard your changes?'
+                        }));
+                }}
+
                 onSubmit={handleSubmit}
             />
         </Modal>

@@ -45,8 +45,8 @@ export function expandAdminMenu () {
             expect(labels).to.deep.equal([
                 'Configuration',
                 'Model Management',
+                'RAG Management',
                 'MCP Management',
-                'Repository Management',
             ]);
         });
 }

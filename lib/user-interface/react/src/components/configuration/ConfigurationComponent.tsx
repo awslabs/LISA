@@ -150,9 +150,9 @@ export function ConfigurationComponent (): ReactElement {
         <SpaceBetween size={'m'}>
             <Header
                 variant='h1'
-                description={'The current configuration of LISA'}
+                description={'Activate and deactivate platform features'}
             >
-                LISA App Configuration
+                LISA Feature Configuration
             </Header>
             <ActivatedUserComponents setFields={setFields} enabledComponents={state.form.enabledComponents} />
             <SystemBannerConfiguration setFields={setFields}

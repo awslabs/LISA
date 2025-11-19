@@ -419,11 +419,13 @@ class RagDocumentRepository:
         """
         repo = self.vs_repo.find_repository_by_id(repository_id=repository_id)
 
-        # Build mapping of embedding models to autoRemove setting
-        pipelines = {
-            pipeline.get("embeddingModel"): pipeline.get("autoRemove", False) is True
-            for pipeline in repo.get("pipelines", [])
-        }
+        # Build mapping of collection IDs to autoRemove setting
+        collection_auto_remove = {}
+        for pipeline in repo.get("pipelines", []):
+            embedding_model = pipeline.get("embeddingModel")
+            auto_remove = pipeline.get("autoRemove", False) is True
+            if embedding_model:
+                collection_auto_remove[embedding_model] = auto_remove
 
         # Determine which documents should be removed from S3
         removed_source: list[str] = []
@@ -451,9 +453,9 @@ class RagDocumentRepository:
                 removed_source.append(doc_source)
                 continue
 
-            # AUTO ingestion: only remove if pipeline has autoRemove enabled
+            # AUTO ingestion: only remove if pipeline exists and has autoRemove enabled
             if doc_ingestion_type == IngestionType.AUTO:
-                auto_remove = pipelines.get(doc_collection_id, False) if doc_collection_id else False
+                auto_remove = collection_auto_remove.get(doc_collection_id, False)
                 if auto_remove:
                     removed_source.append(doc_source)
                 else:

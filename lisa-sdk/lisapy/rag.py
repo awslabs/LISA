@@ -143,8 +143,8 @@ class RagMixin(BaseMixin):
                 error_msg = root.find(".//Message")
                 if error_code is not None and error_msg is not None:
                     logging.error(f"S3 Error: {error_code.text} - {error_msg.text}")
-            except Exception:
-                pass
+            except Exception as xml_error:
+                logging.debug(f"Could not parse S3 XML error response: {xml_error}")
             raise parse_error(response.status_code, response)
 
     def ingest_document(

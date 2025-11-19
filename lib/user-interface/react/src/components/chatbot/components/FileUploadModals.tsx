@@ -36,7 +36,7 @@ import {
     useUploadToS3Mutation,
 } from '@/shared/reducers/rag.reducer';
 import { uploadToS3Request } from '@/components/utils';
-import { ChunkingStrategy, ChunkingStrategyType } from '#root/lib/schema';
+import { ChunkingStrategy, ChunkingStrategyType, RagRepositoryType } from '#root/lib/schema';
 import { IModel } from '@/shared/model/model-management.model';
 import { JobStatusTable } from '@/components/chatbot/components/JobStatusTable';
 import { ChunkingConfigForm } from '@/components/document-library/createCollection/ChunkingConfigForm';
@@ -337,7 +337,7 @@ export const RagUploadModal = ({
                 </TextContent>
 
                 {/* Chunking Strategy Override Checkbox - Hidden for Bedrock repositories */}
-                {ragConfig.repositoryType !== 'bedrock' && (
+                {ragConfig.repositoryType !== RagRepositoryType.BEDROCK_KNOWLEDGE_BASE && (
                     <Checkbox
                         checked={overrideChunkingStrategy}
                         onChange={({ detail }) => setOverrideChunkingStrategy(detail.checked)}
@@ -347,7 +347,7 @@ export const RagUploadModal = ({
                 )}
 
                 {/* Chunking Strategy Form - Only shown when override is enabled and not Bedrock */}
-                {overrideChunkingStrategy && ragConfig.repositoryType !== 'bedrock' && (
+                {overrideChunkingStrategy && ragConfig.repositoryType !== RagRepositoryType.BEDROCK_KNOWLEDGE_BASE && (
                     <ChunkingConfigForm
                         item={chunkingStrategy}
                         setFields={(values) => {
@@ -365,7 +365,7 @@ export const RagUploadModal = ({
                                 });
                             }
                         }}
-                        touchFields={() => {}}
+                        touchFields={() => { }}
                         formErrors={{}}
                     />
                 )}

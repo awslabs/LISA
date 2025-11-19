@@ -35,7 +35,13 @@ show_error_codes = true
 
 [tool.ruff]
 lint.ignore = ["D401"]
+lint.select = ["PLC0415"]  # Flag imports outside top-level
 line-length = 120
+
+[tool.ruff.lint.per-file-ignores]
+# Allow imports in functions for test files
+"test/**/*.py" = ["PLC0415"]
+"**/test_*.py" = ["PLC0415"]
 
 [tool.pytest.ini_options]
 addopts = "--strict-markers -vv -x"

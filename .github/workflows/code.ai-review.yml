@@ -36,6 +36,11 @@ jobs:
           debug: false
           summarize: true
           summarize_release_notes: true
+          review_file_diff: |
+            - Do NOT provide general feedback, summaries, explanations of changes, or praises for making good additions.
+            - Focus solely on offering specific, objective insights based on the given context and refrain from making broad comments about potential impacts on the system or question intentions behind the changes.
+            - Disregard formatting, since this should be taken care of with linters
+            - Ignore functional imports for test classes. Other classes should not import within functions
           review_simple_changes: false
           review_comment_lgtm: false
           bedrock_light_model: ${{ vars.BEDROCK_LIGHT_MODEL }}

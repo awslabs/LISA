@@ -40,14 +40,14 @@ from models.domain_objects import (
     VectorStoreConfig,
     VectorStoreStatus,
 )
-from repository.metadata_generator import MetadataGenerator
-from repository.s3_metadata_manager import S3MetadataManager
 from repository.collection_service import CollectionService
 from repository.config.params import ListJobsParams
 from repository.embeddings import RagEmbeddings
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
+from repository.metadata_generator import MetadataGenerator
 from repository.rag_document_repo import RagDocumentRepository
+from repository.s3_metadata_manager import S3MetadataManager
 from repository.services import RepositoryServiceFactory
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.auth import admin_only, get_groups, get_user_context, get_username, is_admin, user_has_group_access
@@ -194,15 +194,12 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
             next_key = None
             while True:
                 docs_batch, next_key, _ = doc_repo.list_all(
-                    repository_id=repository_id, 
-                    collection_id=collection_id,
-                    last_evaluated_key=next_key,
-                    limit=100
+                    repository_id=repository_id, collection_id=collection_id, last_evaluated_key=next_key, limit=100
                 )
                 collection_docs.extend(docs_batch)
                 if not next_key:
                     break
-            
+
             collection_sources = {doc.source for doc in collection_docs}
 
             # Filter KB results to only include documents in this collection
@@ -933,7 +930,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
     # For Bedrock KB repositories, upload metadata files BEFORE documents
     is_bedrock_kb = RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB)
     if is_bedrock_kb:
-    
+
         metadata_generator = MetadataGenerator()
         s3_metadata_manager = S3MetadataManager()
 

@@ -467,9 +467,6 @@ def handle_pipline_ingest_schedule(event: Dict[str, Any], context: Any) -> None:
             logger.error(f"Error during S3 list operation: {str(e)}", exc_info=True)
             raise
 
-        # Get repository
-        repository = vs_repo.find_repository_by_id(repository_id)
-
         # create an IngestionJob for every object created/modified
         for key in modified_keys:
             job = IngestionJob(

@@ -21,7 +21,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../lambda"))
 
-from models.domain_objects import CollectionMetadata, CollectionStatus, FixedChunkingStrategy, RagCollectionConfig
+from models.domain_objects import CollectionStatus, FixedChunkingStrategy, RagCollectionConfig
 
 
 @pytest.fixture(autouse=True)
@@ -230,4 +230,3 @@ def test_delete_default_collection():
     assert saved_job.collection_id is None
     assert saved_job.embedding_model == "test-embedding-model"
     assert saved_job.collection_deletion is True
-

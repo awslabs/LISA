@@ -1399,7 +1399,9 @@ def test_real_similarity_search_missing_params():
 
         # Test missing repositoryId
         event = {
-            "requestContext": {"authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["test-group"])}},
+            "requestContext": {
+                "authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["test-group"])}
+            },
             "pathParameters": {},
             "queryStringParameters": {"modelName": "test-model", "query": "test query"},
         }

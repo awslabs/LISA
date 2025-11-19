@@ -887,7 +887,8 @@ class PipelineConfig(BaseModel):
 
         if not has_legacy and not has_new:
             raise ValueError(
-                "Chunking configuration required: provide either 'chunkingStrategy' or both 'chunkSize' and 'chunkOverlap'"
+                "Chunking configuration required: provide either 'chunkingStrategy' or both "
+                "'chunkSize' and 'chunkOverlap'"
             )
 
         # Validate that if one legacy field is provided, both must be provided

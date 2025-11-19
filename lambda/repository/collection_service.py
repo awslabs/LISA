@@ -22,7 +22,6 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import boto3
 from models.domain_objects import (
-    CollectionMetadata,
     CollectionSortBy,
     CollectionStatus,
     IngestionJob,
@@ -433,8 +432,6 @@ class CollectionService:
         repository = self.vector_store_repo.find_repository_by_id(repository_id)
         embedding_model_id = repository.get("embeddingModelId")
         return str(embedding_model_id) if embedding_model_id is not None else None
-
-
 
     def list_all_user_collections(
         self,

@@ -19,13 +19,13 @@ jobs:
       pull-requests: write  # Required for creating PRs
     steps:
       - name: Checkout Develop Branch
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v4
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v4
         with:
           ref: develop
           fetch-depth: 0  # Fetch full history for proper branch comparison
           ssh-key: ${{ secrets.DEPLOYMENT_SSH_KEY }}
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@3d21ddcb5087c3d29b7e19fe293e3455fabe32af # v4
+        uses: aws-actions/configure-aws-credentials@4a54c24244cf4f82abd7d44e7b2024258a8aa041 # v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT }}:role/${{ vars.ROLE_NAME_TO_ASSUME }}

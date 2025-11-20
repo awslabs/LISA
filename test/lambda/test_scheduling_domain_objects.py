@@ -124,9 +124,7 @@ class TestSchedulingConfig:
     def test_recurring_daily_schedule(self):
         """Test RECURRING schedule type."""
         daily_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
-        config = SchedulingConfig(
-            scheduleType=ScheduleType.RECURRING, timezone="UTC", dailySchedule=daily_schedule
-        )
+        config = SchedulingConfig(scheduleType=ScheduleType.RECURRING, timezone="UTC", dailySchedule=daily_schedule)
 
         assert config.scheduleType == ScheduleType.RECURRING
         assert config.timezone == "UTC"
@@ -181,9 +179,7 @@ class TestSchedulingConfig:
         assert config.timezone == "America/New_York"
 
         # UTC should always be valid
-        config = SchedulingConfig(
-            scheduleType=ScheduleType.RECURRING, timezone="UTC", dailySchedule=daily_schedule
-        )
+        config = SchedulingConfig(scheduleType=ScheduleType.RECURRING, timezone="UTC", dailySchedule=daily_schedule)
         assert config.timezone == "UTC"
 
     def test_invalid_timezone_validation(self):
@@ -205,9 +201,7 @@ class TestSchedulingConfig:
             with pytest.raises(
                 ValidationError, match="Invalid timezone.*timezone must be a valid IANA timezone identifier"
             ):
-                SchedulingConfig(
-                    scheduleType=ScheduleType.RECURRING, timezone=invalid_tz, dailySchedule=daily_schedule
-                )
+                SchedulingConfig(scheduleType=ScheduleType.RECURRING, timezone=invalid_tz, dailySchedule=daily_schedule)
 
 
 class TestNextScheduledAction:

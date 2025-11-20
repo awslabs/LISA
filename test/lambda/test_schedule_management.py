@@ -371,7 +371,6 @@ class TestScheduleManagementHelperFunctions:
         with pytest.raises(ValueError, match="Unable to determine AWS Account ID"):
             construct_scheduled_action_arn("test-asg", "test-action")
 
-
     @patch("models.scheduling.schedule_management.model_table")
     def test_get_existing_scheduled_action_arns_success(self, mock_model_table):
         """Test successful retrieval of existing scheduled action ARNs."""
@@ -603,7 +602,7 @@ class TestUpdateModelScheduleRecord:
         # Mock model not found
         mock_model_table.get_item.return_value = {}
 
-        # Create valid SchedulingConfig with required dailySchedule for RECURRING  
+        # Create valid SchedulingConfig with required dailySchedule for RECURRING
         daily_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
         schedule_config = SchedulingConfig(
             scheduleType=ScheduleType.RECURRING, timezone="UTC", dailySchedule=daily_schedule

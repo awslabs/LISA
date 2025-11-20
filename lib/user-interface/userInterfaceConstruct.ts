@@ -201,6 +201,7 @@ export class UserInterfaceConstruct extends Construct {
             ).stringValue,
             RESTAPI_VERSION: 'v2',
             RAG_ENABLED: config.deployRag,
+            HOSTED_MCP_ENABLED: config.deployMcp,
             API_BASE_URL: config.apiGatewayConfig?.domainName ? '/' : `/${config.deploymentStage}/`,
         };
 

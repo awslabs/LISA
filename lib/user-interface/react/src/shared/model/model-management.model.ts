@@ -292,7 +292,7 @@ const weeklyScheduleSchema = z.object({
 
 export const scheduleConfigSchema = z.object({
     scheduleEnabled: z.boolean().default(false),
-    scheduleType: z.nativeEnum(ScheduleType).default(ScheduleType.NONE),
+    scheduleType: z.nativeEnum(ScheduleType).optional(),
     timezone: z.string().default('UTC'),
     weeklySchedule: weeklyScheduleSchema.optional(),
     dailySchedule: dayScheduleSchema.optional(),
@@ -304,7 +304,7 @@ export const scheduleConfigSchema = z.object({
     scheduledActionArns: z.array(z.string()).optional(),
 }).superRefine((value, context) => {
     // Validate schedule configuration based on type
-    if (value.scheduleEnabled && value.scheduleType !== ScheduleType.NONE) {
+    if (value.scheduleEnabled && value.scheduleType && value.scheduleType !== ScheduleType.NONE) {
         // Require timezone when scheduling is enabled
         if (!value.timezone || value.timezone === '') {
             context.addIssue({

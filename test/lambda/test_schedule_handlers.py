@@ -90,7 +90,7 @@ def sample_model_item():
         "auto_scaling_group": "test-asg",
         "autoScalingConfig": {
             "scheduling": {
-                "scheduleType": "RECURRING_DAILY",
+                "scheduleType": "RECURRING",
                 "timezone": "UTC",
                 "scheduleEnabled": True,
                 "scheduleConfigured": True,
@@ -108,7 +108,7 @@ def sample_schedule_config():
     """Sample scheduling configuration."""
     daily_schedule = DaySchedule(startTime="10:00", stopTime="18:00")
     return SchedulingConfig(
-        scheduleType=ScheduleType.RECURRING_DAILY, timezone="America/New_York", dailySchedule=daily_schedule
+        scheduleType=ScheduleType.RECURRING, timezone="America/New_York", dailySchedule=daily_schedule
     )
 
 
@@ -281,7 +281,7 @@ class TestGetScheduleHandler:
         # Setup mock lambda response
         schedule_data = {
             "scheduling": {
-                "scheduleType": "RECURRING_DAILY",
+                "scheduleType": "RECURRING",
                 "timezone": "UTC",
                 "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"},
             },
@@ -419,7 +419,7 @@ class TestGetScheduleStatusHandler:
         assert result.scheduleConfigured is True
         assert result.lastScheduleFailed is False
         assert result.scheduleStatus == "ACTIVE"
-        assert result.scheduleType == "RECURRING_DAILY"
+        assert result.scheduleType == "RECURRING"
         assert result.timezone == "UTC"
 
     def test_schedule_status_disabled(
@@ -456,7 +456,7 @@ class TestGetScheduleStatusHandler:
                 "scheduling": {
                     "scheduleConfigured": True,
                     "lastScheduleFailed": True,
-                    "scheduleType": "RECURRING_DAILY",
+                    "scheduleType": "RECURRING",
                     "timezone": "UTC",
                 }
             },

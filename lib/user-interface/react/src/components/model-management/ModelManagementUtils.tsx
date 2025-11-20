@@ -183,7 +183,7 @@ export const PAGE_SIZE_OPTIONS = DEFAULT_PAGE_SIZE_OPTIONS('Models');
 
 export const DEFAULT_PREFERENCES: CollectionPreferencesProps.Preferences = {
     pageSize: 12,
-    visibleContent: ['modelName', 'modelFeatures', 'modelType', 'modelUrl', 'streaming', 'hosting', 'instanceType', 'scheduleType', 'modelDescription', 'allowedGroups', 'modelStatus'],
+    visibleContent: ['modelName', 'modelFeatures', 'modelType', 'modelUrl', 'streaming', 'hosting', 'instanceType', 'scheduleType', 'scheduleDetails', 'modelDescription', 'allowedGroups', 'modelStatus'],
 };
 
 export const VISIBLE_CONTENT_OPTIONS = [

@@ -47,7 +47,7 @@ def lambda_context():
 def sample_schedule_config():
     """Sample schedule configuration."""
     return {
-        "scheduleType": "RECURRING_DAILY",
+        "scheduleType": "RECURRING",
         "timezone": "America/New_York",
         "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"},
         "scheduleEnabled": True,
@@ -58,7 +58,7 @@ def sample_schedule_config():
 def sample_weekly_schedule_config():
     """Sample weekly schedule configuration."""
     return {
-        "scheduleType": "EACH_DAY",
+        "scheduleType": "DAILY",
         "timezone": "UTC",
         "weeklySchedule": {
             "monday": {"startTime": "09:00", "stopTime": "17:00"},
@@ -74,9 +74,8 @@ class TestScheduleManagement:
 
     @patch("models.scheduling.schedule_management.model_table")
     @patch("models.scheduling.schedule_management.autoscaling_client")
-    @patch("models.scheduling.schedule_management.calculate_next_scheduled_action")
     def test_update_operation_success(
-        self, mock_calculate_next, mock_autoscaling_client, mock_model_table, lambda_context, sample_schedule_config
+        self, mock_autoscaling_client, mock_model_table, lambda_context, sample_schedule_config
     ):
         """Test successful update operation."""
         from models.scheduling.schedule_management import lambda_handler
@@ -85,13 +84,11 @@ class TestScheduleManagement:
         mock_model_table.get_item.return_value = {"Item": {"model_id": "test-model"}}
         mock_model_table.update_item.return_value = {}
 
-        # Mock calculate_next_scheduled_action
-        next_action = {"action": "START", "scheduledTime": "2025-01-15T14:00:00-05:00"}  # 9 AM EST
-        mock_calculate_next.return_value = next_action
-
         # Mock successful Auto Scaling operations
         mock_autoscaling_client.put_scheduled_update_group_action.return_value = {}
-        mock_autoscaling_client.describe_scheduled_actions.return_value = {"ScheduledUpdateGroupActions": []}
+        mock_autoscaling_client.describe_auto_scaling_groups.return_value = {
+            "AutoScalingGroups": [{"MinSize": 1, "MaxSize": 10, "DesiredCapacity": 3}]
+        }
 
         # Test event
         event = {
@@ -245,69 +242,30 @@ class TestScheduleManagement:
         assert "Both 'operation' and 'modelId' are required" in body["message"]
 
 
-class TestCalculateNextScheduledAction:
-    """Test calculate_next_scheduled_action function."""
+class TestHelperFunctions:
+    """Test helper functions."""
 
-    def test_recurring_daily_schedule(self):
-        """Test RECURRING_DAILY schedule calculation."""
-        from models.scheduling.schedule_management import calculate_next_scheduled_action
+    def test_time_to_cron(self):
+        """Test time_to_cron function."""
+        from models.scheduling.schedule_management import time_to_cron
 
-        schedule_config = {
-            "scheduleType": "RECURRING_DAILY",
-            "timezone": "UTC",
-            "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"},
-        }
+        result = time_to_cron("09:30")
+        assert result == "30 9 * * *"
 
-        result = calculate_next_scheduled_action(schedule_config)
+        result = time_to_cron("23:45")
+        assert result == "45 23 * * *"
 
-        # Just verify it returns a result (the actual calculation logic is complex)
-        assert result is not None
-        assert result["action"] in ["START", "STOP"]
+    def test_time_to_cron_with_day(self):
+        """Test time_to_cron_with_day function."""
+        from models.scheduling.schedule_management import time_to_cron_with_day
 
-    def test_each_day_schedule(self):
-        """Test EACH_DAY schedule calculation."""
-        from models.scheduling.schedule_management import calculate_next_scheduled_action
+        # Monday is 1
+        result = time_to_cron_with_day("09:30", 1)
+        assert result == "30 9 * * 1"
 
-        schedule_config = {
-            "scheduleType": "EACH_DAY",
-            "timezone": "UTC",
-            "weeklySchedule": {
-                "monday": {"startTime": "09:00", "stopTime": "17:00"},
-                "wednesday": {"startTime": "10:00", "stopTime": "18:00"},
-            },
-        }
-
-        result = calculate_next_scheduled_action(schedule_config)
-
-        # Just verify it returns a result
-        assert result is not None
-        assert result["action"] in ["START", "STOP"]
-
-    def test_timezone_conversion(self):
-        """Test timezone conversion in schedule calculation."""
-        from models.scheduling.schedule_management import calculate_next_scheduled_action
-
-        schedule_config = {
-            "scheduleType": "RECURRING_DAILY",
-            "timezone": "America/New_York",
-            "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"},
-        }
-
-        result = calculate_next_scheduled_action(schedule_config)
-
-        # Just verify it returns a result
-        assert result is not None
-        assert result["action"] in ["START", "STOP"]
-
-    def test_no_schedule_type(self):
-        """Test None schedule type."""
-        from models.scheduling.schedule_management import calculate_next_scheduled_action
-
-        schedule_config = {"scheduleType": None, "timezone": "UTC"}
-
-        result = calculate_next_scheduled_action(schedule_config)
-
-        assert result is None
+        # Sunday is 0
+        result = time_to_cron_with_day("14:15", 0)
+        assert result == "15 14 * * 0"
 
 
 class TestScheduleManagementHelperFunctions:
@@ -413,29 +371,6 @@ class TestScheduleManagementHelperFunctions:
         with pytest.raises(ValueError, match="Unable to determine AWS Account ID"):
             construct_scheduled_action_arn("test-asg", "test-action")
 
-    def test_convert_to_utc_cron(self):
-        """Test time conversion to UTC cron."""
-        from models.scheduling.schedule_management import convert_to_utc_cron
-
-        # Test with UTC timezone (should be same)
-        result = convert_to_utc_cron("09:30", "UTC")
-        assert result == "30 9 * * *"
-
-    def test_convert_to_utc_cron_weekdays(self):
-        """Test weekdays time conversion to UTC cron."""
-        from models.scheduling.schedule_management import convert_to_utc_cron_weekdays
-
-        # Test with UTC timezone
-        result = convert_to_utc_cron_weekdays("14:15", "UTC")
-        assert result == "15 14 * * 1-5"
-
-    def test_convert_to_utc_cron_with_day(self):
-        """Test time conversion with specific day."""
-        from models.scheduling.schedule_management import convert_to_utc_cron_with_day
-
-        # Test with UTC timezone and Monday (1)
-        result = convert_to_utc_cron_with_day("08:45", "UTC", 1)
-        assert result == "45 8 * * 1"
 
     @patch("models.scheduling.schedule_management.model_table")
     def test_get_existing_scheduled_action_arns_success(self, mock_model_table):
@@ -537,14 +472,14 @@ class TestCreateScheduledActions:
 
     @patch("models.scheduling.schedule_management.create_daily_scheduled_actions")
     def test_create_scheduled_actions_recurring_daily(self, mock_create_daily):
-        """Test creating scheduled actions for RECURRING_DAILY type."""
+        """Test creating scheduled actions for RECURRING type."""
         from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig
         from models.scheduling.schedule_management import create_scheduled_actions
 
         mock_create_daily.return_value = ["arn1", "arn2"]
 
         schedule_config = SchedulingConfig(
-            scheduleType=ScheduleType.RECURRING_DAILY,
+            scheduleType=ScheduleType.RECURRING,
             timezone="UTC",
             dailySchedule=DaySchedule(startTime="09:00", stopTime="17:00"),
         )
@@ -556,7 +491,7 @@ class TestCreateScheduledActions:
 
     @patch("models.scheduling.schedule_management.create_weekly_scheduled_actions")
     def test_create_scheduled_actions_each_day(self, mock_create_weekly):
-        """Test creating scheduled actions for EACH_DAY type."""
+        """Test creating scheduled actions for DAILY type."""
         from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig, WeeklySchedule
         from models.scheduling.schedule_management import create_scheduled_actions
 
@@ -568,7 +503,7 @@ class TestCreateScheduledActions:
         )
 
         schedule_config = SchedulingConfig(
-            scheduleType=ScheduleType.EACH_DAY, timezone="UTC", weeklySchedule=weekly_schedule
+            scheduleType=ScheduleType.DAILY, timezone="UTC", weeklySchedule=weekly_schedule
         )
 
         result = create_scheduled_actions("test-model", "test-asg", schedule_config)
@@ -577,31 +512,31 @@ class TestCreateScheduledActions:
         mock_create_weekly.assert_called_once_with("test-model", "test-asg", schedule_config.weeklySchedule, "UTC")
 
     def test_create_scheduled_actions_recurring_daily_missing_schedule(self):
-        """Test error when dailySchedule is missing for RECURRING_DAILY."""
+        """Test error when dailySchedule is missing for RECURRING."""
         from models.domain_objects import ScheduleType, SchedulingConfig
         from models.scheduling.schedule_management import create_scheduled_actions
 
         # Create config with None type first, then modify to avoid Pydantic validation
         schedule_config = SchedulingConfig(scheduleType=None, timezone="UTC")
         # Manually set the schedule type to test the runtime validation
-        schedule_config.scheduleType = ScheduleType.RECURRING_DAILY
+        schedule_config.scheduleType = ScheduleType.RECURRING
         schedule_config.dailySchedule = None
 
-        with pytest.raises(ValueError, match="dailySchedule required for RECURRING_DAILY type"):
+        with pytest.raises(ValueError, match="dailySchedule required for RECURRING type"):
             create_scheduled_actions("test-model", "test-asg", schedule_config)
 
     def test_create_scheduled_actions_each_day_missing_schedule(self):
-        """Test error when weeklySchedule is missing for EACH_DAY."""
+        """Test error when weeklySchedule is missing for DAILY."""
         from models.domain_objects import ScheduleType, SchedulingConfig
         from models.scheduling.schedule_management import create_scheduled_actions
 
         # Create config with None type first, then modify to avoid Pydantic validation
         schedule_config = SchedulingConfig(scheduleType=None, timezone="UTC")
         # Manually set the schedule type to test the runtime validation
-        schedule_config.scheduleType = ScheduleType.EACH_DAY
+        schedule_config.scheduleType = ScheduleType.DAILY
         schedule_config.weeklySchedule = None
 
-        with pytest.raises(ValueError, match="weeklySchedule required for EACH_DAY type"):
+        with pytest.raises(ValueError, match="weeklySchedule required for DAILY type"):
             create_scheduled_actions("test-model", "test-asg", schedule_config)
 
 
@@ -609,8 +544,7 @@ class TestUpdateModelScheduleRecord:
     """Test update_model_schedule_record function."""
 
     @patch("models.scheduling.schedule_management.model_table")
-    @patch("models.scheduling.schedule_management.calculate_next_scheduled_action")
-    def test_update_model_schedule_record_existing_config(self, mock_calculate_next, mock_model_table):
+    def test_update_model_schedule_record_existing_config(self, mock_model_table):
         """Test updating model with existing autoScalingConfig."""
         from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig
         from models.scheduling.schedule_management import update_model_schedule_record
@@ -620,12 +554,10 @@ class TestUpdateModelScheduleRecord:
             "Item": {"model_id": "test-model", "autoScalingConfig": {"existing": "config"}}
         }
 
-        mock_calculate_next.return_value = {"action": "START", "scheduledTime": "2025-01-15T09:00:00Z"}
-
-        # Create valid SchedulingConfig with required dailySchedule for RECURRING_DAILY
+        # Create valid SchedulingConfig with required dailySchedule for RECURRING
         daily_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
         schedule_config = SchedulingConfig(
-            scheduleType=ScheduleType.RECURRING_DAILY, timezone="UTC", dailySchedule=daily_schedule
+            scheduleType=ScheduleType.RECURRING, timezone="UTC", dailySchedule=daily_schedule
         )
 
         update_model_schedule_record("test-model", schedule_config, ["arn1"], True)
@@ -636,8 +568,7 @@ class TestUpdateModelScheduleRecord:
         assert call_args[1]["UpdateExpression"] == "SET autoScalingConfig.scheduling = :scheduling"
 
     @patch("models.scheduling.schedule_management.model_table")
-    @patch("models.scheduling.schedule_management.calculate_next_scheduled_action")
-    def test_update_model_schedule_record_new_config(self, mock_calculate_next, mock_model_table):
+    def test_update_model_schedule_record_new_config(self, mock_model_table):
         """Test updating model without existing autoScalingConfig."""
         from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig
         from models.scheduling.schedule_management import update_model_schedule_record
@@ -650,12 +581,10 @@ class TestUpdateModelScheduleRecord:
             }
         }
 
-        mock_calculate_next.return_value = {"action": "START", "scheduledTime": "2025-01-15T09:00:00Z"}
-
-        # Create valid SchedulingConfig with required dailySchedule for RECURRING_DAILY
+        # Create valid SchedulingConfig with required dailySchedule for RECURRING
         daily_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
         schedule_config = SchedulingConfig(
-            scheduleType=ScheduleType.RECURRING_DAILY, timezone="UTC", dailySchedule=daily_schedule
+            scheduleType=ScheduleType.RECURRING, timezone="UTC", dailySchedule=daily_schedule
         )
 
         update_model_schedule_record("test-model", schedule_config, ["arn1"], True)
@@ -674,10 +603,10 @@ class TestUpdateModelScheduleRecord:
         # Mock model not found
         mock_model_table.get_item.return_value = {}
 
-        # Create valid SchedulingConfig with required dailySchedule for RECURRING_DAILY
+        # Create valid SchedulingConfig with required dailySchedule for RECURRING  
         daily_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
         schedule_config = SchedulingConfig(
-            scheduleType=ScheduleType.RECURRING_DAILY, timezone="UTC", dailySchedule=daily_schedule
+            scheduleType=ScheduleType.RECURRING, timezone="UTC", dailySchedule=daily_schedule
         )
 
         with pytest.raises(ValueError, match="Model test-model not found"):

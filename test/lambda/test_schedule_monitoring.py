@@ -52,7 +52,7 @@ def sample_model_with_schedule():
         "auto_scaling_group": "test-asg",
         "autoScalingConfig": {
             "scheduling": {
-                "scheduleType": "RECURRING_DAILY",
+                "scheduleType": "RECURRING",
                 "timezone": "UTC",
                 "scheduleEnabled": True,
                 "scheduleConfigured": True,
@@ -71,9 +71,9 @@ def sample_model_with_schedule():
 class TestScheduleMonitoring:
     """Test schedule monitoring Lambda function."""
 
-    @patch("models.scheduling.schedule_monitoring.ecs_client")
+    @patch("models.scheduling.schedule_monitoring.autoscaling_client")
     @patch("models.scheduling.schedule_monitoring.model_table")
-    def test_lambda_handler_autoscaling_event_success(self, mock_model_table, mock_ecs_client, lambda_context):
+    def test_lambda_handler_autoscaling_event_success(self, mock_model_table, mock_autoscaling_client, lambda_context):
         """Test successful autoscaling event handling."""
         from models.scheduling.schedule_monitoring import lambda_handler
 
@@ -90,16 +90,18 @@ class TestScheduleMonitoring:
         # Mock model lookup
         mock_model_table.scan.return_value = {"Items": [{"model_id": "test-model"}], "Count": 1}
 
-        # Mock model get_item
-        mock_model_table.get_item.return_value = {
-            "Item": {
-                "model_id": "test-model",
-                "ecs_service_arn": "arn:aws:ecs:us-east-1:123456789012:service/test-cluster/test-service",
-            }
+        # Mock ASG describe call
+        mock_autoscaling_client.describe_auto_scaling_groups.return_value = {
+            "AutoScalingGroups": [
+                {
+                    "Instances": [
+                        {"LifecycleState": "InService"},
+                        {"LifecycleState": "InService"}
+                    ],
+                    "DesiredCapacity": 2
+                }
+            ]
         }
-
-        # Mock ECS service
-        mock_ecs_client.describe_services.return_value = {"services": [{"runningCount": 1}]}
 
         # Mock update_item
         mock_model_table.update_item.return_value = {}
@@ -188,58 +190,6 @@ class TestScheduleMonitoring:
 
         assert result is None
 
-    @patch("models.scheduling.schedule_monitoring.model_table")
-    def test_get_ecs_service_name_success(self, mock_model_table):
-        """Test successful ECS service name retrieval."""
-        from models.scheduling.schedule_monitoring import get_ecs_service_name
-
-        # Mock model table response
-        mock_model_table.get_item.return_value = {
-            "Item": {
-                "model_id": "test-model",
-                "ecs_service_arn": "arn:aws:ecs:us-east-1:123456789012:service/test-cluster/test-service",
-            }
-        }
-
-        result = get_ecs_service_name("test-model")
-
-        assert result == "arn:aws:ecs:us-east-1:123456789012:service/test-cluster/test-service"
-
-    @patch("models.scheduling.schedule_monitoring.model_table")
-    def test_get_ecs_service_name_not_found(self, mock_model_table):
-        """Test ECS service name retrieval when model not found."""
-        from models.scheduling.schedule_monitoring import get_ecs_service_name
-
-        # Mock model not found
-        mock_model_table.get_item.return_value = {}
-
-        result = get_ecs_service_name("nonexistent-model")
-
-        assert result is None
-
-    @patch("models.scheduling.schedule_monitoring.ecs_client")
-    def test_get_ecs_service_running_count_success(self, mock_ecs_client):
-        """Test successful ECS service running count retrieval."""
-        from models.scheduling.schedule_monitoring import get_ecs_service_running_count
-
-        # Mock ECS client response
-        mock_ecs_client.describe_services.return_value = {"services": [{"runningCount": 2}]}
-
-        result = get_ecs_service_running_count("test-service-arn")
-
-        assert result == 2
-
-    @patch("models.scheduling.schedule_monitoring.ecs_client")
-    def test_get_ecs_service_running_count_not_found(self, mock_ecs_client):
-        """Test ECS service running count when service not found."""
-        from models.scheduling.schedule_monitoring import get_ecs_service_running_count
-
-        # Mock empty services response
-        mock_ecs_client.describe_services.return_value = {"services": []}
-
-        result = get_ecs_service_running_count("nonexistent-service")
-
-        assert result == 0
 
     @patch("models.scheduling.schedule_monitoring.model_table")
     def test_update_model_status_success(self, mock_model_table):

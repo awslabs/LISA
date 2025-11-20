@@ -35,7 +35,7 @@ export function AutoScalingConfig (props: AutoScalingConfigProps) : ReactElement
                 item={props.item.scheduling || {
                     scheduleEnabled: false,
                     scheduleType: ScheduleType.NONE,
-                    timezone: 'UTC'
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
                 }}
                 setFields={(fields) => {
                     const scheduleFields: Record<string, any> = {};

@@ -180,6 +180,9 @@ export class ModelsApi extends Construct {
             environment: {
                 MODEL_TABLE_NAME: modelTable.tableName,
                 ECS_CLUSTER_NAME: `${config.deploymentPrefix}-ECS-Cluster`,
+                LISA_API_URL_PS_NAME: lisaServeEndpointUrlPs.parameterName,
+                MANAGEMENT_KEY_NAME: managementKeyName,
+                REST_API_VERSION: 'v2',
             },
             role: stateMachinesLambdaRole,
             vpc: vpc.vpc,
@@ -207,12 +210,13 @@ export class ModelsApi extends Construct {
         new Rule(this, 'AutoScalingEventsRule', {
             eventPattern: {
                 source: ['aws.autoscaling'],
-                detail: {
-                    StatusCode: ['Successful', 'Failed']
-                }
+                detailType: [
+                    'EC2 Instance Launch Successful',
+                    'EC2 Instance Terminate Successful'
+                ]
             },
             targets: [new LambdaFunction(scheduleMonitoringLambda)],
-            description: 'Triggers ScheduleMonitoring Lambda when Auto Scaling Group events have Successful or Failed status',
+            description: 'Triggers ScheduleMonitoring Lambda when Auto Scaling Group instances launch or terminate successfully',
         });
 
         const createModelStateMachine = new CreateModelStateMachine(this, 'CreateModelWorkflow', {

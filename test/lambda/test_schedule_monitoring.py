@@ -425,10 +425,12 @@ class TestScheduleMonitoringComplex:
     """Test complex functions with comprehensive coverage."""
 
     @patch("models.scheduling.schedule_monitoring.update_schedule_failure")
-    @patch("models.scheduling.schedule_monitoring.update_schedule_status") 
+    @patch("models.scheduling.schedule_monitoring.update_schedule_status")
     @patch("models.scheduling.schedule_monitoring.schedule_retry")
     @patch("models.scheduling.schedule_monitoring.get_current_retry_count")
-    def test_handle_failed_scaling_retry(self, mock_get_retry_count, mock_schedule_retry, mock_update_schedule_status, mock_update_schedule_failure):
+    def test_handle_failed_scaling_retry(
+        self, mock_get_retry_count, mock_schedule_retry, mock_update_schedule_status, mock_update_schedule_failure
+    ):
         """Test failed scaling with retry."""
         from models.scheduling.schedule_monitoring import handle_failed_scaling
 
@@ -436,7 +438,7 @@ class TestScheduleMonitoringComplex:
         mock_get_retry_count.return_value = 1
 
         detail = {"StatusMessage": "Scaling failed"}
-        
+
         result = handle_failed_scaling("test-model", "test-asg", detail)
 
         # Verify response
@@ -460,7 +462,7 @@ class TestScheduleMonitoringComplex:
         mock_get_retry_count.return_value = 3
 
         detail = {"StatusMessage": "Scaling failed"}
-        
+
         result = handle_failed_scaling("test-model", "test-asg", detail)
 
         # Verify response
@@ -494,9 +496,7 @@ class TestScheduleMonitoringComplex:
 
         # Mock ASG response
         mock_autoscaling_client.describe_auto_scaling_groups.return_value = {
-            "AutoScalingGroups": [
-                {"Instances": [{"LifecycleState": "InService"}], "DesiredCapacity": 1}
-            ]
+            "AutoScalingGroups": [{"Instances": [{"LifecycleState": "InService"}], "DesiredCapacity": 1}]
         }
 
         event = {"modelId": "test-model"}
@@ -629,9 +629,7 @@ class TestLiteLLMIntegration:
         from models.scheduling.schedule_monitoring import register_litellm
 
         # Mock model with existing litellm_id
-        mock_model_table.get_item.return_value = {
-            "Item": {"model_id": "test-model", "litellm_id": "existing-id"}
-        }
+        mock_model_table.get_item.return_value = {"Item": {"model_id": "test-model", "litellm_id": "existing-id"}}
 
         # Execute - should return without error
         register_litellm("test-model")
@@ -662,23 +660,27 @@ class TestLiteLLMIntegration:
     @patch("models.scheduling.schedule_monitoring.get_cert_path")
     @patch("boto3.client")
     @patch("models.scheduling.schedule_monitoring.model_table")
-    def test_register_litellm_success(self, mock_model_table, mock_boto3_client, mock_get_cert_path,
-                                    mock_get_endpoint, mock_litellm_client_class):
+    def test_register_litellm_success(
+        self, mock_model_table, mock_boto3_client, mock_get_cert_path, mock_get_endpoint, mock_litellm_client_class
+    ):
         """Test successful LiteLLM registration."""
         from models.scheduling.schedule_monitoring import register_litellm
 
         # Mock environment variables
-        with patch.dict(os.environ, {
-            "AWS_REGION": "us-east-1",
-            "MANAGEMENT_KEY_NAME": "test-key",
-            "LITELLM_CONFIG_OBJ": '{"litellm_settings": {"drop_params": true}}'
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "AWS_REGION": "us-east-1",
+                "MANAGEMENT_KEY_NAME": "test-key",
+                "LITELLM_CONFIG_OBJ": '{"litellm_settings": {"drop_params": true}}',
+            },
+        ):
             # Mock model data
             mock_model_table.get_item.return_value = {
                 "Item": {
                     "model_id": "test-model",
                     "model_url": "http://test-url",
-                    "model_config": {"modelName": "test-model-name"}
+                    "model_config": {"modelName": "test-model-name"},
                 }
             }
 
@@ -748,9 +750,7 @@ class TestLiteLLMIntegration:
         from models.scheduling.schedule_monitoring import remove_litellm
 
         # Mock model without litellm_id
-        mock_model_table.get_item.return_value = {
-            "Item": {"model_id": "test-model"}
-        }
+        mock_model_table.get_item.return_value = {"Item": {"model_id": "test-model"}}
 
         # Execute - should return without error
         remove_litellm("test-model")
@@ -764,22 +764,17 @@ class TestLiteLLMIntegration:
     @patch("models.scheduling.schedule_monitoring.get_cert_path")
     @patch("boto3.client")
     @patch("models.scheduling.schedule_monitoring.model_table")
-    def test_remove_litellm_success(self, mock_model_table, mock_boto3_client, mock_get_cert_path,
-                                  mock_get_endpoint, mock_litellm_client_class):
+    def test_remove_litellm_success(
+        self, mock_model_table, mock_boto3_client, mock_get_cert_path, mock_get_endpoint, mock_litellm_client_class
+    ):
         """Test successful LiteLLM removal."""
         from models.scheduling.schedule_monitoring import remove_litellm
 
         # Mock environment variables
-        with patch.dict(os.environ, {
-            "AWS_REGION": "us-east-1",
-            "MANAGEMENT_KEY_NAME": "test-key"
-        }):
+        with patch.dict(os.environ, {"AWS_REGION": "us-east-1", "MANAGEMENT_KEY_NAME": "test-key"}):
             # Mock model data
             mock_model_table.get_item.return_value = {
-                "Item": {
-                    "model_id": "test-model",
-                    "litellm_id": "existing-litellm-id"
-                }
+                "Item": {"model_id": "test-model", "litellm_id": "existing-litellm-id"}
             }
 
             # Mock AWS clients
@@ -818,22 +813,17 @@ class TestLiteLLMIntegration:
     @patch("models.scheduling.schedule_monitoring.get_cert_path")
     @patch("boto3.client")
     @patch("models.scheduling.schedule_monitoring.model_table")
-    def test_remove_litellm_delete_exception(self, mock_model_table, mock_boto3_client, mock_get_cert_path,
-                                           mock_get_endpoint, mock_litellm_client_class):
+    def test_remove_litellm_delete_exception(
+        self, mock_model_table, mock_boto3_client, mock_get_cert_path, mock_get_endpoint, mock_litellm_client_class
+    ):
         """Test remove_litellm with exception during LiteLLM deletion."""
         from models.scheduling.schedule_monitoring import remove_litellm
 
         # Mock environment variables
-        with patch.dict(os.environ, {
-            "AWS_REGION": "us-east-1",
-            "MANAGEMENT_KEY_NAME": "test-key"
-        }):
+        with patch.dict(os.environ, {"AWS_REGION": "us-east-1", "MANAGEMENT_KEY_NAME": "test-key"}):
             # Mock model data
             mock_model_table.get_item.return_value = {
-                "Item": {
-                    "model_id": "test-model",
-                    "litellm_id": "existing-litellm-id"
-                }
+                "Item": {"model_id": "test-model", "litellm_id": "existing-litellm-id"}
             }
 
             # Mock AWS clients
@@ -881,8 +871,14 @@ class TestScheduleMonitoringEdgeCases:
     @patch("models.scheduling.schedule_monitoring.update_model_status")
     @patch("models.scheduling.schedule_monitoring.autoscaling_client")
     @patch("models.scheduling.schedule_monitoring.find_model_by_asg_name")
-    def test_handle_successful_scaling_asg_not_found(self, mock_find_model, mock_autoscaling_client,
-                                                   mock_update_model_status, mock_register_litellm, mock_remove_litellm):
+    def test_handle_successful_scaling_asg_not_found(
+        self,
+        mock_find_model,
+        mock_autoscaling_client,
+        mock_update_model_status,
+        mock_register_litellm,
+        mock_remove_litellm,
+    ):
         """Test handle_successful_scaling when ASG not found."""
         from models.scheduling.schedule_monitoring import handle_successful_scaling
 
@@ -911,7 +907,9 @@ class TestScheduleMonitoringEdgeCases:
 
         # Mock ClientError
         error_response = {"Error": {"Code": "Throttling", "Message": "Rate exceeded"}}
-        mock_autoscaling_client.describe_auto_scaling_groups.side_effect = ClientError(error_response, "DescribeAutoScalingGroups")
+        mock_autoscaling_client.describe_auto_scaling_groups.side_effect = ClientError(
+            error_response, "DescribeAutoScalingGroups"
+        )
 
         result = handle_successful_scaling("test-model", "test-asg", {})
 
@@ -920,19 +918,18 @@ class TestScheduleMonitoringEdgeCases:
         assert "Failed to check ASG state" in result["message"]
 
     @patch("models.scheduling.schedule_monitoring.remove_litellm")
-    @patch("models.scheduling.schedule_monitoring.register_litellm")  
+    @patch("models.scheduling.schedule_monitoring.register_litellm")
     @patch("models.scheduling.schedule_monitoring.update_model_status")
     @patch("models.scheduling.schedule_monitoring.autoscaling_client")
-    def test_handle_successful_scaling_stopped_status(self, mock_autoscaling_client, mock_update_model_status,
-                                                    mock_register_litellm, mock_remove_litellm):
+    def test_handle_successful_scaling_stopped_status(
+        self, mock_autoscaling_client, mock_update_model_status, mock_register_litellm, mock_remove_litellm
+    ):
         """Test handle_successful_scaling when model should be stopped."""
         from models.scheduling.schedule_monitoring import handle_successful_scaling
 
         # Mock ASG with no instances in service
         mock_autoscaling_client.describe_auto_scaling_groups.return_value = {
-            "AutoScalingGroups": [
-                {"Instances": [{"LifecycleState": "Terminating"}], "DesiredCapacity": 0}
-            ]
+            "AutoScalingGroups": [{"Instances": [{"LifecycleState": "Terminating"}], "DesiredCapacity": 0}]
         }
 
         result = handle_successful_scaling("test-model", "test-asg", {})
@@ -958,7 +955,9 @@ class TestScheduleMonitoringEdgeCases:
 
         # Mock ClientError
         error_response = {"Error": {"Code": "Throttling", "Message": "Rate exceeded"}}
-        mock_autoscaling_client.describe_auto_scaling_groups.side_effect = ClientError(error_response, "DescribeAutoScalingGroups")
+        mock_autoscaling_client.describe_auto_scaling_groups.side_effect = ClientError(
+            error_response, "DescribeAutoScalingGroups"
+        )
 
         event = {"modelId": "test-model"}
 
@@ -969,7 +968,9 @@ class TestScheduleMonitoringEdgeCases:
     @patch("models.scheduling.schedule_monitoring.autoscaling_client")
     @patch("models.scheduling.schedule_monitoring.update_model_status")
     @patch("models.scheduling.schedule_monitoring.get_model_info")
-    def test_sync_model_status_stopped_state(self, mock_get_model_info, mock_update_model_status, mock_autoscaling_client):
+    def test_sync_model_status_stopped_state(
+        self, mock_get_model_info, mock_update_model_status, mock_autoscaling_client
+    ):
         """Test sync_model_status when ASG shows stopped state."""
         from models.scheduling.schedule_monitoring import sync_model_status
 
@@ -978,9 +979,7 @@ class TestScheduleMonitoringEdgeCases:
 
         # Mock ASG with no instances in service
         mock_autoscaling_client.describe_auto_scaling_groups.return_value = {
-            "AutoScalingGroups": [
-                {"Instances": [], "DesiredCapacity": 0}
-            ]
+            "AutoScalingGroups": [{"Instances": [], "DesiredCapacity": 0}]
         }
 
         event = {"modelId": "test-model"}
@@ -1010,7 +1009,7 @@ class TestScheduleMonitoringEdgeCases:
         event = {
             "source": "aws.autoscaling",
             "detail-type": "EC2 Instance Launch Successful",
-            "detail": {"AutoScalingGroupName": "unknown-asg"}
+            "detail": {"AutoScalingGroupName": "unknown-asg"},
         }
 
         result = handle_autoscaling_event(event)
@@ -1026,7 +1025,7 @@ class TestScheduleMonitoringEdgeCases:
         event = {
             "source": "aws.autoscaling",
             "detail-type": "EC2 Instance Launch Failed",
-            "detail": {"AutoScalingGroupName": "test-asg"}
+            "detail": {"AutoScalingGroupName": "test-asg"},
         }
 
         result = handle_autoscaling_event(event)

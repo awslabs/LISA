@@ -43,21 +43,22 @@ RETRY_DELAY_BASE = 60
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Main Lambda handler for CloudWatch Events from Auto Scaling Groups"""
-    try:
-        logger.info(f"Processing CloudWatch event: {json.dumps(event, default=str)}")
+    logger.info(f"Processing event - RequestId: {context.aws_request_id}")
 
+    try:
         # Handle different event sources
         if "source" in event and event["source"] == "aws.autoscaling":
             return handle_autoscaling_event(event)
         else:
             # Direct invocation for testing or manual operations
             operation = event.get("operation")
+
             if operation == "sync_status":
                 return sync_model_status(event)
             elif operation == "retry_failed":
                 return retry_failed_scaling(event)
             else:
-                logger.warning(f"Unknown event format: {event}")
+                logger.warning(f"Unknown operation: {operation}")
                 return {"statusCode": 200, "message": "Event processed (no action taken)"}
 
     except Exception as e:
@@ -69,36 +70,33 @@ def handle_autoscaling_event(event: Dict[str, Any]) -> Dict[str, Any]:
     """Handle Auto Scaling Group CloudWatch events"""
     try:
         detail = event.get("detail", {})
-        event_type = detail.get("StatusCode")
+        event_type = event.get("detail-type", "")
         auto_scaling_group = detail.get("AutoScalingGroupName", "")
 
-        logger.info(f"Processing Auto Scaling event: {event_type} for ASG: {auto_scaling_group}")
+        logger.info(f"Processing {event_type} for ASG: {auto_scaling_group}")
 
         # Find model ID by looking up which model uses this ASG
         model_id = find_model_by_asg_name(auto_scaling_group)
         if not model_id:
-            logger.warning(f"Could not find model for ASG: {auto_scaling_group}")
+            logger.warning(f"ASG {auto_scaling_group} not associated with LISA models")
             return {"statusCode": 200, "message": "ASG not related to LISA models"}
 
         # Handle different event types
-        if event_type == "Successful":
+        if event_type in ["EC2 Instance Launch Successful", "EC2 Instance Terminate Successful"]:
             return handle_successful_scaling(model_id, auto_scaling_group, detail)
-        elif event_type == "Failed":
-            return handle_failed_scaling(model_id, auto_scaling_group, detail)
         else:
-            logger.info(f"Ignoring Auto Scaling event type: {event_type}")
+            logger.info(f"Event type '{event_type}' not handled")
             return {"statusCode": 200, "message": f"Event type {event_type} ignored"}
 
     except Exception as e:
-        logger.error(f"Failed to handle Auto Scaling event: {str(e)}")
+        logger.error(f"Failed to handle Auto Scaling event: {str(e)}", exc_info=True)
         raise ValueError(f"Failed to handle Auto Scaling event: {str(e)}")
 
 
 def handle_successful_scaling(model_id: str, auto_scaling_group: str, detail: Dict[str, Any]) -> Dict[str, Any]:
     """Handle successful Auto Scaling actions using ASG state"""
     try:
-        logger.info(f"Processing successful scaling for model {model_id}, ASG: {auto_scaling_group}")
-        # Check ASG state directly since we already have the ASG name from the event
+        # Check ASG state to determine model status
         try:
             response = autoscaling_client.describe_auto_scaling_groups(AutoScalingGroupNames=[auto_scaling_group])
 
@@ -109,10 +107,7 @@ def handle_successful_scaling(model_id: str, auto_scaling_group: str, detail: Di
             asg = response["AutoScalingGroups"][0]
             instances = asg.get("Instances", [])
             in_service_count = len([i for i in instances if i.get("LifecycleState") == "InService"])
-            total_count = len(instances)
             desired_capacity = asg.get("DesiredCapacity", 0)
-
-            logger.info(f"ASG state: total={total_count}, in_service={in_service_count}, desired={desired_capacity}")
 
             # Determine new model status based on ASG instance state
             if in_service_count > 0:
@@ -130,13 +125,11 @@ def handle_successful_scaling(model_id: str, auto_scaling_group: str, detail: Di
         update_model_status(model_id, new_status, reason)
 
         if new_status == ModelStatus.IN_SERVICE:
-            # Model scaled up, register with LiteLLM
             register_litellm(model_id)
         elif new_status == ModelStatus.STOPPED:
-            # Model scaled down, de-register with LiteLLM
             remove_litellm(model_id)
 
-        logger.info(f"Successfully updated model {model_id} status to {new_status}")
+        logger.info(f"Updated model {model_id} status to {new_status}")
 
         return {
             "statusCode": 200,
@@ -328,17 +321,20 @@ def find_model_by_asg_name(asg_name: str) -> Optional[str]:
 def update_model_status(model_id: str, new_status: ModelStatus, reason: str) -> None:
     """Update model status in DynamoDB"""
     try:
+        # Convert enum to string value for DynamoDB
+        status_str = new_status.value if hasattr(new_status, "value") else str(new_status)
+
         model_table.update_item(
             Key={"model_id": model_id},
             UpdateExpression="SET model_status = :status, lastStatusUpdate = :timestamp, statusReason = :reason",
             ExpressionAttributeValues={
-                ":status": new_status,
+                ":status": status_str,
                 ":timestamp": datetime.now(dt_timezone.utc).isoformat(),
                 ":reason": reason,
             },
         )
 
-        logger.info(f"Updated model {model_id} model_status to {new_status}: {reason}")
+        logger.info(f"Updated model {model_id} model_status to {status_str}: {reason}")
 
     except Exception as e:
         logger.error(f"Failed to update model status for {model_id}: {e}")
@@ -438,7 +434,7 @@ def reset_retry_count(model_id: str) -> None:
 
 
 def register_litellm(model_id: str) -> None:
-    """Register model with LiteLLM if missing (mimics update_model.py handle_finish_update)"""
+    """Register model with LiteLLM if missing"""
     try:
         model_key = {"model_id": model_id}
         ddb_item = model_table.get_item(Key=model_key, ConsistentRead=True).get("Item")
@@ -448,18 +444,17 @@ def register_litellm(model_id: str) -> None:
             return
 
         # Check if already registered
-        if ddb_item.get("litellm_id"):
-            logger.info(f"Model {model_id} already has litellm_id: {ddb_item['litellm_id']}")
+        existing_litellm_id = ddb_item.get("litellm_id")
+        if existing_litellm_id:
+            logger.info(f"Model {model_id} already registered with LiteLLM")
             return
 
         model_url = ddb_item.get("model_url")
         if not model_url:
-            logger.warning(f"Model {model_id} has no model_url, cannot register with LiteLLM")
+            logger.warning(f"Model {model_id} has no model_url")
             return
 
-        logger.info(f"Re-registering model {model_id} with LiteLLM (ASG scaled up)")
-
-        # Initialize LiteLLM client (exact same as update_model.py)
+        # Initialize LiteLLM client
         secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
         iam_client = boto3.client("iam", region_name=os.environ["AWS_REGION"], config=retry_config)
 
@@ -481,7 +476,8 @@ def register_litellm(model_id: str) -> None:
         except json.JSONDecodeError:
             litellm_params = {}
 
-        litellm_params["model"] = f"openai/{ddb_item['model_config']['modelName']}"
+        model_name = ddb_item["model_config"]["modelName"]
+        litellm_params["model"] = f"openai/{model_name}"
         litellm_params["api_base"] = model_url
 
         # Register with LiteLLM
@@ -491,6 +487,7 @@ def register_litellm(model_id: str) -> None:
         )
 
         litellm_id = litellm_response["model_info"]["id"]
+        logger.info(f"Registered model {model_id} with LiteLLM: {litellm_id}")
 
         # Update DynamoDB with new litellm_id
         model_table.update_item(
@@ -499,14 +496,12 @@ def register_litellm(model_id: str) -> None:
             ExpressionAttributeValues={":lid": litellm_id},
         )
 
-        logger.info(f"Successfully registered {model_id} with LiteLLM ID: {litellm_id}")
-
     except Exception as e:
-        logger.error(f"Failed to register {model_id} with LiteLLM: {e}")
+        logger.error(f"Failed to register {model_id} with LiteLLM: {e}", exc_info=True)
 
 
 def remove_litellm(model_id: str) -> None:
-    """Remove model from LiteLLM if registered (mimics update_model.py disable behavior)"""
+    """Remove model from LiteLLM if registered"""
     try:
         model_key = {"model_id": model_id}
         ddb_item = model_table.get_item(Key=model_key, ConsistentRead=True).get("Item")
@@ -517,10 +512,8 @@ def remove_litellm(model_id: str) -> None:
 
         litellm_id = ddb_item.get("litellm_id")
         if not litellm_id:
-            logger.info(f"Model {model_id} has no litellm_id, nothing to remove from LiteLLM")
+            logger.info(f"Model {model_id} has no LiteLLM registration to remove")
             return
-
-        logger.info(f"Removing model {model_id} from LiteLLM (ASG scaled down)")
 
         try:
             # Initialize LiteLLM client
@@ -540,6 +533,7 @@ def remove_litellm(model_id: str) -> None:
 
             # Remove from LiteLLM
             litellm_client.delete_model(identifier=litellm_id)
+            logger.info(f"Removed model {model_id} from LiteLLM: {litellm_id}")
 
             # Clear litellm_id from DynamoDB
             model_table.update_item(
@@ -548,13 +542,11 @@ def remove_litellm(model_id: str) -> None:
                 ExpressionAttributeValues={":li": None},
             )
 
-            logger.info(f"Successfully removed model {model_id} from LiteLLM and cleared ID")
-
         except Exception as e:
-            logger.error(f"Failed to remove {model_id} from LiteLLM: {e}")
+            logger.error(f"Failed to remove {model_id} from LiteLLM: {e}", exc_info=True)
 
     except Exception as e:
-        logger.error(f"Error in remove_from_litellm_if_registered for {model_id}: {e}")
+        logger.error(f"Error in remove_litellm for {model_id}: {e}", exc_info=True)
 
 
 def get_model_info(model_id: str) -> Optional[Dict[str, Any]]:

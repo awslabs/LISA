@@ -451,37 +451,6 @@ export function ScheduleConfig (props: ScheduleConfigProps): ReactElement {
                 </SpaceBetween>
             </Container>
 
-            {props.isEdit && isScheduleEnabled && (
-                <Container header={<Header variant='h3'>Schedule Status</Header>}>
-                    <SpaceBetween size={'s'}>
-                        <Grid gridDefinition={[{ colspan: 4 }, { colspan: 4 }, { colspan: 4 }]}>
-                            <FormField label='Schedule Status'>
-                                <Box>
-                                    <strong>{props.item.scheduleStatus || 'Unknown'}</strong>
-                                </Box>
-                            </FormField>
-
-                            <FormField label='Next Scheduled Action'>
-                                <Box>
-                                    {props.item.nextScheduledAction ?
-                                        new Date(props.item.nextScheduledAction).toLocaleString() :
-                                        'None scheduled'
-                                    }
-                                </Box>
-                            </FormField>
-
-                            <FormField label='Last Update'>
-                                <Box>
-                                    {props.item.lastScheduleUpdate ?
-                                        new Date(props.item.lastScheduleUpdate).toLocaleString() :
-                                        'Never updated'
-                                    }
-                                </Box>
-                            </FormField>
-                        </Grid>
-                    </SpaceBetween>
-                </Container>
-            )}
         </SpaceBetween>
     );
 }

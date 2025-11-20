@@ -354,7 +354,7 @@ export const autoScalingConfigSchema = z.object({
     cooldown: z.number().min(1).default(420),
     defaultInstanceWarmup: z.number().default(180),
     metricConfig: metricConfigSchema.default(metricConfigSchema.parse({})),
-    scheduling: scheduleConfigSchema.default(scheduleConfigSchema.parse({})),
+    scheduling: scheduleConfigSchema.optional(),
 }).superRefine((value, context) => {
     // ensure the desired capacity stays between minCapacity/maxCapacity if not empty
     if (value.desiredCapacity !== undefined && String(value.desiredCapacity).trim().length) {

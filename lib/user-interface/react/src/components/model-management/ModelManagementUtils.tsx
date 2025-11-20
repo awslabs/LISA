@@ -69,8 +69,8 @@ const formatScheduleDetails = (model: IModel) => {
         const { startTime, stopTime } = scheduling.dailySchedule;
         return (
             <Box>
-                <div><strong>Every day:</strong> {startTime} - {stopTime}</div>
-                <div><small>Timezone: {timezone}</small></div>
+                <div>Timezone: {timezone}</div>
+                <div>{startTime} - {stopTime}</div>
             </Box>
         );
     }
@@ -93,10 +93,10 @@ const formatScheduleDetails = (model: IModel) => {
 
         return (
             <Box>
+                <div>Timezone: {timezone}</div>
                 {daysWithSchedule.map((daySchedule, index) => (
                     <div key={index}><small>{daySchedule}</small></div>
                 ))}
-                <div><small>Timezone: {timezone}</small></div>
             </Box>
         );
     }

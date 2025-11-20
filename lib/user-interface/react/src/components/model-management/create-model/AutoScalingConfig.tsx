@@ -29,20 +29,28 @@ type AutoScalingConfigProps = FormProps<IAutoScalingConfig> & {
 };
 
 export function AutoScalingConfig (props: AutoScalingConfigProps) : ReactElement {
+    const currentScheduling = props.item.scheduling || {
+        scheduleEnabled: false,
+        scheduleType: ScheduleType.NONE,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+    };
+
     return (
         <SpaceBetween size={'s'}>
             <ScheduleConfig
-                item={props.item.scheduling || {
-                    scheduleEnabled: false,
-                    scheduleType: ScheduleType.NONE,
-                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-                }}
+                item={currentScheduling}
                 setFields={(fields) => {
-                    const scheduleFields: Record<string, any> = {};
-                    Object.entries(fields).forEach(([key, value]) => {
-                        scheduleFields[`autoScalingConfig.scheduling.${key}`] = value;
-                    });
-                    props.setFields(scheduleFields);
+                    if (fields.scheduleEnabled === false) {
+                        // When disabling scheduling, remove the entire scheduling config
+                        props.setFields({ 'autoScalingConfig.scheduling': undefined });
+                    } else {
+                        // When enabling or updating scheduling, set the individual fields
+                        const scheduleFields: Record<string, any> = {};
+                        Object.entries(fields).forEach(([key, value]) => {
+                            scheduleFields[`autoScalingConfig.scheduling.${key}`] = value;
+                        });
+                        props.setFields(scheduleFields);
+                    }
                 }}
                 touchFields={(fields) => {
                     const scheduleFields = fields.map((field) => `autoScalingConfig.scheduling.${field}`);

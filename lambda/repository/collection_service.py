@@ -422,13 +422,16 @@ class CollectionService:
         Returns:
             Embedding model name from collection or repository default
         """
-        try:
-            collection = self.collection_repo.find_by_id(collection_id, repository_id)
-            if collection.embeddingModel:
-                return collection.embeddingModel
-        except ValidationError as e:
-            logger.warning(f"Failed to get collection '{collection_id}': {e}, using repository default")
+        if collection_id:
+            try:
+                collection = self.collection_repo.find_by_id(collection_id, repository_id)
+                if collection and collection.embeddingModel:
+                    return collection.embeddingModel
+            except ValidationError:
+                # Collection not found, fall back to repository default
+                pass
 
+        # Fall back to repository default embedding model
         repository = self.vector_store_repo.find_repository_by_id(repository_id)
         embedding_model_id = repository.get("embeddingModelId")
         return str(embedding_model_id) if embedding_model_id is not None else None

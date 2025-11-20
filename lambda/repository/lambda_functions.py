@@ -154,11 +154,12 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     # Get user context for collection access
     username, is_admin, groups = get_user_context(event)
 
+    is_default = collection_id is not None and collection_id == repository.get("embeddingModelId")
     # Determine embedding model
     model_name = (
         collection_service.get_collection_model(
             repository_id=repository_id,
-            collection_id=collection_id,
+            collection_id=collection_id if not is_default else None,
             username=username,
             user_groups=groups,
             is_admin=is_admin,

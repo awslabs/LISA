@@ -87,15 +87,12 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
         const hasRepository = !!ragConfig?.repositoryId;
         const hasEmbeddingModel = !!ragConfig?.embeddingModel;
         const hasCollection = !!ragConfig?.collection;
-        const isNonBedrockRepo = ragConfig?.repositoryType && ragConfig?.repositoryType !== RagRepositoryType.BEDROCK_KNOWLEDGE_BASE;
 
-        // Enable RAG if:
-        // 1. Repository is selected AND (embedding model is set OR collection is selected), OR
-        // 2. Non-bedrock repository is selected (will use default collection)
-        setUseRag(hasRepository && (hasEmbeddingModel || hasCollection || isNonBedrockRepo));
-    }, [ragConfig?.repositoryId, ragConfig?.embeddingModel, ragConfig?.collection, ragConfig?.repositoryType, setUseRag]);
+        // Enable RAG if repository is selected AND (embedding model is set OR collection is selected)
+        setUseRag(hasRepository && (hasEmbeddingModel || hasCollection));
+    }, [ragConfig?.repositoryId, ragConfig?.embeddingModel, ragConfig?.collection, setUseRag]);
 
-    // Effect for handling repository changes and default embedding model selection
+    // Effect for handling repository changes, default collection, and default embedding model selection
     useEffect(() => {
         const currentRepositoryId = ragConfig?.repositoryId;
         const repositoryHasChanged = currentRepositoryId !== lastRepositoryIdRef.current;
@@ -106,10 +103,27 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
             setUserHasSelectedCollection(false);
         }
 
-        // Set default embedding model when no collection is selected
         if (currentRepositoryId && filteredRepositories && allModels && !userHasSelectedCollection) {
             const repository = filteredRepositories.find((repo) => repo.repositoryId === currentRepositoryId);
+            const isNonBedrockRepo = repository?.type !== RagRepositoryType.BEDROCK_KNOWLEDGE_BASE;
 
+            // For non-bedrock repositories, auto-select the first available collection if it exists
+            if (isNonBedrockRepo && collections && collections.length > 0 && !ragConfig?.collection) {
+                const activeCollections = collections.filter((c) => c.status === CollectionStatus.ACTIVE);
+                if (activeCollections.length > 0) {
+                    const defaultCollection = activeCollections[0];
+                    const embeddingModel = allModels.find((model) => model.modelId === defaultCollection.embeddingModel);
+
+                    setRagConfig((config) => ({
+                        ...config,
+                        collection: defaultCollection,
+                        embeddingModel: embeddingModel,
+                    }));
+                    return;
+                }
+            }
+
+            // Set default embedding model when no collection is selected
             if (repository?.embeddingModelId && !ragConfig?.collection) {
                 const defaultModel = allModels.find((model) => model.modelId === repository.embeddingModelId);
 
@@ -127,6 +141,7 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
         ragConfig?.embeddingModel,
         filteredRepositories,
         allModels,
+        collections,
         userHasSelectedCollection,
         setRagConfig
     ]);
@@ -220,7 +235,7 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
                     statusType={isLoadingCollections ? 'loading' : 'finished'}
                     loadingText='Loading collections...'
                     placeholder='Select a collection (optional)'
-                    empty={<div className='text-gray-500'>No collections available. Using repository default.</div>}
+                    empty={<div className='text-gray-500'>No collections available.</div>}
                     filteringType='auto'
                     value={selectedCollectionOption}
                     enteredTextLabel={(text) => `Use: "${text}"`}

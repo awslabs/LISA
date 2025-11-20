@@ -227,7 +227,7 @@ class TestBedrockKBRepositoryService:
         }
 
         results = bedrock_kb_service.retrieve_documents(
-            "test query", "ds-456", 5, bedrock_agent_client=mock_bedrock_agent_client
+            "test query", "ds-456", 5, "test-model", bedrock_agent_client=mock_bedrock_agent_client
         )
 
         assert len(results) == 2
@@ -237,7 +237,7 @@ class TestBedrockKBRepositoryService:
     def test_retrieve_documents_missing_bedrock_client(self, bedrock_kb_service):
         """Test retrieving documents without Bedrock client raises error."""
         with pytest.raises(ValueError, match="Bedrock agent client required"):
-            bedrock_kb_service.retrieve_documents("query", "ds-456", 5, None)
+            bedrock_kb_service.retrieve_documents("query", "ds-456", 5, "test-model", None)
 
     def test_retrieve_documents_missing_kb_id(self):
         """Test retrieving documents with missing KB ID raises error."""
@@ -249,7 +249,7 @@ class TestBedrockKBRepositoryService:
         service = BedrockKBRepositoryService(repository)
 
         with pytest.raises(ValueError, match="missing KB ID"):
-            service.retrieve_documents("query", "ds-456", 5, bedrock_agent_client=MagicMock())
+            service.retrieve_documents("query", "ds-456", 5, "test-model", bedrock_agent_client=MagicMock())
 
     def test_validate_document_source_valid(self, bedrock_kb_service):
         """Test validating document from correct bucket."""

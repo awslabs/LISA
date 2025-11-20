@@ -100,12 +100,15 @@ class TestOpenSearchRepositoryService:
 
         mock_embeddings = MagicMock()
 
+        # Create a proper ClientError for ParameterNotFound
+        error_response = {"Error": {"Code": "ParameterNotFound", "Message": "Parameter not found"}}
+        parameter_not_found = ClientError(error_response, "GetParameter")
+
         # Mock SSM client to raise ParameterNotFound
         with patch("repository.services.opensearch_repository_service.ssm_client") as mock_ssm:
-            mock_ssm.get_parameter.side_effect = mock_ssm.exceptions.ParameterNotFound(
-                {"Error": {"Code": "ParameterNotFound", "Message": "Parameter not found"}}, "GetParameter"
-            )
-            mock_ssm.exceptions.ParameterNotFound = type("ParameterNotFound", (ClientError,), {})
+            # Set up the exceptions attribute with ParameterNotFound
+            mock_ssm.exceptions.ParameterNotFound = ClientError
+            mock_ssm.get_parameter.side_effect = parameter_not_found
 
             with pytest.raises(ValueError) as exc_info:
                 opensearch_service._get_vector_store_client("test-collection", mock_embeddings)

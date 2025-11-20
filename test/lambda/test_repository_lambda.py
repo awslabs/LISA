@@ -2559,7 +2559,7 @@ def test_similarity_search_with_score():
 
     with patch("repository.services.opensearch_repository_service.RagEmbeddings"):
         with patch.object(service, "_get_vector_store_client", return_value=mock_vs):
-            result = service.retrieve_documents("query", "test-collection", 3, include_score=True)
+            result = service.retrieve_documents("query", "test-collection", 3, "test-model", include_score=True)
 
     assert len(result) == 1
     assert "similarity_score" in result[0]["metadata"]
@@ -2581,7 +2581,7 @@ def test_similarity_search_without_score():
 
     with patch("repository.services.opensearch_repository_service.RagEmbeddings"):
         with patch.object(service, "_get_vector_store_client", return_value=mock_vs):
-            result = service.retrieve_documents("query", "test-collection", 3, include_score=False)
+            result = service.retrieve_documents("query", "test-collection", 3, "test-model", include_score=False)
 
     assert len(result) == 1
     assert result[0]["page_content"] == "test content"
@@ -3028,7 +3028,7 @@ def test_similarity_search_helpers():
 
         with patch("repository.services.opensearch_repository_service.RagEmbeddings"):
             with patch.object(service, "_get_vector_store_client", return_value=mock_vs):
-                results = service.retrieve_documents("query", "test-collection", 3, include_score=False)
+                results = service.retrieve_documents("query", "test-collection", 3, "test-model", include_score=False)
 
         assert len(results) == 1
         assert results[0]["page_content"] == "test content"

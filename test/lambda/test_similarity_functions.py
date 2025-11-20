@@ -45,7 +45,7 @@ def test_opensearch_retrieve_documents_without_score():
 
     with patch("repository.services.opensearch_repository_service.RagEmbeddings"):
         with patch.object(service, "_get_vector_store_client", return_value=mock_vs):
-            result = service.retrieve_documents("test query", "test-collection", 5, include_score=False)
+            result = service.retrieve_documents("test query", "test-collection", 5, "test-model", include_score=False)
 
     assert len(result) == 1
     assert result[0]["page_content"] == "Test content"
@@ -68,7 +68,7 @@ def test_pgvector_retrieve_documents_with_score():
 
     with patch("repository.services.vector_store_repository_service.RagEmbeddings"):
         with patch.object(service, "_get_vector_store_client", return_value=mock_vs):
-            result = service.retrieve_documents("test query", "test-collection", 3, include_score=True)
+            result = service.retrieve_documents("test query", "test-collection", 3, "test-model", include_score=True)
 
     assert len(result) == 1
     assert result[0]["page_content"] == "Test content"
@@ -91,7 +91,7 @@ def test_opensearch_retrieve_documents_with_score():
 
     with patch("repository.services.opensearch_repository_service.RagEmbeddings"):
         with patch.object(service, "_get_vector_store_client", return_value=mock_vs):
-            result = service.retrieve_documents("test query", "test-collection", 3, include_score=True)
+            result = service.retrieve_documents("test query", "test-collection", 3, "test-model", include_score=True)
 
     assert len(result) == 1
     assert result[0]["page_content"] == "Test content"

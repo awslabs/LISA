@@ -156,7 +156,7 @@ class TestVectorStoreRepositoryService:
 
         with patch("repository.services.opensearch_repository_service.RagEmbeddings"):
             with patch.object(vector_store_service, "_get_vector_store_client", return_value=mock_vector_store):
-                results = vector_store_service.retrieve_documents("test query", "test-collection", 5)
+                results = vector_store_service.retrieve_documents("test query", "test-collection", 5, "test-model")
 
                 assert len(results) == 2
                 assert results[0]["page_content"] == "Content 1"

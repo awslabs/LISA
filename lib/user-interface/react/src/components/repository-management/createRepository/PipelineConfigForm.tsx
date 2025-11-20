@@ -27,7 +27,7 @@ import {
 } from '@cloudscape-design/components';
 import { FormProps } from '../../../shared/form/form-props';
 
-import { PipelineConfig, RagRepositoryPipeline } from '#root/lib/schema';
+import { PipelineConfig, RagRepositoryPipeline, RagRepositoryType } from '#root/lib/schema';
 import { getDefaults } from '#root/lib/schema/zodUtil';
 import { useListCollectionsQuery } from '@/shared/reducers/rag.reducer';
 import { ChunkingConfigForm } from '@/components/document-library/createCollection/ChunkingConfigForm';
@@ -35,10 +35,11 @@ import { ChunkingConfigForm } from '@/components/document-library/createCollecti
 export type PipelineConfigProps = {
     isEdit: boolean;
     repositoryId?: string;
+    repositoryType?: RagRepositoryType;
 };
 
 export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & PipelineConfigProps): ReactElement {
-    const { item, touchFields, setFields, formErrors, isEdit, repositoryId } = props;
+    const { item, touchFields, setFields, formErrors, isEdit, repositoryId, repositoryType } = props;
 
     // Only query collections if we have a repositoryId (editing existing repository)
     const { data: collections, isFetching: isFetchingCollections } = useListCollectionsQuery(
@@ -81,6 +82,32 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
         const pipelines = item.filter((_, i) => i !== index);
         setFields({ pipelines: pipelines });
     };
+
+    // Hide pipeline configuration for Bedrock KB - it's managed automatically
+    if (repositoryType === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE) {
+        return (
+            <Container
+                header={
+                    <Header variant='h2' info={
+                        <span>Pipeline configuration is automatically managed for Bedrock Knowledge Base repositories</span>
+                    }>
+                        Pipeline Configuration
+                    </Header>
+                }>
+                <SpaceBetween size='s'>
+                    <div>
+                        <strong>Automatic Configuration:</strong>
+                        <ul style={{ marginTop: '8px', marginLeft: '20px' }}>
+                            <li>EventBridge rules are created automatically for the KB data source S3 bucket</li>
+                            <li>Documents are tracked when uploaded to the data source bucket</li>
+                            <li>Document removal is tracked automatically</li>
+                            <li>No manual pipeline configuration needed</li>
+                        </ul>
+                    </div>
+                </SpaceBetween>
+            </Container>
+        );
+    }
 
     return (
         <SpaceBetween size={'s'}>

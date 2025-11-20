@@ -18,6 +18,7 @@ import json
 import logging
 import os
 import urllib.parse
+from types import SimpleNamespace
 from typing import Any, cast, Dict, List, Optional
 
 import boto3
@@ -28,6 +29,7 @@ from models.domain_objects import (
     IngestDocumentRequest,
     IngestionJob,
     IngestionStatus,
+    IngestionType,
     ListJobsResponse,
     PaginationParams,
     PaginationResult,
@@ -35,21 +37,24 @@ from models.domain_objects import (
     RagDocument,
     SortParams,
     UpdateVectorStoreRequest,
+    VectorStoreConfig,
+    VectorStoreStatus,
 )
 from repository.collection_service import CollectionService
 from repository.config.params import ListJobsParams
-from repository.embeddings import RagEmbeddings
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
+from repository.metadata_generator import MetadataGenerator
 from repository.rag_document_repo import RagDocumentRepository
+from repository.s3_metadata_manager import S3MetadataManager
+from repository.services import RepositoryServiceFactory
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.auth import admin_only, get_groups, get_user_context, get_username, is_admin, user_has_group_access
-from utilities.bedrock_kb import retrieve_documents
-from utilities.common_functions import api_wrapper, get_id_token, retry_config
+from utilities.bedrock_kb import add_default_pipeline_for_bedrock_kb
+from utilities.common_functions import api_wrapper, retry_config
 from utilities.exceptions import HTTPException
 from utilities.repository_types import RepositoryType
 from utilities.validation import ValidationError
-from utilities.vector_store import get_vector_store_client
 
 logger = logging.getLogger(__name__)
 region_name = os.environ["AWS_REGION"]
@@ -136,11 +141,12 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     Raises:
         ValidationError: If required parameters are missing or invalid
     """
-    query_string_params = event["queryStringParameters"]
-    query = query_string_params["query"]
-    top_k = query_string_params.get("topK", 3)
+    query_string_params = event.get("queryStringParameters")
+    path_params = event.get("pathParameters")
+    query = query_string_params.get("query")
+    top_k = int(query_string_params.get("topK", 3))
     include_score = query_string_params.get("score", "false").lower() == "true"
-    repository_id = event["pathParameters"]["repositoryId"]
+    repository_id = path_params.get("repositoryId")
     collection_id = query_string_params.get("collectionId")
 
     repository = get_repository(event, repository_id=repository_id)
@@ -148,11 +154,12 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     # Get user context for collection access
     username, is_admin, groups = get_user_context(event)
 
+    is_default = collection_id is not None and collection_id == repository.get("embeddingModelId")
     # Determine embedding model
     model_name = (
         collection_service.get_collection_model(
             repository_id=repository_id,
-            collection_id=collection_id,
+            collection_id=collection_id if not is_default else None,
             username=username,
             user_groups=groups,
             is_admin=is_admin,
@@ -161,38 +168,26 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
         else query_string_params.get("modelName")
     )
 
-    if not model_name:
+    if not model_name and not RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
         raise ValidationError("modelName is required when collectionId is not provided")
 
-    id_token = get_id_token(event)
+    # Use repository service for similarity search
+    service = RepositoryServiceFactory.create_service(repository)
 
-    docs: List[Dict[str, Any]] = []
-    if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
-        docs = retrieve_documents(
-            bedrock_runtime_client=bedrock_client,
-            repository=repository,
-            query=query,
-            top_k=int(top_k),
-            repository_id=repository_id,
-        )
-    else:
-        # Use collection_id as vector store index if provided, otherwise use model_name
-        collection_id = collection_id or model_name
-        logger.info(f"Searching in collection: {collection_id} with embedding model: {model_name}")
-        embeddings = RagEmbeddings(model_name=model_name, id_token=id_token)
-        vs = get_vector_store_client(repository_id, collection_id=collection_id, embeddings=embeddings)
+    # Use collection_id as vector store index if provided, otherwise use model_name
+    search_collection_id = collection_id or model_name
+    logger.info(f"Searching in collection: {search_collection_id} with embedding model: {model_name}")
 
-        # empty vector stores do not have an initialize index. Return empty docs
-        if RepositoryType.is_type(repository, RepositoryType.OPENSEARCH) and not vs.client.indices.exists(
-            index=collection_id
-        ):
-            logger.info(f"Collection {collection_id} does not exist. Returning empty docs.")
-        else:
-            docs = (
-                _similarity_search_with_score(vs, query, top_k, repository)
-                if include_score
-                else _similarity_search(vs, query, top_k)
-            )
+    # Delegate to service for retrieval - service handles repository-specific logic
+    docs = service.retrieve_documents(
+        query=query,
+        collection_id=search_collection_id,
+        top_k=top_k,
+        model_name=model_name,
+        include_score=include_score,
+        bedrock_agent_client=bedrock_client if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB) else None,
+    )
+
     doc_content = [
         {
             "Document": {
@@ -208,9 +203,9 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     return doc_return
 
 
-def get_repository(event: dict[str, Any], repository_id: str) -> dict:
+def get_repository(event: dict[str, Any], repository_id: str) -> dict[str, Any]:
     """Ensures a user has access to the repository or else raises an HTTPException."""
-    repo = vs_repo.find_repository_by_id(repository_id)
+    repo: dict[str, Any] = vs_repo.find_repository_by_id(repository_id)
 
     # Admins have access to all repositories
     if is_admin(event):
@@ -222,6 +217,56 @@ def get_repository(event: dict[str, Any], repository_id: str) -> dict:
         raise HTTPException(status_code=403, message="User does not have permission to access this repository")
 
     return repo
+
+
+def create_bedrock_collection(event: dict, context: dict) -> Dict[str, Any]:
+    """
+    Create a default collection for a Bedrock Knowledge Base repository.
+    This is called by the state machine during repository creation.
+
+    Args:
+        event (dict): The Lambda event object containing:
+            - ragConfig: Repository configuration with repositoryId
+        context (dict): The Lambda context object
+
+    Returns:
+        Dict[str, Any]: A dictionary containing the created collection configuration
+
+    Raises:
+        ValidationError: If validation fails
+        HTTPException: If repository not found
+    """
+    try:
+        # Extract repository config from state machine input
+        rag_config = event.get("ragConfig", {})
+        repository_id = rag_config.get("repositoryId")
+
+        if not repository_id:
+            raise ValidationError("repositoryId is required in ragConfig")
+
+        logger.info(f"Creating default collection for Bedrock KB repository: {repository_id}")
+
+        # Get repository configuration
+        repository = vs_repo.find_repository_by_id(repository_id=repository_id)
+
+        # Use repository service to create default collection
+        service = RepositoryServiceFactory.create_service(repository)
+        collection = service.create_default_collection()
+
+        if collection is None:
+            raise ValidationError(f"Failed to create default collection for repository {repository_id}")
+
+        # Save the collection
+        collection_service.create_collection(collection=collection, username="system")
+        logger.info(f"Successfully created default collection: {collection.collectionId}")
+
+        # Return collection configuration
+        result: dict[str, Any] = collection.model_dump(mode="json")
+        return result
+
+    except Exception as e:
+        logger.error(f"Error creating Bedrock collection: {str(e)}")
+        raise
 
 
 @api_wrapper
@@ -251,10 +296,17 @@ def create_collection(event: dict, context: dict) -> Dict[str, Any]:
         raise ValidationError("repositoryId is required")
 
     # Get user context
-    username, is_admin, groups = get_user_context(event)
+    username, _, _ = get_user_context(event)
 
     # Ensure repository exists and user has access
     repository = get_repository(event, repository_id=repository_id)
+
+    # Block user-created collections for Bedrock Knowledge Base repositories
+    if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
+        raise ValidationError(
+            "Bedrock Knowledge Base repositories do not support user created collections. "
+            "Update the repository to add a new datasource collection."
+        )
 
     # Parse request body
     try:
@@ -270,13 +322,13 @@ def create_collection(event: dict, context: dict) -> Dict[str, Any]:
 
     # Create collection via service
     created_collection = collection_service.create_collection(
-        repository=repository,
         collection=collection,
         username=username,
     )
 
     # Return collection configuration
-    return created_collection.model_dump(mode="json")
+    result: dict[str, Any] = created_collection.model_dump(mode="json")
+    return result
 
 
 @api_wrapper
@@ -313,9 +365,10 @@ def get_collection(event: dict, context: dict) -> Dict[str, Any]:
     # Ensure repository exists and user has access
     repo = get_repository(event, repository_id=repository_id)
 
-    if repo.embeddingModelId == collection_id:
-        # Not a real collection
-        collection = collection_service.create_default_collection(repository_id=repository_id, repository=repo)
+    if repo.get("embeddingModelId") == collection_id:
+        # Not a real collection - create virtual default collection
+        service = RepositoryServiceFactory.create_service(repo)
+        collection = service.create_default_collection()
     else:
         # Get collection via service (includes access control check)
         collection = collection_service.get_collection(
@@ -326,8 +379,14 @@ def get_collection(event: dict, context: dict) -> Dict[str, Any]:
             is_admin=is_admin,
         )
 
+    if collection is None:
+        raise HTTPException(
+            status_code=404, message=f"Collection '{collection_id}' not found in repository '{repository_id}'"
+        )
+
     # Return collection configuration
-    return collection.model_dump(mode="json")
+    result: dict[str, Any] = collection.model_dump(mode="json")
+    return result
 
 
 @api_wrapper
@@ -362,32 +421,34 @@ def update_collection(event: dict, context: dict) -> Dict[str, Any]:
     if not collection_id:
         raise ValidationError("collectionId is required")
 
-    # Parse request body
-    try:
-        body = json.loads(event.get("body", {}))
-        request = RagCollectionConfig(**body)
-    except json.JSONDecodeError as e:
-        raise ValidationError(f"Invalid JSON in request body: {e}")
-    except Exception as e:
-        raise ValidationError(f"Invalid request: {e}")
-
     # Get user context
     username, is_admin, groups = get_user_context(event)
 
     # Ensure repository exists and user has access
     _ = get_repository(event, repository_id=repository_id)
 
+    # Parse request body - accept partial updates as a dictionary
+    try:
+        body = json.loads(event.get("body", {}))
+    except json.JSONDecodeError as e:
+        raise ValidationError(f"Invalid JSON in request body: {e}")
+
+    # Create a simple namespace object to hold the update fields
+    # The service layer expects an object with attributes, not a dict
+    request = SimpleNamespace(**body)
+
     # Update collection via service (includes access control check)
     updated_collection = collection_service.update_collection(
         collection_id=collection_id,
         repository_id=repository_id,
-        request=request,
+        collection_data=request,
         username=username,
         user_groups=groups,
         is_admin=is_admin,
     )
 
-    return updated_collection.model_dump(mode="json")
+    result: dict[str, Any] = updated_collection.model_dump(mode="json")
+    return result
 
 
 @api_wrapper
@@ -433,9 +494,9 @@ def delete_collection(event: dict, context: dict) -> Dict[str, Any]:
     # Ensure repository exists and user has access
     repo = get_repository(event, repository_id=repository_id)
 
-    is_default_collection = repo.embeddingModelId == collection_id
+    is_default_collection = repo.get("embeddingModelId") == collection_id
     # Delete collection via service
-    result = collection_service.delete_collection(
+    result: Dict[str, Any] = collection_service.delete_collection(
         repository_id=repository_id,
         collection_id=collection_id,  # None for default collections
         embedding_name=embedding_name if is_default_collection else None,  # None for regular collections
@@ -693,6 +754,8 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
 
     if not document_ids:
         raise ValidationError("No 'documentIds' parameter supplied")
+    if not repository_id:
+        raise ValidationError("repositoryId is required")
 
     # Ensure repo access
     _ = get_repository(event, repository_id=repository_id)
@@ -801,7 +864,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
     repository = get_repository(event, repository_id=repository_id)
 
     # Get collection if specified
-    collection = None
+    collection: Optional[dict[str, Any]] = None
     if request.collectionId:
         collection = collection_service.get_collection(
             collection_id=request.collectionId,
@@ -809,12 +872,45 @@ def ingest_documents(event: dict, context: dict) -> dict:
             username=username,
             user_groups=groups,
             is_admin=is_admin,
-        )
-        collection = collection.model_dump() if hasattr(collection, "model_dump") else collection
-        logger.info(
-            f"""Collection retrieved for ingestion: {collection.get('collectionId')},
-            embeddingModel: {collection.get('embeddingModel')}"""
-        )
+        ).model_dump()
+
+    # For Bedrock KB repositories, upload metadata files BEFORE documents
+    is_bedrock_kb = RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB)
+    if is_bedrock_kb:
+
+        metadata_generator = MetadataGenerator()
+        s3_metadata_manager = S3MetadataManager()
+
+        # Get collection object for metadata generation
+        collection_obj = None
+        if request.collectionId:
+            try:
+                collection_obj = collection_service.get_collection(
+                    collection_id=request.collectionId,
+                    repository_id=repository_id,
+                    username=username,
+                    user_groups=groups,
+                    is_admin=is_admin,
+                )
+            except Exception as e:
+                logger.warning(f"Could not fetch collection for metadata: {e}")
+
+        # Upload metadata files first
+        for key in request.keys:
+            try:
+                # Generate metadata content
+                metadata_content = metadata_generator.generate_metadata_json(
+                    repository=repository, collection=collection_obj, document_metadata=None
+                )
+
+                # Upload metadata file
+                s3_metadata_manager.upload_metadata_file(
+                    s3_client=s3, bucket=bucket, document_key=key, metadata_content=metadata_content
+                )
+                logger.info(f"Uploaded metadata file for {key}")
+            except Exception as e:
+                logger.error(f"Failed to upload metadata file for {key}: {e}")
+                # Continue with document upload even if metadata fails
 
     # Create jobs
     jobs = []
@@ -826,14 +922,21 @@ def ingest_documents(event: dict, context: dict) -> dict:
             query_params=query_params,
             s3_path=f"s3://{bucket}/{key}",
             username=username,
+            metadata=None,
+            ingestion_type=IngestionType.MANUAL,
         )
         ingestion_job_repository.save(job)
         ingestion_service.submit_create_job(job)
         jobs.append({"jobId": job.id, "documentId": job.document_id, "status": job.status, "s3Path": job.s3_path})
 
     collection_id = job.collection_id
-    collection_name = collection.get("name") if collection else collection_id
-    return {"jobs": jobs, "collectionId": collection_id, "collectionName": collection_name}
+    collection_name: Optional[str] = None
+    if collection:
+        collection_name = collection.get("name")
+    if not collection_name:
+        collection_name = collection_id
+    result: dict[str, Any] = {"jobs": jobs, "collectionId": collection_id, "collectionName": collection_name}
+    return result
 
 
 @api_wrapper
@@ -854,10 +957,13 @@ def get_document(event: dict, context: dict) -> Dict[str, Any]:
     document_id = path_params.get("documentId")
     if repository_id is None or document_id is None:
         raise ValidationError("Must set the repositoryId and documentId")
+    if not isinstance(repository_id, str):
+        raise ValidationError("repositoryId must be a string")
     _ = get_repository(event, repository_id=repository_id)
     doc = doc_repo.find_by_id(document_id=document_id)
 
-    return doc.model_dump()
+    result: dict[str, Any] = doc.model_dump()
+    return result
 
 
 @api_wrapper
@@ -879,6 +985,8 @@ def download_document(event: dict, context: dict) -> str:
     repository_id = path_params.get("repositoryId")
     document_id = path_params.get("documentId")
 
+    if not repository_id:
+        raise ValidationError("repositoryId is required")
     _ = get_repository(event, repository_id=repository_id)
     doc = doc_repo.find_by_id(document_id=document_id)
 
@@ -961,6 +1069,8 @@ def list_docs(event: dict, context: dict) -> dict[str, Any]:
 
     last_evaluated: Optional[dict[str, Optional[str]]] = None
 
+    if not repository_id:
+        raise ValidationError("repositoryId is required")
     # Validate repository access
     _ = get_repository(event, repository_id=repository_id)
 
@@ -1015,6 +1125,8 @@ def list_jobs(event: Dict[str, Any], context: dict) -> Dict[str, Any]:
     # Extract and validate parameters
     params = ListJobsParams.from_event(event)
 
+    if not params.repository_id:
+        raise ValidationError("repositoryId is required")
     # Validate repository access
     _ = get_repository(event, repository_id=params.repository_id)
 
@@ -1043,7 +1155,8 @@ def list_jobs(event: Dict[str, Any], context: dict) -> Dict[str, Any]:
         hasPreviousPage=pagination.has_previous_page,
     )
 
-    return response.model_dump()
+    result: dict[str, Any] = response.model_dump()
+    return result
 
 
 @api_wrapper
@@ -1052,9 +1165,12 @@ def create(event: dict, context: dict) -> Any:
     """
     Create a new process execution using AWS Step Functions. This function is only accessible by administrators.
 
+    For Bedrock Knowledge Base repositories, automatically adds a default pipeline configuration
+    if none is provided, using the datasource S3 bucket for event-driven ingestion.
+
     Args:
         event (dict): The Lambda event object containing:
-            - body: A JSON string with the process creation details.
+            - body: A JSON string with the process creation details containing VectorStoreConfig.
         context (dict): The Lambda context object.
 
     Returns:
@@ -1064,13 +1180,31 @@ def create(event: dict, context: dict) -> Any:
 
     Raises:
         ValueError: If the user is not an administrator.
+        ValidationError: If the request body is invalid.
     """
     # Fetch the Step Function ARN from SSM Parameter Store
     parameter_name = os.environ["LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER"]
     state_machine_arn = ssm_client.get_parameter(Name=parameter_name)
 
-    # Deserialize the event body and prepare input for Step Functions
-    input_data = json.loads(event["body"])
+    # Deserialize the event body and parse as VectorStoreConfig
+    try:
+        body = json.loads(event["body"])
+        vector_store_config = VectorStoreConfig(**body)
+    except json.JSONDecodeError as e:
+        raise ValidationError(f"Invalid JSON in request body: {e}")
+    except Exception as e:
+        raise ValidationError(f"Invalid VectorStoreConfig: {e}")
+
+    # Auto-add default pipeline for Bedrock Knowledge Base repositories
+    if vector_store_config.type == RepositoryType.BEDROCK_KB:
+        if not vector_store_config.bedrockKnowledgeBaseConfig:
+            raise ValidationError("Bedrock Config must be supplied")
+        add_default_pipeline_for_bedrock_kb(vector_store_config)
+
+    # Convert to dictionary for Step Functions input
+    rag_config = vector_store_config.model_dump(mode="json", exclude_none=True)
+    input_data = {"ragConfig": rag_config}
+
     serializer = TypeSerializer()
 
     # Start Step Function execution
@@ -1079,7 +1213,7 @@ def create(event: dict, context: dict) -> Any:
         input=json.dumps(
             {
                 "body": input_data,
-                "config": {key: serializer.serialize(value) for key, value in input_data["ragConfig"].items()},
+                "config": {key: serializer.serialize(value) for key, value in rag_config.items()},
             }
         ),
     )
@@ -1113,7 +1247,7 @@ def get_repository_by_id(event: dict, context: dict) -> Dict[str, Any]:
         raise ValidationError("repositoryId is required")
 
     # Get repository and check access
-    repository = get_repository(event, repository_id)
+    repository: dict[str, Any] = get_repository(event, repository_id)
 
     return repository
 
@@ -1124,6 +1258,9 @@ def update_repository(event: dict, context: dict) -> Dict[str, Any]:
     """
     Update a vector store configuration. This function is only accessible by administrators.
 
+    If the pipeline configuration has changed, this will trigger an infrastructure deployment
+    using the state machine, similar to repository creation.
+
     Args:
         event (dict): The Lambda event object containing:
             - pathParameters.repositoryId: The repository ID to update
@@ -1131,7 +1268,7 @@ def update_repository(event: dict, context: dict) -> Dict[str, Any]:
         context (dict): The Lambda context object
 
     Returns:
-        Dict[str, Any]: The updated repository configuration
+        Dict[str, Any]: The updated repository configuration with executionArn if deployment triggered
 
     Raises:
         ValidationError: If validation fails
@@ -1153,28 +1290,53 @@ def update_repository(event: dict, context: dict) -> Dict[str, Any]:
     except Exception as e:
         raise ValidationError(f"Invalid request: {e}")
 
-    # Ensure repository exists
-    _ = vs_repo.find_repository_by_id(repository_id)
+    # Get current repository configuration to check for pipeline changes
+    current_repo = vs_repo.find_repository_by_id(repository_id, raw_config=True)
+    current_config = current_repo.get("config", {})
+    current_pipelines = current_config.get("pipelines")
 
     # Build updates dictionary (only include fields that were provided)
-    updates = {}
-    if request.repositoryName is not None:
-        updates["repositoryName"] = request.repositoryName
-    if request.embeddingModelId is not None:
-        updates["embeddingModelId"] = request.embeddingModelId
-    if request.allowedGroups is not None:
-        updates["allowedGroups"] = request.allowedGroups
-    if request.allowUserCollections is not None:
-        updates["allowUserCollections"] = request.allowUserCollections
-    if request.metadata is not None:
-        updates["metadata"] = (
-            request.metadata.model_dump() if hasattr(request.metadata, "model_dump") else request.metadata
-        )
-    if request.pipelines is not None:
-        updates["pipelines"] = [p.model_dump() if hasattr(p, "model_dump") else p for p in request.pipelines]
+    updates = request.model_dump(exclude_none=True, mode="json")
+
+    # Check if pipeline configuration has changed
+    require_deployment = request.pipelines is not None and request.pipelines != current_pipelines
+
+    # Set status based on deployment requirement
+    status = VectorStoreStatus.UPDATE_IN_PROGRESS if require_deployment else VectorStoreStatus.UPDATE_COMPLETE
 
     # Update repository
-    updated_config = vs_repo.update(repository_id, updates)
+    updated_config: dict[str, Any] = vs_repo.update(repository_id, updates, status=status)
+
+    # Trigger infrastructure deployment if pipeline changed
+    if require_deployment:
+        logger.info(f"Pipeline configuration changed for repository {repository_id}, triggering deployment")
+
+        # Fetch the Step Function ARN from SSM Parameter Store
+        parameter_name = os.environ["LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER"]
+        state_machine_arn = ssm_client.get_parameter(Name=parameter_name)
+
+        # Prepare input data for state machine (similar to create)
+        serializer = TypeSerializer()
+        rag_config = updated_config.copy()
+        rag_config["repositoryId"] = repository_id
+        # Remove status field - it will be set by the state machine
+        rag_config.pop("status", None)
+
+        input_data = {"ragConfig": rag_config}
+
+        # Start Step Function execution
+        response = step_functions_client.start_execution(
+            stateMachineArn=state_machine_arn["Parameter"]["Value"],
+            input=json.dumps(
+                {
+                    "body": input_data,
+                    "config": {key: serializer.serialize(value) for key, value in rag_config.items()},
+                }
+            ),
+        )
+
+        logger.info(f"Started state machine execution: {response['executionArn']}")
+        updated_config["executionArn"] = response["executionArn"]
 
     return updated_config
 
@@ -1269,59 +1431,3 @@ def _remove_legacy(repository_id: str) -> None:
             Type="String",
             Overwrite=True,
         )
-
-
-def _similarity_search(vs, query: str, top_k: int) -> list[dict[str, Any]]:
-    """Perform similarity search without scores.
-
-    Args:
-        vs: Vector store instance
-        query: Search query string
-        top_k: Number of top results to return
-
-    Returns:
-        List of documents with page_content and metadata
-    """
-    results = vs.similarity_search_with_score(
-        query,
-        k=top_k,
-    )
-
-    return [{"page_content": doc.page_content, "metadata": doc.metadata} for doc, score in results]
-
-
-def _similarity_search_with_score(vs, query: str, top_k: int, repository: dict) -> list[dict[str, Any]]:
-    """Perform similarity search with normalized scores.
-
-    Args:
-        vs: Vector store instance
-        query: Search query string
-        top_k: Number of top results to return
-        repository: Repository configuration dict
-
-    Returns:
-        List of documents with page_content, metadata, and similarity_score
-    """
-    results = vs.similarity_search_with_score(
-        query,
-        k=top_k,
-    )
-    docs = []
-    for i, (doc, score) in enumerate(results):
-        similarity_score = RepositoryType.get_type(repository=repository).calculate_similarity_score(score)
-        logger.info(
-            f"Result {i + 1}: Raw Score={score:.4f}, Similarity={similarity_score:.4f}, "
-            + f"Content: {doc.page_content[:200]}..."
-        )
-        logger.info(f"Result {i + 1} metadata: {doc.metadata}")
-        docs.append(
-            {
-                "page_content": doc.page_content,
-                "metadata": {**doc.metadata, "similarity_score": similarity_score},
-            }
-        )
-
-    if results and max(score for _, score in results) < 0.3:
-        logger.warning(f"All similarity < 0.3 for query '{query}' - possible embedding model mismatch")
-
-    return docs

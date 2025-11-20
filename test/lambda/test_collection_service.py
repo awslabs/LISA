@@ -21,7 +21,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../lambda"))
 
-from models.domain_objects import CollectionMetadata, CollectionStatus, FixedChunkingStrategy, RagCollectionConfig
+from models.domain_objects import CollectionStatus, FixedChunkingStrategy, RagCollectionConfig
 
 
 @pytest.fixture(autouse=True)
@@ -35,17 +35,11 @@ def setup_env(monkeypatch):
 def test_create_collection():
     """Test collection creation"""
     from repository.collection_service import CollectionService
-    from utilities.repository_types import RepositoryType
 
     mock_repo = Mock()
     mock_vector_store_repo = Mock()
     mock_document_repo = Mock()
     service = CollectionService(mock_repo, mock_vector_store_repo, mock_document_repo)
-
-    repository = {
-        "repositoryId": "test-repo",
-        "type": RepositoryType.OPENSEARCH,
-    }
 
     collection = RagCollectionConfig(
         collectionId="test-coll",
@@ -61,7 +55,7 @@ def test_create_collection():
 
     mock_repo.find_by_name.return_value = None  # No existing collection
     mock_repo.create.return_value = collection
-    result = service.create_collection(repository, collection, "user")
+    result = service.create_collection(collection, "user")
 
     assert result.collectionId == "test-coll"
     mock_repo.create.assert_called_once()
@@ -96,6 +90,7 @@ def test_get_collection():
 
 def test_list_collections():
     """Test list collections"""
+
     from repository.collection_service import CollectionService
 
     mock_repo = Mock()
@@ -115,11 +110,23 @@ def test_list_collections():
         private=False,
     )
 
+    # Mock repository with proper structure for service factory
+    mock_repository = {
+        "repositoryId": "test-repo",
+        "type": "opensearch",
+        "status": "CREATE_COMPLETE",
+        "embeddingModelId": "model",
+    }
+    mock_vector_store_repo.find_repository_by_id.return_value = mock_repository
     mock_repo.list_by_repository.return_value = ([collection], None)
+
     result, key = service.list_collections("test-repo", "user", ["group1"], False)
 
-    assert len(result) == 1
-    assert result[0].collectionId == "test-coll"
+    # Should return 2 collections: the test collection + default collection
+    assert len(result) == 2
+    # Find the test collection (not the default one)
+    test_coll = [c for c in result if c.collectionId == "test-coll"][0]
+    assert test_coll.collectionId == "test-coll"
 
 
 def test_delete_collection():
@@ -223,135 +230,3 @@ def test_delete_default_collection():
     assert saved_job.collection_id is None
     assert saved_job.embedding_model == "test-embedding-model"
     assert saved_job.collection_deletion is True
-
-
-class TestCollectionMetadataMerging:
-    """Test metadata merging from repository, collection, and passed-in metadata."""
-
-    @pytest.fixture
-    def service(self, setup_env):
-        """Create CollectionService instance with mocked repositories."""
-        from repository.collection_service import CollectionService
-
-        # Create service without initializing repositories (they're not needed for metadata merging)
-        service = CollectionService.__new__(CollectionService)
-        service.collection_repo = None
-        service.vector_store_repo = None
-        return service
-
-    def test_metadata_merging_all_layers(self, service):
-        """Test metadata from all three layers are merged with correct precedence."""
-        repository = {
-            "metadata": CollectionMetadata(
-                customFields={
-                    "repo_key": "repo_value",
-                    "shared_key": "from_repo",
-                    "override_key": "from_repo",
-                }
-            )
-        }
-        collection = RagCollectionConfig(
-            collectionId="test-collection",
-            repositoryId="test-repo",
-            name="Test Collection",
-            embeddingModel="test-model",
-            createdBy="test-user",
-            metadata=CollectionMetadata(
-                customFields={
-                    "collection_key": "collection_value",
-                    "shared_key": "from_collection",
-                    "override_key": "from_collection",
-                }
-            ),
-        )
-        passed_metadata = CollectionMetadata(
-            customFields={
-                "passed_key": "passed_value",
-                "override_key": "from_passed",
-            }
-        )
-
-        result = service.get_collection_metadata(repository, collection, passed_metadata)
-
-        assert result["repo_key"] == "repo_value"
-        assert result["collection_key"] == "collection_value"
-        assert result["passed_key"] == "passed_value"
-        assert result["shared_key"] == "from_collection"
-        assert result["override_key"] == "from_passed"
-
-    def test_metadata_merging_no_passed_metadata(self, service):
-        """Test metadata merging when no passed metadata provided."""
-        repository = {
-            "metadata": CollectionMetadata(customFields={"repo_key": "repo_value", "shared_key": "from_repo"})
-        }
-        collection = RagCollectionConfig(
-            collectionId="test-collection",
-            repositoryId="test-repo",
-            name="Test Collection",
-            embeddingModel="test-model",
-            createdBy="test-user",
-            metadata=CollectionMetadata(
-                customFields={"collection_key": "collection_value", "shared_key": "from_collection"}
-            ),
-        )
-
-        result = service.get_collection_metadata(repository, collection, None)
-
-        assert result["repo_key"] == "repo_value"
-        assert result["collection_key"] == "collection_value"
-        assert result["shared_key"] == "from_collection"
-
-    def test_metadata_merging_no_collection_metadata(self, service):
-        """Test metadata merging when collection has no metadata."""
-        repository = {
-            "metadata": CollectionMetadata(customFields={"repo_key": "repo_value", "shared_key": "from_repo"})
-        }
-        collection = RagCollectionConfig(
-            collectionId="test-collection",
-            repositoryId="test-repo",
-            name="Test Collection",
-            embeddingModel="test-model",
-            createdBy="test-user",
-            metadata=None,
-        )
-        passed_metadata = CollectionMetadata(customFields={"passed_key": "passed_value", "shared_key": "from_passed"})
-
-        result = service.get_collection_metadata(repository, collection, passed_metadata)
-
-        assert result["repo_key"] == "repo_value"
-        assert result["passed_key"] == "passed_value"
-        assert result["shared_key"] == "from_passed"
-
-    def test_metadata_merging_no_repository_metadata(self, service):
-        """Test metadata merging when repository has no metadata."""
-        repository = {"metadata": None}
-        collection = RagCollectionConfig(
-            collectionId="test-collection",
-            repositoryId="test-repo",
-            name="Test Collection",
-            embeddingModel="test-model",
-            createdBy="test-user",
-            metadata=CollectionMetadata(customFields={"collection_key": "collection_value"}),
-        )
-        passed_metadata = CollectionMetadata(customFields={"passed_key": "passed_value"})
-
-        result = service.get_collection_metadata(repository, collection, passed_metadata)
-
-        assert result["collection_key"] == "collection_value"
-        assert result["passed_key"] == "passed_value"
-
-    def test_metadata_merging_empty_metadata(self, service):
-        """Test metadata merging when all metadata is empty or None."""
-        repository = {"metadata": None}
-        collection = RagCollectionConfig(
-            collectionId="test-collection",
-            repositoryId="test-repo",
-            name="Test Collection",
-            embeddingModel="test-model",
-            createdBy="test-user",
-            metadata=None,
-        )
-
-        result = service.get_collection_metadata(repository, collection, None)
-
-        assert result == {}

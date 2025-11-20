@@ -40,7 +40,7 @@ def get_configuration(event: dict, context: dict) -> Dict[str, Any]:
     return _get_configurations(config_scope)
 
 
-def _get_configurations(config_scope: str) -> dict[str, Any]:
+def _get_configurations(config_scope: str) -> list[dict[str, Any]]:
     response = {}
     try:
         response = table.query(
@@ -55,7 +55,7 @@ def _get_configurations(config_scope: str) -> dict[str, Any]:
         else:
             logger.exception("Error fetching session")
 
-    return response.get("Items", {})  # type: ignore [no-any-return]
+    return response.get("Items", [])  # type: ignore [no-any-return]
 
 
 @api_wrapper

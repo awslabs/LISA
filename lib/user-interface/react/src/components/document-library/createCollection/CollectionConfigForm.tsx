@@ -26,12 +26,13 @@ import { RagCollectionConfig, RagRepositoryType, VectorStoreStatus } from '#root
 
 export type CollectionConfigProps = {
     isEdit: boolean;
+    isDefaultCollection?: boolean;
 };
 
 export function CollectionConfigForm (
     props: FormProps<RagCollectionConfig> & CollectionConfigProps
 ): ReactElement {
-    const { item, touchFields, setFields, formErrors, isEdit } = props;
+    const { item, touchFields, setFields, formErrors, isEdit, isDefaultCollection = false } = props;
 
     // Fetch repositories for dropdown
     const { data: repositories, isLoading: isLoadingRepos } = useListRagRepositoriesQuery(undefined, {
@@ -95,7 +96,9 @@ export function CollectionConfigForm (
             <FormField
                 label='Repository'
                 errorText={formErrors?.repositoryId}
-                description='The parent repository that will contain this collection'
+                description={isDefaultCollection
+                    ? 'Repository cannot be changed for default collections'
+                    : 'The parent repository that will contain this collection'}
             >
                 <Select
                     selectedOption={
@@ -108,63 +111,25 @@ export function CollectionConfigForm (
                     }}
                     onBlur={() => touchFields(['repositoryId'])}
                     options={repositoryOptions}
-                    disabled={isEdit}
+                    disabled={isEdit || isDefaultCollection}
                     placeholder='Select a repository'
                     statusType={isLoadingRepos ? 'loading' : 'finished'}
                 />
             </FormField>
 
-            {/* Common Fields (Embedding Model) */}
-            <CommonFieldsForm
-                item={item}
-                setFields={setFields}
-                touchFields={touchFields}
-                formErrors={formErrors}
-                repositoryId={item.repositoryId}
-                showEmbeddingModel={true}
-                showAllowedGroups={false}
-                isEdit={isEdit}
-            />
-
-            {/* Private Checkbox */}
-            {/* <FormField
-                label='Privacy'
-                description='Private collections are only accessible to the creator and administrators'
-            >
-                <Checkbox
-                    checked={item.private || false}
-                    onChange={({ detail }) => setFields({ private: detail.checked })}
-                    disabled={isEdit}
-                >
-                    Make this collection private
-                </Checkbox>
-            </FormField> */}
-
-            {/* Pipeline Configuration */}
-            {/* <FormField
-                label='Pipeline Configuration'
-                description='Optional: Configure automatic ingestion from S3'
-            >
-                <Checkbox
-                    checked={item.pipelines && item.pipelines.length > 0}
-                    onChange={({ detail }) => {
-                        if (detail.checked) {
-                            setFields({
-                                pipelines: [{
-                                    s3Bucket: '',
-                                    s3Prefix: '',
-                                    trigger: 'event' as const,
-                                    autoRemove: true,
-                                }]
-                            });
-                        } else {
-                            setFields({ pipelines: [] });
-                        }
-                    }}
-                >
-                    Enable S3 pipeline ingestion
-                </Checkbox>
-            </FormField> */}
+            {/* Common Fields (Embedding Model) - hide for default collections */}
+            {!isDefaultCollection && (
+                <CommonFieldsForm
+                    item={item}
+                    setFields={setFields}
+                    touchFields={touchFields}
+                    formErrors={formErrors}
+                    repositoryId={item.repositoryId}
+                    showEmbeddingModel={true}
+                    showAllowedGroups={false}
+                    isEdit={isEdit}
+                />
+            )}
 
             {/* S3 Bucket - only show if pipeline is enabled */}
             {item.pipelines && item.pipelines.length > 0 && (

@@ -126,9 +126,28 @@ export abstract class PipelineStack extends Stack {
         // Add prefix filter if not root
         if (pipelineConfig.s3Prefix !== '') {
             detail.object = {
-                key: [{
-                    prefix: pipelineConfig.s3Prefix
-                }]
+                key: [
+                    {
+                        prefix: pipelineConfig.s3Prefix
+                    },
+                    {
+                        // Exclude metadata files from triggering events
+                        'anything-but': {
+                            suffix: '.metadata.json'
+                        }
+                    }
+                ]
+            };
+        } else {
+            // No prefix, but still exclude metadata files
+            detail.object = {
+                key: [
+                    {
+                        'anything-but': {
+                            suffix: '.metadata.json'
+                        }
+                    }
+                ]
             };
         }
 
@@ -139,9 +158,10 @@ export abstract class PipelineStack extends Stack {
             detail
         };
 
+        const collectionName = `${repositoryId}-${pipelineConfig.collectionId ?? pipelineConfig.embeddingModel}`;
         // Create a new EventBridge rule for the S3 event pattern
         return new Rule(this, `${repositoryId}-S3Event${eventName}Rule-${disambiguator}`, {
-            ruleName: `${config.deploymentName}-${config.deploymentStage}-S3Event${eventName}Rule-${disambiguator}`,
+            ruleName: `${config.deploymentName}-${config.deploymentStage}-${config.appName}-${collectionName}-S3${eventName}Rule-${disambiguator}`.substring(0,127),
             eventPattern,
             // Define the state machine target with input transformation
             targets: [new LambdaFunction(ingestionLambda, {

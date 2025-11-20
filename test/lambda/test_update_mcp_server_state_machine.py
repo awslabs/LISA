@@ -340,7 +340,7 @@ def test_connections_table_updates(mcp_servers_table, in_service_server, lambda_
     with patch("mcp_server.state_machine.update_mcp_server.mcp_servers_table", mcp_servers_table), patch(
         "mcp_server.state_machine.update_mcp_server.ssm_client.get_parameter",
         return_value={"Parameter": {"Value": "connections-table"}},
-    ):
+    ), patch("mcp_server.state_machine.update_mcp_server.ddbResource", dynamodb):
         # Disable updates status to inactive
         handle_job_intake({"server_id": "server-inservice", "update_payload": {"enabled": False}}, lambda_context)
         row = connections_table.get_item(Key={"id": "server-inservice", "owner": "lisa:public"}).get("Item")

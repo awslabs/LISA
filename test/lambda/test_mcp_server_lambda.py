@@ -249,7 +249,9 @@ def mcp_servers_table(dynamodb):
         ],
         ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
     )
-    return table
+    # Patch the module-level table with our test fixture
+    with patch("mcp_server.lambda_functions.table", table):
+        yield table
 
 
 @pytest.fixture

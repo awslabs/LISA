@@ -91,8 +91,6 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
         allowedGroups: [],
         metadata: { tags: [], customFields: {} },
         allowChunkingOverride: true,
-        // private: false,
-        // pipelines: [],
     };
 
     const dispatch = useAppDispatch();
@@ -143,8 +141,14 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
 
     const reviewError = normalizeError('Collection', isEdit ? updateError : createError);
 
+    // Check if editing a default collection
+    const isDefaultCollection = isEdit && selectedItems.length > 0 && (selectedItems[0] as any).default === true;
+
+    // For default collections, embeddingModel is not editable and should not be required
     const requiredFields = [
-        ['name', 'repositoryId', 'embeddingModel'], // Step 1: Collection Configuration
+        isDefaultCollection
+            ? ['name', 'repositoryId'] // Step 1: Collection Configuration (default collection)
+            : ['name', 'repositoryId', 'embeddingModel'], // Step 1: Collection Configuration
         [], // Step 2: Chunking Configuration (optional)
         [], // Step 3: Access Control (optional)
     ];
@@ -162,8 +166,6 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
                     allowedGroups: toSubmit.allowedGroups,
                     metadata: toSubmit.metadata,
                     allowChunkingOverride: toSubmit.allowChunkingOverride,
-                    // private: toSubmit.private,
-                    // pipelines: toSubmit.pipelines,
                 });
             } else {
                 resetCreate();
@@ -176,8 +178,6 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
                     allowedGroups: toSubmit.allowedGroups,
                     metadata: toSubmit.metadata,
                     allowChunkingOverride: toSubmit.allowChunkingOverride,
-                    // private: toSubmit.private,
-                    // pipelines: toSubmit.pipelines,
                 });
             }
         }
@@ -200,8 +200,6 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
                     allowChunkingOverride: selectedCollection.allowChunkingOverride !== undefined
                         ? selectedCollection.allowChunkingOverride
                         : true,
-                    // private: selectedCollection.private,
-                    // pipelines: selectedCollection.pipelines || [],
                 },
             });
         }
@@ -222,12 +220,13 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isCreating, isUpdating, isCreateSuccess, isUpdateSuccess]);
 
-
     // Wizard steps configuration
     const steps = [
         {
             title: 'Collection Configuration',
-            description: 'Define your collection\'s basic settings',
+            description: isDefaultCollection
+                ? 'Edit collection name and description (other fields are locked for default collections)'
+                : 'Define your collection\'s basic settings',
             content: (
                 <CollectionConfigForm
                     item={state.form}
@@ -235,18 +234,22 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
                     touchFields={touchFields}
                     formErrors={errors}
                     isEdit={isEdit}
+                    isDefaultCollection={isDefaultCollection}
                 />
             ),
         },
         {
             title: 'Chunking Configuration',
-            description: 'Configure how documents are split into chunks',
+            description: isDefaultCollection
+                ? 'Chunking is managed by Bedrock Knowledge Base for default collections'
+                : 'Configure how documents are split into chunks',
             content: (
                 <ChunkingConfigForm
                     item={state.form.chunkingStrategy}
                     setFields={setFields}
                     touchFields={touchFields}
                     formErrors={errors}
+                    disabled={isDefaultCollection}
                 />
             ),
             isOptional: true,

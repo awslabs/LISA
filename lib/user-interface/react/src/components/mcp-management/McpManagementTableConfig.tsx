@@ -100,7 +100,7 @@ export function getTableDefinition (): ReadonlyArray<TableRow> {
         {
             id: 'created',
             header: 'Created',
-            cell: (item) => item.created ?? '-',
+            cell: (item) => new Date(item.created).toLocaleString() ?? '-',
             sortingField: 'created',
             visible: true,
         },

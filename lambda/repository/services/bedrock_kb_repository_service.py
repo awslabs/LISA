@@ -203,6 +203,7 @@ class BedrockKBRepositoryService(RepositoryService):
         query: str,
         collection_id: str,
         top_k: int,
+        model_name: str,
         include_score: bool = False,
         bedrock_agent_client: Optional[Any] = None,
     ) -> List[Dict[str, Any]]:
@@ -212,6 +213,7 @@ class BedrockKBRepositoryService(RepositoryService):
             query: Search query
             collection_id: Collection to search (data source ID)
             top_k: Number of results to return
+            model_name: Embedding model name (not used for Bedrock KB)
             include_score: Whether to include similarity scores in metadata
             bedrock_agent_client: Bedrock agent client for KB operations
 

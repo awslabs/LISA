@@ -150,7 +150,6 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                             }}
                             formErrors={formErrors.pipelines?.[index]?.chunkingStrategy || {}}
                         />
-                        )
 
                         <FormField
                             label='Collection'

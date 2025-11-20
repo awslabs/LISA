@@ -140,6 +140,7 @@ class VectorStoreRepositoryService(RepositoryService):
         query: str,
         collection_id: str,
         top_k: int,
+        model_name: str,
         include_score: bool = False,
         bedrock_agent_client: Optional[Any] = None,
     ) -> List[Dict[str, Any]]:
@@ -149,13 +150,14 @@ class VectorStoreRepositoryService(RepositoryService):
             query: Search query
             collection_id: Collection to search
             top_k: Number of results to return
+            model_name: Embedding model name to use for query embedding
             include_score: Whether to include similarity scores in metadata
             bedrock_agent_client: Not used for vector stores
 
         Returns:
             List of documents with page_content and metadata
         """
-        embeddings = RagEmbeddings(model_name=collection_id)
+        embeddings = RagEmbeddings(model_name=model_name)
         vector_store = self._get_vector_store_client(
             collection_id=collection_id,
             embeddings=embeddings,

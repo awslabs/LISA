@@ -38,51 +38,6 @@ from models.domain_objects import (
 logger = logging.getLogger(__name__)
 
 
-def retrieve_documents(
-    bedrock_runtime_client: Any,
-    repository: Dict[str, Any],
-    query: str,
-    top_k: int,
-    repository_id: str,
-) -> List[Dict[str, Any]]:
-    """Retrieve documents from Bedrock Knowledge Base.
-
-    Args:
-        bedrock_runtime_client: boto3 bedrock-agent-runtime client
-        repository: Repository configuration dictionary
-        query: Text query to search
-        top_k: Number of results to return
-        repository_id: Repository identifier to include in metadata
-
-    Returns:
-        List of documents in the format expected by callers
-    """
-    bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
-
-    response = bedrock_runtime_client.retrieve(
-        knowledgeBaseId=bedrock_config.get("bedrockKnowledgeBaseId", None),
-        retrievalQuery={"text": query},
-        retrievalConfiguration={"vectorSearchConfiguration": {"numberOfResults": int(top_k)}},
-    )
-
-    docs: List[Dict[str, Any]] = []
-    for doc in response.get("retrievalResults", []):
-        uri = (doc.get("location", {}) or {}).get("s3Location", {}).get("uri")
-        name = uri.split("/")[-1] if uri else None
-        docs.append(
-            {
-                "page_content": (doc.get("content", {}) or {}).get("text", ""),
-                "metadata": {
-                    "source": uri,
-                    "name": name,
-                    "repository_id": repository_id,
-                },
-            }
-        )
-
-    return docs
-
-
 def ingest_document_to_kb(
     s3_client: Any,
     bedrock_agent_client: Any,

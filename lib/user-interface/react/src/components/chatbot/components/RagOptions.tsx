@@ -19,7 +19,7 @@ import { useEffect, useMemo, useState, useRef } from 'react';
 import { useGetAllModelsQuery } from '@/shared/reducers/model-management.reducer';
 import { IModel, ModelStatus, ModelType } from '@/shared/model/model-management.model';
 import { useListRagRepositoriesQuery, useListCollectionsQuery, RagCollectionConfig } from '@/shared/reducers/rag.reducer';
-import { VectorStoreStatus } from '#root/lib/schema';
+import { RagRepositoryType, VectorStoreStatus } from '#root/lib/schema';
 import { CollectionStatus } from '#root/lib/schema/collectionSchema';
 
 export type RagConfig = {
@@ -87,10 +87,13 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
         const hasRepository = !!ragConfig?.repositoryId;
         const hasEmbeddingModel = !!ragConfig?.embeddingModel;
         const hasCollection = !!ragConfig?.collection;
+        const isNonBedrockRepo = ragConfig?.repositoryType && ragConfig?.repositoryType !== RagRepositoryType.BEDROCK_KNOWLEDGE_BASE;
 
-        // Enable RAG if repository is selected AND (embedding model is set OR collection is selected)
-        setUseRag(hasRepository && (hasEmbeddingModel || hasCollection));
-    }, [ragConfig?.repositoryId, ragConfig?.embeddingModel, ragConfig?.collection, setUseRag]);
+        // Enable RAG if:
+        // 1. Repository is selected AND (embedding model is set OR collection is selected), OR
+        // 2. Non-bedrock repository is selected (will use default collection)
+        setUseRag(hasRepository && (hasEmbeddingModel || hasCollection || isNonBedrockRepo));
+    }, [ragConfig?.repositoryId, ragConfig?.embeddingModel, ragConfig?.collection, ragConfig?.repositoryType, setUseRag]);
 
     // Effect for handling repository changes and default embedding model selection
     useEffect(() => {

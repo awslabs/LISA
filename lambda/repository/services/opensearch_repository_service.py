@@ -48,6 +48,7 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
         query: str,
         collection_id: str,
         top_k: int,
+        model_name: str,
         include_score: bool = False,
         bedrock_agent_client: Any = None,
     ) -> list[dict[str, Any]]:
@@ -57,6 +58,7 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
             query: Search query
             collection_id: Collection to search
             top_k: Number of results to return
+            model_name: Embedding model name to use for query embedding
             include_score: Whether to include similarity scores in metadata
             bedrock_agent_client: Not used for OpenSearch
 
@@ -64,7 +66,7 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
             List of documents with page_content and metadata
         """
         # Create embeddings and vector store client once
-        embeddings = RagEmbeddings(model_name=collection_id)
+        embeddings = RagEmbeddings(model_name=model_name)
         vector_store = self._get_vector_store_client(
             collection_id=collection_id,
             embeddings=embeddings,
@@ -146,10 +148,26 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
 
         Returns:
             OpenSearchVectorSearch client instance
+
+        Raises:
+            ValueError: If repository is not registered or not an OpenSearch repository
         """
         prefix = os.environ.get("REGISTERED_REPOSITORIES_PS_PREFIX")
-        connection_info = ssm_client.get_parameter(Name=f"{prefix}{self.repository_id}")
-        connection_info = json.loads(connection_info["Parameter"]["Value"])
+        parameter_name = f"{prefix}{self.repository_id}"
+
+        try:
+            connection_info = ssm_client.get_parameter(Name=parameter_name)
+            connection_info = json.loads(connection_info["Parameter"]["Value"])
+        except ssm_client.exceptions.ParameterNotFound:
+            logger.error(
+                f"Repository '{self.repository_id}' not found in SSM Parameter Store. "
+                f"Parameter: {parameter_name}. "
+                f"Ensure the repository is registered before use."
+            )
+            raise ValueError(
+                f"Repository '{self.repository_id}' is not registered. "
+                f"Please register the repository before performing operations."
+            )
 
         if not RepositoryType.is_type(connection_info, RepositoryType.OPENSEARCH):
             raise ValueError(f"Repository {self.repository_id} is not an OpenSearch repository")

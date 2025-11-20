@@ -93,3 +93,22 @@ class TestOpenSearchRepositoryService:
             with patch.object(opensearch_service, "_get_vector_store_client", return_value=mock_vector_store):
                 # Should not raise exception
                 opensearch_service._drop_collection_index("test-collection")
+
+    def test_get_vector_store_client_parameter_not_found(self, opensearch_service):
+        """Test _get_vector_store_client raises ValueError when SSM parameter not found."""
+        from botocore.exceptions import ClientError
+
+        mock_embeddings = MagicMock()
+
+        # Mock SSM client to raise ParameterNotFound
+        with patch("repository.services.opensearch_repository_service.ssm_client") as mock_ssm:
+            mock_ssm.get_parameter.side_effect = mock_ssm.exceptions.ParameterNotFound(
+                {"Error": {"Code": "ParameterNotFound", "Message": "Parameter not found"}}, "GetParameter"
+            )
+            mock_ssm.exceptions.ParameterNotFound = type("ParameterNotFound", (ClientError,), {})
+
+            with pytest.raises(ValueError) as exc_info:
+                opensearch_service._get_vector_store_client("test-collection", mock_embeddings)
+
+            assert "not registered" in str(exc_info.value)
+            assert opensearch_service.repository_id in str(exc_info.value)

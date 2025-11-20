@@ -182,6 +182,7 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
         query=query,
         collection_id=search_collection_id,
         top_k=top_k,
+        model_name=model_name,
         include_score=include_score,
         bedrock_agent_client=bedrock_client if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB) else None,
     )

@@ -86,10 +86,26 @@ class PGVectorRepositoryService(VectorStoreRepositoryService):
 
         Returns:
             PGVector client instance
+
+        Raises:
+            ValueError: If repository is not registered or not a PGVector repository
         """
         prefix = os.environ.get("REGISTERED_REPOSITORIES_PS_PREFIX")
-        connection_info = ssm_client.get_parameter(Name=f"{prefix}{self.repository_id}")
-        connection_info = json.loads(connection_info["Parameter"]["Value"])
+        parameter_name = f"{prefix}{self.repository_id}"
+
+        try:
+            connection_info = ssm_client.get_parameter(Name=parameter_name)
+            connection_info = json.loads(connection_info["Parameter"]["Value"])
+        except ssm_client.exceptions.ParameterNotFound:
+            logger.error(
+                f"Repository '{self.repository_id}' not found in SSM Parameter Store. "
+                f"Parameter: {parameter_name}. "
+                f"Ensure the repository is registered before use."
+            )
+            raise ValueError(
+                f"Repository '{self.repository_id}' is not registered. "
+                f"Please register the repository before performing operations."
+            )
 
         if not RepositoryType.is_type(connection_info, RepositoryType.PGVECTOR):
             raise ValueError(f"Repository {self.repository_id} is not a PGVector repository")

@@ -137,10 +137,11 @@ export class CreateStoreStateMachine extends Construct {
         const updateBedrockKBSuccess = new tasks.DynamoUpdateItem(this, 'UpdateBedrockKBSuccess', {
             table: vectorStoreConfigTable,
             key: { repositoryId: tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.body.ragConfig.repositoryId')) },
-            updateExpression: 'SET #status = :status',
-            expressionAttributeNames: { '#status': 'status' },
+            updateExpression: 'SET #status = :status, #stackName = :stackName',
+            expressionAttributeNames: { '#status': 'status', '#stackName': 'stackName' },
             expressionAttributeValues: {
-                ':status': tasks.DynamoAttributeValue.fromString(VectorStoreStatus.CREATE_COMPLETE)
+                ':status': tasks.DynamoAttributeValue.fromString(VectorStoreStatus.CREATE_COMPLETE),
+                ':stackName': tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.deployResult.stackName') ?? '')
             },
         });
 

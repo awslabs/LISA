@@ -129,11 +129,18 @@ export class DeleteStoreStateMachine extends Construct {
             .when(sfn.Condition.isPresent('$.stackName'), deleteStack)
             .otherwise(deleteDynamoDbEntry);
 
+        const extractStackName = new sfn.Pass(this, 'ExtractStackName', {
+            parameters: {
+                'repositoryId.$': '$.repositoryId',
+                'stackName.$': '$.ddbResult.Item.stackName.S',
+            },
+        }).next(handleStackDeletion);
+
         const getRepoFromDdb = new tasks.DynamoGetItem(this, 'GetRepoFromDdb', {
             table: ragVectorStoreTable,
             key: { repositoryId: tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.repositoryId')) },
             resultPath: '$.ddbResult',
-        }).next(handleStackDeletion);
+        }).next(extractStackName);
 
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
 

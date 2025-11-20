@@ -69,6 +69,13 @@
           "bedrock:Retrieve"
         ],
         "Resource": "*"
+      },
+      {
+        "Effect": "Allow",
+        "Action": [
+          "cloudwatch:PutMetricData"
+        ],
+        "Resource": "*"
       }
     ]
 }

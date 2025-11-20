@@ -44,6 +44,7 @@ export type AuthorizerProps = {
     vpc: Vpc;
     securityGroups: ISecurityGroup[];
     tokenTable: ITable | undefined;
+    managementKeySecretName: string;
 } & BaseProps;
 
 /**
@@ -61,7 +62,7 @@ export class CustomAuthorizer extends Construct {
     constructor (scope: Construct, id: string, props: AuthorizerProps) {
         super(scope, id);
 
-        const { config, role, vpc, securityGroups, tokenTable } = props;
+        const { config, role, vpc, securityGroups, tokenTable, managementKeySecretName } = props;
 
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
             this,
@@ -74,8 +75,6 @@ export class CustomAuthorizer extends Construct {
             'base-authorizer-lambda-layer',
             StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/authorizer`),
         );
-
-        const managementKeySecretNameStringParameter = StringParameter.fromStringParameterName(this, createCdkId([id, 'managementKeyStringParameter']), `${config.deploymentPrefix}/managementKeySecretName`);
 
         // Create Lambda authorizer
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
@@ -95,7 +94,7 @@ export class CustomAuthorizer extends Construct {
                 ADMIN_GROUP: config.authConfig!.adminGroup,
                 USER_GROUP: config.authConfig!.userGroup,
                 JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
-                MANAGEMENT_KEY_NAME: managementKeySecretNameStringParameter.stringValue,
+                MANAGEMENT_KEY_NAME: managementKeySecretName,
                 ...(tokenTable ? { TOKEN_TABLE_NAME: tokenTable?.tableName } : {})
             },
             role: role,
@@ -108,7 +107,7 @@ export class CustomAuthorizer extends Construct {
             tokenTable.grantReadData(authorizerLambda);
         }
 
-        const managementKeySecret = Secret.fromSecretNameV2(this, createCdkId([id, 'managementKey']), managementKeySecretNameStringParameter.stringValue);
+        const managementKeySecret = Secret.fromSecretNameV2(this, createCdkId([id, 'managementKey']), managementKeySecretName);
         managementKeySecret.grantRead(authorizerLambda);
 
         // Update

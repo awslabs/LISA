@@ -144,7 +144,7 @@ export class ModelsApi extends Construct {
             vpc
         });
 
-        const managementKeyName = StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/managementKeySecretName`);
+        const managementKeyName = StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/appManagementKeySecretName`);
 
         const stateMachineExecutionRole = config.roles ?
             { executionRole: Role.fromRoleName(this, Roles.MODEL_SFN_ROLE, config.roles.ModelSfnRole) } :
@@ -561,7 +561,7 @@ export class ModelsApi extends Construct {
                             resources: [
                                 lisaServeEndpointUrlParamArn,
                                 `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/lisaServeRestApiUri`,
-                                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/LISA-lisa-management-key`,
+                                `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter/LISA-management-key`,
                                 `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/LiteLLMDbConnectionInfo`,
                                 `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/modelTableName`,
                             ],

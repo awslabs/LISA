@@ -17,6 +17,7 @@
 import json
 import os
 from unittest.mock import MagicMock, patch
+from typing import List
 
 import pytest
 from models.domain_objects import (

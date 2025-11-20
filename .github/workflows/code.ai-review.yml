@@ -1,0 +1,49 @@
+name: AI Code Review
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+on:
+  pull_request:
+  pull_request_review_comment:
+    types: [created]
+
+concurrency:
+  group: ${{ github.repository }}-${{ github.event.number || github.head_ref ||
+    github.sha }}-${{ github.workflow }}-${{ github.event_name ==
+    'pull_request_review_comment' && 'pr_comment' || 'pr' }}
+  cancel-in-progress: ${{ github.event_name != 'pull_request_review_comment' }}
+
+jobs:
+  review:
+    environment: dev
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT }}:role/${{ vars.ROLE_NAME_TO_ASSUME }}
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          role-duration-seconds: 7200
+      - name: PR Review
+        uses: tmokmss/bedrock-pr-reviewer@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          debug: false
+          summarize: true
+          summarize_release_notes: true
+          review_file_diff: |
+            - Do NOT provide general feedback, summaries, explanations of changes, statements of following existing patterns, or praises for making good additions.
+            - Focus solely on offering specific, objective insights based on the given context and refrain from making broad comments about potential impacts on the system or question intentions behind the changes.
+            - Comments should have actionable changes
+            - Disregard formatting, stylistic, or import issues, since this should be taken care of with linters and tests
+            - Ignore verification comments unless there is evidence that contradicts the statement.
+            - Ignore functional imports for test classes. Other classes should not import within functions
+          review_simple_changes: false
+          review_comment_lgtm: false
+          bedrock_light_model: ${{ vars.BEDROCK_LIGHT_MODEL }}
+          bedrock_heavy_model: ${{ vars.BEDROCK_HEAVY_MODEL }}

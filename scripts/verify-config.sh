@@ -3,6 +3,9 @@ set -e
 
 EXIT_CODE=0
 
+# Get config file from pre-commit (first argument)
+CONFIG_FILE="${1:-config-base.yaml}"
+
 # Check if yq is installed
 if ! command -v yq &> /dev/null
 then
@@ -18,16 +21,16 @@ then
 fi
 
 # Parse through defined envs
-for env in $(tail -n +3 config.yaml | yq e '. | keys'); do
+for env in $(tail -n +3 "$CONFIG_FILE" | yq -r 'keys[]'); do
     # Skip these keys
     if [[ $env =~ "env" || $env =~ "app_name" || $env == "-" ]]; then
         continue
     fi
 
-    # Verify values are empty in config.yaml
+    # Verify values are empty in config file
     for key in profile deploymentName; do
-        value=$(cat config.yaml | yq .${env}.${key})
-        if [ ! -z $value ]; then
+        value=$(yq -r ".${env}.${key}" "$CONFIG_FILE")
+        if [ ! -z "$value" ] && [ "$value" != "null" ]; then
             echo "For environment=$env, key=$key must be empty, delete value=$value"
             EXIT_CODE=1
         fi

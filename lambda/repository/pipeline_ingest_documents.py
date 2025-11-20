@@ -20,55 +20,189 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
 import boto3
-from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, IngestionType, RagDocument
+from models.domain_objects import (
+    ChunkingStrategy,
+    FixedChunkingStrategy,
+    IngestionJob,
+    IngestionStatus,
+    IngestionType,
+    JobActionType,
+    NoneChunkingStrategy,
+    RagDocument,
+)
+from repository.collection_service import CollectionService
 from repository.embeddings import RagEmbeddings
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
+from repository.metadata_generator import MetadataGenerator
 from repository.rag_document_repo import RagDocumentRepository
+from repository.s3_metadata_manager import S3MetadataManager
+from repository.services.repository_service_factory import RepositoryServiceFactory
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.auth import get_username
 from utilities.bedrock_kb import ingest_document_to_kb
 from utilities.common_functions import retry_config
 from utilities.file_processing import generate_chunks
 from utilities.repository_types import RepositoryType
-from utilities.vector_store import get_vector_store_client
 
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 ingestion_job_table = dynamodb.Table(os.environ["LISA_INGESTION_JOB_TABLE_NAME"])
 ingestion_service = DocumentIngestionService()
 ingestion_job_repository = IngestionJobRepository()
 vs_repo = VectorStoreRepository()
+rag_document_repository = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"])
+collection_service = CollectionService(vector_store_repo=vs_repo, document_repo=rag_document_repository)
 
 logger = logging.getLogger(__name__)
 session = boto3.Session()
 s3 = boto3.client("s3", region_name=os.environ["AWS_REGION"], config=retry_config)
 bedrock_agent = boto3.client("bedrock-agent", region_name=os.environ["AWS_REGION"], config=retry_config)
 ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
-rag_document_repository = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"])
 
 
 def pipeline_ingest(job: IngestionJob) -> None:
-    texts = []
-    metadatas = []
-    all_ids = []
+    """
+    Ingest a single document or batch of documents.
+
+    Routes to appropriate handler based on job type.
+    """
+    if job.job_type == JobActionType.DOCUMENT_BATCH_INGESTION:
+        pipeline_ingest_documents(job)
+    else:
+        pipeline_ingest_document(job)
+
+
+def pipeline_ingest_document(job: IngestionJob) -> None:
+    """Ingest a single document."""
+    texts: list[str] = []
+    metadatas: list[dict] = []
+    all_ids: list[str] = []
     try:
         # chunk and save chunks in vector store
         repository = vs_repo.find_repository_by_id(job.repository_id)
         if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
-            ingest_document_to_kb(
-                s3_client=s3,
-                bedrock_agent_client=bedrock_agent,
-                job=job,
-                repository=repository,
+            # Bedrock KB path: Copy document to KB bucket and track
+            bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
+            kb_bucket = bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket")
+
+            # Determine if document needs to be copied to KB bucket
+            source_bucket = job.s3_path.split("/")[2]
+            needs_copy = source_bucket != kb_bucket
+
+            # Set canonical KB path
+            kb_s3_path = f"s3://{kb_bucket}/{os.path.basename(job.s3_path)}"
+
+            if needs_copy:
+                # Document uploaded to LISA bucket, needs to be copied to KB bucket
+                logger.info(
+                    f"Document {job.s3_path} uploaded to LISA bucket. " f"Copying to KB data source bucket {kb_bucket}"
+                )
+
+            # Check if document already exists (idempotent operation)
+            existing_docs = list(
+                rag_document_repository.find_by_source(
+                    job.repository_id, job.collection_id, kb_s3_path, join_docs=False
+                )
             )
-        else:
-            documents = generate_chunks(job)
-            texts, metadatas = prepare_chunks(documents, job.repository_id)
-            all_ids = store_chunks_in_vectorstore(texts, metadatas, job.repository_id, job.collection_id)
+
+            if existing_docs and not needs_copy:
+                # Document already tracked and in KB bucket, update upload_date and return
+                existing_doc = existing_docs[0]
+                existing_doc.upload_date = int(datetime.now(timezone.utc).timestamp() * 1000)
+                rag_document_repository.save(existing_doc)
+
+                job.status = IngestionStatus.INGESTION_COMPLETED
+                job.document_id = existing_doc.document_id
+                ingestion_job_repository.save(job)
+                logger.info(f"Document {kb_s3_path} already tracked, updated upload_date")
+                return
+
+            # Copy document to KB bucket if needed (user upload via LISA)
+            if needs_copy:
+                try:
+                    # This will copy file to KB bucket, delete from source, and trigger KB ingestion
+                    ingest_document_to_kb(
+                        s3_client=s3,
+                        bedrock_agent_client=bedrock_agent,
+                        job=job,
+                        repository=repository,
+                    )
+                    logger.info(f"Copied document from {job.s3_path} to {kb_s3_path}")
+                except Exception as e:
+                    logger.error(f"Failed to copy document to KB bucket: {e}")
+                    raise
+
+            rag_document = RagDocument(
+                repository_id=job.repository_id,
+                collection_id=job.collection_id,
+                document_name=os.path.basename(kb_s3_path),
+                source=kb_s3_path,  # Use KB bucket path as canonical source
+                subdocs=[],  # Empty - KB manages chunks internally
+                chunk_strategy=NoneChunkingStrategy(),  # KB manages chunking
+                username=job.username,
+                ingestion_type=job.ingestion_type,
+            )
+            rag_document_repository.save(rag_document)
+
+            # Generate and upload metadata.json file for Bedrock KB
+            try:
+                metadata_generator = MetadataGenerator()
+                s3_metadata_manager = S3MetadataManager()
+
+                # Get collection for metadata
+                collection = None
+                try:
+                    collection = collection_service.get_collection(
+                        collection_id=job.collection_id,
+                        repository_id=job.repository_id,
+                        username="system",
+                        user_groups=[],
+                        is_admin=True,
+                    )
+                except Exception as e:
+                    logger.warning(f"Could not fetch collection for metadata: {e}")
+
+                # Generate metadata content
+                metadata_content = metadata_generator.generate_metadata_json(
+                    repository=repository, collection=collection, document_metadata=job.metadata
+                )
+
+                # Extract bucket and key from S3 path
+                bucket_name = kb_s3_path.split("/")[2]
+                document_key = "/".join(kb_s3_path.split("/")[3:])
+
+                # Upload metadata file
+                s3_metadata_manager.upload_metadata_file(
+                    s3_client=s3, bucket=bucket_name, document_key=document_key, metadata_content=metadata_content
+                )
+                logger.info(f"Created metadata file for {kb_s3_path}")
+            except Exception as e:
+                logger.error(f"Failed to create metadata file for {kb_s3_path}: {e}")
+                # Continue with ingestion even if metadata fails
+
+            job.status = IngestionStatus.INGESTION_COMPLETED
+            job.document_id = rag_document.document_id
+            ingestion_job_repository.save(job)
+            logger.info(
+                f"Tracked document {kb_s3_path} for Bedrock KB repository {job.repository_id}. "
+                f"KB will handle ingestion automatically."
+            )
+            return  # Early return for Bedrock KB path
+
+        # Non-Bedrock KB path
+        documents = generate_chunks(job)
+        texts, metadatas = prepare_chunks(documents, job.repository_id, job.collection_id)
+        all_ids = store_chunks_in_vectorstore(
+            texts=texts,
+            metadatas=metadatas,
+            repository_id=job.repository_id,
+            collection_id=job.collection_id,
+            embedding_model=job.embedding_model,
+        )
 
         # remove old
-        for rag_document in rag_document_repository.find_by_source(
-            job.repository_id, job.collection_id, job.s3_path, join_docs=True
+        for rag_document in list(
+            rag_document_repository.find_by_source(job.repository_id, job.collection_id, job.s3_path, join_docs=True)
         ):
             prev_job = ingestion_job_repository.find_by_document(rag_document.document_id)
 
@@ -112,12 +246,97 @@ def pipeline_ingest(job: IngestionJob) -> None:
         raise Exception(error_msg)
 
 
+def pipeline_ingest_documents(job: IngestionJob) -> None:
+    """
+    Ingest multiple documents in batch (up to 100 at a time).
+
+    Processes documents from s3_paths field containing list of S3 paths.
+    """
+    try:
+        logger.info(f"Starting batch ingestion for job {job.id}")
+
+        # Extract document list from s3_paths field
+        if not job.s3_paths:
+            raise ValueError("Batch ingestion job missing 's3_paths' field")
+
+        document_paths = job.s3_paths
+        if not isinstance(document_paths, list):
+            raise ValueError("'s3_paths' must be a list")
+
+        if len(document_paths) > 100:
+            raise ValueError(f"Batch size {len(document_paths)} exceeds maximum of 100 documents")
+
+        logger.info(f"Processing {len(document_paths)} documents in batch")
+
+        # Update job status
+        ingestion_job_repository.update_status(job, IngestionStatus.INGESTION_IN_PROGRESS)
+
+        # Process each document and collect document IDs
+        successful = 0
+        failed = 0
+        errors = []
+        document_ids = []
+
+        for s3_path in document_paths:
+            try:
+                # Create individual job for each document
+                doc_job = IngestionJob(
+                    repository_id=job.repository_id,
+                    collection_id=job.collection_id,
+                    embedding_model=job.embedding_model,
+                    chunk_strategy=job.chunk_strategy,
+                    s3_path=s3_path,
+                    username=job.username,
+                    metadata=job.metadata,
+                    ingestion_type=job.ingestion_type,
+                    job_type=JobActionType.DOCUMENT_INGESTION,
+                )
+
+                # Process the document
+                pipeline_ingest_document(doc_job)
+                successful += 1
+                document_ids.append(doc_job.document_id)
+                logger.info(f"Successfully ingested document {s3_path}")
+
+            except Exception as e:
+                failed += 1
+                error_msg = f"Failed to ingest {s3_path}: {str(e)}"
+                logger.error(error_msg, exc_info=True)
+                errors.append(error_msg)
+
+        # Update job with document IDs and results
+        job.document_ids = document_ids
+        if not job.metadata:
+            job.metadata = {}
+        job.metadata["results"] = {
+            "successful": successful,
+            "failed": failed,
+            "errors": errors[:10],  # Limit error messages
+        }
+
+        if failed == 0:
+            ingestion_job_repository.update_status(job, IngestionStatus.INGESTION_COMPLETED)
+            logger.info(f"Batch ingestion completed: {successful} successful, {failed} failed")
+        else:
+            ingestion_job_repository.update_status(job, IngestionStatus.INGESTION_FAILED)
+            logger.warning(f"Batch ingestion completed with errors: {successful} successful, {failed} failed")
+
+    except Exception as e:
+        ingestion_job_repository.update_status(job, IngestionStatus.INGESTION_FAILED)
+        error_msg = f"Failed to process batch ingestion: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        raise Exception(error_msg)
+
+
 def remove_document_from_vectorstore(doc: RagDocument) -> None:
-    # Delete from the Vector Store
+    """Delete document from vector store using repository service."""
+    vs_repo = VectorStoreRepository()
+    repository = vs_repo.find_repository_by_id(doc.repository_id)
+
+    service = RepositoryServiceFactory.create_service(repository)
     embeddings = RagEmbeddings(model_name=doc.collection_id)
-    vector_store = get_vector_store_client(
-        doc.repository_id,
-        index=doc.collection_id,
+    vector_store = service.get_vector_store_client(
+        collection_id=doc.collection_id,
         embeddings=embeddings,
     )
     vector_store.delete(doc.subdocs)
@@ -132,28 +351,73 @@ def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
     bucket = detail.get("bucket", None)
     username = get_username(event)
     key = detail.get("key", None)
+
+    # Safety check: filter out metadata files (should be filtered by EventBridge)
+    if key and key.endswith(".metadata.json"):
+        logger.warning(f"Metadata file event reached Lambda (should be filtered by EventBridge): {key}")
+        return
     repository_id = detail.get("repositoryId", None)
     pipeline_config = detail.get("pipelineConfig", None)
-    embedding_model = pipeline_config.get("embeddingModel", None)
     s3_path = f"s3://{bucket}/{key}"
 
-    logger.info(f"Ingesting object {s3_path} for repository {repository_id}/{embedding_model}")
+    # Get repository to determine type and configuration
+    repository = vs_repo.find_repository_by_id(repository_id)
 
-    chunk_strategy = extract_chunk_strategy(pipeline_config)
+    # For Bedrock KB repositories, use data source ID as collection ID
+    if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
+        bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
+        data_source_id = bedrock_config.get("bedrockKnowledgeDatasourceId")
 
-    # create ingestion job and save it to dynamodb
+        if not data_source_id:
+            logger.error(f"Bedrock KB repository {repository_id} missing data source ID")
+            return
+
+        collection_id = data_source_id
+        embedding_model = repository.get("embeddingModelId")
+        chunk_strategy = NoneChunkingStrategy()  # KB manages chunking
+
+        # Set username to "system" for auto-ingestion from KB bucket
+        username = "system"
+        ingestion_type = IngestionType.AUTO
+
+        logger.info(
+            f"Processing Bedrock KB document {s3_path} for repository {repository_id}, " f"collection {collection_id}"
+        )
+    else:
+        # Non-Bedrock KB path (existing logic)
+        collection_id = pipeline_config.get("collectionId", None)
+        embedding_model = pipeline_config.get("embeddingModel", None)
+
+        if collection_id:
+            collection = collection_service.get_collection(
+                collection_id=collection_id, repository_id=repository_id, is_admin=True, username="", user_groups=[]
+            )
+
+            if collection.embeddingModel is not None:
+                embedding_model = collection.embeddingModel
+        else:
+            collection_id = embedding_model
+
+        chunk_strategy = extract_chunk_strategy(pipeline_config)
+        ingestion_type = IngestionType.MANUAL
+
+        logger.info(f"Ingesting object {s3_path} for repository {repository_id}/{embedding_model}")
+
+    # Create ingestion job and save it to dynamodb
     job = IngestionJob(
         repository_id=repository_id,
-        collection_id=embedding_model,
+        collection_id=collection_id,
+        embedding_model=embedding_model,
         chunk_strategy=chunk_strategy,
         s3_path=s3_path,
         username=username,
-        ingestion_type=IngestionType.MANUAL,
+        ingestion_type=ingestion_type,
+        metadata=None,
     )
     ingestion_job_repository.save(job)
-    ingestion_service.create_ingest_job(job)
+    ingestion_service.submit_create_job(job)
 
-    logger.info(f"Ingesting document {s3_path} for repository {repository_id}")
+    logger.info(f"Submitted ingestion job for document {s3_path} in repository {repository_id}")
 
 
 def handle_pipline_ingest_schedule(event: Dict[str, Any], context: Any) -> None:
@@ -228,9 +492,10 @@ def handle_pipline_ingest_schedule(event: Dict[str, Any], context: Any) -> None:
                 s3_path=f"s3://{bucket}/{key}",
                 username=username,
                 ingestion_type=IngestionType.AUTO,
+                metadata=None,
             )
             ingestion_job_repository.save(job)
-            ingestion_service.create_ingest_job(job)
+            ingestion_service.submit_create_job(job)
 
         logger.info(f"Found {len(modified_keys)} modified files in {bucket}{prefix}")
     except Exception as e:
@@ -257,15 +522,48 @@ def batch_texts(texts: List[str], metadatas: List[Dict], batch_size: int = 500) 
     return batches
 
 
-def extract_chunk_strategy(pipeline_config: Dict) -> FixedChunkingStrategy:
-    """Extract and validate configuration parameters."""
-    chunk_size = int(pipeline_config["chunkSize"])
-    chunk_overlap = int(pipeline_config["chunkOverlap"])
+def extract_chunk_strategy(pipeline_config: Dict) -> ChunkingStrategy:
+    """
+    Extract and validate chunking strategy from pipeline configuration.
 
-    return FixedChunkingStrategy(size=chunk_size, overlap=chunk_overlap)
+    Supports both new chunkingStrategy object format and legacy flat fields for backward compatibility.
+    Uses Pydantic model validation to ensure data integrity.
+
+    Args:
+        pipeline_config: Pipeline configuration dictionary
+
+    Returns:
+        ChunkingStrategy object (validated Pydantic model)
+
+    Raises:
+        ValueError: If chunking strategy type is unsupported or validation fails
+    """
+    # Check for new chunkingStrategy object format first
+    if "chunkingStrategy" in pipeline_config and pipeline_config["chunkingStrategy"]:
+        chunking_strategy = pipeline_config["chunkingStrategy"]
+        chunk_type = chunking_strategy.get("type", "fixed")
+
+        if chunk_type == "fixed":
+            # Use Pydantic model validation for type safety and validation
+            return FixedChunkingStrategy.model_validate(chunking_strategy)
+        else:
+            # Future: Handle other chunking strategy types (semantic, recursive, etc.)
+            raise ValueError(f"Unsupported chunking strategy type: {chunk_type}")
+
+    # Fall back to legacy flat fields for backward compatibility
+    elif "chunkSize" in pipeline_config and "chunkOverlap" in pipeline_config:
+        chunk_size = int(pipeline_config["chunkSize"])
+        chunk_overlap = int(pipeline_config["chunkOverlap"])
+        # Use Pydantic model for validation
+        return FixedChunkingStrategy(size=chunk_size, overlap=chunk_overlap)
+
+    # Default values if neither format is present
+    else:
+        logger.warning("No chunking strategy found in pipeline config, using defaults")
+        return FixedChunkingStrategy(size=512, overlap=51)
 
 
-def prepare_chunks(docs: List, repository_id: str) -> tuple[List[str], List[Dict]]:
+def prepare_chunks(docs: List, repository_id: str, collection_id: str) -> tuple[List[str], List[Dict]]:
     """Prepare texts and metadata from document chunks."""
     texts = []
     metadatas = []
@@ -273,19 +571,23 @@ def prepare_chunks(docs: List, repository_id: str) -> tuple[List[str], List[Dict
     for doc in docs:
         texts.append(doc.page_content)
         doc.metadata["repository_id"] = repository_id
+        doc.metadata["collection_id"] = collection_id
         metadatas.append(doc.metadata)
 
     return texts, metadatas
 
 
 def store_chunks_in_vectorstore(
-    texts: List[str], metadatas: List[Dict], repository_id: str, embedding_model: str
+    texts: List[str], metadatas: List[Dict], repository_id: str, collection_id: str, embedding_model: str
 ) -> List[str]:
-    """Store document chunks in vector store."""
+    """Store document chunks in vector store using repository service."""
+    vs_repo = VectorStoreRepository()
+    repository = vs_repo.find_repository_by_id(repository_id)
+
+    service = RepositoryServiceFactory.create_service(repository)
     embeddings = RagEmbeddings(model_name=embedding_model)
-    vs = get_vector_store_client(
-        repository_id,
-        index=embedding_model,
+    vs = service.get_vector_store_client(
+        collection_id=collection_id,
         embeddings=embeddings,
     )
 

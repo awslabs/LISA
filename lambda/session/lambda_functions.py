@@ -27,8 +27,8 @@ import boto3
 import create_env_variables  # noqa: F401
 from botocore.exceptions import ClientError
 from cachetools import cached, TTLCache
-from utilities.auth import get_username
-from utilities.common_functions import api_wrapper, get_groups, get_session_id, retry_config
+from utilities.auth import get_user_context, get_username
+from utilities.common_functions import api_wrapper, get_session_id, retry_config
 from utilities.encoders import convert_decimal
 from utilities.session_encryption import decrypt_session_fields, migrate_session_to_encrypted, SessionEncryptionError
 
@@ -469,7 +469,7 @@ def rename_session(event: dict, context: dict) -> dict:
 def put_session(event: dict, context: dict) -> dict:
     """Append the message to the record in DynamoDB."""
     try:
-        user_id = get_username(event)
+        user_id, _, groups = get_user_context(event)
         session_id = get_session_id(event)
 
         try:
@@ -578,7 +578,7 @@ def put_session(event: dict, context: dict) -> dict:
                     "userId": user_id,
                     "sessionId": session_id,
                     "messages": messages,
-                    "userGroups": get_groups(event),
+                    "userGroups": groups,
                     "timestamp": datetime.now().isoformat(),
                 }
                 sqs_client.send_message(

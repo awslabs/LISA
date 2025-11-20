@@ -9,7 +9,7 @@ repos:
       entry: scripts/verify-config.sh
       verbose: true
       language: script
-      files: config.yaml
+      files: config-base.yaml
 
 - repo: https://github.com/PyCQA/bandit
   rev: '1.7.10'
@@ -65,7 +65,8 @@ repos:
     - id: ruff
       args:
         - --exit-non-zero-on-fix
-        - --per-file-ignores=test/**/*.py:E402
+        - --per-file-ignores=test/**/*.py:E402,test/**/*.py:PLC0415
+        - --fix
       exclude: \.ipynb$
 
 - repo: https://github.com/pycqa/flake8
@@ -81,7 +82,7 @@ repos:
       args:
         - --max-line-length=120
         - --extend-immutable-calls=Query,fastapi.Depends,fastapi.params.Depends
-        - --ignore=B008,E203, W503 # Ignore error for function calls in argument defaults
+        - --ignore=B008,E203,W503 # Ignore error for function calls in argument defaults
       exclude: ^(__init__.py$|.*\/__init__.py$)
 
 

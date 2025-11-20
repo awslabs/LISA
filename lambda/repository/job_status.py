@@ -12,15 +12,24 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""Pydantic models for job status responses."""
+"""Job status helper functions."""
 
-from pydantic import BaseModel
+from models.domain_objects import IngestionStatus
 
 
-class JobStatus(BaseModel):
-    """Job status details returned by list_jobs_by_repository."""
+def is_terminal_status(status: IngestionStatus) -> bool:
+    """Check if status is terminal."""
+    return status in [
+        IngestionStatus.INGESTION_COMPLETED,
+        IngestionStatus.INGESTION_FAILED,
+        IngestionStatus.DELETE_COMPLETED,
+        IngestionStatus.DELETE_FAILED,
+    ]
 
-    status: str
-    document: str
-    auto: bool
-    created_date: str
+
+def is_success_status(status: IngestionStatus) -> bool:
+    """Check if status is success."""
+    return status in [
+        IngestionStatus.INGESTION_COMPLETED,
+        IngestionStatus.DELETE_COMPLETED,
+    ]

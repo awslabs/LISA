@@ -1,0 +1,45 @@
+/**
+ Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+ Licensed under the Apache License, Version 2.0 (the "License").
+ You may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ */
+
+import { ReactElement, useEffect } from 'react';
+import { Header } from '@cloudscape-design/components';
+import SpaceBetween from '@cloudscape-design/components/space-between';
+import RepositoryTable from './RepositoryTable';
+import { useAppDispatch } from '@/config/store';
+import { setBreadcrumbs } from '@/shared/reducers/breadcrumbs.reducer';
+
+export function RepositoryManagementComponent (): ReactElement {
+    const dispatch = useAppDispatch();
+    useEffect(() => {
+        dispatch(setBreadcrumbs([
+            { text: 'RAG Management', href: '/repository-management' }
+        ]));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+    return (
+        <SpaceBetween size='m'>
+            <Header
+                variant='h1'
+                description='Manage RAG repositories and vector stores'
+            >
+                RAG Management
+            </Header>
+            <RepositoryTable />
+        </SpaceBetween>
+    );
+}
+
+export default RepositoryManagementComponent;

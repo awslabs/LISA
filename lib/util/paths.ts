@@ -38,6 +38,8 @@ export const VECTOR_STORE_DEPLOYER_PATH = path.join(ROOT_PATH, 'vector_store_dep
 export const VECTOR_STORE_DEPLOYER_DIST_PATH = path.join(VECTOR_STORE_DEPLOYER_PATH, 'dist');
 export const ECS_MODEL_DEPLOYER_PATH = path.join(ROOT_PATH, 'ecs_model_deployer');
 export const ECS_MODEL_DEPLOYER_DIST_PATH = path.join(ECS_MODEL_DEPLOYER_PATH, 'dist');
+export const MCP_SERVER_DEPLOYER_PATH = path.join(ROOT_PATH, 'mcp_server_deployer');
+export const MCP_SERVER_DEPLOYER_DIST_PATH = path.join(MCP_SERVER_DEPLOYER_PATH, 'dist');
 
 export const DOCS_PATH = path.join(ROOT_PATH, 'lib', 'docs');
 export const DOCS_DIST_PATH = path.join(DOCS_PATH, 'dist');

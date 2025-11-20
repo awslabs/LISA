@@ -13,37 +13,48 @@
 #   limitations under the License.
 
 """Lambda functions for RAG repository API."""
+
 import json
 import logging
 import os
 import urllib.parse
+from types import SimpleNamespace
 from typing import Any, cast, Dict, List, Optional
 
 import boto3
 from boto3.dynamodb.types import TypeSerializer
 from botocore.config import Config
 from models.domain_objects import (
-    FixedChunkingStrategy,
+    FilterParams,
+    IngestDocumentRequest,
     IngestionJob,
     IngestionStatus,
+    IngestionType,
     ListJobsResponse,
     PaginationParams,
     PaginationResult,
+    RagCollectionConfig,
     RagDocument,
+    SortParams,
+    UpdateVectorStoreRequest,
+    VectorStoreConfig,
+    VectorStoreStatus,
 )
+from repository.collection_service import CollectionService
 from repository.config.params import ListJobsParams
-from repository.embeddings import RagEmbeddings
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
+from repository.metadata_generator import MetadataGenerator
 from repository.rag_document_repo import RagDocumentRepository
+from repository.s3_metadata_manager import S3MetadataManager
+from repository.services import RepositoryServiceFactory
 from repository.vector_store_repo import VectorStoreRepository
-from utilities.auth import admin_only, get_user_context, get_username, is_admin
-from utilities.bedrock_kb import retrieve_documents
-from utilities.common_functions import api_wrapper, get_groups, get_id_token, retry_config, user_has_group_access
+from utilities.auth import admin_only, get_groups, get_user_context, get_username, is_admin, user_has_group_access
+from utilities.bedrock_kb import add_default_pipeline_for_bedrock_kb
+from utilities.common_functions import api_wrapper, retry_config
 from utilities.exceptions import HTTPException
 from utilities.repository_types import RepositoryType
 from utilities.validation import ValidationError
-from utilities.vector_store import get_vector_store_client
 
 logger = logging.getLogger(__name__)
 region_name = os.environ["AWS_REGION"]
@@ -68,6 +79,7 @@ doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["R
 vs_repo = VectorStoreRepository()
 ingestion_service = DocumentIngestionService()
 ingestion_job_repository = IngestionJobRepository()
+collection_service = CollectionService(vector_store_repo=vs_repo, document_repo=doc_repo)
 
 
 @api_wrapper
@@ -82,13 +94,12 @@ def list_all(event: dict, context: dict) -> List[Dict[str, Any]]:
     Returns:
         List of repository configurations user can access
     """
-    user_groups = get_groups(event)
+    _, is_admin, groups = get_user_context(event)
     registered_repositories = vs_repo.get_registered_repositories()
-    admin_override = is_admin(event)
     return [
         repo
         for repo in registered_repositories
-        if admin_override or user_has_group_access(user_groups, repo.get("allowedGroups", []))
+        if is_admin or user_has_group_access(groups, repo.get("allowedGroups", []))
     ]
 
 
@@ -113,7 +124,10 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
 
     Args:
         event (dict): The Lambda event object containing:
-            - queryStringParameters.modelName: Name of the embedding model
+            - queryStringParameters.modelName (optional): Name of the embedding model
+              (not needed if collectionId provided)
+            - queryStringParameters.collectionName (optional): Collection ID to search within. Will override
+                any modelName.
             - queryStringParameters.query: Search query text
             - queryStringParameters.repositoryType: Type of repository
             - queryStringParameters.topK (optional): Number of results to return (default: 3)
@@ -127,41 +141,53 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     Raises:
         ValidationError: If required parameters are missing or invalid
     """
-    query_string_params = event["queryStringParameters"]
-    model_name = query_string_params["modelName"]
-    query = query_string_params["query"]
-    top_k = query_string_params.get("topK", 3)
+    query_string_params = event.get("queryStringParameters")
+    path_params = event.get("pathParameters")
+    query = query_string_params.get("query")
+    top_k = int(query_string_params.get("topK", 3))
     include_score = query_string_params.get("score", "false").lower() == "true"
-    repository_id = event["pathParameters"]["repositoryId"]
+    repository_id = path_params.get("repositoryId")
+    collection_id = query_string_params.get("collectionId")
 
     repository = get_repository(event, repository_id=repository_id)
 
-    id_token = get_id_token(event)
+    # Get user context for collection access
+    username, is_admin, groups = get_user_context(event)
 
-    docs: List[Dict[str, Any]] = []
-    if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
-        docs = retrieve_documents(
-            bedrock_runtime_client=bedrock_client,
-            repository=repository,
-            query=query,
-            top_k=int(top_k),
+    is_default = collection_id is not None and collection_id == repository.get("embeddingModelId")
+    # Determine embedding model
+    model_name = (
+        collection_service.get_collection_model(
             repository_id=repository_id,
+            collection_id=collection_id if not is_default else None,
+            username=username,
+            user_groups=groups,
+            is_admin=is_admin,
         )
-    else:
-        embeddings = RagEmbeddings(model_name=model_name, id_token=id_token)
-        vs = get_vector_store_client(repository_id, index=model_name, embeddings=embeddings)
+        if collection_id
+        else query_string_params.get("modelName")
+    )
 
-        # empty vector stores do not have an initialize index. Return empty docs
-        if RepositoryType.is_type(repository, RepositoryType.OPENSEARCH) and not vs.client.indices.exists(
-            index=model_name
-        ):
-            logger.info(f"Index {model_name} does not exist. Returning empty docs.")
-        else:
-            docs = (
-                _similarity_search_with_score(vs, query, top_k, repository)
-                if include_score
-                else _similarity_search(vs, query, top_k)
-            )
+    if not model_name and not RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
+        raise ValidationError("modelName is required when collectionId is not provided")
+
+    # Use repository service for similarity search
+    service = RepositoryServiceFactory.create_service(repository)
+
+    # Use collection_id as vector store index if provided, otherwise use model_name
+    search_collection_id = collection_id or model_name
+    logger.info(f"Searching in collection: {search_collection_id} with embedding model: {model_name}")
+
+    # Delegate to service for retrieval - service handles repository-specific logic
+    docs = service.retrieve_documents(
+        query=query,
+        collection_id=search_collection_id,
+        top_k=top_k,
+        model_name=model_name,
+        include_score=include_score,
+        bedrock_agent_client=bedrock_client if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB) else None,
+    )
+
     doc_content = [
         {
             "Document": {
@@ -177,23 +203,523 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     return doc_return
 
 
-def get_repository(event: dict[str, Any], repository_id: str) -> None:
-    repo = vs_repo.find_repository_by_id(repository_id)
-    """Ensures a user has access to the repository or else raises an HTTPException"""
-    if is_admin(event) is False:
-        user_groups = json.loads(event["requestContext"]["authorizer"]["groups"]) or []
-        if not user_has_group_access(user_groups, repo.get("allowedGroups", [])):
-            raise HTTPException(status_code=403, message="User does not have permission to access this repository")
+def get_repository(event: dict[str, Any], repository_id: str) -> dict[str, Any]:
+    """Ensures a user has access to the repository or else raises an HTTPException."""
+    repo: dict[str, Any] = vs_repo.find_repository_by_id(repository_id)
+
+    # Admins have access to all repositories
+    if is_admin(event):
+        return repo
+
+    # Non-admins must have matching group access
+    user_groups = get_groups(event)
+    if not user_has_group_access(user_groups, repo.get("allowedGroups", [])):
+        raise HTTPException(status_code=403, message="User does not have permission to access this repository")
+
     return repo
 
 
-def _ensure_document_ownership(event: dict[str, Any], docs: list[dict[str, Any]]) -> None:
+def create_bedrock_collection(event: dict, context: dict) -> Dict[str, Any]:
+    """
+    Create a default collection for a Bedrock Knowledge Base repository.
+    This is called by the state machine during repository creation.
+
+    Args:
+        event (dict): The Lambda event object containing:
+            - ragConfig: Repository configuration with repositoryId
+        context (dict): The Lambda context object
+
+    Returns:
+        Dict[str, Any]: A dictionary containing the created collection configuration
+
+    Raises:
+        ValidationError: If validation fails
+        HTTPException: If repository not found
+    """
+    try:
+        # Extract repository config from state machine input
+        rag_config = event.get("ragConfig", {})
+        repository_id = rag_config.get("repositoryId")
+
+        if not repository_id:
+            raise ValidationError("repositoryId is required in ragConfig")
+
+        logger.info(f"Creating default collection for Bedrock KB repository: {repository_id}")
+
+        # Get repository configuration
+        repository = vs_repo.find_repository_by_id(repository_id=repository_id)
+
+        # Use repository service to create default collection
+        service = RepositoryServiceFactory.create_service(repository)
+        collection = service.create_default_collection()
+
+        if collection is None:
+            raise ValidationError(f"Failed to create default collection for repository {repository_id}")
+
+        # Save the collection
+        collection_service.create_collection(collection=collection, username="system")
+        logger.info(f"Successfully created default collection: {collection.collectionId}")
+
+        # Return collection configuration
+        result: dict[str, Any] = collection.model_dump(mode="json")
+        return result
+
+    except Exception as e:
+        logger.error(f"Error creating Bedrock collection: {str(e)}")
+        raise
+
+
+@api_wrapper
+@admin_only
+def create_collection(event: dict, context: dict) -> Dict[str, Any]:
+    """
+    Create a new collection within a vector store.
+
+    Args:
+        event (dict): The Lambda event object containing:
+            - pathParameters.repositoryId: The parent repository ID
+            - body: JSON with collection configuration (RagCollectionConfig)
+        context (dict): The Lambda context object
+
+    Returns:
+        Dict[str, Any]: A dictionary containing the created collection configuration
+
+    Raises:
+        ValidationError: If validation fails or user lacks permission
+        HTTPException: If repository not found or access denied
+    """
+    # Extract path parameters
+    path_params = event.get("pathParameters", {})
+    repository_id = path_params.get("repositoryId")
+
+    if not repository_id:
+        raise ValidationError("repositoryId is required")
+
+    # Get user context
+    username, _, _ = get_user_context(event)
+
+    # Ensure repository exists and user has access
+    repository = get_repository(event, repository_id=repository_id)
+
+    # Block user-created collections for Bedrock Knowledge Base repositories
+    if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
+        raise ValidationError(
+            "Bedrock Knowledge Base repositories do not support user created collections. "
+            "Update the repository to add a new datasource collection."
+        )
+
+    # Parse request body
+    try:
+        body = json.loads(event.get("body", {}))
+        # Add required fields
+        body["repositoryId"] = repository_id
+        body["createdBy"] = username
+        collection = RagCollectionConfig(**body)
+    except json.JSONDecodeError as e:
+        raise ValidationError(f"Invalid JSON in request body: {e}")
+    except Exception as e:
+        raise ValidationError(f"Invalid request: {e}")
+
+    # Create collection via service
+    created_collection = collection_service.create_collection(
+        collection=collection,
+        username=username,
+    )
+
+    # Return collection configuration
+    result: dict[str, Any] = created_collection.model_dump(mode="json")
+    return result
+
+
+@api_wrapper
+def get_collection(event: dict, context: dict) -> Dict[str, Any]:
+    """
+    Get a collection by ID within a vector store.
+
+    Args:
+        event (dict): The Lambda event object containing:
+            - pathParameters.repositoryId: The parent repository ID
+            - pathParameters.collectionId: The collection ID
+        context (dict): The Lambda context object
+
+    Returns:
+        Dict[str, Any]: A dictionary containing the collection configuration
+
+    Raises:
+        ValidationError: If collection not found or user lacks permission
+        HTTPException: If repository not found or access denied
+    """
+    # Extract path parameters
+    path_params = event.get("pathParameters", {})
+    repository_id = path_params.get("repositoryId")
+    collection_id = path_params.get("collectionId")
+
+    if not repository_id:
+        raise ValidationError("repositoryId is required")
+    if not collection_id:
+        raise ValidationError("collectionId is required")
+
+    # Get user context
+    username, is_admin, groups = get_user_context(event)
+
+    # Ensure repository exists and user has access
+    repo = get_repository(event, repository_id=repository_id)
+
+    if repo.get("embeddingModelId") == collection_id:
+        # Not a real collection - create virtual default collection
+        service = RepositoryServiceFactory.create_service(repo)
+        collection = service.create_default_collection()
+    else:
+        # Get collection via service (includes access control check)
+        collection = collection_service.get_collection(
+            repository_id=repository_id,
+            collection_id=collection_id,
+            username=username,
+            user_groups=groups,
+            is_admin=is_admin,
+        )
+
+    if collection is None:
+        raise HTTPException(
+            status_code=404, message=f"Collection '{collection_id}' not found in repository '{repository_id}'"
+        )
+
+    # Return collection configuration
+    result: dict[str, Any] = collection.model_dump(mode="json")
+    return result
+
+
+@api_wrapper
+@admin_only
+def update_collection(event: dict, context: dict) -> Dict[str, Any]:
+    """
+    Update a collection within a vector store.
+
+    Args:
+        event (dict): The Lambda event object containing:
+            - pathParameters.repositoryId: The parent repository ID
+            - pathParameters.collectionId: The collection ID
+            - body: JSON with partial collection updates (RagCollectionConfig)
+        context (dict): The Lambda context object
+
+    Returns:
+        Dict[str, Any]: A dictionary containing:
+            - collection: The updated collection configuration
+            - warnings: List of warning messages (e.g., chunking strategy changes)
+
+    Raises:
+        ValidationError: If validation fails or user lacks permission
+        HTTPException: If repository or collection not found or access denied
+    """
+    # Extract path parameters
+    path_params = event.get("pathParameters", {})
+    repository_id = path_params.get("repositoryId")
+    collection_id = path_params.get("collectionId")
+
+    if not repository_id:
+        raise ValidationError("repositoryId is required")
+    if not collection_id:
+        raise ValidationError("collectionId is required")
+
+    # Get user context
+    username, is_admin, groups = get_user_context(event)
+
+    # Ensure repository exists and user has access
+    _ = get_repository(event, repository_id=repository_id)
+
+    # Parse request body - accept partial updates as a dictionary
+    try:
+        body = json.loads(event.get("body", {}))
+    except json.JSONDecodeError as e:
+        raise ValidationError(f"Invalid JSON in request body: {e}")
+
+    # Create a simple namespace object to hold the update fields
+    # The service layer expects an object with attributes, not a dict
+    request = SimpleNamespace(**body)
+
+    # Update collection via service (includes access control check)
+    updated_collection = collection_service.update_collection(
+        collection_id=collection_id,
+        repository_id=repository_id,
+        collection_data=request,
+        username=username,
+        user_groups=groups,
+        is_admin=is_admin,
+    )
+
+    result: dict[str, Any] = updated_collection.model_dump(mode="json")
+    return result
+
+
+@api_wrapper
+@admin_only
+def delete_collection(event: dict, context: dict) -> Dict[str, Any]:
+    """
+    Delete a collection (regular or default) within a vector store.
+
+    Path: /repository/{repositoryId}/collection/{collectionId}
+
+    Args:
+        event (dict): The Lambda event object containing:
+            - pathParameters.repositoryId: The parent repository ID
+            - pathParameters.collectionId: The collection ID (optional for default collections)
+            - queryStringParameters.embeddingName: Embedding model name (for default collections)
+        context (dict): The Lambda context object
+
+    Returns:
+        Dict[str, Any]: Dictionary with deletion type and job ID
+
+    Raises:
+        ValidationError: If validation fails or user lacks permission
+        HTTPException: If repository or collection not found or access denied
+    """
+    # Extract parameters
+    path_params = event.get("pathParameters", {})
+    query_params = event.get("queryStringParameters", {}) or {}
+
+    repository_id = path_params.get("repositoryId")
+    collection_id = path_params.get("collectionId")  # May be None for default collections
+    embedding_name = query_params.get("embeddingName")  # For default collections
+
+    if not repository_id:
+        raise ValidationError("repositoryId is required")
+
+    # Validate that we have either collectionId or embeddingName
+    if not collection_id and not embedding_name:
+        raise ValidationError("Either collectionId or embeddingName must be provided")
+
+    # Get user context
+    username, is_admin, groups = get_user_context(event)
+
+    # Ensure repository exists and user has access
+    repo = get_repository(event, repository_id=repository_id)
+
+    is_default_collection = repo.get("embeddingModelId") == collection_id
+    # Delete collection via service
+    result: Dict[str, Any] = collection_service.delete_collection(
+        repository_id=repository_id,
+        collection_id=collection_id,  # None for default collections
+        embedding_name=embedding_name if is_default_collection else None,  # None for regular collections
+        username=username,
+        user_groups=groups,
+        is_admin=is_admin,
+    )
+
+    return result
+
+
+@api_wrapper
+def list_collections(event: dict, context: dict) -> Dict[str, Any]:
+    """
+    List collections in a repository with pagination, filtering, and sorting.
+
+    Args:
+        event (dict): The Lambda event object containing:
+            - pathParameters.repositoryId: The parent repository ID
+            - queryStringParameters.page: Page number (optional, default: 1)
+            - queryStringParameters.pageSize: Items per page (optional, default: 20, max: 100)
+            - queryStringParameters.filter: Text filter for name/description (optional)
+            - queryStringParameters.status: Status filter (ACTIVE, ARCHIVED, DELETED) (optional)
+            - queryStringParameters.sortBy: Sort field (name, createdAt, updatedAt) (optional, default: createdAt)
+            - queryStringParameters.sortOrder: Sort order (asc, desc) (optional, default: desc)
+            - queryStringParameters.lastEvaluatedKey*: Pagination token fields (optional)
+        context (dict): The Lambda context object
+
+    Returns:
+        Dict[str, Any]: A dictionary containing:
+            - collections: List of collection configurations
+            - pagination: Pagination metadata (totalCount, currentPage, totalPages)
+            - lastEvaluatedKey: Pagination token for next page
+            - hasNextPage: Whether there are more pages
+            - hasPreviousPage: Whether there is a previous page
+
+    Raises:
+        ValidationError: If validation fails or user lacks permission
+        HTTPException: If repository not found or access denied
+    """
+    # Extract path parameters
+    path_params = event.get("pathParameters", {})
+    repository_id = path_params.get("repositoryId")
+
+    if not repository_id:
+        raise ValidationError("repositoryId is required")
+
+    # Get user context
+    username, is_admin, groups = get_user_context(event)
+
+    # Ensure repository exists and user has access
+    _ = get_repository(event, repository_id=repository_id)
+
+    # Parse query parameters
+    query_params = event.get("queryStringParameters", {}) or {}
+
+    # Parse pagination parameters using PaginationParams composition object
+    page_size = PaginationParams.parse_page_size(query_params, default=20, max_size=100)
+
+    # Define key fields based on the potential DynamoDB indexes being used
+    # collectionId is always present, status and createdAt are optional depending on the index
+    key_fields = ["collectionId", "status", "createdAt"]
+    last_evaluated_key = PaginationParams.parse_last_evaluated_key(query_params, key_fields)
+
+    # Parse filter parameters using FilterParams composition object
+    filter_params = FilterParams.from_query_params(query_params)
+    filter_text = filter_params.filter_text
+    status_filter = filter_params.status_filter
+
+    # Parse sort parameters using SortParams composition object
+    # sort_params = SortParams.from_query_params(query_params)
+    # sort_by = sort_params.sort_by
+    # sort_order = sort_params.sort_order
+
+    # List collections via service (includes access control filtering)
+    collections, next_key = collection_service.list_collections(
+        repository_id=repository_id,
+        username=username,
+        user_groups=groups,
+        is_admin=is_admin,
+        page_size=page_size,
+        last_evaluated_key=last_evaluated_key,
+    )
+
+    # Calculate pagination metadata
+    pagination_result = PaginationResult.from_keys(
+        original_key=last_evaluated_key,
+        returned_key=next_key,
+    )
+
+    # Get total count (optional - can be expensive for large datasets)
+    total_count = None
+    current_page = None
+    total_pages = None
+
+    # Only calculate total count if no filters are applied (for performance)
+    if not filter_text and not status_filter:
+        try:
+            total_count = collection_service.count_collections(repository_id=repository_id)
+
+            # Calculate page numbers if we have total count
+            if total_count is not None:
+                total_pages = (total_count + page_size - 1) // page_size
+                # Estimate current page based on whether we have a last_evaluated_key
+                current_page = 1 if not last_evaluated_key else None
+        except Exception as e:
+            logger.warning(f"Failed to get total count for repository {repository_id}: {e}")
+
+    # Build response
+    response = {
+        "collections": [c.model_dump(mode="json") for c in collections if c is not None],
+        "pagination": {
+            "totalCount": total_count,
+            "currentPage": current_page,
+            "totalPages": total_pages,
+        },
+        "lastEvaluatedKey": next_key,
+        "hasNextPage": pagination_result.has_next_page,
+        "hasPreviousPage": pagination_result.has_previous_page,
+    }
+
+    return response
+
+
+@api_wrapper
+def list_user_collections(event: dict, context: dict) -> Dict[str, Any]:
+    """
+    List all collections user has access to across all repositories.
+
+    Args:
+        event (dict): The Lambda event object containing:
+            - queryStringParameters.pageSize: Items per page (optional, default: 20, max: 100)
+            - queryStringParameters.filter: Text filter for name/description (optional)
+            - queryStringParameters.sortBy: Sort field (name, createdAt, updatedAt) (optional, default: createdAt)
+            - queryStringParameters.sortOrder: Sort order (asc, desc) (optional, default: desc)
+            - queryStringParameters.lastEvaluatedKey: Pagination token (optional, JSON string)
+        context (dict): The Lambda context object
+
+    Returns:
+        Dict[str, Any]: A dictionary containing:
+            - collections: List of collection configurations with repositoryName
+            - pagination: Pagination metadata
+            - lastEvaluatedKey: Pagination token for next page
+            - hasNextPage: Whether there are more pages
+            - hasPreviousPage: Whether there is a previous page
+
+    Raises:
+        ValidationError: If validation fails
+        HTTPException: If authentication fails
+    """
+    # Get user context
+    username, is_admin, groups = get_user_context(event)
+    logger.info(f"list_user_collections called by user={username}, is_admin={is_admin}")
+
+    # Parse query parameters
+    query_params = event.get("queryStringParameters", {}) or {}
+
+    # Parse pagination parameters
+    page_size = PaginationParams.parse_page_size(query_params, default=20, max_size=100)
+
+    # Parse pagination token
+    pagination_token = None
+    if "lastEvaluatedKey" in query_params:
+        try:
+            pagination_token = json.loads(query_params["lastEvaluatedKey"])
+        except (json.JSONDecodeError, TypeError) as e:
+            logger.warning(f"Failed to parse pagination token: {e}")
+            # Continue without token (start from beginning)
+
+    # Parse filter parameters
+    filter_params = FilterParams.from_query_params(query_params)
+    filter_text = filter_params.filter_text
+
+    # Parse sort parameters
+    sort_params = SortParams.from_query_params(query_params)
+
+    # List collections via service
+    collections, next_token = collection_service.list_all_user_collections(
+        username=username,
+        user_groups=groups,
+        is_admin=is_admin,
+        page_size=page_size,
+        pagination_token=pagination_token,
+        filter_text=filter_text,
+        sort_params=sort_params,
+    )
+
+    # Calculate pagination metadata
+    has_next_page = next_token is not None
+    has_previous_page = pagination_token is not None
+
+    # Encode next token as JSON string if present
+    encoded_next_token = None
+    if next_token:
+        try:
+            encoded_next_token = json.dumps(next_token)
+        except Exception as e:
+            logger.error(f"Failed to encode pagination token: {e}")
+
+    # Build response
+    response = {
+        "collections": collections,
+        "pagination": {
+            "totalCount": None,  # Not calculated for cross-repository queries
+            "currentPage": None,
+            "totalPages": None,
+        },
+        "lastEvaluatedKey": encoded_next_token,
+        "hasNextPage": has_next_page,
+        "hasPreviousPage": has_previous_page,
+    }
+
+    logger.info(f"Returning {len(collections)} collections, hasNextPage={has_next_page}")
+    return response
+
+
+def _ensure_document_ownership(event: dict[str, Any], docs: list[RagDocument]) -> None:
     """Verify ownership of documents"""
     username = get_username(event)
     if is_admin(event) is False:
         for doc in docs:
-            if not (doc.get("username") == username):
-                raise ValueError(f"Document {doc.get('document_id')} is not owned by {username}")
+            if not (doc.username == username):
+                raise ValueError(f"Document {doc.document_id} is not owned by {username}")
 
 
 @api_wrapper
@@ -204,7 +730,7 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
     Args:
         event (dict): The Lambda event object containing:
             - pathParameters.repositoryId: The repository id of VectorStore
-            - queryStringParameters.collectionId: The collection identifier
+            - queryStringParameters.collectionId: The collection ID
             - queryStringParameters.repositoryType: Type of repository of VectorStore
             - queryStringParameters.documentIds (optional): Array of document IDs to purge
             - queryStringParameters.documentName (optional): Name of document to purge
@@ -222,11 +748,14 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
     repository_id = path_params.get("repositoryId")
     query_string_params = event.get("queryStringParameters", {}) or {}
     collection_id = query_string_params.get("collectionId", None)
+
     body = json.loads(event.get("body", ""))
     document_ids = body.get("documentIds", None)
 
     if not document_ids:
         raise ValidationError("No 'documentIds' parameter supplied")
+    if not repository_id:
+        raise ValidationError("repositoryId is required")
 
     # Ensure repo access
     _ = get_repository(event, repository_id=repository_id)
@@ -244,6 +773,7 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
     # delete s3 files if
     doc_repo.delete_s3_docs(repository_id, rag_documents)
 
+    jobs = []
     for rag_document in rag_documents:
         logger.info(f"Deleting document {rag_document.model_dump()}")
 
@@ -254,6 +784,7 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
                 document_id=rag_document.document_id,
                 repository_id=rag_document.repository_id,
                 collection_id=rag_document.collection_id,
+                embedding_model=rag_document.collection_id,  # Not needed for deletion
                 chunk_strategy=None,
                 s3_path=rag_document.source,
                 username=rag_document.username,
@@ -264,61 +795,175 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
         ingestion_service.create_delete_job(ingestion_job)
         logger.info(f"Deleting document {rag_document.source} for repository {rag_document.repository_id}")
 
-    return {"documentIds": document_ids}
+        jobs.append(
+            {
+                "jobId": ingestion_job.id,
+                "documentId": ingestion_job.document_id,
+                "status": ingestion_job.status,
+                "s3Path": ingestion_job.s3_path,
+            }
+        )
+
+    return {"jobs": jobs}
+
+
+def handle_deprecated_chunking_strategy(request: IngestDocumentRequest, query_params: dict) -> None:
+    """Handle deprecated chunkSize and chunkOverlap query parameters.
+
+    This function provides backward compatibility by migrating legacy query parameters
+    to the new chunkingStrategy format. It logs deprecation warnings to encourage
+    migration to the new API format.
+
+    Args:
+        request: The IngestDocumentRequest object to potentially modify
+        query_params: Query string parameters from the HTTP request
+
+    Side Effects:
+        - Logs deprecation warning if legacy parameters are detected
+        - Modifies request.chunkingStrategy if legacy parameters are present
+          and chunkingStrategy is not already set
+
+    Deprecated Parameters:
+        - chunkSize: Size of each chunk (use chunkingStrategy.size instead)
+        - chunkOverlap: Overlap between chunks (use chunkingStrategy.overlap instead)
+    """
+    if "chunkSize" in query_params or "chunkOverlap" in query_params:
+        logger.warning(
+            "DEPRECATION WARNING: Query parameters 'chunkSize' and 'chunkOverlap' are deprecated. "
+            "Please use the 'chunkingStrategy' object in the request body instead. "
+            "Legacy parameters will be removed in a future version."
+        )
+
+        # Migrate legacy parameters to new format if chunkingStrategy not provided
+        if not request.chunkingStrategy:
+            chunk_size = int(query_params.get("chunkSize", 512))
+            chunk_overlap = int(query_params.get("chunkOverlap", 51))
+
+            # Create chunkingStrategy from legacy parameters
+            request.chunkingStrategy = {"type": "fixed", "size": chunk_size, "overlap": chunk_overlap}
+            logger.info(
+                f"Migrated legacy parameters to chunkingStrategy: " f"size={chunk_size}, overlap={chunk_overlap}"
+            )
+        if "collectionId" in query_params:
+            request.collectionId = query_params.get("collectionId")
 
 
 @api_wrapper
 def ingest_documents(event: dict, context: dict) -> dict:
-    """Ingest documents into the RAG repository.
+    """Ingest documents into the RAG repository."""
+    body = json.loads(event["body"])
+    request = IngestDocumentRequest(**body)
+    repository_id = event.get("pathParameters", {}).get("repositoryId")
+    query_params = event.get("queryStringParameters", {}) or {}
+    bucket = os.environ["BUCKET_NAME"]
+
+    # Handle deprecated chunking parameters
+    handle_deprecated_chunking_strategy(request, query_params)
+
+    username, is_admin, groups = get_user_context(event)
+    repository = get_repository(event, repository_id=repository_id)
+
+    # Get collection if specified
+    collection: Optional[dict[str, Any]] = None
+    if request.collectionId:
+        collection = collection_service.get_collection(
+            collection_id=request.collectionId,
+            repository_id=repository_id,
+            username=username,
+            user_groups=groups,
+            is_admin=is_admin,
+        ).model_dump()
+
+    # For Bedrock KB repositories, upload metadata files BEFORE documents
+    is_bedrock_kb = RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB)
+    if is_bedrock_kb:
+
+        metadata_generator = MetadataGenerator()
+        s3_metadata_manager = S3MetadataManager()
+
+        # Get collection object for metadata generation
+        collection_obj = None
+        if request.collectionId:
+            try:
+                collection_obj = collection_service.get_collection(
+                    collection_id=request.collectionId,
+                    repository_id=repository_id,
+                    username=username,
+                    user_groups=groups,
+                    is_admin=is_admin,
+                )
+            except Exception as e:
+                logger.warning(f"Could not fetch collection for metadata: {e}")
+
+        # Upload metadata files first
+        for key in request.keys:
+            try:
+                # Generate metadata content
+                metadata_content = metadata_generator.generate_metadata_json(
+                    repository=repository, collection=collection_obj, document_metadata=None
+                )
+
+                # Upload metadata file
+                s3_metadata_manager.upload_metadata_file(
+                    s3_client=s3, bucket=bucket, document_key=key, metadata_content=metadata_content
+                )
+                logger.info(f"Uploaded metadata file for {key}")
+            except Exception as e:
+                logger.error(f"Failed to upload metadata file for {key}: {e}")
+                # Continue with document upload even if metadata fails
+
+    # Create jobs
+    jobs = []
+    for key in request.keys:
+        job = ingestion_service.create_ingestion_job(
+            repository=repository,
+            collection=collection,
+            request=request,
+            query_params=query_params,
+            s3_path=f"s3://{bucket}/{key}",
+            username=username,
+            metadata=None,
+            ingestion_type=IngestionType.MANUAL,
+        )
+        ingestion_job_repository.save(job)
+        ingestion_service.submit_create_job(job)
+        jobs.append({"jobId": job.id, "documentId": job.document_id, "status": job.status, "s3Path": job.s3_path})
+
+    collection_id = job.collection_id
+    collection_name: Optional[str] = None
+    if collection:
+        collection_name = collection.get("name")
+    if not collection_name:
+        collection_name = collection_id
+    result: dict[str, Any] = {"jobs": jobs, "collectionId": collection_id, "collectionName": collection_name}
+    return result
+
+
+@api_wrapper
+def get_document(event: dict, context: dict) -> Dict[str, Any]:
+    """Get a document by ID.
 
     Args:
         event (dict): The Lambda event object containing:
-            - body.embeddingModel.modelName: Document collection id
-            - body.keys: List of s3 keys to ingest
-            - pathParameters.repositoryId: Repository id (VectorStore)
-            - queryStringParameters.repositoryType: Repository type (VectorStore)
-            - queryStringParameters.chunkSize (optional): Size of text chunks
-            - queryStringParameters.chunkOverlap (optional): Overlap between chunks
-        context (dict): The Lambda context object
+            path_params:
+                repositoryId - the repository
+                documentId - the document
 
     Returns:
-        dict: A dictionary containing:
-            - ids (list): List of generated document IDs
-            - count (int): Total number of documents ingested
-
-    Raises:
-        ValidationError: If required parameters are missing or invalid
+        dict: The document object
     """
-    body = json.loads(event["body"])
-    embedding_model = body["embeddingModel"]
-    model_name = embedding_model["modelName"]
-    bucket = os.environ["BUCKET_NAME"]
-
-    path_params = event.get("pathParameters", {})
+    path_params = event.get("pathParameters", {}) or {}
     repository_id = path_params.get("repositoryId")
-
-    query_string_params = event["queryStringParameters"]
-    chunk_size = int(query_string_params["chunkSize"]) if "chunkSize" in query_string_params else None
-    chunk_overlap = int(query_string_params["chunkOverlap"]) if "chunkOverlap" in query_string_params else None
-    logger.info(f"using repository {repository_id}")
-
-    username = get_username(event)
+    document_id = path_params.get("documentId")
+    if repository_id is None or document_id is None:
+        raise ValidationError("Must set the repositoryId and documentId")
+    if not isinstance(repository_id, str):
+        raise ValidationError("repositoryId must be a string")
     _ = get_repository(event, repository_id=repository_id)
+    doc = doc_repo.find_by_id(document_id=document_id)
 
-    ingestion_document_ids = []
-    for key in body["keys"]:
-        job = IngestionJob(
-            repository_id=repository_id,
-            collection_id=model_name,
-            chunk_strategy=FixedChunkingStrategy(size=str(chunk_size), overlap=str(chunk_overlap)),
-            s3_path=f"s3://{bucket}/{key}",
-            username=username,
-        )
-        ingestion_job_repository.save(job)
-        ingestion_service.create_ingest_job(job)
-        ingestion_document_ids.append(job.id)
-
-    return {"ingestionJobIds": ingestion_document_ids}
+    result: dict[str, Any] = doc.model_dump()
+    return result
 
 
 @api_wrapper
@@ -340,6 +985,8 @@ def download_document(event: dict, context: dict) -> str:
     repository_id = path_params.get("repositoryId")
     document_id = path_params.get("documentId")
 
+    if not repository_id:
+        raise ValidationError("repositoryId is required")
     _ = get_repository(event, repository_id=repository_id)
     doc = doc_repo.find_by_id(document_id=document_id)
 
@@ -404,7 +1051,7 @@ def list_docs(event: dict, context: dict) -> dict[str, Any]:
     Args:
         event (dict): The Lambda event object containing query parameters
             - pathParameters.repositoryId: The repository id to list documents for
-            - queryStringParameters.collectionId: The collection id to list documents for
+            - queryStringParameters.collectionName: The collection name to list documents for
         context (dict): The Lambda context object
 
     Returns:
@@ -419,7 +1066,13 @@ def list_docs(event: dict, context: dict) -> dict[str, Any]:
 
     query_string_params = event.get("queryStringParameters", {}) or {}
     collection_id = query_string_params.get("collectionId")
+
     last_evaluated: Optional[dict[str, Optional[str]]] = None
+
+    if not repository_id:
+        raise ValidationError("repositoryId is required")
+    # Validate repository access
+    _ = get_repository(event, repository_id=repository_id)
 
     if "lastEvaluatedKeyPk" in query_string_params:
         last_evaluated = {
@@ -472,11 +1125,13 @@ def list_jobs(event: Dict[str, Any], context: dict) -> Dict[str, Any]:
     # Extract and validate parameters
     params = ListJobsParams.from_event(event)
 
+    if not params.repository_id:
+        raise ValidationError("repositoryId is required")
     # Validate repository access
     _ = get_repository(event, repository_id=params.repository_id)
 
     # Get user context
-    username, is_admin_user = get_user_context(event)
+    username, is_admin_user, _ = get_user_context(event)
 
     # Fetch jobs from repository
     jobs, returned_last_evaluated_key = ingestion_job_repository.list_jobs_by_repository(
@@ -500,7 +1155,8 @@ def list_jobs(event: Dict[str, Any], context: dict) -> Dict[str, Any]:
         hasPreviousPage=pagination.has_previous_page,
     )
 
-    return response.model_dump()
+    result: dict[str, Any] = response.model_dump()
+    return result
 
 
 @api_wrapper
@@ -509,9 +1165,12 @@ def create(event: dict, context: dict) -> Any:
     """
     Create a new process execution using AWS Step Functions. This function is only accessible by administrators.
 
+    For Bedrock Knowledge Base repositories, automatically adds a default pipeline configuration
+    if none is provided, using the datasource S3 bucket for event-driven ingestion.
+
     Args:
         event (dict): The Lambda event object containing:
-            - body: A JSON string with the process creation details.
+            - body: A JSON string with the process creation details containing VectorStoreConfig.
         context (dict): The Lambda context object.
 
     Returns:
@@ -521,13 +1180,31 @@ def create(event: dict, context: dict) -> Any:
 
     Raises:
         ValueError: If the user is not an administrator.
+        ValidationError: If the request body is invalid.
     """
     # Fetch the Step Function ARN from SSM Parameter Store
     parameter_name = os.environ["LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER"]
     state_machine_arn = ssm_client.get_parameter(Name=parameter_name)
 
-    # Deserialize the event body and prepare input for Step Functions
-    input_data = json.loads(event["body"])
+    # Deserialize the event body and parse as VectorStoreConfig
+    try:
+        body = json.loads(event["body"])
+        vector_store_config = VectorStoreConfig(**body)
+    except json.JSONDecodeError as e:
+        raise ValidationError(f"Invalid JSON in request body: {e}")
+    except Exception as e:
+        raise ValidationError(f"Invalid VectorStoreConfig: {e}")
+
+    # Auto-add default pipeline for Bedrock Knowledge Base repositories
+    if vector_store_config.type == RepositoryType.BEDROCK_KB:
+        if not vector_store_config.bedrockKnowledgeBaseConfig:
+            raise ValidationError("Bedrock Config must be supplied")
+        add_default_pipeline_for_bedrock_kb(vector_store_config)
+
+    # Convert to dictionary for Step Functions input
+    rag_config = vector_store_config.model_dump(mode="json", exclude_none=True)
+    input_data = {"ragConfig": rag_config}
+
     serializer = TypeSerializer()
 
     # Start Step Function execution
@@ -536,7 +1213,7 @@ def create(event: dict, context: dict) -> Any:
         input=json.dumps(
             {
                 "body": input_data,
-                "config": {key: serializer.serialize(value) for key, value in input_data["ragConfig"].items()},
+                "config": {key: serializer.serialize(value) for key, value in rag_config.items()},
             }
         ),
     )
@@ -546,11 +1223,131 @@ def create(event: dict, context: dict) -> Any:
 
 
 @api_wrapper
+def get_repository_by_id(event: dict, context: dict) -> Dict[str, Any]:
+    """
+    Get a vector store configuration by ID.
+
+    Args:
+        event (dict): The Lambda event object containing:
+            - pathParameters.repositoryId: The repository ID to retrieve
+        context (dict): The Lambda context object
+
+    Returns:
+        Dict[str, Any]: The repository configuration with default values for new fields
+
+    Raises:
+        ValidationError: If repositoryId is missing
+        HTTPException: If repository not found or access denied
+    """
+    # Extract path parameters
+    path_params = event.get("pathParameters", {})
+    repository_id = path_params.get("repositoryId")
+
+    if not repository_id:
+        raise ValidationError("repositoryId is required")
+
+    # Get repository and check access
+    repository: dict[str, Any] = get_repository(event, repository_id)
+
+    return repository
+
+
+@api_wrapper
+@admin_only
+def update_repository(event: dict, context: dict) -> Dict[str, Any]:
+    """
+    Update a vector store configuration. This function is only accessible by administrators.
+
+    If the pipeline configuration has changed, this will trigger an infrastructure deployment
+    using the state machine, similar to repository creation.
+
+    Args:
+        event (dict): The Lambda event object containing:
+            - pathParameters.repositoryId: The repository ID to update
+            - body: JSON with fields to update (UpdateVectorStoreRequest)
+        context (dict): The Lambda context object
+
+    Returns:
+        Dict[str, Any]: The updated repository configuration with executionArn if deployment triggered
+
+    Raises:
+        ValidationError: If validation fails
+        HTTPException: If repository not found
+    """
+    # Extract path parameters
+    path_params = event.get("pathParameters", {})
+    repository_id = path_params.get("repositoryId")
+
+    if not repository_id:
+        raise ValidationError("repositoryId is required")
+
+    # Parse request body
+    try:
+        body = json.loads(event.get("body", {}))
+        request = UpdateVectorStoreRequest(**body)
+    except json.JSONDecodeError as e:
+        raise ValidationError(f"Invalid JSON in request body: {e}")
+    except Exception as e:
+        raise ValidationError(f"Invalid request: {e}")
+
+    # Get current repository configuration to check for pipeline changes
+    current_repo = vs_repo.find_repository_by_id(repository_id, raw_config=True)
+    current_config = current_repo.get("config", {})
+    current_pipelines = current_config.get("pipelines")
+
+    # Build updates dictionary (only include fields that were provided)
+    updates = request.model_dump(exclude_none=True, mode="json")
+
+    # Check if pipeline configuration has changed
+    require_deployment = request.pipelines is not None and request.pipelines != current_pipelines
+
+    # Set status based on deployment requirement
+    status = VectorStoreStatus.UPDATE_IN_PROGRESS if require_deployment else VectorStoreStatus.UPDATE_COMPLETE
+
+    # Update repository
+    updated_config: dict[str, Any] = vs_repo.update(repository_id, updates, status=status)
+
+    # Trigger infrastructure deployment if pipeline changed
+    if require_deployment:
+        logger.info(f"Pipeline configuration changed for repository {repository_id}, triggering deployment")
+
+        # Fetch the Step Function ARN from SSM Parameter Store
+        parameter_name = os.environ["LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER"]
+        state_machine_arn = ssm_client.get_parameter(Name=parameter_name)
+
+        # Prepare input data for state machine (similar to create)
+        serializer = TypeSerializer()
+        rag_config = updated_config.copy()
+        rag_config["repositoryId"] = repository_id
+        # Remove status field - it will be set by the state machine
+        rag_config.pop("status", None)
+
+        input_data = {"ragConfig": rag_config}
+
+        # Start Step Function execution
+        response = step_functions_client.start_execution(
+            stateMachineArn=state_machine_arn["Parameter"]["Value"],
+            input=json.dumps(
+                {
+                    "body": input_data,
+                    "config": {key: serializer.serialize(value) for key, value in rag_config.items()},
+                }
+            ),
+        )
+
+        logger.info(f"Started state machine execution: {response['executionArn']}")
+        updated_config["executionArn"] = response["executionArn"]
+
+    return updated_config
+
+
+@api_wrapper
 @admin_only
 def delete(event: dict, context: dict) -> Any:
     """
     Delete a vector store process using AWS Step Functions. This function ensures
     that the user is an administrator or owns the vector store being deleted.
+    Also deletes all associated collections and their documents.
 
     Args:
         event (dict): The Lambda event object containing:
@@ -572,6 +1369,36 @@ def delete(event: dict, context: dict) -> Any:
         raise ValidationError("repositoryId is required")
 
     repository = vs_repo.find_repository_by_id(repository_id=repository_id, raw_config=True)
+
+    # Delete all collections associated with this repository
+    try:
+        logger.info(f"Deleting all collections for repository: {repository_id}")
+        collections, _ = collection_service.list_collections(
+            repository_id=repository_id,
+            username="admin",
+            user_groups=[],
+            is_admin=True,
+            page_size=1000,  # Get all collections
+        )
+
+        for collection in collections:
+            try:
+                logger.info(f"Deleting collection: {collection.collectionId}")
+                collection_service.delete_collection(
+                    collection_id=collection.collectionId,
+                    repository_id=repository_id,
+                    embedding_name=collection.embeddingModel if collection.default else None,
+                    username="admin",
+                    user_groups=[],
+                    is_admin=True,
+                )
+            except Exception as e:
+                logger.error(f"Error deleting collection {collection.collectionId}: {str(e)}")
+                # Continue with other collections even if one fails
+    except Exception as e:
+        logger.error(f"Error listing/deleting collections for repository {repository_id}: {str(e)}")
+        # Continue with repository deletion even if collection cleanup fails
+
     if repository.get("legacy", False) is True:
         _remove_legacy(repository_id)
         vs_repo.delete(repository_id=repository_id)
@@ -591,48 +1418,6 @@ def delete(event: dict, context: dict) -> Any:
         return {"status": "success", "executionArn": response["executionArn"]}
 
 
-@api_wrapper
-@admin_only
-def delete_index(event: dict, context: dict) -> None:
-    """
-    Clear the vector store for the specified repository and model.
-
-    Args:
-        event (dict): The Lambda event object containing path parameters
-        context (dict): The Lambda context object
-    """
-    path_params = event.get("pathParameters", {}) or {}
-    repository_id = path_params.get("repositoryId", None)
-    if not repository_id:
-        raise ValidationError("repositoryId is required")
-    model_name = path_params.get("modelName", None)
-    if not model_name:
-        raise ValidationError("modelName is required")
-
-    repository = vs_repo.find_repository_by_id(repository_id=repository_id)
-    id_token = get_id_token(event)
-    embeddings = RagEmbeddings(model_name=model_name, id_token=id_token)
-    vs = get_vector_store_client(repository_id, index=model_name, embeddings=embeddings)
-
-    try:
-        if RepositoryType.is_type(repository, RepositoryType.OPENSEARCH):
-            if vs.client.indices.exists(index=model_name):
-                vs.client.indices.delete(index=model_name)
-                logger.info(f"Deleted OpenSearch index: {model_name}")
-            else:
-                logger.info(f"OpenSearch index {model_name} does not exist")
-        elif RepositoryType.is_type(repository, RepositoryType.PGVECTOR):
-            # For PGVector, delete all documents in the collection
-            vs.delete_collection()
-            logger.info(f"Deleted PGVector collection: {model_name}")
-        else:
-            logger.error(f"Unsupported repository type: {repository.get('type')}")
-            return {"status": "error", "message": "Repository is not supported"}
-    except Exception as e:
-        logger.error(f"Failed to clear vector store: {e}")
-        return {"status": "error", "message": str(e)}
-
-
 def _remove_legacy(repository_id: str) -> None:
     registered_repositories = ssm_client.get_parameter(Name=os.environ["REGISTERED_REPOSITORIES_PS"])
     registered_repositories = json.loads(registered_repositories["Parameter"]["Value"])
@@ -646,59 +1431,3 @@ def _remove_legacy(repository_id: str) -> None:
             Type="String",
             Overwrite=True,
         )
-
-
-def _similarity_search(vs, query: str, top_k: int) -> list[dict[str, Any]]:
-    """Perform similarity search without scores.
-
-    Args:
-        vs: Vector store instance
-        query: Search query string
-        top_k: Number of top results to return
-
-    Returns:
-        List of documents with page_content and metadata
-    """
-    results = vs.similarity_search_with_score(
-        query,
-        k=top_k,
-    )
-
-    return [{"page_content": doc.page_content, "metadata": doc.metadata} for doc, score in results]
-
-
-def _similarity_search_with_score(vs, query: str, top_k: int, repository: dict) -> list[dict[str, Any]]:
-    """Perform similarity search with normalized scores.
-
-    Args:
-        vs: Vector store instance
-        query: Search query string
-        top_k: Number of top results to return
-        repository: Repository configuration dict
-
-    Returns:
-        List of documents with page_content, metadata, and similarity_score
-    """
-    results = vs.similarity_search_with_score(
-        query,
-        k=top_k,
-    )
-    docs = []
-    for i, (doc, score) in enumerate(results):
-        similarity_score = RepositoryType.get_type(repository=repository).calculate_similarity_score(score)
-        logger.info(
-            f"Result {i + 1}: Raw Score={score:.4f}, Similarity={similarity_score:.4f}, "
-            + f"Content: {doc.page_content[:200]}..."
-        )
-        logger.info(f"Result {i + 1} metadata: {doc.metadata}")
-        docs.append(
-            {
-                "page_content": doc.page_content,
-                "metadata": {**doc.metadata, "similarity_score": similarity_score},
-            }
-        )
-
-    if results and max(score for _, score in results) < 0.3:
-        logger.warning(f"All similarity < 0.3 for query '{query}' - possible embedding model mismatch")
-
-    return docs

@@ -251,11 +251,11 @@ export default function Chat ({ sessionId }) {
         return getRelevantDocuments({
             query,
             repositoryId: ragConfig.repositoryId,
-            repositoryType: ragConfig.repositoryType,
-            modelName: ragConfig.embeddingModel?.modelId,
+            collectionId: ragConfig.collection?.collectionId,
             topK: ragTopK,
+            modelName: !ragConfig.collection?.collectionId ? ragConfig.embeddingModel?.modelId : undefined,
         });
-    }, [getRelevantDocuments, chatConfiguration.sessionConfiguration, ragConfig.repositoryId, ragConfig.repositoryType, ragConfig.embeddingModel?.modelId]);
+    }, [getRelevantDocuments, chatConfiguration.sessionConfiguration, ragConfig.repositoryId, ragConfig.collection, ragConfig.embeddingModel]);
 
     const { isRunning, setIsRunning, isStreaming, generateResponse, stopGeneration } = useChatGeneration({
         chatConfiguration,
@@ -598,7 +598,7 @@ export default function Chat ({ sessionId }) {
     }, [shouldShowStopButton, userPrompt.length, isRunning, callingToolName, loadingSession, handleSendGenerateRequest]);
 
     return (
-        <div className='h-[80vh]'>
+        <div className='flex flex-col h-[85vh]'>
             {/* MCP Connections - invisible components that manage the connections */}
             {McpConnections}
             {useMemo(() => (<DocumentSummarizationModal
@@ -691,7 +691,7 @@ export default function Chat ({ sessionId }) {
                     }
                 />
             )}
-            <div className='overflow-y-auto h-[calc(100vh-21rem)] bottom-8'>
+            <div className='overflow-y-auto h-[calc(100vh-20rem)] bottom-8'>
                 <SpaceBetween direction='vertical' size='l'>
                     {useMemo(() => session.history.map((message, idx) => (<Message
                         key={idx}
@@ -774,7 +774,7 @@ export default function Chat ({ sessionId }) {
                                 value={userPrompt}
                                 actionButtonAriaLabel={shouldShowStopButton ? 'Stop generation' : 'Send message'}
                                 actionButtonIconName={shouldShowStopButton ? 'status-negative' : 'send'}
-                                maxRows={4}
+                                maxRows={20}
                                 minRows={2}
                                 spellcheck={true}
                                 placeholder={

@@ -82,8 +82,6 @@ def get_container_path(inference_container_type: InferenceContainer) -> str:
 def adjust_initial_capacity_for_schedule(prepared_event: Dict[str, Any]) -> None:
     """Adjust Auto Scaling Group initial capacity based on schedule configuration"""
     try:
-        logger.info(f"DEBUG: Starting schedule adjustment for model {prepared_event.get('modelId')}")
-
         # Check if scheduling is configured
         auto_scaling_config = prepared_event.get("autoScalingConfig", {})
         scheduling_config = auto_scaling_config.get("scheduling")
@@ -128,8 +126,6 @@ def adjust_initial_capacity_for_schedule(prepared_event: Dict[str, Any]) -> None
                 # Daily schedule
                 weekly_schedule = scheduling_config["weeklySchedule"]
                 today_schedule = weekly_schedule.get(current_day)
-
-                logger.info(f"DEBUG: Weekly schedule for {current_day}: {today_schedule}")
 
                 if today_schedule and today_schedule.get("startTime") and today_schedule.get("stopTime"):
                     start_time_str = today_schedule["startTime"]
@@ -364,7 +360,6 @@ def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, 
 
     # Remove scheduling configuration from autoScalingConfig before sending to ECS deployer
     if "autoScalingConfig" in prepared_event and "scheduling" in prepared_event["autoScalingConfig"]:
-        logger.info("DEBUG: Removing scheduling config from payload to ECS deployer")
         del prepared_event["autoScalingConfig"]["scheduling"]
 
     # Log the complete payload being sent (excluding large environment variables)
@@ -373,7 +368,6 @@ def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, 
         debug_payload["containerConfig"][
             "environment"
         ] = f"<{len(debug_payload['containerConfig']['environment'])} env vars>"
-    logger.info(f"DEBUG: Complete payload to ECS deployer: {json.dumps(debug_payload, default=str, indent=2)}")
 
     try:
         response = lambdaClient.invoke(
@@ -396,7 +390,6 @@ def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, 
         payload = response["Payload"].read()
         payload = json.loads(payload)
     except Exception as parse_error:
-        logger.error(f"DEBUG: Failed to parse ECS deployer response: {str(parse_error)}")
         raise StackFailedToCreateException(
             json.dumps(
                 {

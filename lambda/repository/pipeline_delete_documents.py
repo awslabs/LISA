@@ -20,16 +20,15 @@ import boto3
 from boto3.dynamodb.conditions import Key
 from models.domain_objects import CollectionStatus, IngestionJob, IngestionStatus, IngestionType, JobActionType
 from repository.collection_repo import CollectionRepository
-from repository.embeddings import RagEmbeddings
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
 from repository.pipeline_ingest_documents import remove_document_from_vectorstore
 from repository.rag_document_repo import RagDocumentRepository
+from repository.services.repository_service_factory import RepositoryServiceFactory
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.bedrock_kb import bulk_delete_documents_from_kb, delete_document_from_kb
 from utilities.common_functions import retry_config
 from utilities.repository_types import RepositoryType
-from utilities.vector_store import get_vector_store_client
 
 ingestion_service = DocumentIngestionService()
 ingestion_job_repository = IngestionJobRepository()
@@ -44,8 +43,7 @@ collection_repo = CollectionRepository()
 
 
 def drop_opensearch_index(repository_id: str, collection_id: str) -> None:
-    """
-    Drop OpenSearch index for a collection to speed up deletion.
+    """Drop OpenSearch index using repository service.
 
     Args:
         repository_id: Repository ID
@@ -54,24 +52,11 @@ def drop_opensearch_index(repository_id: str, collection_id: str) -> None:
     try:
         logger.info(f"Dropping OpenSearch index for collection {collection_id}")
 
-        # Get vector store client
-        embeddings = RagEmbeddings(model_name=collection_id)
-        vector_store = get_vector_store_client(
-            repository_id,
-            collection_id=collection_id,
-            embeddings=embeddings,
-        )
+        repository = vs_repo.find_repository_by_id(repository_id)
+        service = RepositoryServiceFactory.create_service(repository)
 
-        # Drop the index if it exists
-        if hasattr(vector_store, "client") and hasattr(vector_store.client, "indices"):
-            index_name = f"{repository_id}_{collection_id}".lower()
-            if vector_store.client.indices.exists(index=index_name):
-                vector_store.client.indices.delete(index=index_name)
-                logger.info(f"Successfully dropped OpenSearch index: {index_name}")
-            else:
-                logger.info(f"OpenSearch index {index_name} does not exist")
-        else:
-            logger.warning("Vector store client does not support index operations")
+        # Delegate to service layer
+        service.delete_collection(collection_id, s3_client=s3)
 
     except Exception as e:
         logger.error(f"Failed to drop OpenSearch index: {e}", exc_info=True)
@@ -79,8 +64,7 @@ def drop_opensearch_index(repository_id: str, collection_id: str) -> None:
 
 
 def drop_pgvector_collection(repository_id: str, collection_id: str) -> None:
-    """
-    Drop PGVector collection table/schema to speed up deletion.
+    """Drop PGVector collection using repository service.
 
     Args:
         repository_id: Repository ID
@@ -89,20 +73,11 @@ def drop_pgvector_collection(repository_id: str, collection_id: str) -> None:
     try:
         logger.info(f"Dropping PGVector collection for {collection_id}")
 
-        # Get vector store client
-        embeddings = RagEmbeddings(model_name=collection_id)
-        vector_store = get_vector_store_client(
-            repository_id,
-            collection_id=collection_id,
-            embeddings=embeddings,
-        )
+        repository = vs_repo.find_repository_by_id(repository_id)
+        service = RepositoryServiceFactory.create_service(repository)
 
-        # Drop the collection if supported
-        if hasattr(vector_store, "delete_collection"):
-            vector_store.delete_collection()
-            logger.info(f"Successfully dropped PGVector collection: {collection_id}")
-        else:
-            logger.warning("Vector store does not support collection deletion")
+        # Delegate to service layer
+        service.delete_collection(collection_id, s3_client=s3)
 
     except Exception as e:
         logger.error(f"Failed to drop PGVector collection: {e}", exc_info=True)

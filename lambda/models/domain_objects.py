@@ -66,17 +66,17 @@ class ModelStatus(StrEnum):
 class ModelType(StrEnum):
     """Defines supported model categories."""
 
-    TEXTGEN = "textgen"
-    IMAGEGEN = "imagegen"
-    EMBEDDING = "embedding"
+    TEXTGEN = auto()
+    IMAGEGEN = auto()
+    EMBEDDING = auto()
 
 
 class GuardrailMode(StrEnum):
     """Defines supported guardrail execution modes."""
 
-    PRE_CALL = "pre_call"
-    DURING_CALL = "during_call"
-    POST_CALL = "post_call"
+    PRE_CALL = auto()
+    DURING_CALL = auto()
+    POST_CALL = auto()
 
 
 class GuardrailConfig(BaseModel):
@@ -443,8 +443,8 @@ RagDocumentDict = Dict[str, Any]
 class ChunkingStrategyType(StrEnum):
     """Defines supported document chunking strategies."""
 
-    FIXED = "fixed"
-    NONE = "none"
+    FIXED = auto()
+    NONE = auto()
 
 
 class IngestionStatus(str, Enum):
@@ -1034,8 +1034,8 @@ class CollectionSortBy(StrEnum):
 class SortOrder(StrEnum):
     """Defines sort order options."""
 
-    ASC = "asc"
-    DESC = "desc"
+    ASC = auto()
+    DESC = auto()
 
 
 class RepositoryMetadata(BaseModel):

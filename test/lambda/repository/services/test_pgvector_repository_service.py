@@ -56,10 +56,7 @@ class TestPGVectorRepositoryService:
         mock_vector_store.delete_collection.return_value = None
 
         with patch("repository.services.pgvector_repository_service.RagEmbeddings"):
-            with patch(
-                "repository.services.pgvector_repository_service.get_vector_store_client",
-                return_value=mock_vector_store,
-            ):
+            with patch.object(pgvector_service, "_get_vector_store_client", return_value=mock_vector_store):
                 pgvector_service._drop_collection_index("test-collection")
 
                 mock_vector_store.delete_collection.assert_called_once()
@@ -69,10 +66,7 @@ class TestPGVectorRepositoryService:
         mock_vector_store = MagicMock(spec=[])  # No delete_collection method
 
         with patch("repository.services.pgvector_repository_service.RagEmbeddings"):
-            with patch(
-                "repository.services.pgvector_repository_service.get_vector_store_client",
-                return_value=mock_vector_store,
-            ):
+            with patch.object(pgvector_service, "_get_vector_store_client", return_value=mock_vector_store):
                 # Should not raise exception
                 pgvector_service._drop_collection_index("test-collection")
 
@@ -82,10 +76,7 @@ class TestPGVectorRepositoryService:
         mock_vector_store.delete_collection.side_effect = Exception("Database error")
 
         with patch("repository.services.pgvector_repository_service.RagEmbeddings"):
-            with patch(
-                "repository.services.pgvector_repository_service.get_vector_store_client",
-                return_value=mock_vector_store,
-            ):
+            with patch.object(pgvector_service, "_get_vector_store_client", return_value=mock_vector_store):
                 # Should not raise exception
                 pgvector_service._drop_collection_index("test-collection")
 

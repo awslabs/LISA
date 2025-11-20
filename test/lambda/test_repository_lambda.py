@@ -268,9 +268,6 @@ patch("utilities.auth.admin_only", mock_admin_only).start()
 # Only now import the lambda functions to ensure they use our mocked dependencies
 from repository.lambda_functions import _ensure_document_ownership, get_repository, presigned_url
 
-# Patch vector_store after import
-patch("utilities.vector_store.get_vector_store_client", mock_get_vector_store_client).start()
-
 
 @pytest.fixture(autouse=True)
 def mock_boto3_client_fixture():
@@ -795,12 +792,12 @@ def test_delete_missing_repository_id():
 def test_RagEmbeddings_error():
     """Test error handling in RagEmbeddings function"""
 
-    # Create a patched version of the function that raises an error
+    # Create a patched version of the class that raises an error
     def mock_RagEmbeddings(model_name, api_key):
         raise Exception("SSM error")
 
-    # Patch the function
-    with patch("repository.lambda_functions.RagEmbeddings", side_effect=mock_RagEmbeddings):
+    # Patch the class from the correct module
+    with patch("repository.embeddings.RagEmbeddings", side_effect=mock_RagEmbeddings):
         # Test that the error is properly handled
         with pytest.raises(Exception, match="SSM error"):
             mock_RagEmbeddings("test-model", "test-token")
@@ -1355,38 +1352,44 @@ def test_real_similarity_search_function():
     from repository.lambda_functions import similarity_search
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "utilities.vector_store.get_vector_store_client"
-    ) as mock_get_client, patch("repository.embeddings.RagEmbeddings") as mock_RagEmbeddings, patch(
-        "utilities.auth.get_groups"
-    ) as mock_get_groups, patch(
+        "repository.embeddings.RagEmbeddings"
+    ) as mock_RagEmbeddings, patch("utilities.auth.get_groups") as mock_get_groups, patch(
         "utilities.common_functions.get_id_token"
     ) as mock_get_token:
 
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
         mock_get_token.return_value = "test-token"
-        mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
-
-        mock_client = MagicMock()
-        mock_get_client.return_value = mock_client
-        mock_client.similarity_search.return_value = [
-            MagicMock(page_content="Test content", metadata={"source": "test-source"})
-        ]
+        mock_vs_repo.find_repository_by_id.return_value = {
+            "repositoryId": "test-repo",
+            "type": "opensearch",
+            "allowedGroups": ["test-group"],
+            "status": "active",
+        }
 
         mock_embeddings = MagicMock()
         mock_RagEmbeddings.return_value = mock_embeddings
 
-        event = {
-            "requestContext": {"authorizer": {"claims": {"username": "test-user"}, "groups": ["test-group"]}},
-            "pathParameters": {"repositoryId": "test-repo"},
-            "queryStringParameters": {"modelName": "test-model", "query": "test query", "topK": "3"},
-        }
+        # Mock the service layer
+        mock_service = MagicMock()
+        mock_service.retrieve_documents.return_value = [
+            {"page_content": "Test content", "metadata": {"source": "test-source"}}
+        ]
 
-        result = similarity_search(event, SimpleNamespace())
+        with patch("repository.lambda_functions.RepositoryServiceFactory") as mock_factory:
+            mock_factory.create_service.return_value = mock_service
 
-        # The function is wrapped by api_wrapper, so we get an HTTP response
-        assert "statusCode" in result
-        assert "body" in result
+            event = {
+                "requestContext": {"authorizer": {"claims": {"username": "test-user"}, "groups": ["test-group"]}},
+                "pathParameters": {"repositoryId": "test-repo"},
+                "queryStringParameters": {"modelName": "test-model", "query": "test query", "topK": "3"},
+            }
+
+            result = similarity_search(event, SimpleNamespace())
+
+            # The function is wrapped by api_wrapper, so we get an HTTP response
+            assert "statusCode" in result
+            assert "body" in result
 
 
 def test_real_similarity_search_missing_params():
@@ -1424,9 +1427,7 @@ def test_real_delete_documents_function():
         "utilities.auth.get_username"
     ) as mock_get_username, patch(
         "utilities.auth.is_admin"
-    ) as mock_is_admin, patch(
-        "utilities.vector_store.get_vector_store_client"
-    ) as mock_get_client:
+    ) as mock_is_admin:
 
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
@@ -1437,9 +1438,6 @@ def test_real_delete_documents_function():
 
         mock_doc_repo.find_by_id.return_value = {"username": "test-user"}
         mock_doc_repo.delete_by_id.return_value = None
-
-        mock_client = MagicMock()
-        mock_get_client.return_value = mock_client
 
         event = {
             "requestContext": {
@@ -2557,9 +2555,10 @@ def test_similarity_search_with_score():
     mock_doc.page_content = "test content"
     mock_doc.metadata = {"source": "test"}
     mock_vs.similarity_search_with_score.return_value = [(mock_doc, 0.9)]
+    mock_vs.client.indices.exists.return_value = True
 
-    with patch("repository.services.vector_store_repository_service.RagEmbeddings"):
-        with patch("repository.services.vector_store_repository_service.get_vector_store_client", return_value=mock_vs):
+    with patch("repository.services.opensearch_repository_service.RagEmbeddings"):
+        with patch.object(service, "_get_vector_store_client", return_value=mock_vs):
             result = service.retrieve_documents("query", "test-collection", 3, include_score=True)
 
     assert len(result) == 1
@@ -2574,13 +2573,14 @@ def test_similarity_search_without_score():
     service = OpenSearchRepositoryService(repository)
 
     mock_vs = MagicMock()
+    mock_vs.client.indices.exists.return_value = True
     mock_doc = MagicMock()
     mock_doc.page_content = "test content"
     mock_doc.metadata = {"source": "test"}
     mock_vs.similarity_search_with_score.return_value = [(mock_doc, 0.9)]
 
-    with patch("repository.services.vector_store_repository_service.RagEmbeddings"):
-        with patch("repository.services.vector_store_repository_service.get_vector_store_client", return_value=mock_vs):
+    with patch("repository.services.opensearch_repository_service.RagEmbeddings"):
+        with patch.object(service, "_get_vector_store_client", return_value=mock_vs):
             result = service.retrieve_documents("query", "test-collection", 3, include_score=False)
 
     assert len(result) == 1
@@ -3024,11 +3024,10 @@ def test_similarity_search_helpers():
         mock_doc.page_content = "test content"
         mock_doc.metadata = {"key": "value"}
         mock_vs.similarity_search_with_score.return_value = [(mock_doc, 0.9)]
+        mock_vs.client.indices.exists.return_value = True
 
-        with patch("repository.services.vector_store_repository_service.RagEmbeddings"):
-            with patch(
-                "repository.services.vector_store_repository_service.get_vector_store_client", return_value=mock_vs
-            ):
+        with patch("repository.services.opensearch_repository_service.RagEmbeddings"):
+            with patch.object(service, "_get_vector_store_client", return_value=mock_vs):
                 results = service.retrieve_documents("query", "test-collection", 3, include_score=False)
 
         assert len(results) == 1

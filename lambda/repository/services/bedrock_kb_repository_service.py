@@ -25,6 +25,7 @@ from models.domain_objects import (
     CollectionMetadata,
     CollectionStatus,
     IngestionJob,
+    IngestionType,
     NoneChunkingStrategy,
     RagCollectionConfig,
     RagDocument,
@@ -171,7 +172,9 @@ class BedrockKBRepositoryService(RepositoryService):
         logger.info(f"Found {len(documents)} total documents in collection")
 
         # Separate by ingestion type
-        lisa_managed = [doc for doc in documents if doc.get("ingestion_type") in [IngestionType.MANUAL, IngestionType.AUTO]]
+        lisa_managed = [
+            doc for doc in documents if doc.get("ingestion_type") in [IngestionType.MANUAL, IngestionType.AUTO]
+        ]
         user_managed = [doc for doc in documents if doc.get("ingestion_type") == IngestionType.EXISTING]
 
         logger.info(

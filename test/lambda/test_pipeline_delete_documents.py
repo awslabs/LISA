@@ -16,6 +16,7 @@
 
 import os
 import sys
+from unittest import mock
 from unittest.mock import Mock, patch
 
 import pytest
@@ -36,51 +37,54 @@ def setup_env(monkeypatch):
 
 
 def test_drop_opensearch_index(setup_env):
-    """Test drop_opensearch_index drops index successfully."""
+    """Test drop_opensearch_index delegates to service layer."""
     from repository.pipeline_delete_documents import drop_opensearch_index
 
-    with patch("repository.pipeline_delete_documents.RagEmbeddings"), patch(
-        "repository.pipeline_delete_documents.get_vector_store_client"
-    ) as mock_get_vs:
-        mock_vs = Mock()
-        mock_vs.client.indices.exists.return_value = True
-        mock_get_vs.return_value = mock_vs
+    mock_service = Mock()
+
+    with patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo, patch(
+        "repository.pipeline_delete_documents.RepositoryServiceFactory"
+    ) as mock_factory:
+        mock_vs_repo.find_repository_by_id.return_value = {"repositoryId": "repo1", "type": "opensearch"}
+        mock_factory.create_service.return_value = mock_service
 
         drop_opensearch_index("repo1", "col1")
 
-        mock_vs.client.indices.delete.assert_called_once()
+        mock_service.delete_collection.assert_called_once_with("col1", s3_client=mock.ANY)
 
 
 def test_drop_opensearch_index_not_exists(setup_env):
-    """Test drop_opensearch_index when index doesn't exist."""
+    """Test drop_opensearch_index delegates to service layer even when index doesn't exist."""
     from repository.pipeline_delete_documents import drop_opensearch_index
 
-    with patch("repository.pipeline_delete_documents.RagEmbeddings"), patch(
-        "repository.pipeline_delete_documents.get_vector_store_client"
-    ) as mock_get_vs:
-        mock_vs = Mock()
-        mock_vs.client.indices.exists.return_value = False
-        mock_get_vs.return_value = mock_vs
+    mock_service = Mock()
+
+    with patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo, patch(
+        "repository.pipeline_delete_documents.RepositoryServiceFactory"
+    ) as mock_factory:
+        mock_vs_repo.find_repository_by_id.return_value = {"repositoryId": "repo1", "type": "opensearch"}
+        mock_factory.create_service.return_value = mock_service
 
         drop_opensearch_index("repo1", "col1")
 
-        mock_vs.client.indices.delete.assert_not_called()
+        mock_service.delete_collection.assert_called_once_with("col1", s3_client=mock.ANY)
 
 
 def test_drop_pgvector_collection(setup_env):
-    """Test drop_pgvector_collection drops collection."""
+    """Test drop_pgvector_collection delegates to service layer."""
     from repository.pipeline_delete_documents import drop_pgvector_collection
 
-    with patch("repository.pipeline_delete_documents.RagEmbeddings"), patch(
-        "repository.pipeline_delete_documents.get_vector_store_client"
-    ) as mock_get_vs:
-        mock_vs = Mock()
-        mock_vs.delete_collection = Mock()
-        mock_get_vs.return_value = mock_vs
+    mock_service = Mock()
+
+    with patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo, patch(
+        "repository.pipeline_delete_documents.RepositoryServiceFactory"
+    ) as mock_factory:
+        mock_vs_repo.find_repository_by_id.return_value = {"repositoryId": "repo1", "type": "pgvector"}
+        mock_factory.create_service.return_value = mock_service
 
         drop_pgvector_collection("repo1", "col1")
 
-        mock_vs.delete_collection.assert_called_once()
+        mock_service.delete_collection.assert_called_once_with("col1", s3_client=mock.ANY)
 
 
 def test_pipeline_delete_collection_opensearch(setup_env):

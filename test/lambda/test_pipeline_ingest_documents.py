@@ -124,12 +124,17 @@ def test_store_chunks_in_vectorstore(setup_env):
     texts = [f"text{i}" for i in range(1200)]
     metadatas = [{"id": i} for i in range(1200)]
 
+    mock_vs = Mock()
+    mock_vs.add_texts.return_value = ["id1", "id2"]
+
+    mock_service = Mock()
+    mock_service.get_vector_store_client.return_value = mock_vs
+
     with patch("repository.pipeline_ingest_documents.RagEmbeddings"), patch(
-        "repository.pipeline_ingest_documents.get_vector_store_client"
-    ) as mock_get_vs:
-        mock_vs = Mock()
-        mock_vs.add_texts.return_value = ["id1", "id2"]
-        mock_get_vs.return_value = mock_vs
+        "repository.pipeline_ingest_documents.VectorStoreRepository"
+    ) as mock_vs_repo, patch("repository.pipeline_ingest_documents.RepositoryServiceFactory") as mock_factory:
+        mock_vs_repo.return_value.find_repository_by_id.return_value = {"repositoryId": "repo1", "type": "opensearch"}
+        mock_factory.create_service.return_value = mock_service
 
         ids = store_chunks_in_vectorstore(texts, metadatas, "repo1", "col1", "model1")
 
@@ -144,12 +149,17 @@ def test_store_chunks_in_vectorstore_failure(setup_env):
     texts = ["text1"]
     metadatas = [{"id": 1}]
 
+    mock_vs = Mock()
+    mock_vs.add_texts.return_value = None
+
+    mock_service = Mock()
+    mock_service.get_vector_store_client.return_value = mock_vs
+
     with patch("repository.pipeline_ingest_documents.RagEmbeddings"), patch(
-        "repository.pipeline_ingest_documents.get_vector_store_client"
-    ) as mock_get_vs:
-        mock_vs = Mock()
-        mock_vs.add_texts.return_value = None
-        mock_get_vs.return_value = mock_vs
+        "repository.pipeline_ingest_documents.VectorStoreRepository"
+    ) as mock_vs_repo, patch("repository.pipeline_ingest_documents.RepositoryServiceFactory") as mock_factory:
+        mock_vs_repo.return_value.find_repository_by_id.return_value = {"repositoryId": "repo1", "type": "opensearch"}
+        mock_factory.create_service.return_value = mock_service
 
         with pytest.raises(Exception, match="Failed to store documents"):
             store_chunks_in_vectorstore(texts, metadatas, "repo1", "col1", "model1")
@@ -434,11 +444,15 @@ def test_remove_document_from_vectorstore(setup_env):
         chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
     )
 
+    mock_vs = Mock()
+    mock_service = Mock()
+    mock_service.get_vector_store_client.return_value = mock_vs
+
     with patch("repository.pipeline_ingest_documents.RagEmbeddings"), patch(
-        "repository.pipeline_ingest_documents.get_vector_store_client"
-    ) as mock_get_vs:
-        mock_vs = Mock()
-        mock_get_vs.return_value = mock_vs
+        "repository.pipeline_ingest_documents.VectorStoreRepository"
+    ) as mock_vs_repo, patch("repository.pipeline_ingest_documents.RepositoryServiceFactory") as mock_factory:
+        mock_vs_repo.return_value.find_repository_by_id.return_value = {"repositoryId": "repo1", "type": "opensearch"}
+        mock_factory.create_service.return_value = mock_service
 
         from repository.pipeline_ingest_documents import remove_document_from_vectorstore
 

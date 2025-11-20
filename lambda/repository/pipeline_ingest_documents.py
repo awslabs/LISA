@@ -37,13 +37,13 @@ from repository.ingestion_service import DocumentIngestionService
 from repository.metadata_generator import MetadataGenerator
 from repository.rag_document_repo import RagDocumentRepository
 from repository.s3_metadata_manager import S3MetadataManager
+from repository.services.repository_service_factory import RepositoryServiceFactory
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.auth import get_username
 from utilities.bedrock_kb import ingest_document_to_kb
 from utilities.common_functions import retry_config
 from utilities.file_processing import generate_chunks
 from utilities.repository_types import RepositoryType
-from utilities.vector_store import get_vector_store_client
 
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 ingestion_job_table = dynamodb.Table(os.environ["LISA_INGESTION_JOB_TABLE_NAME"])
@@ -329,10 +329,13 @@ def pipeline_ingest_documents(job: IngestionJob) -> None:
 
 
 def remove_document_from_vectorstore(doc: RagDocument) -> None:
-    # Delete from the Vector Store
+    """Delete document from vector store using repository service."""
+    vs_repo = VectorStoreRepository()
+    repository = vs_repo.find_repository_by_id(doc.repository_id)
+
+    service = RepositoryServiceFactory.create_service(repository)
     embeddings = RagEmbeddings(model_name=doc.collection_id)
-    vector_store = get_vector_store_client(
-        doc.repository_id,
+    vector_store = service.get_vector_store_client(
         collection_id=doc.collection_id,
         embeddings=embeddings,
     )
@@ -577,12 +580,15 @@ def prepare_chunks(docs: List, repository_id: str, collection_id: str) -> tuple[
 def store_chunks_in_vectorstore(
     texts: List[str], metadatas: List[Dict], repository_id: str, collection_id: str, embedding_model: str
 ) -> List[str]:
-    """Store document chunks in vector store."""
+    """Store document chunks in vector store using repository service."""
+    vs_repo = VectorStoreRepository()
+    repository = vs_repo.find_repository_by_id(repository_id)
+
+    service = RepositoryServiceFactory.create_service(repository)
     embeddings = RagEmbeddings(model_name=embedding_model)
-    vs = get_vector_store_client(
-        repository_id,
-        collection_id,
-        embeddings,
+    vs = service.get_vector_store_client(
+        collection_id=collection_id,
+        embeddings=embeddings,
     )
 
     all_ids = []

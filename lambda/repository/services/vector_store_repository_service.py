@@ -24,6 +24,9 @@ from abc import abstractmethod
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+import boto3
+from langchain_core.embeddings import Embeddings
+from langchain_core.vectorstores import VectorStore
 from models.domain_objects import (
     CollectionMetadata,
     CollectionStatus,
@@ -34,11 +37,12 @@ from models.domain_objects import (
 )
 from repository.embeddings import RagEmbeddings
 from repository.rag_document_repo import RagDocumentRepository
-from utilities.vector_store import get_vector_store_client
+from utilities.common_functions import retry_config
 
 from .repository_service import RepositoryService
 
 logger = logging.getLogger(__name__)
+ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
 
 
 class VectorStoreRepositoryService(RepositoryService):
@@ -112,8 +116,7 @@ class VectorStoreRepositoryService(RepositoryService):
     ) -> None:
         """Delete document from vector store."""
         embeddings = RagEmbeddings(model_name=document.collection_id)
-        vector_store = get_vector_store_client(
-            document.repository_id,
+        vector_store = self._get_vector_store_client(
             collection_id=document.collection_id,
             embeddings=embeddings,
         )
@@ -153,8 +156,7 @@ class VectorStoreRepositoryService(RepositoryService):
             List of documents with page_content and metadata
         """
         embeddings = RagEmbeddings(model_name=collection_id)
-        vector_store = get_vector_store_client(
-            self.repository_id,
+        vector_store = self._get_vector_store_client(
             collection_id=collection_id,
             embeddings=embeddings,
         )
@@ -199,8 +201,7 @@ class VectorStoreRepositoryService(RepositoryService):
 
     def get_vector_store_client(self, collection_id: str, embeddings: Any) -> Any:
         """Get vector store client for this repository."""
-        return get_vector_store_client(
-            self.repository_id,
+        return self._get_vector_store_client(
             collection_id=collection_id,
             embeddings=embeddings,
         )
@@ -292,10 +293,9 @@ class VectorStoreRepositoryService(RepositoryService):
     ) -> List[str]:
         """Store document chunks in vector store."""
         embeddings = RagEmbeddings(model_name=embedding_model)
-        vector_store = get_vector_store_client(
-            self.repository_id,
-            collection_id,
-            embeddings,
+        vector_store = self._get_vector_store_client(
+            collection_id=collection_id,
+            embeddings=embeddings,
         )
 
         all_ids = []
@@ -316,3 +316,16 @@ class VectorStoreRepositoryService(RepositoryService):
             raise Exception("Failed to store any documents in vector store")
 
         return all_ids
+
+    @abstractmethod
+    def _get_vector_store_client(self, collection_id: str, embeddings: Embeddings) -> VectorStore:
+        """Get vector store client for this repository type.
+
+        Args:
+            collection_id: Collection identifier
+            embeddings: Embeddings adapter
+
+        Returns:
+            Vector store client instance
+        """
+        pass

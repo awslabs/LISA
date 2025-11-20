@@ -42,7 +42,6 @@ from models.domain_objects import (
 )
 from repository.collection_service import CollectionService
 from repository.config.params import ListJobsParams
-from repository.embeddings import RagEmbeddings
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
 from repository.metadata_generator import MetadataGenerator
@@ -56,7 +55,6 @@ from utilities.common_functions import api_wrapper, retry_config
 from utilities.exceptions import HTTPException
 from utilities.repository_types import RepositoryType
 from utilities.validation import ValidationError
-from utilities.vector_store import get_vector_store_client
 
 logger = logging.getLogger(__name__)
 region_name = os.environ["AWS_REGION"]
@@ -175,71 +173,18 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     # Use repository service for similarity search
     service = RepositoryServiceFactory.create_service(repository)
 
-    docs: List[Dict[str, Any]] = []
+    # Use collection_id as vector store index if provided, otherwise use model_name
+    search_collection_id = collection_id or model_name
+    logger.info(f"Searching in collection: {search_collection_id} with embedding model: {model_name}")
 
-    if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
-        # Query Bedrock KB - request more to account for filtering
-        kb_docs = service.retrieve_documents(
-            query=query,
-            collection_id=collection_id or model_name,
-            top_k=top_k * 2,
-            include_score=include_score,
-            bedrock_agent_client=bedrock_client,
-        )
-
-        # Filter by collection if specified
-        if collection_id:
-            # Get collection documents for filtering - handle pagination to get all documents
-            collection_docs = []
-            next_key = None
-            while True:
-                docs_batch, next_key, _ = doc_repo.list_all(
-                    repository_id=repository_id, collection_id=collection_id, last_evaluated_key=next_key, limit=100
-                )
-                collection_docs.extend(docs_batch)
-                if not next_key:
-                    break
-
-            collection_sources = {doc.source for doc in collection_docs}
-
-            # Filter KB results to only include documents in this collection
-            docs = [doc for doc in kb_docs if doc.get("metadata", {}).get("source") in collection_sources]
-
-            # Trim to requested top_k after filtering
-            docs = docs[:top_k]
-
-            logger.info(f"Filtered Bedrock KB results: {len(kb_docs)} total, {len(docs)} in collection {collection_id}")
-        else:
-            # No collection filter, return all results
-            docs = kb_docs[:top_k]
-    else:
-        # Use collection_id as vector store index if provided, otherwise use model_name
-        search_collection_id = collection_id or model_name
-        logger.info(f"Searching in collection: {search_collection_id} with embedding model: {model_name}")
-
-        # Check if OpenSearch index exists
-        if RepositoryType.is_type(repository, RepositoryType.OPENSEARCH):
-            embeddings = RagEmbeddings(model_name=model_name)
-            vs = get_vector_store_client(repository_id, collection_id=search_collection_id, embeddings=embeddings)
-
-            if not vs.client.indices.exists(index=search_collection_id):
-                logger.info(f"Collection {search_collection_id} does not exist. Returning empty docs.")
-                docs = []
-            else:
-                docs = service.retrieve_documents(
-                    query=query,
-                    collection_id=search_collection_id,
-                    top_k=top_k,
-                    include_score=include_score,
-                )
-        else:
-            # PGVector or other vector stores
-            docs = service.retrieve_documents(
-                query=query,
-                collection_id=search_collection_id,
-                top_k=top_k,
-                include_score=include_score,
-            )
+    # Delegate to service for retrieval - service handles repository-specific logic
+    docs = service.retrieve_documents(
+        query=query,
+        collection_id=search_collection_id,
+        top_k=top_k,
+        include_score=include_score,
+        bedrock_agent_client=bedrock_client if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB) else None,
+    )
 
     doc_content = [
         {

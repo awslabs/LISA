@@ -97,7 +97,7 @@ def test_get_database_connection_success(setup_env):
         }
         mock_secrets.get_secret_value.return_value = {"SecretString": json.dumps({"password": "pass"})}
 
-        with patch("models.model_api_key_cleanup.connect") as mock_connect:
+        with patch("psycopg2.connect") as mock_connect:
             mock_connect.return_value = MagicMock()
 
             from models.model_api_key_cleanup import get_database_connection
@@ -136,18 +136,26 @@ def test_lambda_handler_success(setup_env):
 
     with patch("models.model_api_key_cleanup.get_database_connection") as mock_conn:
         with patch("models.model_api_key_cleanup.get_all_dynamodb_models") as mock_models:
-            mock_cursor = MagicMock()
-            mock_cursor.fetchall.side_effect = [
-                [("LiteLLM_ProxyModelTable",)],
-                [("id", "name", "params")],
-                [("1", "model1", '{"api_key": "ignored"}')],
-            ]
-            mock_cursor.description = [("id",), ("name",), ("params",)]
-            mock_connection = MagicMock()
-            mock_connection.cursor.return_value = mock_cursor
-            mock_conn.return_value = mock_connection
+            # Mock psycopg2.sql.SQL and Identifier
+            mock_sql_obj = MagicMock()
+            mock_sql_obj.format.return_value = "SELECT * FROM LiteLLM_ProxyModelTable LIMIT 1"
 
-            mock_models.return_value = [{"model_id": "model1", "model_name": "bedrock/test"}]
+            with patch("psycopg2.sql.SQL") as mock_sql_class:
+                with patch("psycopg2.sql.Identifier") as mock_identifier:
+                    mock_sql_class.return_value = mock_sql_obj
+                    mock_identifier.return_value = MagicMock()
 
-            result = lambda_handler({}, {})
-            assert result["Status"] == "SUCCESS"
+                    mock_cursor = MagicMock()
+                    mock_cursor.fetchall.side_effect = [
+                        [("LiteLLM_ProxyModelTable",)],
+                        [("1", "model1", '{"api_key": "ignored"}')],
+                    ]
+                    mock_cursor.description = [("id",), ("model_name",), ("litellm_params",)]
+                    mock_connection = MagicMock()
+                    mock_connection.cursor.return_value = mock_cursor
+                    mock_conn.return_value = mock_connection
+
+                    mock_models.return_value = [{"model_id": "model1", "model_name": "bedrock/test"}]
+
+                    result = lambda_handler({}, {})
+                    assert result["Status"] == "SUCCESS"

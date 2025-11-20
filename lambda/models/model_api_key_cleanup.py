@@ -31,7 +31,7 @@ import traceback
 from typing import Any, Dict, List
 
 import boto3
-from psycopg2 import connect, sql
+import psycopg2
 from utilities.common_functions import retry_config
 
 # Add the lambda directory to the Python path
@@ -122,7 +122,7 @@ def get_database_connection():
 
     # Create connection with proper error handling
     try:
-        conn = connect(
+        conn = psycopg2.connect(
             host=db_params["dbHost"],
             port=db_params["dbPort"],
             database=db_params["dbName"],
@@ -188,7 +188,11 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Query all models from the LiteLLM database using the found table (use quotes for case-sensitive names)
 
         # Use psycopg2's identifier quoting to prevent SQL injection
-        cursor.execute(sql.SQL("SELECT * FROM {} LIMIT 1").format(sql.Identifier(litellm_table)))  # noqa: S608, P103
+        cursor.execute(
+            psycopg2.sql.SQL("SELECT * FROM {} LIMIT 1").format(  # noqa: S608, P103
+                psycopg2.sql.Identifier(litellm_table)
+            )
+        )
         columns = [desc[0] for desc in cursor.description]
         print(f"Table {litellm_table} columns: {columns}")
 
@@ -206,11 +210,11 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         # Query all models from the LiteLLM database
         cursor.execute(
-            sql.SQL("SELECT {}, {}, {} FROM {}").format(  # noqa: S608, P103
-                sql.Identifier(model_id_col),
-                sql.Identifier(model_name_col),
-                sql.Identifier(litellm_params_col),
-                sql.Identifier(litellm_table),
+            psycopg2.sql.SQL("SELECT {}, {}, {} FROM {}").format(  # noqa: S608, P103
+                psycopg2.sql.Identifier(model_id_col),
+                psycopg2.sql.Identifier(model_name_col),
+                psycopg2.sql.Identifier(litellm_params_col),
+                psycopg2.sql.Identifier(litellm_table),
             )
         )
         models = cursor.fetchall()
@@ -272,10 +276,10 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     # Update the model in the database
                     clean_params_json = json.dumps(clean_params)
                     cursor.execute(
-                        sql.SQL("UPDATE {} SET {} = %s WHERE {} = %s").format(  # noqa: S608, P103
-                            sql.Identifier(litellm_table),
-                            sql.Identifier(litellm_params_col),
-                            sql.Identifier(model_id_col),
+                        psycopg2.sql.SQL("UPDATE {} SET {} = %s WHERE {} = %s").format(  # noqa: S608, P103
+                            psycopg2.sql.Identifier(litellm_table),
+                            psycopg2.sql.Identifier(litellm_params_col),
+                            psycopg2.sql.Identifier(model_id_col),
                         ),
                         (clean_params_json, matching_litellm_model["model_id"]),
                     )

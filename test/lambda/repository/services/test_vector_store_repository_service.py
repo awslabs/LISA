@@ -105,10 +105,7 @@ class TestVectorStoreRepositoryService:
         mock_rag_document_repo.save.return_value = None
 
         with patch("repository.services.vector_store_repository_service.RagEmbeddings"):
-            with patch(
-                "repository.services.vector_store_repository_service.get_vector_store_client",
-                return_value=mock_vector_store,
-            ):
+            with patch.object(vector_store_service, "_get_vector_store_client", return_value=mock_vector_store):
                 with patch(
                     "repository.services.vector_store_repository_service.RagDocumentRepository",
                     return_value=mock_rag_document_repo,
@@ -138,10 +135,7 @@ class TestVectorStoreRepositoryService:
         mock_vector_store.delete.return_value = None
 
         with patch("repository.services.vector_store_repository_service.RagEmbeddings"):
-            with patch(
-                "repository.services.vector_store_repository_service.get_vector_store_client",
-                return_value=mock_vector_store,
-            ):
+            with patch.object(vector_store_service, "_get_vector_store_client", return_value=mock_vector_store):
                 vector_store_service.delete_document(document, MagicMock())
 
                 mock_vector_store.delete.assert_called_once_with(["id1", "id2", "id3"])
@@ -157,13 +151,11 @@ class TestVectorStoreRepositoryService:
         mock_doc2.metadata = {"source": "doc2.pdf"}
 
         mock_vector_store = MagicMock()
+        mock_vector_store.client.indices.exists.return_value = True
         mock_vector_store.similarity_search_with_score.return_value = [(mock_doc1, 0.95), (mock_doc2, 0.85)]
 
-        with patch("repository.services.vector_store_repository_service.RagEmbeddings"):
-            with patch(
-                "repository.services.vector_store_repository_service.get_vector_store_client",
-                return_value=mock_vector_store,
-            ):
+        with patch("repository.services.opensearch_repository_service.RagEmbeddings"):
+            with patch.object(vector_store_service, "_get_vector_store_client", return_value=mock_vector_store):
                 results = vector_store_service.retrieve_documents("test query", "test-collection", 5)
 
                 assert len(results) == 2
@@ -187,16 +179,13 @@ class TestVectorStoreRepositoryService:
         mock_embeddings = MagicMock()
         mock_vector_store = MagicMock()
 
-        with patch(
-            "repository.services.vector_store_repository_service.get_vector_store_client",
-            return_value=mock_vector_store,
+        with patch.object(
+            vector_store_service, "_get_vector_store_client", return_value=mock_vector_store
         ) as mock_get_client:
             result = vector_store_service.get_vector_store_client("test-collection", mock_embeddings)
 
             assert result == mock_vector_store
-            mock_get_client.assert_called_once_with(
-                "test-vector-repo", collection_id="test-collection", embeddings=mock_embeddings
-            )
+            mock_get_client.assert_called_once_with(collection_id="test-collection", embeddings=mock_embeddings)
 
     def test_create_default_collection_active_repository(self, vector_store_service):
         """Test creating default collection for active repository."""
@@ -250,10 +239,7 @@ class TestVectorStoreRepositoryService:
         mock_vector_store.add_texts.return_value = ["id1", "id2", "id3"]
 
         with patch("repository.services.vector_store_repository_service.RagEmbeddings"):
-            with patch(
-                "repository.services.vector_store_repository_service.get_vector_store_client",
-                return_value=mock_vector_store,
-            ):
+            with patch.object(vector_store_service, "_get_vector_store_client", return_value=mock_vector_store):
                 result = vector_store_service._store_chunks(
                     texts, metadatas, "test-collection", "amazon.titan-embed-text-v1"
                 )
@@ -272,10 +258,7 @@ class TestVectorStoreRepositoryService:
         mock_vector_store.add_texts.side_effect = [[f"id{i}" for i in range(500)], [f"id{i}" for i in range(500, 1000)]]
 
         with patch("repository.services.vector_store_repository_service.RagEmbeddings"):
-            with patch(
-                "repository.services.vector_store_repository_service.get_vector_store_client",
-                return_value=mock_vector_store,
-            ):
+            with patch.object(vector_store_service, "_get_vector_store_client", return_value=mock_vector_store):
                 result = vector_store_service._store_chunks(
                     texts, metadatas, "test-collection", "amazon.titan-embed-text-v1"
                 )
@@ -292,10 +275,7 @@ class TestVectorStoreRepositoryService:
         mock_vector_store.add_texts.return_value = None
 
         with patch("repository.services.vector_store_repository_service.RagEmbeddings"):
-            with patch(
-                "repository.services.vector_store_repository_service.get_vector_store_client",
-                return_value=mock_vector_store,
-            ):
+            with patch.object(vector_store_service, "_get_vector_store_client", return_value=mock_vector_store):
                 with pytest.raises(Exception, match="Failed to store batch"):
                     vector_store_service._store_chunks(
                         texts, metadatas, "test-collection", "amazon.titan-embed-text-v1"
@@ -310,10 +290,7 @@ class TestVectorStoreRepositoryService:
         mock_vector_store.add_texts.return_value = []
 
         with patch("repository.services.vector_store_repository_service.RagEmbeddings"):
-            with patch(
-                "repository.services.vector_store_repository_service.get_vector_store_client",
-                return_value=mock_vector_store,
-            ):
+            with patch.object(vector_store_service, "_get_vector_store_client", return_value=mock_vector_store):
                 with pytest.raises(Exception, match="Failed to store batch"):
                     vector_store_service._store_chunks(
                         texts, metadatas, "test-collection", "amazon.titan-embed-text-v1"

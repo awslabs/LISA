@@ -14,14 +14,24 @@
 
 """PGVector repository service implementation."""
 
+import json
 import logging
+import os
 
+import boto3
+from langchain_community.vectorstores import PGVector
+from langchain_core.embeddings import Embeddings
+from langchain_core.vectorstores import VectorStore
 from repository.embeddings import RagEmbeddings
-from utilities.vector_store import get_vector_store_client
+from utilities.common_functions import get_lambda_role_name, retry_config
+from utilities.rds_auth import generate_auth_token
+from utilities.repository_types import RepositoryType
 
 from .vector_store_repository_service import VectorStoreRepositoryService
 
 logger = logging.getLogger(__name__)
+ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
+secretsmanager_client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
 
 
 class PGVectorRepositoryService(VectorStoreRepositoryService):
@@ -37,8 +47,7 @@ class PGVectorRepositoryService(VectorStoreRepositoryService):
             logger.info(f"Dropping PGVector collection for {collection_id}")
 
             embeddings = RagEmbeddings(model_name=collection_id)
-            vector_store = get_vector_store_client(
-                self.repository_id,
+            vector_store = self._get_vector_store_client(
                 collection_id=collection_id,
                 embeddings=embeddings,
             )
@@ -67,3 +76,45 @@ class PGVectorRepositoryService(VectorStoreRepositoryService):
             Similarity score in 0-1 range
         """
         return max(0.0, 1.0 - (score / 2.0))
+
+    def _get_vector_store_client(self, collection_id: str, embeddings: Embeddings) -> VectorStore:
+        """Get PGVector vector store client.
+
+        Args:
+            collection_id: Collection identifier
+            embeddings: Embeddings adapter
+
+        Returns:
+            PGVector client instance
+        """
+        prefix = os.environ.get("REGISTERED_REPOSITORIES_PS_PREFIX")
+        connection_info = ssm_client.get_parameter(Name=f"{prefix}{self.repository_id}")
+        connection_info = json.loads(connection_info["Parameter"]["Value"])
+
+        if not RepositoryType.is_type(connection_info, RepositoryType.PGVECTOR):
+            raise ValueError(f"Repository {self.repository_id} is not a PGVector repository")
+
+        if "passwordSecretId" in connection_info:
+            # Provides backwards compatibility to non-IAM authenticated vector stores
+            secrets_response = secretsmanager_client.get_secret_value(SecretId=connection_info.get("passwordSecretId"))
+            user = connection_info.get("username")
+            password = json.loads(secrets_response.get("SecretString")).get("password")
+        else:
+            # Use IAM auth token to connect
+            user = get_lambda_role_name()
+            password = generate_auth_token(connection_info.get("dbHost"), connection_info.get("dbPort"), user)
+
+        connection_string = PGVector.connection_string_from_db_params(
+            driver="psycopg2",
+            host=connection_info.get("dbHost"),
+            port=connection_info.get("dbPort"),
+            database=connection_info.get("dbName"),
+            user=user,
+            password=password,
+        )
+
+        return PGVector(
+            collection_name=collection_id,
+            connection_string=connection_string,
+            embedding_function=embeddings,
+        )

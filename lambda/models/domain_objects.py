@@ -875,6 +875,9 @@ class PipelineConfig(BaseModel):
     chunkingStrategy: Optional[ChunkingStrategy] = Field(
         default=None, description="Chunking strategy for documents in this pipeline"
     )
+    collectionId: Optional[str] = Field(
+        default=None, description="Collection ID for this pipeline (for Bedrock KB, this is the data source ID)"
+    )
     s3Bucket: str = Field(min_length=1, description="S3 bucket for pipeline source")
     s3Prefix: str = Field(description="S3 prefix for pipeline source")
     trigger: PipelineTrigger = Field(description="Pipeline trigger type")
@@ -1104,17 +1107,30 @@ class RdsInstanceConfig(BaseModel):
     )
 
 
-class BedrockKnowledgeBaseConfig(BaseModel):
-    """Configuration for Bedrock Knowledge Base instance."""
+class BedrockDataSource(BaseModel):
+    """Configuration for a single Bedrock Knowledge Base data source."""
 
-    bedrockKnowledgeBaseName: str = Field(min_length=1, description="The name of the Bedrock Knowledge Base.")
-    bedrockKnowledgeBaseId: str = Field(min_length=1, description="The id of the Bedrock Knowledge Base.")
-    bedrockKnowledgeDatasourceName: str = Field(
-        min_length=1, description="The name of the Bedrock Knowledge Datasource."
-    )
-    bedrockKnowledgeDatasourceId: str = Field(min_length=1, description="The id of the Bedrock Knowledge Datasource.")
-    bedrockKnowledgeDatasourceS3Bucket: str = Field(
-        min_length=1, description="The S3 bucket of the Bedrock Knowledge Base."
+    id: str = Field(min_length=1, description="The ID of the Bedrock Knowledge Base data source")
+    s3Uri: str = Field(min_length=1, description="The S3 URI of the data source (s3://bucket/prefix)")
+
+    @field_validator("s3Uri")
+    @classmethod
+    def validate_s3_uri(cls, v: str) -> str:
+        """Validate S3 URI format."""
+        if not v.startswith("s3://"):
+            raise ValueError("S3 URI must start with s3://")
+        return v
+
+
+class BedrockKnowledgeBaseConfig(BaseModel):
+    """Configuration for Bedrock Knowledge Base with multiple data sources.
+    
+    Stores the KB ID and array of data sources. Backend converts to pipelines.
+    """
+
+    knowledgeBaseId: str = Field(min_length=1, description="The ID of the Bedrock Knowledge Base")
+    dataSources: List[BedrockDataSource] = Field(
+        min_length=1, description="Array of data sources in this Knowledge Base"
     )
 
 
@@ -1135,7 +1151,7 @@ class VectorStoreConfig(BaseModel):
     )
     rdsConfig: Optional[RdsInstanceConfig] = Field(default=None, description="RDS/PGVector configuration")
     bedrockKnowledgeBaseConfig: Optional[BedrockKnowledgeBaseConfig] = Field(
-        default=None, description="Bedrock Knowledge Base configuration"
+        default=None, description="Bedrock Knowledge Base configuration with data sources"
     )
     # Status and timestamps
     status: Optional[VectorStoreStatus] = Field(default=None, description="Repository Status")

@@ -55,7 +55,8 @@ from utilities.common_functions import api_wrapper, retry_config
 from utilities.exceptions import HTTPException
 from utilities.repository_types import RepositoryType
 from utilities.validation import ValidationError
-
+from utilities.bedrock_kb_discovery import build_pipeline_configs_from_kb_config
+        
 logger = logging.getLogger(__name__)
 region_name = os.environ["AWS_REGION"]
 session = boto3.Session()
@@ -1195,21 +1196,20 @@ def create(event: dict, context: dict) -> Any:
     except Exception as e:
         raise ValidationError(f"Invalid VectorStoreConfig: {e}")
 
-    # Auto-add default pipeline for Bedrock Knowledge Base repositories
+    # Auto-convert Bedrock KB config to pipelines
     if vector_store_config.type == RepositoryType.BEDROCK_KB:
         if not vector_store_config.bedrockKnowledgeBaseConfig:
-            raise ValidationError("Bedrock Config must be supplied")
-
-        # If no pipelines provided, add default pipeline
-        if not vector_store_config.pipelines:
-            add_default_pipeline_for_bedrock_kb(vector_store_config)
-        else:
-            # Validate that at least one pipeline is provided
-            if len(vector_store_config.pipelines) == 0:
-                raise ValidationError(
-                    "Bedrock Knowledge Base repositories require at least one collection. "
-                    "Please select at least one data source."
-                )
+            raise ValidationError("Bedrock Knowledge Base configuration is required")
+        
+        if not vector_store_config.bedrockKnowledgeBaseConfig.dataSources or len(vector_store_config.bedrockKnowledgeBaseConfig.dataSources) == 0:
+            raise ValidationError(
+                "Bedrock Knowledge Base repositories require at least one data source. "
+                "Please select at least one data source."
+            )
+        # Convert bedrockKnowledgeBaseConfig to pipelines
+        vector_store_config.pipelines = build_pipeline_configs_from_kb_config(
+            vector_store_config.bedrockKnowledgeBaseConfig
+        )
 
     # Convert to dictionary for Step Functions input
     rag_config = vector_store_config.model_dump(mode="json", exclude_none=True)

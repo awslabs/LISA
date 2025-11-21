@@ -80,12 +80,14 @@ export enum RagRepositoryType {
     BEDROCK_KNOWLEDGE_BASE = 'bedrock_knowledge_base',
 }
 
+export const BedrockDataSource = z.object({
+    id: z.string().describe('The ID of the Bedrock Knowledge Base data source'),
+    s3Uri: z.string().regex(/^s3:\/\/[a-z0-9][a-z0-9.-]*[a-z0-9](\/.*)?$/, 'Must be a valid S3 URI (s3://bucket/prefix)').describe('The S3 URI of the data source'),
+});
+
 export const BedrockKnowledgeBaseInstanceConfig = z.object({
-    bedrockKnowledgeBaseName: z.string().describe('The name of the Bedrock Knowledge Base.'),
-    bedrockKnowledgeBaseId: z.string().describe('The id of the Bedrock Knowledge Base.'),
-    bedrockKnowledgeDatasourceName: z.string().describe('The name of the Bedrock Knowledge Datasource.'),
-    bedrockKnowledgeDatasourceId: z.string().describe('The id of the Bedrock Knowledge Datasource.'),
-    bedrockKnowledgeDatasourceS3Bucket: z.string().describe('The S3 bucket of the Bedrock Knowledge Base.'),
+    knowledgeBaseId: z.string().describe('The ID of the Bedrock Knowledge Base'),
+    dataSources: z.array(BedrockDataSource).min(1).describe('Array of data sources in this Knowledge Base'),
 });
 
 export const OpenSearchNewClusterConfig = z.object({

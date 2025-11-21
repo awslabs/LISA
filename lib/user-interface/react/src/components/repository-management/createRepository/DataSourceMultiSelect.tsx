@@ -21,7 +21,6 @@ import {
     Button,
     Checkbox,
     Container,
-    ExpandableSection,
     Header,
     SpaceBetween,
     Spinner,
@@ -31,14 +30,14 @@ import {
 import { useListBedrockDataSourcesQuery } from '@/shared/reducers/rag.reducer';
 import { DataSource, DataSourceSelection } from '@/types/bedrock-kb';
 
-interface DataSourceMultiSelectProps {
+type DataSourceMultiSelectProps = {
     kbId: string;
     repositoryId?: string;
     selectedDataSources: DataSourceSelection[];
     onSelectionChange: (selections: DataSourceSelection[]) => void;
-}
+};
 
-export function DataSourceMultiSelect({
+export function DataSourceMultiSelect ({
     kbId,
     repositoryId,
     selectedDataSources,
@@ -86,10 +85,10 @@ export function DataSourceMultiSelect({
 
     if (isLoading) {
         return (
-            <Container header={<Header variant="h2">Select Data Sources</Header>}>
-                <Box textAlign="center" padding={{ vertical: 'l' }}>
-                    <Spinner size="large" />
-                    <Box variant="p" padding={{ top: 's' }}>
+            <Container header={<Header variant='h2'>Select Data Sources</Header>}>
+                <Box textAlign='center' padding={{ vertical: 'l' }}>
+                    <Spinner size='large' />
+                    <Box variant='p' padding={{ top: 's' }}>
                         Loading data sources...
                     </Box>
                 </Box>
@@ -99,9 +98,9 @@ export function DataSourceMultiSelect({
 
     if (error) {
         return (
-            <Container header={<Header variant="h2">Select Data Sources</Header>}>
-                <Box textAlign="center" padding={{ vertical: 'l' }}>
-                    <StatusIndicator type="error">
+            <Container header={<Header variant='h2'>Select Data Sources</Header>}>
+                <Box textAlign='center' padding={{ vertical: 'l' }}>
+                    <StatusIndicator type='error'>
                         {(error as any)?.message || 'Failed to load data sources'}
                     </StatusIndicator>
                     <Box padding={{ top: 's' }}>
@@ -114,9 +113,9 @@ export function DataSourceMultiSelect({
 
     if (!data) {
         return (
-            <Container header={<Header variant="h2">Select Data Sources</Header>}>
-                <Box textAlign="center" padding={{ vertical: 'l' }}>
-                    <StatusIndicator type="info">Select a Knowledge Base to view data sources</StatusIndicator>
+            <Container header={<Header variant='h2'>Select Data Sources</Header>}>
+                <Box textAlign='center' padding={{ vertical: 'l' }}>
+                    <StatusIndicator type='info'>Select a Knowledge Base to view data sources</StatusIndicator>
                 </Box>
             </Container>
         );
@@ -127,12 +126,12 @@ export function DataSourceMultiSelect({
 
     if (displayedDataSources.length === 0) {
         return (
-            <Container header={<Header variant="h2">Select Data Sources</Header>}>
-                <Box textAlign="center" padding={{ vertical: 'l' }}>
-                    <StatusIndicator type="warning">
+            <Container header={<Header variant='h2'>Select Data Sources</Header>}>
+                <Box textAlign='center' padding={{ vertical: 'l' }}>
+                    <StatusIndicator type='warning'>
                         {showOnlyAvailable ? 'No available data sources' : 'No data sources found'}
                     </StatusIndicator>
-                    <Box variant="p" padding={{ top: 's' }}>
+                    <Box variant='p' padding={{ top: 's' }}>
                         {showOnlyAvailable
                             ? 'All data sources are already managed by collections.'
                             : 'Please create a data source in the AWS Bedrock console.'}
@@ -146,16 +145,16 @@ export function DataSourceMultiSelect({
         <Container
             header={
                 <Header
-                    variant="h2"
+                    variant='h2'
                     actions={
-                        <SpaceBetween direction="horizontal" size="xs">
+                        <SpaceBetween direction='horizontal' size='xs'>
                             <Button onClick={handleDeselectAll} disabled={selectedDataSources.length === 0}>
                                 Deselect All
                             </Button>
                             <Button onClick={handleSelectAll} disabled={availableDataSources.length === 0}>
                                 Select All Available
                             </Button>
-                            <Button iconName="refresh" onClick={() => refetch()}>
+                            <Button iconName='refresh' onClick={() => refetch()}>
                                 Refresh
                             </Button>
                         </SpaceBetween>
@@ -166,7 +165,7 @@ export function DataSourceMultiSelect({
                 </Header>
             }
         >
-            <SpaceBetween size="m">
+            <SpaceBetween size='m'>
                 <Toggle
                     checked={showOnlyAvailable}
                     onChange={({ detail }) => setShowOnlyAvailable(detail.checked)}
@@ -174,7 +173,7 @@ export function DataSourceMultiSelect({
                     Show only available data sources
                 </Toggle>
 
-                <SpaceBetween size="s">
+                <SpaceBetween size='s'>
                     {displayedDataSources.map((ds) => {
                         const isManaged = managedDataSources.some((m) => m.dataSourceId === ds.dataSourceId);
                         const isSelected = selectedDataSources.some((s) => s.dataSourceId === ds.dataSourceId);
@@ -187,22 +186,22 @@ export function DataSourceMultiSelect({
                                     onChange={() => handleToggleDataSource(ds)}
                                     disabled={isManaged || !isAvailable}
                                 >
-                                    <SpaceBetween size="xxs">
+                                    <SpaceBetween size='xxs'>
                                         <Box>
-                                            <SpaceBetween direction="horizontal" size="xs">
+                                            <SpaceBetween direction='horizontal' size='xs'>
                                                 <strong>{ds.name}</strong>
-                                                {isManaged && <Badge color="blue">Managed</Badge>}
-                                                {!isAvailable && <Badge color="grey">{ds.status}</Badge>}
+                                                {isManaged && <Badge color='blue'>Managed</Badge>}
+                                                {!isAvailable && <Badge color='grey'>{ds.status}</Badge>}
                                             </SpaceBetween>
                                         </Box>
-                                        <Box variant="small" color="text-body-secondary">
+                                        <Box variant='small' color='text-body-secondary'>
                                             ID: {ds.dataSourceId}
                                         </Box>
-                                        <Box variant="small" color="text-body-secondary">
+                                        <Box variant='small' color='text-body-secondary'>
                                             S3: s3://{ds.s3Bucket}/{ds.s3Prefix || ''}
                                         </Box>
                                         {isManaged && ds.collectionId && (
-                                            <Box variant="small" color="text-status-info">
+                                            <Box variant='small' color='text-status-info'>
                                                 Collection: {ds.collectionId}
                                             </Box>
                                         )}
@@ -214,8 +213,8 @@ export function DataSourceMultiSelect({
                 </SpaceBetween>
 
                 {selectedDataSources.length === 0 && (
-                    <Box textAlign="center" padding={{ vertical: 'm' }}>
-                        <StatusIndicator type="warning">
+                    <Box textAlign='center' padding={{ vertical: 'm' }}>
+                        <StatusIndicator type='warning'>
                             Please select at least one data source to continue
                         </StatusIndicator>
                     </Box>

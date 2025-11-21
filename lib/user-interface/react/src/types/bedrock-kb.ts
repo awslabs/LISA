@@ -17,19 +17,21 @@
 /**
  * Metadata for a Bedrock Knowledge Base
  */
-export interface KnowledgeBase {
+export type KnowledgeBase = {
     knowledgeBaseId: string;
     name: string;
     description?: string;
     status: string;
+    available?: boolean;
+    unavailableReason?: string;
     createdAt?: string;
     updatedAt?: string;
-}
+};
 
 /**
  * Metadata for a Bedrock Knowledge Base data source
  */
-export interface DataSource {
+export type DataSource = {
     dataSourceId: string;
     name: string;
     description?: string;
@@ -40,31 +42,31 @@ export interface DataSource {
     updatedAt?: string;
     managed?: boolean;
     collectionId?: string;
-}
+};
 
 /**
  * User selection of a data source for collection creation
  * Frontend sends this to backend, which creates pipelines and collections
  */
-export interface DataSourceSelection {
+export type DataSourceSelection = {
     dataSourceId: string;
     dataSourceName: string;
     s3Bucket: string;
     s3Prefix?: string;
-}
+};
 
 /**
  * Response from discovery API when listing Knowledge Bases
  */
-export interface DiscoverKnowledgeBasesResponse {
+export type DiscoverKnowledgeBasesResponse = {
     knowledgeBases: KnowledgeBase[];
     totalKnowledgeBases: number;
-}
+};
 
 /**
  * Response from discovery API when listing data sources
  */
-export interface DiscoverDataSourcesResponse {
+export type DiscoverDataSourcesResponse = {
     knowledgeBase: {
         id: string;
         name: string;
@@ -74,24 +76,24 @@ export interface DiscoverDataSourcesResponse {
     availableDataSources: DataSource[];
     managedDataSources: DataSource[];
     totalDataSources: number;
-}
+};
 
 /**
  * Collection impact analysis for deletion
  */
-export interface CollectionImpactAnalysis {
+export type CollectionImpactAnalysis = {
     collectionId: string;
     collectionName: string;
     documentCount: number;
     createdAt: string;
     lastModified: string;
     recentlyUsed: boolean;
-}
+};
 
 /**
  * Helper function to generate a valid collection ID from a data source name
  */
-export function generateCollectionId(dataSourceName: string): string {
+export function generateCollectionId (dataSourceName: string): string {
     // Convert to lowercase
     let collectionId = dataSourceName.toLowerCase();
 
@@ -104,7 +106,7 @@ export function generateCollectionId(dataSourceName: string): string {
     // Remove leading/trailing hyphens and collapse multiple hyphens
     collectionId = collectionId
         .split('-')
-        .filter(part => part.length > 0)
+        .filter((part) => part.length > 0)
         .join('-');
 
     // Ensure it's not empty
@@ -118,7 +120,7 @@ export function generateCollectionId(dataSourceName: string): string {
 /**
  * Validate data source selection
  */
-export function validateDataSourceSelection(selection: DataSourceSelection): string | null {
+export function validateDataSourceSelection (selection: DataSourceSelection): string | null {
     if (!selection.dataSourceId) {
         return 'Data source ID is required';
     }

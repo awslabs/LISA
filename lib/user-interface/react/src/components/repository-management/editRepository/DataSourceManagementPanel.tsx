@@ -30,14 +30,14 @@ import { useListBedrockDataSourcesQuery } from '@/shared/reducers/rag.reducer';
 import { DataSourceSelection } from '@/types/bedrock-kb';
 import { BedrockKBDiscoveryWizard } from '../createRepository/BedrockKBDiscoveryWizard';
 
-interface DataSourceManagementPanelProps {
+type DataSourceManagementPanelProps = {
     repositoryId: string;
     kbId: string;
     currentDataSources: DataSourceSelection[];
     onUpdate: (selections: DataSourceSelection[]) => void;
-}
+};
 
-export function DataSourceManagementPanel({
+export function DataSourceManagementPanel ({
     repositoryId,
     kbId,
     currentDataSources,
@@ -55,11 +55,11 @@ export function DataSourceManagementPanel({
         // Merge with existing selections (avoid duplicates)
         const existingIds = new Set(currentDataSources.map((ds) => ds.dataSourceId));
         const uniqueNewSelections = newSelections.filter((ds) => !existingIds.has(ds.dataSourceId));
-        
+
         if (uniqueNewSelections.length > 0) {
             onUpdate([...currentDataSources, ...uniqueNewSelections]);
         }
-        
+
         setWizardVisible(false);
     };
 
@@ -72,8 +72,8 @@ export function DataSourceManagementPanel({
             <Modal
                 visible={wizardVisible}
                 onDismiss={() => setWizardVisible(false)}
-                size="large"
-                header="Add Data Sources"
+                size='large'
+                header='Add Data Sources'
             >
                 <BedrockKBDiscoveryWizard
                     visible={wizardVisible}
@@ -86,15 +86,15 @@ export function DataSourceManagementPanel({
             <Container
                 header={
                     <Header
-                        variant="h2"
+                        variant='h2'
                         actions={
-                            <SpaceBetween direction="horizontal" size="xs">
-                                <Button iconName="refresh" onClick={() => refetch()}>
+                            <SpaceBetween direction='horizontal' size='xs'>
+                                <Button iconName='refresh' onClick={() => refetch()}>
                                     Refresh
                                 </Button>
                                 <Button
-                                    variant="primary"
-                                    iconName="add-plus"
+                                    variant='primary'
+                                    iconName='add-plus'
                                     onClick={() => setWizardVisible(true)}
                                     disabled={isLoading}
                                 >
@@ -102,17 +102,17 @@ export function DataSourceManagementPanel({
                                 </Button>
                             </SpaceBetween>
                         }
-                        description={`Manage data sources for this Bedrock Knowledge Base repository`}
+                        description={'Manage data sources for this Bedrock Knowledge Base repository'}
                     >
                         Data Sources ({currentDataSources.length})
                     </Header>
                 }
             >
-                <SpaceBetween size="m">
+                <SpaceBetween size='m'>
                     {data && (
                         <Box>
-                            <SpaceBetween size="xs">
-                                <Box variant="awsui-key-label">Available Data Sources</Box>
+                            <SpaceBetween size='xs'>
+                                <Box variant='awsui-key-label'>Available Data Sources</Box>
                                 <Box>
                                     {data.availableDataSources.length} available, {data.managedDataSources.length}{' '}
                                     managed
@@ -132,7 +132,7 @@ export function DataSourceManagementPanel({
                                 id: 'id',
                                 header: 'Data Source ID',
                                 cell: (item) => (
-                                    <Box variant="code" fontSize="body-s">
+                                    <Box variant='code' fontSize='body-s'>
                                         {item.dataSourceId}
                                     </Box>
                                 ),
@@ -141,7 +141,7 @@ export function DataSourceManagementPanel({
                                 id: 's3',
                                 header: 'S3 Location',
                                 cell: (item) => (
-                                    <Box variant="code" fontSize="body-s">
+                                    <Box variant='code' fontSize='body-s'>
                                         s3://{item.s3Bucket}/{item.s3Prefix || ''}
                                     </Box>
                                 ),
@@ -149,15 +149,15 @@ export function DataSourceManagementPanel({
                             {
                                 id: 'status',
                                 header: 'Status',
-                                cell: () => <Badge color="green">Managed</Badge>,
+                                cell: () => <Badge color='green'>Managed</Badge>,
                             },
                             {
                                 id: 'actions',
                                 header: 'Actions',
                                 cell: (item) => (
                                     <Button
-                                        variant="inline-icon"
-                                        iconName="remove"
+                                        variant='inline-icon'
+                                        iconName='remove'
                                         onClick={() => handleRemoveDataSource(item.dataSourceId)}
                                         ariaLabel={`Remove ${item.dataSourceName}`}
                                     />
@@ -165,11 +165,11 @@ export function DataSourceManagementPanel({
                             },
                         ]}
                         items={currentDataSources}
-                        loadingText="Loading data sources"
+                        loadingText='Loading data sources'
                         loading={isLoading}
                         empty={
-                            <Box textAlign="center" color="inherit">
-                                <SpaceBetween size="m">
+                            <Box textAlign='center' color='inherit'>
+                                <SpaceBetween size='m'>
                                     <b>No data sources</b>
                                     <Button onClick={() => setWizardVisible(true)}>Add Data Sources</Button>
                                 </SpaceBetween>
@@ -178,8 +178,8 @@ export function DataSourceManagementPanel({
                     />
 
                     {currentDataSources.length === 0 && (
-                        <Box textAlign="center" padding={{ vertical: 'm' }}>
-                            <StatusIndicator type="warning">
+                        <Box textAlign='center' padding={{ vertical: 'm' }}>
+                            <StatusIndicator type='warning'>
                                 At least one data source is required for Bedrock KB repositories
                             </StatusIndicator>
                         </Box>

@@ -50,13 +50,12 @@ from repository.s3_metadata_manager import S3MetadataManager
 from repository.services import RepositoryServiceFactory
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.auth import admin_only, get_groups, get_user_context, get_username, is_admin, user_has_group_access
-from utilities.bedrock_kb import add_default_pipeline_for_bedrock_kb
+from utilities.bedrock_kb_discovery import build_pipeline_configs_from_kb_config
 from utilities.common_functions import api_wrapper, retry_config
 from utilities.exceptions import HTTPException
 from utilities.repository_types import RepositoryType
 from utilities.validation import ValidationError
-from utilities.bedrock_kb_discovery import build_pipeline_configs_from_kb_config
-        
+
 logger = logging.getLogger(__name__)
 region_name = os.environ["AWS_REGION"]
 session = boto3.Session()
@@ -1200,8 +1199,11 @@ def create(event: dict, context: dict) -> Any:
     if vector_store_config.type == RepositoryType.BEDROCK_KB:
         if not vector_store_config.bedrockKnowledgeBaseConfig:
             raise ValidationError("Bedrock Knowledge Base configuration is required")
-        
-        if not vector_store_config.bedrockKnowledgeBaseConfig.dataSources or len(vector_store_config.bedrockKnowledgeBaseConfig.dataSources) == 0:
+
+        if (
+            not vector_store_config.bedrockKnowledgeBaseConfig.dataSources
+            or len(vector_store_config.bedrockKnowledgeBaseConfig.dataSources) == 0
+        ):
             raise ValidationError(
                 "Bedrock Knowledge Base repositories require at least one data source. "
                 "Please select at least one data source."
@@ -1457,13 +1459,15 @@ def list_bedrock_knowledge_bases(event: dict, context: dict) -> Dict[str, Any]:
     """
     List all ACTIVE Bedrock Knowledge Bases in the AWS account.
 
+    Marks KBs as unavailable if they're already associated with a repository.
+
     Args:
         event: Lambda event
         context: Lambda context
 
     Returns:
         Dictionary with:
-            - knowledgeBases: List of ACTIVE Knowledge Base metadata
+            - knowledgeBases: List of ACTIVE Knowledge Base metadata with availability status
             - totalKnowledgeBases: Count of ACTIVE KBs
 
     Raises:
@@ -1480,7 +1484,29 @@ def list_bedrock_knowledge_bases(event: dict, context: dict) -> Dict[str, Any]:
     all_kbs = list_knowledge_bases(bedrock_agent_client)
     active_kbs = [kb for kb in all_kbs if kb.get("status") == "ACTIVE"]
 
-    logger.info(f"Found {len(active_kbs)} ACTIVE Knowledge Bases out of {len(all_kbs)} total")
+    # Get all existing repositories to check which KBs are already in use
+    existing_repos = vs_repo.get_registered_repositories()
+    used_kb_ids = set()
+
+    for repo in existing_repos:
+        config = repo.get("config", {})
+        bedrock_config = config.get("bedrockKnowledgeBaseConfig")
+        if bedrock_config and isinstance(bedrock_config, dict):
+            kb_id = bedrock_config.get("knowledgeBaseId")
+            if kb_id:
+                used_kb_ids.add(kb_id)
+
+    # Mark KBs as available or unavailable
+    for kb in active_kbs:
+        kb_id = kb.get("knowledgeBaseId")
+        kb["available"] = kb_id not in used_kb_ids
+        if not kb["available"]:
+            kb["unavailableReason"] = "Already associated with another repository"
+
+    logger.info(
+        f"Found {len(active_kbs)} ACTIVE Knowledge Bases out of {len(all_kbs)} total, "
+        f"{len(used_kb_ids)} already in use"
+    )
 
     return {"knowledgeBases": active_kbs, "totalKnowledgeBases": len(active_kbs)}
 

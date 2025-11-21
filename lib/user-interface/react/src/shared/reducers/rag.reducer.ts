@@ -137,6 +137,8 @@ type KnowledgeBase = {
     name: string;
     description?: string;
     status: string;
+    available?: boolean;
+    unavailableReason?: string;
     createdAt?: string;
     updatedAt?: string;
 };

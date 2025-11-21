@@ -1124,7 +1124,7 @@ class BedrockDataSource(BaseModel):
 
 class BedrockKnowledgeBaseConfig(BaseModel):
     """Configuration for Bedrock Knowledge Base with multiple data sources.
-    
+
     Stores the KB ID and array of data sources. Backend converts to pipelines.
     """
 

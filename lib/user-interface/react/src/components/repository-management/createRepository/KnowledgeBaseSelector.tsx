@@ -30,12 +30,12 @@ import {
 import { useListBedrockKnowledgeBasesQuery } from '@/shared/reducers/rag.reducer';
 import { KnowledgeBase } from '@/types/bedrock-kb';
 
-interface KnowledgeBaseSelectorProps {
+type KnowledgeBaseSelectorProps = {
     selectedKbId: string | null;
     onSelect: (kb: KnowledgeBase | null) => void;
-}
+};
 
-export function KnowledgeBaseSelector({ selectedKbId, onSelect }: KnowledgeBaseSelectorProps): ReactElement {
+export function KnowledgeBaseSelector ({ selectedKbId, onSelect }: KnowledgeBaseSelectorProps): ReactElement {
     const [searchText, setSearchText] = useState('');
     const { data, isLoading, error, refetch } = useListBedrockKnowledgeBasesQuery();
 
@@ -55,10 +55,10 @@ export function KnowledgeBaseSelector({ selectedKbId, onSelect }: KnowledgeBaseS
 
     if (isLoading) {
         return (
-            <Container header={<Header variant="h2">Select Knowledge Base</Header>}>
-                <Box textAlign="center" padding={{ vertical: 'l' }}>
-                    <Spinner size="large" />
-                    <Box variant="p" padding={{ top: 's' }}>
+            <Container header={<Header variant='h2'>Select Knowledge Base</Header>}>
+                <Box textAlign='center' padding={{ vertical: 'l' }}>
+                    <Spinner size='large' />
+                    <Box variant='p' padding={{ top: 's' }}>
                         Loading Knowledge Bases...
                     </Box>
                 </Box>
@@ -68,9 +68,9 @@ export function KnowledgeBaseSelector({ selectedKbId, onSelect }: KnowledgeBaseS
 
     if (error) {
         return (
-            <Container header={<Header variant="h2">Select Knowledge Base</Header>}>
-                <Box textAlign="center" padding={{ vertical: 'l' }}>
-                    <StatusIndicator type="error">
+            <Container header={<Header variant='h2'>Select Knowledge Base</Header>}>
+                <Box textAlign='center' padding={{ vertical: 'l' }}>
+                    <StatusIndicator type='error'>
                         {(error as any)?.message || 'Failed to load Knowledge Bases'}
                     </StatusIndicator>
                     <Box padding={{ top: 's' }}>
@@ -83,10 +83,10 @@ export function KnowledgeBaseSelector({ selectedKbId, onSelect }: KnowledgeBaseS
 
     if (!data?.knowledgeBases || data.knowledgeBases.length === 0) {
         return (
-            <Container header={<Header variant="h2">Select Knowledge Base</Header>}>
-                <Box textAlign="center" padding={{ vertical: 'l' }}>
-                    <StatusIndicator type="warning">No ACTIVE Knowledge Bases found</StatusIndicator>
-                    <Box variant="p" padding={{ top: 's' }}>
+            <Container header={<Header variant='h2'>Select Knowledge Base</Header>}>
+                <Box textAlign='center' padding={{ vertical: 'l' }}>
+                    <StatusIndicator type='warning'>No ACTIVE Knowledge Bases found</StatusIndicator>
+                    <Box variant='p' padding={{ top: 's' }}>
                         Please create a Knowledge Base in the AWS Bedrock console first.
                     </Box>
                     <Box padding={{ top: 's' }}>
@@ -101,9 +101,9 @@ export function KnowledgeBaseSelector({ selectedKbId, onSelect }: KnowledgeBaseS
         <Container
             header={
                 <Header
-                    variant="h2"
+                    variant='h2'
                     actions={
-                        <Button iconName="refresh" onClick={handleRefresh}>
+                        <Button iconName='refresh' onClick={handleRefresh}>
                             Refresh
                         </Button>
                     }
@@ -112,21 +112,21 @@ export function KnowledgeBaseSelector({ selectedKbId, onSelect }: KnowledgeBaseS
                 </Header>
             }
         >
-            <SpaceBetween size="m">
-                <FormField label="Search" description="Filter by name, ID, or description">
+            <SpaceBetween size='m'>
+                <FormField label='Search' description='Filter by name, ID, or description'>
                     <Input
                         value={searchText}
                         onChange={({ detail }) => setSearchText(detail.value)}
-                        placeholder="Search Knowledge Bases..."
-                        type="search"
-                        clearAriaLabel="Clear search"
+                        placeholder='Search Knowledge Bases...'
+                        type='search'
+                        clearAriaLabel='Clear search'
                     />
                 </FormField>
 
                 {filteredKBs && filteredKBs.length > 0 ? (
                     <FormField
                         label={`Knowledge Bases (${filteredKBs.length} of ${data.knowledgeBases.length})`}
-                        description="Select a Knowledge Base to view its data sources"
+                        description='Select a Knowledge Base to view its data sources'
                     >
                         <RadioGroup
                             value={selectedKbId || ''}
@@ -138,11 +138,11 @@ export function KnowledgeBaseSelector({ selectedKbId, onSelect }: KnowledgeBaseS
                                 value: kb.knowledgeBaseId,
                                 label: kb.name,
                                 description: (
-                                    <SpaceBetween size="xxs">
-                                        <Box variant="small">ID: {kb.knowledgeBaseId}</Box>
-                                        {kb.description && <Box variant="small">{kb.description}</Box>}
-                                        <Box variant="small">
-                                            <StatusIndicator type="success">ACTIVE</StatusIndicator>
+                                    <SpaceBetween size='xxs'>
+                                        <Box variant='small'>ID: {kb.knowledgeBaseId}</Box>
+                                        {kb.description && <Box variant='small'>{kb.description}</Box>}
+                                        <Box variant='small'>
+                                            <StatusIndicator type='success'>ACTIVE</StatusIndicator>
                                         </Box>
                                     </SpaceBetween>
                                 ),
@@ -150,8 +150,8 @@ export function KnowledgeBaseSelector({ selectedKbId, onSelect }: KnowledgeBaseS
                         />
                     </FormField>
                 ) : (
-                    <Box textAlign="center" padding={{ vertical: 'm' }}>
-                        <StatusIndicator type="info">No Knowledge Bases match your search</StatusIndicator>
+                    <Box textAlign='center' padding={{ vertical: 'm' }}>
+                        <StatusIndicator type='info'>No Knowledge Bases match your search</StatusIndicator>
                     </Box>
                 )}
             </SpaceBetween>

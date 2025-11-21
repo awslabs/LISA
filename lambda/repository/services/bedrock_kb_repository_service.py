@@ -280,7 +280,7 @@ class BedrockKBRepositoryService(RepositoryService):
         """Bedrock KB does not use external vector store clients."""
         return None
 
-    def create_default_collection(self) -> Optional[RagCollectionConfig]:
+    def create_default_collection(self, ingest_docs=False) -> Optional[RagCollectionConfig]:
         """Create a default collection for Bedrock KB repository.
 
         For Bedrock KB, the collection ID is the data source ID.
@@ -319,6 +319,17 @@ class BedrockKBRepositoryService(RepositoryService):
             )
 
             logger.info(f"Created virtual default collection for Bedrock KB repository {self.repository_id}")
+
+            if ingest_docs:
+                # Ingest existing documents from S3 bucket if s3pipeline is configured
+                s3_bucket = bedrock_config.get("s3pipeline")
+
+                if s3_bucket:
+                    logger.info(
+                        f"S3 pipeline configured with bucket {s3_bucket}. "
+                        f"Document ingestion requires additional dependencies not available in this context."
+                    )
+
             return default_collection
 
         except Exception as e:

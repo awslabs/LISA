@@ -15,19 +15,19 @@
  */
 
 import { ReactElement, useState } from 'react';
-import { Box, Button, SpaceBetween, Wizard } from '@cloudscape-design/components';
+import { Box, SpaceBetween, Wizard } from '@cloudscape-design/components';
 import { KnowledgeBaseSelector } from './KnowledgeBaseSelector';
 import { DataSourceMultiSelect } from './DataSourceMultiSelect';
 import { KnowledgeBase, DataSourceSelection } from '@/types/bedrock-kb';
 
-interface BedrockKBDiscoveryWizardProps {
+type BedrockKBDiscoveryWizardProps = {
     visible: boolean;
     onDismiss: () => void;
     onComplete: (kbId: string, kbName: string, kbDescription: string, selections: DataSourceSelection[]) => void;
     repositoryId?: string;
-}
+};
 
-export function BedrockKBDiscoveryWizard({
+export function BedrockKBDiscoveryWizard ({
     visible,
     onDismiss,
     onComplete,
@@ -109,7 +109,7 @@ export function BedrockKBDiscoveryWizard({
                             onSelectionChange={setSelectedDataSources}
                         />
                     ) : (
-                        <Box textAlign="center" padding={{ vertical: 'l' }}>
+                        <Box textAlign='center' padding={{ vertical: 'l' }}>
                             Please select a Knowledge Base first
                         </Box>
                     ),
@@ -119,9 +119,9 @@ export function BedrockKBDiscoveryWizard({
                     title: 'Review and Create',
                     description: 'Review your selections before creating the repository',
                     content: (
-                        <SpaceBetween size="l">
+                        <SpaceBetween size='l'>
                             <Box>
-                                <Box variant="h3" padding={{ bottom: 's' }}>
+                                <Box variant='h3' padding={{ bottom: 's' }}>
                                     Knowledge Base
                                 </Box>
                                 <Box>
@@ -138,27 +138,27 @@ export function BedrockKBDiscoveryWizard({
                             </Box>
 
                             <Box>
-                                <Box variant="h3" padding={{ bottom: 's' }}>
+                                <Box variant='h3' padding={{ bottom: 's' }}>
                                     Selected Data Sources ({selectedDataSources.length})
                                 </Box>
                                 {selectedDataSources.length > 0 ? (
-                                    <SpaceBetween size="s">
+                                    <SpaceBetween size='s'>
                                         {selectedDataSources.map((ds) => (
                                             <Box key={ds.dataSourceId} padding={{ left: 's' }}>
                                                 <Box>
                                                     <strong>{ds.dataSourceName}</strong>
                                                 </Box>
-                                                <Box variant="small" color="text-body-secondary">
+                                                <Box variant='small' color='text-body-secondary'>
                                                     ID: {ds.dataSourceId}
                                                 </Box>
-                                                <Box variant="small" color="text-body-secondary">
+                                                <Box variant='small' color='text-body-secondary'>
                                                     S3: s3://{ds.s3Bucket}/{ds.s3Prefix || ''}
                                                 </Box>
                                             </Box>
                                         ))}
                                     </SpaceBetween>
                                 ) : (
-                                    <Box color="text-status-warning">No data sources selected</Box>
+                                    <Box color='text-status-warning'>No data sources selected</Box>
                                 )}
                             </Box>
                         </SpaceBetween>

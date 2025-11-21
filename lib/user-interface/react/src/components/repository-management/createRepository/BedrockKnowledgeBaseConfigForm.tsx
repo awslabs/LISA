@@ -41,19 +41,24 @@ type BedrockKnowledgeBaseConfigProps = {
     setFields: (fields: Record<string, any>) => void;
 };
 
-interface DataSourceRow {
+type DataSourceRow = {
     id: string;
     name: string;
     s3Uri: string;
-}
+};
 
-export function BedrockKnowledgeBaseConfigForm(
+export function BedrockKnowledgeBaseConfigForm (
     props: FormProps<{ bedrockKnowledgeBaseConfig?: BedrockKnowledgeBaseConfigSchema }> &
         BedrockKnowledgeBaseConfigProps
 ): ReactElement {
     const { item, setFields, isEdit } = props;
-    const [selectedKbId, setSelectedKbId] = useState<string | null>(null);
+
+    // Initialize state from item to persist across wizard pages
+    const [selectedKbId, setSelectedKbId] = useState<string | null>(
+        item.bedrockKnowledgeBaseConfig?.knowledgeBaseId || null
+    );
     const [selectedDataSources, setSelectedDataSources] = useState<DataSourceRow[]>([]);
+    const [hasInitialized, setHasInitialized] = useState(false);
 
     // Only fetch KBs if not in edit mode
     const { data: kbData, isLoading: kbLoading } = useListBedrockKnowledgeBasesQuery(undefined, {
@@ -66,19 +71,20 @@ export function BedrockKnowledgeBaseConfigForm(
         refetch: refetchDataSources,
     } = useListBedrockDataSourcesQuery({ kbId: selectedKbId || '' }, { skip: !selectedKbId });
 
-    // Initialize from existing config
+    // Initialize KB ID from existing config (only once)
     useEffect(() => {
-        if (item.bedrockKnowledgeBaseConfig) {
+        if (item.bedrockKnowledgeBaseConfig && !hasInitialized) {
             setSelectedKbId(item.bedrockKnowledgeBaseConfig.knowledgeBaseId);
+            setHasInitialized(true);
         }
-    }, [item.bedrockKnowledgeBaseConfig]);
+    }, [item.bedrockKnowledgeBaseConfig, hasInitialized]);
 
-    // Auto-select data sources when they load in edit mode
+    // Auto-select data sources when they load
     useEffect(() => {
-        if (isEdit && item.bedrockKnowledgeBaseConfig && dsData?.availableDataSources) {
+        if (item.bedrockKnowledgeBaseConfig && dsData?.availableDataSources && !hasInitialized) {
             // Map existing data source IDs to full data source objects from the API
             const existingIds = new Set(item.bedrockKnowledgeBaseConfig.dataSources.map((ds) => ds.id));
-            
+
             const selectedRows: DataSourceRow[] = dsData.availableDataSources
                 .filter((ds) => existingIds.has(ds.dataSourceId))
                 .map((ds) => ({
@@ -86,10 +92,11 @@ export function BedrockKnowledgeBaseConfigForm(
                     name: ds.name,
                     s3Uri: `s3://${ds.s3Bucket}/${ds.s3Prefix || ''}`,
                 }));
-            
+
             setSelectedDataSources(selectedRows);
+            setHasInitialized(true);
         }
-    }, [isEdit, item.bedrockKnowledgeBaseConfig, dsData]);
+    }, [item.bedrockKnowledgeBaseConfig, dsData, hasInitialized]);
 
     // Update form when selections change
     useEffect(() => {
@@ -103,7 +110,8 @@ export function BedrockKnowledgeBaseConfigForm(
             };
             setFields({ bedrockKnowledgeBaseConfig: config });
         }
-    }, [selectedKbId, selectedDataSources, setFields]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedKbId, selectedDataSources]);
 
     const handleKbChange = (kbId: string | null) => {
         setSelectedKbId(kbId);
@@ -122,9 +130,9 @@ export function BedrockKnowledgeBaseConfigForm(
         })) || [];
 
     return (
-        <Container header={<Header variant="h2">Bedrock Knowledge Base Config</Header>}>
-            <SpaceBetween direction="vertical" size="m">
-                <Alert type="info" header="How LISA manages your Knowledge Base documents">
+        <Container header={<Header variant='h2'>Bedrock Knowledge Base Config</Header>}>
+            <SpaceBetween direction='vertical' size='m'>
+                <Alert type='info' header='How LISA manages your Knowledge Base documents'>
                     LISA tracks document ownership to preserve your existing data. Documents already in your
                     Knowledge Base are marked as user-managed and will never be deleted by LISA. Only documents
                     uploaded through LISA (via manual upload or automated pipelines) can be removed when you delete
@@ -133,21 +141,17 @@ export function BedrockKnowledgeBaseConfigForm(
 
                 {isEdit ? (
                     <FormField
-                        label="Knowledge Base ID"
-                        description="Knowledge Base cannot be changed after creation"
+                        label='Knowledge Base ID'
+                        description='Knowledge Base cannot be changed after creation'
                     >
-                        <Box variant="code" fontSize="body-m" padding={{ vertical: 'xs' }}>
+                        <Box variant='code' fontSize='body-m' padding={{ vertical: 'xs' }}>
                             {selectedKbId || 'Not set'}
                         </Box>
                     </FormField>
                 ) : (
-                    <FormField
-                        label="Knowledge Base"
-                        description="Select a Bedrock Knowledge Base"
-                        errorText={!selectedKbId && 'Please select a Knowledge Base'}
-                    >
+                    <FormField label='Knowledge Base' description='Select a Bedrock Knowledge Base'>
                         {kbLoading ? (
-                            <Box textAlign="center" padding={{ vertical: 's' }}>
+                            <Box textAlign='center' padding={{ vertical: 's' }}>
                                 <Spinner />
                             </Box>
                         ) : (
@@ -155,43 +159,52 @@ export function BedrockKnowledgeBaseConfigForm(
                                 selectedOption={
                                     selectedKbId
                                         ? {
-                                              label:
+                                            label:
                                                   kbData?.knowledgeBases.find(
                                                       (kb) => kb.knowledgeBaseId === selectedKbId
                                                   )?.name || selectedKbId,
-                                              value: selectedKbId,
-                                          }
+                                            value: selectedKbId,
+                                        }
                                         : null
                                 }
                                 onChange={({ detail }) => handleKbChange(detail.selectedOption.value || null)}
                                 options={
-                                    kbData?.knowledgeBases.map((kb) => ({
-                                        label: kb.name,
-                                        value: kb.knowledgeBaseId,
-                                        description: kb.knowledgeBaseId,
-                                    })) || []
+                                    kbData?.knowledgeBases
+                                        .filter((kb) => kb.available !== false) // Only show available KBs
+                                        .map((kb) => ({
+                                            label: kb.name,
+                                            value: kb.knowledgeBaseId,
+                                            description: kb.knowledgeBaseId,
+                                        })) || []
                                 }
-                                placeholder="Choose a Knowledge Base"
-                                empty="No ACTIVE Knowledge Bases found"
+                                placeholder='Choose a Knowledge Base'
+                                empty='No available Knowledge Bases found'
                             />
                         )}
                     </FormField>
                 )}
 
+                {!isEdit && kbData && kbData.knowledgeBases.some((kb) => kb.available === false) && (
+                    <Alert type='info' header='Some Knowledge Bases are unavailable'>
+                        {kbData.knowledgeBases.filter((kb) => kb.available === false).length} Knowledge Base(s) are
+                        already associated with other repositories and cannot be selected. Each Knowledge Base can
+                        only be used by one repository.
+                    </Alert>
+                )}
+
                 {selectedKbId && (
                     <FormField
-                        label="Data Sources"
+                        label='Data Sources'
                         description={
                             isEdit
                                 ? 'Add or remove data sources to update collections'
                                 : 'Select one or more data sources to track as collections'
                         }
-                        errorText={selectedDataSources.length === 0 && 'Please select at least one data source'}
                     >
                         {dsLoading ? (
-                            <Box textAlign="center" padding={{ vertical: 'm' }}>
-                                <Spinner size="large" />
-                                <Box variant="p" padding={{ top: 's' }}>
+                            <Box textAlign='center' padding={{ vertical: 'm' }}>
+                                <Spinner size='large' />
+                                <Box variant='p' padding={{ top: 's' }}>
                                     Loading data sources...
                                 </Box>
                             </Box>
@@ -207,7 +220,7 @@ export function BedrockKnowledgeBaseConfigForm(
                                         id: 'id',
                                         header: 'Data Source ID',
                                         cell: (item) => (
-                                            <Box variant="code" fontSize="body-s">
+                                            <Box variant='code' fontSize='body-s'>
                                                 {item.id}
                                             </Box>
                                         ),
@@ -216,14 +229,15 @@ export function BedrockKnowledgeBaseConfigForm(
                                         id: 's3',
                                         header: 'S3 URI',
                                         cell: (item) => (
-                                            <Box variant="code" fontSize="body-s">
+                                            <Box variant='code' fontSize='body-s'>
                                                 {item.s3Uri}
                                             </Box>
                                         ),
                                     },
                                 ]}
                                 items={availableDataSources}
-                                selectionType="multi"
+                                selectionType='multi'
+                                trackBy='id'
                                 selectedItems={selectedDataSources}
                                 onSelectionChange={({ detail }) =>
                                     handleDataSourceSelection(detail.selectedItems as DataSourceRow[])
@@ -231,7 +245,7 @@ export function BedrockKnowledgeBaseConfigForm(
                                 header={
                                     <Header
                                         actions={
-                                            <Button iconName="refresh" onClick={() => refetchDataSources()}>
+                                            <Button iconName='refresh' onClick={() => refetchDataSources()}>
                                                 Refresh
                                             </Button>
                                         }
@@ -241,10 +255,10 @@ export function BedrockKnowledgeBaseConfigForm(
                                     </Header>
                                 }
                                 empty={
-                                    <Box textAlign="center" color="inherit">
-                                        <SpaceBetween size="m">
+                                    <Box textAlign='center' color='inherit'>
+                                        <SpaceBetween size='m'>
                                             <b>No data sources available</b>
-                                            <Box variant="p">
+                                            <Box variant='p'>
                                                 {dsData?.managedDataSources.length
                                                     ? 'All data sources are already managed by collections.'
                                                     : 'Please create a data source in the AWS Bedrock console.'}
@@ -257,7 +271,7 @@ export function BedrockKnowledgeBaseConfigForm(
 
                         {selectedDataSources.length === 0 && availableDataSources.length > 0 && (
                             <Box padding={{ top: 's' }}>
-                                <StatusIndicator type="warning">
+                                <StatusIndicator type='warning'>
                                     Please select at least one data source to continue
                                 </StatusIndicator>
                             </Box>
@@ -266,7 +280,7 @@ export function BedrockKnowledgeBaseConfigForm(
                 )}
 
                 {dsData?.managedDataSources && dsData.managedDataSources.length > 0 && (
-                    <Alert type="info" header="Managed Data Sources">
+                    <Alert type='info' header='Managed Data Sources'>
                         {dsData.managedDataSources.length} data source(s) are already managed by existing collections
                         and cannot be selected.
                     </Alert>

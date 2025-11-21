@@ -20,13 +20,12 @@ efficient resource discovery.
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import boto3
 from botocore.exceptions import ClientError
-from utilities.validation import ValidationError
 from models.domain_objects import ChunkingStrategyType, NoneChunkingStrategy, PipelineTrigger
+from utilities.validation import ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -85,8 +84,7 @@ def list_knowledge_bases(
         error_code = e.response.get("Error", {}).get("Code", "")
         if error_code == "AccessDeniedException":
             raise ValidationError(
-                "Access denied to list Knowledge Bases. "
-                "Please check IAM permissions for bedrock:ListKnowledgeBases."
+                "Access denied to list Knowledge Bases. " "Please check IAM permissions for bedrock:ListKnowledgeBases."
             )
         elif error_code == "ThrottlingException":
             raise ValidationError("Rate limit exceeded while listing Knowledge Bases. " "Please try again later.")

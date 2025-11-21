@@ -13,9 +13,5 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 */
-export * from './configSchema';
-export * from './ragSchema';
-export * from './collectionSchema';
-export * from './cdk';
-export * from './schema';
-export * from './constants';
+
+export const APP_MANAGEMENT_KEY = 'appManagementKeySecretName';

@@ -32,9 +32,7 @@ class CollectionMixin(BaseMixin):
         chunking_strategy: Optional[Dict] = None,
         allowed_groups: Optional[List[str]] = None,
         metadata: Optional[Dict] = None,
-        private: bool = False,
         allow_chunking_override: bool = False,
-        pipelines: Optional[List[Dict]] = None,
     ) -> Dict:
         """Create a new collection in a repository.
 
@@ -46,9 +44,7 @@ class CollectionMixin(BaseMixin):
             chunking_strategy: Optional chunking strategy configuration
             allowed_groups: Optional list of groups allowed to access the collection
             metadata: Optional metadata tags for the collection
-            private: Whether the collection is private (default: False)
             allow_chunking_override: Whether to allow chunking strategy override (default: False)
-            pipelines: Optional pipeline configurations
 
         Returns:
             Dict: Created collection configuration
@@ -63,9 +59,7 @@ class CollectionMixin(BaseMixin):
             "chunkingStrategy": chunking_strategy,
             "allowedGroups": allowed_groups,
             "metadata": metadata,
-            "private": private,
             "allowChunkingOverride": allow_chunking_override,
-            "pipelines": pipelines,
         }
 
         # Remove None values
@@ -105,9 +99,7 @@ class CollectionMixin(BaseMixin):
         chunking_strategy: Optional[Dict] = None,
         allowed_groups: Optional[List[str]] = None,
         metadata: Optional[Dict] = None,
-        private: Optional[bool] = None,
         allow_chunking_override: Optional[bool] = None,
-        pipelines: Optional[List[Dict]] = None,
         status: Optional[str] = None,
     ) -> Dict:
         """Update a collection.
@@ -120,9 +112,7 @@ class CollectionMixin(BaseMixin):
             chunking_strategy: Optional new chunking strategy
             allowed_groups: Optional new allowed groups list
             metadata: Optional new metadata
-            private: Optional new private setting
             allow_chunking_override: Optional new allow_chunking_override setting
-            pipelines: Optional new pipelines configuration
             status: Optional new status
 
         Returns:
@@ -137,9 +127,7 @@ class CollectionMixin(BaseMixin):
             "chunkingStrategy": chunking_strategy,
             "allowedGroups": allowed_groups,
             "metadata": metadata,
-            "private": private,
             "allowChunkingOverride": allow_chunking_override,
-            "pipelines": pipelines,
             "status": status,
         }
 

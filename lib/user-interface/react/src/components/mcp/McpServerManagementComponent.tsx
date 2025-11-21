@@ -151,7 +151,9 @@ export function McpServerManagementComponent () {
                     setSelectedItems={actions.setSelectedItems}
                     preferences={preferences?.preferences?.mcp}
                     toggleAutopilotMode={toggleAutopilotMode}
-                />}>
+                />}
+                description='Activate available MCP servers and tools to use in the AI Assistant. All tools will operate in Safe Mode by default.'
+                >
                     MCP Connections
                 </Header>
             }

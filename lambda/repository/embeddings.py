@@ -89,11 +89,10 @@ class RagEmbeddings(BaseModel):
         if not texts:
             raise ValidationError("No texts provided for embedding")
 
-        logger.info(f"Embedding {len(texts)} documents")
+        logger.info(f"Embedding {len(texts)} documents using {self.model_name}")
         try:
             url = f"{self.base_url}/embeddings"
             request_data = {"input": texts, "model": self.model_name}
-
             response = requests.post(
                 url,
                 json=request_data,

@@ -74,9 +74,7 @@ type DeleteRagDocumentRequest = {
     documentIds: string[]
 };
 
-type CreateRepositoryRequest = {
-    ragConfig: RagRepositoryConfig
-};
+
 
 export type IngestionJob = {
     id: string;
@@ -141,11 +139,19 @@ export const ragApi = createApi({
             }),
             providesTags: ['repositories'],
         }),
-        createRagRepository: builder.mutation<RagRepositoryConfig, CreateRepositoryRequest>({
+        createRagRepository: builder.mutation<RagRepositoryConfig, RagRepositoryConfig>({
             query: (body) => ({
                 url: '/repository',
                 method: 'POST',
                 data: body,
+            }),
+            invalidatesTags: ['repositories'],
+        }),
+        updateRagRepository: builder.mutation<RagRepositoryConfig, { repositoryId: string; updates: Partial<RagRepositoryConfig> }>({
+            query: ({ repositoryId, updates }) => ({
+                url: `/repository/${repositoryId}`,
+                method: 'PUT',
+                data: updates,
             }),
             invalidatesTags: ['repositories'],
         }),
@@ -326,8 +332,6 @@ export const ragApi = createApi({
                     chunkingStrategy: request.chunkingStrategy,
                     allowedGroups: request.allowedGroups,
                     metadata: request.metadata,
-                    private: request.private,
-                    pipelines: request.pipelines,
                 },
             }),
             transformErrorResponse: (baseQueryReturnValue) => ({
@@ -368,9 +372,7 @@ export const ragApi = createApi({
                     chunkingStrategy: request.chunkingStrategy,
                     allowedGroups: request.allowedGroups,
                     metadata: request.metadata,
-                    private: request.private,
                     allowChunkingOverride: request.allowChunkingOverride,
-                    pipelines: request.pipelines,
                     status: request.status,
                 },
             }),
@@ -391,6 +393,7 @@ export const ragApi = createApi({
 export const {
     useListRagRepositoriesQuery,
     useCreateRagRepositoryMutation,
+    useUpdateRagRepositoryMutation,
     useDeleteRagRepositoryMutation,
     useLazyGetPresignedUrlQuery,
     useUploadToS3Mutation,

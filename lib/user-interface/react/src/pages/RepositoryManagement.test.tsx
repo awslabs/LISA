@@ -14,10 +14,12 @@
  limitations under the License.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen } from '@testing-library/react';
 import { RepositoryManagement } from './RepositoryManagement';
-import { renderWithProviders } from '../test/helpers/render';
+import { renderWithProviders, createMockQueryHook } from '../test/helpers/render';
+import * as modelManagementReducer from '../shared/reducers/model-management.reducer';
+import * as ragReducer from '../shared/reducers/rag.reducer';
 
 // Mock the RepositoryManagementComponent
 vi.mock('../components/repository-management/RepositoryManagementComponent', () => ({
@@ -25,6 +27,23 @@ vi.mock('../components/repository-management/RepositoryManagementComponent', () 
 }));
 
 describe('RepositoryManagement Page', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+
+        // Mock RTK Query hooks to prevent act() warnings
+        vi.spyOn(modelManagementReducer, 'useGetAllModelsQuery').mockImplementation(
+            createMockQueryHook([]) as any
+        );
+
+        vi.spyOn(ragReducer, 'useListRagRepositoriesQuery').mockReturnValue({
+            data: [],
+            isLoading: false,
+            isError: false,
+            error: undefined,
+            refetch: vi.fn(),
+        } as any);
+    });
+
     it('should render without crashing', () => {
         const setNav = vi.fn();
         renderWithProviders(<RepositoryManagement setNav={setNav} />);

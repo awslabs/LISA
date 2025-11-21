@@ -31,7 +31,7 @@ import { Action, ThunkDispatch } from '@reduxjs/toolkit';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 import {
     ragApi,
-    useCreateRagRepositoryMutation,
+    useUpdateRagRepositoryMutation,
     useDeleteRagRepositoryMutation,
 } from '@/shared/reducers/rag.reducer';
 import { RagRepositoryConfig } from '#root/lib/schema';
@@ -87,7 +87,7 @@ function RepositoryActionButton (dispatch: ThunkDispatch<any, any, Action>, noti
     ] = useDeleteRagRepositoryMutation();
 
     const [, { isSuccess: isUpdateSuccess, isError: isUpdateError, error: updateError, isLoading: isUpdating }]
-        = useCreateRagRepositoryMutation();
+        = useUpdateRagRepositoryMutation();
 
     useEffect(() => {
         if (!isDeleteLoading && isDeleteSuccess && selectedRepo) {

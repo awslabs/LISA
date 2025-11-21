@@ -262,6 +262,21 @@ export class ModelsApi extends Construct {
             ...(stateMachineExecutionRole),
         });
 
+        const scheduleManagementLambda = new Function(this, 'ScheduleManagement', {
+            runtime: getDefaultRuntime(),
+            handler: 'models.scheduling.schedule_management.lambda_handler',
+            code: Code.fromAsset(lambdaPath),
+            layers: lambdaLayers,
+            environment: {
+                MODEL_TABLE_NAME: modelTable.tableName,
+            },
+            role: stateMachinesLambdaRole,
+            vpc: vpc.vpc,
+            securityGroups: securityGroups,
+            timeout: Duration.minutes(5),
+            description: 'Manages Auto Scaling scheduled actions for LISA model scheduling',
+        });
+
         const environment = {
             LISA_API_URL_PS_NAME: lisaServeEndpointUrlPs.parameterName,
             REST_API_VERSION: 'v2',

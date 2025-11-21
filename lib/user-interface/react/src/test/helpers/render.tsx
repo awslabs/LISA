@@ -18,9 +18,34 @@ import { ReactElement } from 'react';
 import { render, RenderOptions } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore, PreloadedState } from '@reduxjs/toolkit';
+import { vi } from 'vitest';
 import User from '../../shared/reducers/user.reducer';
 import { ragApi } from '../../shared/reducers/rag.reducer';
 import { modelManagementApi } from '../../shared/reducers/model-management.reducer';
+
+/**
+ * Helper to create a mock RTK Query hook that properly handles selectFromResult.
+ * This prevents act() warnings when components use selectFromResult option.
+ */
+export function createMockQueryHook (baseData: any) {
+    return vi.fn((arg, options) => {
+        const baseResult = {
+            data: baseData,
+            isFetching: false,
+            isLoading: false,
+            isError: false,
+            error: undefined,
+            refetch: vi.fn(),
+        };
+
+        // Handle selectFromResult if provided
+        if (options?.selectFromResult) {
+            return options.selectFromResult(baseResult);
+        }
+
+        return baseResult;
+    });
+}
 
 type ExtendedRenderOptions = {
     preloadedState?: PreloadedState<any>;

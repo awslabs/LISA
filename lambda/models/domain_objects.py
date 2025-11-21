@@ -1152,3 +1152,52 @@ class UpdateVectorStoreRequest(BaseModel):
     allowedGroups: Optional[List[str]] = Field(default=None, description="User groups with access")
     metadata: Optional[RepositoryMetadata] = Field(default=None, description="Repository metadata")
     pipelines: Optional[List[PipelineConfig]] = Field(default=None, description="Automated ingestion pipelines")
+
+
+class KnowledgeBaseMetadata(BaseModel):
+    """Metadata for a Bedrock Knowledge Base."""
+
+    knowledgeBaseId: str = Field(description="Knowledge Base ID")
+    name: str = Field(description="Knowledge Base name")
+    description: Optional[str] = Field(default="", description="Knowledge Base description")
+    status: str = Field(description="Knowledge Base status (ACTIVE, CREATING, DELETING, etc.)")
+    createdAt: Optional[datetime] = Field(default=None, description="Creation timestamp")
+    updatedAt: Optional[datetime] = Field(default=None, description="Last update timestamp")
+
+
+class DataSourceMetadata(BaseModel):
+    """Metadata for a Bedrock Knowledge Base data source."""
+
+    dataSourceId: str = Field(description="Data Source ID")
+    name: str = Field(description="Data Source name")
+    description: Optional[str] = Field(default="", description="Data Source description")
+    status: str = Field(description="Data Source status (AVAILABLE, CREATING, DELETING, etc.)")
+    s3Bucket: str = Field(description="S3 bucket for the data source")
+    s3Prefix: str = Field(default="", description="S3 prefix for the data source")
+    createdAt: Optional[datetime] = Field(default=None, description="Creation timestamp")
+    updatedAt: Optional[datetime] = Field(default=None, description="Last update timestamp")
+    managed: Optional[bool] = Field(default=False, description="Whether this data source is managed by a collection")
+    collectionId: Optional[str] = Field(default=None, description="Collection ID if managed")
+
+    @field_validator("s3Bucket")
+    @classmethod
+    def validate_s3_bucket(cls, v: str) -> str:
+        """Validate S3 bucket name format."""
+        if not v:
+            raise ValueError("S3 bucket cannot be empty")
+        # Basic S3 bucket name validation
+        if not re.match(r"^[a-z0-9][a-z0-9.-]*[a-z0-9]$", v):
+            raise ValueError(f"Invalid S3 bucket name format: {v}")
+        return v
+
+
+class DataSourceSelection(BaseModel):
+    """Represents a user's selection of a data source for collection creation.
+
+    Frontend sends this to backend, which creates pipelines and collections.
+    """
+
+    dataSourceId: str = Field(description="Data Source ID")
+    dataSourceName: str = Field(description="Data Source name")
+    s3Bucket: str = Field(description="S3 bucket for the data source")
+    s3Prefix: str = Field(default="", description="S3 prefix for the data source")

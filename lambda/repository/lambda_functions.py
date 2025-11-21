@@ -1199,7 +1199,17 @@ def create(event: dict, context: dict) -> Any:
     if vector_store_config.type == RepositoryType.BEDROCK_KB:
         if not vector_store_config.bedrockKnowledgeBaseConfig:
             raise ValidationError("Bedrock Config must be supplied")
-        add_default_pipeline_for_bedrock_kb(vector_store_config)
+
+        # If no pipelines provided, add default pipeline
+        if not vector_store_config.pipelines:
+            add_default_pipeline_for_bedrock_kb(vector_store_config)
+        else:
+            # Validate that at least one pipeline is provided
+            if len(vector_store_config.pipelines) == 0:
+                raise ValidationError(
+                    "Bedrock Knowledge Base repositories require at least one collection. "
+                    "Please select at least one data source."
+                )
 
     # Convert to dictionary for Step Functions input
     rag_config = vector_store_config.model_dump(mode="json", exclude_none=True)
@@ -1297,6 +1307,15 @@ def update_repository(event: dict, context: dict) -> Dict[str, Any]:
 
     # Build updates dictionary (only include fields that were provided)
     updates = request.model_dump(exclude_none=True, mode="json")
+
+    # Validate Bedrock KB repositories have at least one pipeline
+    if request.pipelines is not None:
+        repository_type = current_config.get("type")
+        if repository_type == RepositoryType.BEDROCK_KB and len(request.pipelines) == 0:
+            raise ValidationError(
+                "Bedrock Knowledge Base repositories require at least one collection. "
+                "Please select at least one data source."
+            )
 
     # Check if pipeline configuration has changed
     require_deployment = request.pipelines is not None and request.pipelines != current_pipelines
@@ -1431,3 +1450,99 @@ def _remove_legacy(repository_id: str) -> None:
             Type="String",
             Overwrite=True,
         )
+
+
+@api_wrapper
+def list_bedrock_knowledge_bases(event: dict, context: dict) -> Dict[str, Any]:
+    """
+    List all ACTIVE Bedrock Knowledge Bases in the AWS account.
+
+    Args:
+        event: Lambda event
+        context: Lambda context
+
+    Returns:
+        Dictionary with:
+            - knowledgeBases: List of ACTIVE Knowledge Base metadata
+            - totalKnowledgeBases: Count of ACTIVE KBs
+
+    Raises:
+        ValidationError: If discovery fails
+    """
+    from utilities.bedrock_kb_discovery import list_knowledge_bases
+
+    logger.info("Listing all ACTIVE Knowledge Bases")
+
+    # Create bedrock-agent client
+    bedrock_agent_client = boto3.client("bedrock-agent", region_name, config=retry_config)
+
+    # Get all knowledge bases and filter to ACTIVE only
+    all_kbs = list_knowledge_bases(bedrock_agent_client)
+    active_kbs = [kb for kb in all_kbs if kb.get("status") == "ACTIVE"]
+
+    logger.info(f"Found {len(active_kbs)} ACTIVE Knowledge Bases out of {len(all_kbs)} total")
+
+    return {"knowledgeBases": active_kbs, "totalKnowledgeBases": len(active_kbs)}
+
+
+@api_wrapper
+def list_bedrock_data_sources(event: dict, context: dict) -> Dict[str, Any]:
+    """
+    List data sources for a specific Bedrock Knowledge Base.
+
+    Args:
+        event: Lambda event containing:
+            - pathParameters.kbId: Knowledge Base ID
+            - queryStringParameters.repositoryId (optional): Repository ID to check managed data sources
+            - queryStringParameters.refresh (optional): Force refresh cache (default: false)
+        context: Lambda context
+
+    Returns:
+        Dictionary with:
+            - knowledgeBase: KB metadata (id, name, description)
+            - availableDataSources: Data sources not yet managed
+            - managedDataSources: Data sources already managed by collections
+            - totalDataSources: Total count
+
+    Raises:
+        ValidationError: If KB not found or discovery fails
+    """
+    from utilities.bedrock_kb_discovery import get_available_data_sources
+    from utilities.bedrock_kb_validation import validate_bedrock_kb_exists
+
+    path_params = event.get("pathParameters", {})
+    query_params = event.get("queryStringParameters") or {}
+
+    kb_id = path_params.get("kbId")
+    if not kb_id:
+        raise ValidationError("kbId is required")
+
+    repository_id = query_params.get("repositoryId")
+    force_refresh = query_params.get("refresh", "false").lower() == "true"
+
+    logger.info(f"Listing data sources for KB {kb_id}, repository={repository_id}, refresh={force_refresh}")
+
+    # Create bedrock-agent client
+    bedrock_agent_client = boto3.client("bedrock-agent", region_name, config=retry_config)
+
+    # Validate KB exists and get metadata
+    kb_config = validate_bedrock_kb_exists(kb_id, bedrock_agent_client)
+
+    # Get available and managed data sources
+    available, managed = get_available_data_sources(
+        kb_id=kb_id,
+        repository_id=repository_id,
+        bedrock_agent_client=bedrock_agent_client,
+        force_refresh=force_refresh,
+    )
+
+    return {
+        "knowledgeBase": {
+            "id": kb_id,
+            "name": kb_config.get("name"),
+            "description": kb_config.get("description", ""),
+        },
+        "availableDataSources": available,
+        "managedDataSources": managed,
+        "totalDataSources": len(available) + len(managed),
+    }

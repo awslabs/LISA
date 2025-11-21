@@ -28,7 +28,7 @@ import { Code, Function, } from 'aws-cdk-lib/aws-lambda';
 
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
-import { BaseProps, Config } from '../schema';
+import { APP_MANAGEMENT_KEY, BaseProps, Config } from '../schema';
 import {
     Effect,
     ManagedPolicy,
@@ -204,7 +204,7 @@ export class LisaApiBaseConstruct extends Construct {
         });
 
         new StringParameter(scope, createCdkId(['AppManagementKeySecretName']), {
-            parameterName: `${config.deploymentPrefix}/appManagementKeySecretName`,
+            parameterName: `${config.deploymentPrefix}/${APP_MANAGEMENT_KEY}`,
             stringValue: managementKeySecret.secretName,
         });
 

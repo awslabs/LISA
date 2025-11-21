@@ -1018,9 +1018,13 @@ class TestScheduleMonitoringEdgeCases:
         assert result["statusCode"] == 200
         assert result["message"] == "ASG not related to LISA models"
 
-    def test_handle_autoscaling_event_unsupported_type(self):
+    @patch("models.scheduling.schedule_monitoring.find_model_by_asg_name")
+    def test_handle_autoscaling_event_unsupported_type(self, mock_find_model):
         """Test handle_autoscaling_event with unsupported event type."""
         from models.scheduling.schedule_monitoring import handle_autoscaling_event
+
+        # Mock model found so we get past the ASG check
+        mock_find_model.return_value = "test-model"
 
         event = {
             "source": "aws.autoscaling",
@@ -1032,4 +1036,4 @@ class TestScheduleMonitoringEdgeCases:
 
         # Verify response
         assert result["statusCode"] == 200
-        assert "Event type 'EC2 Instance Launch Failed' not handled" in result["message"]
+        assert "Event type EC2 Instance Launch Failed ignored" in result["message"]

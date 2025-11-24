@@ -73,6 +73,22 @@ export const modelManagementApi = createApi({
             query: () => ({
                 url: '/models/metadata/instances'
             })
+        }),
+        updateSchedule: builder.mutation<{message: string, modelId: string, scheduleEnabled: boolean}, {modelId: string, scheduleConfig: any}>({
+            query: ({modelId, scheduleConfig}) => ({
+                url: `/models/${modelId}/schedule`,
+                method: 'PUT',
+                data: scheduleConfig
+            }),
+            transformErrorResponse: (baseQueryReturnValue) => {
+                return {
+                    name: 'Update Schedule Error',
+                    message: baseQueryReturnValue.data?.type === 'RequestValidationError' ?
+                        baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') :
+                        baseQueryReturnValue.data.message
+                };
+            },
+            invalidatesTags: ['models'],
         })
     }),
 });
@@ -82,5 +98,6 @@ export const {
     useDeleteModelMutation,
     useCreateModelMutation,
     useUpdateModelMutation,
-    useGetInstancesQuery
+    useGetInstancesQuery,
+    useUpdateScheduleMutation
 } = modelManagementApi;

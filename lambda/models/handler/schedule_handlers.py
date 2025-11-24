@@ -13,11 +13,7 @@
 #   limitations under the License.
 
 import json
-import os
 from typing import Any, List, Optional
-
-import boto3
-from utilities.common_functions import retry_config
 
 from ..domain_objects import (
     DeleteScheduleResponse,
@@ -26,12 +22,13 @@ from ..domain_objects import (
     SchedulingConfig,
     UpdateScheduleResponse,
 )
+from ..scheduling import schedule_management
 from .base_handler import BaseApiHandler
 from .utils import get_model_and_validate_access, get_model_and_validate_status
 
 
 class ScheduleBaseHandler(BaseApiHandler):
-    """Base handler for schedule operations with Lambda client"""
+    """Base handler for schedule operations"""
 
     def __init__(
         self,
@@ -40,9 +37,8 @@ class ScheduleBaseHandler(BaseApiHandler):
         model_table_resource: Any,
         guardrails_table_resource: Any,
     ):
-        """Initialize with Lambda client for schedule management operations"""
+        """Initialize schedule handler"""
         super().__init__(autoscaling_client, stepfunctions_client, model_table_resource, guardrails_table_resource)
-        self._lambda_client = boto3.client("lambda", region_name=os.environ["AWS_REGION"], config=retry_config)
 
 
 class UpdateScheduleHandler(ScheduleBaseHandler):
@@ -66,7 +62,6 @@ class UpdateScheduleHandler(ScheduleBaseHandler):
         if not auto_scaling_group:
             raise ValueError("Model does not have an Auto Scaling Group configured")
 
-        # Invoke Schedule Management Lambda
         payload = {
             "operation": "update",
             "modelId": model_id,
@@ -74,26 +69,23 @@ class UpdateScheduleHandler(ScheduleBaseHandler):
             "autoScalingGroup": auto_scaling_group,
         }
 
-        response = self._lambda_client.invoke(
-            FunctionName=os.environ.get("SCHEDULE_MANAGEMENT_FUNCTION_NAME"),
-            InvocationType="RequestResponse",
-            Payload=json.dumps(payload),
-        )
+        try:
+            result = schedule_management.update_schedule(payload)
 
-        result = json.loads(response["Payload"].read())
+            if result.get("statusCode") != 200:
+                body = result.get("body", "Unknown error")
+                if isinstance(body, str):
+                    try:
+                        body_dict = json.loads(body)
+                        error_message = body_dict.get("message", body)
+                    except json.JSONDecodeError:
+                        error_message = body
+                else:
+                    error_message = body.get("message", "Unknown error") if isinstance(body, dict) else str(body)
+                raise ValueError(f"Failed to create/update schedule: {error_message}")
 
-        if response["StatusCode"] != 200 or result.get("statusCode") != 200:
-            # Handle both string and dict body formats
-            body = result.get("body", "Unknown error")
-            if isinstance(body, str):
-                try:
-                    body_dict = json.loads(body)
-                    error_message = body_dict.get("message", body)
-                except json.JSONDecodeError:
-                    error_message = body
-            else:
-                error_message = body.get("message", "Unknown error") if isinstance(body, dict) else str(body)
-            raise ValueError(f"Failed to create/update schedule: {error_message}")
+        except Exception as e:
+            raise ValueError(f"Failed to create/update schedule: {str(e)}")
 
         return UpdateScheduleResponse(message="Schedule updated successfully", modelId=model_id, scheduleEnabled=True)
 
@@ -108,28 +100,24 @@ class GetScheduleHandler(ScheduleBaseHandler):
         # Validate model exists and user access
         get_model_and_validate_access(self._model_table, model_id, user_groups, is_admin)
 
-        # Invoke Schedule Management Lambda
         payload = {"operation": "get", "modelId": model_id}
 
-        response = self._lambda_client.invoke(
-            FunctionName=os.environ.get("SCHEDULE_MANAGEMENT_FUNCTION_NAME"),
-            InvocationType="RequestResponse",
-            Payload=json.dumps(payload),
-        )
+        try:
+            result = schedule_management.get_schedule(payload)
 
-        result = json.loads(response["Payload"].read())
+            if result.get("statusCode") != 200:
+                error_message = result.get("body", {}).get("message", "Unknown error")
+                raise ValueError(f"Failed to get schedule: {error_message}")
 
-        if response["StatusCode"] != 200 or result.get("statusCode") != 200:
-            error_message = result.get("body", {}).get("message", "Unknown error")
-            raise ValueError(f"Failed to get schedule: {error_message}")
+            schedule_data = json.loads(result["body"]) if isinstance(result["body"], str) else result["body"]
 
-        schedule_data = json.loads(result["body"])
-
-        return GetScheduleResponse(
-            modelId=model_id,
-            scheduling=schedule_data.get("scheduling", {}),
-            nextScheduledAction=schedule_data.get("nextScheduledAction"),
-        )
+            return GetScheduleResponse(
+                modelId=model_id,
+                scheduling=schedule_data.get("scheduling", {}),
+                nextScheduledAction=schedule_data.get("nextScheduledAction"),
+            )
+        except Exception as e:
+            raise ValueError(f"Failed to get schedule: {str(e)}")
 
 
 class DeleteScheduleHandler(ScheduleBaseHandler):
@@ -142,20 +130,18 @@ class DeleteScheduleHandler(ScheduleBaseHandler):
         # Validate model exists, user access, and model status
         get_model_and_validate_status(self._model_table, model_id, user_groups=user_groups, is_admin=is_admin)
 
-        # Invoke Schedule Management Lambda
+        # Call schedule management function directly
         payload = {"operation": "delete", "modelId": model_id}
 
-        response = self._lambda_client.invoke(
-            FunctionName=os.environ.get("SCHEDULE_MANAGEMENT_FUNCTION_NAME"),
-            InvocationType="RequestResponse",
-            Payload=json.dumps(payload),
-        )
+        try:
+            result = schedule_management.delete_schedule(payload)
 
-        result = json.loads(response["Payload"].read())
+            if result.get("statusCode") != 200:
+                error_message = result.get("body", {}).get("message", "Unknown error")
+                raise ValueError(f"Failed to delete schedule: {error_message}")
 
-        if response["StatusCode"] != 200 or result.get("statusCode") != 200:
-            error_message = result.get("body", {}).get("message", "Unknown error")
-            raise ValueError(f"Failed to delete schedule: {error_message}")
+        except Exception as e:
+            raise ValueError(f"Failed to delete schedule: {str(e)}")
 
         return DeleteScheduleResponse(message="Schedule deleted successfully", modelId=model_id, scheduleEnabled=False)
 

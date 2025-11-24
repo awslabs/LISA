@@ -21,6 +21,8 @@ from typing import Any, Dict
 import boto3
 from botocore.config import Config
 
+from ..scheduling import schedule_management
+
 logger = logging.getLogger(__name__)
 
 retry_config = Config(
@@ -28,7 +30,6 @@ retry_config = Config(
 )
 dynamodb = boto3.resource("dynamodb", config=retry_config)
 model_table = dynamodb.Table(os.environ.get("MODEL_TABLE_NAME", "LISAModels"))
-lambda_client = boto3.client("lambda", config=retry_config)
 
 
 def handle_schedule_creation(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -54,7 +55,7 @@ def handle_schedule_creation(event: Dict[str, Any], context: Any) -> Dict[str, A
         return output_dict
 
     try:
-        # Invoke Schedule Management Lambda
+        # Call schedule management function directly
         payload = {
             "operation": "update",
             "modelId": model_id,
@@ -62,16 +63,10 @@ def handle_schedule_creation(event: Dict[str, Any], context: Any) -> Dict[str, A
             "autoScalingGroup": auto_scaling_group,
         }
 
-        response = lambda_client.invoke(
-            FunctionName=os.environ.get("SCHEDULE_MANAGEMENT_FUNCTION_NAME"),
-            InvocationType="RequestResponse",
-            Payload=json.dumps(payload),
-        )
-
-        result = json.loads(response["Payload"].read())
+        result = schedule_management.update_schedule(payload)
 
         if result.get("statusCode") == 200:
-            result_body = json.loads(result["body"])
+            result_body = json.loads(result["body"]) if isinstance(result["body"], str) else result["body"]
             scheduled_action_arns = result_body.get("scheduledActionArns", [])
 
             logger.info(f"Created {len(scheduled_action_arns)} scheduled actions for model {model_id}")
@@ -118,7 +113,6 @@ def handle_schedule_update(event: Dict[str, Any], context: Any) -> Dict[str, Any
         return output_dict
 
     try:
-        # Invoke Schedule Management Lambda for update
         payload = {
             "operation": "update",
             "modelId": model_id,
@@ -126,16 +120,10 @@ def handle_schedule_update(event: Dict[str, Any], context: Any) -> Dict[str, Any
             "autoScalingGroup": auto_scaling_group,
         }
 
-        response = lambda_client.invoke(
-            FunctionName=os.environ.get("SCHEDULE_MANAGEMENT_FUNCTION_NAME"),
-            InvocationType="RequestResponse",
-            Payload=json.dumps(payload),
-        )
-
-        result = json.loads(response["Payload"].read())
+        result = schedule_management.update_schedule(payload)
 
         if result.get("statusCode") == 200:
-            result_body = json.loads(result["body"])
+            result_body = json.loads(result["body"]) if isinstance(result["body"], str) else result["body"]
             scheduled_action_arns = result_body.get("scheduledActionArns", [])
 
             logger.info(f"Updated schedule for model {model_id}: {len(scheduled_action_arns)} actions")
@@ -170,16 +158,9 @@ def handle_cleanup_schedule(event: Dict[str, Any], context: Any) -> Dict[str, An
     model_id = event["modelId"]
 
     try:
-        # Invoke Schedule Management Lambda for deletion
         payload = {"operation": "delete", "modelId": model_id}
 
-        response = lambda_client.invoke(
-            FunctionName=os.environ.get("SCHEDULE_MANAGEMENT_FUNCTION_NAME"),
-            InvocationType="RequestResponse",
-            Payload=json.dumps(payload),
-        )
-
-        result = json.loads(response["Payload"].read())
+        result = schedule_management.delete_schedule(payload)
 
         if result.get("statusCode") == 200:
             logger.info(f"Successfully cleaned up schedule for model {model_id}")

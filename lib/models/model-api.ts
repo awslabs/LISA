@@ -386,6 +386,7 @@ export class ModelsApi extends Construct {
                     effect: Effect.ALLOW,
                     actions: [
                         'dynamodb:GetItem',
+                        'dynamodb:UpdateItem',
                         'dynamodb:Scan',
                     ],
                     resources: [
@@ -412,6 +413,10 @@ export class ModelsApi extends Construct {
                     effect: Effect.ALLOW,
                     actions: [
                         'autoscaling:DescribeAutoScalingGroups',
+                        'autoscaling:UpdateAutoScalingGroup',
+                        'autoscaling:PutScheduledUpdateGroupAction',
+                        'autoscaling:DeleteScheduledAction',
+                        'autoscaling:DescribeScheduledActions',
                     ],
                     resources: ['*'],  // we do not know ASG names in advance
                 }),

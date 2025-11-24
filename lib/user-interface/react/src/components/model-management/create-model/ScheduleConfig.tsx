@@ -32,8 +32,6 @@ type ScheduleConfigProps = FormProps<IScheduleConfig> & {
 const generateTimezoneOptions = () => {
     try {
         const allTimezones = Intl.supportedValuesOf('timeZone');
-        console.log('Available IANA timezones:', allTimezones.slice(0, 10)); // Log first 10 for debugging
-
         return allTimezones
             .map((timezone) => ({
                 label: timezone,

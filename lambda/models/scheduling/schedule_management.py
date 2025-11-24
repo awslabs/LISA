@@ -88,7 +88,8 @@ def update_schedule(event: Dict[str, Any]) -> Dict[str, Any]:
 
         # Create new scheduled actions if schedule is provided
         if schedule_config and auto_scaling_group:
-            scheduling_config = SchedulingConfig(**schedule_config)
+            full_schedule_data = merge_schedule_data(model_id, schedule_config)
+            scheduling_config = SchedulingConfig(**full_schedule_data)
             scheduled_action_arns = create_scheduled_actions(
                 model_id=model_id, auto_scaling_group=auto_scaling_group, schedule_config=scheduling_config
             )
@@ -163,7 +164,8 @@ def get_schedule(event: Dict[str, Any]) -> Dict[str, Any]:
             raise ValueError(f"Model {model_id} not found")
 
         model_item = response["Item"]
-        auto_scaling_config = model_item.get("autoScalingConfig", {})
+        model_config = model_item.get("model_config", {})
+        auto_scaling_config = model_config.get("autoScalingConfig", {})
         scheduling_config = auto_scaling_config.get("scheduling", {})
 
         return {
@@ -480,6 +482,39 @@ def cleanup_scheduled_actions(scheduled_action_arns: List[str]) -> None:
             pass
 
 
+def merge_schedule_data(model_id: str, partial_update: Dict[str, Any]) -> Dict[str, Any]:
+    """Merge partial schedule update with existing schedule data"""
+    # Get existing schedule data from model_config.autoScalingConfig.scheduling
+    existing_data = {}
+    try:
+        response = model_table.get_item(Key={"model_id": model_id})
+        if "Item" in response:
+            model_item = response["Item"]
+            model_config = model_item.get("model_config", {})
+            auto_scaling_config = model_config.get("autoScalingConfig", {})
+            existing_data = auto_scaling_config.get("scheduling", {})
+    except Exception as e:
+        logger.warning(f"Could not get existing schedule for {model_id}: {e}")
+
+    # Merge existing with partial update
+    merged_data = {**existing_data, **partial_update}
+
+    # Remove metadata fields that shouldn't come from frontend
+    metadata_fields = [
+        "scheduledActionArns",
+        "scheduleEnabled",
+        "lastScheduleUpdate",
+        "scheduleConfigured",
+        "lastScheduleFailed",
+        "nextScheduledAction",
+        "lastScheduleFailure",
+    ]
+    for field in metadata_fields:
+        merged_data.pop(field, None)
+
+    return merged_data
+
+
 def get_existing_scheduled_action_arns(model_id: str) -> List[str]:
     """Get existing scheduled action ARNs for a model"""
     try:
@@ -489,7 +524,8 @@ def get_existing_scheduled_action_arns(model_id: str) -> List[str]:
             return []
 
         model_item = response["Item"]
-        auto_scaling_config = model_item.get("autoScalingConfig", {})
+        model_config = model_item.get("model_config", {})
+        auto_scaling_config = model_config.get("autoScalingConfig", {})
         scheduling_config = auto_scaling_config.get("scheduling", {})
 
         return scheduling_config.get("scheduledActionArns", [])
@@ -504,13 +540,14 @@ def update_model_schedule_record(
 ) -> None:
     """Update model record in DynamoDB with schedule information"""
     try:
-        # Check if autoScalingConfig exists first
+        # Check if model_config.autoScalingConfig exists first
         response = model_table.get_item(Key={"model_id": model_id})
         if "Item" not in response:
             raise ValueError(f"Model {model_id} not found")
 
         model_item = response["Item"]
-        auto_scaling_config_exists = "autoScalingConfig" in model_item
+        model_config_exists = "model_config" in model_item
+        auto_scaling_config_exists = model_config_exists and "autoScalingConfig" in model_item.get("model_config", {})
 
         if scheduling_config:
             # Prepare the scheduling configuration for storage
@@ -518,22 +555,21 @@ def update_model_schedule_record(
             schedule_data["scheduledActionArns"] = scheduled_action_arns
             schedule_data["scheduleEnabled"] = enabled
             schedule_data["lastScheduleUpdate"] = datetime.now(dt_timezone.utc).isoformat()
-
             schedule_data["scheduleConfigured"] = enabled
             schedule_data["lastScheduleFailed"] = False
 
             if auto_scaling_config_exists:
-                # Update existing autoScalingConfig.scheduling
+                # Update existing model_config.autoScalingConfig.scheduling
                 model_table.update_item(
                     Key={"model_id": model_id},
-                    UpdateExpression="SET autoScalingConfig.scheduling = :scheduling",
+                    UpdateExpression="SET model_config.autoScalingConfig.scheduling = :scheduling",
                     ExpressionAttributeValues={":scheduling": schedule_data},
                 )
             else:
-                # Create autoScalingConfig with scheduling
+                # Create model_config.autoScalingConfig with scheduling
                 model_table.update_item(
                     Key={"model_id": model_id},
-                    UpdateExpression="SET autoScalingConfig = :autoScalingConfig",
+                    UpdateExpression="SET model_config.autoScalingConfig = :autoScalingConfig",
                     ExpressionAttributeValues={":autoScalingConfig": {"scheduling": schedule_data}},
                 )
         else:
@@ -541,7 +577,7 @@ def update_model_schedule_record(
             if auto_scaling_config_exists:
                 model_table.update_item(
                     Key={"model_id": model_id},
-                    UpdateExpression="REMOVE autoScalingConfig.scheduling",
+                    UpdateExpression="REMOVE model_config.autoScalingConfig.scheduling",
                 )
 
         logger.info(f"Updated schedule record for model {model_id}")

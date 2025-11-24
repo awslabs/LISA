@@ -105,6 +105,13 @@ export const handler = async (event: any) => {
 
     try {
         await deploy_promise;
+        
+        // Check if ragConfig is for Bedrock KB without pipelines
+        if (ragConfig.type === 'bedrock_knowledge_base' && (!ragConfig.pipelines || ragConfig.pipelines.length === 0)) {
+            console.log('Bedrock KB repository without pipelines - no stack created');
+            return { stackName: null };
+        }
+        
         return { stackName: stackName };
     } catch (error) {
         console.error('Deployment failed:', error);

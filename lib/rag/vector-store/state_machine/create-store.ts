@@ -61,8 +61,6 @@ export class CreateStoreStateMachine extends Construct {
             resultPath: '$.dynamoResult',
         });
 
-        const createVectorStoreInfraChoice = new sfn.Choice(this, 'CreateVectorStoreInfraChoice');
-
         // Task to invoke a Lambda function to deploy the vector store
         const deployVectorStore = new tasks.LambdaInvoke(this, 'DeployVectorStore', {
             lambdaFunction: lambda.Function.fromFunctionArn(this, 'VectorStoreDeployer', vectorStoreDeployerFnArn),
@@ -75,33 +73,8 @@ export class CreateStoreStateMachine extends Construct {
             resultPath: '$.deployResult',
         });
 
-        const deployBedrockVectorStore = new tasks.LambdaInvoke(this, 'DeployBedrockVectorStore', {
-            lambdaFunction: lambda.Function.fromFunctionArn(this, 'BedrockVectorStoreDeployer', vectorStoreDeployerFnArn),
-            payload: sfn.TaskInput.fromObject({
-                ragConfig: sfn.JsonPath.objectAt('$.body.ragConfig'),
-            }),
-            resultSelector: {
-                'stackName.$': '$.Payload.stackName',
-            },
-            resultPath: '$.deployResult',
-        });
-
         // Task to check the deployment status using a Lambda function
-        const checkDeploymentStatus = new tasks.CallAwsService(this, 'DescribeStack', {
-            service: 'cloudformation',
-            action: 'describeStacks',
-            parameters: {
-                StackName: sfn.JsonPath.stringAt('$.deployResult.stackName'),
-            },
-            iamResources: ['*'],
-            resultSelector: {
-                'stackName.$': '$.Stacks[0].StackName',
-                'status.$': '$.Stacks[0].StackStatus'
-            },
-            resultPath: '$.deployResult',
-        });
-
-        const checkBedrockDeploymentStatus = new tasks.CallAwsService(this, 'DescribeBedrockStack', {
+        const checkDeploymentStatus = new tasks.CallAwsService(this, 'CheckDeploymentStatus', {
             service: 'cloudformation',
             action: 'describeStacks',
             parameters: {
@@ -120,10 +93,6 @@ export class CreateStoreStateMachine extends Construct {
             time: sfn.WaitTime.duration(Duration.seconds(30)),
         });
 
-        const bedrockWait = new sfn.Wait(this, 'BedrockWait', {
-            time: sfn.WaitTime.duration(Duration.seconds(30)),
-        });
-
         // Task to create default collection for Bedrock KB
         const createDefaultCollectionTask = new tasks.LambdaInvoke(this, 'CreateDefaultCollection', {
             lambdaFunction: createBedrockCollectionFn,
@@ -134,18 +103,7 @@ export class CreateStoreStateMachine extends Construct {
         });
 
         // Task to update the status of the vector store entry to 'COMPLETED' on successful deployment
-        const updateBedrockKBSuccess = new tasks.DynamoUpdateItem(this, 'UpdateBedrockKBSuccess', {
-            table: vectorStoreConfigTable,
-            key: { repositoryId: tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.body.ragConfig.repositoryId')) },
-            updateExpression: 'SET #status = :status, #stackName = :stackName',
-            expressionAttributeNames: { '#status': 'status', '#stackName': 'stackName' },
-            expressionAttributeValues: {
-                ':status': tasks.DynamoAttributeValue.fromString(VectorStoreStatus.CREATE_COMPLETE),
-                ':stackName': tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.deployResult.stackName') ?? '')
-            },
-        });
-
-        // Task to update the status of the vector store entry to 'COMPLETED' on successful deployment
+        // For Bedrock KB without pipelines, stackName may be null
         const updateSuccessStatus = new tasks.DynamoUpdateItem(this, 'UpdateSuccessStatus', {
             table: vectorStoreConfigTable,
             key: { repositoryId: tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.body.ragConfig.repositoryId')) },
@@ -153,7 +111,7 @@ export class CreateStoreStateMachine extends Construct {
             expressionAttributeNames: { '#status': 'status', '#stackName': 'stackName' },
             expressionAttributeValues: {
                 ':status': tasks.DynamoAttributeValue.fromString(VectorStoreStatus.CREATE_COMPLETE),
-                ':stackName': tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.deployResult.stackName') ?? '')
+                ':stackName': tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.deployResult.stackName'))
             },
         });
 
@@ -168,35 +126,22 @@ export class CreateStoreStateMachine extends Construct {
             },
         });
 
+        // Check if this is a Bedrock KB repository to create default collections
+        const skipCollectionCreation = new sfn.Pass(this, 'SkipCollectionCreation');
+        
+        const checkIfBedrockKB = new sfn.Choice(this, 'IsBedrockKB?')
+            .when(
+                sfn.Condition.stringEquals('$.body.ragConfig.type', 'bedrock_knowledge_base'),
+                createDefaultCollectionTask
+            )
+            .otherwise(skipCollectionCreation);
+
+        // Both paths converge to update success status
+        createDefaultCollectionTask.next(updateSuccessStatus);
+        skipCollectionCreation.next(updateSuccessStatus);
+        
         // Define the sequence of tasks and conditions in the state machine
-        // For Bedrock KB, always create default collection after deployment
-        const bedrockDeploymentComplete = new sfn.Choice(this, 'BedrockDeploymentComplete?')
-            .when(
-                sfn.Condition.and(
-                    sfn.Condition.isPresent('$.deployResult.status'),
-                    sfn.Condition.or(
-                        sfn.Condition.stringEquals('$.deployResult.status', VectorStoreStatus.CREATE_IN_PROGRESS),
-                        sfn.Condition.stringEquals('$.deployResult.status', VectorStoreStatus.UPDATE_IN_PROGRESS),
-                        sfn.Condition.stringEquals('$.deployResult.status', VectorStoreStatus.UPDATE_COMPLETE_CLEANUP_IN_PROGRESS),
-                    ),
-                ),
-                bedrockWait.next(checkBedrockDeploymentStatus)
-            )
-            .when(
-                sfn.Condition.and(
-                    sfn.Condition.isPresent('$.deployResult.status'),
-                    sfn.Condition.or(
-                        sfn.Condition.stringEquals('$.deployResult.status', VectorStoreStatus.CREATE_COMPLETE),
-                        sfn.Condition.stringEquals('$.deployResult.status', VectorStoreStatus.UPDATE_COMPLETE),
-                    ),
-                ),
-                createDefaultCollectionTask.next(updateBedrockKBSuccess)
-            )
-            .otherwise(updateFailureStatus);
-
-        checkBedrockDeploymentStatus.next(bedrockDeploymentComplete);
-
-        const standardDeploymentComplete = new sfn.Choice(this, 'DeploymentComplete?')
+        const deploymentComplete = new sfn.Choice(this, 'DeploymentComplete?')
             .when(
                 sfn.Condition.and(
                     sfn.Condition.isPresent('$.deployResult.status'),
@@ -216,23 +161,17 @@ export class CreateStoreStateMachine extends Construct {
                         sfn.Condition.stringEquals('$.deployResult.status', VectorStoreStatus.UPDATE_COMPLETE),
                     ),
                 ),
-                updateSuccessStatus
+                checkIfBedrockKB
             )
             .otherwise(updateFailureStatus);
 
-        checkDeploymentStatus.next(standardDeploymentComplete);
+        checkDeploymentStatus.next(deploymentComplete);
 
         const definition = createVectorStoreEntry
-            .next(createVectorStoreInfraChoice
-                .when(
-                    sfn.Condition.stringEquals('$.body.ragConfig.type', 'bedrock_knowledge_base'),
-                    deployBedrockVectorStore.addCatch(updateFailureStatus, { resultPath: '$.error' })
-                        .next(checkBedrockDeploymentStatus)
-                )
-                .otherwise(
-                    deployVectorStore.addCatch(updateFailureStatus, { resultPath: '$.error' })
-                        .next(checkDeploymentStatus)
-                ));
+            .next(
+                deployVectorStore.addCatch(updateFailureStatus, { resultPath: '$.error' })
+                    .next(checkDeploymentStatus)
+            );
 
         // Create a new state machine using the definition and roles specified
         this.stateMachine = new sfn.StateMachine(this, 'CreateStoreStateMachine', {

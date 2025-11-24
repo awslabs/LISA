@@ -129,18 +129,36 @@ export class DeleteStoreStateMachine extends Construct {
             .when(sfn.Condition.isPresent('$.stackName'), deleteStack)
             .otherwise(deleteDynamoDbEntry);
 
-        const extractStackName = new sfn.Pass(this, 'ExtractStackName', {
-            parameters: {
-                'repositoryId.$': '$.repositoryId',
-                'stackName.$': '$.ddbResult.Item.stackName.S',
-            },
-        }).next(handleStackDeletion);
+        // Check if stackName exists in DDB (for Bedrock KB without pipelines, it may be NULL)
+        const checkStackNameExists = new Choice(this, 'CheckStackNameExists')
+            .when(
+                sfn.Condition.isPresent('$.ddbResult.Item.stackName.S'),
+                new sfn.Pass(this, 'ExtractStackName', {
+                    parameters: {
+                        'repositoryId.$': '$.repositoryId',
+                        'stackName.$': '$.ddbResult.Item.stackName.S',
+                        'documents.$': '$.documents',
+                        'lastEvaluated.$': '$.lastEvaluated',
+                        'ddbResult.$': '$.ddbResult',
+                    },
+                }).next(handleStackDeletion)
+            )
+            .otherwise(
+                new sfn.Pass(this, 'HandleMissingStackName', {
+                    parameters: {
+                        'repositoryId.$': '$.repositoryId',
+                        'documents.$': '$.documents',
+                        'lastEvaluated.$': '$.lastEvaluated',
+                        'ddbResult.$': '$.ddbResult',
+                    },
+                }).next(handleStackDeletion)
+            );
 
         const getRepoFromDdb = new tasks.DynamoGetItem(this, 'GetRepoFromDdb', {
             table: ragVectorStoreTable,
             key: { repositoryId: tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.repositoryId')) },
             resultPath: '$.ddbResult',
-        }).next(extractStackName);
+        }).next(checkStackNameExists);
 
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
 

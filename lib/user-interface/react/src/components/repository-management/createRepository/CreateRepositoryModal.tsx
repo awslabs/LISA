@@ -126,10 +126,15 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
 
             if (isEdit) {
                 resetUpdate();
-                // For updates, only send the changed fields
+                // For Bedrock KB updates, send full bedrockKnowledgeBaseConfig to ensure all dataSources are included
+                const updates: any = { ...changesDiff };
+                if (submissionData.type === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE && submissionData.bedrockKnowledgeBaseConfig) {
+                    updates.bedrockKnowledgeBaseConfig = submissionData.bedrockKnowledgeBaseConfig;
+                }
+
                 updateRepositoryMutation({
                     repositoryId: submissionData.repositoryId,
-                    updates: changesDiff,
+                    updates: updates,
                 });
             } else {
                 resetCreate();

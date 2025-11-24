@@ -27,19 +27,19 @@ import {
     StatusIndicator,
 } from '@cloudscape-design/components';
 import { useListBedrockDataSourcesQuery } from '@/shared/reducers/rag.reducer';
-import { DataSource, DataSourceSelection } from '@/types/bedrock-kb';
+import { DataSource } from '@/types/bedrock-kb';
 
 type DataSourceMultiSelectProps = {
     kbId: string;
     repositoryId?: string;
-    selectedDataSources: DataSourceSelection[];
-    onSelectionChange: (selections: DataSourceSelection[]) => void;
+    selectedDataSourceIds: string[];
+    onSelectionChange: (dataSourceIds: string[]) => void;
 };
 
 export function DataSourceMultiSelect ({
     kbId,
     repositoryId,
-    selectedDataSources,
+    selectedDataSourceIds,
     onSelectionChange,
 }: DataSourceMultiSelectProps): ReactElement {
     const { data, isLoading, error, refetch } = useListBedrockDataSourcesQuery(
@@ -49,13 +49,8 @@ export function DataSourceMultiSelect ({
 
     const handleSelectAll = () => {
         if (!data) return;
-        const newSelections: DataSourceSelection[] = data.dataSources.map((ds) => ({
-            dataSourceId: ds.dataSourceId,
-            dataSourceName: ds.name,
-            s3Bucket: ds.s3Bucket,
-            s3Prefix: ds.s3Prefix || '',
-        }));
-        onSelectionChange(newSelections);
+        const allIds = data.dataSources.map((ds) => ds.dataSourceId);
+        onSelectionChange(allIds);
     };
 
     const handleDeselectAll = () => {
@@ -63,20 +58,14 @@ export function DataSourceMultiSelect ({
     };
 
     const handleToggleDataSource = (ds: DataSource) => {
-        const isSelected = selectedDataSources.some((s) => s.dataSourceId === ds.dataSourceId);
+        const isSelected = selectedDataSourceIds.includes(ds.dataSourceId);
 
         if (isSelected) {
             // Remove from selection
-            onSelectionChange(selectedDataSources.filter((s) => s.dataSourceId !== ds.dataSourceId));
+            onSelectionChange(selectedDataSourceIds.filter((id) => id !== ds.dataSourceId));
         } else {
             // Add to selection
-            const newSelection: DataSourceSelection = {
-                dataSourceId: ds.dataSourceId,
-                dataSourceName: ds.name,
-                s3Bucket: ds.s3Bucket,
-                s3Prefix: ds.s3Prefix || '',
-            };
-            onSelectionChange([...selectedDataSources, newSelection]);
+            onSelectionChange([...selectedDataSourceIds, ds.dataSourceId]);
         }
     };
 
@@ -140,7 +129,7 @@ export function DataSourceMultiSelect ({
                     variant='h2'
                     actions={
                         <SpaceBetween direction='horizontal' size='xs'>
-                            <Button onClick={handleDeselectAll} disabled={selectedDataSources.length === 0}>
+                            <Button onClick={handleDeselectAll} disabled={selectedDataSourceIds.length === 0}>
                                 Deselect All
                             </Button>
                             <Button onClick={handleSelectAll} disabled={displayedDataSources.length === 0}>
@@ -151,7 +140,7 @@ export function DataSourceMultiSelect ({
                             </Button>
                         </SpaceBetween>
                     }
-                    description={`${selectedDataSources.length} of ${displayedDataSources.length} data sources selected`}
+                    description={`${selectedDataSourceIds.length} of ${displayedDataSources.length} data sources selected`}
                 >
                     Select Data Sources
                 </Header>
@@ -160,7 +149,7 @@ export function DataSourceMultiSelect ({
             <SpaceBetween size='m'>
                 <SpaceBetween size='s'>
                     {displayedDataSources.map((ds) => {
-                        const isSelected = selectedDataSources.some((s) => s.dataSourceId === ds.dataSourceId);
+                        const isSelected = selectedDataSourceIds.includes(ds.dataSourceId);
                         const isAvailable = ds.status === 'AVAILABLE';
 
                         return (
@@ -190,7 +179,7 @@ export function DataSourceMultiSelect ({
                     })}
                 </SpaceBetween>
 
-                {selectedDataSources.length === 0 && (
+                {selectedDataSourceIds.length === 0 && (
                     <Box textAlign='center' padding={{ vertical: 'm' }}>
                         <StatusIndicator type='warning'>
                             Please select at least one data source to continue

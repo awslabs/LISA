@@ -58,7 +58,7 @@ export function BedrockKnowledgeBaseConfigForm (
         item.bedrockKnowledgeBaseConfig?.knowledgeBaseId || null
     );
     const [selectedDataSources, setSelectedDataSources] = useState<DataSourceRow[]>([]);
-    const [hasInitialized, setHasInitialized] = useState(false);
+    const [dataSourcesInitialized, setDataSourcesInitialized] = useState(false);
 
     // Only fetch KBs if not in edit mode
     const { data: kbData, isLoading: kbLoading } = useListBedrockKnowledgeBasesQuery(undefined, {
@@ -71,23 +71,37 @@ export function BedrockKnowledgeBaseConfigForm (
         refetch: refetchDataSources,
     } = useListBedrockDataSourcesQuery({ kbId: selectedKbId || '' }, { skip: !selectedKbId });
 
-    // Initialize KB ID from existing config (only once)
+    // Auto-select data sources from existing config or pipelines
     useEffect(() => {
-        if (item.bedrockKnowledgeBaseConfig && !hasInitialized) {
-            setSelectedKbId(item.bedrockKnowledgeBaseConfig.knowledgeBaseId);
-            setHasInitialized(true);
+        if (!dsData?.dataSources || !selectedKbId || dataSourcesInitialized) {
+            return;
         }
-    }, [item.bedrockKnowledgeBaseConfig, hasInitialized]);
 
-    // Auto-select data sources based on pipelines config
-    useEffect(() => {
-        if (item.bedrockKnowledgeBaseConfig && dsData?.dataSources && !hasInitialized) {
-            // Get collection IDs from pipelines config
-            const pipelineCollectionIds = new Set(
-                (item as any).pipelines?.map((p: any) => p.collectionId).filter(Boolean) || []
-            );
+        // First, try to restore from bedrockKnowledgeBaseConfig.dataSources
+        const existingDataSources = item.bedrockKnowledgeBaseConfig?.dataSources;
+        if (existingDataSources && existingDataSources.length > 0) {
+            const existingIds = new Set(existingDataSources.map((ds) => ds.id));
+            const selectedRows: DataSourceRow[] = dsData.dataSources
+                .filter((ds) => existingIds.has(ds.dataSourceId))
+                .map((ds) => ({
+                    id: ds.dataSourceId,
+                    name: ds.name,
+                    s3Uri: `s3://${ds.s3Bucket}/${ds.s3Prefix || ''}`,
+                }));
 
-            // Select data sources that match pipeline collection IDs
+            if (selectedRows.length > 0) {
+                setSelectedDataSources(selectedRows);
+                setDataSourcesInitialized(true);
+                return;
+            }
+        }
+
+        // Fallback: Get collection IDs from pipelines config (for edit mode)
+        const pipelineCollectionIds = new Set(
+            (item as any).pipelines?.map((p: any) => p.collectionId).filter(Boolean) || []
+        );
+
+        if (pipelineCollectionIds.size > 0) {
             const selectedRows: DataSourceRow[] = dsData.dataSources
                 .filter((ds) => pipelineCollectionIds.has(ds.dataSourceId))
                 .map((ds) => ({
@@ -97,9 +111,10 @@ export function BedrockKnowledgeBaseConfigForm (
                 }));
 
             setSelectedDataSources(selectedRows);
-            setHasInitialized(true);
         }
-    }, [item, dsData, hasInitialized]);
+        setDataSourcesInitialized(true);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [dsData, selectedKbId, dataSourcesInitialized]);
 
     // Update form when selections change
     useEffect(() => {

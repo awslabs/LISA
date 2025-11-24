@@ -24,7 +24,7 @@ from typing import Any, Dict, List, Optional
 
 import boto3
 from botocore.exceptions import ClientError
-from models.domain_objects import ChunkingStrategyType, NoneChunkingStrategy, PipelineTrigger
+from models.domain_objects import ChunkingStrategyType, PipelineTrigger
 from utilities.validation import ValidationError
 
 logger = logging.getLogger(__name__)
@@ -271,9 +271,9 @@ def build_pipeline_configs_from_kb_config(
             "s3Bucket": s3_bucket,
             "s3Prefix": s3_prefix,
             "collectionId": data_source_id,  # Use data source ID as collection ID
-            "trigger": PipelineTrigger.EVENT,
+            "trigger": PipelineTrigger.EVENT.value,
             "autoRemove": True,
-            "chunkingStrategy": NoneChunkingStrategy(type=ChunkingStrategyType.NONE),
+            "chunkingStrategy": {"type": ChunkingStrategyType.NONE.value},
         }
         pipeline_configs.append(pipeline_config)
 

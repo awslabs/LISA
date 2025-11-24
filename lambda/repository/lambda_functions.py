@@ -269,8 +269,9 @@ def create_bedrock_collection(event: dict, context: dict) -> Dict[str, Any]:
         # Use repository service to create collections
         service = RepositoryServiceFactory.create_service(repository)
 
-        # Create a collection for each pipeline
+        # Create a collection for each pipeline (skip if already exists)
         created_collections = []
+        skipped_collections = []
         for pipeline in pipelines:
             collection_id = pipeline.get("collectionId")
             if not collection_id:
@@ -280,6 +281,23 @@ def create_bedrock_collection(event: dict, context: dict) -> Dict[str, Any]:
             s3_bucket = pipeline.get("s3Bucket", "")
             s3_prefix = pipeline.get("s3Prefix", "")
             s3_uri = f"s3://{s3_bucket}/{s3_prefix}" if s3_bucket else ""
+
+            # Check if collection already exists
+            try:
+                existing_collection = collection_service.get_collection(
+                    repository_id=repository_id,
+                    collection_id=collection_id,
+                    username="system",
+                    user_groups=[],
+                    is_admin=True,
+                )
+                if existing_collection:
+                    logger.info(f"Collection {collection_id} already exists, skipping creation")
+                    skipped_collections.append(existing_collection.model_dump(mode="json"))
+                    continue
+            except HTTPException:
+                # Collection doesn't exist, proceed with creation
+                pass
 
             logger.info(f"Creating collection for pipeline with collectionId={collection_id}, s3Uri={s3_uri}")
 
@@ -293,11 +311,18 @@ def create_bedrock_collection(event: dict, context: dict) -> Dict[str, Any]:
             logger.info(f"Successfully saved collection: {collection.collectionId}")
             created_collections.append(collection.model_dump(mode="json"))
 
-        if not created_collections:
+        if not created_collections and not skipped_collections:
             raise ValidationError(f"Failed to create any collections for repository {repository_id}")
 
-        # Return all created collections
-        result: dict[str, Any] = {"collections": created_collections, "count": len(created_collections)}
+        # Return all created and skipped collections
+        all_collections = created_collections + skipped_collections
+        result: dict[str, Any] = {
+            "collections": all_collections,
+            "count": len(all_collections),
+            "created": len(created_collections),
+            "skipped": len(skipped_collections),
+        }
+        logger.info(f"Collection summary: {len(created_collections)} created, {len(skipped_collections)} skipped")
         logger.info(f"Successfully created {len(created_collections)} collection(s) for repository {repository_id}")
         return result
 
@@ -1347,17 +1372,49 @@ def update_repository(event: dict, context: dict) -> Dict[str, Any]:
     # Build updates dictionary (only include fields that were provided)
     updates = request.model_dump(exclude_none=True, mode="json")
 
-    # Validate Bedrock KB repositories have at least one pipeline
-    if request.pipelines is not None:
-        repository_type = current_config.get("type")
-        if repository_type == RepositoryType.BEDROCK_KB and len(request.pipelines) == 0:
+    # Convert bedrockKnowledgeBaseConfig to pipelines for Bedrock KB repositories
+    repository_type = current_config.get("type")
+    if (
+        repository_type == RepositoryType.BEDROCK_KB
+        and hasattr(request, "bedrockKnowledgeBaseConfig")
+        and request.bedrockKnowledgeBaseConfig is not None
+    ):
+        # Validate at least one data source
+        if (
+            not request.bedrockKnowledgeBaseConfig.dataSources
+            or len(request.bedrockKnowledgeBaseConfig.dataSources) == 0
+        ):
             raise ValidationError(
                 "Bedrock Knowledge Base repositories require at least one collection. "
                 "Please select at least one data source."
             )
+        # Convert bedrockKnowledgeBaseConfig to pipelines
+        updates["pipelines"] = build_pipeline_configs_from_kb_config(request.bedrockKnowledgeBaseConfig)
+        logger.info(f"Converted {len(request.bedrockKnowledgeBaseConfig.dataSources)} data sources to pipeline configs")
 
     # Check if pipeline configuration has changed
-    require_deployment = request.pipelines is not None and request.pipelines != current_pipelines
+    # Use the converted pipelines from updates if available, otherwise use request.pipelines
+    new_pipelines = updates.get("pipelines") if "pipelines" in updates else request.pipelines
+    require_deployment = False
+
+    if new_pipelines is not None:
+        # For Bedrock KB repositories, only check if data source IDs (collectionIds) have changed
+        if repository_type == RepositoryType.BEDROCK_KB:
+            current_collection_ids = set(
+                p.get("collectionId") for p in (current_pipelines or []) if p.get("collectionId")
+            )
+            new_collection_ids = set(p.get("collectionId") for p in new_pipelines if p.get("collectionId"))
+
+            if current_collection_ids != new_collection_ids:
+                added = new_collection_ids - current_collection_ids
+                removed = current_collection_ids - new_collection_ids
+                logger.info(f"Bedrock KB data sources changed: added={list(added)}, removed={list(removed)}")
+                require_deployment = True
+            else:
+                logger.info("Bedrock KB data sources unchanged, no deployment needed")
+        else:
+            # For other repository types, compare full pipeline configs
+            require_deployment = new_pipelines != current_pipelines
 
     # Set status based on deployment requirement
     status = VectorStoreStatus.UPDATE_IN_PROGRESS if require_deployment else VectorStoreStatus.UPDATE_COMPLETE

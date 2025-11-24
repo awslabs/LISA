@@ -221,16 +221,20 @@ def get_repository(event: dict[str, Any], repository_id: str) -> dict[str, Any]:
 
 def create_bedrock_collection(event: dict, context: dict) -> Dict[str, Any]:
     """
-    Create a default collection for a Bedrock Knowledge Base repository.
+    Create collections for a Bedrock Knowledge Base repository based on pipeline configurations.
     This is called by the state machine during repository creation.
+
+    Each pipeline configuration represents a data source and should have a corresponding collection.
 
     Args:
         event (dict): The Lambda event object containing:
-            - ragConfig: Repository configuration with repositoryId
+            - ragConfig: Repository configuration with repositoryId and pipelines
         context (dict): The Lambda context object
 
     Returns:
-        Dict[str, Any]: A dictionary containing the created collection configuration
+        Dict[str, Any]: A dictionary containing:
+            - collections: List of created collection configurations
+            - count: Number of collections created
 
     Raises:
         ValidationError: If validation fails
@@ -244,28 +248,56 @@ def create_bedrock_collection(event: dict, context: dict) -> Dict[str, Any]:
         if not repository_id:
             raise ValidationError("repositoryId is required in ragConfig")
 
-        logger.info(f"Creating default collection for Bedrock KB repository: {repository_id}")
+        logger.info(f"Creating collection(s) for Bedrock KB repository: {repository_id}")
 
         # Get repository configuration
         repository = vs_repo.find_repository_by_id(repository_id=repository_id)
 
-        # Use repository service to create default collection
+        # Get pipeline configurations - each pipeline should have a collectionId
+        pipelines = repository.get("pipelines", [])
+
+        if not pipelines:
+            raise ValidationError(f"No pipelines found in Bedrock KB repository {repository_id}")
+
+        logger.info(f"Found {len(pipelines)} pipeline(s) to create collections for")
+
+        # Use repository service to create collections
         service = RepositoryServiceFactory.create_service(repository)
-        collection = service.create_default_collection()
 
-        if collection is None:
-            raise ValidationError(f"Failed to create default collection for repository {repository_id}")
+        # Create a collection for each pipeline
+        created_collections = []
+        for pipeline in pipelines:
+            collection_id = pipeline.get("collectionId")
+            if not collection_id:
+                logger.warning(f"Pipeline missing collectionId, skipping: {pipeline}")
+                continue
 
-        # Save the collection
-        collection_service.create_collection(collection=collection, username="system")
-        logger.info(f"Successfully created default collection: {collection.collectionId}")
+            s3_bucket = pipeline.get("s3Bucket", "")
+            s3_prefix = pipeline.get("s3Prefix", "")
+            s3_uri = f"s3://{s3_bucket}/{s3_prefix}" if s3_bucket else ""
 
-        # Return collection configuration
-        result: dict[str, Any] = collection.model_dump(mode="json")
+            logger.info(f"Creating collection for pipeline with collectionId={collection_id}, s3Uri={s3_uri}")
+
+            # Create collection using service helper
+            collection = service._create_collection_for_data_source(
+                data_source_id=collection_id, s3_uri=s3_uri, is_default=False
+            )
+
+            # Save the collection
+            collection_service.create_collection(collection=collection, username="system")
+            logger.info(f"Successfully saved collection: {collection.collectionId}")
+            created_collections.append(collection.model_dump(mode="json"))
+
+        if not created_collections:
+            raise ValidationError(f"Failed to create any collections for repository {repository_id}")
+
+        # Return all created collections
+        result: dict[str, Any] = {"collections": created_collections, "count": len(created_collections)}
+        logger.info(f"Successfully created {len(created_collections)} collection(s) for repository {repository_id}")
         return result
 
     except Exception as e:
-        logger.error(f"Error creating Bedrock collection: {str(e)}")
+        logger.error(f"Error creating Bedrock collection(s): {str(e)}")
         raise
 
 

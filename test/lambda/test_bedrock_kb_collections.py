@@ -179,60 +179,6 @@ class TestBedrockKBCollectionRestrictions:
         assert result.name == "default-collection"
         mock_collection_repo.create.assert_called_once()
 
-
-class TestRepositoryCreationWithDefaultPipeline:
-    """Test automatic pipeline creation for Bedrock KB repositories."""
-
-    def test_auto_add_default_pipeline_for_bedrock_kb(self):
-        """Test that default pipeline is automatically added for Bedrock KB repositories."""
-        # Arrange - Test the logic directly without going through the full Lambda handler
-        rag_config = {
-            "repositoryId": "test-bedrock-kb",
-            "type": "bedrock_knowledge_base",
-            "embeddingModelId": "amazon.titan-embed-text-v1",
-            "bedrockKnowledgeBaseConfig": {
-                "bedrockKnowledgeBaseName": "test-kb",
-                "bedrockKnowledgeBaseId": "KB123456",
-                "bedrockKnowledgeDatasourceName": "test-datasource",
-                "bedrockKnowledgeDatasourceId": "DS123456",
-                "bedrockKnowledgeDatasourceS3Bucket": "test-kb-bucket",
-            },
-            "chunkingStrategy": {"type": "fixed", "size": 512, "overlap": 51},
-        }
-
-        # Act - Apply the pipeline logic
-        if rag_config.get("type") == "bedrock_knowledge_base":
-            bedrock_config = rag_config.get("bedrockKnowledgeBaseConfig", {})
-            datasource_bucket = bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket")
-
-            if datasource_bucket and not rag_config.get("pipelines"):
-                embedding_model = rag_config.get("embeddingModelId", "default")
-                chunking_strategy = rag_config.get("chunkingStrategy", {"type": "fixed", "size": 512, "overlap": 51})
-
-                default_pipeline = {
-                    "s3Bucket": datasource_bucket,
-                    "s3Prefix": "",
-                    "trigger": "event",
-                    "embeddingModel": embedding_model,
-                    "chunkSize": chunking_strategy.get("size", 512),
-                    "chunkOverlap": chunking_strategy.get("overlap", 51),
-                    "chunkingStrategy": chunking_strategy,
-                    "autoRemove": True,
-                }
-
-                rag_config["pipelines"] = [default_pipeline]
-
-        # Assert
-        assert "pipelines" in rag_config
-        assert len(rag_config["pipelines"]) == 1
-
-        pipeline = rag_config["pipelines"][0]
-        assert pipeline["s3Bucket"] == "test-kb-bucket"
-        assert pipeline["s3Prefix"] == ""
-        assert pipeline["trigger"] == "event"
-        assert pipeline["embeddingModel"] == "amazon.titan-embed-text-v1"
-        assert pipeline["autoRemove"] is True
-
     def test_preserve_existing_pipelines_for_bedrock_kb(self):
         """Test that existing pipelines are preserved when provided."""
         # Arrange - Test the logic directly

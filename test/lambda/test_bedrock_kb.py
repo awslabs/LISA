@@ -17,16 +17,8 @@
 from unittest.mock import MagicMock
 
 import pytest
-from models.domain_objects import (
-    ChunkingStrategyType,
-    IngestionJob,
-    IngestionType,
-    JobActionType,
-    NoneChunkingStrategy,
-    VectorStoreConfig,
-)
+from models.domain_objects import IngestionJob, IngestionType, JobActionType, NoneChunkingStrategy
 from utilities.bedrock_kb import (
-    add_default_pipeline_for_bedrock_kb,
     bulk_delete_documents_from_kb,
     delete_document_from_kb,
     ingest_bedrock_s3_documents,
@@ -235,97 +227,6 @@ class TestBulkDeleteDocumentsFromKB:
 
         # Verify ingestion job started once
         mock_bedrock_agent_client.start_ingestion_job.assert_called_once()
-
-
-class TestAddDefaultPipelineForBedrockKB:
-    """Test automatic pipeline addition for Bedrock KB repositories."""
-
-    def test_add_default_pipeline_when_none_exists(self):
-        """Test adding default pipeline when no pipelines configured."""
-        # Arrange
-        from models.domain_objects import BedrockKnowledgeBaseConfig
-
-        bedrock_config = BedrockKnowledgeBaseConfig(
-            bedrockKnowledgeBaseName="test-kb",
-            bedrockKnowledgeBaseId="KB123456",
-            bedrockKnowledgeDatasourceName="test-datasource",
-            bedrockKnowledgeDatasourceId="DS123456",
-            bedrockKnowledgeDatasourceS3Bucket="kb-datasource-bucket",
-        )
-
-        vector_store_config = VectorStoreConfig(
-            repositoryId="test-repo",
-            type="bedrock_knowledge_base",
-            embeddingModelId="amazon.titan-embed-text-v1",
-            bedrockKnowledgeBaseConfig=bedrock_config,
-        )
-
-        # Act
-        add_default_pipeline_for_bedrock_kb(vector_store_config)
-
-        # Assert
-        assert vector_store_config.pipelines is not None
-        assert len(vector_store_config.pipelines) == 1
-
-        pipeline = vector_store_config.pipelines[0]
-        assert pipeline.s3Bucket == "kb-datasource-bucket"
-        assert pipeline.s3Prefix == ""
-        assert pipeline.trigger == "event"
-        assert pipeline.autoRemove is True
-        assert pipeline.chunkingStrategy.type == ChunkingStrategyType.NONE
-
-    def test_add_default_pipeline_appends_to_existing(self):
-        """Test adding default pipeline appends to existing pipelines."""
-        # Arrange
-        from models.domain_objects import BedrockKnowledgeBaseConfig, PipelineConfig, PipelineTrigger
-
-        bedrock_config = BedrockKnowledgeBaseConfig(
-            bedrockKnowledgeBaseName="test-kb",
-            bedrockKnowledgeBaseId="KB123456",
-            bedrockKnowledgeDatasourceName="test-datasource",
-            bedrockKnowledgeDatasourceId="DS123456",
-            bedrockKnowledgeDatasourceS3Bucket="kb-datasource-bucket",
-        )
-
-        existing_pipeline = PipelineConfig(
-            s3Bucket="custom-bucket",
-            s3Prefix="custom/",
-            collectinoId=bedrock_config.bedrockKnowledgeDatasourceId,
-            trigger=PipelineTrigger.SCHEDULE,
-            autoRemove=False,
-            chunkingStrategy=NoneChunkingStrategy(type=ChunkingStrategyType.NONE),
-        )
-
-        vector_store_config = VectorStoreConfig(
-            repositoryId="test-repo",
-            type="bedrock_knowledge_base",
-            embeddingModelId="amazon.titan-embed-text-v1",
-            bedrockKnowledgeBaseConfig=bedrock_config,
-            pipelines=[existing_pipeline],
-        )
-
-        # Act
-        add_default_pipeline_for_bedrock_kb(vector_store_config)
-
-        # Assert
-        assert len(vector_store_config.pipelines) == 2
-        assert vector_store_config.pipelines[0].s3Bucket == "custom-bucket"
-        assert vector_store_config.pipelines[1].s3Bucket == "kb-datasource-bucket"
-
-    def test_no_pipeline_added_when_no_bedrock_config(self):
-        """Test no pipeline added when bedrockKnowledgeBaseConfig is None."""
-        # Arrange
-        vector_store_config = VectorStoreConfig(
-            repositoryId="test-repo",
-            type="opensearch",
-            embeddingModelId="amazon.titan-embed-text-v1",
-        )
-
-        # Act
-        add_default_pipeline_for_bedrock_kb(vector_store_config)
-
-        # Assert
-        assert vector_store_config.pipelines is None
 
 
 class TestIngestBedrockS3Documents:

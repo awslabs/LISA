@@ -54,14 +54,35 @@ class BedrockKBRepositoryService(RepositoryService):
         return False
 
     def get_collection_id_from_config(self, pipeline_config: Dict[str, Any]) -> str:
-        """For Bedrock KB, collection ID is the data source ID."""
+        """For Bedrock KB, collection ID is the data source ID.
+
+        Extracts the data source ID from the pipeline config's collectionId field,
+        which should match one of the data sources in bedrockKnowledgeBaseConfig.
+        """
+        # The pipeline config should have a collectionId that matches a data source ID
+        collection_id = pipeline_config.get("collectionId")
+
+        if collection_id:
+            return collection_id
+
+        # Fallback: try to get from bedrock config (legacy support)
         bedrock_config = self.repository.get("bedrockKnowledgeBaseConfig", {})
+
+        # Try new structure with dataSources array
+        data_sources = bedrock_config.get("dataSources", [])
+        if data_sources:
+            first_data_source = data_sources[0]
+            data_source_id = (
+                first_data_source.get("id") if isinstance(first_data_source, dict) else first_data_source.id
+            )
+            return data_source_id
+
+        # Try legacy single data source ID
         data_source_id = bedrock_config.get("bedrockKnowledgeDatasourceId")
+        if data_source_id:
+            return data_source_id
 
-        if not data_source_id:
-            raise ValueError(f"Bedrock KB repository {self.repository_id} missing data source ID")
-
-        return data_source_id
+        raise ValueError(f"Bedrock KB repository {self.repository_id} missing data source ID")
 
     def ingest_document(
         self,
@@ -190,6 +211,7 @@ class BedrockKBRepositoryService(RepositoryService):
                 bedrock_agent_client=bedrock_agent_client,
                 repository=self.repository,
                 s3_paths=s3_paths,
+                data_source_id=collection_id,
             )
             logger.info(
                 f"Bulk deleted {len(s3_paths)} LISA-managed documents, "
@@ -280,42 +302,91 @@ class BedrockKBRepositoryService(RepositoryService):
         """Bedrock KB does not use external vector store clients."""
         return None
 
+    def _create_collection_for_data_source(
+        self, data_source_id: str, s3_uri: str = "", is_default: bool = False
+    ) -> RagCollectionConfig:
+        """Create a collection configuration for a specific data source.
+
+        Args:
+            data_source_id: The data source ID to use as collection ID
+            s3_uri: Optional S3 URI for the data source
+            is_default: Whether this is the default collection
+
+        Returns:
+            Collection configuration for the data source
+        """
+        embedding_model = self.repository.get("embeddingModelId")
+        sanitized_name = f"{self.repository.get('name', self.repository_id)}-{data_source_id}"
+
+        # Set tags and description based on whether this is default
+        if is_default:
+            tags = ["default", "bedrock-kb"]
+            description = "Default collection for Bedrock Knowledge Base"
+        else:
+            tags = ["bedrock-kb", "data-source"]
+            description = f"Collection for Bedrock KB data source {data_source_id}"
+
+        collection = RagCollectionConfig(
+            collectionId=data_source_id,
+            repositoryId=self.repository_id,
+            name=sanitized_name,
+            description=description,
+            embeddingModel=embedding_model,
+            chunkingStrategy=None,  # KB controls chunking
+            allowedGroups=self.repository.get("allowedGroups", []),
+            createdBy=self.repository.get("createdBy", "system"),
+            status=CollectionStatus.ACTIVE,
+            metadata=CollectionMetadata(tags=tags, customFields={"s3Uri": s3_uri} if s3_uri else {}),
+            allowChunkingOverride=False,  # KB controls chunking
+            pipelines=self.repository.get("pipelines", []),
+            default=is_default,
+            dataSourceId=data_source_id,
+            createdAt=datetime.now(timezone.utc),
+            updatedAt=datetime.now(timezone.utc),
+        )
+
+        return collection
+
     def create_default_collection(self, ingest_docs=False) -> Optional[RagCollectionConfig]:
         """Create a default collection for Bedrock KB repository.
 
         For Bedrock KB, the collection ID is the data source ID.
+        If multiple data sources exist, returns the first one.
 
         Returns:
             Default collection configuration for Bedrock KB
         """
         try:
             bedrock_config = self.repository.get("bedrockKnowledgeBaseConfig", {})
-            data_source_id = bedrock_config.get("bedrockKnowledgeDatasourceId")
 
-            if not data_source_id:
+            # Handle new structure with dataSources array
+            data_sources = bedrock_config.get("dataSources", [])
+
+            # Also check for legacy single data source ID
+            legacy_data_source_id = bedrock_config.get("bedrockKnowledgeDatasourceId")
+
+            if not data_sources and not legacy_data_source_id:
                 logger.warning(f"Bedrock KB repository {self.repository_id} missing data source ID")
                 return None
 
-            embedding_model = self.repository.get("embeddingModelId")
-            sanitized_name = f"{self.repository.get('name', self.repository_id)}-{data_source_id}"
+            # Use first data source from array, or legacy single ID
+            if data_sources:
+                first_data_source = data_sources[0]
+                data_source_id = (
+                    first_data_source.get("id") if isinstance(first_data_source, dict) else first_data_source.id
+                )
+                s3_uri = (
+                    first_data_source.get("s3Uri", "")
+                    if isinstance(first_data_source, dict)
+                    else getattr(first_data_source, "s3Uri", "")
+                )
+            else:
+                data_source_id = legacy_data_source_id
+                s3_uri = ""
 
-            default_collection = RagCollectionConfig(
-                collectionId=data_source_id,
-                repositoryId=self.repository_id,
-                name=sanitized_name,
-                description="Default collection for Bedrock Knowledge Base",
-                embeddingModel=embedding_model,
-                chunkingStrategy=None,  # KB controls chunking
-                allowedGroups=self.repository.get("allowedGroups", []),
-                createdBy=self.repository.get("createdBy", "system"),
-                status=CollectionStatus.ACTIVE,
-                metadata=CollectionMetadata(tags=["default", "bedrock-kb"], customFields={}),
-                allowChunkingOverride=False,  # KB controls chunking
-                pipelines=self.repository.get("pipelines", []),
-                default=True,
-                dataSourceId=data_source_id,
-                createdAt=datetime.now(timezone.utc),
-                updatedAt=datetime.now(timezone.utc),
+            # Use helper method to create collection
+            default_collection = self._create_collection_for_data_source(
+                data_source_id=data_source_id, s3_uri=s3_uri, is_default=True
             )
 
             logger.info(f"Created virtual default collection for Bedrock KB repository {self.repository_id}")

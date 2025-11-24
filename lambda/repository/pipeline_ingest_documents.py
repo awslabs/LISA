@@ -358,6 +358,7 @@ def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
         return
     repository_id = detail.get("repositoryId", None)
     pipeline_config = detail.get("pipelineConfig", None)
+    collection_id = detail.get("collectionId", None)
     s3_path = f"s3://{bucket}/{key}"
 
     # Get repository to determine type and configuration
@@ -365,14 +366,25 @@ def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
 
     # For Bedrock KB repositories, use data source ID as collection ID
     if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
-        bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
-        data_source_id = bedrock_config.get("bedrockKnowledgeDatasourceId")
+        if not collection_id:
+            # Fallback: try to get from bedrock config (legacy support)
+            bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
 
-        if not data_source_id:
+            # Try new structure with dataSources array
+            data_sources = bedrock_config.get("dataSources", [])
+            if data_sources:
+                first_data_source = data_sources[0]
+                collection_id = (
+                    first_data_source.get("id") if isinstance(first_data_source, dict) else first_data_source.id
+                )
+            else:
+                # Try legacy single data source ID
+                collection_id = bedrock_config.get("bedrockKnowledgeDatasourceId")
+
+        if not collection_id:
             logger.error(f"Bedrock KB repository {repository_id} missing data source ID")
             return
 
-        collection_id = data_source_id
         embedding_model = repository.get("embeddingModelId")
         chunk_strategy = NoneChunkingStrategy()  # KB manages chunking
 
@@ -385,7 +397,6 @@ def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
         )
     else:
         # Non-Bedrock KB path (existing logic)
-        collection_id = pipeline_config.get("collectionId", None)
         embedding_model = pipeline_config.get("embeddingModel", None)
 
         if collection_id:

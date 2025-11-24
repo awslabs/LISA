@@ -22,18 +22,9 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-from models.domain_objects import (
-    ChunkingStrategyType,
-    IngestionJob,
-    IngestionType,
-    JobActionType,
-    NoneChunkingStrategy,
-    PipelineConfig,
-    PipelineTrigger,
-    VectorStoreConfig,
-)
+from models.domain_objects import IngestionJob, IngestionType, JobActionType, NoneChunkingStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -61,9 +52,12 @@ def ingest_document_to_kb(
 
     s3_client.delete_object(Bucket=source_bucket, Key=source_key)
 
+    # Use collection_id from job as data source ID
+    data_source_id = job.collection_id
+
     bedrock_agent_client.start_ingestion_job(
         knowledgeBaseId=bedrock_config.get("bedrockKnowledgeBaseId", None),
-        dataSourceId=bedrock_config.get("bedrockKnowledgeDatasourceId", None),
+        dataSourceId=data_source_id,
     )
 
 
@@ -80,9 +74,13 @@ def delete_document_from_kb(
         Bucket=bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket", None),
         Key=os.path.basename(job.s3_path),
     )
+
+    # Use collection_id from job as data source ID
+    data_source_id = job.collection_id
+
     bedrock_agent_client.start_ingestion_job(
         knowledgeBaseId=bedrock_config.get("bedrockKnowledgeBaseId", None),
-        dataSourceId=bedrock_config.get("bedrockKnowledgeDatasourceId", None),
+        dataSourceId=data_source_id,
     )
 
 
@@ -91,6 +89,7 @@ def bulk_delete_documents_from_kb(
     bedrock_agent_client: Any,
     repository: Dict[str, Any],
     s3_paths: List[str],
+    data_source_id: Optional[str] = None,
 ) -> None:
     """Bulk delete documents from KB datasource bucket and trigger single ingestion.
 
@@ -99,6 +98,7 @@ def bulk_delete_documents_from_kb(
         bedrock_agent_client: boto3 bedrock-agent client
         repository: Repository configuration dictionary
         s3_paths: List of S3 paths to delete
+        data_source_id: Optional data source ID. If not provided, will try to get from config.
     """
     bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
     datasource_bucket = bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket")
@@ -112,40 +112,24 @@ def bulk_delete_documents_from_kb(
         if delete_objects:
             s3_client.delete_objects(Bucket=datasource_bucket, Delete={"Objects": delete_objects})
 
+    # Determine data source ID
+    if not data_source_id:
+        # Try new structure with dataSources array
+        data_sources = bedrock_config.get("dataSources", [])
+        if data_sources:
+            first_data_source = data_sources[0]
+            data_source_id = (
+                first_data_source.get("id") if isinstance(first_data_source, dict) else first_data_source.id
+            )
+        else:
+            # Try legacy single data source ID
+            data_source_id = bedrock_config.get("bedrockKnowledgeDatasourceId")
+
     # Trigger single ingestion job to sync KB
     bedrock_agent_client.start_ingestion_job(
         knowledgeBaseId=bedrock_config.get("bedrockKnowledgeBaseId"),
-        dataSourceId=bedrock_config.get("bedrockKnowledgeDatasourceId"),
+        dataSourceId=data_source_id,
     )
-
-
-def add_default_pipeline_for_bedrock_kb(vector_store_config: VectorStoreConfig) -> None:
-    """Add default pipeline configuration for Bedrock Knowledge Base repositories.
-
-    Automatically adds a default event-driven pipeline if none exists, using the
-    datasource S3 bucket for monitoring.
-
-    Args:
-        vector_store_config: Vector store configuration to modify in-place
-    """
-    bedrock_config = vector_store_config.bedrockKnowledgeBaseConfig
-    if not bedrock_config:
-        return
-
-    default_pipeline = PipelineConfig(
-        s3Bucket=bedrock_config.bedrockKnowledgeDatasourceS3Bucket,
-        collectionId=bedrock_config.bedrockKnowledgeDatasourceId,
-        s3Prefix="",
-        trigger=PipelineTrigger.EVENT,
-        autoRemove=True,
-        chunkingStrategy=NoneChunkingStrategy(type=ChunkingStrategyType.NONE),
-    )
-
-    if vector_store_config.pipelines:
-        vector_store_config.pipelines.append(default_pipeline)
-    else:
-        vector_store_config.pipelines = [default_pipeline]
-    logger.info(f"Auto-added default pipeline for Bedrock KB repository {vector_store_config.repositoryId}")
 
 
 def ingest_bedrock_s3_documents(

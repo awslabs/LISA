@@ -38,7 +38,7 @@ import { Provider } from 'aws-cdk-lib/custom-resources';
 import { Construct } from 'constructs';
 
 import { getDefaultRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
-import { BaseProps } from '../schema';
+import { APP_MANAGEMENT_KEY, BaseProps } from '../schema';
 import { Vpc } from '../networking/vpc';
 
 import { ECSModelDeployer } from './ecs-model-deployer';
@@ -146,7 +146,7 @@ export class ModelsApi extends Construct {
             vpc
         });
 
-        const managementKeyName = StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/appManagementKeySecretName`);
+        const managementKeyName = StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/${APP_MANAGEMENT_KEY}`);
 
         const stateMachineExecutionRole = config.roles ?
             { executionRole: Role.fromRoleName(this, Roles.MODEL_SFN_ROLE, config.roles.ModelSfnRole) } :

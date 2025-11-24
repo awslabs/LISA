@@ -28,7 +28,7 @@ import { ARCHITECTURE } from '../core';
 import { Layer } from '../core/layers';
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
-import { BaseProps, Config, RDSConfig } from '../schema';
+import { APP_MANAGEMENT_KEY, BaseProps, Config, RDSConfig } from '../schema';
 import { SecurityGroupEnum } from '../core/iam/SecurityGroups';
 import { SecurityGroupFactory } from '../networking/vpc/security-group-factory';
 import { Roles } from '../core/iam/roles';
@@ -218,7 +218,7 @@ export class LisaRagConstruct extends Construct {
             LISA_API_URL_PS_NAME: endpointUrl.parameterName,
             LISA_RAG_COLLECTIONS_TABLE: collectionsTable.tableName,
             LOG_LEVEL: config.logLevel,
-            MANAGEMENT_KEY_SECRET_NAME_PS: `${config.deploymentPrefix}/appManagementKeySecretName`,
+            MANAGEMENT_KEY_SECRET_NAME_PS: `${config.deploymentPrefix}/${APP_MANAGEMENT_KEY}`,
             MODEL_TABLE_NAME: modelTableNameStringParameter.stringValue,
             RAG_DOCUMENT_TABLE: docMetaTable.tableName,
             RAG_SUB_DOCUMENT_TABLE: subDocTable.tableName,
@@ -377,15 +377,6 @@ export class LisaRagConstruct extends Construct {
             layers,
         });
 
-        new VectorStoreCreator(scope, 'VectorStoreCreatorStack', {
-            config,
-            vpc,
-            ragVectorStoreTable,
-            stackName: createCdkId([config.appName, config.deploymentName, config.deploymentStage, 'vectorstore-creator']),
-            baseEnvironment,
-            layers
-        });
-
         this.legacyRepositories(
             config,
             vpc,
@@ -409,6 +400,15 @@ export class LisaRagConstruct extends Construct {
             rootResourceId,
             securityGroups,
             lambdaExecutionRole: lambdaRole,
+        });
+
+        new VectorStoreCreator(scope, 'VectorStoreCreatorStack', {
+            config,
+            vpc,
+            ragVectorStoreTable,
+            stackName: createCdkId([config.appName, config.deploymentName, config.deploymentStage, 'vectorstore-creator']),
+            baseEnvironment,
+            layers
         });
 
         modelsPs.grantRead(lambdaRole);

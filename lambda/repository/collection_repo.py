@@ -383,18 +383,18 @@ class CollectionRepository:
             CollectionRepositoryError: If search fails
         """
         try:
-            # Query using RepositoryIndex and filter by name
             response = self.table.query(
                 IndexName="RepositoryIndex",
                 KeyConditionExpression=Key("repositoryId").eq(repository_id),
+                FilterExpression="#name = :name",
+                ExpressionAttributeNames={"#name": "name"},
+                ExpressionAttributeValues={":name": collection_name},
+                Limit=1,
             )
 
-            items = [convert_decimal(item) for item in response.get("Items", [])]
-
-            # Filter by name (case-sensitive)
-            for item in items:
-                if item.get("name") == collection_name:
-                    return RagCollectionConfig(**item)
+            items = response.get("Items", [])
+            if items:
+                return RagCollectionConfig(**convert_decimal(items[0]))
 
             return None
 

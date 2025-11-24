@@ -85,7 +85,6 @@ export function CollectionLibraryComponent ({ admin = false }: CollectionLibrary
 
     // Determine which actions should be disabled based on status
     const isEditDisabled = !selectedCollection ||
-                          isDefaultCollection ||
                           collectionStatus === CollectionStatus.ARCHIVED ||
                           collectionStatus === CollectionStatus.DELETED ||
                           collectionStatus === CollectionStatus.DELETE_IN_PROGRESS;
@@ -96,7 +95,6 @@ export function CollectionLibraryComponent ({ admin = false }: CollectionLibrary
 
     const getEditDisabledReason = () => {
         if (!selectedCollection) return 'Please select a collection';
-        if (isDefaultCollection) return 'Cannot edit default collection';
         if (collectionStatus === CollectionStatus.ARCHIVED) return 'Cannot edit archived collection';
         if (collectionStatus === CollectionStatus.DELETED) return 'Cannot edit deleted collection';
         if (collectionStatus === CollectionStatus.DELETE_IN_PROGRESS) return 'Cannot edit collection being deleted';

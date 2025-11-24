@@ -35,6 +35,7 @@ os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
 os.environ["AWS_SECURITY_TOKEN"] = "testing"
 os.environ["AWS_SESSION_TOKEN"] = "testing"
 os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+os.environ["AWS_REGION"] = "us-east-1"
 os.environ["SESSIONS_TABLE_NAME"] = "sessions-table"
 os.environ["SESSIONS_BY_USER_ID_INDEX_NAME"] = "sessions-by-user-id-index"
 os.environ["GENERATED_IMAGES_S3_BUCKET_NAME"] = "bucket"
@@ -116,7 +117,9 @@ def dynamodb_table(dynamodb):
         ],
         ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
     )
-    return table
+    # Patch the module-level table with our test fixture
+    with patch("session.lambda_functions.table", table):
+        yield table
 
 
 @pytest.fixture(scope="function")
@@ -135,7 +138,9 @@ def config_table(dynamodb):
         BillingMode="PAY_PER_REQUEST",
     )
     table.wait_until_exists()
-    return table
+    # Patch the module-level config_table with our test fixture
+    with patch("session.lambda_functions.config_table", table):
+        yield table
 
 
 # Create mock modules
@@ -905,7 +910,10 @@ def test_attach_image_to_session_success(lambda_context):
     """Test attach_image_to_session with valid image data."""
 
     # Create a simple base64 encoded image
-    image_data = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+    image_data = (
+        "data:image/png;base64,"
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+    )
 
     event = {
         "pathParameters": {"sessionId": "test-session"},
@@ -945,7 +953,7 @@ def test_attach_image_to_session_missing_message(lambda_context):
 def test_attach_image_to_session_s3_upload_error(lambda_context):
     """Test attach_image_to_session with S3 upload error."""
 
-    image_data = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+    image_data = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB"
 
     event = {
         "pathParameters": {"sessionId": "test-session"},

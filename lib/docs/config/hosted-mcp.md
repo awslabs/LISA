@@ -2,15 +2,15 @@
 
 ## Overview
 
-LISA MCP lets administrators run first-party Model Context Protocol (MCP) services directly inside a LISA
-deployment. Each server is provisioned on ECS Fargate, fronted by Application/Network Load Balancers, and published
-through the existing API Gateway so chat sessions can securely invoke MCP tools without leaving your VPC. Every route
-is still protected by the same API Gateway Lambda authorizer that guards the rest of LISA, so API Keys, IDP lockdown,
-and JWT group enforcement continue to apply without extra work. Because the endpoints are standard HTTP
-routes behind API Gateway, you can also share them with trusted third-party agents, copilots, or workflow engines
-outside of LISA while keeping the same auth store/issue them API keys, short-lived JWTs, or IDP credentials and they
-can consume the MCP server just like LISA-hosted chat clients. The Create /
-Update / Delete workflows are orchestrated by Step Functions and auditable through DynamoDB status records.
+LISA MCP provides scalable infrastructure to support the deployment and hosting of first-party MCP servers and tools.
+It is a stand-alone solution that can either be deployed independently of LISA Serve, or configured to work seamlessly
+with LISA Serve. Each MCP server deployed via LISA MCP is provisioned on AWS Fargate via Amazon ECS, fronted by
+Application/Network Load Balancers, and published through the existing API Gateway. This allows chat sessions to securely invoke
+MCP tools without leaving your VPC. Every route remains protected by the same API Gateway Lambda authorizer that guards the rest
+of LISA, so API Keys, IDP lockdown, and JWT group enforcement continue to apply automatically. Because the endpoints are
+standard HTTP routes behind API Gateway, you can also share them with trusted third-party agents, copilots, or workflow engines
+outside of LISA while preserving the same authentication store; you may issue API keys, short-lived JWTs, or IDP credentials, and those external consumers can use the MCP server just like LISA chat clients. The Create, Update, Delete workflows are orchestrated by
+Step Functions and are auditable through DynamoDB status records.
 
 ## Key Features
 

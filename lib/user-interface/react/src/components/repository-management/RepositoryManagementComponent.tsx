@@ -14,19 +14,28 @@
  limitations under the License.
  */
 
-import { ReactElement } from 'react';
+import { ReactElement, useEffect } from 'react';
 import { Header } from '@cloudscape-design/components';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import RepositoryTable from './RepositoryTable';
+import { useAppDispatch } from '@/config/store';
+import { setBreadcrumbs } from '@/shared/reducers/breadcrumbs.reducer';
 
 export function RepositoryManagementComponent (): ReactElement {
+    const dispatch = useAppDispatch();
+    useEffect(() => {
+        dispatch(setBreadcrumbs([
+            { text: 'RAG Management', href: '/repository-management' }
+        ]));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
     return (
         <SpaceBetween size='m'>
             <Header
                 variant='h1'
                 description='Manage RAG repositories and vector stores'
             >
-                Repository Management
+                RAG Management
             </Header>
             <RepositoryTable />
         </SpaceBetween>

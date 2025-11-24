@@ -46,7 +46,8 @@ export function RepositoryConfigForm (props: FormProps<RagRepositoryConfig> & Re
         <SpaceBetween size={'s'}>
             <FormField label='Repository ID'
                 errorText={formErrors?.repositoryId}
-                description={shape.repositoryId.description}>
+                description={shape.repositoryId.description}
+                constraintText='Required. Only lowercase alphanumeric characters and hyphens allowed.'>
                 <Input value={item.repositoryId} inputMode='text'
                     onBlur={() => touchFields(['repositoryId'])}
                     onChange={({ detail }) => {
@@ -63,13 +64,23 @@ export function RepositoryConfigForm (props: FormProps<RagRepositoryConfig> & Re
                     }} placeholder='Postgres RAG' />
             </FormField>
 
+            <FormField label='Description - optional'
+                errorText={formErrors?.description}
+                description={shape.description.description}>
+                <Input value={item.description} inputMode='text'
+                    onBlur={() => touchFields(['description'])}
+                    onChange={({ detail }) => {
+                        setFields({ 'description': detail.value });
+                    }} placeholder='A repository for storing RAG documents' />
+            </FormField>
+
             {/* Common Fields: Embedding Model */}
             <CommonFieldsForm
                 item={item}
                 setFields={setFields}
                 touchFields={touchFields}
                 formErrors={formErrors}
-                showEmbeddingModel={true}
+                showEmbeddingModel={item.type !== RagRepositoryType.BEDROCK_KNOWLEDGE_BASE}
                 showAllowedGroups={false}
             />
 

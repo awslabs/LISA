@@ -317,7 +317,10 @@ def test_handle_monitor_delete_stack_not_found(mcp_servers_table, lambda_context
         error_response = {
             "Error": {
                 "Code": "ValidationError",
-                "Message": "Stack with id arn:aws:cloudformation:us-east-1:123456789012:stack/test-stack-name/abc123 does not exist",
+                "Message": (
+                    "Stack with id arn:aws:cloudformation:us-east-1:123456789012:stack/"
+                    "test-stack-name/abc123 does not exist"
+                ),
             }
         }
         mock_cfn.describe_stacks.side_effect = ClientError(error_response, "DescribeStacks")

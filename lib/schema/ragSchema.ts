@@ -21,6 +21,7 @@ import { EbsDeviceVolumeType } from './cdk';
  */
 export enum ChunkingStrategyType {
     FIXED = 'fixed',
+    NONE = 'none',
 }
 
 /**
@@ -36,41 +37,38 @@ export const FixedSizeChunkingStrategySchema = z.object({
 );
 
 /**
+ * None chunking strategy schema - documents ingested as-is without chunking
+ */
+export const NoneChunkingStrategySchema = z.object({
+    type: z.literal(ChunkingStrategyType.NONE).describe('No chunking - documents ingested as-is'),
+});
+
+/**
  * Union of all chunking strategy types
  */
-export const ChunkingStrategySchema = FixedSizeChunkingStrategySchema;
+export const ChunkingStrategySchema = z.union([
+    FixedSizeChunkingStrategySchema,
+    NoneChunkingStrategySchema,
+]);
 
 export type ChunkingStrategy = z.infer<typeof ChunkingStrategySchema>;
 export type FixedSizeChunkingStrategy = z.infer<typeof FixedSizeChunkingStrategySchema>;
+export type NoneChunkingStrategy = z.infer<typeof NoneChunkingStrategySchema>;
 
 /**
  * Defines possible states for a vector store deployment.
  * These statuses are used by both create-store and delete-store state machines.
  */
 export enum VectorStoreStatus {
-    /** Vector store creation is in progress */
     CREATE_IN_PROGRESS = 'CREATE_IN_PROGRESS',
-
-    /** Vector store creation completed successfully */
     CREATE_COMPLETE = 'CREATE_COMPLETE',
-
-    /** Vector store creation failed */
     CREATE_FAILED = 'CREATE_FAILED',
-
-    /** Vector store update is in progress */
     UPDATE_IN_PROGRESS = 'UPDATE_IN_PROGRESS',
-
-    /** Vector store update completed successfully */
     UPDATE_COMPLETE = 'UPDATE_COMPLETE',
-
-    /** Vector store update cleanup is in progress */
     UPDATE_COMPLETE_CLEANUP_IN_PROGRESS = 'UPDATE_COMPLETE_CLEANUP_IN_PROGRESS',
-
-    /** Vector store deletion is in progress */
     DELETE_IN_PROGRESS = 'DELETE_IN_PROGRESS',
-
-    /** Vector store deletion failed */
     DELETE_FAILED = 'DELETE_FAILED',
+    UNKNOWN = 'UNKNOWN',
 }
 
 /**
@@ -114,10 +112,10 @@ const triggerSchema = z.object({
 });
 
 export const RagRepositoryPipeline = z.object({
-    chunkSize: z.number().default(512).describe('The size of the chunks used for document segmentation.'),
-    chunkOverlap: z.number().default(51).describe('The size of the overlap between chunks.'),
+    chunkSize: z.number().optional().default(512).describe('The size of the chunks used for document segmentation.'),
+    chunkOverlap: z.number().optional().default(51).describe('The size of the overlap between chunks.'),
     chunkingStrategy: ChunkingStrategySchema.optional().describe('Chunking strategy for documents in this pipeline.'),
-    embeddingModel: z.string().describe('The embedding model used for document ingestion in this pipeline.'),
+    embeddingModel: z.string().optional().describe('The embedding model used for document ingestion in this pipeline.'),
     collectionId: z.string().optional().describe('The collection ID to ingest documents into.'),
     s3Bucket: z.string().describe('The S3 bucket monitored by this pipeline for document processing.'),
     s3Prefix: z.string()
@@ -161,6 +159,7 @@ export const RagRepositoryConfigSchema = z
             .regex(/^(?!-).*(?<!-)$/, 'Cannot start or end with a \'-\'.')
             .describe('A unique identifier for the repository, used in API calls and the UI. It must be distinct across all repositories.'),
         repositoryName: z.string().optional().describe('The user-friendly name displayed in the UI.'),
+        description: z.string().optional().describe('Description of the repository.'),
         embeddingModelId: z.string().optional().describe('The default embedding model to be used when selecting repository.'),
         type: z.nativeEnum(RagRepositoryType).describe('The vector store designated for this repository.'),
         opensearchConfig: z.union([OpenSearchExistingClusterConfig, OpenSearchNewClusterConfig]).optional(),
@@ -168,7 +167,6 @@ export const RagRepositoryConfigSchema = z
         bedrockKnowledgeBaseConfig: BedrockKnowledgeBaseInstanceConfig.optional(),
         pipelines: z.array(RagRepositoryPipeline).optional().default([]).describe('Rag ingestion pipeline for automated inclusion into a vector store from S3'),
         allowedGroups: z.array(z.string().nonempty()).optional().default([]).describe('The groups provided by the Identity Provider that have access to this repository. If no groups are specified, access is granted to everyone.'),
-        allowUserCollections: z.boolean().default(true).describe('Whether non-admin users can create collections in this repository.'),
         metadata: RagRepositoryMetadata.optional().describe('Metadata for the repository including tags and custom fields.'),
         status: z.nativeEnum(VectorStoreStatus).optional().describe('Current deployment status of the repository')
     })

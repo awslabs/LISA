@@ -171,14 +171,14 @@ function App () {
                                     </AdminRoute>
                                 }
                             />
-                            <Route
+                            {window.env.HOSTED_MCP_ENABLED && <Route
                                 path='mcp-management'
                                 element={
                                     <AdminRoute>
                                         <McpManagement setNav={setNav} />
                                     </AdminRoute>
                                 }
-                            />
+                            />}
                             <Route
                                 path='repository-management'
                                 element={

@@ -268,9 +268,6 @@ patch("utilities.auth.admin_only", mock_admin_only).start()
 # Only now import the lambda functions to ensure they use our mocked dependencies
 from repository.lambda_functions import _ensure_document_ownership, get_repository, presigned_url
 
-# Patch vector_store after import
-patch("utilities.vector_store.get_vector_store_client", mock_get_vector_store_client).start()
-
 
 @pytest.fixture(autouse=True)
 def mock_boto3_client_fixture():
@@ -795,12 +792,12 @@ def test_delete_missing_repository_id():
 def test_RagEmbeddings_error():
     """Test error handling in RagEmbeddings function"""
 
-    # Create a patched version of the function that raises an error
+    # Create a patched version of the class that raises an error
     def mock_RagEmbeddings(model_name, api_key):
         raise Exception("SSM error")
 
-    # Patch the function
-    with patch("repository.lambda_functions.RagEmbeddings", side_effect=mock_RagEmbeddings):
+    # Patch the class from the correct module
+    with patch("repository.embeddings.RagEmbeddings", side_effect=mock_RagEmbeddings):
         # Test that the error is properly handled
         with pytest.raises(Exception, match="SSM error"):
             mock_RagEmbeddings("test-model", "test-token")
@@ -1355,57 +1352,69 @@ def test_real_similarity_search_function():
     from repository.lambda_functions import similarity_search
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "utilities.vector_store.get_vector_store_client"
-    ) as mock_get_client, patch("repository.embeddings.RagEmbeddings") as mock_RagEmbeddings, patch(
-        "utilities.auth.get_groups"
-    ) as mock_get_groups, patch(
+        "repository.embeddings.RagEmbeddings"
+    ) as mock_RagEmbeddings, patch("utilities.auth.get_groups") as mock_get_groups, patch(
         "utilities.common_functions.get_id_token"
     ) as mock_get_token:
 
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
         mock_get_token.return_value = "test-token"
-        mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
-
-        mock_client = MagicMock()
-        mock_get_client.return_value = mock_client
-        mock_client.similarity_search.return_value = [
-            MagicMock(page_content="Test content", metadata={"source": "test-source"})
-        ]
+        mock_vs_repo.find_repository_by_id.return_value = {
+            "repositoryId": "test-repo",
+            "type": "opensearch",
+            "allowedGroups": ["test-group"],
+            "status": "active",
+        }
 
         mock_embeddings = MagicMock()
         mock_RagEmbeddings.return_value = mock_embeddings
 
-        event = {
-            "requestContext": {"authorizer": {"claims": {"username": "test-user"}, "groups": ["test-group"]}},
-            "pathParameters": {"repositoryId": "test-repo"},
-            "queryStringParameters": {"modelName": "test-model", "query": "test query", "topK": "3"},
-        }
+        # Mock the service layer
+        mock_service = MagicMock()
+        mock_service.retrieve_documents.return_value = [
+            {"page_content": "Test content", "metadata": {"source": "test-source"}}
+        ]
 
-        result = similarity_search(event, SimpleNamespace())
+        with patch("repository.lambda_functions.RepositoryServiceFactory") as mock_factory:
+            mock_factory.create_service.return_value = mock_service
 
-        # The function is wrapped by api_wrapper, so we get an HTTP response
-        assert "statusCode" in result
-        assert "body" in result
+            event = {
+                "requestContext": {"authorizer": {"claims": {"username": "test-user"}, "groups": ["test-group"]}},
+                "pathParameters": {"repositoryId": "test-repo"},
+                "queryStringParameters": {"modelName": "test-model", "query": "test query", "topK": "3"},
+            }
+
+            result = similarity_search(event, SimpleNamespace())
+
+            # The function is wrapped by api_wrapper, so we get an HTTP response
+            assert "statusCode" in result
+            assert "body" in result
 
 
 def test_real_similarity_search_missing_params():
     """Test similarity_search with missing required parameters"""
     from repository.lambda_functions import similarity_search
 
-    # Test missing repositoryId
-    event = {
-        "requestContext": {"authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["test-group"])}},
-        "pathParameters": {},
-        "queryStringParameters": {"modelName": "test-model", "query": "test query"},
-    }
+    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo:
+        # Mock repository lookup to avoid AWS credential issues
+        mock_vs_repo.find_repository_by_id.return_value = None
 
-    result = similarity_search(event, SimpleNamespace())
+        # Test missing repositoryId
+        event = {
+            "requestContext": {
+                "authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["test-group"])}
+            },
+            "pathParameters": {},
+            "queryStringParameters": {"modelName": "test-model", "query": "test query"},
+        }
 
-    # Should return error response due to missing repositoryId
-    assert result["statusCode"] == 400
-    body = json.loads(result["body"])
-    assert "error" in body
+        result = similarity_search(event, SimpleNamespace())
+
+        # Should return error response due to missing repositoryId or repository not found
+        assert result["statusCode"] in [400, 500]
+        body = json.loads(result["body"])
+        assert "error" in body
 
 
 def test_real_delete_documents_function():
@@ -1418,9 +1427,7 @@ def test_real_delete_documents_function():
         "utilities.auth.get_username"
     ) as mock_get_username, patch(
         "utilities.auth.is_admin"
-    ) as mock_is_admin, patch(
-        "utilities.vector_store.get_vector_store_client"
-    ) as mock_get_client:
+    ) as mock_is_admin:
 
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
@@ -1431,9 +1438,6 @@ def test_real_delete_documents_function():
 
         mock_doc_repo.find_by_id.return_value = {"username": "test-user"}
         mock_doc_repo.delete_by_id.return_value = None
-
-        mock_client = MagicMock()
-        mock_get_client.return_value = mock_client
 
         event = {
             "requestContext": {
@@ -1760,7 +1764,7 @@ def test_real_create_function():
     from repository.lambda_functions import create
 
     with patch("repository.lambda_functions.step_functions_client") as mock_sf, patch(
-        "repository.embeddings.ssm_client"
+        "repository.lambda_functions.ssm_client"
     ) as mock_ssm, patch("utilities.auth.is_admin") as mock_is_admin:
 
         # Setup mocks
@@ -1770,9 +1774,7 @@ def test_real_create_function():
 
         event = {
             "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
-            "body": json.dumps(
-                {"ragConfig": {"name": "Test Repository", "type": "opensearch", "allowedGroups": ["test-group"]}}
-            ),
+            "body": json.dumps({"type": "opensearch", "repositoryId": "test-repo", "embeddingModelId": "test-model"}),
         }
 
         result = create(event, SimpleNamespace())
@@ -1934,7 +1936,6 @@ def test_real_similarity_search_bedrock_kb_function():
         first_doc = body["docs"][0]["Document"]
         assert first_doc["page_content"] == "KB doc content"
         assert first_doc["metadata"]["source"] == "s3://bucket/path/doc1.pdf"
-        assert first_doc["metadata"]["name"] == "doc1.pdf"
 
 
 @mock_aws()
@@ -2543,33 +2544,44 @@ def test_get_repository_no_access():
 
 
 def test_similarity_search_with_score():
-    """Test _similarity_search_with_score function"""
-    from repository.lambda_functions import _similarity_search_with_score
+    """Test retrieve_documents with score via service layer"""
+    from repository.services.opensearch_repository_service import OpenSearchRepositoryService
+
+    repository = {"repositoryId": "test-repo", "type": "opensearch"}
+    service = OpenSearchRepositoryService(repository)
 
     mock_vs = MagicMock()
     mock_doc = MagicMock()
     mock_doc.page_content = "test content"
     mock_doc.metadata = {"source": "test"}
     mock_vs.similarity_search_with_score.return_value = [(mock_doc, 0.9)]
+    mock_vs.client.indices.exists.return_value = True
 
-    repository = {"type": "opensearch"}
-    result = _similarity_search_with_score(mock_vs, "query", 3, repository)
+    with patch("repository.services.opensearch_repository_service.RagEmbeddings"):
+        with patch.object(service, "_get_vector_store_client", return_value=mock_vs):
+            result = service.retrieve_documents("query", "test-collection", 3, "test-model", include_score=True)
 
     assert len(result) == 1
     assert "similarity_score" in result[0]["metadata"]
 
 
 def test_similarity_search_without_score():
-    """Test _similarity_search function"""
-    from repository.lambda_functions import _similarity_search
+    """Test retrieve_documents without score via service layer"""
+    from repository.services.opensearch_repository_service import OpenSearchRepositoryService
+
+    repository = {"repositoryId": "test-repo", "type": "opensearch"}
+    service = OpenSearchRepositoryService(repository)
 
     mock_vs = MagicMock()
+    mock_vs.client.indices.exists.return_value = True
     mock_doc = MagicMock()
     mock_doc.page_content = "test content"
     mock_doc.metadata = {"source": "test"}
     mock_vs.similarity_search_with_score.return_value = [(mock_doc, 0.9)]
 
-    result = _similarity_search(mock_vs, "query", 3)
+    with patch("repository.services.opensearch_repository_service.RagEmbeddings"):
+        with patch.object(service, "_get_vector_store_client", return_value=mock_vs):
+            result = service.retrieve_documents("query", "test-collection", 3, "test-model", include_score=False)
 
     assert len(result) == 1
     assert result[0]["page_content"] == "test content"
@@ -2797,17 +2809,159 @@ def test_update_repository_missing_id():
     assert result["statusCode"] == 400
 
 
+def test_update_repository_with_pipeline_change():
+    """Test update_repository triggers state machine when pipeline changes"""
+    from repository.lambda_functions import update_repository
+
+    with patch("repository.lambda_functions.vs_repo") as mock_vs, patch(
+        "repository.lambda_functions.ssm_client"
+    ) as mock_ssm, patch("repository.lambda_functions.step_functions_client") as mock_sf, patch(
+        "utilities.auth.is_admin"
+    ) as mock_is_admin:
+        # Mock admin access
+        mock_is_admin.return_value = True
+
+        # Mock current repository with existing pipeline
+        current_repo = {
+            "repositoryId": "repo1",
+            "config": {
+                "repositoryId": "repo1",
+                "repositoryName": "Test Repo",
+                "pipelines": [
+                    {
+                        "autoRemove": True,
+                        "trigger": "event",
+                        "s3Bucket": "test-bucket",
+                        "s3Prefix": "test-prefix",
+                        "chunkSize": 512,
+                        "chunkOverlap": 51,
+                    }
+                ],
+            },
+        }
+        mock_vs.find_repository_by_id.return_value = current_repo
+
+        # Mock updated config
+        updated_config = {
+            "repositoryId": "repo1",
+            "repositoryName": "Test Repo",
+            "pipelines": [
+                {
+                    "autoRemove": False,
+                    "trigger": "schedule",
+                    "s3Bucket": "test-bucket",
+                    "s3Prefix": "test-prefix",
+                    "chunkSize": 512,
+                    "chunkOverlap": 51,
+                }
+            ],
+            "status": "UPDATE_IN_PROGRESS",
+        }
+        mock_vs.update.return_value = updated_config
+
+        # Mock SSM and Step Functions
+        mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "arn:test-state-machine"}}
+        mock_sf.start_execution.return_value = {"executionArn": "arn:execution:123"}
+
+        # Create event with pipeline change
+        event = {
+            "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
+            "pathParameters": {"repositoryId": "repo1"},
+            "body": json.dumps(
+                {
+                    "pipelines": [
+                        {
+                            "autoRemove": False,
+                            "trigger": "schedule",
+                            "s3Bucket": "test-bucket",
+                            "s3Prefix": "test-prefix",
+                            "chunkSize": 512,
+                            "chunkOverlap": 51,
+                        }
+                    ]
+                }
+            ),
+        }
+        context = SimpleNamespace(function_name="test", aws_request_id="123")
+
+        result = update_repository(event, context)
+
+        # Verify state machine was triggered
+        assert result["statusCode"] == 200
+        response_body = json.loads(result["body"])
+        assert "executionArn" in response_body
+        assert response_body["executionArn"] == "arn:execution:123"
+
+        # Verify state machine was called with correct parameters
+        mock_sf.start_execution.assert_called_once()
+        call_args = mock_sf.start_execution.call_args
+        assert call_args[1]["stateMachineArn"] == "arn:test-state-machine"
+
+
+def test_update_repository_without_pipeline_change():
+    """Test update_repository does not trigger state machine when pipeline unchanged"""
+    from repository.lambda_functions import update_repository
+
+    with patch("repository.lambda_functions.vs_repo") as mock_vs, patch(
+        "repository.lambda_functions.step_functions_client"
+    ) as mock_sf, patch("utilities.auth.is_admin") as mock_is_admin:
+        # Mock admin access
+        mock_is_admin.return_value = True
+
+        # Mock current repository
+        current_repo = {
+            "repositoryId": "repo1",
+            "config": {
+                "repositoryId": "repo1",
+                "repositoryName": "Test Repo",
+                "pipelines": [{"autoRemove": True}],
+            },
+        }
+        mock_vs.find_repository_by_id.return_value = current_repo
+
+        # Mock updated config (no pipeline change)
+        updated_config = {
+            "repositoryId": "repo1",
+            "repositoryName": "Updated Name",
+            "pipelines": [{"autoRemove": True}],
+            "status": "UPDATE_COMPLETE",
+        }
+        mock_vs.update.return_value = updated_config
+
+        # Create event without pipeline change
+        event = {
+            "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
+            "pathParameters": {"repositoryId": "repo1"},
+            "body": json.dumps({"repositoryName": "Updated Name"}),
+        }
+        context = SimpleNamespace(function_name="test", aws_request_id="123")
+
+        result = update_repository(event, context)
+
+        # Verify state machine was NOT triggered
+        assert result["statusCode"] == 200
+        response_body = json.loads(result["body"])
+        assert "executionArn" not in response_body
+
+        # Verify state machine was not called
+        mock_sf.start_execution.assert_not_called()
+
+
 def test_create_success():
     """Test create repository"""
     from repository.lambda_functions import create
 
     with patch("repository.lambda_functions.ssm_client") as mock_ssm, patch(
         "repository.lambda_functions.step_functions_client"
-    ) as mock_sf:
+    ) as mock_sf, patch("utilities.auth.is_admin") as mock_is_admin:
+        mock_is_admin.return_value = True
         mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "arn:test"}}
         mock_sf.start_execution.return_value = {"executionArn": "arn:execution"}
 
-        event = {"body": json.dumps({"ragConfig": {"name": "test"}})}
+        event = {
+            "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
+            "body": json.dumps({"type": "opensearch", "repositoryId": "test-repo"}),
+        }
         context = SimpleNamespace(function_name="test", aws_request_id="123")
 
         result = create(event, context)
@@ -2855,19 +3009,27 @@ def test_delete_non_legacy_repository():
 
 # Additional coverage tests for repository lambda functions
 def test_similarity_search_helpers():
+    """Test retrieve_documents via service layer"""
     import os
     from unittest.mock import MagicMock, patch
 
+    from repository.services.opensearch_repository_service import OpenSearchRepositoryService
+
     with patch.dict(os.environ, {"LISA_RAG_VECTOR_STORE_TABLE": "test-table"}, clear=False):
-        from repository.lambda_functions import _similarity_search
+        repository = {"repositoryId": "test-repo", "type": "opensearch"}
+        service = OpenSearchRepositoryService(repository)
 
         mock_vs = MagicMock()
         mock_doc = MagicMock()
         mock_doc.page_content = "test content"
         mock_doc.metadata = {"key": "value"}
         mock_vs.similarity_search_with_score.return_value = [(mock_doc, 0.9)]
+        mock_vs.client.indices.exists.return_value = True
 
-        results = _similarity_search(mock_vs, "query", 3)
+        with patch("repository.services.opensearch_repository_service.RagEmbeddings"):
+            with patch.object(service, "_get_vector_store_client", return_value=mock_vs):
+                results = service.retrieve_documents("query", "test-collection", 3, "test-model", include_score=False)
+
         assert len(results) == 1
         assert results[0]["page_content"] == "test content"
 

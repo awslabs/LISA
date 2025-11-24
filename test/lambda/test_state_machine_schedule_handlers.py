@@ -47,8 +47,8 @@ def lambda_context():
 class TestStateMachineScheduleHandlers:
     """Test state machine schedule handler functions."""
 
-    @patch("models.state_machine.schedule_handlers.lambda_client")
-    def test_handle_schedule_creation_success(self, mock_lambda_client, lambda_context):
+    @patch("models.state_machine.schedule_handlers.schedule_management.update_schedule")
+    def test_handle_schedule_creation_success(self, mock_update_schedule, lambda_context):
         """Test successful schedule creation."""
         from models.state_machine.schedule_handlers import handle_schedule_creation
 
@@ -58,24 +58,18 @@ class TestStateMachineScheduleHandlers:
             "autoScalingGroup": "test-asg",
             "autoScalingConfig": {
                 "scheduling": {
-                    "scheduleType": "RECURRING_DAILY",
+                    "scheduleType": "RECURRING",
                     "timezone": "UTC",
                     "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"},
                 }
             },
         }
 
-        # Mock successful lambda response
-        mock_lambda_response = {"StatusCode": 200, "Payload": MagicMock()}
-        mock_lambda_response["Payload"].read.return_value = json.dumps(
-            {
-                "statusCode": 200,
-                "body": json.dumps(
-                    {"message": "Schedule created successfully", "scheduledActionArns": ["arn1", "arn2"]}
-                ),
-            }
-        ).encode()
-        mock_lambda_client.invoke.return_value = mock_lambda_response
+        # Mock successful schedule management response
+        mock_update_schedule.return_value = {
+            "statusCode": 200,
+            "body": json.dumps({"message": "Schedule created successfully", "scheduledActionArns": ["arn1", "arn2"]}),
+        }
 
         # Execute
         result = handle_schedule_creation(event, lambda_context)
@@ -84,8 +78,8 @@ class TestStateMachineScheduleHandlers:
         assert result["modelId"] == "test-model"
         assert result["scheduled_action_arns"] == ["arn1", "arn2"]
 
-        # Verify lambda invocation
-        mock_lambda_client.invoke.assert_called_once()
+        # Verify schedule management was called
+        mock_update_schedule.assert_called_once()
 
     def test_handle_schedule_creation_no_scheduling(self, lambda_context):
         """Test schedule creation with no scheduling config."""
@@ -101,8 +95,7 @@ class TestStateMachineScheduleHandlers:
         assert result["modelId"] == "test-model"
         assert "scheduled_action_arns" not in result
 
-    @patch("models.state_machine.schedule_handlers.lambda_client")
-    def test_handle_schedule_creation_no_asg(self, mock_lambda_client, lambda_context):
+    def test_handle_schedule_creation_no_asg(self, lambda_context):
         """Test schedule creation without ASG."""
         from models.state_machine.schedule_handlers import handle_schedule_creation
 
@@ -111,7 +104,7 @@ class TestStateMachineScheduleHandlers:
             "modelId": "test-model",
             "autoScalingConfig": {
                 "scheduling": {
-                    "scheduleType": "RECURRING_DAILY",
+                    "scheduleType": "RECURRING",
                     "timezone": "UTC",
                     "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"},
                 }
@@ -122,14 +115,14 @@ class TestStateMachineScheduleHandlers:
         # Execute
         result = handle_schedule_creation(event, lambda_context)
 
-        # Verify result (should pass through unchanged, no lambda call)
+        # Verify result (should pass through unchanged, no schedule management call)
         assert result["modelId"] == "test-model"
-        mock_lambda_client.invoke.assert_not_called()
+        assert "scheduled_action_arns" not in result
 
-    @patch("models.state_machine.schedule_handlers.lambda_client")
+    @patch("models.state_machine.schedule_handlers.schedule_management.update_schedule")
     @patch("models.state_machine.schedule_handlers.update_schedule_failure_status")
-    def test_handle_schedule_creation_lambda_error(self, mock_update_failure, mock_lambda_client, lambda_context):
-        """Test schedule creation with lambda error."""
+    def test_handle_schedule_creation_lambda_error(self, mock_update_failure, mock_update_schedule, lambda_context):
+        """Test schedule creation with schedule management error."""
         from models.state_machine.schedule_handlers import handle_schedule_creation
 
         # Mock event with scheduling config
@@ -138,32 +131,25 @@ class TestStateMachineScheduleHandlers:
             "autoScalingGroup": "test-asg",
             "autoScalingConfig": {
                 "scheduling": {
-                    "scheduleType": "RECURRING_DAILY",
+                    "scheduleType": "RECURRING",
                     "timezone": "UTC",
                     "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"},
                 }
             },
         }
 
-        # Mock lambda error response - the body should be a dict, not a JSON string
-        mock_lambda_response = {"StatusCode": 500, "Payload": MagicMock()}
-        mock_lambda_response["Payload"].read.return_value = json.dumps(
-            {
-                "statusCode": 500,
-                "body": {"message": "Lambda execution failed"},  # This should be a dict, not JSON string
-            }
-        ).encode()
-        mock_lambda_client.invoke.return_value = mock_lambda_response
+        # Mock schedule management error response
+        mock_update_schedule.return_value = {"statusCode": 500, "body": {"message": "Schedule management failed"}}
 
         # Execute
         result = handle_schedule_creation(event, lambda_context)
 
         # Verify result (should pass through, but failure status updated)
         assert result["modelId"] == "test-model"
-        mock_update_failure.assert_called_once_with("test-model", "Lambda execution failed")
+        mock_update_failure.assert_called_once_with("test-model", "Schedule management failed")
 
-    @patch("models.state_machine.schedule_handlers.lambda_client")
-    def test_handle_schedule_update_success(self, mock_lambda_client, lambda_context):
+    @patch("models.state_machine.schedule_handlers.schedule_management.update_schedule")
+    def test_handle_schedule_update_success(self, mock_update_schedule, lambda_context):
         """Test successful schedule update."""
         from models.state_machine.schedule_handlers import handle_schedule_update
 
@@ -181,17 +167,11 @@ class TestStateMachineScheduleHandlers:
             },
         }
 
-        # Mock successful lambda response
-        mock_lambda_response = {"StatusCode": 200, "Payload": MagicMock()}
-        mock_lambda_response["Payload"].read.return_value = json.dumps(
-            {
-                "statusCode": 200,
-                "body": json.dumps(
-                    {"message": "Schedule updated successfully", "scheduledActionArns": ["arn1", "arn2"]}
-                ),
-            }
-        ).encode()
-        mock_lambda_client.invoke.return_value = mock_lambda_response
+        # Mock successful schedule management response
+        mock_update_schedule.return_value = {
+            "statusCode": 200,
+            "body": json.dumps({"message": "Schedule updated successfully", "scheduledActionArns": ["arn1", "arn2"]}),
+        }
 
         # Execute
         result = handle_schedule_update(event, lambda_context)
@@ -214,20 +194,19 @@ class TestStateMachineScheduleHandlers:
         assert result["modelId"] == "test-model"
         assert "scheduled_action_arns" not in result
 
-    @patch("models.state_machine.schedule_handlers.lambda_client")
-    def test_handle_cleanup_schedule_success(self, mock_lambda_client, lambda_context):
+    @patch("models.state_machine.schedule_handlers.schedule_management.delete_schedule")
+    def test_handle_cleanup_schedule_success(self, mock_delete_schedule, lambda_context):
         """Test successful schedule cleanup."""
         from models.state_machine.schedule_handlers import handle_cleanup_schedule
 
         # Mock event
         event = {"modelId": "test-model"}
 
-        # Mock successful lambda response
-        mock_lambda_response = {"StatusCode": 200, "Payload": MagicMock()}
-        mock_lambda_response["Payload"].read.return_value = json.dumps(
-            {"statusCode": 200, "body": json.dumps({"message": "Schedule deleted successfully"})}
-        ).encode()
-        mock_lambda_client.invoke.return_value = mock_lambda_response
+        # Mock successful schedule management response
+        mock_delete_schedule.return_value = {
+            "statusCode": 200,
+            "body": json.dumps({"message": "Schedule deleted successfully"}),
+        }
 
         # Execute
         result = handle_cleanup_schedule(event, lambda_context)
@@ -235,8 +214,8 @@ class TestStateMachineScheduleHandlers:
         # Verify result
         assert result["modelId"] == "test-model"
 
-        # Verify lambda invocation
-        mock_lambda_client.invoke.assert_called_once()
+        # Verify schedule management was called
+        mock_delete_schedule.assert_called_once()
 
     @patch("models.state_machine.schedule_handlers.model_table")
     def test_detect_schedule_changes_with_changes(self, mock_model_table, lambda_context):
@@ -336,10 +315,10 @@ class TestStateMachineScheduleHandlers:
 class TestScheduleCreationEdgeCases:
     """Test edge cases for schedule creation."""
 
-    @patch("models.state_machine.schedule_handlers.lambda_client")
+    @patch("models.state_machine.schedule_handlers.schedule_management.update_schedule")
     @patch("models.state_machine.schedule_handlers.update_schedule_failure_status")
-    def test_handle_schedule_creation_exception(self, mock_update_failure, mock_lambda_client, lambda_context):
-        """Test schedule creation with exception."""
+    def test_handle_schedule_creation_lambda_error(self, mock_update_failure, mock_update_schedule, lambda_context):
+        """Test schedule creation with schedule management error."""
         from models.state_machine.schedule_handlers import handle_schedule_creation
 
         # Mock event with scheduling config
@@ -348,26 +327,26 @@ class TestScheduleCreationEdgeCases:
             "autoScalingGroup": "test-asg",
             "autoScalingConfig": {
                 "scheduling": {
-                    "scheduleType": "RECURRING_DAILY",
+                    "scheduleType": "RECURRING",
                     "timezone": "UTC",
                     "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"},
                 }
             },
         }
 
-        # Mock lambda client exception
-        mock_lambda_client.invoke.side_effect = Exception("Lambda invocation failed")
+        # Mock schedule management exception
+        mock_update_schedule.side_effect = Exception("Schedule management failed")
 
         # Execute
         result = handle_schedule_creation(event, lambda_context)
 
         # Verify result (should pass through, but failure status updated)
         assert result["modelId"] == "test-model"
-        mock_update_failure.assert_called_once_with("test-model", "Lambda invocation failed")
+        mock_update_failure.assert_called_once_with("test-model", "Schedule management failed")
 
-    @patch("models.state_machine.schedule_handlers.lambda_client")
+    @patch("models.state_machine.schedule_handlers.schedule_management.update_schedule")
     @patch("models.state_machine.schedule_handlers.update_schedule_failure_status")
-    def test_handle_schedule_update_exception(self, mock_update_failure, mock_lambda_client, lambda_context):
+    def test_handle_schedule_update_exception(self, mock_update_failure, mock_update_schedule, lambda_context):
         """Test schedule update with exception."""
         from models.state_machine.schedule_handlers import handle_schedule_update
 
@@ -385,26 +364,26 @@ class TestScheduleCreationEdgeCases:
             },
         }
 
-        # Mock lambda client exception
-        mock_lambda_client.invoke.side_effect = Exception("Lambda invocation failed")
+        # Mock schedule management exception
+        mock_update_schedule.side_effect = Exception("Schedule management failed")
 
         # Execute
         result = handle_schedule_update(event, lambda_context)
 
         # Verify result (should pass through, but failure status updated)
         assert result["modelId"] == "test-model"
-        mock_update_failure.assert_called_once_with("test-model", "Lambda invocation failed")
+        mock_update_failure.assert_called_once_with("test-model", "Schedule management failed")
 
-    @patch("models.state_machine.schedule_handlers.lambda_client")
-    def test_handle_cleanup_schedule_exception(self, mock_lambda_client, lambda_context):
+    @patch("models.state_machine.schedule_handlers.schedule_management.delete_schedule")
+    def test_handle_cleanup_schedule_exception(self, mock_delete_schedule, lambda_context):
         """Test schedule cleanup with exception."""
         from models.state_machine.schedule_handlers import handle_cleanup_schedule
 
         # Mock event
         event = {"modelId": "test-model"}
 
-        # Mock lambda client exception
-        mock_lambda_client.invoke.side_effect = Exception("Lambda invocation failed")
+        # Mock schedule management exception
+        mock_delete_schedule.side_effect = Exception("Schedule management failed")
 
         # Execute (should not raise exception)
         result = handle_cleanup_schedule(event, lambda_context)

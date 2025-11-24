@@ -88,16 +88,18 @@ def sample_model_item():
         "model_id": "test-model",
         "model_status": "InService",
         "auto_scaling_group": "test-asg",
-        "autoScalingConfig": {
-            "scheduling": {
-                "scheduleType": "RECURRING",
-                "timezone": "UTC",
-                "scheduleEnabled": True,
-                "scheduleConfigured": True,
-                "lastScheduleFailed": False,
-                "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"},
-                "nextScheduledAction": {"action": "START", "scheduledTime": "2025-01-15T09:00:00Z"},
-                "lastScheduleUpdate": "2025-01-14T12:00:00Z",
+        "model_config": {
+            "autoScalingConfig": {
+                "scheduling": {
+                    "scheduleType": "RECURRING",
+                    "timezone": "UTC",
+                    "scheduleEnabled": True,
+                    "scheduleConfigured": True,
+                    "lastScheduleFailed": False,
+                    "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"},
+                    "nextScheduledAction": {"action": "START", "scheduledTime": "2025-01-15T09:00:00Z"},
+                    "lastScheduleUpdate": "2025-01-14T12:00:00Z",
+                }
             }
         },
     }
@@ -115,8 +117,10 @@ def sample_schedule_config():
 class TestUpdateScheduleHandler:
     """Test UpdateScheduleHandler class."""
 
+    @patch("models.handler.schedule_handlers.schedule_management.update_schedule")
     def test_successful_update_schedule(
         self,
+        mock_update_schedule,
         mock_model_table,
         mock_guardrails_table,
         mock_autoscaling_client,
@@ -128,38 +132,31 @@ class TestUpdateScheduleHandler:
         # Setup mock table response
         mock_model_table.get_item.return_value = {"Item": sample_model_item}
 
-        # Setup mock lambda client response
-        mock_lambda_response = {"StatusCode": 200, "Payload": MagicMock()}
-        mock_lambda_response["Payload"].read.return_value = json.dumps(
-            {"statusCode": 200, "body": {"message": "Schedule updated successfully"}}
-        ).encode()
+        # Setup mock schedule management response
+        mock_update_schedule.return_value = {"statusCode": 200, "body": {"message": "Schedule updated successfully"}}
 
-        with patch("boto3.client") as mock_boto3:
-            mock_boto3.return_value.invoke.return_value = mock_lambda_response
+        handler = UpdateScheduleHandler(
+            autoscaling_client=mock_autoscaling_client,
+            stepfunctions_client=mock_stepfunctions_client,
+            model_table_resource=mock_model_table,
+            guardrails_table_resource=mock_guardrails_table,
+        )
 
-            handler = UpdateScheduleHandler(
-                autoscaling_client=mock_autoscaling_client,
-                stepfunctions_client=mock_stepfunctions_client,
-                model_table_resource=mock_model_table,
-                guardrails_table_resource=mock_guardrails_table,
-            )
+        # Execute
+        result = handler(model_id="test-model", schedule_config=sample_schedule_config)
 
-            # Execute
-            result = handler(model_id="test-model", schedule_config=sample_schedule_config)
+        # Verify result
+        assert isinstance(result, UpdateScheduleResponse)
+        assert result.message == "Schedule updated successfully"
+        assert result.modelId == "test-model"
+        assert result.scheduleEnabled is True
 
-            # Verify result
-            assert isinstance(result, UpdateScheduleResponse)
-            assert result.message == "Schedule updated successfully"
-            assert result.modelId == "test-model"
-            assert result.scheduleEnabled is True
-
-            # Verify lambda invocation
-            mock_boto3.return_value.invoke.assert_called_once()
-            call_args = mock_boto3.return_value.invoke.call_args
-            payload = json.loads(call_args[1]["Payload"])
-            assert payload["operation"] == "update"
-            assert payload["modelId"] == "test-model"
-            assert payload["autoScalingGroup"] == "test-asg"
+        # Verify schedule management was called
+        mock_update_schedule.assert_called_once()
+        call_args = mock_update_schedule.call_args[0][0]
+        assert call_args["operation"] == "update"
+        assert call_args["modelId"] == "test-model"
+        assert call_args["autoScalingGroup"] == "test-asg"
 
     def test_model_not_found(
         self,
@@ -267,8 +264,10 @@ class TestUpdateScheduleHandler:
 class TestGetScheduleHandler:
     """Test GetScheduleHandler class."""
 
+    @patch("models.handler.schedule_handlers.schedule_management.get_schedule")
     def test_successful_get_schedule(
         self,
+        mock_get_schedule,
         mock_model_table,
         mock_guardrails_table,
         mock_autoscaling_client,
@@ -278,7 +277,7 @@ class TestGetScheduleHandler:
         """Test successful schedule retrieval."""
         mock_model_table.get_item.return_value = {"Item": sample_model_item}
 
-        # Setup mock lambda response
+        # Setup mock schedule management response
         schedule_data = {
             "scheduling": {
                 "scheduleType": "RECURRING",
@@ -288,29 +287,23 @@ class TestGetScheduleHandler:
             "nextScheduledAction": {"action": "START", "scheduledTime": "2025-01-15T09:00:00Z"},
         }
 
-        mock_lambda_response = {"StatusCode": 200, "Payload": MagicMock()}
-        mock_lambda_response["Payload"].read.return_value = json.dumps(
-            {"statusCode": 200, "body": json.dumps(schedule_data)}
-        ).encode()
+        mock_get_schedule.return_value = {"statusCode": 200, "body": json.dumps(schedule_data)}
 
-        with patch("boto3.client") as mock_boto3:
-            mock_boto3.return_value.invoke.return_value = mock_lambda_response
+        handler = GetScheduleHandler(
+            autoscaling_client=mock_autoscaling_client,
+            stepfunctions_client=mock_stepfunctions_client,
+            model_table_resource=mock_model_table,
+            guardrails_table_resource=mock_guardrails_table,
+        )
 
-            handler = GetScheduleHandler(
-                autoscaling_client=mock_autoscaling_client,
-                stepfunctions_client=mock_stepfunctions_client,
-                model_table_resource=mock_model_table,
-                guardrails_table_resource=mock_guardrails_table,
-            )
+        # Execute
+        result = handler(model_id="test-model")
 
-            # Execute
-            result = handler(model_id="test-model")
-
-            # Verify result
-            assert isinstance(result, GetScheduleResponse)
-            assert result.modelId == "test-model"
-            assert result.scheduling == schedule_data["scheduling"]
-            assert result.nextScheduledAction == schedule_data["nextScheduledAction"]
+        # Verify result
+        assert isinstance(result, GetScheduleResponse)
+        assert result.modelId == "test-model"
+        assert result.scheduling == schedule_data["scheduling"]
+        assert result.nextScheduledAction == schedule_data["nextScheduledAction"]
 
     def test_model_not_found(
         self, mock_model_table, mock_guardrails_table, mock_autoscaling_client, mock_stepfunctions_client
@@ -332,8 +325,10 @@ class TestGetScheduleHandler:
 class TestDeleteScheduleHandler:
     """Test DeleteScheduleHandler class."""
 
+    @patch("models.handler.schedule_handlers.schedule_management.delete_schedule")
     def test_successful_delete_schedule(
         self,
+        mock_delete_schedule,
         mock_model_table,
         mock_guardrails_table,
         mock_autoscaling_client,
@@ -343,30 +338,24 @@ class TestDeleteScheduleHandler:
         """Test successful schedule deletion."""
         mock_model_table.get_item.return_value = {"Item": sample_model_item}
 
-        # Setup mock lambda response
-        mock_lambda_response = {"StatusCode": 200, "Payload": MagicMock()}
-        mock_lambda_response["Payload"].read.return_value = json.dumps(
-            {"statusCode": 200, "body": {"message": "Schedule deleted successfully"}}
-        ).encode()
+        # Setup mock schedule management response
+        mock_delete_schedule.return_value = {"statusCode": 200, "body": {"message": "Schedule deleted successfully"}}
 
-        with patch("boto3.client") as mock_boto3:
-            mock_boto3.return_value.invoke.return_value = mock_lambda_response
+        handler = DeleteScheduleHandler(
+            autoscaling_client=mock_autoscaling_client,
+            stepfunctions_client=mock_stepfunctions_client,
+            model_table_resource=mock_model_table,
+            guardrails_table_resource=mock_guardrails_table,
+        )
 
-            handler = DeleteScheduleHandler(
-                autoscaling_client=mock_autoscaling_client,
-                stepfunctions_client=mock_stepfunctions_client,
-                model_table_resource=mock_model_table,
-                guardrails_table_resource=mock_guardrails_table,
-            )
+        # Execute
+        result = handler(model_id="test-model")
 
-            # Execute
-            result = handler(model_id="test-model")
-
-            # Verify result
-            assert isinstance(result, DeleteScheduleResponse)
-            assert result.message == "Schedule deleted successfully"
-            assert result.modelId == "test-model"
-            assert result.scheduleEnabled is False
+        # Verify result
+        assert isinstance(result, DeleteScheduleResponse)
+        assert result.message == "Schedule deleted successfully"
+        assert result.modelId == "test-model"
+        assert result.scheduleEnabled is False
 
     def test_invalid_model_state(
         self, mock_model_table, mock_guardrails_table, mock_autoscaling_client, mock_stepfunctions_client
@@ -397,10 +386,24 @@ class TestGetScheduleStatusHandler:
         mock_guardrails_table,
         mock_autoscaling_client,
         mock_stepfunctions_client,
-        sample_model_item,
     ):
         """Test successful schedule status retrieval."""
-        mock_model_table.get_item.return_value = {"Item": sample_model_item}
+        # Handler reads from autoScalingConfig at root level, not model_config
+        model_item = {
+            "model_id": "test-model",
+            "model_status": "InService",
+            "auto_scaling_group": "test-asg",
+            "autoScalingConfig": {
+                "scheduling": {
+                    "scheduleType": "RECURRING",
+                    "timezone": "UTC",
+                    "scheduleEnabled": True,
+                    "scheduleConfigured": True,
+                    "lastScheduleFailed": False,
+                }
+            },
+        }
+        mock_model_table.get_item.return_value = {"Item": model_item}
 
         handler = GetScheduleStatusHandler(
             autoscaling_client=mock_autoscaling_client,
@@ -450,6 +453,7 @@ class TestGetScheduleStatusHandler:
         self, mock_model_table, mock_guardrails_table, mock_autoscaling_client, mock_stepfunctions_client
     ):
         """Test schedule status when schedule has failed."""
+        # Handler reads from autoScalingConfig at root level, not model_config
         model_failed_schedule = {
             "model_id": "test-model",
             "autoScalingConfig": {
@@ -577,8 +581,11 @@ class TestUpdateScheduleHandlerGroupAccess:
             {"statusCode": 200, "body": {"message": "Schedule updated successfully"}}
         ).encode()
 
-        with patch("boto3.client") as mock_boto3:
-            mock_boto3.return_value.invoke.return_value = mock_lambda_response
+        with patch("models.handler.schedule_handlers.schedule_management.update_schedule") as mock_update_schedule:
+            mock_update_schedule.return_value = {
+                "statusCode": 200,
+                "body": {"message": "Schedule updated successfully"},
+            }
 
             handler = UpdateScheduleHandler(
                 autoscaling_client=mock_autoscaling_client,
@@ -657,8 +664,11 @@ class TestUpdateScheduleHandlerGroupAccess:
             {"statusCode": 200, "body": {"message": "Schedule updated successfully"}}
         ).encode()
 
-        with patch("boto3.client") as mock_boto3:
-            mock_boto3.return_value.invoke.return_value = mock_lambda_response
+        with patch("models.handler.schedule_handlers.schedule_management.update_schedule") as mock_update_schedule:
+            mock_update_schedule.return_value = {
+                "statusCode": 200,
+                "body": {"message": "Schedule updated successfully"},
+            }
 
             handler = UpdateScheduleHandler(
                 autoscaling_client=mock_autoscaling_client,
@@ -758,8 +768,10 @@ class TestGetScheduleStatusHandlerGroupAccess:
 class TestLambdaInvocationErrorHandling:
     """Test Lambda invocation error handling scenarios."""
 
+    @patch("models.handler.schedule_handlers.schedule_management.update_schedule")
     def test_update_schedule_lambda_error_response_format_string_body(
         self,
+        mock_update_schedule,
         mock_model_table,
         mock_guardrails_table,
         mock_autoscaling_client,
@@ -767,30 +779,26 @@ class TestLambdaInvocationErrorHandling:
         sample_model_item,
         sample_schedule_config,
     ):
-        """Test Lambda error response with string body format."""
+        """Test schedule management error response with string body format."""
         mock_model_table.get_item.return_value = {"Item": sample_model_item}
 
-        # Setup mock lambda error response with string body
-        mock_lambda_response = {"StatusCode": 500, "Payload": MagicMock()}
-        mock_lambda_response["Payload"].read.return_value = json.dumps(
-            {"statusCode": 500, "body": "Internal server error"}
-        ).encode()
+        # Setup mock schedule management error response with string body
+        mock_update_schedule.return_value = {"statusCode": 500, "body": "Internal server error"}
 
-        with patch("boto3.client") as mock_boto3:
-            mock_boto3.return_value.invoke.return_value = mock_lambda_response
+        handler = UpdateScheduleHandler(
+            autoscaling_client=mock_autoscaling_client,
+            stepfunctions_client=mock_stepfunctions_client,
+            model_table_resource=mock_model_table,
+            guardrails_table_resource=mock_guardrails_table,
+        )
 
-            handler = UpdateScheduleHandler(
-                autoscaling_client=mock_autoscaling_client,
-                stepfunctions_client=mock_stepfunctions_client,
-                model_table_resource=mock_model_table,
-                guardrails_table_resource=mock_guardrails_table,
-            )
+        with pytest.raises(ValueError, match="Failed to create/update schedule: Internal server error"):
+            handler(model_id="test-model", schedule_config=sample_schedule_config)
 
-            with pytest.raises(ValueError, match="Failed to create/update schedule: Internal server error"):
-                handler(model_id="test-model", schedule_config=sample_schedule_config)
-
+    @patch("models.handler.schedule_handlers.schedule_management.update_schedule")
     def test_update_schedule_lambda_invalid_json_body(
         self,
+        mock_update_schedule,
         mock_model_table,
         mock_guardrails_table,
         mock_autoscaling_client,
@@ -798,84 +806,70 @@ class TestLambdaInvocationErrorHandling:
         sample_model_item,
         sample_schedule_config,
     ):
-        """Test Lambda error response with invalid JSON body."""
+        """Test schedule management error response with invalid JSON body."""
         mock_model_table.get_item.return_value = {"Item": sample_model_item}
 
-        # Setup mock lambda error response with invalid JSON
-        mock_lambda_response = {"StatusCode": 500, "Payload": MagicMock()}
-        mock_lambda_response["Payload"].read.return_value = json.dumps(
-            {"statusCode": 500, "body": "invalid json {"}
-        ).encode()
+        # Setup mock schedule management error response with invalid JSON string
+        mock_update_schedule.return_value = {"statusCode": 500, "body": "invalid json {"}
 
-        with patch("boto3.client") as mock_boto3:
-            mock_boto3.return_value.invoke.return_value = mock_lambda_response
+        handler = UpdateScheduleHandler(
+            autoscaling_client=mock_autoscaling_client,
+            stepfunctions_client=mock_stepfunctions_client,
+            model_table_resource=mock_model_table,
+            guardrails_table_resource=mock_guardrails_table,
+        )
 
-            handler = UpdateScheduleHandler(
-                autoscaling_client=mock_autoscaling_client,
-                stepfunctions_client=mock_stepfunctions_client,
-                model_table_resource=mock_model_table,
-                guardrails_table_resource=mock_guardrails_table,
-            )
+        with pytest.raises(ValueError, match="Failed to create/update schedule: invalid json"):
+            handler(model_id="test-model", schedule_config=sample_schedule_config)
 
-            with pytest.raises(ValueError, match="Failed to create/update schedule: invalid json"):
-                handler(model_id="test-model", schedule_config=sample_schedule_config)
-
+    @patch("models.handler.schedule_handlers.schedule_management.get_schedule")
     def test_get_schedule_lambda_error_handling(
         self,
+        mock_get_schedule,
         mock_model_table,
         mock_guardrails_table,
         mock_autoscaling_client,
         mock_stepfunctions_client,
         sample_model_item,
     ):
-        """Test GetSchedule Lambda error handling."""
+        """Test GetSchedule schedule management error handling."""
         mock_model_table.get_item.return_value = {"Item": sample_model_item}
 
-        # Setup mock lambda error response
-        mock_lambda_response = {"StatusCode": 500, "Payload": MagicMock()}
-        mock_lambda_response["Payload"].read.return_value = json.dumps(
-            {"statusCode": 500, "body": {"message": "Lambda execution failed"}}
-        ).encode()
+        # Setup mock schedule management error response
+        mock_get_schedule.return_value = {"statusCode": 500, "body": {"message": "Schedule management failed"}}
 
-        with patch("boto3.client") as mock_boto3:
-            mock_boto3.return_value.invoke.return_value = mock_lambda_response
+        handler = GetScheduleHandler(
+            autoscaling_client=mock_autoscaling_client,
+            stepfunctions_client=mock_stepfunctions_client,
+            model_table_resource=mock_model_table,
+            guardrails_table_resource=mock_guardrails_table,
+        )
 
-            handler = GetScheduleHandler(
-                autoscaling_client=mock_autoscaling_client,
-                stepfunctions_client=mock_stepfunctions_client,
-                model_table_resource=mock_model_table,
-                guardrails_table_resource=mock_guardrails_table,
-            )
+        with pytest.raises(ValueError, match="Failed to get schedule: Schedule management failed"):
+            handler(model_id="test-model")
 
-            with pytest.raises(ValueError, match="Failed to get schedule: Lambda execution failed"):
-                handler(model_id="test-model")
-
+    @patch("models.handler.schedule_handlers.schedule_management.delete_schedule")
     def test_delete_schedule_lambda_error_handling(
         self,
+        mock_delete_schedule,
         mock_model_table,
         mock_guardrails_table,
         mock_autoscaling_client,
         mock_stepfunctions_client,
         sample_model_item,
     ):
-        """Test DeleteSchedule Lambda error handling."""
+        """Test DeleteSchedule schedule management error handling."""
         mock_model_table.get_item.return_value = {"Item": sample_model_item}
 
-        # Setup mock lambda error response
-        mock_lambda_response = {"StatusCode": 500, "Payload": MagicMock()}
-        mock_lambda_response["Payload"].read.return_value = json.dumps(
-            {"statusCode": 500, "body": {"message": "Lambda execution failed"}}
-        ).encode()
+        # Setup mock schedule management error response
+        mock_delete_schedule.return_value = {"statusCode": 500, "body": {"message": "Schedule management failed"}}
 
-        with patch("boto3.client") as mock_boto3:
-            mock_boto3.return_value.invoke.return_value = mock_lambda_response
+        handler = DeleteScheduleHandler(
+            autoscaling_client=mock_autoscaling_client,
+            stepfunctions_client=mock_stepfunctions_client,
+            model_table_resource=mock_model_table,
+            guardrails_table_resource=mock_guardrails_table,
+        )
 
-            handler = DeleteScheduleHandler(
-                autoscaling_client=mock_autoscaling_client,
-                stepfunctions_client=mock_stepfunctions_client,
-                model_table_resource=mock_model_table,
-                guardrails_table_resource=mock_guardrails_table,
-            )
-
-            with pytest.raises(ValueError, match="Failed to delete schedule: Lambda execution failed"):
-                handler(model_id="test-model")
+        with pytest.raises(ValueError, match="Failed to delete schedule: Schedule management failed"):
+            handler(model_id="test-model")

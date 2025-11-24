@@ -122,7 +122,10 @@ class TestScheduleManagement:
 
         # Mock model table with schedule data
         mock_model_table.get_item.return_value = {
-            "Item": {"model_id": "test-model", "autoScalingConfig": {"scheduling": sample_schedule_config}}
+            "Item": {
+                "model_id": "test-model",
+                "model_config": {"autoScalingConfig": {"scheduling": sample_schedule_config}},
+            }
         }
 
         # Test event
@@ -143,16 +146,18 @@ class TestScheduleManagement:
         """Test successful delete operation."""
         from models.scheduling.schedule_management import lambda_handler
 
-        # Mock model table - need to mock both get_item calls
+        # Mock model table
         mock_model_table.get_item.return_value = {
             "Item": {
                 "model_id": "test-model",
-                "autoScalingConfig": {
-                    "scheduling": {
-                        "scheduledActionArns": [
-                            "arn:aws:autoscaling:us-east-1:123456789012:scheduledUpdateGroupAction:*:autoScalingGroupName/test-asg:scheduledActionName/test-model-START-action",
-                            "arn:aws:autoscaling:us-east-1:123456789012:scheduledUpdateGroupAction:*:autoScalingGroupName/test-asg:scheduledActionName/test-model-STOP-action",
-                        ]
+                "model_config": {
+                    "autoScalingConfig": {
+                        "scheduling": {
+                            "scheduledActionArns": [
+                                "arn:aws:autoscaling:us-east-1:123456789012:scheduledUpdateGroupAction:*:autoScalingGroupName/test-asg:scheduledActionName/test-model-START-action",
+                                "arn:aws:autoscaling:us-east-1:123456789012:scheduledUpdateGroupAction:*:autoScalingGroupName/test-asg:scheduledActionName/test-model-STOP-action",
+                            ]
+                        }
                     }
                 },
             }
@@ -380,7 +385,7 @@ class TestScheduleManagementHelperFunctions:
         mock_model_table.get_item.return_value = {
             "Item": {
                 "model_id": "test-model",
-                "autoScalingConfig": {"scheduling": {"scheduledActionArns": ["arn1", "arn2"]}},
+                "model_config": {"autoScalingConfig": {"scheduling": {"scheduledActionArns": ["arn1", "arn2"]}}},
             }
         }
 
@@ -548,9 +553,9 @@ class TestUpdateModelScheduleRecord:
         from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig
         from models.scheduling.schedule_management import update_model_schedule_record
 
-        # Mock existing model with autoScalingConfig
+        # Mock existing model with model_config.autoScalingConfig
         mock_model_table.get_item.return_value = {
-            "Item": {"model_id": "test-model", "autoScalingConfig": {"existing": "config"}}
+            "Item": {"model_id": "test-model", "model_config": {"autoScalingConfig": {"existing": "config"}}}
         }
 
         # Create valid SchedulingConfig with required dailySchedule for RECURRING
@@ -564,7 +569,7 @@ class TestUpdateModelScheduleRecord:
         # Verify update_item was called with correct expression
         mock_model_table.update_item.assert_called_once()
         call_args = mock_model_table.update_item.call_args
-        assert call_args[1]["UpdateExpression"] == "SET autoScalingConfig.scheduling = :scheduling"
+        assert call_args[1]["UpdateExpression"] == "SET model_config.autoScalingConfig.scheduling = :scheduling"
 
     @patch("models.scheduling.schedule_management.model_table")
     def test_update_model_schedule_record_new_config(self, mock_model_table):
@@ -572,11 +577,11 @@ class TestUpdateModelScheduleRecord:
         from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig
         from models.scheduling.schedule_management import update_model_schedule_record
 
-        # Mock model without autoScalingConfig
+        # Mock model without model_config.autoScalingConfig
         mock_model_table.get_item.return_value = {
             "Item": {
                 "model_id": "test-model"
-                # No autoScalingConfig
+                # No model_config.autoScalingConfig
             }
         }
 
@@ -591,7 +596,7 @@ class TestUpdateModelScheduleRecord:
         # Verify update_item was called with correct expression
         mock_model_table.update_item.assert_called_once()
         call_args = mock_model_table.update_item.call_args
-        assert call_args[1]["UpdateExpression"] == "SET autoScalingConfig = :autoScalingConfig"
+        assert call_args[1]["UpdateExpression"] == "SET model_config.autoScalingConfig = :autoScalingConfig"
 
     @patch("models.scheduling.schedule_management.model_table")
     def test_update_model_schedule_record_model_not_found(self, mock_model_table):

@@ -112,10 +112,9 @@ export function DataSourceManagementPanel ({
                     {data && (
                         <Box>
                             <SpaceBetween size='xs'>
-                                <Box variant='awsui-key-label'>Available Data Sources</Box>
+                                <Box variant='awsui-key-label'>Data Sources</Box>
                                 <Box>
-                                    {data.availableDataSources.length} available, {data.managedDataSources.length}{' '}
-                                    managed
+                                    {data.dataSources.length} total
                                 </Box>
                             </SpaceBetween>
                         </Box>

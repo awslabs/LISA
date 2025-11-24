@@ -128,7 +128,7 @@ export class CreateStoreStateMachine extends Construct {
 
         // Check if this is a Bedrock KB repository to create default collections
         const skipCollectionCreation = new sfn.Pass(this, 'SkipCollectionCreation');
-        
+
         const checkIfBedrockKB = new sfn.Choice(this, 'IsBedrockKB?')
             .when(
                 sfn.Condition.stringEquals('$.body.ragConfig.type', 'bedrock_knowledge_base'),
@@ -139,7 +139,7 @@ export class CreateStoreStateMachine extends Construct {
         // Both paths converge to update success status
         createDefaultCollectionTask.next(updateSuccessStatus);
         skipCollectionCreation.next(updateSuccessStatus);
-        
+
         // Define the sequence of tasks and conditions in the state machine
         const deploymentComplete = new sfn.Choice(this, 'DeploymentComplete?')
             .when(

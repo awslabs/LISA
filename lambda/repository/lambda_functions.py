@@ -50,7 +50,12 @@ from repository.s3_metadata_manager import S3MetadataManager
 from repository.services import RepositoryServiceFactory
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.auth import admin_only, get_groups, get_user_context, get_username, is_admin, user_has_group_access
-from utilities.bedrock_kb_discovery import build_pipeline_configs_from_kb_config
+from utilities.bedrock_kb_discovery import (
+    build_pipeline_configs_from_kb_config,
+    get_available_data_sources,
+    list_knowledge_bases,
+)
+from utilities.bedrock_kb_validation import validate_bedrock_kb_exists
 from utilities.common_functions import api_wrapper, retry_config
 from utilities.exceptions import HTTPException
 from utilities.repository_types import RepositoryType
@@ -1505,8 +1510,6 @@ def list_bedrock_knowledge_bases(event: dict, context: dict) -> Dict[str, Any]:
     Raises:
         ValidationError: If discovery fails
     """
-    from utilities.bedrock_kb_discovery import list_knowledge_bases
-
     logger.info("Listing all ACTIVE Knowledge Bases")
 
     # Create bedrock-agent client
@@ -1565,9 +1568,6 @@ def list_bedrock_data_sources(event: dict, context: dict) -> Dict[str, Any]:
     Raises:
         ValidationError: If KB not found or discovery fails
     """
-    from utilities.bedrock_kb_discovery import get_available_data_sources
-    from utilities.bedrock_kb_validation import validate_bedrock_kb_exists
-
     path_params = event.get("pathParameters", {})
     query_params = event.get("queryStringParameters") or {}
 
@@ -1576,9 +1576,8 @@ def list_bedrock_data_sources(event: dict, context: dict) -> Dict[str, Any]:
         raise ValidationError("kbId is required")
 
     repository_id = query_params.get("repositoryId")
-    force_refresh = query_params.get("refresh", "false").lower() == "true"
 
-    logger.info(f"Listing data sources for KB {kb_id}, repository={repository_id}, refresh={force_refresh}")
+    logger.info(f"Listing data sources for KB {kb_id}, repository={repository_id}")
 
     # Create bedrock-agent client
     bedrock_agent_client = boto3.client("bedrock-agent", region_name, config=retry_config)
@@ -1587,20 +1586,16 @@ def list_bedrock_data_sources(event: dict, context: dict) -> Dict[str, Any]:
     kb_config = validate_bedrock_kb_exists(kb_id, bedrock_agent_client)
 
     # Get available and managed data sources
-    available, managed = get_available_data_sources(
+    data_sources = get_available_data_sources(
         kb_id=kb_id,
         repository_id=repository_id,
         bedrock_agent_client=bedrock_agent_client,
-        force_refresh=force_refresh,
     )
 
     return {
         "knowledgeBase": {
             "id": kb_id,
             "name": kb_config.get("name"),
-            "description": kb_config.get("description", ""),
         },
-        "availableDataSources": available,
-        "managedDataSources": managed,
-        "totalDataSources": len(available) + len(managed),
+        "dataSources": data_sources,
     }

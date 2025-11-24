@@ -98,7 +98,6 @@ def list_knowledge_bases(
 def discover_kb_data_sources(
     kb_id: str,
     bedrock_agent_client: Optional[Any] = None,
-    force_refresh: bool = False,
 ) -> List[Dict[str, Any]]:
     """
     Discover all data sources in a Bedrock Knowledge Base.
@@ -280,3 +279,33 @@ def build_pipeline_configs_from_kb_config(
 
     logger.info(f"Built {len(pipeline_configs)} pipeline configs from {len(data_sources)} data sources")
     return pipeline_configs
+
+
+def get_available_data_sources(
+    kb_id: str,
+    repository_id: Optional[str] = None,
+    bedrock_agent_client: Optional[Any] = None,
+) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """
+    Get all data sources for a Knowledge Base.
+
+    Args:
+        kb_id: Knowledge Base ID
+        repository_id: Optional repository ID (unused, for API compatibility)
+        bedrock_agent_client: Optional boto3 bedrock-agent client
+
+    Returns:
+        Tuple of (all_data_sources, empty_list)
+
+    Raises:
+        ValidationError: If KB doesn't exist or API call fails
+    """
+    # Get all data sources for the KB
+    all_data_sources = discover_kb_data_sources(
+        kb_id=kb_id,
+        bedrock_agent_client=bedrock_agent_client,
+    )
+
+    logger.info(f"Found {len(all_data_sources)} data sources for KB {kb_id}")
+
+    return all_data_sources

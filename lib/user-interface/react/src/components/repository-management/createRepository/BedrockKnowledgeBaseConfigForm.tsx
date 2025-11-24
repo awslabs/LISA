@@ -79,14 +79,17 @@ export function BedrockKnowledgeBaseConfigForm (
         }
     }, [item.bedrockKnowledgeBaseConfig, hasInitialized]);
 
-    // Auto-select data sources when they load
+    // Auto-select data sources based on pipelines config
     useEffect(() => {
-        if (item.bedrockKnowledgeBaseConfig && dsData?.availableDataSources && !hasInitialized) {
-            // Map existing data source IDs to full data source objects from the API
-            const existingIds = new Set(item.bedrockKnowledgeBaseConfig.dataSources.map((ds) => ds.id));
+        if (item.bedrockKnowledgeBaseConfig && dsData?.dataSources && !hasInitialized) {
+            // Get collection IDs from pipelines config
+            const pipelineCollectionIds = new Set(
+                (item as any).pipelines?.map((p: any) => p.collectionId).filter(Boolean) || []
+            );
 
-            const selectedRows: DataSourceRow[] = dsData.availableDataSources
-                .filter((ds) => existingIds.has(ds.dataSourceId))
+            // Select data sources that match pipeline collection IDs
+            const selectedRows: DataSourceRow[] = dsData.dataSources
+                .filter((ds) => pipelineCollectionIds.has(ds.dataSourceId))
                 .map((ds) => ({
                     id: ds.dataSourceId,
                     name: ds.name,
@@ -96,7 +99,7 @@ export function BedrockKnowledgeBaseConfigForm (
             setSelectedDataSources(selectedRows);
             setHasInitialized(true);
         }
-    }, [item.bedrockKnowledgeBaseConfig, dsData, hasInitialized]);
+    }, [item, dsData, hasInitialized]);
 
     // Update form when selections change
     useEffect(() => {
@@ -123,7 +126,7 @@ export function BedrockKnowledgeBaseConfigForm (
     };
 
     const availableDataSources: DataSourceRow[] =
-        dsData?.availableDataSources.map((ds) => ({
+        dsData?.dataSources.map((ds) => ({
             id: ds.dataSourceId,
             name: ds.name,
             s3Uri: `s3://${ds.s3Bucket}/${ds.s3Prefix || ''}`,
@@ -259,9 +262,7 @@ export function BedrockKnowledgeBaseConfigForm (
                                         <SpaceBetween size='m'>
                                             <b>No data sources available</b>
                                             <Box variant='p'>
-                                                {dsData?.managedDataSources.length
-                                                    ? 'All data sources are already managed by collections.'
-                                                    : 'Please create a data source in the AWS Bedrock console.'}
+                                                Please create a data source in the AWS Bedrock console.
                                             </Box>
                                         </SpaceBetween>
                                     </Box>
@@ -279,12 +280,7 @@ export function BedrockKnowledgeBaseConfigForm (
                     </FormField>
                 )}
 
-                {dsData?.managedDataSources && dsData.managedDataSources.length > 0 && (
-                    <Alert type='info' header='Managed Data Sources'>
-                        {dsData.managedDataSources.length} data source(s) are already managed by existing collections
-                        and cannot be selected.
-                    </Alert>
-                )}
+
             </SpaceBetween>
         </Container>
     );

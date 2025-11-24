@@ -52,8 +52,8 @@ if (ragConfig.type === RagRepositoryType.OPENSEARCH) {
         ...vectorStoreProps,
     });
 } else if (ragConfig.type === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE) {
-    if (!ragConfig.pipelines || ragConfig.pipelines.length == 0) {
-        throw new ValidationError("Bedrock KB repository has no pipelines, which means there are no datasources configured", app);
+    if (!ragConfig.pipelines || ragConfig.pipelines.length === 0) {
+        throw new ValidationError('Bedrock KB repository has no pipelines, which means there are no datasources configured', app);
     }
     stack = new BedrockKnowledgeBaseStack(app, stackName, {
         ...vectorStoreProps,

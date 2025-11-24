@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-import { ReactElement, useState } from 'react';
+import { ReactElement } from 'react';
 import {
     Badge,
     Box,
@@ -25,7 +25,6 @@ import {
     SpaceBetween,
     Spinner,
     StatusIndicator,
-    Toggle,
 } from '@cloudscape-design/components';
 import { useListBedrockDataSourcesQuery } from '@/shared/reducers/rag.reducer';
 import { DataSource, DataSourceSelection } from '@/types/bedrock-kb';
@@ -43,7 +42,6 @@ export function DataSourceMultiSelect ({
     selectedDataSources,
     onSelectionChange,
 }: DataSourceMultiSelectProps): ReactElement {
-    const [showOnlyAvailable, setShowOnlyAvailable] = useState(false);
     const { data, isLoading, error, refetch } = useListBedrockDataSourcesQuery(
         { kbId, repositoryId },
         { skip: !kbId }
@@ -51,8 +49,7 @@ export function DataSourceMultiSelect ({
 
     const handleSelectAll = () => {
         if (!data) return;
-        const availableDs = data.availableDataSources;
-        const newSelections: DataSourceSelection[] = availableDs.map((ds) => ({
+        const newSelections: DataSourceSelection[] = data.dataSources.map((ds) => ({
             dataSourceId: ds.dataSourceId,
             dataSourceName: ds.name,
             s3Bucket: ds.s3Bucket,
@@ -121,20 +118,15 @@ export function DataSourceMultiSelect ({
         );
     }
 
-    const { availableDataSources, managedDataSources } = data;
-    const displayedDataSources = showOnlyAvailable ? availableDataSources : [...availableDataSources, ...managedDataSources];
+    const displayedDataSources = data.dataSources;
 
     if (displayedDataSources.length === 0) {
         return (
             <Container header={<Header variant='h2'>Select Data Sources</Header>}>
                 <Box textAlign='center' padding={{ vertical: 'l' }}>
-                    <StatusIndicator type='warning'>
-                        {showOnlyAvailable ? 'No available data sources' : 'No data sources found'}
-                    </StatusIndicator>
+                    <StatusIndicator type='warning'>No data sources found</StatusIndicator>
                     <Box variant='p' padding={{ top: 's' }}>
-                        {showOnlyAvailable
-                            ? 'All data sources are already managed by collections.'
-                            : 'Please create a data source in the AWS Bedrock console.'}
+                        Please create a data source in the AWS Bedrock console.
                     </Box>
                 </Box>
             </Container>
@@ -151,31 +143,23 @@ export function DataSourceMultiSelect ({
                             <Button onClick={handleDeselectAll} disabled={selectedDataSources.length === 0}>
                                 Deselect All
                             </Button>
-                            <Button onClick={handleSelectAll} disabled={availableDataSources.length === 0}>
-                                Select All Available
+                            <Button onClick={handleSelectAll} disabled={displayedDataSources.length === 0}>
+                                Select All
                             </Button>
                             <Button iconName='refresh' onClick={() => refetch()}>
                                 Refresh
                             </Button>
                         </SpaceBetween>
                     }
-                    description={`${selectedDataSources.length} of ${availableDataSources.length} available data sources selected`}
+                    description={`${selectedDataSources.length} of ${displayedDataSources.length} data sources selected`}
                 >
                     Select Data Sources
                 </Header>
             }
         >
             <SpaceBetween size='m'>
-                <Toggle
-                    checked={showOnlyAvailable}
-                    onChange={({ detail }) => setShowOnlyAvailable(detail.checked)}
-                >
-                    Show only available data sources
-                </Toggle>
-
                 <SpaceBetween size='s'>
                     {displayedDataSources.map((ds) => {
-                        const isManaged = managedDataSources.some((m) => m.dataSourceId === ds.dataSourceId);
                         const isSelected = selectedDataSources.some((s) => s.dataSourceId === ds.dataSourceId);
                         const isAvailable = ds.status === 'AVAILABLE';
 
@@ -184,13 +168,12 @@ export function DataSourceMultiSelect ({
                                 <Checkbox
                                     checked={isSelected}
                                     onChange={() => handleToggleDataSource(ds)}
-                                    disabled={isManaged || !isAvailable}
+                                    disabled={!isAvailable}
                                 >
                                     <SpaceBetween size='xxs'>
                                         <Box>
                                             <SpaceBetween direction='horizontal' size='xs'>
                                                 <strong>{ds.name}</strong>
-                                                {isManaged && <Badge color='blue'>Managed</Badge>}
                                                 {!isAvailable && <Badge color='grey'>{ds.status}</Badge>}
                                             </SpaceBetween>
                                         </Box>
@@ -200,11 +183,6 @@ export function DataSourceMultiSelect ({
                                         <Box variant='small' color='text-body-secondary'>
                                             S3: s3://{ds.s3Bucket}/{ds.s3Prefix || ''}
                                         </Box>
-                                        {isManaged && ds.collectionId && (
-                                            <Box variant='small' color='text-status-info'>
-                                                Collection: {ds.collectionId}
-                                            </Box>
-                                        )}
                                     </SpaceBetween>
                                 </Checkbox>
                             </Box>

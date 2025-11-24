@@ -165,12 +165,11 @@ type DiscoverDataSourcesResponse = {
     knowledgeBase: {
         id: string;
         name: string;
-        status: string;
+        status?: string;
         description?: string;
     };
-    availableDataSources: DataSource[];
-    managedDataSources: DataSource[];
-    totalDataSources: number;
+    dataSources: DataSource[];
+    totalDataSources?: number;
 };
 
 export const ragApi = createApi({

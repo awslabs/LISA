@@ -50,6 +50,7 @@ from repository.s3_metadata_manager import S3MetadataManager
 from repository.services import RepositoryServiceFactory
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.auth import admin_only, get_groups, get_user_context, get_username, is_admin, user_has_group_access
+from utilities.bedrock_kb import create_s3_scan_job
 from utilities.bedrock_kb_discovery import (
     build_pipeline_configs_from_kb_config,
     get_available_data_sources,
@@ -295,7 +296,7 @@ def create_bedrock_collection(event: dict, context: dict) -> Dict[str, Any]:
                     logger.info(f"Collection {collection_id} already exists, skipping creation")
                     skipped_collections.append(existing_collection.model_dump(mode="json"))
                     continue
-            except HTTPException:
+            except (HTTPException, ValidationError):
                 # Collection doesn't exist, proceed with creation
                 pass
 
@@ -310,6 +311,20 @@ def create_bedrock_collection(event: dict, context: dict) -> Dict[str, Any]:
             collection_service.create_collection(collection=collection, username="system")
             logger.info(f"Successfully saved collection: {collection.collectionId}")
             created_collections.append(collection.model_dump(mode="json"))
+
+            # Create S3 scan job to ingest existing documents
+            if s3_bucket:
+                logger.info(f"Creating S3 scan job for bucket {s3_bucket} with prefix '{s3_prefix}'")
+                job_id = create_s3_scan_job(
+                    ingestion_job_repository=ingestion_job_repository,
+                    ingestion_service=ingestion_service,
+                    repository_id=repository_id,
+                    collection_id=collection_id,
+                    embedding_model=collection.embeddingModel,
+                    s3_bucket=s3_bucket,
+                    s3_prefix=s3_prefix,
+                )
+                logger.info(f"Created S3 scan job {job_id} for collection {collection_id}")
 
         if not created_collections and not skipped_collections:
             raise ValidationError(f"Failed to create any collections for repository {repository_id}")
@@ -1400,10 +1415,8 @@ def update_repository(event: dict, context: dict) -> Dict[str, Any]:
     if new_pipelines is not None:
         # For Bedrock KB repositories, only check if data source IDs (collectionIds) have changed
         if repository_type == RepositoryType.BEDROCK_KB:
-            current_collection_ids = set(
-                p.get("collectionId") for p in (current_pipelines or []) if p.get("collectionId")
-            )
-            new_collection_ids = set(p.get("collectionId") for p in new_pipelines if p.get("collectionId"))
+            current_collection_ids = {p.get("collectionId") for p in (current_pipelines or []) if p.get("collectionId")}
+            new_collection_ids = {p.get("collectionId") for p in new_pipelines if p.get("collectionId")}
 
             if current_collection_ids != new_collection_ids:
                 added = new_collection_ids - current_collection_ids

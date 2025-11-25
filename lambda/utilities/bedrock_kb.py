@@ -22,9 +22,303 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
-from models.domain_objects import IngestionJob, IngestionType, JobActionType, NoneChunkingStrategy
+from models.domain_objects import (
+    IngestionJob,
+    IngestionType,
+    JobActionType,
+    NoneChunkingStrategy,
+    RagCollectionConfig,
+    RagDocument,
+)
+
+logger = logging.getLogger(__name__)
+
+
+class S3DocumentDiscoveryResult:
+    """Result of S3 document discovery operation."""
+
+    def __init__(
+        self,
+        discovered: int = 0,
+        skipped: int = 0,
+        successful: int = 0,
+        failed: int = 0,
+        document_ids: Optional[List[str]] = None,
+        errors: Optional[List[str]] = None,
+    ):
+        self.discovered = discovered
+        self.skipped = skipped
+        self.successful = successful
+        self.failed = failed
+        self.document_ids = document_ids or []
+        self.errors = errors or []
+
+
+class S3DocumentDiscoveryService:
+    """Service for discovering and tracking existing documents in S3 buckets."""
+
+    def __init__(
+        self,
+        s3_client: Any,
+        bedrock_agent_client: Any,
+        rag_document_repository: Any,
+        metadata_generator: Any,
+        s3_metadata_manager: Any,
+        collection_service: Any,
+        vector_store_repo: Any,
+    ):
+        """Initialize S3 document discovery service.
+
+        Args:
+            s3_client: boto3 S3 client
+            bedrock_agent_client: boto3 bedrock-agent client
+            rag_document_repository: Repository for RagDocument persistence
+            metadata_generator: MetadataGenerator instance
+            s3_metadata_manager: S3MetadataManager instance
+            collection_service: CollectionService instance
+            vector_store_repo: VectorStoreRepository instance
+        """
+        self.s3_client = s3_client
+        self.bedrock_agent_client = bedrock_agent_client
+        self.rag_document_repository = rag_document_repository
+        self.metadata_generator = metadata_generator
+        self.s3_metadata_manager = s3_metadata_manager
+        self.collection_service = collection_service
+        self.vector_store_repo = vector_store_repo
+
+    def discover_and_ingest_documents(
+        self,
+        repository_id: str,
+        collection_id: str,
+        s3_bucket: str,
+        s3_prefix: str = "",
+        ingestion_type: IngestionType = IngestionType.EXISTING,
+    ) -> S3DocumentDiscoveryResult:
+        """
+        Discover and ingest existing documents from S3 bucket.
+
+        Scans S3 bucket, creates metadata.json files, creates RagDocument entries,
+        and triggers Bedrock KB sync.
+
+        Args:
+            repository_id: Repository identifier
+            collection_id: Collection identifier
+            s3_bucket: S3 bucket to scan
+            s3_prefix: Optional S3 prefix to scan within bucket
+            ingestion_type: Type of ingestion (default: EXISTING)
+
+        Returns:
+            S3DocumentDiscoveryResult with operation statistics
+        """
+        logger.info(f"Starting S3 document discovery for bucket {s3_bucket} with prefix '{s3_prefix}'")
+
+        result = S3DocumentDiscoveryResult()
+
+        try:
+            # Get repository configuration
+            repository = self.vector_store_repo.find_repository_by_id(repository_id)
+
+            # Get collection for metadata generation
+            collection = self._get_collection(repository_id, collection_id)
+
+            # Scan S3 bucket for documents
+            documents_to_process, skipped_count = self._scan_s3_bucket(s3_bucket, s3_prefix)
+            result.discovered = len(documents_to_process)
+            result.skipped = skipped_count
+
+            if not documents_to_process:
+                logger.info(f"No valid documents found in S3 bucket {s3_bucket} with prefix '{s3_prefix}'")
+                return result
+
+            logger.info(f"Found {len(documents_to_process)} documents to process")
+
+            # Process each document
+            for document_key in documents_to_process:
+                try:
+                    s3_path = f"s3://{s3_bucket}/{document_key}"
+
+                    # Check if document already exists (idempotent)
+                    if self._document_exists(repository_id, collection_id, s3_path):
+                        existing_doc = next(
+                            self.rag_document_repository.find_by_source(
+                                repository_id, collection_id, s3_path, join_docs=False
+                            )
+                        )
+                        result.document_ids.append(existing_doc.document_id)
+                        result.successful += 1
+                        logger.info(f"Document {s3_path} already tracked, skipping")
+                        continue
+
+                    # Create metadata.json file
+                    self._create_metadata_file(
+                        repository=repository,
+                        collection=collection,
+                        s3_bucket=s3_bucket,
+                        document_key=document_key,
+                        repository_id=repository_id,
+                        collection_id=collection_id,
+                    )
+
+                    # Create RagDocument entry
+                    document_id = self._create_rag_document(
+                        repository_id=repository_id,
+                        collection_id=collection_id,
+                        s3_path=s3_path,
+                        ingestion_type=ingestion_type,
+                    )
+
+                    result.document_ids.append(document_id)
+                    result.successful += 1
+                    logger.info(f"Tracked existing document {s3_path}")
+
+                except Exception as e:
+                    result.failed += 1
+                    error_msg = f"Failed to process {document_key}: {str(e)}"
+                    logger.error(error_msg, exc_info=True)
+                    result.errors.append(error_msg)
+
+            # Trigger Bedrock KB sync if documents were processed
+            if result.successful > 0:
+                self._trigger_kb_sync(repository, collection_id, result.successful)
+
+            logger.info(
+                f"S3 discovery completed: {result.successful} successful, "
+                f"{result.failed} failed, {result.skipped} skipped"
+            )
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Failed to discover S3 documents: {str(e)}", exc_info=True)
+            raise
+
+    def _scan_s3_bucket(self, s3_bucket: str, s3_prefix: str) -> Tuple[List[str], int]:
+        """
+        Scan S3 bucket and return list of document keys.
+
+        Args:
+            s3_bucket: S3 bucket name
+            s3_prefix: S3 prefix to scan
+
+        Returns:
+            Tuple of (document_keys, skipped_count)
+        """
+        list_params = {"Bucket": s3_bucket, "Delimiter": "/"}
+        if s3_prefix:
+            list_params["Prefix"] = s3_prefix if s3_prefix.endswith("/") else f"{s3_prefix}/"
+
+        response = self.s3_client.list_objects_v2(**list_params)
+
+        if "Contents" not in response:
+            return [], 0
+
+        documents_to_process = []
+        skipped_count = 0
+
+        for obj in response["Contents"]:
+            key = obj["Key"]
+            # Skip metadata files and directories
+            if key.endswith("/") or key.endswith(".metadata.json"):
+                skipped_count += 1
+                continue
+            documents_to_process.append(key)
+
+        return documents_to_process, skipped_count
+
+    def _get_collection(self, repository_id: str, collection_id: str) -> Optional[RagCollectionConfig]:
+        """Get collection configuration."""
+        try:
+            return self.collection_service.get_collection(
+                collection_id=collection_id,
+                repository_id=repository_id,
+                username="system",
+                user_groups=[],
+                is_admin=True,
+            )
+        except Exception as e:
+            logger.warning(f"Could not fetch collection for metadata: {e}")
+            return None
+
+    def _document_exists(self, repository_id: str, collection_id: str, s3_path: str) -> bool:
+        """Check if document already exists in repository."""
+        existing_docs = list(
+            self.rag_document_repository.find_by_source(repository_id, collection_id, s3_path, join_docs=False)
+        )
+        return len(existing_docs) > 0
+
+    def _create_metadata_file(
+        self,
+        repository: Dict[str, Any],
+        collection: Optional[RagCollectionConfig],
+        s3_bucket: str,
+        document_key: str,
+        repository_id: str,
+        collection_id: str,
+    ) -> None:
+        """Create and upload metadata.json file for document."""
+        try:
+            metadata_content = self.metadata_generator.generate_metadata_json(
+                repository=repository,
+                collection=collection,
+                document_metadata=None,  # No document-specific metadata for existing docs
+            )
+
+            self.s3_metadata_manager.upload_metadata_file(
+                s3_client=self.s3_client,
+                bucket=s3_bucket,
+                document_key=document_key,
+                metadata_content=metadata_content,
+                repository_id=repository_id,
+                collection_id=collection_id,
+            )
+            logger.info(f"Created metadata file for s3://{s3_bucket}/{document_key}")
+        except Exception as e:
+            logger.error(f"Failed to create metadata for {document_key}: {str(e)}")
+            # Continue - metadata is optional
+
+    def _create_rag_document(
+        self,
+        repository_id: str,
+        collection_id: str,
+        s3_path: str,
+        ingestion_type: IngestionType,
+    ) -> str:
+        """Create and save RagDocument entry."""
+        rag_document = RagDocument(
+            repository_id=repository_id,
+            collection_id=collection_id,
+            document_name=os.path.basename(s3_path),
+            source=s3_path,
+            subdocs=[],  # Empty - KB manages chunks internally
+            chunk_strategy=NoneChunkingStrategy(),  # KB manages chunking
+            username="system",  # System-discovered
+            ingestion_type=ingestion_type,
+        )
+        self.rag_document_repository.save(rag_document)
+        return rag_document.document_id
+
+    def _trigger_kb_sync(self, repository: Dict[str, Any], collection_id: str, document_count: int) -> None:
+        """Trigger Bedrock KB sync for ingested documents."""
+        bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
+        knowledge_base_id = bedrock_config.get("bedrockKnowledgeBaseId")
+
+        if not knowledge_base_id:
+            logger.warning("No knowledge base ID found, skipping KB sync")
+            return
+
+        logger.info(f"Triggering Bedrock KB sync for collection {collection_id}")
+        try:
+            self.bedrock_agent_client.start_ingestion_job(
+                knowledgeBaseId=knowledge_base_id,
+                dataSourceId=collection_id,
+            )
+            logger.info(f"Successfully triggered KB sync for {document_count} documents")
+        except Exception as e:
+            logger.error(f"Failed to trigger KB sync: {str(e)}")
+            # Don't fail - documents are already tracked
+
 
 logger = logging.getLogger(__name__)
 
@@ -132,92 +426,55 @@ def bulk_delete_documents_from_kb(
     )
 
 
-def ingest_bedrock_s3_documents(
-    s3_client: Any,
+def create_s3_scan_job(
     ingestion_job_repository: Any,
     ingestion_service: Any,
     repository_id: str,
     collection_id: str,
-    s3_bucket: str,
     embedding_model: str,
-) -> tuple[int, int]:
+    s3_bucket: str,
+    s3_prefix: str = "",
+) -> str:
     """
-    Discover and index existing documents in Bedrock KB S3 bucket.
+    Create a batch ingestion job to scan and ingest existing S3 documents.
 
-    Scans S3 bucket for existing documents and creates tracking records
-    with ingestion_type=EXISTING to indicate they are user-managed.
-
-    Only scans depth 1 (root level) and ignores metadata files.
-    Creates multiple batch jobs if more than 100 documents found.
+    This creates a batch job with empty s3_paths that will be processed by
+    pipeline_ingest_documents. The empty s3_paths signals that the S3 bucket
+    should be scanned to discover existing documents.
 
     Args:
-        s3_client: boto3 S3 client
         ingestion_job_repository: Repository for saving ingestion jobs
         ingestion_service: Service for submitting jobs
         repository_id: Repository identifier
         collection_id: Collection identifier
-        s3_bucket: S3 bucket to scan
         embedding_model: Embedding model identifier
+        s3_bucket: S3 bucket to scan
+        s3_prefix: Optional S3 prefix to scan within bucket
 
     Returns:
-        Tuple of (discovered_count, skipped_count)
+        Job ID of the created scan job
     """
-    discovered_count = 0
-    skipped_count = 0
+    logger.info(f"Creating S3 scan job for bucket {s3_bucket} with prefix '{s3_prefix}'")
 
-    try:
-        # List objects at root level only
-        response = s3_client.list_objects_v2(Bucket=s3_bucket, Delimiter="/")
+    # Store bucket/prefix in s3_path field for the scan job
+    # Format: s3://bucket/prefix (or just s3://bucket if no prefix)
+    scan_path = f"s3://{s3_bucket}/{s3_prefix}" if s3_prefix else f"s3://{s3_bucket}/"
 
-        if "Contents" not in response:
-            logger.info(f"No documents found in S3 bucket {s3_bucket}")
-            return (0, 0)
+    # Create batch job with empty s3_paths - this signals S3 scan mode
+    job = IngestionJob(
+        repository_id=repository_id,
+        collection_id=collection_id,
+        embedding_model=embedding_model,
+        chunk_strategy=NoneChunkingStrategy(),
+        s3_path=scan_path,  # Store scan location
+        username="system",  # System-initiated
+        ingestion_type=IngestionType.EXISTING,  # Mark as pre-existing documents
+        job_type=JobActionType.DOCUMENT_BATCH_INGESTION,
+        s3_paths=[],  # Empty list signals S3 scan mode
+    )
 
-        # Filter out metadata files and collect document paths
-        document_paths = []
-        for obj in response["Contents"]:
-            key = obj["Key"]
-            # Skip metadata files and directories
-            if key.endswith("/") or key.endswith(".metadata.json"):
-                skipped_count += 1
-                continue
-            document_paths.append(f"s3://{s3_bucket}/{key}")
+    ingestion_job_repository.save(job)
+    ingestion_service.submit_create_job(job)
 
-        if not document_paths:
-            logger.info(f"No valid documents found in S3 bucket {s3_bucket}")
-            return (0, skipped_count)
-
-        logger.info(f"Found {len(document_paths)} documents to discover and index")
-        discovered_count = len(document_paths)
-
-        # Create batch jobs (max 100 documents per job)
-        # Mark as EXISTING to indicate pre-existing user-managed documents
-        batch_size = 100
-        for i in range(0, len(document_paths), batch_size):
-            batch = document_paths[i : i + batch_size]
-
-            job = IngestionJob(
-                repository_id=repository_id,
-                collection_id=collection_id,
-                embedding_model=embedding_model,
-                chunk_strategy=NoneChunkingStrategy(),
-                s3_path="",  # Not used for batch jobs
-                username="system",  # System-discovered
-                ingestion_type=IngestionType.EXISTING,  # Mark as pre-existing
-                job_type=JobActionType.DOCUMENT_BATCH_INGESTION,
-                s3_paths=batch,
-            )
-
-            ingestion_job_repository.save(job)
-            ingestion_service.submit_create_job(job)
-            logger.info(
-                f"Created discovery job {job.id} for {len(batch)} EXISTING documents " f"(batch {i // batch_size + 1})"
-            )
-
-        logger.info(f"Document discovery complete: discovered={discovered_count}, skipped={skipped_count}")
-        return (discovered_count, skipped_count)
-
-    except Exception as e:
-        logger.error(f"Failed to scan S3 bucket {s3_bucket}: {str(e)}", exc_info=True)
-        # Don't raise - collection creation should succeed even if discovery fails
-        return (discovered_count, skipped_count)
+    logger.info(f"Created S3 scan job {job.id} for bucket {s3_bucket}")
+    return job.id

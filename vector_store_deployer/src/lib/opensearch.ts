@@ -37,9 +37,13 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
         const { vpcId, deploymentName, deploymentPrefix, deploymentStage, subnets} = config;
         const { repositoryId, opensearchConfig } = ragConfig;
 
-        // Create service-linked role if needed
+        // Create service-linked role with stack-specific suffix to avoid conflicts
+        // The role name will be: AWSServiceRoleForAmazonOpenSearchService-<stackName>
+        // AWS service-linked role suffix can be up to 64 characters
+        const stackNameSuffix = this.stackName.replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase().slice(0, 64);
         const serviceLinkedRole = new CfnServiceLinkedRole(this, 'OpensearchServiceLinkedRole', {
             awsServiceName: 'opensearchservice.amazonaws.com',
+            customSuffix: stackNameSuffix,
         });
 
         let openSearchDomain: IDomain;

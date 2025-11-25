@@ -86,7 +86,7 @@ class TestIngestDocumentToKB:
 
         mock_bedrock_agent_client.start_ingestion_job.assert_called_once_with(
             knowledgeBaseId="KB123456",
-            dataSourceId="DS123456",
+            dataSourceId="test-collection",
         )
 
 
@@ -144,7 +144,7 @@ class TestDeleteDocumentFromKB:
 
         mock_bedrock_agent_client.start_ingestion_job.assert_called_once_with(
             knowledgeBaseId="KB123456",
-            dataSourceId="DS123456",
+            dataSourceId="test-collection",
         )
 
 
@@ -188,6 +188,7 @@ class TestBulkDeleteDocumentsFromKB:
             bedrock_agent_client=mock_bedrock_agent_client,
             repository=sample_repository,
             s3_paths=s3_paths,
+            data_source_id="DS123456",
         )
 
         # Assert
@@ -212,6 +213,7 @@ class TestBulkDeleteDocumentsFromKB:
             bedrock_agent_client=mock_bedrock_agent_client,
             repository=sample_repository,
             s3_paths=s3_paths,
+            data_source_id="DS123456",
         )
 
         # Assert - Should be called twice (1000 + 500)

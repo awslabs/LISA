@@ -40,7 +40,7 @@ from repository.s3_metadata_manager import S3MetadataManager
 from repository.services.repository_service_factory import RepositoryServiceFactory
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.auth import get_username
-from utilities.bedrock_kb import ingest_document_to_kb, S3DocumentDiscoveryService
+from utilities.bedrock_kb import get_datasource_bucket_for_collection, ingest_document_to_kb, S3DocumentDiscoveryService
 from utilities.common_functions import retry_config
 from utilities.file_processing import generate_chunks
 from utilities.repository_types import RepositoryType
@@ -82,8 +82,19 @@ def pipeline_ingest_document(job: IngestionJob) -> None:
         repository = vs_repo.find_repository_by_id(job.repository_id)
         if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
             # Bedrock KB path: Copy document to KB bucket and track
-            bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
-            kb_bucket = bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket")
+            # Get KB bucket for this collection (supports multiple config formats)
+            try:
+                kb_bucket = get_datasource_bucket_for_collection(
+                    repository=repository,
+                    collection_id=job.collection_id,
+                )
+            except ValueError as e:
+                error_msg = str(e)
+                logger.error(error_msg)
+                job.status = IngestionStatus.INGESTION_FAILED
+                job.error_message = error_msg
+                ingestion_job_repository.save(job)
+                raise
 
             # Determine if document needs to be copied to KB bucket
             source_bucket = job.s3_path.split("/")[2]

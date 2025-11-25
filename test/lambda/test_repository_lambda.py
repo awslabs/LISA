@@ -1896,15 +1896,24 @@ def test_real_similarity_search_bedrock_kb_function():
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
         "repository.lambda_functions.bedrock_client"
-    ) as mock_bedrock, patch("utilities.auth.get_groups") as mock_get_groups:
+    ) as mock_bedrock, patch("utilities.auth.get_groups") as mock_get_groups, patch(
+        "repository.lambda_functions.collection_service"
+    ) as mock_collection_service:
 
         mock_get_groups.return_value = ["test-group"]
         mock_vs_repo.find_repository_by_id.return_value = {
+            "repositoryId": "test-repo",
             "type": "bedrock_knowledge_base",
             "allowedGroups": ["test-group"],
-            "bedrockKnowledgeBaseConfig": {"bedrockKnowledgeBaseId": "kb-123"},
+            "bedrockKnowledgeBaseConfig": {
+                "bedrockKnowledgeBaseId": "kb-123",
+                "dataSources": [{"id": "ds-123"}],
+            },
             "status": "active",
         }
+
+        # Mock collection model lookup
+        mock_collection_service.get_collection_model.return_value = "test-model"
 
         mock_bedrock.retrieve.return_value = {
             "retrievalResults": [
@@ -1924,7 +1933,12 @@ def test_real_similarity_search_bedrock_kb_function():
                 "authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["test-group"])}
             },
             "pathParameters": {"repositoryId": "test-repo"},
-            "queryStringParameters": {"modelName": "test-model", "query": "test query", "topK": "2"},
+            "queryStringParameters": {
+                "modelName": "test-model",
+                "query": "test query",
+                "topK": "2",
+                "collectionId": "ds-123",
+            },
         }
 
         result = similarity_search(event, SimpleNamespace())

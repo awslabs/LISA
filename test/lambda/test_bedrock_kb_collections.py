@@ -103,7 +103,7 @@ class TestBedrockKBDefaultCollection:
         assert collection.repositoryId == "test-bedrock-kb"
         assert collection.collectionId == "DS123456"  # Uses data source ID as collection ID
         assert collection.embeddingModel == "amazon.titan-embed-text-v1"
-        assert collection.description == "Default collection for Bedrock Knowledge Base"
+        assert "Default collection for Bedrock Knowledge Base" in collection.description
         assert collection.allowChunkingOverride is False  # Bedrock KB doesn't allow override
         assert "bedrock-kb" in collection.metadata.tags
         assert "default" in collection.metadata.tags

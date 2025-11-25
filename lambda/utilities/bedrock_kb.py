@@ -323,6 +323,82 @@ class S3DocumentDiscoveryService:
 logger = logging.getLogger(__name__)
 
 
+def get_datasource_bucket_for_collection(
+    repository: Dict[str, Any],
+    collection_id: str,
+) -> str:
+    """
+    Get the S3 bucket for a specific collection/data source.
+
+    Supports multiple configuration formats:
+    - Legacy: bedrockKnowledgeDatasourceS3Bucket (single bucket)
+    - New: dataSources array with id and s3Uri per data source
+    - Pipeline: pipelines array with collectionId and s3Bucket
+
+    Args:
+        repository: Repository configuration dictionary
+        collection_id: Collection/data source ID
+
+    Returns:
+        S3 bucket name
+
+    Raises:
+        ValueError: If bucket cannot be determined
+    """
+    bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
+    repository_id = repository.get("repositoryId", "unknown")
+
+    # Try legacy format first
+    legacy_bucket = bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket")
+    if legacy_bucket:
+        return legacy_bucket
+
+    # Try pipelines array (most common in current configs)
+    pipelines = repository.get("pipelines", [])
+    for pipeline in pipelines:
+        # Handle both dict and object formats
+        pipeline_collection_id = pipeline.get("collectionId") if isinstance(pipeline, dict) else pipeline.collectionId
+        s3_bucket = pipeline.get("s3Bucket") if isinstance(pipeline, dict) else pipeline.s3Bucket
+
+        if pipeline_collection_id == collection_id and s3_bucket:
+            return s3_bucket
+
+    # Try dataSources array
+    data_sources = bedrock_config.get("dataSources", [])
+    for data_source in data_sources:
+        # Handle both dict and object formats
+        ds_id = data_source.get("id") if isinstance(data_source, dict) else data_source.id
+        s3_uri = data_source.get("s3Uri") if isinstance(data_source, dict) else data_source.s3Uri
+
+        if ds_id == collection_id:
+            # Extract bucket from s3Uri (format: s3://bucket/ or s3://bucket/prefix)
+            if s3_uri and s3_uri.startswith("s3://"):
+                bucket = s3_uri[5:].split("/")[0]
+                if bucket:
+                    return bucket
+
+            logger.error(f"Invalid s3Uri format for data source {ds_id}: {s3_uri}")
+            raise ValueError(
+                f"Data source {ds_id} has invalid s3Uri format: {s3_uri}. "
+                "Expected format: s3://bucket-name/ or s3://bucket-name/prefix"
+            )
+
+    # No matching configuration found
+    available_pipelines = [p.get("collectionId") if isinstance(p, dict) else p.collectionId for p in pipelines]
+    logger.error(
+        f"Repository {repository_id} missing S3 bucket configuration. "
+        f"Collection ID: {collection_id}, Available pipelines: {available_pipelines}, "
+        f"Available data sources: {[ds.get('id') if isinstance(ds, dict) else ds.id for ds in data_sources]}"
+    )
+    raise ValueError(
+        f"Cannot determine S3 bucket for collection {collection_id}. "
+        "Repository configuration must include either:\n"
+        "- 'bedrockKnowledgeDatasourceS3Bucket' (legacy single bucket)\n"
+        f"- A pipeline with collectionId='{collection_id}' and s3Bucket field\n"
+        f"- A data source in 'dataSources' array with id='{collection_id}' and s3Uri"
+    )
+
+
 def ingest_document_to_kb(
     s3_client: Any,
     bedrock_agent_client: Any,
@@ -335,12 +411,18 @@ def ingest_document_to_kb(
     """
     bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
 
+    # Get datasource bucket for this collection (supports multiple config formats)
+    datasource_bucket = get_datasource_bucket_for_collection(
+        repository=repository,
+        collection_id=job.collection_id,
+    )
+
     source_bucket = job.s3_path.split("/")[2]
     source_key = job.s3_path.split(source_bucket + "/")[1]
 
     s3_client.copy_object(
         CopySource={"Bucket": source_bucket, "Key": source_key},
-        Bucket=bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket", None),
+        Bucket=datasource_bucket,
         Key=os.path.basename(job.s3_path),
     )
 
@@ -373,8 +455,14 @@ def delete_document_from_kb(
     """Remove the source object from the KB datasource bucket and re-sync the KB."""
     bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
 
+    # Get datasource bucket for this collection (supports multiple config formats)
+    datasource_bucket = get_datasource_bucket_for_collection(
+        repository=repository,
+        collection_id=job.collection_id,
+    )
+
     s3_client.delete_object(
-        Bucket=bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket", None),
+        Bucket=datasource_bucket,
         Key=os.path.basename(job.s3_path),
     )
 
@@ -452,6 +540,99 @@ def bulk_delete_documents_from_kb(
         knowledgeBaseId=kb_id,
         dataSourceId=data_source_id,
     )
+
+
+def ingest_bedrock_s3_documents(
+    s3_client: Any,
+    ingestion_job_repository: Any,
+    ingestion_service: Any,
+    repository_id: str,
+    collection_id: str,
+    s3_bucket: str,
+    embedding_model: str,
+    s3_prefix: str = "",
+    batch_size: int = 100,
+) -> Tuple[int, int]:
+    """
+    Discover and create ingestion jobs for existing documents in S3 bucket.
+
+    Scans S3 bucket for documents and creates batch ingestion jobs.
+    Skips metadata files and directories.
+
+    Args:
+        s3_client: boto3 S3 client
+        ingestion_job_repository: Repository for saving ingestion jobs
+        ingestion_service: Service for submitting jobs
+        repository_id: Repository identifier
+        collection_id: Collection identifier
+        s3_bucket: S3 bucket to scan
+        embedding_model: Embedding model identifier
+        s3_prefix: Optional S3 prefix to scan within bucket
+        batch_size: Number of documents per batch job (default: 100)
+
+    Returns:
+        Tuple of (discovered_count, skipped_count)
+    """
+    logger.info(f"Discovering documents in S3 bucket {s3_bucket} with prefix '{s3_prefix}'")
+
+    try:
+        # List objects in S3 bucket
+        list_params = {"Bucket": s3_bucket, "Delimiter": "/"}
+        if s3_prefix:
+            list_params["Prefix"] = s3_prefix if s3_prefix.endswith("/") else f"{s3_prefix}/"
+
+        response = s3_client.list_objects_v2(**list_params)
+
+        if "Contents" not in response:
+            logger.info(f"No objects found in bucket {s3_bucket}")
+            return 0, 0
+
+        # Filter valid documents
+        documents_to_process = []
+        skipped_count = 0
+
+        for obj in response["Contents"]:
+            key = obj["Key"]
+            # Skip metadata files and directories
+            if key.endswith("/") or key.endswith(".metadata.json"):
+                skipped_count += 1
+                continue
+            documents_to_process.append(key)
+
+        discovered_count = len(documents_to_process)
+
+        if not documents_to_process:
+            logger.info(f"No valid documents found in bucket {s3_bucket}")
+            return discovered_count, skipped_count
+
+        logger.info(f"Found {discovered_count} documents to process, {skipped_count} skipped")
+
+        # Create batch jobs
+        for i in range(0, len(documents_to_process), batch_size):
+            batch = documents_to_process[i : i + batch_size]
+            s3_paths = [f"s3://{s3_bucket}/{key}" for key in batch]
+
+            job = IngestionJob(
+                repository_id=repository_id,
+                collection_id=collection_id,
+                embedding_model=embedding_model,
+                chunk_strategy=NoneChunkingStrategy(),
+                s3_path=s3_paths[0] if s3_paths else "",  # First path as primary
+                username="system",  # System-initiated
+                ingestion_type=IngestionType.EXISTING,  # Mark as pre-existing documents
+                job_type=JobActionType.DOCUMENT_BATCH_INGESTION,
+                s3_paths=s3_paths,
+            )
+
+            ingestion_job_repository.save(job)
+            ingestion_service.submit_create_job(job)
+
+        logger.info(f"Created {(len(documents_to_process) + batch_size - 1) // batch_size} batch jobs")
+        return discovered_count, skipped_count
+
+    except Exception as e:
+        logger.error(f"Failed to discover S3 documents: {str(e)}", exc_info=True)
+        return 0, 0
 
 
 def create_s3_scan_job(

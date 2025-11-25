@@ -193,7 +193,7 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
     const steps = [
         {
             title: 'Repository Configuration',
-            description: 'Define your repository\'s configuration settings using these forms.',
+            description: 'Define your repository\'s configuration',
             content: (
                 <RepositoryConfigForm item={state.form} setFields={setFields} touchFields={touchFields}
                     formErrors={errors}
@@ -203,7 +203,7 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
         },
         {
             title: 'Pipeline Configuration',
-            description: 'Create pipelines for ingesting RAG documents from S3',
+            description: 'Create document ingestion pipelines from S3',
             content: (
                 <PipelineConfigForm
                     item={state.form.pipelines}

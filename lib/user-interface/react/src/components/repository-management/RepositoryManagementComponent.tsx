@@ -33,7 +33,7 @@ export function RepositoryManagementComponent (): ReactElement {
         <SpaceBetween size='m'>
             <Header
                 variant='h1'
-                description='Manage RAG repositories and vector stores'
+                description='Manage repository and collections to support RAG'
             >
                 RAG Management
             </Header>

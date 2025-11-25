@@ -14,17 +14,14 @@
  limitations under the License.
  */
 
-import Container from '@cloudscape-design/components/container';
 import {
     Alert,
     Box,
-    Button,
     FormField,
     Header,
     Select,
     SpaceBetween,
     Spinner,
-    StatusIndicator,
     Table,
 } from '@cloudscape-design/components';
 import React, { ReactElement, useEffect, useState } from 'react';
@@ -68,7 +65,6 @@ export function BedrockKnowledgeBaseConfigForm (
     const {
         data: dsData,
         isLoading: dsLoading,
-        refetch: refetchDataSources,
     } = useListBedrockDataSourcesQuery({ kbId: selectedKbId || '' }, { skip: !selectedKbId });
 
     // Auto-select data sources from existing config or pipelines
@@ -149,7 +145,8 @@ export function BedrockKnowledgeBaseConfigForm (
         })) || [];
 
     return (
-        <Container header={<Header variant='h2'>Bedrock Knowledge Base Config</Header>}>
+        <>
+            <Header variant='h2'>Bedrock Knowledge Base Config</Header>
             <SpaceBetween direction='vertical' size='m'>
                 <Alert type='info' header='How LISA manages your Knowledge Base documents'>
                     LISA tracks document ownership to preserve your existing data. Documents already in your
@@ -213,7 +210,7 @@ export function BedrockKnowledgeBaseConfigForm (
 
                 {selectedKbId && (
                     <FormField
-                        label='Data Sources'
+                        label={`Data Sources: (${selectedDataSources.length}/${availableDataSources.length})`}
                         description={
                             isEdit
                                 ? 'Add or remove data sources to update collections'
@@ -261,18 +258,6 @@ export function BedrockKnowledgeBaseConfigForm (
                                 onSelectionChange={({ detail }) =>
                                     handleDataSourceSelection(detail.selectedItems as DataSourceRow[])
                                 }
-                                header={
-                                    <Header
-                                        actions={
-                                            <Button iconName='refresh' onClick={() => refetchDataSources()}>
-                                                Refresh
-                                            </Button>
-                                        }
-                                        counter={`(${selectedDataSources.length}/${availableDataSources.length})`}
-                                    >
-                                        Available Data Sources
-                                    </Header>
-                                }
                                 empty={
                                     <Box textAlign='center' color='inherit'>
                                         <SpaceBetween size='m'>
@@ -283,21 +268,12 @@ export function BedrockKnowledgeBaseConfigForm (
                                         </SpaceBetween>
                                     </Box>
                                 }
+                                variant='embedded'
                             />
-                        )}
-
-                        {selectedDataSources.length === 0 && availableDataSources.length > 0 && (
-                            <Box padding={{ top: 's' }}>
-                                <StatusIndicator type='warning'>
-                                    Please select at least one data source to continue
-                                </StatusIndicator>
-                            </Box>
                         )}
                     </FormField>
                 )}
-
-
             </SpaceBetween>
-        </Container>
+        </>
     );
 }

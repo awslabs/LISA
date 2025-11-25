@@ -224,9 +224,7 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
     const steps = [
         {
             title: 'Collection Configuration',
-            description: isDefaultCollection
-                ? 'Edit collection name and description (other fields are locked for default collections)'
-                : 'Define your collection\'s basic settings',
+            description: 'Repositories can have many collections. Use collections to organize or restrict information.',
             content: (
                 <CollectionConfigForm
                     item={state.form}

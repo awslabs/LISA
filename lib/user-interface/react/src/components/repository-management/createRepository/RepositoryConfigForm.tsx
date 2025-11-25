@@ -114,16 +114,16 @@ export function RepositoryConfigForm (props: FormProps<RagRepositoryConfig> & Re
                             setFields({ 'rdsConfig': undefined });
                             setFields({ 'opensearchConfig': undefined });
                         }
-                        
+
                         // Clear collection IDs from all pipelines when repository type changes
                         if (item.pipelines && item.pipelines.length > 0) {
-                            const clearedPipelines = item.pipelines.map(pipeline => ({
+                            const clearedPipelines = item.pipelines.map((pipeline) => ({
                                 ...pipeline,
                                 collectionId: undefined
                             }));
                             setFields({ 'pipelines': clearedPipelines });
                         }
-                        
+
                         setFields({ 'type': detail.selectedOption.value });
                     }}
                     onBlur={() => touchFields(['type'])}

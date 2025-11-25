@@ -23,6 +23,7 @@ import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 import {
     useCreateCollectionMutation,
     useUpdateCollectionMutation,
+    useListRagRepositoriesQuery,
 } from '@/shared/reducers/rag.reducer';
 import { CollectionConfigForm } from './CollectionConfigForm';
 import { ChunkingConfigForm } from './ChunkingConfigForm';
@@ -34,7 +35,8 @@ import _ from 'lodash';
 import {
     RagCollectionConfig,
     RagCollectionConfigSchema,
-    ChunkingStrategyType
+    ChunkingStrategyType,
+    RagRepositoryType,
 } from '#root/lib/schema';
 
 export type CreateCollectionModalProps = {
@@ -56,6 +58,9 @@ export type CollectionCreateState = {
 
 export function CreateCollectionModal (props: CreateCollectionModalProps): ReactElement {
     const { visible, setVisible, selectedItems, isEdit, setIsEdit } = props;
+
+    // Fetch repositories to determine repository type
+    const { data: repositories } = useListRagRepositoriesQuery();
 
     // Mutations
     const [
@@ -141,14 +146,13 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
 
     const reviewError = normalizeError('Collection', isEdit ? updateError : createError);
 
-    // Check if editing a default collection
-    const isDefaultCollection = isEdit && selectedItems.length > 0 && (selectedItems[0] as any).default === true;
+    // Check if editing a Bedrock collection
+    const selectedRepository = repositories?.find((repo) => repo.repositoryId === state.form.repositoryId);
+    const isBedrockRepository = selectedRepository?.type === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE;
+    const disableChunking = isEdit && isBedrockRepository;
 
-    // For default collections, embeddingModel is not editable and should not be required
     const requiredFields = [
-        isDefaultCollection
-            ? ['name', 'repositoryId'] // Step 1: Collection Configuration (default collection)
-            : ['name', 'repositoryId', 'embeddingModel'], // Step 1: Collection Configuration
+        ['name', 'repositoryId', 'embeddingModel'], // Step 1: Collection Configuration
         [], // Step 2: Chunking Configuration (optional)
         [], // Step 3: Access Control (optional)
     ];
@@ -232,14 +236,13 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
                     touchFields={touchFields}
                     formErrors={errors}
                     isEdit={isEdit}
-                    isDefaultCollection={isDefaultCollection}
                 />
             ),
         },
         {
             title: 'Chunking Configuration',
-            description: isDefaultCollection
-                ? 'Chunking is managed by Bedrock Knowledge Base for default collections'
+            description: disableChunking
+                ? 'Chunking is managed by Bedrock Knowledge Base and cannot be modified'
                 : 'Configure how documents are split into chunks',
             content: (
                 <ChunkingConfigForm
@@ -247,7 +250,7 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
                     setFields={setFields}
                     touchFields={touchFields}
                     formErrors={errors}
-                    disabled={isDefaultCollection}
+                    disabled={disableChunking}
                 />
             ),
             isOptional: true,

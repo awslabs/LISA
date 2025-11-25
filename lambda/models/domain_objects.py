@@ -521,7 +521,7 @@ class RagDocument(BaseModel):
 
     pk: Optional[str] = None
     document_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    repository_id: str
+    repository_id: str = Field(min_length=3, max_length=20)
     collection_id: str
     document_name: str
     source: str
@@ -1169,7 +1169,7 @@ class UpdateVectorStoreRequest(BaseModel):
     allowedGroups: Optional[List[str]] = Field(default=None, description="User groups with access")
     metadata: Optional[RepositoryMetadata] = Field(default=None, description="Repository metadata")
     pipelines: Optional[List[PipelineConfig]] = Field(default=None, description="Automated ingestion pipelines")
-    bedrockKnowledgeBaseConfig: Optional["BedrockKnowledgeBaseConfig"] = Field(
+    bedrockKnowledgeBaseConfig: Optional[BedrockKnowledgeBaseConfig] = Field(
         default=None, description="Bedrock Knowledge Base configuration"
     )
 

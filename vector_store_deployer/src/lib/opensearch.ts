@@ -21,7 +21,6 @@ import { SecurityGroup, Subnet, SubnetSelection, Vpc } from 'aws-cdk-lib/aws-ec2
 import { AnyPrincipal, CfnServiceLinkedRole, Effect, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { createCdkId } from '../../../lib/core/utils';
-import { IAMClient, ListRolesCommand } from '@aws-sdk/client-iam';
 import { Roles } from '../../../lib/core/iam/roles';
 import { PipelineStack } from './pipeline-stack';
 
@@ -38,9 +37,10 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
         const { vpcId, deploymentName, deploymentPrefix, deploymentStage, subnets} = config;
         const { repositoryId, opensearchConfig } = ragConfig;
 
-        if (config.region) {
-            this.linkServiceRole(config.region);
-        }
+        // Create service-linked role if needed
+        const serviceLinkedRole = new CfnServiceLinkedRole(this, 'OpensearchServiceLinkedRole', {
+            awsServiceName: 'opensearchservice.amazonaws.com',
+        });
 
         let openSearchDomain: IDomain;
 
@@ -120,6 +120,9 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
                 removalPolicy: RemovalPolicy.DESTROY,
                 securityGroups: [openSearchSecurityGroup],
             });
+
+            // Ensure service-linked role is created before OpenSearch domain
+            openSearchDomain.node.addDependency(serviceLinkedRole);
         }
 
         const lambdaRole = Role.fromRoleArn(
@@ -151,25 +154,5 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
         openSearchEndpointPs.grantRead(lambdaRole);
 
         this.createPipelineRules(config, ragConfig);
-    }
-
-    /**
-     * This method links the OpenSearch Service role to the service-linked role if it exists.
-     * If the role doesn't exist, it will be created.
-     */
-    async linkServiceRole (region: string) {
-        const iam = new IAMClient({region});
-        const response = await iam.send(
-            new ListRolesCommand({
-                PathPrefix: '/aws-service-role/opensearchservice.amazonaws.com/',
-            }),
-        );
-
-        // Only if the role for OpenSearch Service doesn't exist, it will be created.
-        if (response.Roles?.length === 0) {
-            new CfnServiceLinkedRole(this, 'OpensearchServiceLinkedRole', {
-                awsServiceName: 'opensearchservice.amazonaws.com',
-            });
-        }
     }
 }

@@ -248,7 +248,7 @@ class TestBedrockKBRepositoryService:
         }
         service = BedrockKBRepositoryService(repository)
 
-        with pytest.raises(ValueError, match="missing KB ID"):
+        with pytest.raises(ValueError, match="missing required field"):
             service.retrieve_documents("query", "ds-456", 5, "test-model", bedrock_agent_client=MagicMock())
 
     def test_validate_document_source_valid(self, bedrock_kb_service):

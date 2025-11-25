@@ -134,7 +134,7 @@ export function RepositoryConfigForm (props: FormProps<RagRepositoryConfig> & Re
                     formErrors={formErrors} isEdit={isEdit}></OpenSearchConfigForm>
             }
             {item.type === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE &&
-                <BedrockKnowledgeBaseConfigForm item={item.bedrockKnowledgeBaseConfig} setFields={setFields} touchFields={touchFields}
+                <BedrockKnowledgeBaseConfigForm item={item} setFields={setFields} touchFields={touchFields}
                     formErrors={formErrors} isEdit={isEdit}></BedrockKnowledgeBaseConfigForm>
             }
 

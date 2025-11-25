@@ -126,6 +126,52 @@ type CollectionRequest = {
     collectionId: string;
 };
 
+type DiscoverDataSourcesRequest = {
+    kbId: string;
+    repositoryId?: string;
+    refresh?: boolean;
+};
+
+type KnowledgeBase = {
+    knowledgeBaseId: string;
+    name: string;
+    description?: string;
+    status: string;
+    available?: boolean;
+    unavailableReason?: string;
+    createdAt?: string;
+    updatedAt?: string;
+};
+
+type DataSource = {
+    dataSourceId: string;
+    name: string;
+    description?: string;
+    status: string;
+    s3Bucket: string;
+    s3Prefix?: string;
+    createdAt?: string;
+    updatedAt?: string;
+    managed?: boolean;
+    collectionId?: string;
+};
+
+type DiscoverKnowledgeBasesResponse = {
+    knowledgeBases: KnowledgeBase[];
+    totalKnowledgeBases: number;
+};
+
+type DiscoverDataSourcesResponse = {
+    knowledgeBase: {
+        id: string;
+        name: string;
+        status?: string;
+        description?: string;
+    };
+    dataSources: DataSource[];
+    totalDataSources?: number;
+};
+
 export const ragApi = createApi({
     reducerPath: 'rag',
     baseQuery: lisaBaseQuery(),
@@ -387,6 +433,39 @@ export const ragApi = createApi({
                 { type: 'collections', id: 'LIST' },
             ],
         }),
+        // Bedrock KB Discovery endpoints
+        listBedrockKnowledgeBases: builder.query<DiscoverKnowledgeBasesResponse, void>({
+            query: () => ({
+                url: '/bedrock-kb',
+            }),
+            transformErrorResponse: (baseQueryReturnValue) => ({
+                name: 'List Knowledge Bases Error',
+                message: baseQueryReturnValue.data?.type === 'RequestValidationError'
+                    ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ')
+                    : baseQueryReturnValue.data.message
+            }),
+        }),
+        listBedrockDataSources: builder.query<DiscoverDataSourcesResponse, DiscoverDataSourcesRequest>({
+            query: (request) => {
+                const params: any = {};
+                if (request.repositoryId) {
+                    params.repositoryId = request.repositoryId;
+                }
+                if (request.refresh) {
+                    params.refresh = 'true';
+                }
+                const queryString = new URLSearchParams(params).toString();
+                return {
+                    url: `/bedrock-kb/${request.kbId}/data-sources${queryString ? `?${queryString}` : ''}`,
+                };
+            },
+            transformErrorResponse: (baseQueryReturnValue) => ({
+                name: 'List Data Sources Error',
+                message: baseQueryReturnValue.data?.type === 'RequestValidationError'
+                    ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ')
+                    : baseQueryReturnValue.data.message
+            }),
+        }),
     }),
 });
 
@@ -410,4 +489,8 @@ export const {
     useCreateCollectionMutation,
     useUpdateCollectionMutation,
     useDeleteCollectionMutation,
+    useListBedrockKnowledgeBasesQuery,
+    useLazyListBedrockKnowledgeBasesQuery,
+    useListBedrockDataSourcesQuery,
+    useLazyListBedrockDataSourcesQuery,
 } = ragApi;

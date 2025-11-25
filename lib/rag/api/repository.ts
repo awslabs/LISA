@@ -277,6 +277,26 @@ export class RepositoryApi extends Construct {
                 environment: {
                     ...baseEnvironment,
                 },
+            },
+            {
+                name: 'list_bedrock_knowledge_bases',
+                resource: 'repository',
+                description: 'List all ACTIVE Bedrock Knowledge Bases',
+                path: 'bedrock-kb',
+                method: 'GET',
+                environment: {
+                    ...baseEnvironment,
+                },
+            },
+            {
+                name: 'list_bedrock_data_sources',
+                resource: 'repository',
+                description: 'List data sources for a Bedrock Knowledge Base',
+                path: 'bedrock-kb/{kbId}/data-sources',
+                method: 'GET',
+                environment: {
+                    ...baseEnvironment,
+                },
             }
         ];
 

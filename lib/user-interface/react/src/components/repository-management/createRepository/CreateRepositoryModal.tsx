@@ -116,6 +116,9 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
             const submissionData = { ...toSubmit };
             if (submissionData.type === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE) {
                 delete submissionData.pipelines;
+            } else {
+                // For non-Bedrock repositories, remove bedrockKnowledgeBaseConfig
+                delete submissionData.bedrockKnowledgeBaseConfig;
             }
 
             // Additional validation: ensure repositoryId is not empty

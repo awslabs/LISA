@@ -69,7 +69,7 @@ export const formatDocumentsAsString = (docs: any, forMetadata = false): string 
 
 export const formatDocumentTitlesAsString = (docs: any): string => {
     const uniqueNames = [...new Set(
-        docs.map((doc) => doc.Document.metadata.name)
+        docs.map((doc) => doc.Document.metadata.name || doc.Document.metadata.source?.split('/').pop() )
     )];
     return uniqueNames.length !== 0 ? `\n*Source - ${uniqueNames.join(', ')}*` : undefined;
 };

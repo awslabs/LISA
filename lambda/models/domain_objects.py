@@ -1169,7 +1169,7 @@ class UpdateVectorStoreRequest(BaseModel):
     allowedGroups: Optional[List[str]] = Field(default=None, description="User groups with access")
     metadata: Optional[RepositoryMetadata] = Field(default=None, description="Repository metadata")
     pipelines: Optional[List[PipelineConfig]] = Field(default=None, description="Automated ingestion pipelines")
-    bedrockKnowledgeBaseConfig: Optional["BedrockKnowledgeBaseConfig"] = Field(
+    bedrockKnowledgeBaseConfig: Optional[BedrockKnowledgeBaseConfig] = Field(
         default=None, description="Bedrock Knowledge Base configuration"
     )
 

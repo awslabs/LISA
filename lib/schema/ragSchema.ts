@@ -82,6 +82,7 @@ export enum RagRepositoryType {
 
 export const BedrockDataSource = z.object({
     id: z.string().describe('The ID of the Bedrock Knowledge Base data source'),
+    name: z.string().describe('The name of the Bedrock Knowledge Base data source'),
     s3Uri: z.string().regex(/^s3:\/\/[a-z0-9][a-z0-9.-]*[a-z0-9](\/.*)?$/, 'Must be a valid S3 URI (s3://bucket/prefix)').describe('The S3 URI of the data source'),
 });
 

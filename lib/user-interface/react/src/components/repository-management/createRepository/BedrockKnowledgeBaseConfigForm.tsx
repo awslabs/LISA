@@ -123,6 +123,7 @@ export function BedrockKnowledgeBaseConfigForm (
                 knowledgeBaseId: selectedKbId,
                 dataSources: selectedDataSources.map((ds) => ({
                     id: ds.id,
+                    name: ds.name,
                     s3Uri: ds.s3Uri,
                 })),
             };

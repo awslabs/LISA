@@ -1111,6 +1111,7 @@ class BedrockDataSource(BaseModel):
     """Configuration for a single Bedrock Knowledge Base data source."""
 
     id: str = Field(min_length=1, description="The ID of the Bedrock Knowledge Base data source")
+    name: str = Field(min_length=1, description="The name of the Bedrock Knowledge Base data source")
     s3Uri: str = Field(min_length=1, description="The S3 URI of the data source (s3://bucket/prefix)")
 
     @field_validator("s3Uri")

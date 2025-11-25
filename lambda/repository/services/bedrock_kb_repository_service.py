@@ -246,27 +246,52 @@ class BedrockKBRepositoryService(RepositoryService):
             raise ValueError("Bedrock agent client required for KB operations")
 
         bedrock_config = self.repository.get("bedrockKnowledgeBaseConfig", {})
-        kb_id = bedrock_config.get("bedrockKnowledgeBaseId")
+        # Support both field names for backward compatibility
+        kb_id = bedrock_config.get("bedrockKnowledgeBaseId") or bedrock_config.get("knowledgeBaseId")
 
         if not kb_id:
-            raise ValueError(f"Bedrock KB repository {self.repository_id} missing KB ID")
+            raise ValueError(
+                f"Bedrock KB repository '{self.repository_id}' is missing required field "
+                f"'bedrockKnowledgeBaseId' or 'knowledgeBaseId' in bedrockKnowledgeBaseConfig. "
+                f"Please update the repository configuration with the actual AWS Bedrock Knowledge Base ID "
+                f"(e.g., 'KB123456' or a UUID format, not the LISA repository ID)."
+            )
 
         # Use Bedrock retrieve API with data source filter
-        response = bedrock_agent_client.retrieve(
-            knowledgeBaseId=kb_id,
-            retrievalQuery={"text": query},
-            retrievalConfiguration={
+        logger.info(f"Retrieving from KB: kb_id={kb_id}, data_source={collection_id}, query={query[:50]}...")
+
+        # Build retrieve params with data source filter
+        retrieve_params = {
+            "knowledgeBaseId": kb_id,
+            "retrievalQuery": {"text": query},
+            "retrievalConfiguration": {
                 "vectorSearchConfiguration": {
                     "numberOfResults": top_k,
-                    "filter": {
-                        "equals": {
-                            "key": "x-amz-bedrock-kb-data-source-id",
-                            "value": collection_id,
-                        }
-                    },
                 }
             },
-        )
+        }
+
+        # Add data source filter if collection_id is provided
+        # collection_id corresponds to the data source ID in Bedrock KB
+        if collection_id:
+            retrieve_params["retrievalConfiguration"]["vectorSearchConfiguration"]["filter"] = {
+                "equals": {
+                    "key": "x-amz-bedrock-kb-data-source-id",
+                    "value": collection_id,
+                }
+            }
+            logger.info(f"Filtering to data source: {collection_id}")
+
+        try:
+            response = bedrock_agent_client.retrieve(**retrieve_params)
+        except Exception as e:
+            logger.error(f"Bedrock retrieve failed for KB {kb_id}: {str(e)}")
+            if "filter" in retrieve_params.get("retrievalConfiguration", {}).get("vectorSearchConfiguration", {}):
+                logger.error(
+                    "Filter may not be supported. Ensure metadata field 'x-amz-bedrock-kb-data-source-id' "
+                    "is configured in the Knowledge Base."
+                )
+            raise
 
         # Transform Bedrock results to standard format
         documents = []
@@ -303,7 +328,7 @@ class BedrockKBRepositoryService(RepositoryService):
         return None
 
     def _create_collection_for_data_source(
-        self, data_source_id: str, s3_uri: str = "", is_default: bool = False
+        self, data_source_id: str, s3_uri: str = "", is_default: bool = False, collection_name: Optional[str] = None
     ) -> RagCollectionConfig:
         """Create a collection configuration for a specific data source.
 
@@ -311,25 +336,30 @@ class BedrockKBRepositoryService(RepositoryService):
             data_source_id: The data source ID to use as collection ID
             s3_uri: Optional S3 URI for the data source
             is_default: Whether this is the default collection
+            collection_name: Optional collection name (defaults to data_source_id if not provided)
 
         Returns:
             Collection configuration for the data source
         """
         embedding_model = self.repository.get("embeddingModelId")
-        sanitized_name = f"{self.repository.get('name', self.repository_id)}-{data_source_id}"
+        # Use provided collection_name or fall back to data_source_id
+        display_name = collection_name or f"{self.repository.get('name', self.repository_id)}-{data_source_id}"
+
+        # Get KB name for description
+        kb_name = self.repository.get("repositoryName") or self.repository.get("name", "Knowledge Base")
 
         # Set tags and description based on whether this is default
         if is_default:
             tags = ["default", "bedrock-kb"]
-            description = "Default collection for Bedrock Knowledge Base"
+            description = f"Default collection for Bedrock Knowledge Base: {kb_name}"
         else:
             tags = ["bedrock-kb", "data-source"]
-            description = f"Collection for Bedrock KB data source {data_source_id}"
+            description = f"Auto-created collection for {kb_name}"
 
         collection = RagCollectionConfig(
             collectionId=data_source_id,
             repositoryId=self.repository_id,
-            name=sanitized_name,
+            name=display_name,
             description=description,
             embeddingModel=embedding_model,
             chunkingStrategy=None,  # KB controls chunking

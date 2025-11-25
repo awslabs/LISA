@@ -174,7 +174,11 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
         else query_string_params.get("modelName")
     )
 
-    if not model_name and not RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
+    if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
+        # No collectionId will query the entire Knowledge base. Reserve for Admins.
+        if collection_id is None and not is_admin:
+            raise ValidationError("collectionId is required when searching Bedrock Knowledge Bases")
+    elif not model_name:
         raise ValidationError("modelName is required when collectionId is not provided")
 
     # Use repository service for similarity search
@@ -191,7 +195,7 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
         top_k=top_k,
         model_name=model_name,
         include_score=include_score,
-        bedrock_agent_client=bedrock_client if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB) else None,
+        bedrock_agent_client=bedrock_client,
     )
 
     doc_content = [
@@ -279,6 +283,7 @@ def create_bedrock_collection(event: dict, context: dict) -> Dict[str, Any]:
                 logger.warning(f"Pipeline missing collectionId, skipping: {pipeline}")
                 continue
 
+            collection_name = pipeline.get("collectionName", collection_id)
             s3_bucket = pipeline.get("s3Bucket", "")
             s3_prefix = pipeline.get("s3Prefix", "")
             s3_uri = f"s3://{s3_bucket}/{s3_prefix}" if s3_bucket else ""
@@ -300,11 +305,14 @@ def create_bedrock_collection(event: dict, context: dict) -> Dict[str, Any]:
                 # Collection doesn't exist, proceed with creation
                 pass
 
-            logger.info(f"Creating collection for pipeline with collectionId={collection_id}, s3Uri={s3_uri}")
+            logger.info(
+                f"Creating collection for pipeline with collectionId={collection_id}, "
+                f"collectionName={collection_name}, s3Uri={s3_uri}"
+            )
 
             # Create collection using service helper
             collection = service._create_collection_for_data_source(
-                data_source_id=collection_id, s3_uri=s3_uri, is_default=False
+                data_source_id=collection_id, s3_uri=s3_uri, is_default=False, collection_name=collection_name
             )
 
             # Save the collection

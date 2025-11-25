@@ -238,14 +238,18 @@ def build_pipeline_configs_from_kb_config(
         # Extract fields (handle both dict and object)
         if isinstance(data_source, dict):
             data_source_id = data_source.get("id")
+            data_source_name = data_source.get("name")
             s3_uri = data_source.get("s3Uri")
         else:
             data_source_id = data_source.id
+            data_source_name = data_source.name
             s3_uri = data_source.s3Uri
 
         # Validate required fields
         if not data_source_id:
             raise ValidationError("Data source ID is required")
+        if not data_source_name:
+            raise ValidationError("Data source name is required")
         if not s3_uri:
             raise ValidationError("S3 URI is required")
         if not s3_uri.startswith("s3://"):
@@ -266,11 +270,12 @@ def build_pipeline_configs_from_kb_config(
         s3_bucket = s3_parts[0]
         s3_prefix = s3_parts[1] if len(s3_parts) > 1 else ""
 
-        # Build pipeline config with collectionId set to dataSourceId
+        # Build pipeline config with collectionId set to dataSourceId, and store name separately
         pipeline_config = {
             "s3Bucket": s3_bucket,
             "s3Prefix": s3_prefix,
             "collectionId": data_source_id,  # Use data source ID as collection ID
+            "collectionName": data_source_name,  # Store data source name for collection creation
             "trigger": PipelineTrigger.EVENT.value,
             "autoRemove": True,
             "chunkingStrategy": {"type": ChunkingStrategyType.NONE.value},

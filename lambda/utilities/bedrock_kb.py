@@ -348,9 +348,18 @@ def ingest_document_to_kb(
 
     # Use collection_id from job as data source ID
     data_source_id = job.collection_id
+    # Support both field names for backward compatibility
+    kb_id = bedrock_config.get("bedrockKnowledgeBaseId") or bedrock_config.get("knowledgeBaseId")
+
+    if not kb_id:
+        logger.error(f"Repository {repository.get('repositoryId')} missing knowledge base ID")
+        raise ValueError(
+            "Bedrock KB repository is missing required field 'bedrockKnowledgeBaseId' or 'knowledgeBaseId'. "
+            "Please update the repository configuration with the actual AWS Bedrock Knowledge Base ID."
+        )
 
     bedrock_agent_client.start_ingestion_job(
-        knowledgeBaseId=bedrock_config.get("bedrockKnowledgeBaseId", None),
+        knowledgeBaseId=kb_id,
         dataSourceId=data_source_id,
     )
 
@@ -371,9 +380,18 @@ def delete_document_from_kb(
 
     # Use collection_id from job as data source ID
     data_source_id = job.collection_id
+    # Support both field names for backward compatibility
+    kb_id = bedrock_config.get("bedrockKnowledgeBaseId") or bedrock_config.get("knowledgeBaseId")
+
+    if not kb_id:
+        logger.error(f"Repository {repository.get('repositoryId')} missing knowledge base ID")
+        raise ValueError(
+            "Bedrock KB repository is missing required field 'bedrockKnowledgeBaseId' or 'knowledgeBaseId'. "
+            "Please update the repository configuration with the actual AWS Bedrock Knowledge Base ID."
+        )
 
     bedrock_agent_client.start_ingestion_job(
-        knowledgeBaseId=bedrock_config.get("bedrockKnowledgeBaseId", None),
+        knowledgeBaseId=kb_id,
         dataSourceId=data_source_id,
     )
 
@@ -420,8 +438,18 @@ def bulk_delete_documents_from_kb(
             data_source_id = bedrock_config.get("bedrockKnowledgeDatasourceId")
 
     # Trigger single ingestion job to sync KB
+    # Support both field names for backward compatibility
+    kb_id = bedrock_config.get("bedrockKnowledgeBaseId") or bedrock_config.get("knowledgeBaseId")
+
+    if not kb_id:
+        logger.error(f"Repository {repository.get('repositoryId')} missing knowledge base ID")
+        raise ValueError(
+            "Bedrock KB repository is missing required field 'bedrockKnowledgeBaseId' or 'knowledgeBaseId'. "
+            "Please update the repository configuration with the actual AWS Bedrock Knowledge Base ID."
+        )
+
     bedrock_agent_client.start_ingestion_job(
-        knowledgeBaseId=bedrock_config.get("bedrockKnowledgeBaseId"),
+        knowledgeBaseId=kb_id,
         dataSourceId=data_source_id,
     )
 

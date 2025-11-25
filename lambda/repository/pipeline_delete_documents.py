@@ -340,8 +340,11 @@ def pipeline_delete_documents(job: IngestionJob) -> None:
                     )
                 except Exception as e:
                     logger.error(
-                        f"Failed to bulk delete from Bedrock KB data source {data_source_id}: {e}", exc_info=True
-                    )  # nosec B608
+                        "Failed to bulk delete from Bedrock KB data source %s: %s",
+                        data_source_id,
+                        e,
+                        exc_info=True,
+                    )
                     # Documents already deleted from DynamoDB, continue with partial success
                 # This is acceptable because DynamoDB is source of truth
 

@@ -1595,7 +1595,7 @@ def list_bedrock_knowledge_bases(event: dict, context: dict) -> Dict[str, Any]:
 
     # Get all knowledge bases and filter to ACTIVE only
     all_kbs = list_knowledge_bases(bedrock_agent_client)
-    active_kbs = [kb for kb in all_kbs if kb.get("status") == "ACTIVE"]
+    active_kbs = [kb for kb in all_kbs if kb.status == "ACTIVE"]
 
     # Get all existing repositories to check which KBs are already in use
     existing_repos = vs_repo.get_registered_repositories()
@@ -1609,19 +1609,21 @@ def list_bedrock_knowledge_bases(event: dict, context: dict) -> Dict[str, Any]:
             if kb_id:
                 used_kb_ids.add(kb_id)
 
-    # Mark KBs as available or unavailable
+    # Convert to dictionaries and mark KBs as available or unavailable
+    kb_list = []
     for kb in active_kbs:
-        kb_id = kb.get("knowledgeBaseId")
-        kb["available"] = kb_id not in used_kb_ids
-        if not kb["available"]:
-            kb["unavailableReason"] = "Already associated with another repository"
+        kb_dict = kb.model_dump(mode="json")
+        kb_dict["available"] = kb.knowledgeBaseId not in used_kb_ids
+        if not kb_dict["available"]:
+            kb_dict["unavailableReason"] = "Already associated with another repository"
+        kb_list.append(kb_dict)
 
     logger.info(
         f"Found {len(active_kbs)} ACTIVE Knowledge Bases out of {len(all_kbs)} total, "
         f"{len(used_kb_ids)} already in use"
     )
 
-    return {"knowledgeBases": active_kbs, "totalKnowledgeBases": len(active_kbs)}
+    return {"knowledgeBases": kb_list, "totalKnowledgeBases": len(kb_list)}
 
 
 @api_wrapper
@@ -1675,5 +1677,5 @@ def list_bedrock_data_sources(event: dict, context: dict) -> Dict[str, Any]:
             "id": kb_id,
             "name": kb_config.get("name"),
         },
-        "dataSources": data_sources,
+        "dataSources": [ds.model_dump(mode="json") for ds in data_sources],
     }

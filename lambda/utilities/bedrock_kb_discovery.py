@@ -24,7 +24,12 @@ from typing import Any, Dict, List, Optional
 
 import boto3
 from botocore.exceptions import ClientError
-from models.domain_objects import ChunkingStrategyType, PipelineTrigger
+from models.domain_objects import (
+    ChunkingStrategyType,
+    DataSourceMetadata,
+    KnowledgeBaseMetadata,
+    PipelineTrigger,
+)
 from utilities.validation import ValidationError
 
 logger = logging.getLogger(__name__)
@@ -32,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 def list_knowledge_bases(
     bedrock_agent_client: Optional[Any] = None,
-) -> List[Dict[str, Any]]:
+) -> List[KnowledgeBaseMetadata]:
     """
     List all Knowledge Bases accessible in the AWS account.
 
@@ -40,7 +45,7 @@ def list_knowledge_bases(
         bedrock_agent_client: Optional boto3 bedrock-agent client
 
     Returns:
-        List of Knowledge Base metadata dictionaries
+        List of KnowledgeBaseMetadata objects
 
     Raises:
         ValidationError: If API call fails
@@ -61,16 +66,7 @@ def list_knowledge_bases(
             response = bedrock_agent_client.list_knowledge_bases(**list_params)
 
             for kb_summary in response.get("knowledgeBaseSummaries", []):
-                knowledge_bases.append(
-                    {
-                        "knowledgeBaseId": kb_summary.get("knowledgeBaseId"),
-                        "name": kb_summary.get("name"),
-                        "description": kb_summary.get("description", ""),
-                        "status": kb_summary.get("status"),
-                        "createdAt": kb_summary.get("createdAt"),
-                        "updatedAt": kb_summary.get("updatedAt"),
-                    }
-                )
+                knowledge_bases.append(KnowledgeBaseMetadata(**kb_summary))
 
             # Check for more pages
             next_token = response.get("nextToken")
@@ -98,7 +94,7 @@ def list_knowledge_bases(
 def discover_kb_data_sources(
     kb_id: str,
     bedrock_agent_client: Optional[Any] = None,
-) -> List[Dict[str, Any]]:
+) -> List[DataSourceMetadata]:
     """
     Discover all data sources in a Bedrock Knowledge Base.
 
@@ -107,7 +103,7 @@ def discover_kb_data_sources(
         bedrock_agent_client: Optional boto3 bedrock-agent client
 
     Returns:
-        List of data source configurations with details
+        List of DataSourceMetadata objects
 
     Raises:
         ValidationError: If KB doesn't exist or API call fails
@@ -139,21 +135,13 @@ def discover_kb_data_sources(
 
                 data_source = ds_detail.get("dataSource", {})
 
-                # Extract S3 configuration
+                # Extract S3 configuration and add to data_source
                 s3_config = extract_s3_configuration(data_source)
+                data_source["s3Bucket"] = s3_config["bucket"]
+                data_source["s3Prefix"] = s3_config["prefix"]
 
-                data_sources.append(
-                    {
-                        "dataSourceId": data_source.get("dataSourceId"),
-                        "name": data_source.get("name"),
-                        "description": data_source.get("description", ""),
-                        "status": data_source.get("status"),
-                        "s3Bucket": s3_config.get("bucket"),
-                        "s3Prefix": s3_config.get("prefix", ""),
-                        "createdAt": data_source.get("createdAt"),
-                        "updatedAt": data_source.get("updatedAt"),
-                    }
-                )
+                ds_metadata = DataSourceMetadata(**data_source)
+                data_sources.append(ds_metadata)
 
             # Check for more pages
             next_token = response.get("nextToken")
@@ -290,7 +278,7 @@ def get_available_data_sources(
     kb_id: str,
     repository_id: Optional[str] = None,
     bedrock_agent_client: Optional[Any] = None,
-) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+) -> List[DataSourceMetadata]:
     """
     Get all data sources for a Knowledge Base.
 
@@ -300,7 +288,7 @@ def get_available_data_sources(
         bedrock_agent_client: Optional boto3 bedrock-agent client
 
     Returns:
-        Tuple of (all_data_sources, empty_list)
+        List of DataSourceMetadata objects
 
     Raises:
         ValidationError: If KB doesn't exist or API call fails

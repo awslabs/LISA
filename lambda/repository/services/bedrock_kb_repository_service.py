@@ -247,7 +247,7 @@ class BedrockKBRepositoryService(RepositoryService):
 
         bedrock_config = self.repository.get("bedrockKnowledgeBaseConfig", {})
         # Support both field names for backward compatibility
-        kb_id = bedrock_config.get("bedrockKnowledgeBaseId") or bedrock_config.get("knowledgeBaseId")
+        kb_id = bedrock_config.get("knowledgeBaseId", bedrock_config.get("bedrockKnowledgeBaseId"))
 
         if not kb_id:
             raise ValueError(

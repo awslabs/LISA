@@ -302,7 +302,7 @@ class S3DocumentDiscoveryService:
     def _trigger_kb_sync(self, repository: Dict[str, Any], collection_id: str, document_count: int) -> None:
         """Trigger Bedrock KB sync for ingested documents."""
         bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
-        knowledge_base_id = bedrock_config.get("bedrockKnowledgeBaseId")
+        knowledge_base_id = bedrock_config.get("knowledgeBaseId", bedrock_config.get("bedrockKnowledgeBaseId"))
 
         if not knowledge_base_id:
             logger.warning("No knowledge base ID found, skipping KB sync")

@@ -268,7 +268,7 @@ def pipeline_ingest_documents(job: IngestionJob) -> None:
         logger.info(f"Starting batch ingestion for job {job.id}")
 
         # Check if this is an S3 discovery scan job (empty s3_paths)
-        if not job.s3_paths or len(job.s3_paths) == 0:
+        if not job.s3_paths:
             # Handle S3 bucket scanning for existing documents
             _handle_s3_discovery_scan(job)
             return
@@ -358,7 +358,7 @@ def _handle_s3_discovery_scan(job: IngestionJob) -> None:
         # Parse s3://bucket/prefix
         path_parts = job.s3_path.replace("s3://", "").split("/", 1)
         s3_bucket = path_parts[0]
-        s3_prefix = path_parts[1] if len(path_parts) > 1 and path_parts[1] else ""
+        s3_prefix = path_parts[1] if len(path_parts) > 1 else ""
 
         # Remove trailing slash from prefix if present
         if s3_prefix.endswith("/"):
@@ -451,9 +451,10 @@ def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
             data_sources = bedrock_config.get("dataSources", [])
             if data_sources:
                 first_data_source = data_sources[0]
-                collection_id = (
-                    first_data_source.get("id") if isinstance(first_data_source, dict) else first_data_source.id
-                )
+                if isinstance(first_data_source, dict):
+                    collection_id = first_data_source.get("id")
+                else:
+                    collection_id = getattr(first_data_source, "id", None)
             else:
                 # Try legacy single data source ID
                 collection_id = bedrock_config.get("bedrockKnowledgeDatasourceId")

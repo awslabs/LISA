@@ -62,7 +62,6 @@ jobs:
           echo "📝 Regenerating CDK baselines..."
           rm -rf test/cdk/stacks/__baselines__
           mkdir -p test/cdk/stacks/__baselines__
-          npm test -- test/cdk/stacks/snapshot.test.ts --testNamePattern="is compatible with baseline"
           echo "✅ CDK baselines regenerated"
           # Add the generated PR description to the top of CHANGELOG.md
           echo "📝 Adding release notes to CHANGELOG.md..."

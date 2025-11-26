@@ -26,8 +26,9 @@ import { Roles } from '../../core/iam/roles';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { ILayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
-import { CodeFactory, VECTOR_STORE_DEPLOYER_DIST_PATH } from '../../util';
+import { CodeFactory, LAMBDA_PATH, VECTOR_STORE_DEPLOYER_DIST_PATH } from '../../util';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
+import { getDefaultRuntime } from '../../api-base/utils';
 
 export type VectorStoreCreatorStackProps = StackProps & BaseProps & {
     ragVectorStoreTable: CfnOutput;
@@ -176,13 +177,33 @@ export class VectorStoreCreatorStack extends Construct {
             securityGroups: [props.vpc.securityGroups.lambdaSg],
         });
 
+        // Create Lambda for Bedrock collection creation
+        const createBedrockCollectionFn = new lambda.Function(this, 'CreateBedrockCollectionFn', {
+            functionName: createCdkId([config.deploymentName, config.deploymentStage, 'create_bedrock_collection']),
+            runtime: getDefaultRuntime(),
+            handler: 'repository.lambda_functions.create_bedrock_collection',
+            code: lambda.Code.fromAsset(config.lambdaPath || LAMBDA_PATH),
+            timeout: Duration.minutes(5),
+            memorySize: 512,
+            role: lambdaExecutionRole,
+            environment: baseEnvironment,
+            vpc: vpc.vpc,
+            vpcSubnets: vpc.subnetSelection,
+            securityGroups: [vpc.securityGroups.lambdaSg],
+            layers: layers,
+        });
+
+        // Grant permissions
+        vectorStoreTable.grantReadWriteData(createBedrockCollectionFn);
+
         // Allow the state machine to invoke the deployer Lambda
         this.vectorStoreCreatorFn.grantInvoke(stateMachineRole);
+        createBedrockCollectionFn.grantInvoke(stateMachineRole);
 
         // Minimal policies for state machine role
         stateMachineRole.addToPolicy(new iam.PolicyStatement({
             actions: ['lambda:InvokeFunction'],
-            resources: [this.vectorStoreCreatorFn.functionArn],
+            resources: [this.vectorStoreCreatorFn.functionArn, createBedrockCollectionFn.functionArn],
         }));
         stateMachineRole.addToPolicy(new iam.PolicyStatement({
             actions: ['cloudformation:DescribeStacks', 'cloudformation:DeleteStack'],
@@ -195,6 +216,7 @@ export class VectorStoreCreatorStack extends Construct {
 
         new CreateStoreStateMachine(this, 'CreateVectorStoreStateMachine', {
             config: props.config,
+            createBedrockCollectionFnArn: createBedrockCollectionFn.functionArn,
             executionRole: lambdaExecutionRole,
             parameterName: baseEnvironment['LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER'],
             role: stateMachineRole,

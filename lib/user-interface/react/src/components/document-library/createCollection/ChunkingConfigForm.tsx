@@ -36,14 +36,16 @@ export type ChunkingConfigFormProps = {
     setFields(values: { [key: string]: any }, method?: ModifyMethod): void;
     touchFields(fields: string[], method?: ModifyMethod): void;
     formErrors: any;
+    disabled?: boolean;
 };
 
 export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElement {
-    const { item, touchFields, setFields, formErrors } = props;
+    const { item, touchFields, setFields, formErrors, disabled = false } = props;
 
     // Chunking type options
     const chunkingTypeOptions = [
         { label: 'Fixed Size', value: ChunkingStrategyType.FIXED },
+        { label: 'None (No Chunking)', value: ChunkingStrategyType.NONE },
         // Future: { label: 'Semantic', value: ChunkingStrategyType.SEMANTIC },
         // Future: { label: 'Recursive', value: ChunkingStrategyType.RECURSIVE },
     ];
@@ -54,23 +56,32 @@ export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElemen
             <FormField
                 label='Chunking Type'
                 errorText={formErrors?.['chunkingStrategy.type'] || formErrors?.chunkingStrategy?.type}
-                description='How documents should be split into chunks'
+                description={disabled
+                    ? 'Chunking is managed by Bedrock Knowledge Base'
+                    : 'How documents should be split into chunks'}
             >
                 <Select
                     selectedOption={
-                        item?.type
-                            ? { label: 'Fixed Size', value: item.type }
-                            : { label: 'Fixed Size', value: ChunkingStrategyType.FIXED }
+                        item?.type === ChunkingStrategyType.NONE
+                            ? { label: 'None (No Chunking)', value: ChunkingStrategyType.NONE }
+                            : item?.type
+                                ? { label: 'Fixed Size', value: item.type }
+                                : { label: 'Fixed Size', value: ChunkingStrategyType.FIXED }
                     }
                     onChange={({ detail }) => {
                         if (detail.selectedOption.value === ChunkingStrategyType.FIXED) {
                             setFields({
                                 chunkingStrategy: createDefaultChunkingStrategy()
                             });
+                        } else if (detail.selectedOption.value === ChunkingStrategyType.NONE) {
+                            setFields({
+                                chunkingStrategy: { type: ChunkingStrategyType.NONE }
+                            });
                         }
                     }}
                     options={chunkingTypeOptions}
                     placeholder='Select chunking type'
+                    disabled={disabled}
                 />
             </FormField>
 
@@ -91,6 +102,7 @@ export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElemen
                                 });
                             }}
                             onBlur={() => touchFields(['chunkingStrategy.size'])}
+                            disabled={disabled}
                         />
                     </FormField>
 
@@ -108,6 +120,7 @@ export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElemen
                                 });
                             }}
                             onBlur={() => touchFields(['chunkingStrategy.overlap'])}
+                            disabled={disabled}
                         />
                     </FormField>
                 </>

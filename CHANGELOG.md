@@ -1,3 +1,67 @@
+# v6.0.0
+
+## Key Features
+
+### Improved MCP Server Deployment
+The MCP server deployment logic has been refactored to improve error handling and encapsulate the deployment process in a try-except block. This change ensures that any exceptions during the deployment are logged with event details for better debugging.
+
+**Backend:**
+- **create_mcp_server.py**: Improved error handling in stack polling by including event details in exceptions.
+- **create-mcp-server.ts**: Added error handling and event logging to the MCP server deployment process.
+
+### Disable Editing of Default Collections
+The collection management interface in the Bedrock Knowledge Base system has been updated to disable editing of default collections, including chunking settings.
+
+**Backend:**
+- **domain_objects.py**: Added validation constraints to the  model to enforce the new collection editing restrictions.
+
+**Frontend:**
+- **Co**: Disabled editing of default collections and chunking settings.
+
+### Dynamic Prompt Area
+The prompt area in the application has been modified to dynamically expand to accommodate larger prompts, improving the user experience.
+
+**Frontend:**
+- **prompt-area.component.ts**: Updated the prompt area to auto-expand from 2 rows to 20 rows when typing a large prompt.
+
+### Automated AI-powered Code Reviews
+A new GitHub Actions workflow has been introduced to enable automated AI-powered code reviews using AWS Bedrock models. This workflow triggers on pull requests and review comments, providing an extra layer of code quality assurance.
+
+**Workflow:**
+- **.github/workflows/code.ai-review.yml**: Configured the workflow to integrate with AWS Bedrock for AI-powered code reviews.
+
+### LISA MCP Stand-alone Feature
+A new stand-alone feature for LISA MCP has been added, providing users with the ability to manage their MCP (Managed Compute Platform) servers directly within the LISA application.
+
+**Backend:**
+- **create_mcp_server.py**: Fixed stack status check and updated error handling in the MCP server creation process.
+- **create-mcp-server.ts**: Implemented the MCP server creation functionality.
+
+**Frontend:**
+- **McpManagementComponent**: Introduced new UI components and workflows for MCP server management.
+
+### Centralized Management Key Constant
+A centralized constant for application management key naming has been introduced, improving maintainability and reducing the use of magic strings across the codebase.
+
+**Backend:**
+- **domain_objects.py**: Added a new constant for the management key suffix.
+
+## Key Changes
+- **Error Handling**: Improved error handling and event logging in the MCP server deployment process.
+- **Collection Management**: Disabled editing of default collections and chunking settings in the Bedrock Knowledge Base system.
+- **UI Enhancements**: Implemented dynamic prompt area expansion and improved UI consistency in the Topbar, ConfigurationComponent, and McpManagementComponent.
+- **Automated Reviews**: Introduced a new GitHub Actions workflow for automated AI-powered code reviews using AWS Bedrock.
+- **MCP Management**: Added a stand-alone feature for managing MCP servers within the LISA application.
+- **Maintenance**: Introduced a centralized constant for application management key naming to improve maintainability.
+
+## Acknowledgements
+* @121983012+jmharold
+* @bedanley
+* @dustinps
+* @evmann
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v5.4.0..v6.0.0
+
 # v5.4.0
 
 ## Key Features

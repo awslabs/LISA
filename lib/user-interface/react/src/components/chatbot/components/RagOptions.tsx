@@ -19,7 +19,7 @@ import { useEffect, useMemo, useState, useRef } from 'react';
 import { useGetAllModelsQuery } from '@/shared/reducers/model-management.reducer';
 import { IModel, ModelStatus, ModelType } from '@/shared/model/model-management.model';
 import { useListRagRepositoriesQuery, useListCollectionsQuery, RagCollectionConfig } from '@/shared/reducers/rag.reducer';
-import { VectorStoreStatus } from '#root/lib/schema';
+import { RagRepositoryType, VectorStoreStatus } from '#root/lib/schema';
 import { CollectionStatus } from '#root/lib/schema/collectionSchema';
 
 export type RagConfig = {
@@ -82,14 +82,21 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
             }));
     }, [collections]);
 
-    // Update useRag flag based on repository and embedding model availability
+    // Update useRag flag based on repository type and configuration
     useEffect(() => {
         const hasRepository = !!ragConfig?.repositoryId;
+        const hasCollection = !!ragConfig?.collection;
         const hasEmbeddingModel = !!ragConfig?.embeddingModel;
-        setUseRag(hasRepository && hasEmbeddingModel);
-    }, [ragConfig?.repositoryId, ragConfig?.embeddingModel, setUseRag]);
-
-    // Effect for handling repository changes and default embedding model selection
+        const isBedrockRepo = ragConfig?.repositoryType === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE;
+        // For Bedrock repositories: require both repository AND collection
+        // For non-Bedrock repositories: require repository AND embedding model (or collection as alternative)
+        if (isBedrockRepo) {
+            setUseRag(hasRepository && hasCollection);
+        } else {
+            setUseRag(hasRepository && (hasEmbeddingModel || hasCollection));
+        }
+    }, [ragConfig?.repositoryId, ragConfig?.repositoryType, ragConfig?.collection, ragConfig?.embeddingModel, setUseRag]);
+    // Effect for handling repository changes, default collection, and default embedding model selection
     useEffect(() => {
         const currentRepositoryId = ragConfig?.repositoryId;
         const repositoryHasChanged = currentRepositoryId !== lastRepositoryIdRef.current;
@@ -100,10 +107,27 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
             setUserHasSelectedCollection(false);
         }
 
-        // Set default embedding model when no collection is selected
         if (currentRepositoryId && filteredRepositories && allModels && !userHasSelectedCollection) {
             const repository = filteredRepositories.find((repo) => repo.repositoryId === currentRepositoryId);
+            const isNonBedrockRepo = repository?.type !== RagRepositoryType.BEDROCK_KNOWLEDGE_BASE;
 
+            // For non-bedrock repositories, auto-select the first available collection if it exists
+            if (isNonBedrockRepo && collections && collections.length > 0 && !ragConfig?.collection) {
+                const activeCollections = collections.filter((c) => c.status === CollectionStatus.ACTIVE);
+                if (activeCollections.length > 0) {
+                    const defaultCollection = activeCollections[0];
+                    const embeddingModel = allModels.find((model) => model.modelId === defaultCollection.embeddingModel);
+
+                    setRagConfig((config) => ({
+                        ...config,
+                        collection: defaultCollection,
+                        embeddingModel: embeddingModel,
+                    }));
+                    return;
+                }
+            }
+
+            // Set default embedding model when no collection is selected
             if (repository?.embeddingModelId && !ragConfig?.collection) {
                 const defaultModel = allModels.find((model) => model.modelId === repository.embeddingModelId);
 
@@ -121,6 +145,7 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
         ragConfig?.embeddingModel,
         filteredRepositories,
         allModels,
+        collections,
         userHasSelectedCollection,
         setRagConfig
     ]);
@@ -214,7 +239,7 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
                     statusType={isLoadingCollections ? 'loading' : 'finished'}
                     loadingText='Loading collections...'
                     placeholder='Select a collection (optional)'
-                    empty={<div className='text-gray-500'>No collections available. Using repository default.</div>}
+                    empty={<div className='text-gray-500'>No collections available.</div>}
                     filteringType='auto'
                     value={selectedCollectionOption}
                     enteredTextLabel={(text) => `Use: "${text}"`}

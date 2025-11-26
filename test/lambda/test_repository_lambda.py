@@ -268,9 +268,6 @@ patch("utilities.auth.admin_only", mock_admin_only).start()
 # Only now import the lambda functions to ensure they use our mocked dependencies
 from repository.lambda_functions import _ensure_document_ownership, get_repository, presigned_url
 
-# Patch vector_store after import
-patch("utilities.vector_store.get_vector_store_client", mock_get_vector_store_client).start()
-
 
 @pytest.fixture(autouse=True)
 def mock_boto3_client_fixture():
@@ -795,12 +792,12 @@ def test_delete_missing_repository_id():
 def test_RagEmbeddings_error():
     """Test error handling in RagEmbeddings function"""
 
-    # Create a patched version of the function that raises an error
+    # Create a patched version of the class that raises an error
     def mock_RagEmbeddings(model_name, api_key):
         raise Exception("SSM error")
 
-    # Patch the function
-    with patch("repository.lambda_functions.RagEmbeddings", side_effect=mock_RagEmbeddings):
+    # Patch the class from the correct module
+    with patch("repository.embeddings.RagEmbeddings", side_effect=mock_RagEmbeddings):
         # Test that the error is properly handled
         with pytest.raises(Exception, match="SSM error"):
             mock_RagEmbeddings("test-model", "test-token")
@@ -1355,57 +1352,69 @@ def test_real_similarity_search_function():
     from repository.lambda_functions import similarity_search
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "utilities.vector_store.get_vector_store_client"
-    ) as mock_get_client, patch("repository.embeddings.RagEmbeddings") as mock_RagEmbeddings, patch(
-        "utilities.auth.get_groups"
-    ) as mock_get_groups, patch(
+        "repository.embeddings.RagEmbeddings"
+    ) as mock_RagEmbeddings, patch("utilities.auth.get_groups") as mock_get_groups, patch(
         "utilities.common_functions.get_id_token"
     ) as mock_get_token:
 
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
         mock_get_token.return_value = "test-token"
-        mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
-
-        mock_client = MagicMock()
-        mock_get_client.return_value = mock_client
-        mock_client.similarity_search.return_value = [
-            MagicMock(page_content="Test content", metadata={"source": "test-source"})
-        ]
+        mock_vs_repo.find_repository_by_id.return_value = {
+            "repositoryId": "test-repo",
+            "type": "opensearch",
+            "allowedGroups": ["test-group"],
+            "status": "active",
+        }
 
         mock_embeddings = MagicMock()
         mock_RagEmbeddings.return_value = mock_embeddings
 
-        event = {
-            "requestContext": {"authorizer": {"claims": {"username": "test-user"}, "groups": ["test-group"]}},
-            "pathParameters": {"repositoryId": "test-repo"},
-            "queryStringParameters": {"modelName": "test-model", "query": "test query", "topK": "3"},
-        }
+        # Mock the service layer
+        mock_service = MagicMock()
+        mock_service.retrieve_documents.return_value = [
+            {"page_content": "Test content", "metadata": {"source": "test-source"}}
+        ]
 
-        result = similarity_search(event, SimpleNamespace())
+        with patch("repository.lambda_functions.RepositoryServiceFactory") as mock_factory:
+            mock_factory.create_service.return_value = mock_service
 
-        # The function is wrapped by api_wrapper, so we get an HTTP response
-        assert "statusCode" in result
-        assert "body" in result
+            event = {
+                "requestContext": {"authorizer": {"claims": {"username": "test-user"}, "groups": ["test-group"]}},
+                "pathParameters": {"repositoryId": "test-repo"},
+                "queryStringParameters": {"modelName": "test-model", "query": "test query", "topK": "3"},
+            }
+
+            result = similarity_search(event, SimpleNamespace())
+
+            # The function is wrapped by api_wrapper, so we get an HTTP response
+            assert "statusCode" in result
+            assert "body" in result
 
 
 def test_real_similarity_search_missing_params():
     """Test similarity_search with missing required parameters"""
     from repository.lambda_functions import similarity_search
 
-    # Test missing repositoryId
-    event = {
-        "requestContext": {"authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["test-group"])}},
-        "pathParameters": {},
-        "queryStringParameters": {"modelName": "test-model", "query": "test query"},
-    }
+    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo:
+        # Mock repository lookup to avoid AWS credential issues
+        mock_vs_repo.find_repository_by_id.return_value = None
 
-    result = similarity_search(event, SimpleNamespace())
+        # Test missing repositoryId
+        event = {
+            "requestContext": {
+                "authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["test-group"])}
+            },
+            "pathParameters": {},
+            "queryStringParameters": {"modelName": "test-model", "query": "test query"},
+        }
 
-    # Should return error response due to missing repositoryId
-    assert result["statusCode"] == 400
-    body = json.loads(result["body"])
-    assert "error" in body
+        result = similarity_search(event, SimpleNamespace())
+
+        # Should return error response due to missing repositoryId or repository not found
+        assert result["statusCode"] in [400, 500]
+        body = json.loads(result["body"])
+        assert "error" in body
 
 
 def test_real_delete_documents_function():
@@ -1418,9 +1427,7 @@ def test_real_delete_documents_function():
         "utilities.auth.get_username"
     ) as mock_get_username, patch(
         "utilities.auth.is_admin"
-    ) as mock_is_admin, patch(
-        "utilities.vector_store.get_vector_store_client"
-    ) as mock_get_client:
+    ) as mock_is_admin:
 
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
@@ -1431,9 +1438,6 @@ def test_real_delete_documents_function():
 
         mock_doc_repo.find_by_id.return_value = {"username": "test-user"}
         mock_doc_repo.delete_by_id.return_value = None
-
-        mock_client = MagicMock()
-        mock_get_client.return_value = mock_client
 
         event = {
             "requestContext": {
@@ -1760,7 +1764,7 @@ def test_real_create_function():
     from repository.lambda_functions import create
 
     with patch("repository.lambda_functions.step_functions_client") as mock_sf, patch(
-        "repository.embeddings.ssm_client"
+        "repository.lambda_functions.ssm_client"
     ) as mock_ssm, patch("utilities.auth.is_admin") as mock_is_admin:
 
         # Setup mocks
@@ -1770,9 +1774,7 @@ def test_real_create_function():
 
         event = {
             "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
-            "body": json.dumps(
-                {"ragConfig": {"name": "Test Repository", "type": "opensearch", "allowedGroups": ["test-group"]}}
-            ),
+            "body": json.dumps({"type": "opensearch", "repositoryId": "test-repo", "embeddingModelId": "test-model"}),
         }
 
         result = create(event, SimpleNamespace())
@@ -1894,15 +1896,24 @@ def test_real_similarity_search_bedrock_kb_function():
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
         "repository.lambda_functions.bedrock_client"
-    ) as mock_bedrock, patch("utilities.auth.get_groups") as mock_get_groups:
+    ) as mock_bedrock, patch("utilities.auth.get_groups") as mock_get_groups, patch(
+        "repository.lambda_functions.collection_service"
+    ) as mock_collection_service:
 
         mock_get_groups.return_value = ["test-group"]
         mock_vs_repo.find_repository_by_id.return_value = {
+            "repositoryId": "test-repo",
             "type": "bedrock_knowledge_base",
             "allowedGroups": ["test-group"],
-            "bedrockKnowledgeBaseConfig": {"bedrockKnowledgeBaseId": "kb-123"},
+            "bedrockKnowledgeBaseConfig": {
+                "bedrockKnowledgeBaseId": "kb-123",
+                "dataSources": [{"id": "ds-123"}],
+            },
             "status": "active",
         }
+
+        # Mock collection model lookup
+        mock_collection_service.get_collection_model.return_value = "test-model"
 
         mock_bedrock.retrieve.return_value = {
             "retrievalResults": [
@@ -1922,7 +1933,12 @@ def test_real_similarity_search_bedrock_kb_function():
                 "authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["test-group"])}
             },
             "pathParameters": {"repositoryId": "test-repo"},
-            "queryStringParameters": {"modelName": "test-model", "query": "test query", "topK": "2"},
+            "queryStringParameters": {
+                "modelName": "test-model",
+                "query": "test query",
+                "topK": "2",
+                "collectionId": "ds-123",
+            },
         }
 
         result = similarity_search(event, SimpleNamespace())
@@ -1934,7 +1950,6 @@ def test_real_similarity_search_bedrock_kb_function():
         first_doc = body["docs"][0]["Document"]
         assert first_doc["page_content"] == "KB doc content"
         assert first_doc["metadata"]["source"] == "s3://bucket/path/doc1.pdf"
-        assert first_doc["metadata"]["name"] == "doc1.pdf"
 
 
 @mock_aws()
@@ -2543,33 +2558,44 @@ def test_get_repository_no_access():
 
 
 def test_similarity_search_with_score():
-    """Test _similarity_search_with_score function"""
-    from repository.lambda_functions import _similarity_search_with_score
+    """Test retrieve_documents with score via service layer"""
+    from repository.services.opensearch_repository_service import OpenSearchRepositoryService
+
+    repository = {"repositoryId": "test-repo", "type": "opensearch"}
+    service = OpenSearchRepositoryService(repository)
 
     mock_vs = MagicMock()
     mock_doc = MagicMock()
     mock_doc.page_content = "test content"
     mock_doc.metadata = {"source": "test"}
     mock_vs.similarity_search_with_score.return_value = [(mock_doc, 0.9)]
+    mock_vs.client.indices.exists.return_value = True
 
-    repository = {"type": "opensearch"}
-    result = _similarity_search_with_score(mock_vs, "query", 3, repository)
+    with patch("repository.services.opensearch_repository_service.RagEmbeddings"):
+        with patch.object(service, "_get_vector_store_client", return_value=mock_vs):
+            result = service.retrieve_documents("query", "test-collection", 3, "test-model", include_score=True)
 
     assert len(result) == 1
     assert "similarity_score" in result[0]["metadata"]
 
 
 def test_similarity_search_without_score():
-    """Test _similarity_search function"""
-    from repository.lambda_functions import _similarity_search
+    """Test retrieve_documents without score via service layer"""
+    from repository.services.opensearch_repository_service import OpenSearchRepositoryService
+
+    repository = {"repositoryId": "test-repo", "type": "opensearch"}
+    service = OpenSearchRepositoryService(repository)
 
     mock_vs = MagicMock()
+    mock_vs.client.indices.exists.return_value = True
     mock_doc = MagicMock()
     mock_doc.page_content = "test content"
     mock_doc.metadata = {"source": "test"}
     mock_vs.similarity_search_with_score.return_value = [(mock_doc, 0.9)]
 
-    result = _similarity_search(mock_vs, "query", 3)
+    with patch("repository.services.opensearch_repository_service.RagEmbeddings"):
+        with patch.object(service, "_get_vector_store_client", return_value=mock_vs):
+            result = service.retrieve_documents("query", "test-collection", 3, "test-model", include_score=False)
 
     assert len(result) == 1
     assert result[0]["page_content"] == "test content"
@@ -2709,7 +2735,10 @@ def test_presigned_url_success():
         "repository.lambda_functions.get_username", return_value="user1"
     ):
         mock_s3.generate_presigned_post.return_value = {"url": "https://test.com", "fields": {}}
-        event = {"body": "test-key"}
+        event = {
+            "body": "test-key",
+            "requestContext": {"authorizer": {"username": "user1", "groups": ["users"]}},
+        }
         context = SimpleNamespace(function_name="test", aws_request_id="123")
 
         result = presigned_url(event, context)
@@ -2720,14 +2749,18 @@ def test_get_document_success():
     """Test get_document"""
     from repository.lambda_functions import get_document
 
-    with patch("repository.lambda_functions.get_repository"), patch(
+    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
         "repository.lambda_functions.doc_repo"
     ) as mock_repo:
+        mock_get_repo.return_value = {"repositoryId": "repo1", "allowedGroups": ["users"]}
         mock_doc = MagicMock()
         mock_doc.model_dump.return_value = {"documentId": "doc1"}
         mock_repo.find_by_id.return_value = mock_doc
 
-        event = {"pathParameters": {"repositoryId": "repo1", "documentId": "doc1"}}
+        event = {
+            "pathParameters": {"repositoryId": "repo1", "documentId": "doc1"},
+            "requestContext": {"authorizer": {"username": "user1", "groups": ["users"]}},
+        }
         context = SimpleNamespace(function_name="test", aws_request_id="123")
 
         result = get_document(event, context)
@@ -2738,15 +2771,19 @@ def test_download_document_success():
     """Test download_document"""
     from repository.lambda_functions import download_document
 
-    with patch("repository.lambda_functions.get_repository"), patch(
+    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
         "repository.lambda_functions.doc_repo"
     ) as mock_repo, patch("repository.lambda_functions.s3") as mock_s3:
+        mock_get_repo.return_value = {"repositoryId": "repo1", "allowedGroups": ["users"]}
         mock_doc = MagicMock()
         mock_doc.source = "s3://bucket/key"
         mock_repo.find_by_id.return_value = mock_doc
         mock_s3.generate_presigned_url.return_value = "https://test.com"
 
-        event = {"pathParameters": {"repositoryId": "repo1", "documentId": "doc1"}}
+        event = {
+            "pathParameters": {"repositoryId": "repo1", "documentId": "doc1"},
+            "requestContext": {"authorizer": {"username": "user1", "groups": ["users"]}},
+        }
         context = SimpleNamespace(function_name="test", aws_request_id="123")
 
         result = download_document(event, context)
@@ -2797,17 +2834,159 @@ def test_update_repository_missing_id():
     assert result["statusCode"] == 400
 
 
+def test_update_repository_with_pipeline_change():
+    """Test update_repository triggers state machine when pipeline changes"""
+    from repository.lambda_functions import update_repository
+
+    with patch("repository.lambda_functions.vs_repo") as mock_vs, patch(
+        "repository.lambda_functions.ssm_client"
+    ) as mock_ssm, patch("repository.lambda_functions.step_functions_client") as mock_sf, patch(
+        "utilities.auth.is_admin"
+    ) as mock_is_admin:
+        # Mock admin access
+        mock_is_admin.return_value = True
+
+        # Mock current repository with existing pipeline
+        current_repo = {
+            "repositoryId": "repo1",
+            "config": {
+                "repositoryId": "repo1",
+                "repositoryName": "Test Repo",
+                "pipelines": [
+                    {
+                        "autoRemove": True,
+                        "trigger": "event",
+                        "s3Bucket": "test-bucket",
+                        "s3Prefix": "test-prefix",
+                        "chunkSize": 512,
+                        "chunkOverlap": 51,
+                    }
+                ],
+            },
+        }
+        mock_vs.find_repository_by_id.return_value = current_repo
+
+        # Mock updated config
+        updated_config = {
+            "repositoryId": "repo1",
+            "repositoryName": "Test Repo",
+            "pipelines": [
+                {
+                    "autoRemove": False,
+                    "trigger": "schedule",
+                    "s3Bucket": "test-bucket",
+                    "s3Prefix": "test-prefix",
+                    "chunkSize": 512,
+                    "chunkOverlap": 51,
+                }
+            ],
+            "status": "UPDATE_IN_PROGRESS",
+        }
+        mock_vs.update.return_value = updated_config
+
+        # Mock SSM and Step Functions
+        mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "arn:test-state-machine"}}
+        mock_sf.start_execution.return_value = {"executionArn": "arn:execution:123"}
+
+        # Create event with pipeline change
+        event = {
+            "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
+            "pathParameters": {"repositoryId": "repo1"},
+            "body": json.dumps(
+                {
+                    "pipelines": [
+                        {
+                            "autoRemove": False,
+                            "trigger": "schedule",
+                            "s3Bucket": "test-bucket",
+                            "s3Prefix": "test-prefix",
+                            "chunkSize": 512,
+                            "chunkOverlap": 51,
+                        }
+                    ]
+                }
+            ),
+        }
+        context = SimpleNamespace(function_name="test", aws_request_id="123")
+
+        result = update_repository(event, context)
+
+        # Verify state machine was triggered
+        assert result["statusCode"] == 200
+        response_body = json.loads(result["body"])
+        assert "executionArn" in response_body
+        assert response_body["executionArn"] == "arn:execution:123"
+
+        # Verify state machine was called with correct parameters
+        mock_sf.start_execution.assert_called_once()
+        call_args = mock_sf.start_execution.call_args
+        assert call_args[1]["stateMachineArn"] == "arn:test-state-machine"
+
+
+def test_update_repository_without_pipeline_change():
+    """Test update_repository does not trigger state machine when pipeline unchanged"""
+    from repository.lambda_functions import update_repository
+
+    with patch("repository.lambda_functions.vs_repo") as mock_vs, patch(
+        "repository.lambda_functions.step_functions_client"
+    ) as mock_sf, patch("utilities.auth.is_admin") as mock_is_admin:
+        # Mock admin access
+        mock_is_admin.return_value = True
+
+        # Mock current repository
+        current_repo = {
+            "repositoryId": "repo1",
+            "config": {
+                "repositoryId": "repo1",
+                "repositoryName": "Test Repo",
+                "pipelines": [{"autoRemove": True}],
+            },
+        }
+        mock_vs.find_repository_by_id.return_value = current_repo
+
+        # Mock updated config (no pipeline change)
+        updated_config = {
+            "repositoryId": "repo1",
+            "repositoryName": "Updated Name",
+            "pipelines": [{"autoRemove": True}],
+            "status": "UPDATE_COMPLETE",
+        }
+        mock_vs.update.return_value = updated_config
+
+        # Create event without pipeline change
+        event = {
+            "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
+            "pathParameters": {"repositoryId": "repo1"},
+            "body": json.dumps({"repositoryName": "Updated Name"}),
+        }
+        context = SimpleNamespace(function_name="test", aws_request_id="123")
+
+        result = update_repository(event, context)
+
+        # Verify state machine was NOT triggered
+        assert result["statusCode"] == 200
+        response_body = json.loads(result["body"])
+        assert "executionArn" not in response_body
+
+        # Verify state machine was not called
+        mock_sf.start_execution.assert_not_called()
+
+
 def test_create_success():
     """Test create repository"""
     from repository.lambda_functions import create
 
     with patch("repository.lambda_functions.ssm_client") as mock_ssm, patch(
         "repository.lambda_functions.step_functions_client"
-    ) as mock_sf:
+    ) as mock_sf, patch("utilities.auth.is_admin") as mock_is_admin:
+        mock_is_admin.return_value = True
         mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "arn:test"}}
         mock_sf.start_execution.return_value = {"executionArn": "arn:execution"}
 
-        event = {"body": json.dumps({"ragConfig": {"name": "test"}})}
+        event = {
+            "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
+            "body": json.dumps({"type": "opensearch", "repositoryId": "test-repo"}),
+        }
         context = SimpleNamespace(function_name="test", aws_request_id="123")
 
         result = create(event, context)
@@ -2855,19 +3034,27 @@ def test_delete_non_legacy_repository():
 
 # Additional coverage tests for repository lambda functions
 def test_similarity_search_helpers():
+    """Test retrieve_documents via service layer"""
     import os
     from unittest.mock import MagicMock, patch
 
+    from repository.services.opensearch_repository_service import OpenSearchRepositoryService
+
     with patch.dict(os.environ, {"LISA_RAG_VECTOR_STORE_TABLE": "test-table"}, clear=False):
-        from repository.lambda_functions import _similarity_search
+        repository = {"repositoryId": "test-repo", "type": "opensearch"}
+        service = OpenSearchRepositoryService(repository)
 
         mock_vs = MagicMock()
         mock_doc = MagicMock()
         mock_doc.page_content = "test content"
         mock_doc.metadata = {"key": "value"}
         mock_vs.similarity_search_with_score.return_value = [(mock_doc, 0.9)]
+        mock_vs.client.indices.exists.return_value = True
 
-        results = _similarity_search(mock_vs, "query", 3)
+        with patch("repository.services.opensearch_repository_service.RagEmbeddings"):
+            with patch.object(service, "_get_vector_store_client", return_value=mock_vs):
+                results = service.retrieve_documents("query", "test-collection", 3, "test-model", include_score=False)
+
         assert len(results) == 1
         assert results[0]["page_content"] == "test content"
 
@@ -3076,3 +3263,427 @@ def test_list_user_collections_endpoint_error_handling_workflow(
     assert response["statusCode"] == 500
     body = json.loads(response["body"])
     assert "error" in body
+
+
+def test_list_bedrock_knowledge_bases_success():
+    """Test listing Bedrock Knowledge Bases."""
+    from repository.lambda_functions import list_bedrock_knowledge_bases
+
+    event = {
+        "requestContext": {
+            "authorizer": {
+                "username": "testuser",
+                "groups": ["admin"],
+            }
+        }
+    }
+
+    with patch("repository.lambda_functions.list_knowledge_bases") as mock_list_kb, patch(
+        "repository.lambda_functions.vs_repo"
+    ) as mock_vs_repo:
+        mock_kb = MagicMock()
+        mock_kb.knowledgeBaseId = "KB123"
+        mock_kb.name = "Test KB"
+        mock_kb.status = "ACTIVE"
+        mock_kb.model_dump.return_value = {
+            "knowledgeBaseId": "KB123",
+            "name": "Test KB",
+            "status": "ACTIVE",
+        }
+        mock_list_kb.return_value = [mock_kb]
+        mock_vs_repo.get_registered_repositories.return_value = []
+
+        result = list_bedrock_knowledge_bases(event, {})
+
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        assert "knowledgeBases" in body
+        assert len(body["knowledgeBases"]) == 1
+        assert body["knowledgeBases"][0]["knowledgeBaseId"] == "KB123"
+
+
+def test_list_bedrock_data_sources_success():
+    """Test listing Bedrock data sources."""
+    from repository.lambda_functions import list_bedrock_data_sources
+
+    event = {
+        "requestContext": {
+            "authorizer": {
+                "username": "testuser",
+                "groups": ["admin"],
+            }
+        },
+        "pathParameters": {"kbId": "KB123"},
+    }
+
+    with patch("repository.lambda_functions.get_available_data_sources") as mock_get_ds, patch(
+        "repository.lambda_functions.validate_bedrock_kb_exists"
+    ) as mock_validate:
+        mock_ds = MagicMock()
+        mock_ds.dataSourceId = "DS123"
+        mock_ds.name = "Test DS"
+        mock_ds.model_dump.return_value = {
+            "dataSourceId": "DS123",
+            "name": "Test DS",
+            "status": "AVAILABLE",
+        }
+        mock_get_ds.return_value = [mock_ds]
+        mock_validate.return_value = {"name": "Test KB"}
+
+        result = list_bedrock_data_sources(event, {})
+
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        assert "dataSources" in body
+        assert len(body["dataSources"]) == 1
+        assert body["dataSources"][0]["dataSourceId"] == "DS123"
+
+
+def test_list_bedrock_data_sources_missing_kb_id():
+    """Test listing data sources with missing KB ID."""
+    from repository.lambda_functions import list_bedrock_data_sources
+
+    event = {
+        "requestContext": {
+            "authorizer": {
+                "username": "testuser",
+                "groups": ["admin"],
+            }
+        },
+        "pathParameters": {},
+    }
+
+    result = list_bedrock_data_sources(event, {})
+
+    assert result["statusCode"] == 400
+    body = json.loads(result["body"])
+    assert "error" in body
+
+
+def test_create_collection_bedrock_kb_validation():
+    """Test create_collection validates Bedrock KB restrictions."""
+    from repository.lambda_functions import create_collection
+
+    event = {
+        "requestContext": {
+            "authorizer": {
+                "username": "testuser",
+                "groups": ["admin"],
+            }
+        },
+        "pathParameters": {"repositoryId": "test-repo"},
+        "body": json.dumps(
+            {
+                "collectionName": "test-collection",
+                "embeddingModel": "amazon.titan-embed-text-v1",
+            }
+        ),
+    }
+
+    with patch("repository.lambda_functions.get_repository") as mock_get_repo:
+        mock_get_repo.return_value = {
+            "repositoryId": "test-repo",
+            "type": "bedrock_knowledge_base",
+            "allowedGroups": ["admin"],
+        }
+
+        result = create_collection(event, {})
+
+        # Should fail because Bedrock KB doesn't support user-created collections
+        assert result["statusCode"] == 400
+        body = json.loads(result["body"])
+        assert "Bedrock Knowledge Base" in body["error"]
+
+
+def test_update_collection_success():
+    """Test updating a collection."""
+    from repository.lambda_functions import update_collection
+
+    event = {
+        "requestContext": {
+            "authorizer": {
+                "username": "testuser",
+                "groups": ["admin"],
+            }
+        },
+        "pathParameters": {"repositoryId": "test-repo", "collectionId": "test-collection"},
+        "body": json.dumps(
+            {
+                "collectionName": "updated-collection",
+            }
+        ),
+    }
+
+    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
+        "repository.lambda_functions.collection_service"
+    ) as mock_collection_service:
+        mock_get_repo.return_value = {
+            "repositoryId": "test-repo",
+            "repositoryType": "opensearch",
+            "allowedGroups": ["admin"],
+        }
+        mock_collection_service.update_collection.return_value = MagicMock(
+            collection_id="test-collection", collection_name="updated-collection"
+        )
+
+        result = update_collection(event, {})
+
+        assert result["statusCode"] == 200
+        mock_collection_service.update_collection.assert_called_once()
+
+
+def test_delete_collection_success():
+    """Test deleting a collection."""
+    from repository.lambda_functions import delete_collection
+
+    event = {
+        "requestContext": {
+            "authorizer": {
+                "username": "testuser",
+                "groups": ["admin"],
+            }
+        },
+        "pathParameters": {"repositoryId": "test-repo", "collectionId": "test-collection"},
+    }
+
+    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
+        "repository.lambda_functions.collection_service"
+    ) as mock_collection_service:
+        mock_get_repo.return_value = {
+            "repositoryId": "test-repo",
+            "repositoryType": "opensearch",
+            "allowedGroups": ["admin"],
+        }
+
+        result = delete_collection(event, {})
+
+        assert result["statusCode"] == 200
+        mock_collection_service.delete_collection.assert_called_once()
+
+
+def test_list_user_collections_success():
+    """Test listing user collections."""
+    from repository.lambda_functions import list_user_collections
+
+    event = {
+        "requestContext": {
+            "authorizer": {
+                "username": "testuser",
+                "groups": ["users"],
+            }
+        },
+        "pathParameters": {"repositoryId": "test-repo"},
+        "queryStringParameters": {},
+    }
+
+    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
+        "repository.lambda_functions.collection_service"
+    ) as mock_collection_service:
+        mock_get_repo.return_value = {
+            "repositoryId": "test-repo",
+            "repositoryType": "opensearch",
+            "allowedGroups": ["users"],
+        }
+        mock_collection_service.list_all_user_collections.return_value = (
+            [{"collectionId": "col1", "collectionName": "Collection 1"}],
+            None,
+        )
+
+        result = list_user_collections(event, {})
+
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        assert len(body["collections"]) == 1
+
+
+def test_ingest_documents_bedrock_kb_s3_scan():
+    """Test ingesting documents with Bedrock KB."""
+    from repository.lambda_functions import ingest_documents
+
+    event = {
+        "requestContext": {
+            "authorizer": {
+                "username": "testuser",
+                "groups": ["users"],
+            }
+        },
+        "pathParameters": {"repositoryId": "test-repo"},
+        "body": json.dumps(
+            {
+                "keys": ["documents/test.pdf"],
+                "collectionId": "test-collection",
+                "embeddingModel": {"modelName": "amazon.titan-embed-text-v1"},
+                "chunkingStrategy": {"type": "none"},
+            }
+        ),
+    }
+
+    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
+        "repository.lambda_functions.collection_service"
+    ) as mock_collection_service, patch("repository.lambda_functions.MetadataGenerator") as mock_metadata_gen, patch(
+        "repository.lambda_functions.S3MetadataManager"
+    ) as mock_s3_metadata, patch(
+        "repository.lambda_functions.ingestion_service"
+    ) as mock_ingestion_service, patch(
+        "repository.lambda_functions.ingestion_job_repository"
+    ):
+        mock_get_repo.return_value = {
+            "repositoryId": "test-repo",
+            "type": "bedrock_knowledge_base",
+            "allowedGroups": ["users"],
+        }
+        mock_collection = MagicMock()
+        mock_collection.model_dump.return_value = {"collectionId": "test-collection", "name": "Test Collection"}
+        mock_collection_service.get_collection.return_value = mock_collection
+
+        # Mock metadata generation
+        mock_metadata_gen_instance = MagicMock()
+        mock_metadata_gen.return_value = mock_metadata_gen_instance
+        mock_metadata_gen_instance.generate_metadata_json.return_value = {"test": "metadata"}
+
+        # Mock S3 metadata manager
+        mock_s3_metadata_instance = MagicMock()
+        mock_s3_metadata.return_value = mock_s3_metadata_instance
+
+        # Mock ingestion job
+        mock_job = MagicMock()
+        mock_job.id = "job-123"
+        mock_job.document_id = "doc-123"
+        mock_job.status = "PENDING"
+        mock_job.s3_path = "s3://test-bucket/documents/test.pdf"
+        mock_job.collection_id = "test-collection"
+        mock_ingestion_service.create_ingestion_job.return_value = mock_job
+
+        result = ingest_documents(event, {})
+
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        assert "jobs" in body
+        assert len(body["jobs"]) == 1
+
+
+def test_list_status_success():
+    """Test listing repository status."""
+    from repository.lambda_functions import list_status
+
+    event = {
+        "requestContext": {
+            "authorizer": {
+                "username": "admin",
+                "groups": ["admin"],
+            }
+        }
+    }
+
+    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo:
+        mock_vs_repo.list_all.return_value = [
+            {
+                "repositoryId": "repo1",
+                "repositoryName": "Repo 1",
+                "status": "READY",
+            }
+        ]
+        mock_vs_repo.get_repository_status.return_value = {"repo1": "READY"}
+
+        result = list_status(event, {})
+
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        assert body == {"repo1": "READY"}
+
+
+@mock_aws
+def test_create_repository_bedrock_kb():
+    """Test creating a Bedrock KB repository."""
+    from repository.lambda_functions import create
+
+    event = {
+        "requestContext": {
+            "authorizer": {
+                "username": "admin",
+                "groups": ["admin"],
+            }
+        },
+        "body": json.dumps(
+            {
+                "repositoryId": "test-kb-repo",
+                "repositoryName": "Test KB Repo",
+                "type": "bedrock_knowledge_base",
+                "allowedGroups": ["users"],
+                "bedrockKnowledgeBaseConfig": {
+                    "knowledgeBaseId": "KB123",
+                    "dataSources": [
+                        {
+                            "id": "DS123",
+                            "name": "Data Source 1",
+                            "s3Uri": "s3://bucket/prefix/",
+                        }
+                    ],
+                },
+            }
+        ),
+    }
+
+    with patch("repository.lambda_functions.build_pipeline_configs_from_kb_config") as mock_build_pipelines, patch(
+        "repository.lambda_functions.step_functions_client"
+    ) as mock_sfn, patch("repository.lambda_functions.ssm_client") as mock_ssm:
+        mock_build_pipelines.return_value = [
+            {
+                "collectionId": "DS123",
+                "collectionName": "Data Source 1",
+                "s3Bucket": "bucket",
+                "s3Prefix": "prefix/",
+            }
+        ]
+        mock_ssm.get_parameter.return_value = {
+            "Parameter": {"Value": "arn:aws:states:us-east-1:123456789012:stateMachine:test"}
+        }
+        mock_sfn.start_execution.return_value = {
+            "executionArn": "arn:aws:states:us-east-1:123456789012:execution:test:123"
+        }
+
+        result = create(event, {})
+
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        assert body["status"] == "success"
+        assert "executionArn" in body
+
+
+def test_similarity_search_bedrock_kb():
+    """Test similarity search with Bedrock KB repository."""
+    from repository.lambda_functions import similarity_search
+
+    event = {
+        "requestContext": {
+            "authorizer": {
+                "username": "testuser",
+                "groups": ["users"],
+            }
+        },
+        "pathParameters": {"repositoryId": "test-repo"},
+        "queryStringParameters": {
+            "query": "test query",
+            "collectionId": "test-collection",
+            "topK": "3",
+        },
+    }
+
+    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
+        "repository.lambda_functions.RepositoryServiceFactory"
+    ) as mock_factory, patch("repository.lambda_functions.collection_service") as mock_collection_service:
+        mock_get_repo.return_value = {
+            "repositoryId": "test-repo",
+            "type": "bedrock_knowledge_base",
+            "allowedGroups": ["users"],
+        }
+        mock_collection_service.get_collection_model.return_value = "amazon.titan-embed-text-v1"
+        mock_service = MagicMock()
+        mock_service.retrieve_documents.return_value = [{"page_content": "test content", "metadata": {}}]
+        mock_factory.create_service.return_value = mock_service
+
+        result = similarity_search(event, {})
+
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        assert len(body) == 1

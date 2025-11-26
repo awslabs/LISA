@@ -20,6 +20,7 @@ import logging
 import os
 import tempfile
 from contextvars import ContextVar
+from datetime import datetime
 from decimal import Decimal
 from functools import cache
 from typing import Any, Callable, cast, Dict, Optional, TypeVar, Union
@@ -166,7 +167,7 @@ def api_wrapper(f: F) -> F:
         logger.info(f"Lambda {lambda_func_name}({code_func_name}) invoked with {_sanitize_event(event)}")
         try:
             result = f(event, context)
-            return generate_html_response(200 if result else 204, result)
+            return generate_html_response(200, result)
         except Exception as e:
             return generate_exception_response(e)
 
@@ -213,6 +214,8 @@ class DecimalEncoder(json.JSONEncoder):
     def default(self, obj: Any) -> Any:
         if isinstance(obj, Decimal):
             return float(obj)
+        if isinstance(obj, datetime):
+            return obj.isoformat()
         return super().default(obj)
 
 

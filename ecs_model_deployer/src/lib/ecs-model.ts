@@ -21,7 +21,7 @@ import { Construct } from 'constructs';
 
 import { ECSCluster } from './ecsCluster';
 import { getModelIdentifier } from './utils';
-import { Ec2Metadata, EcsClusterConfig, EcsSourceType, PartialConfig } from '../../../lib/schema';
+import { APP_MANAGEMENT_KEY, Ec2Metadata, EcsClusterConfig, EcsSourceType, PartialConfig } from '../../../lib/schema';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 
 // This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,
@@ -106,7 +106,7 @@ export class EcsModel extends Construct {
             MODEL_NAME: modelConfig.modelName,
             LOCAL_CODE_PATH: modelConfig.localModelCode, // Only needed when s5cmd is used, but just keep for now
             AWS_REGION: config.region ?? '', // needed for s5cmd
-            MANAGEMENT_KEY_NAME: StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/managementKeySecretName`)
+            MANAGEMENT_KEY_NAME: StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/${APP_MANAGEMENT_KEY}`)
         };
 
         if (modelConfig.modelType === 'embedding') {

@@ -23,7 +23,7 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { getDefaultRuntime, registerAPIEndpoint } from '../api-base/utils';
-import { BaseProps } from '../schema';
+import { APP_MANAGEMENT_KEY, BaseProps } from '../schema';
 import { createCdkId, createLambdaRole } from '../core/utils';
 import { Vpc } from '../networking/vpc';
 import { LAMBDA_PATH } from '../util';
@@ -72,7 +72,7 @@ export class McpServerApi extends Construct {
         const lambdaLayers = [commonLambdaLayer, fastapiLambdaLayer];
 
         // Get management key name
-        const managementKeyName = StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/appManagementKeySecretName`);
+        const managementKeyName = StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/${APP_MANAGEMENT_KEY}`);
 
         const mcpServersTable = new dynamodb.Table(this, 'HostMcpServerTable', {
             partitionKey: {

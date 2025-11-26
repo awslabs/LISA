@@ -22,23 +22,22 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import boto3
 from models.domain_objects import (
-    CollectionMetadata,
     CollectionSortBy,
     CollectionStatus,
     IngestionJob,
     IngestionStatus,
+    IngestionType,
     JobActionType,
     RagCollectionConfig,
     SortOrder,
     SortParams,
-    VectorStoreStatus,
 )
 from repository.collection_repo import CollectionRepository
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
 from repository.rag_document_repo import RagDocumentRepository
+from repository.services import RepositoryServiceFactory
 from repository.vector_store_repo import VectorStoreRepository
-from utilities.repository_types import RepositoryType
 from utilities.validation import ValidationError
 
 logger = logging.getLogger(__name__)
@@ -76,11 +75,8 @@ class CollectionService:
             return True
         if collection.createdBy == username:
             return True
-        if require_write:
-            return False
 
-        # Private collections are only accessible to creator and admins
-        if collection.private:
+        if require_write:
             return False
 
         # Public collection (empty allowedGroups means accessible to all)
@@ -96,14 +92,12 @@ class CollectionService:
 
     def create_collection(
         self,
-        repository: dict,
         collection: RagCollectionConfig,
         username: str,
     ) -> RagCollectionConfig:
         """Create a new collection with name uniqueness validation.
 
         Args:
-            repository: Repository configuration dictionary
             collection: Collection configuration to create
             username: Username creating the collection
 
@@ -113,8 +107,6 @@ class CollectionService:
         Raises:
             ValidationError: If collection name already exists in repository
         """
-        if repository.get("type") is RepositoryType.BEDROCK_KB:
-            raise ValidationError(f"Unsupported repository type: {RepositoryType.BEDROCK_KB}")
 
         # Check if collection name already exists in this repository
         existing = self.collection_repo.find_by_name(collection.repositoryId, collection.name)
@@ -161,93 +153,41 @@ class CollectionService:
         page_size: int = 20,
         last_evaluated_key: Optional[Dict[str, str]] = None,
     ) -> Tuple[List[RagCollectionConfig], Optional[Dict[str, str]]]:
-        """List collections with access control."""
+        """List collections with access control.
+
+        For Bedrock KB repositories, default collections are persisted to the database
+        and will be included in the query results automatically.
+
+        For other repository types, a virtual default collection is generated if needed.
+        """
         collections, key = self.collection_repo.list_by_repository(
             repository_id, page_size=page_size, last_evaluated_key=last_evaluated_key
         )
         filtered = [c for c in collections if self.has_access(c, username, user_groups, is_admin)]
 
-        # On first page, check if default collection needs to be added
+        # On first page, check if virtual default collection needs to be added
+        # (only for non-Bedrock KB repositories)
         if not last_evaluated_key:
-            default_collection = self.create_default_collection(repository_id=repository_id)
-            if default_collection:
-                # Check if a collection with the default embedding model ID already exists
-                existing_ids = {c.collectionId for c in filtered}
-                if default_collection.collectionId not in existing_ids:
-                    filtered.append(default_collection)
+            repository = self.vector_store_repo.find_repository_by_id(repository_id)
+
+            # Only create virtual collection if repository supports it
+            if repository:
+                service = RepositoryServiceFactory.create_service(repository)
+                if service.should_create_default_collection():
+                    default_collection = service.create_default_collection()
+                    if default_collection:
+                        # Check if a collection with the default embedding model ID already exists
+                        existing_ids = {c.collectionId for c in filtered}
+                        if default_collection.collectionId not in existing_ids:
+                            filtered.append(default_collection)
 
         return filtered, key
-
-    def create_default_collection(
-        self, repository_id: str, repository: Optional[dict] = None
-    ) -> Optional[RagCollectionConfig]:
-        """
-        Create a virtual default collection for a repository.
-
-        This collection is not persisted to the database but represents the repository's
-        default embedding model configuration.
-
-        Args:
-            repository_id: Repository ID
-
-        Returns:
-            Default collection config or None if repository has no embedding model
-        """
-        try:
-            # Get repository configuration
-            repository = (
-                self.vector_store_repo.find_repository_by_id(repository_id=repository_id)
-                if repository is None
-                else repository
-            )
-            if not repository:
-                logger.warning(f"Repository {repository_id} not found")
-                return None
-
-            active = repository.get("status", VectorStoreStatus.UNKNOWN) in [
-                VectorStoreStatus.CREATE_COMPLETE,
-                VectorStoreStatus.UPDATE_COMPLETE,
-                VectorStoreStatus.UPDATE_COMPLETE_CLEANUP_IN_PROGRESS,
-                VectorStoreStatus.UPDATE_IN_PROGRESS,
-            ]
-            if not active:
-                logger.info(f"Repository {repository_id} is not active")
-                return None
-
-            embedding_model = repository.get("embeddingModelId")
-            if not embedding_model:
-                logger.info(f"Repository {repository_id} has no default embedding model")
-                return None
-
-            default_collection = RagCollectionConfig(
-                collectionId=embedding_model,  # Use embedding model name as collection ID
-                repositoryId=repository_id,
-                name=f"{repository_id}-{embedding_model}",
-                description="Default collection using repository's embedding model",
-                embeddingModel=embedding_model,
-                chunkingStrategy=repository.get("chunkingStrategy"),
-                allowedGroups=repository.get("allowedGroups", []),
-                createdBy=repository.get("createdBy", "system"),
-                status="ACTIVE",
-                private=False,
-                metadata=CollectionMetadata(tags=["default"], customFields={}),
-                allowChunkingOverride=True,
-                pipelines=[],
-                default=True,  # Mark as default collection
-            )
-
-            logger.info(f"Created virtual default collection for repository {repository_id}")
-            return default_collection
-
-        except Exception as e:
-            logger.error(f"Failed to create default collection for repository {repository_id}: {e}")
-            return None
 
     def update_collection(
         self,
         collection_id: str,
         repository_id: str,
-        request: Any,
+        collection_data: Any,
         username: str,
         user_groups: List[str],
         is_admin: bool,
@@ -281,17 +221,28 @@ class CollectionService:
             "chunkingStrategy",
             "allowedGroups",
             "metadata",
-            "private",
             "allowChunkingOverride",
             "pipelines",
         ]
 
         # Build updates dictionary from request
         updates = {
-            field: getattr(request, field)
+            field: getattr(collection_data, field)
             for field in updatable_fields
-            if hasattr(request, field) and getattr(request, field) is not None
+            if hasattr(collection_data, field) and getattr(collection_data, field) is not None
         }
+
+        # For default collections, prevent changing immutable fields
+        if collection.default:
+            # Prevent changing default status or data source ID
+            if hasattr(collection_data, "default") and collection_data.default != collection.default:
+                raise ValidationError("Cannot change default status of a default collection")
+            if hasattr(collection_data, "dataSourceId") and collection_data.dataSourceId != collection.dataSourceId:
+                raise ValidationError("Cannot change data source ID of a default collection")
+
+            # Remove these fields from updates if present
+            updates.pop("default", None)
+            updates.pop("dataSourceId", None)
 
         # Special validation for name changes
         if "name" in updates and updates["name"] != collection.name:
@@ -356,6 +307,23 @@ class CollectionService:
             # For default collections, use embedding_name directly
             embedding_model = embedding_name
 
+        # Get document counts by ingestion type for summary
+        try:
+            all_docs, _, _ = self.document_repo.list_all(
+                repository_id=repository_id,
+                collection_id=collection_id if not is_default_collection else embedding_name,
+                limit=10000,  # Get all documents for accurate count
+            )
+
+            lisa_managed_count = sum(
+                1 for d in all_docs if d.ingestion_type in [IngestionType.MANUAL, IngestionType.AUTO]
+            )
+            user_managed_count = sum(1 for d in all_docs if d.ingestion_type == IngestionType.EXISTING)
+        except Exception as e:
+            logger.warning(f"Failed to get document counts: {e}")
+            lisa_managed_count = None
+            user_managed_count = None
+
         # Create deletion job
         try:
             ingestion_job_repo = IngestionJobRepository()
@@ -378,11 +346,24 @@ class CollectionService:
 
             logger.info(f"Submitted {deletion_type} deletion job {deletion_job.id} " f"for repository {repository_id}")
 
-            return {
+            response = {
                 "jobId": deletion_job.id,
                 "deletionType": deletion_type,
                 "status": deletion_job.status,
             }
+
+            # Add summary if counts available
+            if lisa_managed_count is not None and user_managed_count is not None:
+                response["summary"] = {
+                    "lisaManagedDocuments": lisa_managed_count,
+                    "userManagedDocuments": user_managed_count,
+                    "action": (
+                        "LISA-managed documents (MANUAL/AUTO) will be deleted, "
+                        "user-managed documents (EXISTING) preserved"
+                    ),
+                }
+
+            return response
 
         except Exception as e:
             logger.error(f"Failed to submit deletion job: {e}", exc_info=True)
@@ -441,51 +422,19 @@ class CollectionService:
         Returns:
             Embedding model name from collection or repository default
         """
-        try:
-            collection = self.collection_repo.find_by_id(collection_id, repository_id)
-            if collection.embeddingModel:
-                return collection.embeddingModel
-        except ValidationError as e:
-            logger.warning(f"Failed to get collection '{collection_id}': {e}, using repository default")
+        if collection_id:
+            try:
+                collection = self.collection_repo.find_by_id(collection_id, repository_id)
+                if collection and collection.embeddingModel:
+                    return collection.embeddingModel
+            except ValidationError:
+                # Collection not found, fall back to repository default
+                pass
 
+        # Fall back to repository default embedding model
         repository = self.vector_store_repo.find_repository_by_id(repository_id)
         embedding_model_id = repository.get("embeddingModelId")
         return str(embedding_model_id) if embedding_model_id is not None else None
-
-    def get_collection_metadata(
-        self,
-        repository: VectorStoreRepository,
-        collection: RagCollectionConfig,
-        metadata: Optional[CollectionMetadata] = None,
-    ) -> Dict[str, Any]:
-        """Get collection metadata with merges from repository."""
-        merged_metadata: Dict[str, Any] = {}
-
-        # Repository metadata
-        repo_metadata = repository.get("metadata") if isinstance(repository, dict) else None
-        if repo_metadata:
-            if isinstance(repo_metadata, CollectionMetadata):
-                merged_metadata.update(repo_metadata.customFields)
-            elif isinstance(repo_metadata, dict):
-                merged_metadata.update(repo_metadata)
-
-        # Collection metadata
-        if collection:
-            coll_metadata = collection.get("metadata") if isinstance(collection, dict) else collection.metadata
-            if coll_metadata:
-                if isinstance(coll_metadata, CollectionMetadata):
-                    merged_metadata.update(coll_metadata.customFields)
-                elif isinstance(coll_metadata, dict):
-                    merged_metadata.update(coll_metadata)
-
-        # Passed metadata
-        if metadata:
-            if isinstance(metadata, CollectionMetadata):
-                merged_metadata.update(metadata.customFields)
-            elif isinstance(metadata, dict):
-                merged_metadata.update(metadata)
-
-        return merged_metadata
 
     def list_all_user_collections(
         self,
@@ -719,7 +668,10 @@ class CollectionService:
                 accessible = [c for c in collections if self.has_access(c, username, user_groups, is_admin)]
 
                 # Check if default collection needs to be added
-                default_collection = self.create_default_collection(repo_id, repo)
+                service = RepositoryServiceFactory.create_service(repo)
+                default_collection = (
+                    service.create_default_collection() if service.should_create_default_collection() else None
+                )
                 if default_collection:
                     # Check if a collection with the default embedding model ID already exists
                     existing_ids = {c.collectionId for c in accessible}
@@ -897,12 +849,14 @@ class CollectionService:
 
                 # On first fetch for this repository, check if default collection needs to be added
                 if not cursor["lastEvaluatedKey"]:
-                    default_collection = self.create_default_collection(repo_id, repo)
-                    if default_collection:
-                        # Check if we've seen a collection with the default embedding model ID
-                        if default_collection.collectionId not in seen_collection_ids[repo_id]:
-                            accessible.append(default_collection)
-                            seen_collection_ids[repo_id].add(default_collection.collectionId)
+                    service = RepositoryServiceFactory.create_service(repo)
+                    if service.should_create_default_collection():
+                        default_collection = service.create_default_collection()
+                        if default_collection:
+                            # Check if we've seen a collection with the default embedding model ID
+                            if default_collection.collectionId not in seen_collection_ids[repo_id]:
+                                accessible.append(default_collection)
+                                seen_collection_ids[repo_id].add(default_collection.collectionId)
 
                 # Apply text filtering
                 if filter_text:

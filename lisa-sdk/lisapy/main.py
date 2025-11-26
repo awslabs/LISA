@@ -327,8 +327,8 @@ class LisaLlm(BaseModel):
         """Close session."""
         try:
             self._session.close()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(f"Error closing session during cleanup: {e}")
 
 
 """

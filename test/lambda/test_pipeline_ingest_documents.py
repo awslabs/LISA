@@ -30,6 +30,10 @@ def setup_env(monkeypatch):
     monkeypatch.setenv("AWS_REGION", "us-east-1")
     monkeypatch.setenv("RAG_DOCUMENT_TABLE", "test-doc-table")
     monkeypatch.setenv("RAG_SUB_DOCUMENT_TABLE", "test-subdoc-table")
+    monkeypatch.setenv("LISA_INGESTION_JOB_TABLE_NAME", "test-job-table")
+    monkeypatch.setenv("LISA_INGESTION_JOB_QUEUE_NAME", "test-queue")
+    monkeypatch.setenv("LISA_INGESTION_JOB_DEFINITION_NAME", "test-job-def")
+    monkeypatch.setenv("LISA_RAG_VECTOR_STORE_TABLE", "test-vector-store-table")
 
 
 def test_extract_chunk_strategy_new_format(setup_env):
@@ -120,12 +124,17 @@ def test_store_chunks_in_vectorstore(setup_env):
     texts = [f"text{i}" for i in range(1200)]
     metadatas = [{"id": i} for i in range(1200)]
 
+    mock_vs = Mock()
+    mock_vs.add_texts.return_value = ["id1", "id2"]
+
+    mock_service = Mock()
+    mock_service.get_vector_store_client.return_value = mock_vs
+
     with patch("repository.pipeline_ingest_documents.RagEmbeddings"), patch(
-        "repository.pipeline_ingest_documents.get_vector_store_client"
-    ) as mock_get_vs:
-        mock_vs = Mock()
-        mock_vs.add_texts.return_value = ["id1", "id2"]
-        mock_get_vs.return_value = mock_vs
+        "repository.pipeline_ingest_documents.VectorStoreRepository"
+    ) as mock_vs_repo, patch("repository.pipeline_ingest_documents.RepositoryServiceFactory") as mock_factory:
+        mock_vs_repo.return_value.find_repository_by_id.return_value = {"repositoryId": "repo1", "type": "opensearch"}
+        mock_factory.create_service.return_value = mock_service
 
         ids = store_chunks_in_vectorstore(texts, metadatas, "repo1", "col1", "model1")
 
@@ -140,46 +149,118 @@ def test_store_chunks_in_vectorstore_failure(setup_env):
     texts = ["text1"]
     metadatas = [{"id": 1}]
 
+    mock_vs = Mock()
+    mock_vs.add_texts.return_value = None
+
+    mock_service = Mock()
+    mock_service.get_vector_store_client.return_value = mock_vs
+
     with patch("repository.pipeline_ingest_documents.RagEmbeddings"), patch(
-        "repository.pipeline_ingest_documents.get_vector_store_client"
-    ) as mock_get_vs:
-        mock_vs = Mock()
-        mock_vs.add_texts.return_value = None
-        mock_get_vs.return_value = mock_vs
+        "repository.pipeline_ingest_documents.VectorStoreRepository"
+    ) as mock_vs_repo, patch("repository.pipeline_ingest_documents.RepositoryServiceFactory") as mock_factory:
+        mock_vs_repo.return_value.find_repository_by_id.return_value = {"repositoryId": "repo1", "type": "opensearch"}
+        mock_factory.create_service.return_value = mock_service
 
         with pytest.raises(Exception, match="Failed to store documents"):
             store_chunks_in_vectorstore(texts, metadatas, "repo1", "col1", "model1")
 
 
 def test_pipeline_ingest_bedrock_kb(setup_env):
-    """Test pipeline_ingest with Bedrock KB repository."""
-    from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus
+    """Test pipeline_ingest with Bedrock KB repository - only tracks documents."""
+    from models.domain_objects import IngestionJob, IngestionStatus, NoneChunkingStrategy
     from utilities.repository_types import RepositoryType
 
     job = IngestionJob(
         repository_id="repo1",
-        collection_id="col1",
-        s3_path="s3://bucket/key",
+        collection_id="ds-123",  # Data source ID
+        s3_path="s3://kb-bucket/document.pdf",
         embedding_model="model1",
-        username="user1",
-        chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
+        username="system",
+        chunk_strategy=NoneChunkingStrategy(),
     )
 
-    with patch("repository.pipeline_ingest_documents.vs_repo") as mock_vs_repo, patch(
-        "repository.pipeline_ingest_documents.ingest_document_to_kb"
-    ) as mock_ingest, patch("repository.pipeline_ingest_documents.rag_document_repository") as mock_doc_repo, patch(
-        "repository.pipeline_ingest_documents.ingestion_job_repository"
-    ):
+    bedrock_kb_repo = {
+        "type": RepositoryType.BEDROCK_KB,
+        "bedrockKnowledgeBaseConfig": {
+            "bedrockKnowledgeDatasourceS3Bucket": "kb-bucket",
+            "bedrockKnowledgeDatasourceId": "ds-123",
+        },
+    }
 
-        mock_vs_repo.find_repository_by_id.return_value = {"type": RepositoryType.BEDROCK_KB}
+    with patch("repository.pipeline_ingest_documents.vs_repo") as mock_vs_repo, patch(
+        "repository.pipeline_ingest_documents.rag_document_repository"
+    ) as mock_doc_repo, patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo:
+
+        mock_vs_repo.find_repository_by_id.return_value = bedrock_kb_repo
         mock_doc_repo.find_by_source.return_value = []
 
         from repository.pipeline_ingest_documents import pipeline_ingest
 
         pipeline_ingest(job)
 
-        mock_ingest.assert_called_once()
+        # For Bedrock KB, we only track the document, no chunking or embedding
         mock_doc_repo.save.assert_called_once()
+        mock_job_repo.save.assert_called()
+        assert job.status == IngestionStatus.INGESTION_COMPLETED
+
+
+def test_pipeline_ingest_bedrock_kb_copy_from_lisa_bucket(setup_env):
+    """Test pipeline_ingest with Bedrock KB repository - copies from LISA bucket to KB bucket."""
+    from models.domain_objects import IngestionJob, IngestionStatus, NoneChunkingStrategy
+    from utilities.repository_types import RepositoryType
+
+    job = IngestionJob(
+        repository_id="repo1",
+        collection_id="ds-123",  # Data source ID
+        s3_path="s3://lisa-bucket/document.pdf",  # Document in LISA bucket
+        embedding_model="model1",
+        username="user1",
+        chunk_strategy=NoneChunkingStrategy(),
+    )
+
+    bedrock_kb_repo = {
+        "type": RepositoryType.BEDROCK_KB,
+        "bedrockKnowledgeBaseConfig": {
+            "bedrockKnowledgeDatasourceS3Bucket": "kb-bucket",
+            "bedrockKnowledgeDatasourceId": "ds-123",
+            "bedrockKnowledgeBaseId": "kb-123",
+        },
+    }
+
+    with patch("repository.pipeline_ingest_documents.vs_repo") as mock_vs_repo, patch(
+        "repository.pipeline_ingest_documents.rag_document_repository"
+    ) as mock_doc_repo, patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo, patch(
+        "repository.pipeline_ingest_documents.s3"
+    ) as mock_s3, patch(
+        "repository.pipeline_ingest_documents.bedrock_agent"
+    ) as mock_bedrock_agent:
+
+        mock_vs_repo.find_repository_by_id.return_value = bedrock_kb_repo
+        mock_doc_repo.find_by_source.return_value = []
+
+        from repository.pipeline_ingest_documents import pipeline_ingest
+
+        pipeline_ingest(job)
+
+        # Verify document was copied from LISA bucket to KB bucket
+        mock_s3.copy_object.assert_called_once_with(
+            CopySource={"Bucket": "lisa-bucket", "Key": "document.pdf"},
+            Bucket="kb-bucket",
+            Key="document.pdf",
+        )
+
+        # Verify source file was deleted from LISA bucket
+        mock_s3.delete_object.assert_called_once_with(Bucket="lisa-bucket", Key="document.pdf")
+
+        # Verify KB ingestion was triggered
+        mock_bedrock_agent.start_ingestion_job.assert_called_once_with(knowledgeBaseId="kb-123", dataSourceId="ds-123")
+
+        # Verify document was tracked with KB bucket path
+        mock_doc_repo.save.assert_called_once()
+        saved_doc = mock_doc_repo.save.call_args[0][0]
+        assert saved_doc.source == "s3://kb-bucket/document.pdf"
+
+        mock_job_repo.save.assert_called()
         assert job.status == IngestionStatus.INGESTION_COMPLETED
 
 
@@ -363,14 +444,167 @@ def test_remove_document_from_vectorstore(setup_env):
         chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
     )
 
+    mock_vs = Mock()
+    mock_service = Mock()
+    mock_service.get_vector_store_client.return_value = mock_vs
+
     with patch("repository.pipeline_ingest_documents.RagEmbeddings"), patch(
-        "repository.pipeline_ingest_documents.get_vector_store_client"
-    ) as mock_get_vs:
-        mock_vs = Mock()
-        mock_get_vs.return_value = mock_vs
+        "repository.pipeline_ingest_documents.VectorStoreRepository"
+    ) as mock_vs_repo, patch("repository.pipeline_ingest_documents.RepositoryServiceFactory") as mock_factory:
+        mock_vs_repo.return_value.find_repository_by_id.return_value = {"repositoryId": "repo1", "type": "opensearch"}
+        mock_factory.create_service.return_value = mock_service
 
         from repository.pipeline_ingest_documents import remove_document_from_vectorstore
 
         remove_document_from_vectorstore(doc)
 
         mock_vs.delete.assert_called_once_with(["sub1", "sub2"])
+
+
+def test_pipeline_ingest_documents_batch(setup_env):
+    """Test pipeline_ingest_documents processes batch ingestion."""
+    from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, JobActionType
+
+    job = IngestionJob(
+        repository_id="repo1",
+        collection_id="col1",
+        s3_path="",
+        embedding_model="model1",
+        username="user1",
+        job_type=JobActionType.DOCUMENT_BATCH_INGESTION,
+        chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
+        s3_paths=["s3://bucket/key1", "s3://bucket/key2", "s3://bucket/key3"],
+    )
+
+    with patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo, patch(
+        "repository.pipeline_ingest_documents.pipeline_ingest_document"
+    ) as mock_ingest_doc:
+
+        from repository.pipeline_ingest_documents import pipeline_ingest_documents
+
+        pipeline_ingest_documents(job)
+
+        assert mock_ingest_doc.call_count == 3
+        mock_job_repo.update_status.assert_called_with(job, IngestionStatus.INGESTION_COMPLETED)
+
+
+def test_pipeline_ingest_documents_batch_with_failures(setup_env):
+    """Test pipeline_ingest_documents handles partial failures."""
+    from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, JobActionType
+
+    job = IngestionJob(
+        repository_id="repo1",
+        collection_id="col1",
+        s3_path="",
+        embedding_model="model1",
+        username="user1",
+        job_type=JobActionType.DOCUMENT_BATCH_INGESTION,
+        chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
+        s3_paths=["s3://bucket/key1", "s3://bucket/key2", "s3://bucket/key3"],
+    )
+
+    with patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo, patch(
+        "repository.pipeline_ingest_documents.pipeline_ingest_document"
+    ) as mock_ingest_doc:
+
+        # First succeeds, second fails, third succeeds
+        mock_ingest_doc.side_effect = [None, Exception("Ingest failed"), None]
+
+        from repository.pipeline_ingest_documents import pipeline_ingest_documents
+
+        pipeline_ingest_documents(job)
+
+        assert mock_ingest_doc.call_count == 3
+        mock_job_repo.update_status.assert_called_with(job, IngestionStatus.INGESTION_FAILED)
+
+
+def test_pipeline_ingest_documents_batch_exceeds_limit(setup_env):
+    """Test pipeline_ingest_documents rejects batch over 100 documents."""
+    from models.domain_objects import FixedChunkingStrategy, IngestionJob, JobActionType
+
+    job = IngestionJob(
+        repository_id="repo1",
+        collection_id="col1",
+        s3_path="",
+        embedding_model="model1",
+        username="user1",
+        job_type=JobActionType.DOCUMENT_BATCH_INGESTION,
+        chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
+        s3_paths=[f"s3://bucket/key{i}" for i in range(101)],
+    )
+
+    with patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo:
+        from repository.pipeline_ingest_documents import pipeline_ingest_documents
+
+        with pytest.raises(Exception):
+            pipeline_ingest_documents(job)
+
+        mock_job_repo.update_status.assert_called()
+
+
+def test_pipeline_ingest_documents_batch_missing_metadata(setup_env):
+    """Test pipeline_ingest_documents raises error when s3_paths missing."""
+    from models.domain_objects import FixedChunkingStrategy, IngestionJob, JobActionType
+
+    job = IngestionJob(
+        repository_id="repo1",
+        collection_id="col1",
+        s3_path="",
+        embedding_model="model1",
+        username="user1",
+        job_type=JobActionType.DOCUMENT_BATCH_INGESTION,
+        chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
+        s3_paths=None,
+    )
+
+    with patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo:
+        from repository.pipeline_ingest_documents import pipeline_ingest_documents
+
+        with pytest.raises(Exception):
+            pipeline_ingest_documents(job)
+
+        mock_job_repo.update_status.assert_called()
+
+
+def test_pipeline_ingest_routes_to_batch_ingestion(setup_env):
+    """Test pipeline_ingest routes to batch document ingestion."""
+    from models.domain_objects import FixedChunkingStrategy, IngestionJob, JobActionType
+
+    job = IngestionJob(
+        repository_id="repo1",
+        collection_id="col1",
+        s3_path="",
+        embedding_model="model1",
+        username="user1",
+        job_type=JobActionType.DOCUMENT_BATCH_INGESTION,
+        chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
+        s3_paths=["s3://bucket/key1"],
+    )
+
+    with patch("repository.pipeline_ingest_documents.pipeline_ingest_documents") as mock_ingest_documents:
+        from repository.pipeline_ingest_documents import pipeline_ingest
+
+        pipeline_ingest(job)
+
+        mock_ingest_documents.assert_called_once_with(job)
+
+
+def test_pipeline_ingest_routes_to_single_ingestion(setup_env):
+    """Test pipeline_ingest routes to single document ingestion."""
+    from models.domain_objects import FixedChunkingStrategy, IngestionJob
+
+    job = IngestionJob(
+        repository_id="repo1",
+        collection_id="col1",
+        s3_path="s3://bucket/key",
+        embedding_model="model1",
+        username="user1",
+        chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
+    )
+
+    with patch("repository.pipeline_ingest_documents.pipeline_ingest_document") as mock_ingest_document:
+        from repository.pipeline_ingest_documents import pipeline_ingest
+
+        pipeline_ingest(job)
+
+        mock_ingest_document.assert_called_once_with(job)

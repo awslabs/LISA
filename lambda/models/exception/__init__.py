@@ -30,6 +30,12 @@ class ModelNotFoundError(LookupError):
     pass
 
 
+class ModelInUseError(LookupError):
+    """Error to raise when a specified model is in-use."""
+
+    pass
+
+
 class ModelAlreadyExistsError(LookupError):
     """Error to raise when a specified model already exists in the database."""
 

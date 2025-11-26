@@ -137,14 +137,28 @@ def handle_poll_deployment(event: Dict[str, Any], context: Any) -> Dict[str, Any
             output_dict["continue_polling"] = False
             output_dict["stack_status"] = stack_status
         elif stack_status.endswith("_FAILED") or stack_status.endswith("ROLLBACK_COMPLETE"):
-            raise Exception(f"Stack {stack_name} failed with status: {stack_status}")
+            raise Exception(
+                json.dumps(
+                    {
+                        "error": f"Stack {stack_name} failed with status: {stack_status}",
+                        "event": event,
+                    }
+                )
+            )
         else:
             # Still in progress
             output_dict["poll_count"] = poll_count + 1
             output_dict["continue_polling"] = True
     except Exception as e:
         logger.error(f"Error polling stack status: {str(e)}")
-        raise
+        raise Exception(
+            json.dumps(
+                {
+                    "error": f"Error polling stack status: {str(e)}",
+                    "event": event,
+                }
+            )
+        )
 
     return output_dict
 

@@ -18,7 +18,7 @@ import { Duration } from 'aws-cdk-lib';
 import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { IRole } from 'aws-cdk-lib/aws-iam';
-import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { IFunction, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 
 import { getDefaultRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
@@ -53,6 +53,8 @@ type RepositoryApiProps = {
  * API for RAG repository operations
  */
 export class RepositoryApi extends Construct {
+    public createCollectionFunction: IFunction;
+
     constructor (scope: Construct, id: string, props: RepositoryApiProps) {
         super(scope, id);
 
@@ -116,20 +118,30 @@ export class RepositoryApi extends Construct {
                 },
             },
             {
-                name: 'delete',
+                name: 'get_repository_by_id',
                 resource: 'repository',
-                description: 'Delete a repository',
+                description: 'Get a repository by ID',
                 path: 'repository/{repositoryId}',
-                method: 'DELETE',
+                method: 'GET',
                 environment: {
                     ...baseEnvironment,
                 },
             },
             {
-                name: 'delete_index',
+                name: 'update_repository',
                 resource: 'repository',
-                description: 'Delete an index within a repository',
-                path: 'repository/{repositoryId}/index/{modelName}',
+                description: 'Update a repository',
+                path: 'repository/{repositoryId}',
+                method: 'PUT',
+                environment: {
+                    ...baseEnvironment,
+                },
+            },
+            {
+                name: 'delete',
+                resource: 'repository',
+                description: 'Delete a repository',
+                path: 'repository/{repositoryId}',
                 method: 'DELETE',
                 environment: {
                     ...baseEnvironment,
@@ -167,6 +179,16 @@ export class RepositoryApi extends Construct {
                 },
             },
             {
+                name: 'get_document',
+                resource: 'repository',
+                description: 'Get a document by ID',
+                path: 'repository/{repositoryId}/{documentId}',
+                method: 'GET',
+                environment: {
+                    ...baseEnvironment,
+                },
+            },
+            {
                 name: 'download_document',
                 resource: 'repository',
                 description: 'Creates presigned url to download document within repository',
@@ -195,12 +217,92 @@ export class RepositoryApi extends Construct {
                 environment: {
                     ...baseEnvironment,
                 },
+            },
+            {
+                name: 'list_collections',
+                resource: 'repository',
+                description: 'List all collections within a repository',
+                path: 'repository/{repositoryId}/collection',
+                method: 'GET',
+                environment: {
+                    ...baseEnvironment,
+                },
+            },
+            {
+                name: 'list_user_collections',
+                resource: 'repository',
+                description: 'List all collections user has access to across all repositories',
+                path: 'repository/collections',
+                method: 'GET',
+                environment: {
+                    ...baseEnvironment,
+                },
+            },
+            {
+                name: 'create_collection',
+                resource: 'repository',
+                description: 'Create a new collection within a repository',
+                path: 'repository/{repositoryId}/collection',
+                method: 'POST',
+                environment: {
+                    ...baseEnvironment,
+                },
+            },
+            {
+                name: 'get_collection',
+                resource: 'repository',
+                description: 'Get a collection by ID within a repository',
+                path: 'repository/{repositoryId}/collection/{collectionId}',
+                method: 'GET',
+                environment: {
+                    ...baseEnvironment,
+                },
+            },
+            {
+                name: 'update_collection',
+                resource: 'repository',
+                description: 'Update a collection within a repository',
+                path: 'repository/{repositoryId}/collection/{collectionId}',
+                method: 'PUT',
+                environment: {
+                    ...baseEnvironment,
+                },
+            },
+            {
+                name: 'delete_collection',
+                resource: 'repository',
+                description: 'Delete a collection within a repository',
+                path: 'repository/{repositoryId}/collection/{collectionId}',
+                method: 'DELETE',
+                environment: {
+                    ...baseEnvironment,
+                },
+            },
+            {
+                name: 'list_bedrock_knowledge_bases',
+                resource: 'repository',
+                description: 'List all ACTIVE Bedrock Knowledge Bases',
+                path: 'bedrock-kb',
+                method: 'GET',
+                environment: {
+                    ...baseEnvironment,
+                },
+            },
+            {
+                name: 'list_bedrock_data_sources',
+                resource: 'repository',
+                description: 'List data sources for a Bedrock Knowledge Base',
+                path: 'bedrock-kb/{kbId}/data-sources',
+                method: 'GET',
+                environment: {
+                    ...baseEnvironment,
+                },
             }
         ];
 
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         apis.forEach((f) => {
-            registerAPIEndpoint(
+            const lambdaFunction = registerAPIEndpoint(
                 this,
                 restApi,
                 lambdaPath,
@@ -212,6 +314,11 @@ export class RepositoryApi extends Construct {
                 authorizer,
                 lambdaExecutionRole,
             );
+
+            // Capture create_collection Lambda for backward compatibility
+            if (f.name === 'create_collection') {
+                this.createCollectionFunction = lambdaFunction;
+            }
         });
     }
 }

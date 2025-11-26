@@ -121,6 +121,7 @@ export default function Chat ({ sessionId }) {
     const [modelFilterValue, setModelFilterValue] = useState('');
     const [hasUserInteractedWithModel, setHasUserInteractedWithModel] = useState(false);
     const [mermaidRenderComplete, setMermaidRenderComplete] = useState(0);
+    const [dynamicMaxRows, setDynamicMaxRows] = useState(8);
 
     // Callback to handle Mermaid diagram rendering completion
     const handleMermaidRenderComplete = useCallback(() => {
@@ -157,6 +158,27 @@ export default function Chat ({ sessionId }) {
             setPreferences({ ...DefaultUserPreferences, user: userName });
         }
     }, [userPreferences, userName]);
+
+    useEffect(() => {
+        const calculateMaxRows = () => {
+            const LINE_HEIGHT = 24; // pixels per row
+            const RESERVED_UI_HEIGHT = 280; // model selector, buttons, status
+            const MAX_INPUT_PERCENTAGE = 0.5; // 50% of viewport max
+
+            const availableHeight = window.innerHeight - RESERVED_UI_HEIGHT;
+            const maxInputHeight = availableHeight * MAX_INPUT_PERCENTAGE;
+            const calculatedMaxRows = Math.floor(maxInputHeight / LINE_HEIGHT);
+
+            // Clamp between 3 and 12 rows
+            const clampedMaxRows = Math.max(3, Math.min(12, calculatedMaxRows));
+            setDynamicMaxRows(clampedMaxRows);
+        };
+
+        calculateMaxRows();
+        window.addEventListener('resize', calculateMaxRows);
+        return () => window.removeEventListener('resize', calculateMaxRows);
+    }, []);
+
 
     // Custom hooks
     const {
@@ -251,11 +273,11 @@ export default function Chat ({ sessionId }) {
         return getRelevantDocuments({
             query,
             repositoryId: ragConfig.repositoryId,
-            repositoryType: ragConfig.repositoryType,
-            modelName: ragConfig.embeddingModel?.modelId,
+            collectionId: ragConfig.collection?.collectionId,
             topK: ragTopK,
+            modelName: !ragConfig.collection?.collectionId ? ragConfig.embeddingModel?.modelId : undefined,
         });
-    }, [getRelevantDocuments, chatConfiguration.sessionConfiguration, ragConfig.repositoryId, ragConfig.repositoryType, ragConfig.embeddingModel?.modelId]);
+    }, [getRelevantDocuments, chatConfiguration.sessionConfiguration, ragConfig.repositoryId, ragConfig.collection, ragConfig.embeddingModel]);
 
     const { isRunning, setIsRunning, isStreaming, generateResponse, stopGeneration } = useChatGeneration({
         chatConfiguration,
@@ -598,7 +620,7 @@ export default function Chat ({ sessionId }) {
     }, [shouldShowStopButton, userPrompt.length, isRunning, callingToolName, loadingSession, handleSendGenerateRequest]);
 
     return (
-        <div className='h-[80vh]'>
+        <div className='flex flex-col h-[85vh]'>
             {/* MCP Connections - invisible components that manage the connections */}
             {McpConnections}
             {useMemo(() => (<DocumentSummarizationModal
@@ -691,7 +713,7 @@ export default function Chat ({ sessionId }) {
                     }
                 />
             )}
-            <div className='overflow-y-auto h-[calc(100vh-21rem)] bottom-8'>
+            <div className='overflow-y-auto h-[calc(100vh-20rem)] bottom-8'>
                 <SpaceBetween direction='vertical' size='l'>
                     {useMemo(() => session.history.map((message, idx) => (<Message
                         key={idx}
@@ -774,7 +796,7 @@ export default function Chat ({ sessionId }) {
                                 value={userPrompt}
                                 actionButtonAriaLabel={shouldShowStopButton ? 'Stop generation' : 'Send message'}
                                 actionButtonIconName={shouldShowStopButton ? 'status-negative' : 'send'}
-                                maxRows={4}
+                                maxRows={dynamicMaxRows}
                                 minRows={2}
                                 spellcheck={true}
                                 placeholder={

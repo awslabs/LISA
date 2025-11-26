@@ -354,223 +354,221 @@ export function McpWorkbenchManagementComponent (): ReactElement {
     ].find((reason) => reason.predicate)?.message;
 
     return (
-        <Container
-            header={
-                <Header variant='h1'>
-                    MCP Workbench Editor
-                </Header>
-            }>
-            <Grid gridDefinition={[{ colspan: 3 }, { colspan: 9 }]}>
-                <SpaceBetween size='s' direction='vertical'>
-                    <Header
-                        variant='h3'
-                        actions={
-                            <SpaceBetween direction='horizontal' size='xxs'>
-                                {/* <Button
+        <SpaceBetween size='m'>
+            <Header variant='h1' description='Use the code editor to experiment with MCP tools.'>MCP Workbench</Header>
+            <Container>
+                <Grid gridDefinition={[{ colspan: 3 }, { colspan: 9 }]}>
+                    <SpaceBetween size='s' direction='vertical'>
+                        <Header
+                            variant='h3'
+                            actions={
+                                <SpaceBetween direction='horizontal' size='xxs'>
+                                    {/* <Button
                                 iconName='refresh'
                                 variant='normal'
                                 onClick={handleCreateNew}
                                 ariaLabel='Refresh'
                             ></Button> */}
-                                <Button
+                                    <Button
                                     // iconName='file'
-                                    variant='primary'
-                                    onClick={handleCreateNew}
-                                    ariaLabel='New Tool File'
-                                >New Tool</Button>
-                            </SpaceBetween>
-                        }
-                    >
-                        Tool Files ({tools.length})
-                    </Header>
+                                        variant='primary'
+                                        onClick={handleCreateNew}
+                                        ariaLabel='New Tool File'
+                                    >New Tool</Button>
+                                </SpaceBetween>
+                            }
+                        >
+                            Tool Files ({tools.length})
+                        </Header>
 
-                    {tools.length > 0 && (
-                        <TextFilter
-                            filteringText={filterText}
-                            filteringPlaceholder='Find tools...'
-                            filteringAriaLabel='Find tools'
-                            onChange={({ detail }) => setFilterText(detail.filteringText)}
-                        />
-                    )}
+                        {tools.length > 0 && (
+                            <TextFilter
+                                filteringText={filterText}
+                                filteringPlaceholder='Find tools...'
+                                filteringAriaLabel='Find tools'
+                                onChange={({ detail }) => setFilterText(detail.filteringText)}
+                            />
+                        )}
 
-                    {isLoadingTools ? (
-                        <Box margin={{ vertical: 'xs' }} textAlign='center' color='inherit'>
-                            <SpaceBetween size='m'>
-                                <b>Loading tools...</b>
-                            </SpaceBetween>
-                        </Box>
-                    ) : tools.length === 0 ? (
-                        <Box margin={{ vertical: 'xs' }} textAlign='center' color='inherit'>
-                            <SpaceBetween size='m'>
-                                <b>No tools</b>
-                                <p>Create your first tool to get started.</p>
-                            </SpaceBetween>
-                        </Box>
-                    ) : filteredTools.length === 0 ? (
-                        <Box margin={{ vertical: 'xs' }} textAlign='center' color='inherit'>
-                            <SpaceBetween size='m'>
-                                <b>No tools match your search</b>
-                                <p>Try adjusting your search criteria.</p>
-                            </SpaceBetween>
-                        </Box>
-                    ) : (
-                        <>
-                            <List
-                                renderItem={(item: IMcpTool) => ({
-                                    id: item.id,
-                                    content: (
-                                        <Box>
+                        {isLoadingTools ? (
+                            <Box margin={{ vertical: 'xs' }} textAlign='center' color='inherit'>
+                                <SpaceBetween size='m'>
+                                    <b>Loading tools...</b>
+                                </SpaceBetween>
+                            </Box>
+                        ) : tools.length === 0 ? (
+                            <Box margin={{ vertical: 'xs' }} textAlign='center' color='inherit'>
+                                <SpaceBetween size='m'>
+                                    <b>No tools</b>
+                                    <p>Create your first tool to get started.</p>
+                                </SpaceBetween>
+                            </Box>
+                        ) : filteredTools.length === 0 ? (
+                            <Box margin={{ vertical: 'xs' }} textAlign='center' color='inherit'>
+                                <SpaceBetween size='m'>
+                                    <b>No tools match your search</b>
+                                    <p>Try adjusting your search criteria.</p>
+                                </SpaceBetween>
+                            </Box>
+                        ) : (
+                            <>
+                                <List
+                                    renderItem={(item: IMcpTool) => ({
+                                        id: item.id,
+                                        content: (
+                                            <Box>
+                                                <Button
+                                                    variant='inline-link'
+                                                    onClick={(event) => {
+                                                        event.preventDefault();
+                                                        handleToolSelect(item);
+                                                    }}
+                                                    disabled={selectedToolId === item.id}
+                                                    ariaLabel={`Load ${item.id} in editor`}
+                                                >
+                                                    <div style={{ fontWeight: 'bold' }}>{item.id}</div>
+                                                </Button>
+                                                {item.updated_at && (
+                                                    <div style={{ fontSize: '0.875rem', color: '#555' }}>
+                                                        Updated: {new Date(item.updated_at).toLocaleString()}
+                                                    </div>
+                                                )}
+                                                {item.size && (
+                                                    <div style={{ fontSize: '0.875rem', color: '#555' }}>
+                                                        Size: {item.size} bytes
+                                                    </div>
+                                                )}
+                                            </Box>
+                                        ),
+                                        actions: (
                                             <Button
-                                                variant='inline-link'
-                                                onClick={(event) => {
-                                                    event.preventDefault();
-                                                    handleToolSelect(item);
-                                                }}
-                                                disabled={selectedToolId === item.id}
-                                                ariaLabel={`Load ${item.id} in editor`}
-                                            >
-                                                <div style={{ fontWeight: 'bold' }}>{item.id}</div>
-                                            </Button>
-                                            {item.updated_at && (
-                                                <div style={{ fontSize: '0.875rem', color: '#555' }}>
-                                                    Updated: {new Date(item.updated_at).toLocaleString()}
-                                                </div>
-                                            )}
-                                            {item.size && (
-                                                <div style={{ fontSize: '0.875rem', color: '#555' }}>
-                                                    Size: {item.size} bytes
-                                                </div>
-                                            )}
-                                        </Box>
-                                    ),
-                                    actions: (
-                                        <Button
-                                            variant='icon'
-                                            iconName='remove'
-                                            ariaLabel={`Delete ${item.id}`}
-                                            onClick={() => handleDeleteTool(item)}
-                                        />
-                                    )
-                                })}
-                                items={paginatedTools}
-                            />
-
-                            {totalPages > 1 && (
-                                <Box textAlign='center'>
-                                    <Pagination
-                                        currentPageIndex={currentPageIndex}
-                                        pagesCount={totalPages}
-                                        onChange={({ detail }) => setCurrentPageIndex(detail.currentPageIndex)}
-                                    />
-                                </Box>
-                            )}
-                        </>
-                    )}
-                </SpaceBetween>
-
-                {(!loadingAce && state.form.contents) ?
-                    <SpaceBetween size='s' direction='vertical'>
-
-                        <FormField
-                            errorText={errors?.id}
-                        >
-                            <Input
-                                disabled={!!selectedToolId}
-                                value={state.form.id}
-                                onChange={({ detail }) => {
-                                    touchFields(['id']);
-                                    const value = detail.value;
-                                    setFields({ id: value });
-                                }}
-                                placeholder='my_tool'
-                            />
-                        </FormField>
-
-                        <Container
-                            disableContentPaddings={true}
-                            // disableHeaderPaddings={true}
-                        >
-                            <div style={{overflow: 'hidden', borderRadius: '16px'}}>
-                                <AceEditor
-                                    theme={colorScheme === Mode.Light ? 'cloud_editor' : 'cloud_editor_dark'}
-                                    showGutter={true}
-                                    value={state.form.contents}
-                                    mode='python'
-                                    setOptions={{
-                                        firstLineNumber: 0,
-                                        dragEnabled: true
-                                    }}
-                                    onChange={(contents) => {
-                                        setFields({
-                                            contents
-                                        });
-                                        debouncedValidation(contents);
-                                        setStatusText('Validating MCP tool.');
-                                        setIsDirty(true);
-                                        touchFields(['contents']);
-
-                                        if (!waitingForValidation) {
-                                            setWaitingForValidation(true);
-                                        }
-                                    }}
-                                    onLoad={(editor) => {
-                                        setEditor(editor);
-                                    }}
-                                    width='100%'
+                                                variant='icon'
+                                                iconName='remove'
+                                                ariaLabel={`Delete ${item.id}`}
+                                                onClick={() => handleDeleteTool(item)}
+                                            />
+                                        )
+                                    })}
+                                    items={paginatedTools}
                                 />
-                            </div>
-                        </Container>
 
-                        <Box float='right'>
-                            <SpaceBetween direction='horizontal' size='s'>
-                                { statusText ? <TextContent>
-                                    <p><Spinner /> {statusText}</p>
-                                </TextContent> : null}
-
-                                <Button onClick={() => {
-                                    setSelectedToolId(null);
-                                    setFields({
-                                        id: null,
-                                        contents: null
-                                    });
-                                    setIsDirty(false);
-                                }}>
-                                    Cancel
-                                </Button>
-                                {selectedToolId === null ? (
-                                    <Button
-                                        variant='primary'
-                                        onClick={handleCreateTool}
-                                        loading={isCreating}
-                                        disabled={disabled}
-                                        disabledReason={disabledReason}
-                                    >
-                                        Create Tool
-                                    </Button>
-                                ) : (
-                                    <Button
-                                        variant='primary'
-                                        onClick={handleUpdateTool}
-                                        loading={isUpdating}
-                                        disabled={disabled}
-                                        disabledReason={disabledReason}
-                                    >
-                                        Save Changes
-                                    </Button>
+                                {totalPages > 1 && (
+                                    <Box textAlign='center'>
+                                        <Pagination
+                                            currentPageIndex={currentPageIndex}
+                                            pagesCount={totalPages}
+                                            onChange={({ detail }) => setCurrentPageIndex(detail.currentPageIndex)}
+                                        />
+                                    </Box>
                                 )}
-                            </SpaceBetween>
-                        </Box>
-                    </SpaceBetween> : <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%'}}>
-                        <SpaceBetween direction='vertical' size='m'>
-                            <p style={{textAlign: 'center'}}>Select an existing tool or <Link onClick={handleCreateNew}>Create Tool</Link></p>
-                            {statusText ? <TextContent>
-                                <p style={{textAlign: 'center'}}><Spinner /> {statusText}</p>
-                            </TextContent> : null}
-                        </SpaceBetween>
+                            </>
+                        )}
+                    </SpaceBetween>
 
-                    </div>}
-            </Grid>
-        </Container>
+                    {(!loadingAce && state.form.contents) ?
+                        <SpaceBetween size='s' direction='vertical'>
+
+                            <FormField
+                                errorText={errors?.id}
+                            >
+                                <Input
+                                    disabled={!!selectedToolId}
+                                    value={state.form.id}
+                                    onChange={({ detail }) => {
+                                        touchFields(['id']);
+                                        const value = detail.value;
+                                        setFields({ id: value });
+                                    }}
+                                    placeholder='my_tool'
+                                />
+                            </FormField>
+
+                            <Container
+                                disableContentPaddings={true}
+                            // disableHeaderPaddings={true}
+                            >
+                                <div style={{overflow: 'hidden', borderRadius: '16px'}}>
+                                    <AceEditor
+                                        theme={colorScheme === Mode.Light ? 'cloud_editor' : 'cloud_editor_dark'}
+                                        showGutter={true}
+                                        value={state.form.contents}
+                                        mode='python'
+                                        setOptions={{
+                                            firstLineNumber: 0,
+                                            dragEnabled: true
+                                        }}
+                                        onChange={(contents) => {
+                                            setFields({
+                                                contents
+                                            });
+                                            debouncedValidation(contents);
+                                            setStatusText('Validating MCP tool.');
+                                            setIsDirty(true);
+                                            touchFields(['contents']);
+
+                                            if (!waitingForValidation) {
+                                                setWaitingForValidation(true);
+                                            }
+                                        }}
+                                        onLoad={(editor) => {
+                                            setEditor(editor);
+                                        }}
+                                        width='100%'
+                                    />
+                                </div>
+                            </Container>
+
+                            <Box float='right'>
+                                <SpaceBetween direction='horizontal' size='s'>
+                                    { statusText ? <TextContent>
+                                        <p><Spinner /> {statusText}</p>
+                                    </TextContent> : null}
+
+                                    <Button onClick={() => {
+                                        setSelectedToolId(null);
+                                        setFields({
+                                            id: null,
+                                            contents: null
+                                        });
+                                        setIsDirty(false);
+                                    }}>
+                                        Cancel
+                                    </Button>
+                                    {selectedToolId === null ? (
+                                        <Button
+                                            variant='primary'
+                                            onClick={handleCreateTool}
+                                            loading={isCreating}
+                                            disabled={disabled}
+                                            disabledReason={disabledReason}
+                                        >
+                                            Create Tool
+                                        </Button>
+                                    ) : (
+                                        <Button
+                                            variant='primary'
+                                            onClick={handleUpdateTool}
+                                            loading={isUpdating}
+                                            disabled={disabled}
+                                            disabledReason={disabledReason}
+                                        >
+                                            Save Changes
+                                        </Button>
+                                    )}
+                                </SpaceBetween>
+                            </Box>
+                        </SpaceBetween> : <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%'}}>
+                            <SpaceBetween direction='vertical' size='m'>
+                                <p style={{textAlign: 'center'}}>Select an existing tool or <Link onClick={handleCreateNew}>Create Tool</Link></p>
+                                {statusText ? <TextContent>
+                                    <p style={{textAlign: 'center'}}><Spinner /> {statusText}</p>
+                                </TextContent> : null}
+                            </SpaceBetween>
+
+                        </div>}
+                </Grid>
+            </Container>
+        </SpaceBetween>
     );
 }
 

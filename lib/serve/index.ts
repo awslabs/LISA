@@ -34,6 +34,7 @@ export class LisaServeApplicationStack extends Stack {
     public readonly tokenTable?: ITable;
     public readonly guardrailsTableNamePs: StringParameter;
     public readonly guardrailsTable: ITable;
+    public readonly ecsCluster: any;
 
     /**
     * @param {Construct} scope - The parent or owner of the construct.
@@ -51,5 +52,6 @@ export class LisaServeApplicationStack extends Stack {
         this.tokenTable = app.tokenTable;
         this.guardrailsTableNamePs = app.guardrailsTableNamePs;
         this.guardrailsTable = app.guardrailsTable;
+        this.ecsCluster = app.ecsCluster;
     }
 }

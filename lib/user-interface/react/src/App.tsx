@@ -28,14 +28,16 @@ import SystemBanner from './components/system-banner/system-banner';
 import { useAppSelector } from './config/store';
 import { selectCurrentUserIsAdmin, selectCurrentUserIsUser } from './shared/reducers/user.reducer';
 import ModelManagement from './pages/ModelManagement';
+import McpManagement from './pages/McpManagement';
 import ModelLibrary from './pages/ModelLibrary';
+import RepositoryManagement from './pages/RepositoryManagement';
 import NotificationBanner from './shared/notification/notification';
 import ConfirmationModal, { ConfirmationModalProps } from './shared/modal/confirmation-modal';
 import Configuration from './pages/Configuration';
 import { useGetConfigurationQuery } from './shared/reducers/configuration.reducer';
 import { IConfiguration } from './shared/model/configuration.model';
 import DocumentLibrary from './pages/DocumentLibrary';
-import RepositoryLibrary from './pages/RepositoryLibrary';
+import CollectionLibrary from './pages/CollectionLibrary';
 import { Breadcrumbs } from './shared/breadcrumb/breadcrumbs';
 import BreadcrumbsDefaultChangeListener from './shared/breadcrumb/breadcrumbs-change-listener';
 import PromptTemplatesLibrary from './pages/PromptTemplatesLibrary';
@@ -142,7 +144,7 @@ function App () {
                     notifications={<NotificationBanner />}
                     stickyNotifications={true}
                     navigation={nav}
-                    navigationWidth={450}
+                    navigationWidth={300}
                     content={
                         <Routes>
                             <Route
@@ -169,6 +171,22 @@ function App () {
                                     </AdminRoute>
                                 }
                             />
+                            {window.env.HOSTED_MCP_ENABLED && <Route
+                                path='mcp-management'
+                                element={
+                                    <AdminRoute>
+                                        <McpManagement setNav={setNav} />
+                                    </AdminRoute>
+                                }
+                            />}
+                            <Route
+                                path='repository-management'
+                                element={
+                                    <AdminRoute>
+                                        <RepositoryManagement setNav={setNav} />
+                                    </AdminRoute>
+                                }
+                            />
                             {config?.configuration?.enabledComponents?.modelLibrary && <Route
                                 path='model-library'
                                 element={
@@ -183,12 +201,12 @@ function App () {
                                         path='document-library'
                                         element={
                                             <PrivateRoute showConfig='showRagLibrary' configs={config}>
-                                                <RepositoryLibrary setNav={setNav} />
+                                                <CollectionLibrary setNav={setNav} />
                                             </PrivateRoute>
                                         }
                                     />
                                     <Route
-                                        path='document-library/:repoId'
+                                        path='document-library/:repoId/:collectionId?'
                                         element={
                                             <PrivateRoute showConfig='showRagLibrary' configs={config}>
                                                 <DocumentLibrary setNav={setNav} />

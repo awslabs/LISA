@@ -28,7 +28,6 @@ import { selectCurrentUsername } from '../../shared/reducers/user.reducer';
 import { getJsonDifference } from '../../shared/util/validationUtils';
 import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
 import { useNotificationService } from '../../shared/util/hooks';
-import RepositoryTable from './RepositoryTable';
 import { mcpServerApi } from '@/shared/reducers/mcp-server.reducer';
 
 export type ConfigState = {
@@ -151,9 +150,9 @@ export function ConfigurationComponent (): ReactElement {
         <SpaceBetween size={'m'}>
             <Header
                 variant='h1'
-                description={'The current configuration of LISA'}
+                description={'Activate and deactivate platform features'}
             >
-                LISA App Configuration
+                LISA Feature Configuration
             </Header>
             <ActivatedUserComponents setFields={setFields} enabledComponents={state.form.enabledComponents} />
             <SystemBannerConfiguration setFields={setFields}
@@ -182,13 +181,6 @@ export function ConfigurationComponent (): ReactElement {
                     Save Changes
                 </Button>
             </SpaceBetween>
-            <Header
-                variant='h1'
-                description={'The current configuration of LISA repositories'}
-            >
-                RAG Repository Configuration
-            </Header>
-            <RepositoryTable />
         </SpaceBetween>
     );
 }

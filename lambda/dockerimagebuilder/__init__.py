@@ -56,7 +56,9 @@ EOF
 systemctl start docker
 
 # Start CloudWatch agent with configuration
-/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \\
+    -a fetch-config -m ec2 \\
+    -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
 
 # Setup build environment
 mkdir /home/ec2-user/docker_resources
@@ -71,9 +73,11 @@ done &
 function buildTagPush() {
     echo "Starting Docker build for {{IMAGE_ID}}" | tee -a /var/log/docker-build.log
     sed -iE 's/^FROM.*/FROM {{BASE_IMAGE}}/' Dockerfile
-    docker build -t {{IMAGE_ID}} --build-arg BASE_IMAGE={{BASE_IMAGE}} --build-arg MOUNTS3_DEB_URL={{MOUNTS3_DEB_URL}} . 2>&1 | tee -a /var/log/docker-build.log && \
-    docker tag {{IMAGE_ID}} {{ECR_URI}}:{{IMAGE_ID}} 2>&1 | tee -a /var/log/docker-build.log && \
-    aws --region ${AWS_REGION} ecr get-login-password | docker login --username AWS --password-stdin {{ECR_URI}} 2>&1 | tee -a /var/log/docker-build.log && \
+    docker build -t {{IMAGE_ID}} --build-arg BASE_IMAGE={{BASE_IMAGE}} \\
+        --build-arg MOUNTS3_DEB_URL={{MOUNTS3_DEB_URL}} . 2>&1 | tee -a /var/log/docker-build.log && \\
+    docker tag {{IMAGE_ID}} {{ECR_URI}}:{{IMAGE_ID}} 2>&1 | tee -a /var/log/docker-build.log && \\
+    aws --region ${AWS_REGION} ecr get-login-password | \\
+        docker login --username AWS --password-stdin {{ECR_URI}} 2>&1 | tee -a /var/log/docker-build.log && \\
     docker push {{ECR_URI}}:{{IMAGE_ID}} 2>&1 | tee -a /var/log/docker-build.log
     echo "Build completed with exit code $?" | tee -a /var/log/docker-build.log
     return $?

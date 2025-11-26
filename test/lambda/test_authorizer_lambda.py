@@ -218,24 +218,26 @@ def test_is_valid_api_token(token_table):
     """Test the is_valid_api_token function."""
     from datetime import datetime, timedelta
 
-    # Test with valid, non-expired token
-    future_time = int((datetime.now() + timedelta(hours=1)).timestamp())
-    token_table.put_item(Item={"token": "valid-api-token", "tokenExpiration": future_time})
-    assert is_valid_api_token("valid-api-token") is True
+    # Patch the module-level token_table with our test fixture
+    with patch("authorizer.lambda_functions.token_table", token_table):
+        # Test with valid, non-expired token
+        future_time = int((datetime.now() + timedelta(hours=1)).timestamp())
+        token_table.put_item(Item={"token": "valid-api-token", "tokenExpiration": future_time})
+        assert is_valid_api_token("valid-api-token") is True
 
-    # Test with expired token
-    past_time = int((datetime.now() - timedelta(hours=1)).timestamp())
-    token_table.put_item(Item={"token": "expired-api-token", "tokenExpiration": past_time})
-    assert is_valid_api_token("expired-api-token") is False
+        # Test with expired token
+        past_time = int((datetime.now() - timedelta(hours=1)).timestamp())
+        token_table.put_item(Item={"token": "expired-api-token", "tokenExpiration": past_time})
+        assert is_valid_api_token("expired-api-token") is False
 
-    # Test with non-existent token
-    assert is_valid_api_token("non-existent-token") is False
+        # Test with non-existent token
+        assert is_valid_api_token("non-existent-token") is False
 
-    # Test with empty token
-    assert is_valid_api_token("") is False
+        # Test with empty token
+        assert is_valid_api_token("") is False
 
-    # Test with None token
-    assert is_valid_api_token(None) is False
+        # Test with None token
+        assert is_valid_api_token(None) is False
 
 
 def test_get_management_tokens():

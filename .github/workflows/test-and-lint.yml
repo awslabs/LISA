@@ -51,7 +51,7 @@ jobs:
           npm ci
       - name: Run tests
         run: |
-          npm run test
+          npm run test -ci
   backend-build:
     name: Backend Tests
     runs-on: ubuntu-latest

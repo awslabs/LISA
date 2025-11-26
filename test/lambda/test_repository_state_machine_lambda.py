@@ -143,16 +143,22 @@ class TestCleanupRepoDocs:
     def test_cleanup_repo_docs_success(self, lambda_context):
         """Test successful cleanup of repository documents."""
         # Import the function here to avoid import issues
+        from models.domain_objects import IngestionType
         from repository.state_machine.cleanup_repo_docs import lambda_handler as cleanup_repo_docs_handler
 
-        # Create mock document repository
         mock_doc_repo = MagicMock()
         test_docs = [
-            MagicMock(document_id="doc1"),
-            MagicMock(document_id="doc2"),
-            MagicMock(document_id="doc3"),
+            MagicMock(
+                document_id="doc1", ingestion_type=IngestionType.MANUAL, model_dump=lambda: {"document_id": "doc1"}
+            ),
+            MagicMock(
+                document_id="doc2", ingestion_type=IngestionType.AUTO, model_dump=lambda: {"document_id": "doc2"}
+            ),
+            MagicMock(
+                document_id="doc3", ingestion_type=IngestionType.EXISTING, model_dump=lambda: {"document_id": "doc3"}
+            ),
         ]
-        mock_doc_repo.list_all.return_value = (test_docs, None)
+        mock_doc_repo.list_all.return_value = (test_docs, None, 3)
         mock_doc_repo.delete_by_id.return_value = None
         mock_doc_repo.delete_s3_docs.return_value = None
 
@@ -168,29 +174,36 @@ class TestCleanupRepoDocs:
         # Verify the result
         assert result["repositoryId"] == "test-repo"
         assert result["stackName"] == "test-stack"
-        assert result["documents"] == test_docs
+        # Only MANUAL and AUTO documents should be deleted (not EXISTING)
+        assert len(result["documents"]) == 2
         assert result["lastEvaluated"] is None
 
         # Verify that list_all was called correctly
         mock_doc_repo.list_all.assert_called_once_with(repository_id="test-repo", last_evaluated_key=None)
 
-        # Verify that delete_by_id was called for each document
-        assert mock_doc_repo.delete_by_id.call_count == 3
+        # Verify that delete_by_id was called only for MANUAL and AUTO documents
+        assert mock_doc_repo.delete_by_id.call_count == 2
         mock_doc_repo.delete_by_id.assert_any_call("doc1")
         mock_doc_repo.delete_by_id.assert_any_call("doc2")
-        mock_doc_repo.delete_by_id.assert_any_call("doc3")
 
-        # Verify that delete_s3_docs was called
-        mock_doc_repo.delete_s3_docs.assert_called_once_with(repository_id="test-repo", docs=test_docs)
+        # Verify that delete_s3_docs was called with only MANUAL and AUTO documents
+        call_args = mock_doc_repo.delete_s3_docs.call_args
+        assert call_args[1]["repository_id"] == "test-repo"
+        assert len(call_args[1]["docs"]) == 2
 
     def test_cleanup_repo_docs_with_last_evaluated(self, lambda_context):
         """Test cleanup with lastEvaluated key for pagination."""
+        from models.domain_objects import IngestionType
         from repository.state_machine.cleanup_repo_docs import lambda_handler as cleanup_repo_docs_handler
 
         # Create mock document repository
         mock_doc_repo = MagicMock()
-        test_docs = [MagicMock(document_id="doc1")]
-        mock_doc_repo.list_all.return_value = (test_docs, "last-key-123")
+        test_docs = [
+            MagicMock(
+                document_id="doc1", ingestion_type=IngestionType.MANUAL, model_dump=lambda: {"document_id": "doc1"}
+            )
+        ]
+        mock_doc_repo.list_all.return_value = (test_docs, "last-key-123", 1)
         mock_doc_repo.delete_by_id.return_value = None
         mock_doc_repo.delete_s3_docs.return_value = None
 
@@ -206,7 +219,7 @@ class TestCleanupRepoDocs:
         # Verify the result
         assert result["repositoryId"] == "test-repo"
         assert result["stackName"] == "test-stack"
-        assert result["documents"] == test_docs
+        assert len(result["documents"]) == 1
         assert result["lastEvaluated"] == "last-key-123"
 
         # Verify that list_all was called with lastEvaluated
@@ -218,7 +231,7 @@ class TestCleanupRepoDocs:
 
         # Create mock document repository
         mock_doc_repo = MagicMock()
-        mock_doc_repo.list_all.return_value = ([], None)
+        mock_doc_repo.list_all.return_value = ([], None, 0)
         mock_doc_repo.delete_by_id.return_value = None
         mock_doc_repo.delete_s3_docs.return_value = None
 
@@ -248,7 +261,7 @@ class TestCleanupRepoDocs:
 
         # Create mock document repository
         mock_doc_repo = MagicMock()
-        mock_doc_repo.list_all.return_value = ([], None)
+        mock_doc_repo.list_all.return_value = ([], None, 0)
         mock_doc_repo.delete_by_id.return_value = None
         mock_doc_repo.delete_s3_docs.return_value = None
 
@@ -283,12 +296,13 @@ class TestCleanupRepoDocs:
 
     def test_cleanup_repo_docs_delete_error(self, lambda_context):
         """Test cleanup when document deletion fails."""
+        from models.domain_objects import IngestionType
         from repository.state_machine.cleanup_repo_docs import lambda_handler as cleanup_repo_docs_handler
 
         # Create mock document repository
         mock_doc_repo = MagicMock()
-        test_docs = [MagicMock(document_id="doc1")]
-        mock_doc_repo.list_all.return_value = (test_docs, None)
+        test_docs = [MagicMock(document_id="doc1", ingestion_type=IngestionType.MANUAL)]
+        mock_doc_repo.list_all.return_value = (test_docs, None, 1)
         mock_doc_repo.delete_by_id.side_effect = Exception("Delete error")
 
         event = {
@@ -308,7 +322,7 @@ class TestCleanupRepoDocs:
         # Create mock document repository
         mock_doc_repo = MagicMock()
         test_docs = [MagicMock(document_id="doc1")]
-        mock_doc_repo.list_all.return_value = (test_docs, None)
+        mock_doc_repo.list_all.return_value = (test_docs, None, 1)
         mock_doc_repo.delete_by_id.return_value = None
         mock_doc_repo.delete_s3_docs.side_effect = Exception("S3 delete error")
 

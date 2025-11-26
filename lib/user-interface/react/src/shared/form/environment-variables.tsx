@@ -61,7 +61,7 @@ export function EnvironmentVariables (props: FormProps<Readonly<any>> & Environm
         <ExpandableSection
             headerText={
                 <Fragment>
-                    {_.startCase(propertyPath.at(-1))} <i>- optional</i>
+                    {_.startCase(propertyPath.at(-1))}
                 </Fragment>
             }
             headingTagOverride='h3'

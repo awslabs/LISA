@@ -1,6 +1,6 @@
 {
   "name": "@awslabs/lisa",
-  "version": "5.4.0",
+  "version": "6.0.0",
   "description": "A scalable infrastructure-as-code solution for self-hosting and orchestrating LLM inference with RAG capabilities, providing low-latency access to generative AI and embedding models across multiple providers.",
   "homepage": "https://awslabs.github.io/LISA/",
   "license": "Apache-2.0",
@@ -30,6 +30,7 @@
     "lib/docs",
     "ecs_model_deployer",
     "vector_store_deployer",
+    "mcp_server_deployer",
     "cypress"
   ],
   "scripts": {
@@ -39,7 +40,7 @@
     "copy-dist": "cp VERSION ./dist/",
     "clean": "npm run clean -ws && rm -rf dist node_modules cdk.out build lib/rag/layer/TIKTOKEN_CACHE lib/serve/rest-api/TIKTOKEN_CACHE",
     "watch": "tsc -w",
-    "test": "jest",
+    "test": "jest && npm run test -ws",
     "cdk": "cdk",
     "prepare": "husky",
     "dev": "cd lib/user-interface/react/ && npm run dev",

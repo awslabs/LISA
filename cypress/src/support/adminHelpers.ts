@@ -37,7 +37,7 @@ export function expandAdminMenu () {
         .should('be.visible');
 
     cy.get('[role="menuitem"]')
-        .should('have.length', 2)
+        .should('have.length', 4)
         .then(($items) => {
             const labels = $items
                 .map((_, el) => Cypress.$(el).text().trim())
@@ -45,6 +45,8 @@ export function expandAdminMenu () {
             expect(labels).to.deep.equal([
                 'Configuration',
                 'Model Management',
+                'RAG Management',
+                'MCP Management',
             ]);
         });
 }

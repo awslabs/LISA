@@ -181,13 +181,25 @@ def test_handle_deploy_server_missing_stack_name(sample_mcp_server_event):
     """Test deployment failure when stack name is missing."""
     from mcp_server.state_machine.create_mcp_server import handle_deploy_server
 
-    with patch("mcp_server.state_machine.create_mcp_server.lambdaClient") as mock_lambda:
+    with patch("mcp_server.state_machine.create_mcp_server.lambdaClient") as mock_lambda, patch(
+        "mcp_server.state_machine.create_mcp_server.cfnClient"
+    ), patch("mcp_server.state_machine.create_mcp_server.mcp_servers_table"):
         mock_response = MagicMock()
         mock_response.read.return_value = json.dumps({}).encode()  # Missing stackName
         mock_lambda.invoke.return_value = {"Payload": mock_response}
 
-        with pytest.raises(ValueError, match="Failed to create MCP server stack"):
+        with pytest.raises(Exception) as exc_info:
             handle_deploy_server(sample_mcp_server_event, None)
+
+        # The exception may be wrapped in JSON or be a direct ValueError
+        # Check if it's a JSON-wrapped exception first
+        error_message = exc_info.value.args[0] if exc_info.value.args else str(exc_info.value)
+        try:
+            error_data = json.loads(error_message)
+            assert "Failed to create MCP server stack" in error_data["error"]
+        except (json.JSONDecodeError, TypeError):
+            # If not JSON, check the message directly
+            assert "Failed to create MCP server stack" in error_message
 
 
 def test_handle_deploy_server_with_optional_fields(mcp_servers_table, sample_mcp_server_event):

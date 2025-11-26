@@ -18,6 +18,11 @@ and manually update the new secret after deployment completes. The SSM parameter
 will automatically point to the new secret name, so code that references the secret via this parameter will continue to
 work without changes.
 
+Finally, existing Bedrock Knowledge Base repositories must be redeployed to support the new collections infrastructure.
+This is a simple update operation that creates the necessary infrastructure for automatic data source collection creation.
+**Use the repository update API or UI to redeploy existing Bedrock Knowledge Base repositories** after upgrading to
+v6.0.0. This migration enables the new collections features for Bedrock Knowledge Base repositories, including
+automatic collection creation for each data source and enhanced metadata capabilities.
 
 ## v4.0.0
 

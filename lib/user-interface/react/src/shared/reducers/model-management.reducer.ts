@@ -89,6 +89,21 @@ export const modelManagementApi = createApi({
                 };
             },
             invalidatesTags: ['models'],
+        }),
+        deleteSchedule: builder.mutation<{message: string, modelId: string, scheduleEnabled: boolean}, {modelId: string}>({
+            query: ({modelId}) => ({
+                url: `/models/${modelId}/schedule`,
+                method: 'DELETE',
+            }),
+            transformErrorResponse: (baseQueryReturnValue) => {
+                return {
+                    name: 'Update Schedule Error',
+                    message: baseQueryReturnValue.data?.type === 'RequestValidationError' ?
+                        baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') :
+                        baseQueryReturnValue.data.message
+                };
+            },
+            invalidatesTags: ['models'],
         })
     }),
 });
@@ -99,5 +114,6 @@ export const {
     useCreateModelMutation,
     useUpdateModelMutation,
     useGetInstancesQuery,
-    useUpdateScheduleMutation
+    useUpdateScheduleMutation,
+    useDeleteScheduleMutation
 } = modelManagementApi;

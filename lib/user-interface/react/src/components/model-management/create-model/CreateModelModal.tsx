@@ -24,7 +24,7 @@ import { ContainerConfig } from './ContainerConfig';
 import { AutoScalingConfig } from './AutoScalingConfig';
 import { LoadBalancerConfig } from './LoadBalancerConfig';
 import { GuardrailsConfig } from './GuardrailsConfig';
-import { useCreateModelMutation, useUpdateModelMutation, useUpdateScheduleMutation } from '../../../shared/reducers/model-management.reducer';
+import { useCreateModelMutation, useUpdateModelMutation, useUpdateScheduleMutation, useDeleteScheduleMutation } from '../../../shared/reducers/model-management.reducer';
 import { useAppDispatch } from '../../../config/store';
 import { useNotificationService } from '../../../shared/util/hooks';
 import { ModifyMethod } from '../../../shared/validation/modify-method';
@@ -64,6 +64,10 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         updateScheduleMutation,
         { isSuccess: isScheduleUpdateSuccess, isError: isScheduleUpdateError, error: scheduleUpdateError, isLoading: isScheduleUpdating, reset: resetScheduleUpdate },
     ] = useUpdateScheduleMutation();
+    const [
+        deleteScheduleMutation,
+        { isSuccess: isScheduleDeleteSuccess, isError: isScheduleDeleteError, error: scheduleDeleteError, isLoading: isScheduleDeleting, reset: resetScheduleDelete },
+    ] = useDeleteScheduleMutation();
     const initialForm = {
         ...getDefaults(ModelRequestSchema),
     };
@@ -263,12 +267,25 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                 Object.keys(updateFields.autoScalingConfig)[0] === 'scheduling';
 
             if (isSchedulingOnlyUpdate) {
-                // Use separate schedule API for scheduling-only updates
-                resetScheduleUpdate();
-                updateScheduleMutation({
-                    modelId: props.selectedItems[0].modelId,
-                    scheduleConfig: state.form.autoScalingConfig.scheduling
-                });
+                // Check if scheduling is being disabled or enabled
+                const schedulingConfig = state.form.autoScalingConfig.scheduling;
+                const isScheduleDisabled = !schedulingConfig ||
+                    schedulingConfig.scheduleEnabled === false ||
+                    !schedulingConfig.scheduleType ||
+                    schedulingConfig.scheduleType === 'NONE';
+
+                if (isScheduleDisabled) {
+                    resetScheduleDelete();
+                    deleteScheduleMutation({
+                        modelId: props.selectedItems[0].modelId
+                    });
+                } else {
+                    resetScheduleUpdate();
+                    updateScheduleMutation({
+                        modelId: props.selectedItems[0].modelId,
+                        scheduleConfig: schedulingConfig
+                    });
+                }
             } else {
                 // Handle autoScalingConfig if present (non-scheduling changes)
                 if (updateFields.autoScalingConfig) {
@@ -357,11 +374,22 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isScheduleUpdating, isScheduleUpdateSuccess]);
 
+    useEffect(() => {
+        if (!isScheduleDeleting && isScheduleDeleteSuccess) {
+            notificationService.generateNotification(`Successfully disabled schedule: ${state.form.modelId}`, 'success');
+            props.setVisible(false);
+            props.setIsEdit(false);
+            props.setSelectedItems([]);
+            resetState();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isScheduleDeleting, isScheduleDeleteSuccess]);
 
     const reviewError = normalizeError('Model',
         isCreateError ? createError :
             isUpdateError ? updateError :
-                isScheduleUpdateError ? scheduleUpdateError : undefined);
+                isScheduleUpdateError ? scheduleUpdateError :
+                    isScheduleDeleteError ? scheduleDeleteError : undefined);
 
     const allSteps = [
         {
@@ -515,7 +543,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                     handleSubmit();
                 }}
                 activeStepIndex={state.activeStepIndex}
-                isLoadingNextStep={isCreating || isUpdating || isScheduleUpdating}
+                isLoadingNextStep={isCreating || isUpdating || isScheduleUpdating || isScheduleDeleting}
                 allowSkipTo
                 steps={steps}
             />

@@ -129,13 +129,25 @@ def delete_schedule(event: Dict[str, Any]) -> Dict[str, Any]:
     model_id = event["modelId"]
 
     try:
-        # Get existing scheduled actions
+        # Get model info to find the Auto Scaling Group
+        response = model_table.get_item(Key={"model_id": model_id})
+        if "Item" not in response:
+            raise ValueError(f"Model {model_id} not found")
+
+        model_item = response["Item"]
+        auto_scaling_group = model_item.get("auto_scaling_group")
+
+        # Get existing scheduled actions from DDB
         existing_arns = get_existing_scheduled_action_arns(model_id)
 
-        # Delete scheduled actions
+        # Delete scheduled actions by ARN if we have them
         if existing_arns:
             delete_scheduled_actions(existing_arns)
-            logger.info(f"Deleted {len(existing_arns)} scheduled actions for model {model_id}")
+            logger.info(f"Deleted {len(existing_arns)} scheduled actions for model {model_id} using stored ARNs")
+
+        # Double clean -- clean up by name pattern to ensure we don't leave any orphaned actions
+        if auto_scaling_group:
+            cleanup_scheduled_actions_by_name_pattern(auto_scaling_group, model_id)
 
         # Update model record to disable scheduling
         update_model_schedule_record(model_id=model_id, scheduling_config=None, scheduled_action_arns=[], enabled=False)
@@ -228,9 +240,81 @@ def get_existing_asg_capacity(auto_scaling_group: str) -> Dict[str, int]:
         raise ScheduleManagementError(f"Failed to get ASG capacity: {str(e)}")
 
 
-def scale_immediately(
-    auto_scaling_group: str, day_schedule: DaySchedule, timezone_name: str, capacity_config: Dict[str, int]
+def get_model_baseline_capacity(model_id: str) -> Dict[str, int]:
+    """Get the baseline capacity configuration from the model's DynamoDB record"""
+    try:
+        response = model_table.get_item(Key={"model_id": model_id})
+
+        if "Item" not in response:
+            raise ScheduleManagementError(f"Model {model_id} not found in DynamoDB")
+
+        model_item = response["Item"]
+        model_config = model_item.get("model_config", {})
+        auto_scaling_config = model_config.get("autoScalingConfig", {})
+
+        # Get baseline capacity from model configuration
+        min_capacity = int(auto_scaling_config.get("minCapacity", 1))
+        max_capacity = int(auto_scaling_config.get("maxCapacity", 1))
+        desired_capacity = auto_scaling_config.get("desiredCapacity")
+
+        # If desired capacity is not set, use min capacity as default
+        if desired_capacity is None:
+            desired_capacity = min_capacity
+        else:
+            desired_capacity = int(desired_capacity)
+
+        logger.info(
+            f"Using baseline model capacity for {model_id}: min={min_capacity}, max={max_capacity}, "
+            f"desired={desired_capacity}"
+        )
+
+        return {"MinSize": min_capacity, "MaxSize": max_capacity, "DesiredCapacity": desired_capacity}
+
+    except Exception as e:
+        logger.error(f"Failed to get baseline capacity for model {model_id}: {e}")
+        raise ScheduleManagementError(f"Failed to get baseline capacity: {str(e)}")
+
+
+def check_weekly_immediate_scaling(
+    auto_scaling_group: str, weekly_schedule: WeeklySchedule, timezone_name: str
 ) -> None:
+    """Check current day and time, scale ASG if outside any scheduled windows for weekly schedules"""
+    try:
+        tz = ZoneInfo(timezone_name)
+        now = datetime.now(tz)
+        current_weekday = now.weekday()  # 0=Monday, 6=Sunday
+
+        # Map Python weekday to our schedule
+        day_schedules = {
+            0: weekly_schedule.monday,  # Monday
+            1: weekly_schedule.tuesday,  # Tuesday
+            2: weekly_schedule.wednesday,  # Wednesday
+            3: weekly_schedule.thursday,  # Thursday
+            4: weekly_schedule.friday,  # Friday
+            5: weekly_schedule.saturday,  # Saturday
+            6: weekly_schedule.sunday,  # Sunday
+        }
+
+        today_schedule = day_schedules.get(current_weekday)
+
+        if today_schedule:
+            # There's a schedule for today, check if we're within the time window
+            scale_immediately(auto_scaling_group, today_schedule, timezone_name)
+        else:
+            # No schedule for today, scale down to 0
+            logger.info(f"No schedule defined for today ({now.strftime('%A')}). Scaling down to 0 instances.")
+
+            autoscaling_client.update_auto_scaling_group(
+                AutoScalingGroupName=auto_scaling_group, MinSize=0, MaxSize=0, DesiredCapacity=0
+            )
+
+            logger.info(f"Successfully scaled down ASG {auto_scaling_group} to 0 instances (no schedule today)")
+
+    except Exception as e:
+        logger.error(f"Failed to check weekly immediate scaling for ASG {auto_scaling_group}: {e}")
+
+
+def scale_immediately(auto_scaling_group: str, day_schedule: DaySchedule, timezone_name: str) -> None:
     """Check current time and immediately scale ASG if outside scheduled window"""
     try:
         tz = ZoneInfo(timezone_name)
@@ -280,11 +364,11 @@ def create_daily_scheduled_actions(
     """Create scheduled actions for daily recurring schedule"""
     scheduled_action_arns = []
 
-    # Get ASG capacity config
-    capacity_config = get_existing_asg_capacity(auto_scaling_group)
+    # Get baseline capacity config from model DDB record
+    capacity_config = get_model_baseline_capacity(model_id)
 
     # Check current time and scale immediately if outside scheduled window
-    scale_immediately(auto_scaling_group, day_schedule, timezone_name, capacity_config)
+    scale_immediately(auto_scaling_group, day_schedule, timezone_name)
 
     # Create start action
     start_cron = time_to_cron(day_schedule.startTime)
@@ -348,8 +432,11 @@ def create_weekly_scheduled_actions(
     """Create scheduled actions for weekly schedule (different times each day with one start/stop time per day)"""
     scheduled_action_arns = []
 
-    # Get ASG capacity config
-    capacity_config = get_existing_asg_capacity(auto_scaling_group)
+    # Get baseline capacity config from DDB record
+    capacity_config = get_model_baseline_capacity(model_id)
+
+    # Check current time and scale immediately
+    check_weekly_immediate_scaling(auto_scaling_group, weekly_schedule, timezone_name)
 
     day_mapping = {
         "monday": (1, weekly_schedule.monday),
@@ -482,6 +569,59 @@ def cleanup_scheduled_actions(scheduled_action_arns: List[str]) -> None:
             pass
 
 
+def cleanup_scheduled_actions_by_name_pattern(auto_scaling_group: str, model_id: str) -> None:
+    """Delete all scheduled actions for a model by finding them via name pattern"""
+    try:
+        # Get all scheduled actions for the Auto Scaling Group
+        response = autoscaling_client.describe_scheduled_actions(AutoScalingGroupName=auto_scaling_group)
+
+        scheduled_actions = response.get("ScheduledUpdateGroupActions", [])
+        deleted_count = 0
+
+        # Find actions that match our model naming pattern
+        for action in scheduled_actions:
+            action_name = action["ScheduledActionName"]
+
+            # Check if this action belongs to our model using naming patterns:
+            # {model_id}-daily-start, {model_id}-daily-stop
+            # {model_id}-monday-start, {model_id}-tuesday-stop, etc.
+            if (
+                action_name.startswith(f"{model_id}-daily-")
+                or action_name.startswith(f"{model_id}-monday-")
+                or action_name.startswith(f"{model_id}-tuesday-")
+                or action_name.startswith(f"{model_id}-wednesday-")
+                or action_name.startswith(f"{model_id}-thursday-")
+                or action_name.startswith(f"{model_id}-friday-")
+                or action_name.startswith(f"{model_id}-saturday-")
+                or action_name.startswith(f"{model_id}-sunday-")
+            ):
+
+                try:
+                    autoscaling_client.delete_scheduled_action(
+                        AutoScalingGroupName=auto_scaling_group, ScheduledActionName=action_name
+                    )
+                    deleted_count += 1
+                    logger.info(f"Deleted scheduled action by pattern: {action_name}")
+
+                except ClientError as e:
+                    if e.response["Error"]["Code"] == "ValidationError":
+                        logger.warning(f"Scheduled action {action_name} not found (may already be deleted)")
+                    else:
+                        logger.error(f"Failed to delete scheduled action {action_name}: {e}")
+                except Exception as e:
+                    logger.error(f"Unexpected error deleting scheduled action {action_name}: {e}")
+
+        if deleted_count > 0:
+            logger.info(f"Deleted {deleted_count} scheduled actions for model {model_id} by name pattern")
+        else:
+            logger.info(f"No scheduled actions found for model {model_id} using name pattern cleanup")
+
+    except ClientError as e:
+        logger.error(f"Failed to describe scheduled actions for ASG {auto_scaling_group}: {e}")
+    except Exception as e:
+        logger.error(f"Failed to cleanup scheduled actions by pattern for model {model_id}: {e}")
+
+
 def merge_schedule_data(model_id: str, partial_update: Dict[str, Any]) -> Dict[str, Any]:
     """Merge partial schedule update with existing schedule data"""
     # Get existing schedule data from model_config.autoScalingConfig.scheduling
@@ -492,7 +632,13 @@ def merge_schedule_data(model_id: str, partial_update: Dict[str, Any]) -> Dict[s
             model_item = response["Item"]
             model_config = model_item.get("model_config", {})
             auto_scaling_config = model_config.get("autoScalingConfig", {})
-            existing_data = auto_scaling_config.get("scheduling", {})
+            scheduling_data = auto_scaling_config.get("scheduling")
+
+            # Handle case where scheduling exists but is None
+            if scheduling_data is not None and isinstance(scheduling_data, dict):
+                existing_data = scheduling_data
+            else:
+                existing_data = {}
     except Exception as e:
         logger.warning(f"Could not get existing schedule for {model_id}: {e}")
 
@@ -573,11 +719,19 @@ def update_model_schedule_record(
                     ExpressionAttributeValues={":autoScalingConfig": {"scheduling": schedule_data}},
                 )
         else:
-            # Remove scheduling configuration for always run behavior
+            # Set scheduling configuration to null for always run behavior
             if auto_scaling_config_exists:
                 model_table.update_item(
                     Key={"model_id": model_id},
-                    UpdateExpression="REMOVE model_config.autoScalingConfig.scheduling",
+                    UpdateExpression="SET model_config.autoScalingConfig.scheduling = :null_scheduling",
+                    ExpressionAttributeValues={":null_scheduling": None},
+                )
+            else:
+                # Create model_config.autoScalingConfig with null scheduling
+                model_table.update_item(
+                    Key={"model_id": model_id},
+                    UpdateExpression="SET model_config.autoScalingConfig = :autoScalingConfig",
+                    ExpressionAttributeValues={":autoScalingConfig": {"scheduling": None}},
                 )
 
         logger.info(f"Updated schedule record for model {model_id}")

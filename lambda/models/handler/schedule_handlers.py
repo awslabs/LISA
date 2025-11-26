@@ -87,7 +87,12 @@ class UpdateScheduleHandler(ScheduleBaseHandler):
         except Exception as e:
             raise ValueError(f"Failed to create/update schedule: {str(e)}")
 
-        return UpdateScheduleResponse(message="Schedule updated successfully", modelId=model_id, scheduleEnabled=True)
+        result_body = json.loads(result["body"]) if isinstance(result["body"], str) else result["body"]
+        schedule_enabled = result_body.get("scheduleEnabled", False)
+
+        return UpdateScheduleResponse(
+            message="Schedule updated successfully", modelId=model_id, scheduleEnabled=schedule_enabled
+        )
 
 
 class GetScheduleHandler(ScheduleBaseHandler):

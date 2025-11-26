@@ -86,7 +86,11 @@ def adjust_initial_capacity_for_schedule(prepared_event: Dict[str, Any]) -> None
         auto_scaling_config = prepared_event.get("autoScalingConfig", {})
         scheduling_config = auto_scaling_config.get("scheduling")
 
-        if not scheduling_config or not scheduling_config.get("scheduleEnabled"):
+        if (
+            not scheduling_config
+            or not isinstance(scheduling_config, dict)
+            or not scheduling_config.get("scheduleEnabled")
+        ):
             logger.info("No scheduling configured - using original capacity settings")
             return
 

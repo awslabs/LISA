@@ -253,6 +253,12 @@ def sync_model_status(event: Dict[str, Any]) -> Dict[str, Any]:
         # Update model status
         update_model_status(model_id, new_status, f"Manual sync: {reason}")
 
+        # Handle LiteLLM registration/removal based on new status
+        if new_status == ModelStatus.IN_SERVICE:
+            register_litellm(model_id)
+        elif new_status == ModelStatus.STOPPED:
+            remove_litellm(model_id)
+
         return {
             "statusCode": 200,
             "body": json.dumps(
@@ -458,9 +464,12 @@ def register_litellm(model_id: str) -> None:
         secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
         iam_client = boto3.client("iam", region_name=os.environ["AWS_REGION"], config=retry_config)
 
+        cert_path = get_cert_path(iam_client)
+        verify_ssl = cert_path if isinstance(cert_path, str) else False
+
         litellm_client = LiteLLMClient(
             base_uri=get_rest_api_container_endpoint(),
-            verify=get_cert_path(iam_client),
+            verify=verify_ssl,
             headers={
                 "Authorization": secrets_manager.get_secret_value(
                     SecretId=os.environ.get("MANAGEMENT_KEY_NAME"), VersionStage="AWSCURRENT"
@@ -520,9 +529,12 @@ def remove_litellm(model_id: str) -> None:
             secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
             iam_client = boto3.client("iam", region_name=os.environ["AWS_REGION"], config=retry_config)
 
+            cert_path = get_cert_path(iam_client)
+            verify_ssl = cert_path if isinstance(cert_path, str) else False
+
             litellm_client = LiteLLMClient(
                 base_uri=get_rest_api_container_endpoint(),
-                verify=get_cert_path(iam_client),
+                verify=verify_ssl,
                 headers={
                     "Authorization": secrets_manager.get_secret_value(
                         SecretId=os.environ.get("MANAGEMENT_KEY_NAME"), VersionStage="AWSCURRENT"

@@ -53,6 +53,84 @@ export function ReviewChanges (props: ReviewChangesProps): ReactElement {
                 continue;
             }
 
+            if (key === 'scheduling' && (value === null || value === undefined)) {
+                output.push((
+                    <li key={propIndex.index++}><p><strong>Auto Scaling Schedule</strong>: Disabled - Model will run 24/7</p>
+                    </li>));
+                continue;
+            }
+
+            if (key === 'scheduleType' || key === 'timezone' || key === 'dailySchedule' || key === 'weeklySchedule' || key === 'scheduleEnabled') {
+                if (value === undefined || value === null) {
+                    continue;
+                }
+            }
+
+            // Handle nested scheduling objects that contain undefined values
+            if (key === 'scheduling' && _.isPlainObject(value)) {
+                // Check if this is explicitly disabled (scheduleEnabled === false or scheduleType === 'NONE')
+                const isExplicitlyDisabled = value.scheduleEnabled === false || value.scheduleType === 'NONE';
+
+                if (isExplicitlyDisabled) {
+                    output.push((
+                        <li key={propIndex.index++}><p><strong>Auto Scaling Schedule</strong>: Disabled - Model will run 24/7</p>
+                        </li>));
+                    continue;
+                }
+
+                // For diff view, if we have any scheduling properties being changed, show them
+                // (This handles partial updates like changing just start time)
+
+                // If it's a valid schedule, filter out undefined nested properties
+                const cleanedScheduling = {};
+                for (const [schedKey, schedValue] of Object.entries(value)) {
+                    if (schedValue !== undefined && schedValue !== null) {
+                        if (schedKey === 'dailySchedule' && _.isPlainObject(schedValue)) {
+                            // Clean dailySchedule object
+                            const cleanedDailySchedule = {};
+                            for (const [dayKey, dayValue] of Object.entries(schedValue)) {
+                                if (dayValue !== undefined && dayValue !== null && dayValue !== '') {
+                                    cleanedDailySchedule[dayKey] = dayValue;
+                                }
+                            }
+                            if (Object.keys(cleanedDailySchedule).length > 0) {
+                                cleanedScheduling[schedKey] = cleanedDailySchedule;
+                            }
+                        } else if (schedKey === 'weeklySchedule' && _.isPlainObject(schedValue)) {
+                            // Clean weeklySchedule object
+                            const cleanedWeeklySchedule = {};
+                            for (const [weekKey, weekValue] of Object.entries(schedValue)) {
+                                if (weekValue !== undefined && weekValue !== null && _.isPlainObject(weekValue)) {
+                                    const cleanedDaySchedule = {};
+                                    for (const [dayPropKey, dayPropValue] of Object.entries(weekValue)) {
+                                        if (dayPropValue !== undefined && dayPropValue !== null && dayPropValue !== '') {
+                                            cleanedDaySchedule[dayPropKey] = dayPropValue;
+                                        }
+                                    }
+                                    if (Object.keys(cleanedDaySchedule).length > 0) {
+                                        cleanedWeeklySchedule[weekKey] = cleanedDaySchedule;
+                                    }
+                                }
+                            }
+                            if (Object.keys(cleanedWeeklySchedule).length > 0) {
+                                cleanedScheduling[schedKey] = cleanedWeeklySchedule;
+                            }
+                        } else {
+                            cleanedScheduling[schedKey] = schedValue;
+                        }
+                    }
+                }
+
+                // Only show scheduling if it has valid content
+                if (Object.keys(cleanedScheduling).length > 0) {
+                    output.push((
+                        <li key={propIndex.index++}><p><strong>{_.startCase(key)}</strong></p></li>
+                    ));
+                    output.push(jsonToOutline(cleanedScheduling, propIndex));
+                }
+                continue;
+            }
+
             const isNested = _.isObject(value);
             output.push((
                 <li key={propIndex.index++}><p><strong>{_.startCase(key)}</strong>{isNested ? '' : `: ${value}`}</p>

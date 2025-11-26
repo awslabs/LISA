@@ -199,7 +199,9 @@ def detect_schedule_changes(event: Dict[str, Any], context: Any) -> Dict[str, An
 
                 # Store existing scheduled action ARNs for cleanup
                 existing_arns = (
-                    current_scheduling_config.get("scheduledActionArns", []) if current_scheduling_config else []
+                    current_scheduling_config.get("scheduledActionArns", [])
+                    if isinstance(current_scheduling_config, dict)
+                    else []
                 )
                 output_dict["existing_scheduled_action_arns"] = existing_arns
         else:

@@ -147,7 +147,7 @@ export function GuardrailsConfig (props: GuardrailsConfigProps): ReactElement {
                                         <FormField
                                             label='Guardrail Name'
                                             errorText={props.formErrors?.guardrailsConfig?.guardrails?.[key]?.guardrailName}
-                                            description='A friendly name for this guardrail.'
+                                            description='Name of the AWS Bedrock guardrail. This must match the name of the guardrail in AWS Bedrock.'
                                         >
                                             <Input
                                                 value={guardrail.guardrailName}

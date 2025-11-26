@@ -1,6 +1,6 @@
 {
   "name": "@awslabs/lisa",
-  "version": "5.4.0",
+  "version": "6.0.0",
   "description": "A scalable infrastructure-as-code solution for self-hosting and orchestrating LLM inference with RAG capabilities, providing low-latency access to generative AI and embedding models across multiple providers.",
   "homepage": "https://awslabs.github.io/LISA/",
   "license": "Apache-2.0",

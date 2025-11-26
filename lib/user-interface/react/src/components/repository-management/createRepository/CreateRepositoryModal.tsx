@@ -20,7 +20,7 @@ import { scrollToInvalid, useValidationReducer } from '../../../shared/validatio
 import { useAppDispatch } from '../../../config/store';
 import { useNotificationService } from '../../../shared/util/hooks';
 import { setConfirmationModal } from '../../../shared/reducers/modal.reducer';
-import { useCreateRagRepositoryMutation } from '../../../shared/reducers/rag.reducer';
+import { useCreateRagRepositoryMutation, useUpdateRagRepositoryMutation } from '../../../shared/reducers/rag.reducer';
 import { RepositoryConfigForm } from './RepositoryConfigForm';
 import { ReviewChanges } from '../../../shared/modal/ReviewChanges';
 import { getJsonDifference, normalizeError } from '../../../shared/util/validationUtils';
@@ -28,7 +28,7 @@ import { ModifyMethod } from '../../../shared/validation/modify-method';
 import { PipelineConfigForm } from './PipelineConfigForm';
 import _ from 'lodash';
 import { getDefaults } from '#root/lib/schema/zodUtil';
-import { RagRepositoryConfig, RagRepositoryConfigSchema } from '#root/lib/schema';
+import { RagRepositoryConfig, RagRepositoryConfigSchema, RagRepositoryType } from '#root/lib/schema';
 
 export type CreateRepositoryModalProps = {
     visible: boolean;
@@ -58,6 +58,16 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
             reset: resetCreate,
         },
     ] = useCreateRagRepositoryMutation();
+
+    const [
+        updateRepositoryMutation,
+        {
+            isSuccess: isUpdateSuccess,
+            error: updateError,
+            isLoading: isUpdating,
+            reset: resetUpdate,
+        },
+    ] = useUpdateRagRepositoryMutation();
 
     const initialForm: RagRepositoryConfig = {
         ...getDefaults(RagRepositoryConfigSchema),
@@ -94,15 +104,45 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [toSubmit, initialForm, isEdit]);
 
-    const reviewError = normalizeError('Repository', createError);
+    const reviewError = normalizeError('Repository', isEdit ? updateError : createError);
 
     const requiredFields = [['repositoryId', 'type', 'rdsConfig.username', 'rdsConfig.dbName', 'rdsConfig.dbPort', 'opensearchConfig.dataNodes', 'opensearchConfig.dataNodes', 'opensearchConfig.dataNodeInstanceType'], []];
 
 
     function handleSubmit () {
+        // Validate all fields before submission
         if (isValid && !_.isEmpty(changesDiff)) {
-            resetCreate();
-            createRepositoryMutation({ ragConfig: toSubmit });
+            // For Bedrock Knowledge Base repositories, remove pipelines - they're managed by the backend
+            const submissionData = { ...toSubmit };
+            if (submissionData.type === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE) {
+                delete submissionData.pipelines;
+            } else {
+                // For non-Bedrock repositories, remove bedrockKnowledgeBaseConfig
+                delete submissionData.bedrockKnowledgeBaseConfig;
+            }
+
+            // Additional validation: ensure repositoryId is not empty
+            if (!isEdit && (!submissionData.repositoryId || submissionData.repositoryId.trim() === '')) {
+                notificationService.generateNotification('Repository ID is required', 'error');
+                return;
+            }
+
+            if (isEdit) {
+                resetUpdate();
+                // For Bedrock KB updates, send full bedrockKnowledgeBaseConfig to ensure all dataSources are included
+                const updates: any = { ...changesDiff };
+                if (submissionData.type === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE && submissionData.bedrockKnowledgeBaseConfig) {
+                    updates.bedrockKnowledgeBaseConfig = submissionData.bedrockKnowledgeBaseConfig;
+                }
+
+                updateRepositoryMutation({
+                    repositoryId: submissionData.repositoryId,
+                    updates: updates,
+                });
+            } else {
+                resetCreate();
+                createRepositoryMutation(submissionData);
+            }
         }
     }
 
@@ -143,10 +183,20 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isCreating, isCreateSuccess]);
 
+    useEffect(() => {
+        if (!isUpdating && isUpdateSuccess) {
+            notificationService.generateNotification(`Successfully updated repository: ${state.form.repositoryId}`, 'success');
+            setVisible(false);
+            setIsEdit(false);
+            resetState();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isUpdating, isUpdateSuccess]);
+
     const steps = [
         {
             title: 'Repository Configuration',
-            description: 'Define your repository\'s configuration settings using these forms.',
+            description: 'Define your repository\'s configuration',
             content: (
                 <RepositoryConfigForm item={state.form} setFields={setFields} touchFields={touchFields}
                     formErrors={errors}
@@ -156,7 +206,7 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
         },
         {
             title: 'Pipeline Configuration',
-            description: 'Create pipelines for ingesting RAG documents from S3',
+            description: 'Create document ingestion pipelines from S3',
             content: (
                 <PipelineConfigForm
                     item={state.form.pipelines}
@@ -164,7 +214,8 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
                     touchFields={touchFields}
                     formErrors={errors}
                     isEdit={isEdit}
-                    repositoryId={state.form.repositoryId} />
+                    repositoryId={state.form.repositoryId}
+                    repositoryType={state.form.type} />
             ),
             isOptional: true,
             onEdit: true,
@@ -191,6 +242,7 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
             activeStepIndex: 0,
         }, ModifyMethod.Set);
         resetCreate();
+        resetUpdate();
     }
 
     return (
@@ -258,7 +310,7 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
                 }}
                 onSubmit={() => handleSubmit()}
                 activeStepIndex={state.activeStepIndex}
-                isLoadingNextStep={isCreating}
+                isLoadingNextStep={isCreating || isUpdating}
                 allowSkipTo
                 steps={steps}
             />

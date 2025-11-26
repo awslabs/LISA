@@ -314,7 +314,8 @@ def verify_document_in_dynamodb(
 
         if expected_collection_id and doc_item.get("collection_id") != expected_collection_id:
             logger.warning(
-                f"Document {document_id} has collection_id {doc_item.get('collection_id')}, expected {expected_collection_id}"
+                f"Document {document_id} has collection_id {doc_item.get('collection_id')}, "
+                f"expected {expected_collection_id}"
             )
             return False
 

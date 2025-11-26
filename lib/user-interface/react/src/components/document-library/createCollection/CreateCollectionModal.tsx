@@ -23,6 +23,7 @@ import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 import {
     useCreateCollectionMutation,
     useUpdateCollectionMutation,
+    useListRagRepositoriesQuery,
 } from '@/shared/reducers/rag.reducer';
 import { CollectionConfigForm } from './CollectionConfigForm';
 import { ChunkingConfigForm } from './ChunkingConfigForm';
@@ -34,7 +35,8 @@ import _ from 'lodash';
 import {
     RagCollectionConfig,
     RagCollectionConfigSchema,
-    ChunkingStrategyType
+    ChunkingStrategyType,
+    RagRepositoryType,
 } from '#root/lib/schema';
 
 export type CreateCollectionModalProps = {
@@ -56,6 +58,9 @@ export type CollectionCreateState = {
 
 export function CreateCollectionModal (props: CreateCollectionModalProps): ReactElement {
     const { visible, setVisible, selectedItems, isEdit, setIsEdit } = props;
+
+    // Fetch repositories to determine repository type
+    const { data: repositories } = useListRagRepositoriesQuery();
 
     // Mutations
     const [
@@ -91,8 +96,6 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
         allowedGroups: [],
         metadata: { tags: [], customFields: {} },
         allowChunkingOverride: true,
-        // private: false,
-        // pipelines: [],
     };
 
     const dispatch = useAppDispatch();
@@ -143,6 +146,11 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
 
     const reviewError = normalizeError('Collection', isEdit ? updateError : createError);
 
+    // Check if editing a Bedrock collection
+    const selectedRepository = repositories?.find((repo) => repo.repositoryId === state.form.repositoryId);
+    const isBedrockRepository = selectedRepository?.type === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE;
+    const disableChunking = isEdit && isBedrockRepository;
+
     const requiredFields = [
         ['name', 'repositoryId', 'embeddingModel'], // Step 1: Collection Configuration
         [], // Step 2: Chunking Configuration (optional)
@@ -162,8 +170,6 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
                     allowedGroups: toSubmit.allowedGroups,
                     metadata: toSubmit.metadata,
                     allowChunkingOverride: toSubmit.allowChunkingOverride,
-                    // private: toSubmit.private,
-                    // pipelines: toSubmit.pipelines,
                 });
             } else {
                 resetCreate();
@@ -176,8 +182,6 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
                     allowedGroups: toSubmit.allowedGroups,
                     metadata: toSubmit.metadata,
                     allowChunkingOverride: toSubmit.allowChunkingOverride,
-                    // private: toSubmit.private,
-                    // pipelines: toSubmit.pipelines,
                 });
             }
         }
@@ -200,8 +204,6 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
                     allowChunkingOverride: selectedCollection.allowChunkingOverride !== undefined
                         ? selectedCollection.allowChunkingOverride
                         : true,
-                    // private: selectedCollection.private,
-                    // pipelines: selectedCollection.pipelines || [],
                 },
             });
         }
@@ -222,12 +224,11 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isCreating, isUpdating, isCreateSuccess, isUpdateSuccess]);
 
-
     // Wizard steps configuration
     const steps = [
         {
             title: 'Collection Configuration',
-            description: 'Define your collection\'s basic settings',
+            description: 'Repositories can have many collections. Use collections to organize or restrict information.',
             content: (
                 <CollectionConfigForm
                     item={state.form}
@@ -240,13 +241,16 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
         },
         {
             title: 'Chunking Configuration',
-            description: 'Configure how documents are split into chunks',
+            description: disableChunking
+                ? 'Chunking is managed by Bedrock Knowledge Base and cannot be modified'
+                : 'Configure how documents are split into chunks',
             content: (
                 <ChunkingConfigForm
                     item={state.form.chunkingStrategy}
                     setFields={setFields}
                     touchFields={touchFields}
                     formErrors={errors}
+                    disabled={disableChunking}
                 />
             ),
             isOptional: true,

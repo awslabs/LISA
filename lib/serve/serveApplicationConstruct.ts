@@ -23,7 +23,7 @@ import { FastApiContainer } from '../api-base/fastApiContainer';
 import { ECSCluster } from '../api-base/ecsCluster';
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
-import { BaseProps, Config } from '../schema';
+import { APP_MANAGEMENT_KEY, BaseProps, Config } from '../schema';
 import {
     Effect,
     Policy,
@@ -84,7 +84,7 @@ export class LisaServeApplicationConstruct extends Construct {
         );
         this.tokenTable = tokenTable;
 
-        const managementKeySecretNameStringParameter = StringParameter.fromStringParameterName(this, createCdkId([id, 'managementKeyStringParameter']), `${config.deploymentPrefix}/appManagementKeySecretName`);
+        const managementKeySecretNameStringParameter = StringParameter.fromStringParameterName(this, createCdkId([id, 'managementKeyStringParameter']), `${config.deploymentPrefix}/${APP_MANAGEMENT_KEY}`);
 
         // Create guardrails table in serve stack to avoid circular dependency
         const guardrailsTableConstruct = new GuardrailsTable(scope, 'GuardrailsTable', {

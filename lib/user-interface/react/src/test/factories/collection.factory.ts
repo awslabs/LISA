@@ -34,7 +34,6 @@ export function createMockCollection (overrides?: Partial<RagCollectionConfig>):
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
         status: CollectionStatus.ACTIVE,
-        private: false,
         ...overrides,
     };
 }
@@ -52,7 +51,6 @@ export function createMockCollections (count: number): RagCollectionConfig[] {
 export function createMockPublicCollection (overrides?: Partial<RagCollectionConfig>): RagCollectionConfig {
     return createMockCollection({
         allowedGroups: [],
-        private: false,
         ...overrides,
     });
 }
@@ -60,7 +58,6 @@ export function createMockPublicCollection (overrides?: Partial<RagCollectionCon
 export function createMockPrivateCollection (groups: string[], overrides?: Partial<RagCollectionConfig>): RagCollectionConfig {
     return createMockCollection({
         allowedGroups: groups,
-        private: true,
         ...overrides,
     });
 }

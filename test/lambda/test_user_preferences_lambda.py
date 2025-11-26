@@ -102,7 +102,7 @@ patch.dict(
     },
 ).start()
 
-# Then patch the specific functions
+# Then patch the specific functions before importing
 patch("utilities.auth.get_username", mock_common.get_username).start()
 patch("utilities.common_functions.retry_config", retry_config).start()
 patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()
@@ -111,6 +111,9 @@ patch("user_preferences.models.UserPreferencesModel", mock_user_preferences_mode
 
 # Now import the lambda functions
 from user_preferences.lambda_functions import get, update
+
+# Patch the imported get_item in the lambda_functions module
+patch("user_preferences.lambda_functions.get_item", mock_common.get_item).start()
 
 
 @pytest.fixture
@@ -143,7 +146,9 @@ def user_preferences_table(dynamodb):
         AttributeDefinitions=[{"AttributeName": "user", "AttributeType": "S"}],
         ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
     )
-    return table
+    # Patch the module-level table with our test fixture
+    with patch("user_preferences.lambda_functions.table", table):
+        yield table
 
 
 @pytest.fixture

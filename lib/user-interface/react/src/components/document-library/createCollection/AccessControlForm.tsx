@@ -54,7 +54,7 @@ export function AccessControlForm (props: AccessControlFormProps): ReactElement 
             <FormField
                 label='Tags (optional)'
                 errorText={formErrors?.['metadata.tags'] || formErrors?.metadata?.tags}
-                description='Metadata tags for organizing and searching collections (max 50 tags)'
+                description='Metadata tags for further organizing and filtering information (max 50 tags)'
             >
                 <ArrayInputField
                     values={item.metadata?.tags || []}

@@ -13,17 +13,18 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 */
-import { RemovalPolicy, StackProps } from 'aws-cdk-lib';
+import { CustomResource, Duration, RemovalPolicy, StackProps } from 'aws-cdk-lib';
 import { Domain, EngineVersion, IDomain } from 'aws-cdk-lib/aws-opensearchservice';
 import { Construct } from 'constructs';
 import { RagRepositoryConfig, RagRepositoryType,PartialConfig } from '../../../lib/schema';
 import { SecurityGroup, Subnet, SubnetSelection, Vpc } from 'aws-cdk-lib/aws-ec2';
-import { AnyPrincipal, CfnServiceLinkedRole, Effect, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
+import { AnyPrincipal, Effect, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { createCdkId } from '../../../lib/core/utils';
-import { IAMClient, ListRolesCommand } from '@aws-sdk/client-iam';
 import { Roles } from '../../../lib/core/iam/roles';
 import { PipelineStack } from './pipeline-stack';
+import { Code, Function, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { Provider } from 'aws-cdk-lib/custom-resources';
 
 type OpenSearchVectorStoreStackProps = StackProps & {
     config: PartialConfig
@@ -38,9 +39,98 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
         const { vpcId, deploymentName, deploymentPrefix, deploymentStage, subnets} = config;
         const { repositoryId, opensearchConfig } = ragConfig;
 
-        if (config.region) {
-            this.linkServiceRole(config.region);
-        }
+        // Create service-linked role conditionally - only if it doesn't already exist
+        // OpenSearch service-linked roles cannot use custom suffixes, so we must check for existence
+        const serviceLinkedRoleLambda = new Function(this, 'OpensearchServiceLinkedRoleLambda', {
+            runtime: Runtime.PYTHON_3_12,
+            handler: 'index.handler',
+            code: Code.fromInline(`
+import boto3
+import cfnresponse
+from botocore.exceptions import ClientError
+
+def handler(event, context):
+    iam = boto3.client('iam')
+    service_name = 'opensearchservice.amazonaws.com'
+
+    try:
+        if event['RequestType'] == 'Delete':
+            # Don't delete service-linked roles on stack deletion
+            cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+            return
+
+        # Check if the service-linked role already exists
+        try:
+            roles = iam.list_roles(PathPrefix='/aws-service-role/opensearchservice.amazonaws.com/')
+            if roles.get('Roles') and len(roles['Roles']) > 0:
+                # Role already exists, return success
+                role = roles['Roles'][0]
+                print(f"Service-linked role already exists: {role['RoleName']}")
+                cfnresponse.send(event, context, cfnresponse.SUCCESS, {
+                    'RoleArn': role['Arn'],
+                    'RoleName': role['RoleName']
+                })
+                return
+        except Exception as e:
+            print(f"Error listing roles: {str(e)}")
+            pass
+
+        # Role doesn't exist, create it
+        try:
+            response = iam.create_service_linked_role(AWSServiceName=service_name)
+            print(f"Created service-linked role: {response['Role']['RoleName']}")
+            cfnresponse.send(event, context, cfnresponse.SUCCESS, {
+                'RoleArn': response['Role']['Arn'],
+                'RoleName': response['Role']['RoleName']
+            })
+        except ClientError as e:
+            error_code = e.response.get('Error', {}).get('Code', '')
+            error_message = str(e)
+            if error_code == 'InvalidInput' and ('has been taken' in error_message or 'already exists' in error_message.lower()):
+                # Role was created between our check and creation attempt
+                try:
+                    roles = iam.list_roles(PathPrefix='/aws-service-role/opensearchservice.amazonaws.com/')
+                    if roles.get('Roles') and len(roles['Roles']) > 0:
+                        role = roles['Roles'][0]
+                        print(f"Service-linked role was created concurrently: {role['RoleName']}")
+                        cfnresponse.send(event, context, cfnresponse.SUCCESS, {
+                            'RoleArn': role['Arn'],
+                            'RoleName': role['RoleName']
+                        })
+                        return
+                except Exception as list_error:
+                    print(f"Error listing roles after creation conflict: {str(list_error)}")
+            # Re-raise if we can't handle it
+            raise
+
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        cfnresponse.send(event, context, cfnresponse.FAILED, {})
+`),
+            timeout: Duration.seconds(30),
+            description: 'Conditionally creates OpenSearch service-linked role if it does not exist',
+        });
+
+        // Grant IAM permissions to the Lambda
+        serviceLinkedRoleLambda.addToRolePolicy(new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: [
+                'iam:ListRoles',
+                'iam:CreateServiceLinkedRole',
+            ],
+            resources: ['*'],
+        }));
+
+        const serviceLinkedRoleProvider = new Provider(this, 'OpensearchServiceLinkedRoleProvider', {
+            onEventHandler: serviceLinkedRoleLambda,
+        });
+
+        const serviceLinkedRole = new CustomResource(this, 'OpensearchServiceLinkedRole', {
+            serviceToken: serviceLinkedRoleProvider.serviceToken,
+            properties: {
+                ServiceName: 'opensearchservice.amazonaws.com',
+            },
+        });
 
         let openSearchDomain: IDomain;
 
@@ -120,6 +210,9 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
                 removalPolicy: RemovalPolicy.DESTROY,
                 securityGroups: [openSearchSecurityGroup],
             });
+
+            // Ensure service-linked role is created before OpenSearch domain
+            openSearchDomain.node.addDependency(serviceLinkedRole);
         }
 
         const lambdaRole = Role.fromRoleArn(
@@ -151,25 +244,5 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
         openSearchEndpointPs.grantRead(lambdaRole);
 
         this.createPipelineRules(config, ragConfig);
-    }
-
-    /**
-     * This method links the OpenSearch Service role to the service-linked role if it exists.
-     * If the role doesn't exist, it will be created.
-     */
-    async linkServiceRole (region: string) {
-        const iam = new IAMClient({region});
-        const response = await iam.send(
-            new ListRolesCommand({
-                PathPrefix: '/aws-service-role/opensearchservice.amazonaws.com/',
-            }),
-        );
-
-        // Only if the role for OpenSearch Service doesn't exist, it will be created.
-        if (response.Roles?.length === 0) {
-            new CfnServiceLinkedRole(this, 'OpensearchServiceLinkedRole', {
-                awsServiceName: 'opensearchservice.amazonaws.com',
-            });
-        }
     }
 }

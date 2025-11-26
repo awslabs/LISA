@@ -668,8 +668,10 @@ def test_delete_s3_object_success():
         # Call the function
         repo.delete_s3_object("s3://test-bucket/test-key")
 
-        # Verify calls
-        mock_s3_client.delete_object.assert_called_once_with(Bucket="test-bucket", Key="test-key")
+        # Verify calls - should delete both document and metadata file
+        assert mock_s3_client.delete_object.call_count == 2
+        mock_s3_client.delete_object.assert_any_call(Bucket="test-bucket", Key="test-key")
+        mock_s3_client.delete_object.assert_any_call(Bucket="test-bucket", Key="test-key.metadata.json")
 
 
 def test_delete_s3_object_client_error():

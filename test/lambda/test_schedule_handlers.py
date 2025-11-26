@@ -133,7 +133,10 @@ class TestUpdateScheduleHandler:
         mock_model_table.get_item.return_value = {"Item": sample_model_item}
 
         # Setup mock schedule management response
-        mock_update_schedule.return_value = {"statusCode": 200, "body": {"message": "Schedule updated successfully"}}
+        mock_update_schedule.return_value = {
+            "statusCode": 200,
+            "body": {"message": "Schedule updated successfully", "scheduleEnabled": True},
+        }
 
         handler = UpdateScheduleHandler(
             autoscaling_client=mock_autoscaling_client,
@@ -584,7 +587,7 @@ class TestUpdateScheduleHandlerGroupAccess:
         with patch("models.handler.schedule_handlers.schedule_management.update_schedule") as mock_update_schedule:
             mock_update_schedule.return_value = {
                 "statusCode": 200,
-                "body": {"message": "Schedule updated successfully"},
+                "body": {"message": "Schedule updated successfully", "scheduleEnabled": True},
             }
 
             handler = UpdateScheduleHandler(
@@ -667,7 +670,7 @@ class TestUpdateScheduleHandlerGroupAccess:
         with patch("models.handler.schedule_handlers.schedule_management.update_schedule") as mock_update_schedule:
             mock_update_schedule.return_value = {
                 "statusCode": 200,
-                "body": {"message": "Schedule updated successfully"},
+                "body": {"message": "Schedule updated successfully", "scheduleEnabled": True},
             }
 
             handler = UpdateScheduleHandler(

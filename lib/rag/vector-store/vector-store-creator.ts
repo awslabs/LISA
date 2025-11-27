@@ -157,6 +157,13 @@ export class VectorStoreCreatorStack extends Construct {
             ...(vpc.vpc.vpcId && { vpcId: vpc.vpc.vpcId })
         };
 
+        // Get CDK layer for deployer Lambda
+        const cdkLambdaLayer = lambda.LayerVersion.fromLayerVersionArn(
+            this,
+            'cdk-lambda-layer',
+            ssm.StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/cdk`),
+        );
+
         const functionId = createCdkId([props.config.deploymentName, props.config.deploymentStage, 'vector_store_deployer', 'Fn']);
         const vectorStoreDeployer = config.vectorStoreDeployerPath || VECTOR_STORE_DEPLOYER_DIST_PATH;
         this.vectorStoreCreatorFn = new NodejsFunction(this, functionId, {
@@ -168,6 +175,7 @@ export class VectorStoreCreatorStack extends Construct {
             handler: 'index.handler',
             memorySize: 1024,
             role: cdkRole,
+            layers: [cdkLambdaLayer],
             environment: {
                 'LISA_CONFIG': JSON.stringify(strippedConfig),
                 'LISA_RAG_VECTOR_STORE_TABLE': vectorStoreTable.tableName

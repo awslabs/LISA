@@ -16,6 +16,8 @@
 
 import { Construct } from 'constructs';
 import { IFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as ssm from 'aws-cdk-lib/aws-ssm';
 import {
     Effect,
     IRole,
@@ -69,6 +71,13 @@ export class McpServerDeployer extends Construct {
             'pypiConfig': props.config.pypiConfig,
         };
 
+        // Get CDK layer for deployer Lambda
+        const cdkLambdaLayer = lambda.LayerVersion.fromLayerVersionArn(
+            this,
+            'cdk-lambda-layer',
+            ssm.StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/cdk`),
+        );
+
         const functionId = createCdkId([stackName, 'mcp_server_deployer', 'Fn']);
         const mcpServerDeployerPath = config.mcpServerDeployerPath || MCP_SERVER_DEPLOYER_DIST_PATH;
         this.mcpServerDeployerFn = new NodejsFunction(this, functionId, {
@@ -80,6 +89,7 @@ export class McpServerDeployer extends Construct {
             handler: 'index.handler',
             memorySize: 1024,
             role,
+            layers: [cdkLambdaLayer],
             environment: {
                 'LISA_VPC_ID': props.vpc.vpc.vpcId,
                 'LISA_SECURITY_GROUP_ID': props.securityGroupId,

@@ -16,6 +16,8 @@
 
 import { Construct } from 'constructs';
 import { IFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as ssm from 'aws-cdk-lib/aws-ssm';
 import {
     Effect,
     IRole,
@@ -70,6 +72,13 @@ export class ECSModelDeployer extends Construct {
             'condaUrl': props.config.condaUrl
         };
 
+        // Get CDK layer for deployer Lambda
+        const cdkLambdaLayer = lambda.LayerVersion.fromLayerVersionArn(
+            this,
+            'cdk-lambda-layer',
+            ssm.StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/cdk`),
+        );
+
         const functionId = createCdkId([stackName, 'ecs_model_deployer', 'Fn']);
         const ecsModelDeployerPath = config.ecsModelDeployerPath || ECS_MODEL_DEPLOYER_DIST_PATH;
         this.ecsModelDeployerFn = new NodejsFunction(this, functionId, {
@@ -81,6 +90,7 @@ export class ECSModelDeployer extends Construct {
             handler: 'index.handler',
             memorySize: 1024,
             role,
+            layers: [cdkLambdaLayer],
             environment: {
                 'LISA_VPC_ID': props.vpc.vpc.vpcId,
                 'LISA_SECURITY_GROUP_ID': props.securityGroupId,

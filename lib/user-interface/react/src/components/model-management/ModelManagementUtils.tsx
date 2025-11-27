@@ -65,8 +65,8 @@ const formatScheduleDetails = (model: IModel) => {
 
     const timezone = scheduling.timezone || 'UTC';
 
-    if (scheduling.scheduleType === ScheduleType.RECURRING && scheduling.dailySchedule) {
-        const { startTime, stopTime } = scheduling.dailySchedule;
+    if (scheduling.scheduleType === ScheduleType.RECURRING && scheduling.recurringSchedule) {
+        const { startTime, stopTime } = scheduling.recurringSchedule;
         return (
             <Box>
                 <div>Timezone: {timezone}</div>
@@ -75,8 +75,8 @@ const formatScheduleDetails = (model: IModel) => {
         );
     }
 
-    if (scheduling.scheduleType === ScheduleType.DAILY && scheduling.weeklySchedule) {
-        const daysWithSchedule = Object.entries(scheduling.weeklySchedule)
+    if (scheduling.scheduleType === ScheduleType.DAILY && scheduling.dailySchedule) {
+        const daysWithSchedule = Object.entries(scheduling.dailySchedule)
             .filter(([, daySchedule]) => daySchedule && daySchedule.startTime && daySchedule.stopTime)
             .map(([day, daySchedule]) => {
                 const dayName = day.charAt(0).toUpperCase() + day.slice(1);

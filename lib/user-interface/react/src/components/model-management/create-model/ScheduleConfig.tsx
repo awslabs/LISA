@@ -98,10 +98,10 @@ const validateTimePair = (startTime: string, endTime: string): string | undefine
     return undefined; // Valid
 };
 
-const validateDailySchedule = (dailySchedule?: IDaySchedule): string | undefined => {
-    if (!dailySchedule) return 'Recurring schedule must be configured when selected.';
+const validateRecurringSchedule = (recurringSchedule?: IDaySchedule): string | undefined => {
+    if (!recurringSchedule) return 'Recurring schedule must be configured when selected.';
 
-    const { startTime, stopTime } = dailySchedule;
+    const { startTime, stopTime } = recurringSchedule;
 
     if (!startTime && !stopTime) {
         return 'Recurring schedule must have both start and stop times.';
@@ -120,10 +120,10 @@ const validateDailySchedule = (dailySchedule?: IDaySchedule): string | undefined
     return undefined;
 };
 
-const validateWeeklySchedule = (weeklySchedule?: IWeeklySchedule): { [key: string]: string } => {
+const validateDailySchedule = (dailySchedule?: IWeeklySchedule): { [key: string]: string } => {
     const errors: { [key: string]: string } = {};
 
-    if (!weeklySchedule) {
+    if (!dailySchedule) {
         errors.general = 'Daily schedule must be configured when selected.';
         return errors;
     }
@@ -132,7 +132,7 @@ const validateWeeklySchedule = (weeklySchedule?: IWeeklySchedule): { [key: strin
     let hasAtLeastOneDay = false;
 
     daysOfWeek.forEach((day) => {
-        const daySchedule = weeklySchedule[day];
+        const daySchedule = dailySchedule[day];
         if (daySchedule && daySchedule.startTime && daySchedule.stopTime) {
             hasAtLeastOneDay = true;
 
@@ -196,18 +196,18 @@ export function ScheduleConfig (props: ScheduleConfigProps): ReactElement {
             }
 
             if (scheduleType === ScheduleType.RECURRING) {
-                const dailyError = validateDailySchedule(props.item.dailySchedule);
-                if (dailyError) {
-                    errors.dailySchedule = dailyError;
+                const recurringError = validateRecurringSchedule(props.item.recurringSchedule);
+                if (recurringError) {
+                    errors.recurringSchedule = recurringError;
                 }
             } else if (scheduleType === ScheduleType.DAILY) {
-                const weeklyErrors = validateWeeklySchedule(props.item.weeklySchedule);
-                Object.assign(errors, weeklyErrors);
+                const dailyErrors = validateDailySchedule(props.item.dailySchedule);
+                Object.assign(errors, dailyErrors);
             }
         }
 
         setValidationErrors(errors);
-    }, [isScheduleEnabled, scheduleType, props.item.dailySchedule, props.item.weeklySchedule, props.item.timezone]);
+    }, [isScheduleEnabled, scheduleType, props.item.dailySchedule, props.item.recurringSchedule, props.item.timezone]);
 
     // Helper functions for weekly schedule management
     const getDefaultWeeklySchedule = (): IWeeklySchedule => ({
@@ -220,15 +220,15 @@ export function ScheduleConfig (props: ScheduleConfigProps): ReactElement {
         sunday: undefined,
     });
 
-    const weeklySchedule = props.item.weeklySchedule || getDefaultWeeklySchedule();
+    const dailySchedule = props.item.dailySchedule || getDefaultWeeklySchedule();
 
     // Helper functions for day schedule management
     const updateDaySchedule = (dayName: keyof IWeeklySchedule, daySchedule: IDaySchedule | undefined) => {
-        const updatedWeeklySchedule = {
-            ...weeklySchedule,
+        const updatedDailySchedule = {
+            ...dailySchedule,
             [dayName]: daySchedule
         };
-        props.setFields({ 'weeklySchedule': updatedWeeklySchedule });
+        props.setFields({ 'dailySchedule': updatedDailySchedule });
     };
 
     // Helper functions for days of the week
@@ -266,8 +266,8 @@ export function ScheduleConfig (props: ScheduleConfigProps): ReactElement {
                                     // Keep schedule type as NONE when enabling so user must choose
                                     'scheduleType': detail.checked ? ScheduleType.NONE : ScheduleType.NONE,
                                     // Clear schedules when disabling
-                                    'weeklySchedule': detail.checked ? props.item.weeklySchedule : undefined,
-                                    'dailySchedule': detail.checked ? props.item.dailySchedule : undefined
+                                    'dailySchedule': detail.checked ? props.item.dailySchedule : undefined,
+                                    'recurringSchedule': detail.checked ? props.item.recurringSchedule : undefined
                                 });
                             }}
                             onBlur={() => props.touchFields(['scheduleEnabled'])}
@@ -298,8 +298,8 @@ export function ScheduleConfig (props: ScheduleConfigProps): ReactElement {
                                     props.setFields({
                                         'scheduleType': detail.selectedOption.value as ScheduleType,
                                         // Clear schedules when changing type
-                                        'weeklySchedule': undefined,
-                                        'dailySchedule': undefined
+                                        'dailySchedule': undefined,
+                                        'recurringSchedule': undefined
                                     });
                                 }}
                                 options={scheduleTypeOptions}
@@ -341,19 +341,19 @@ export function ScheduleConfig (props: ScheduleConfigProps): ReactElement {
                                 <FormField
                                     label='Start Time'
                                     description='Time to scale up the model (24-hour format)'
-                                    errorText={props.formErrors?.dailySchedule?.startTime}
+                                    errorText={props.formErrors?.recurringSchedule?.startTime}
                                 >
                                     <TimeInput
-                                        value={props.item.dailySchedule?.startTime || ''}
+                                        value={props.item.recurringSchedule?.startTime || ''}
                                         onChange={({ detail }) => {
-                                            const updatedDailySchedule = {
-                                                ...props.item.dailySchedule,
+                                            const updatedRecurringSchedule = {
+                                                ...props.item.recurringSchedule,
                                                 startTime: detail.value,
-                                                stopTime: props.item.dailySchedule?.stopTime || ''
+                                                stopTime: props.item.recurringSchedule?.stopTime || ''
                                             };
-                                            props.setFields({ 'dailySchedule': updatedDailySchedule });
+                                            props.setFields({ 'recurringSchedule': updatedRecurringSchedule });
                                         }}
-                                        onBlur={() => props.touchFields(['dailySchedule.startTime'])}
+                                        onBlur={() => props.touchFields(['recurringSchedule.startTime'])}
                                         format='hh:mm'
                                         placeholder='HH:MM'
                                     />
@@ -362,19 +362,19 @@ export function ScheduleConfig (props: ScheduleConfigProps): ReactElement {
                                 <FormField
                                     label='Stop Time'
                                     description='Time to scale down the model (must be at least 2 hours after start time)'
-                                    errorText={props.formErrors?.dailySchedule?.stopTime || validationErrors.dailySchedule}
+                                    errorText={props.formErrors?.recurringSchedule?.stopTime || validationErrors.recurringSchedule}
                                 >
                                     <TimeInput
-                                        value={props.item.dailySchedule?.stopTime || ''}
+                                        value={props.item.recurringSchedule?.stopTime || ''}
                                         onChange={({ detail }) => {
-                                            const updatedDailySchedule = {
-                                                ...props.item.dailySchedule,
-                                                startTime: props.item.dailySchedule?.startTime || '',
+                                            const updatedRecurringSchedule = {
+                                                ...props.item.recurringSchedule,
+                                                startTime: props.item.recurringSchedule?.startTime || '',
                                                 stopTime: detail.value
                                             };
-                                            props.setFields({ 'dailySchedule': updatedDailySchedule });
+                                            props.setFields({ 'recurringSchedule': updatedRecurringSchedule });
                                         }}
-                                        onBlur={() => props.touchFields(['dailySchedule.stopTime'])}
+                                        onBlur={() => props.touchFields(['recurringSchedule.stopTime'])}
                                         format='hh:mm'
                                         placeholder='HH:MM'
                                     />
@@ -398,7 +398,7 @@ export function ScheduleConfig (props: ScheduleConfigProps): ReactElement {
 
                                 {/* Table Rows */}
                                 {getDaysOfWeek().map((day) => {
-                                    const daySchedule = weeklySchedule[day.key];
+                                    const daySchedule = dailySchedule[day.key];
                                     const startTimeError = validationErrors[`${day.key}_startTime`];
                                     const stopTimeError = validationErrors[`${day.key}_stopTime`];
                                     const timesError = validationErrors[`${day.key}_times`];

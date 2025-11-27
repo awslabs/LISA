@@ -196,23 +196,23 @@ def create_scheduled_actions(model_id: str, auto_scaling_group: str, schedule_co
 
     if schedule_config.scheduleType == ScheduleType.RECURRING:
         # Create daily recurring schedule
-        if not schedule_config.dailySchedule:
-            raise ValueError("dailySchedule required for RECURRING type")
+        if not schedule_config.recurringSchedule:
+            raise ValueError("recurringSchedule required for RECURRING type")
 
         scheduled_action_arns.extend(
-            create_daily_scheduled_actions(
-                model_id, auto_scaling_group, schedule_config.dailySchedule, schedule_config.timezone
+            create_recurring_scheduled_actions(
+                model_id, auto_scaling_group, schedule_config.recurringSchedule, schedule_config.timezone
             )
         )
 
     elif schedule_config.scheduleType == ScheduleType.DAILY:
         # Create individual day schedules
-        if not schedule_config.weeklySchedule:
-            raise ValueError("weeklySchedule required for DAILY type")
+        if not schedule_config.dailySchedule:
+            raise ValueError("dailySchedule required for DAILY type")
 
         scheduled_action_arns.extend(
-            create_weekly_scheduled_actions(
-                model_id, auto_scaling_group, schedule_config.weeklySchedule, schedule_config.timezone
+            create_daily_scheduled_actions(
+                model_id, auto_scaling_group, schedule_config.dailySchedule, schedule_config.timezone
             )
         )
 
@@ -275,10 +275,8 @@ def get_model_baseline_capacity(model_id: str) -> Dict[str, int]:
         raise ScheduleManagementError(f"Failed to get baseline capacity: {str(e)}")
 
 
-def check_weekly_immediate_scaling(
-    auto_scaling_group: str, weekly_schedule: WeeklySchedule, timezone_name: str
-) -> None:
-    """Check current day and time, scale ASG if outside any scheduled windows for weekly schedules"""
+def check_daily_immediate_scaling(auto_scaling_group: str, daily_schedule: WeeklySchedule, timezone_name: str) -> None:
+    """Check current day and time, scale ASG if outside any scheduled windows for daily schedules"""
     try:
         tz = ZoneInfo(timezone_name)
         now = datetime.now(tz)
@@ -286,13 +284,13 @@ def check_weekly_immediate_scaling(
 
         # Map Python weekday to our schedule
         day_schedules = {
-            0: weekly_schedule.monday,  # Monday
-            1: weekly_schedule.tuesday,  # Tuesday
-            2: weekly_schedule.wednesday,  # Wednesday
-            3: weekly_schedule.thursday,  # Thursday
-            4: weekly_schedule.friday,  # Friday
-            5: weekly_schedule.saturday,  # Saturday
-            6: weekly_schedule.sunday,  # Sunday
+            0: daily_schedule.monday,  # Monday
+            1: daily_schedule.tuesday,  # Tuesday
+            2: daily_schedule.wednesday,  # Wednesday
+            3: daily_schedule.thursday,  # Thursday
+            4: daily_schedule.friday,  # Friday
+            5: daily_schedule.saturday,  # Saturday
+            6: daily_schedule.sunday,  # Sunday
         }
 
         today_schedule = day_schedules.get(current_weekday)
@@ -358,10 +356,10 @@ def scale_immediately(auto_scaling_group: str, day_schedule: DaySchedule, timezo
         logger.error(f"Failed to check/apply immediate scaling for ASG {auto_scaling_group}: {e}")
 
 
-def create_daily_scheduled_actions(
+def create_recurring_scheduled_actions(
     model_id: str, auto_scaling_group: str, day_schedule: DaySchedule, timezone_name: str
 ) -> List[str]:
-    """Create scheduled actions for daily recurring schedule"""
+    """Create scheduled actions for recurring schedule"""
     scheduled_action_arns = []
 
     # Get baseline capacity config from model DDB record
@@ -426,26 +424,26 @@ def create_daily_scheduled_actions(
     return scheduled_action_arns
 
 
-def create_weekly_scheduled_actions(
-    model_id: str, auto_scaling_group: str, weekly_schedule: WeeklySchedule, timezone_name: str
+def create_daily_scheduled_actions(
+    model_id: str, auto_scaling_group: str, daily_schedule: WeeklySchedule, timezone_name: str
 ) -> List[str]:
-    """Create scheduled actions for weekly schedule (different times each day with one start/stop time per day)"""
+    """Create scheduled actions for daily schedule (different times each day with one start/stop time per day)"""
     scheduled_action_arns = []
 
     # Get baseline capacity config from DDB record
     capacity_config = get_model_baseline_capacity(model_id)
 
     # Check current time and scale immediately
-    check_weekly_immediate_scaling(auto_scaling_group, weekly_schedule, timezone_name)
+    check_daily_immediate_scaling(auto_scaling_group, daily_schedule, timezone_name)
 
     day_mapping = {
-        "monday": (1, weekly_schedule.monday),
-        "tuesday": (2, weekly_schedule.tuesday),
-        "wednesday": (3, weekly_schedule.wednesday),
-        "thursday": (4, weekly_schedule.thursday),
-        "friday": (5, weekly_schedule.friday),
-        "saturday": (6, weekly_schedule.saturday),
-        "sunday": (0, weekly_schedule.sunday),
+        "monday": (1, daily_schedule.monday),
+        "tuesday": (2, daily_schedule.tuesday),
+        "wednesday": (3, daily_schedule.wednesday),
+        "thursday": (4, daily_schedule.thursday),
+        "friday": (5, daily_schedule.friday),
+        "saturday": (6, daily_schedule.saturday),
+        "sunday": (0, daily_schedule.sunday),
     }
 
     for day_name, (day_num, day_schedule) in day_mapping.items():

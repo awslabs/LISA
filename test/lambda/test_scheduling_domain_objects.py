@@ -124,12 +124,12 @@ class TestSchedulingConfig:
     def test_recurring_daily_schedule(self):
         """Test RECURRING schedule type."""
         daily_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
-        config = SchedulingConfig(scheduleType=ScheduleType.RECURRING, timezone="UTC", dailySchedule=daily_schedule)
+        config = SchedulingConfig(scheduleType=ScheduleType.RECURRING, timezone="UTC", recurringSchedule=daily_schedule)
 
-        assert config.scheduleType == ScheduleType.RECURRING
         assert config.timezone == "UTC"
-        assert config.dailySchedule == daily_schedule
-        assert config.weeklySchedule is None
+        assert config.scheduleType == ScheduleType.RECURRING
+        assert config.recurringSchedule == daily_schedule
+        assert config.dailySchedule is None
 
     def test_each_day_schedule(self):
         """Test DAILY schedule type."""
@@ -137,12 +137,12 @@ class TestSchedulingConfig:
         weekly_schedule = WeeklySchedule(monday=monday_schedule)
 
         config = SchedulingConfig(
-            scheduleType=ScheduleType.DAILY, timezone="America/New_York", weeklySchedule=weekly_schedule
+            scheduleType=ScheduleType.DAILY, timezone="America/New_York", dailySchedule=weekly_schedule
         )
 
         assert config.scheduleType == ScheduleType.DAILY
-        assert config.weeklySchedule == weekly_schedule
-        assert config.dailySchedule is None
+        assert config.dailySchedule == weekly_schedule
+        assert config.recurringSchedule is None
 
     def test_none_schedule_type(self):
         """Test None schedule type."""
@@ -150,22 +150,22 @@ class TestSchedulingConfig:
 
         assert config.scheduleType is None
         assert config.dailySchedule is None
-        assert config.weeklySchedule is None
+        assert config.recurringSchedule is None
 
     def test_invalid_schedule_consistency(self):
         """Test invalid schedule consistency raises ValidationError."""
         daily_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
 
-        # RECURRING with weeklySchedule should fail
-        with pytest.raises(ValidationError, match="weeklySchedule not allowed for RECURRING type"):
+        # RECURRING with dailySchedule should fail
+        with pytest.raises(ValidationError, match="dailySchedule not allowed for RECURRING type"):
             SchedulingConfig(
                 scheduleType=ScheduleType.RECURRING,
-                dailySchedule=daily_schedule,
-                weeklySchedule=WeeklySchedule(monday=daily_schedule),
+                recurringSchedule=daily_schedule,
+                dailySchedule=WeeklySchedule(monday=daily_schedule),
             )
 
-        # DAILY without weeklySchedule should fail
-        with pytest.raises(ValidationError, match="weeklySchedule required for DAILY type"):
+        # DAILY without dailySchedule should fail
+        with pytest.raises(ValidationError, match="dailySchedule required for DAILY type"):
             SchedulingConfig(scheduleType=ScheduleType.DAILY)
 
     def test_timezone_validation(self):
@@ -174,12 +174,12 @@ class TestSchedulingConfig:
 
         # Valid timezone
         config = SchedulingConfig(
-            scheduleType=ScheduleType.RECURRING, timezone="America/New_York", dailySchedule=daily_schedule
+            scheduleType=ScheduleType.RECURRING, timezone="America/New_York", recurringSchedule=daily_schedule
         )
         assert config.timezone == "America/New_York"
 
         # UTC should always be valid
-        config = SchedulingConfig(scheduleType=ScheduleType.RECURRING, timezone="UTC", dailySchedule=daily_schedule)
+        config = SchedulingConfig(scheduleType=ScheduleType.RECURRING, timezone="UTC", recurringSchedule=daily_schedule)
         assert config.timezone == "UTC"
 
     def test_invalid_timezone_validation(self):
@@ -201,7 +201,9 @@ class TestSchedulingConfig:
             with pytest.raises(
                 ValidationError, match="Invalid timezone.*timezone must be a valid IANA timezone identifier"
             ):
-                SchedulingConfig(scheduleType=ScheduleType.RECURRING, timezone=invalid_tz, dailySchedule=daily_schedule)
+                SchedulingConfig(
+                    scheduleType=ScheduleType.RECURRING, timezone=invalid_tz, recurringSchedule=daily_schedule
+                )
 
 
 class TestNextScheduledAction:

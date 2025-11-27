@@ -104,11 +104,11 @@ def adjust_initial_capacity_for_schedule(prepared_event: Dict[str, Any]) -> None
             current_day = now.strftime("%A").lower()
             is_within_schedule = False
 
-            if schedule_type == "RECURRING" and scheduling_config.get("dailySchedule"):
+            if schedule_type == "RECURRING" and scheduling_config.get("recurringSchedule"):
                 # Daily recurring schedule
-                daily_schedule = scheduling_config["dailySchedule"]
-                start_time_str = daily_schedule.get("startTime")
-                stop_time_str = daily_schedule.get("stopTime")
+                recurring_schedule = scheduling_config["recurringSchedule"]
+                start_time_str = recurring_schedule.get("startTime")
+                stop_time_str = recurring_schedule.get("stopTime")
 
                 if start_time_str and stop_time_str:
                     # Parse times
@@ -126,10 +126,10 @@ def adjust_initial_capacity_for_schedule(prepared_event: Dict[str, Any]) -> None
                         # Schedule crosses midnight
                         is_within_schedule = current_time >= start_time_obj or current_time <= stop_time_obj
 
-            elif schedule_type == "DAILY" and scheduling_config.get("weeklySchedule"):
+            elif schedule_type == "DAILY" and scheduling_config.get("dailySchedule"):
                 # Daily schedule
-                weekly_schedule = scheduling_config["weeklySchedule"]
-                today_schedule = weekly_schedule.get(current_day)
+                daily_schedule = scheduling_config["dailySchedule"]
+                today_schedule = daily_schedule.get(current_day)
 
                 if today_schedule and today_schedule.get("startTime") and today_schedule.get("stopTime"):
                     start_time_str = today_schedule["startTime"]

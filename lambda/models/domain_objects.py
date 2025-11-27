@@ -253,11 +253,11 @@ class SchedulingConfig(BaseModel):
     scheduleType: Optional[ScheduleType] = None
     timezone: str = Field(default="UTC")
 
-    # Weekly schedule (for DAILY type)
-    weeklySchedule: Optional[WeeklySchedule] = None
+    # Daily schedule (for DAILY type)
+    dailySchedule: Optional[WeeklySchedule] = None
 
-    # Daily schedule (for RECURRING type)
-    dailySchedule: Optional[DaySchedule] = None
+    # Recurring schedule (for RECURRING type)
+    recurringSchedule: Optional[DaySchedule] = None
 
     # Schedule metadata and tracking
     scheduleEnabled: bool = False
@@ -292,15 +292,15 @@ class SchedulingConfig(BaseModel):
             return self
 
         if self.scheduleType == ScheduleType.DAILY:
-            if not self.weeklySchedule:
-                raise ValueError("weeklySchedule required for DAILY type")
-            if self.dailySchedule:
-                raise ValueError("dailySchedule not allowed for DAILY type")
-        elif self.scheduleType == ScheduleType.RECURRING:
             if not self.dailySchedule:
-                raise ValueError(f"dailySchedule required for {self.scheduleType} type")
-            if self.weeklySchedule:
-                raise ValueError(f"weeklySchedule not allowed for {self.scheduleType} type")
+                raise ValueError("dailySchedule required for DAILY type")
+            if self.recurringSchedule:
+                raise ValueError("recurringSchedule not allowed for DAILY type")
+        elif self.scheduleType == ScheduleType.RECURRING:
+            if not self.recurringSchedule:
+                raise ValueError(f"recurringSchedule required for {self.scheduleType} type")
+            if self.dailySchedule:
+                raise ValueError(f"dailySchedule not allowed for {self.scheduleType} type")
 
         return self
 

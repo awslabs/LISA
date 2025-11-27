@@ -42,6 +42,7 @@ export function ReviewChanges (props: ReviewChangesProps): ReactElement {
             return (<li key={propIndex.index++}><p>{json}</p></li>);
         }
 
+
         for (const key in json) {
             const value = json[key];
 
@@ -60,7 +61,7 @@ export function ReviewChanges (props: ReviewChangesProps): ReactElement {
                 continue;
             }
 
-            if (key === 'scheduleType' || key === 'timezone' || key === 'dailySchedule' || key === 'weeklySchedule' || key === 'scheduleEnabled') {
+            if (key === 'scheduleType' || key === 'timezone' || key === 'dailySchedule' || key === 'recurringSchedule' || key === 'scheduleEnabled') {
                 if (value === undefined || value === null) {
                     continue;
                 }
@@ -78,9 +79,6 @@ export function ReviewChanges (props: ReviewChangesProps): ReactElement {
                     continue;
                 }
 
-                // For diff view, if we have any scheduling properties being changed, show them
-                // (This handles partial updates like changing just start time)
-
                 // If it's a valid schedule, filter out undefined nested properties
                 const cleanedScheduling = {};
                 for (const [schedKey, schedValue] of Object.entries(value)) {
@@ -89,36 +87,46 @@ export function ReviewChanges (props: ReviewChangesProps): ReactElement {
                             // Clean dailySchedule object
                             const cleanedDailySchedule = {};
                             for (const [dayKey, dayValue] of Object.entries(schedValue)) {
-                                if (dayValue !== undefined && dayValue !== null && dayValue !== '') {
+                                if (dayValue !== undefined && dayValue !== null && _.isPlainObject(dayValue)) {
+                                    const cleanedDaySchedule = {};
+                                    for (const [dayPropKey, dayPropValue] of Object.entries(dayValue)) {
+                                        if (dayPropValue !== undefined && dayPropValue !== null && dayPropValue !== '') {
+                                            cleanedDaySchedule[dayPropKey] = dayPropValue;
+                                        }
+                                    }
+                                    if (Object.keys(cleanedDaySchedule).length > 0) {
+                                        cleanedDailySchedule[dayKey] = cleanedDaySchedule;
+                                    }
+                                } else if (dayValue !== undefined && dayValue !== null && dayValue !== '') {
                                     cleanedDailySchedule[dayKey] = dayValue;
                                 }
                             }
                             if (Object.keys(cleanedDailySchedule).length > 0) {
                                 cleanedScheduling[schedKey] = cleanedDailySchedule;
                             }
-                        } else if (schedKey === 'weeklySchedule' && _.isPlainObject(schedValue)) {
-                            // Clean weeklySchedule object
-                            const cleanedWeeklySchedule = {};
-                            for (const [weekKey, weekValue] of Object.entries(schedValue)) {
-                                if (weekValue !== undefined && weekValue !== null && _.isPlainObject(weekValue)) {
-                                    const cleanedDaySchedule = {};
-                                    for (const [dayPropKey, dayPropValue] of Object.entries(weekValue)) {
-                                        if (dayPropValue !== undefined && dayPropValue !== null && dayPropValue !== '') {
-                                            cleanedDaySchedule[dayPropKey] = dayPropValue;
-                                        }
-                                    }
-                                    if (Object.keys(cleanedDaySchedule).length > 0) {
-                                        cleanedWeeklySchedule[weekKey] = cleanedDaySchedule;
-                                    }
+                        } else if (schedKey === 'recurringSchedule' && _.isPlainObject(schedValue)) {
+                            // Clean recurringSchedule object (day schedule for recurring type)
+                            const cleanedRecurringSchedule = {};
+                            for (const [recKey, recValue] of Object.entries(schedValue)) {
+                                if (recValue !== undefined && recValue !== null && recValue !== '') {
+                                    cleanedRecurringSchedule[recKey] = recValue;
                                 }
                             }
-                            if (Object.keys(cleanedWeeklySchedule).length > 0) {
-                                cleanedScheduling[schedKey] = cleanedWeeklySchedule;
+                            if (Object.keys(cleanedRecurringSchedule).length > 0) {
+                                cleanedScheduling[schedKey] = cleanedRecurringSchedule;
                             }
                         } else {
                             cleanedScheduling[schedKey] = schedValue;
                         }
                     }
+                }
+
+                // Check if scheduling is effectively disabled
+                if (Object.keys(cleanedScheduling).length === 0) {
+                    output.push((
+                        <li key={propIndex.index++}><p><strong>Auto Scaling Schedule</strong>: Disabled - Model will run 24/7</p>
+                        </li>));
+                    continue;
                 }
 
                 // Only show scheduling if it has valid content

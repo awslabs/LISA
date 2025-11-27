@@ -128,8 +128,8 @@ export type IScheduleConfig = {
     scheduleEnabled: boolean;
     scheduleType: ScheduleType;
     timezone: string;
-    weeklySchedule?: IWeeklySchedule;
-    dailySchedule?: IDaySchedule;
+    dailySchedule?: IWeeklySchedule;
+    recurringSchedule?: IDaySchedule;
     nextScheduledAction?: string;
     lastScheduleUpdate?: string;
     scheduleStatus?: string;
@@ -294,8 +294,8 @@ export const scheduleConfigSchema = z.object({
     scheduleEnabled: z.boolean().default(false),
     scheduleType: z.nativeEnum(ScheduleType).optional(),
     timezone: z.string().default('UTC'),
-    weeklySchedule: weeklyScheduleSchema.optional(),
-    dailySchedule: dayScheduleSchema.optional(),
+    dailySchedule: weeklyScheduleSchema.optional(),
+    recurringSchedule: dayScheduleSchema.optional(),
     nextScheduledAction: z.string().optional(),
     lastScheduleUpdate: z.string().optional(),
     scheduleStatus: z.string().optional(),
@@ -315,31 +315,31 @@ export const scheduleConfigSchema = z.object({
         }
 
         if (value.scheduleType === ScheduleType.DAILY) {
-            if (!value.weeklySchedule) {
+            if (!value.dailySchedule) {
                 context.addIssue({
                     code: z.ZodIssueCode.custom,
-                    message: 'Weekly schedule is required for daily scheduling',
-                    path: ['weeklySchedule']
+                    message: 'Daily schedule is required for daily scheduling',
+                    path: ['dailySchedule']
                 });
             } else {
                 // Check that at least one day has schedules
-                const hasAnySchedule = Object.values(value.weeklySchedule).some(
+                const hasAnySchedule = Object.values(value.dailySchedule).some(
                     (daySchedule) => daySchedule && daySchedule.startTime && daySchedule.stopTime
                 );
                 if (!hasAnySchedule) {
                     context.addIssue({
                         code: z.ZodIssueCode.custom,
                         message: 'At least one day must have a schedule configured',
-                        path: ['weeklySchedule']
+                        path: ['dailySchedule']
                     });
                 }
             }
         } else if (value.scheduleType === ScheduleType.RECURRING) {
-            if (!value.dailySchedule) {
+            if (!value.recurringSchedule) {
                 context.addIssue({
                     code: z.ZodIssueCode.custom,
                     message: 'Recurring schedule must be configured',
-                    path: ['dailySchedule']
+                    path: ['recurringSchedule']
                 });
             }
         }

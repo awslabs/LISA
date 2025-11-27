@@ -85,6 +85,15 @@ export class CoreConstruct extends Construct {
             assetPath: config.lambdaLayerAssets?.authorizerLayerPath,
         });
 
+        // Build CDK Lambda layer for deployer functions
+        const cdkLambdaLayer = new NodeLayer(scope, 'CdkLayer', {
+            config: config,
+            path: CDK_LAYER_PATH,
+            description: 'AWS CDK dependencies for deployer Lambdas',
+            runtime: lambda.Runtime.NODEJS_18_X,
+            assetPath: config.lambdaLayerAssets?.cdkLayerPath,
+        });
+
         new StringParameter(scope, 'LisaCommonLamdaLayerStringParameter', {
             parameterName: `${config.deploymentPrefix}/layerVersion/common`,
             stringValue: commonLambdaLayer.layer.layerVersionArn,
@@ -101,16 +110,7 @@ export class CoreConstruct extends Construct {
             parameterName: `${config.deploymentPrefix}/layerVersion/authorizer`,
             stringValue: authorizerLambdaLayer.layer.layerVersionArn,
             description: 'Layer Version ARN for LISA Authorizer Lambda Layer',
-        });
-
-        // Build CDK Lambda layer for deployer functions
-        const cdkLambdaLayer = new NodeLayer(scope, 'CdkLayer', {
-            config: config,
-            path: CDK_LAYER_PATH,
-            description: 'AWS CDK dependencies for deployer Lambdas',
-            runtime: lambda.Runtime.NODEJS_18_X,
-            assetPath: config.lambdaLayerAssets?.cdkLayerPath,
-        });
+        }); 
 
         new StringParameter(scope, 'LisaCdkLamdaLayerStringParameter', {
             parameterName: `${config.deploymentPrefix}/layerVersion/cdk`,

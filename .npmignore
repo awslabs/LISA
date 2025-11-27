@@ -11,6 +11,7 @@ node_modules/
 /ecs_model_deployer
 /vector_store_deployer
 lib/**/dist/
+lib/**/build/
 !/dist/
 !/dist/**/node_modules
 

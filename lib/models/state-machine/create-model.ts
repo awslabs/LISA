@@ -35,7 +35,7 @@ import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Repository } from 'aws-cdk-lib/aws-ecr';
 import { IStringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Vpc } from '../../networking/vpc';
-import { getDefaultRuntime } from '../../api-base/utils';
+import { getPythonRuntime } from '../../api-base/utils';
 import { LAMBDA_PATH } from '../../util';
 
 type CreateModelStateMachineProps = BaseProps & {
@@ -82,7 +82,7 @@ export class CreateModelStateMachine extends Construct {
 
         const setModelToCreating = new LambdaInvoke(this, 'SetModelToCreating', {
             lambdaFunction: new Function(this, 'SetModelToCreatingFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'models.state_machine.create_model.handle_set_model_to_creating',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
@@ -101,7 +101,7 @@ export class CreateModelStateMachine extends Construct {
 
         const startCopyDockerImage = new LambdaInvoke(this, 'StartCopyDockerImage', {
             lambdaFunction: new Function(this, 'StartCopyDockerImageFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'models.state_machine.create_model.handle_start_copy_docker_image',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
@@ -118,7 +118,7 @@ export class CreateModelStateMachine extends Construct {
 
         const pollDockerImageAvailable = new LambdaInvoke(this, 'PollDockerImageAvailable', {
             lambdaFunction: new Function(this, 'PollDockerImageAvailableFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'models.state_machine.create_model.handle_poll_docker_image_available',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
@@ -135,7 +135,7 @@ export class CreateModelStateMachine extends Construct {
 
         const handleFailureState = new LambdaInvoke(this, 'HandleFailure', {
             lambdaFunction: new Function(this, 'HandleFailureFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'models.state_machine.create_model.handle_failure',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
@@ -158,7 +158,7 @@ export class CreateModelStateMachine extends Construct {
 
         const startCreateStack = new LambdaInvoke(this, 'StartCreateStack', {
             lambdaFunction: new Function(this, 'StartCreateStackFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'models.state_machine.create_model.handle_start_create_stack',
                 code: Code.fromAsset(lambdaPath),
                 timeout: Duration.minutes(8),
@@ -175,7 +175,7 @@ export class CreateModelStateMachine extends Construct {
 
         const pollCreateStack = new LambdaInvoke(this, 'PollCreateStack', {
             lambdaFunction: new Function(this, 'PollCreateStackFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'models.state_machine.create_model.handle_poll_create_stack',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
@@ -198,7 +198,7 @@ export class CreateModelStateMachine extends Construct {
 
         const addModelToLitellm = new LambdaInvoke(this, 'AddModelToLitellm', {
             lambdaFunction: new Function(this, 'AddModelToLitellmFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'models.state_machine.create_model.handle_add_model_to_litellm',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
@@ -215,7 +215,7 @@ export class CreateModelStateMachine extends Construct {
 
         const addGuardrailsToLitellm = new LambdaInvoke(this, 'AddGuardrailsToLitellm', {
             lambdaFunction: new Function(this, 'AddGuardrailsToLitellmFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'models.state_machine.create_model.handle_add_guardrails_to_litellm',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,

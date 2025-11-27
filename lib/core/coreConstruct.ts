@@ -23,6 +23,7 @@ import { RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 
 import { COMMON_LAYER_PATH, FASTAPI_LAYER_PATH, AUTHORIZER_LAYER_PATH, CDK_LAYER_PATH } from '../util';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
+import { getNodeRuntime } from '../api-base/utils';
 
 export const ARCHITECTURE = lambda.Architecture.X86_64;
 process.env.DOCKER_DEFAULT_PLATFORM = ARCHITECTURE.dockerPlatform;
@@ -90,7 +91,7 @@ export class CoreConstruct extends Construct {
             config: config,
             path: CDK_LAYER_PATH,
             description: 'AWS CDK dependencies for deployer Lambdas',
-            runtime: lambda.Runtime.NODEJS_18_X,
+            runtime: getNodeRuntime(),
             assetPath: config.lambdaLayerAssets?.cdkLayerPath,
         });
 
@@ -110,7 +111,7 @@ export class CoreConstruct extends Construct {
             parameterName: `${config.deploymentPrefix}/layerVersion/authorizer`,
             stringValue: authorizerLambdaLayer.layer.layerVersionArn,
             description: 'Layer Version ARN for LISA Authorizer Lambda Layer',
-        }); 
+        });
 
         new StringParameter(scope, 'LisaCdkLamdaLayerStringParameter', {
             parameterName: `${config.deploymentPrefix}/layerVersion/cdk`,

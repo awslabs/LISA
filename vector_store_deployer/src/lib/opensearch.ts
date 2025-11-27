@@ -23,8 +23,9 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { createCdkId } from '../../../lib/core/utils';
 import { Roles } from '../../../lib/core/iam/roles';
 import { PipelineStack } from './pipeline-stack';
-import { Code, Function, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { Code, Function } from 'aws-cdk-lib/aws-lambda';
 import { Provider } from 'aws-cdk-lib/custom-resources';
+import { getPythonRuntime } from '../../../lib/api-base/utils';
 
 type OpenSearchVectorStoreStackProps = StackProps & {
     config: PartialConfig
@@ -42,7 +43,7 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
         // Create service-linked role conditionally - only if it doesn't already exist
         // OpenSearch service-linked roles cannot use custom suffixes, so we must check for existence
         const serviceLinkedRoleLambda = new Function(this, 'OpensearchServiceLinkedRoleLambda', {
-            runtime: Runtime.PYTHON_3_12,
+            runtime: getPythonRuntime(),
             handler: 'index.handler',
             code: Code.fromInline(`
 import boto3

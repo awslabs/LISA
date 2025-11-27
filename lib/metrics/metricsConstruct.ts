@@ -29,7 +29,7 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 import * as path from 'path';
 
-import { getDefaultRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
+import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
 import { BaseProps } from '../schema';
 import { createLambdaRole } from '../core/utils';
 import { Vpc } from '../networking/vpc';
@@ -313,7 +313,7 @@ export class MetricsConstruct extends Construct {
                 lambdaPath,
                 [commonLambdaLayer],
                 f,
-                getDefaultRuntime(),
+                getPythonRuntime(),
                 vpc,
                 securityGroups,
                 authorizer,
@@ -323,7 +323,7 @@ export class MetricsConstruct extends Construct {
 
         // Scheduled metrics Lambda to count unique users and group membership daily
         const scheduledMetricsLambda = new lambda.Function(this, 'DailyMetricsLambda', {
-            runtime: getDefaultRuntime(),
+            runtime: getPythonRuntime(),
             code: lambda.Code.fromAsset(path.join(lambdaPath)),
             handler: 'metrics/lambda_functions.daily_metrics_handler',
             environment: env,
@@ -342,7 +342,7 @@ export class MetricsConstruct extends Construct {
 
         // Create Lambda function for processing SQS events
         const metricsProcessorLambda = new lambda.Function(this, 'UsageMetricsProcessor', {
-            runtime: getDefaultRuntime(),
+            runtime: getPythonRuntime(),
             code: lambda.Code.fromAsset(path.join(lambdaPath)),
             handler: 'metrics.lambda_functions.process_metrics_sqs_event',
             environment: env,

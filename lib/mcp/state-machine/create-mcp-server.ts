@@ -33,7 +33,7 @@ import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH, POLLING_TIMEOUT } from './c
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Vpc } from '../../networking/vpc';
-import { getDefaultRuntime } from '../../api-base/utils';
+import { getPythonRuntime } from '../../api-base/utils';
 import { LAMBDA_PATH } from '../../util';
 
 type CreateMcpServerStateMachineProps = BaseProps & {
@@ -68,7 +68,7 @@ export class CreateMcpServerStateMachine extends Construct {
 
         const setServerToCreating = new LambdaInvoke(this, 'SetServerToCreating', {
             lambdaFunction: new Function(this, 'SetServerToCreatingFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'mcp_server.state_machine.create_mcp_server.handle_set_server_to_creating',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
@@ -85,7 +85,7 @@ export class CreateMcpServerStateMachine extends Construct {
 
         const deployServer = new LambdaInvoke(this, 'DeployServer', {
             lambdaFunction: new Function(this, 'DeployServerFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'mcp_server.state_machine.create_mcp_server.handle_deploy_server',
                 code: Code.fromAsset(lambdaPath),
                 timeout: Duration.minutes(8),
@@ -102,7 +102,7 @@ export class CreateMcpServerStateMachine extends Construct {
 
         const pollDeployment = new LambdaInvoke(this, 'PollDeployment', {
             lambdaFunction: new Function(this, 'PollDeploymentFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'mcp_server.state_machine.create_mcp_server.handle_poll_deployment',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
@@ -124,7 +124,7 @@ export class CreateMcpServerStateMachine extends Construct {
 
         const addServerToActive = new LambdaInvoke(this, 'AddServerToActive', {
             lambdaFunction: new Function(this, 'AddServerToActiveFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'mcp_server.state_machine.create_mcp_server.handle_add_server_to_active',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
@@ -141,7 +141,7 @@ export class CreateMcpServerStateMachine extends Construct {
 
         const handleFailureState = new LambdaInvoke(this, 'HandleFailure', {
             lambdaFunction: new Function(this, 'HandleFailureFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'mcp_server.state_machine.create_mcp_server.handle_failure',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,

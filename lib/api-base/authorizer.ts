@@ -26,7 +26,7 @@ import { BaseProps } from '../schema';
 import { createCdkId } from '../core/utils';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { Vpc } from '../networking/vpc';
-import { getDefaultRuntime } from './utils';
+import { getPythonRuntime } from './utils';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { LAMBDA_PATH } from '../util';
 
@@ -80,7 +80,7 @@ export class CustomAuthorizer extends Construct {
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         const authorizerLambda = new Function(this, 'AuthorizerLambda', {
 
-            runtime: getDefaultRuntime(),
+            runtime: getPythonRuntime(),
             handler: 'authorizer.lambda_functions.lambda_handler',
             functionName: `${cdk.Stack.of(this).stackName}-lambda-authorizer`,
             code: Code.fromAsset(lambdaPath),

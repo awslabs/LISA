@@ -18,7 +18,7 @@ import { Architecture, Code, LayerVersion, Runtime } from 'aws-cdk-lib/aws-lambd
 import { Construct } from 'constructs';
 import { PythonLayerVersion } from '@aws-cdk/aws-lambda-python-alpha';
 import { BaseProps } from '../../schema';
-import { getDefaultRuntime } from '../../api-base/utils';
+import { getPythonRuntime } from '../../api-base/utils';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { execSync } from 'node:child_process';
@@ -69,7 +69,7 @@ export class Layer extends Construct {
                 this.layer = new LayerVersion(this, 'Layer', {
                     code: Code.fromAsset(assetPath),
                     description,
-                    compatibleRuntimes: [getDefaultRuntime()],
+                    compatibleRuntimes: [getPythonRuntime()],
                     removalPolicy: config.removalPolicy,
                 });
             } else {
@@ -78,7 +78,7 @@ export class Layer extends Construct {
                 this.layer = new PythonLayerVersion(this, 'Layer', {
                     entry: layerPath,
                     description,
-                    compatibleRuntimes: [getDefaultRuntime()],
+                    compatibleRuntimes: [getPythonRuntime()],
                     removalPolicy: config.removalPolicy,
                     bundling: {
                         platform: architecture.dockerPlatform,
@@ -153,7 +153,7 @@ export class NodeLayer extends Construct {
             // Create a temporary build directory
             const buildDir = path.join(layerPath, 'build');
             const nodejsDir = path.join(buildDir, 'nodejs');
-            
+
             // Clean and create build directory
             if (fs.existsSync(buildDir)) {
                 fs.rmSync(buildDir, { recursive: true, force: true });

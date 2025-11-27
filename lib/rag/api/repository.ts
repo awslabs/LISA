@@ -21,7 +21,7 @@ import { IRole } from 'aws-cdk-lib/aws-iam';
 import { IFunction, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 
-import { getDefaultRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
+import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
 import { BaseProps } from '../../schema';
 import { Vpc } from '../../networking/vpc';
 import { LAMBDA_PATH } from '../../util';
@@ -308,7 +308,7 @@ export class RepositoryApi extends Construct {
                 lambdaPath,
                 commonLayers,
                 f,
-                getDefaultRuntime(),
+                getPythonRuntime(),
                 vpc,
                 securityGroups,
                 authorizer,

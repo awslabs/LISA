@@ -90,6 +90,15 @@ export class McpServerDeployer extends Construct {
             memorySize: 1024,
             role,
             layers: [cdkLambdaLayer],
+            bundling: {
+                externalModules: [
+                    'aws-cdk',
+                    'aws-cdk-lib',
+                    'zod',
+                ],
+                minify: true,
+                sourceMap: true,
+            },
             environment: {
                 'LISA_VPC_ID': props.vpc.vpc.vpcId,
                 'LISA_SECURITY_GROUP_ID': props.securityGroupId,

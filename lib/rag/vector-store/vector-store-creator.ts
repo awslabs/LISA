@@ -176,6 +176,15 @@ export class VectorStoreCreatorStack extends Construct {
             memorySize: 1024,
             role: cdkRole,
             layers: [cdkLambdaLayer],
+            bundling: {
+                externalModules: [
+                    'aws-cdk',
+                    'aws-cdk-lib',
+                    'zod',
+                ],
+                minify: true,
+                sourceMap: true,
+            },
             environment: {
                 'LISA_CONFIG': JSON.stringify(strippedConfig),
                 'LISA_RAG_VECTOR_STORE_TABLE': vectorStoreTable.tableName

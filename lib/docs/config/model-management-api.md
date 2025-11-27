@@ -295,3 +295,207 @@ handled as separate operations.
   "enabled": true
 }
 ```
+
+## Model Scheduling (Admin API)
+
+LISA provides comprehensive model scheduling capabilities that allow administrators to automatically start and stop LISA-hosted models on predefined schedules. This feature helps optimize infrastructure costs by ensuring models are only running when needed, while maintaining the flexibility to have different schedules for different days of the week.
+
+### Schedule Types
+
+LISA supports two scheduling types:
+
+- **DAILY**: Configure different start/stop times for each day of the week. Each day can have its own schedule or be left unscheduled.
+- **RECURRING**: Configure a single start/stop time that applies every day.
+
+### Scheduling Endpoints
+
+#### Creating/Updating a Schedule
+
+Create or update a schedule for a specific model. This endpoint accepts the same payload for both creating new schedules and updating existing ones.
+
+##### Request Example:
+
+```
+PUT https://<apigw_endpoint>/models/{modelId}/schedule
+```
+
+##### Example Payload for Daily Schedule:
+
+```json
+{
+  "scheduleType": "DAILY",
+  "timezone": "America/New_York",
+  "dailySchedule": {
+    "monday": {
+      "startTime": "09:00",
+      "stopTime": "17:00"
+    },
+    "tuesday": {
+      "startTime": "09:00",
+      "stopTime": "17:00"
+    },
+    "wednesday": {
+      "startTime": "08:00",
+      "stopTime": "18:00"
+    },
+    "friday": {
+      "startTime": "09:00",
+      "stopTime": "15:00"
+    }
+  }
+}
+```
+
+##### Example Payload for Recurring Schedule:
+
+```json
+{
+  "scheduleType": "RECURRING",
+  "timezone": "America/New_York",
+  "recurringSchedule": {
+    "startTime": "08:00",
+    "stopTime": "20:00"
+  }
+}
+```
+
+##### Response Example:
+
+```json
+{
+  "message": "Schedule updated successfully",
+  "modelId": "mistral-vllm",
+  "scheduleEnabled": true
+}
+```
+
+##### Key Fields for Schedule Configuration:
+
+- `scheduleType`: Either "DAILY" or "RECURRING"
+- `timezone`: IANA timezone identifier (e.g., "UTC", "America/New_York", "Europe/London")
+- `dailySchedule`: For DAILY type - defines start/stop times for each day of the week
+  - Days can be omitted if no schedule is needed for that day
+  - Each day requires both `startTime` and `stopTime` in HH:MM format (24-hour)
+  - Stop time must be at least 2 hours after start time
+- `recurringSchedule`: For RECURRING type - defines single start/stop time applied daily
+  - Requires both `startTime` and `stopTime` in HH:MM format (24-hour)
+  - Stop time must be at least 2 hours after start time
+
+#### Getting Schedule Configuration
+
+Retrieve the current schedule configuration for a model.
+
+##### Request Example:
+
+```
+GET https://<apigw_endpoint>/models/{modelId}/schedule
+```
+
+##### Response Example:
+
+```json
+{
+  "modelId": "mistral-vllm",
+  "scheduling": {
+    "scheduleType": "DAILY",
+    "timezone": "America/New_York",
+    "dailySchedule": {
+      "monday": {
+        "startTime": "09:00",
+        "stopTime": "17:00"
+      },
+      "tuesday": {
+        "startTime": "09:00",
+        "stopTime": "17:00"
+      }
+    },
+    "scheduleEnabled": true,
+    "scheduleConfigured": true,
+    "lastScheduleUpdate": "2024-01-15T10:30:00Z"
+  },
+  "nextScheduledAction": {
+    "action": "START",
+    "scheduledTime": "2024-01-16T14:00:00Z"
+  }
+}
+```
+
+#### Getting Schedule Status
+
+Get detailed status information about a model's scheduling configuration and current state.
+
+##### Request Example:
+
+```
+GET https://<apigw_endpoint>/models/{modelId}/schedule/status
+```
+
+##### Response Example:
+
+```json
+{
+  "modelId": "mistral-vllm",
+  "scheduleEnabled": true,
+  "scheduleConfigured": true,
+  "lastScheduleFailed": false,
+  "scheduleStatus": "ACTIVE",
+  "scheduleType": "DAILY",
+  "timezone": "America/New_York",
+  "nextScheduledAction": {
+    "action": "STOP",
+    "scheduledTime": "2024-01-15T22:00:00Z"
+  },
+  "lastScheduleUpdate": "2024-01-15T10:30:00Z",
+  "lastScheduleFailure": null
+}
+```
+
+##### Schedule Status Fields:
+
+- `scheduleEnabled`: Whether scheduling is currently active for the model
+- `scheduleConfigured`: Whether a schedule has been configured for the model
+- `lastScheduleFailed`: Whether the last scheduled action failed
+- `scheduleStatus`: Overall status - "ACTIVE", "DISABLED", or "FAILED"
+- `scheduleType`: The configured schedule type ("DAILY" or "RECURRING")
+- `timezone`: Configured timezone for the schedule
+- `nextScheduledAction`: Details about the next scheduled start/stop action
+- `lastScheduleUpdate`: Timestamp of when the schedule was last modified
+- `lastScheduleFailure`: Details about the most recent scheduling failure (if any)
+
+#### Deleting a Schedule
+
+Remove the schedule configuration for a model, disabling automatic start/stop functionality.
+
+##### Request Example:
+
+```
+DELETE https://<apigw_endpoint>/models/{modelId}/schedule
+```
+
+##### Response Example:
+
+```json
+{
+  "message": "Schedule deleted successfully",
+  "modelId": "mistral-vllm",
+  "scheduleEnabled": false
+}
+```
+
+### Schedule Validation Rules
+
+- **Time Format**: All times must be in HH:MM format using 24-hour notation (00:00 to 23:59)
+- **Minimum Duration**: Stop time must be at least 2 hours after start time
+- **Daily Schedule**: At least one day must have a schedule configured for DAILY type
+- **Timezone**: Must be a valid IANA timezone identifier
+- **Model Requirements**: Only LISA-hosted models with Auto Scaling Groups can be scheduled
+- **Model State**: Models must be in "InService" or "Stopped" state to configure scheduling
+
+### Schedule Behavior
+
+- **Automatic Actions**: Models are automatically started and stopped according to their configured schedules
+- **Cross-Day Schedules**: Schedules can span midnight (e.g., start at 23:00, stop at 01:00 next day)
+- **Weekend Handling**: Days without configured schedules remain unaffected by scheduling
+- **Failure Handling**: Failed schedule actions are logged and can be monitored via the status endpoint
+- **Manual Override**: Manual start/stop operations work independently of scheduling
+- **Update Handling**: Schedule updates take effect immediately and recalculate next actions

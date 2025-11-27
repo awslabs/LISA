@@ -15,8 +15,9 @@
 */
 
 import { spawn, spawnSync } from 'node:child_process';
-
 import { readdirSync, rmSync, symlinkSync } from 'node:fs';
+
+const CDK = '/opt/nodejs/node_modules/aws-cdk/bin/cdk';
 
 /*
   cdk CLI always wants ./ to be writable in order to write cdk.context.json.
@@ -68,7 +69,7 @@ export const handler = async (event: any) => {
 
     createWritableEnv();
 
-    const ret = spawnSync('./node_modules/aws-cdk/bin/cdk', ['synth', '-o', '/tmp/cdk.out']);
+    const ret = spawnSync(CDK, ['synth', '-o', '/tmp/cdk.out']);
 
     const stderr = String(ret.output[2]);
     if ( ret.status !== 0 ) {
@@ -78,7 +79,7 @@ export const handler = async (event: any) => {
 
     const stackName = `${config.deploymentName}-${modelConfig.modelId}`;
     const deploy_promise: Promise<number> = new Promise( (resolve, reject) => {
-        const cp = spawn('./node_modules/aws-cdk/bin/cdk', ['deploy', stackName, '-o', '/tmp/cdk.out'], {
+        const cp = spawn(CDK, ['deploy', stackName, '-o', '/tmp/cdk.out'], {
             env: {...process.env},
             stdio: 'inherit'
         });

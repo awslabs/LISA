@@ -47,6 +47,7 @@ export function expandAdminMenu () {
                 'Model Management',
                 'RAG Management',
                 'MCP Management',
+                'MCP Workbench',
             ]);
         });
 }

@@ -143,6 +143,16 @@ export class NodeLayer extends Construct {
                 compatibleRuntimes: [runtime],
                 removalPolicy: config.removalPolicy,
             });
+        } else if (process.env.NODE_ENV === 'test') {
+            // Skip npm install during tests - use mock layer directory
+            const mockLayerDir = './test/cdk/mocks/layers';
+            fs.mkdirSync(mockLayerDir, { recursive: true });
+            this.layer = new LayerVersion(this, 'Layer', {
+                code: Code.fromAsset(mockLayerDir),
+                description,
+                compatibleRuntimes: [runtime],
+                removalPolicy: config.removalPolicy,
+            });
         } else {
             // Build the layer locally
             const packageJsonPath = path.join(layerPath, 'package.json');

@@ -115,7 +115,7 @@ build_all_images() {
     build_image "Dockerfile" "lisa-rest-api" "$LISA_VERSION" "./lib/serve/rest-api" \
         "NODE_ENV=production" \
         "LITELLM_CONFIG=\"db_key: sk-a8814208-0388-480c-9fc7-fea59607ca38\"" \
-        "BASE_IMAGE=python:3.11"
+        "BASE_IMAGE=python:3.14-slim"
 
     # lisa-batch-ingestion
     RAG_DIR="./lib/rag/ingestion/ingestion-image"

@@ -28,7 +28,7 @@ function setup_python_dist(){
     cd dist
 
     # Define the layers
-    PYTHON_VERSION="3.11"
+    PYTHON_VERSION="3.14"
     DIST="."
     OUTPUT_DIR="python/lib/${PYTHON_VERSION}/site-packages"
 

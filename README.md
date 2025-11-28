@@ -32,8 +32,8 @@ Read more in the Architecture Overview section of LISA's documentation site link
 * AWS CDK and Model Management both leverage AWS Systems Manager Agent (SSM) parameter store. Confirm that SSM is approved for use by your organization before beginning. If you're new to CDK, review the [AWS CDK Documentation](https://docs.aws.amazon.com/cdk/v2/guide/home.html) and consult with your AWS support team.
 ### Software
 * AWS CLI installed and configured
-* Python 3.11
-* Node.js 20
+* Python 3.14
+* Node.js 24
 * Docker installed and running
 * Sufficient disk space for model downloads and conversions
 ## Getting Started

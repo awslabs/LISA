@@ -11,8 +11,8 @@
 ## Software
 
 * AWS CLI installed and configured
-* Python 3.11
-* Node.js 20
+* Python 3.14
+* Node.js 24
 * Docker installed and running
 * Sufficient disk space for model downloads and conversions
 
@@ -292,7 +292,7 @@ npmConfig:
   registry: https://your-adc-npm-registry.com
 
 # Use ADC-accessible base images for LISA-Serve and Batch Ingestion
-baseImage: <adc-registry>/python:3.11
+baseImage: <adc-registry>/python:3.14-slim
 
 # Configure offline build dependencies for REST API (nodeenv for prisma-client-py)
 restApiConfig:

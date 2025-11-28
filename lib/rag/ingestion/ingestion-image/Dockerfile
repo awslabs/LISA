@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=public.ecr.aws/lambda/python:3.11
+ARG BASE_IMAGE=public.ecr.aws/lambda/python:3.14-slim
 FROM ${BASE_IMAGE}
 
 ARG BUILD_DIR=build

@@ -25,10 +25,9 @@ import { DeleteStoreStateMachine } from './state_machine/delete-store';
 import { Roles } from '../../core/iam/roles';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
-import { ILayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { CodeFactory, LAMBDA_PATH, VECTOR_STORE_DEPLOYER_DIST_PATH } from '../../util';
-import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
-import { getDefaultRuntime } from '../../api-base/utils';
+import { getNodeRuntime, getPythonRuntime } from '../../api-base/utils';
 
 export type VectorStoreCreatorStackProps = StackProps & BaseProps & {
     ragVectorStoreTable: CfnOutput;
@@ -157,17 +156,25 @@ export class VectorStoreCreatorStack extends Construct {
             ...(vpc.vpc.vpcId && { vpcId: vpc.vpc.vpcId })
         };
 
-        const functionId = createCdkId([props.config.deploymentName, props.config.deploymentStage, 'vector_store_deployer', 'Fn']);
+        // Get CDK layer for deployer Lambda
+        const cdkLambdaLayer = lambda.LayerVersion.fromLayerVersionArn(
+            this,
+            'cdk-lambda-layer',
+            ssm.StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/cdk`),
+        );
+
+        const functionId = createCdkId([props.config.deploymentName, props.config.deploymentStage, 'vector_store_deployer', 'Func']);
         const vectorStoreDeployer = config.vectorStoreDeployerPath || VECTOR_STORE_DEPLOYER_DIST_PATH;
-        this.vectorStoreCreatorFn = new NodejsFunction(this, functionId, {
+        this.vectorStoreCreatorFn = new lambda.Function(this, functionId, {
             functionName: functionId,
             code: CodeFactory.createCode(vectorStoreDeployer),
             timeout: Duration.minutes(15),
             ephemeralStorageSize: Size.mebibytes(2048),
-            runtime: Runtime.NODEJS_18_X,
+            runtime: getNodeRuntime(),
             handler: 'index.handler',
             memorySize: 1024,
             role: cdkRole,
+            layers: [cdkLambdaLayer],
             environment: {
                 'LISA_CONFIG': JSON.stringify(strippedConfig),
                 'LISA_RAG_VECTOR_STORE_TABLE': vectorStoreTable.tableName
@@ -180,7 +187,7 @@ export class VectorStoreCreatorStack extends Construct {
         // Create Lambda for Bedrock collection creation
         const createBedrockCollectionFn = new lambda.Function(this, 'CreateBedrockCollectionFn', {
             functionName: createCdkId([config.deploymentName, config.deploymentStage, 'create_bedrock_collection']),
-            runtime: getDefaultRuntime(),
+            runtime: getPythonRuntime(),
             handler: 'repository.lambda_functions.create_bedrock_collection',
             code: lambda.Code.fromAsset(config.lambdaPath || LAMBDA_PATH),
             timeout: Duration.minutes(5),

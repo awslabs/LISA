@@ -19,7 +19,7 @@ import { BaseProps } from '../../schema';
 import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { AttributeType, BillingMode, ProjectionType, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
-import { getDefaultRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
+import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
 import { createLambdaRole } from '../../core/utils';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
@@ -166,7 +166,7 @@ export class PromptTemplateApi extends Construct {
                 lambdaPath,
                 [commonLambdaLayer, fastapiLambdaLayer],
                 f,
-                getDefaultRuntime(),
+                getPythonRuntime(),
                 vpc,
                 securityGroups,
                 authorizer,

@@ -8,11 +8,11 @@ mkdir -p $OUTPUT_DIR
 PYPI_URL=${PYPI_URL:-https://pypi.org/simple/}
 source .venv/bin/activate
 
-build_layer() {
+build_python_layer() {
   local package_name=$1
   local source_path=$2
   local pre_build_cmd=$3
-  echo "Building Lambda Layer $package_name from $source_path..."
+  echo "Building Python Lambda Layer $package_name from $source_path..."
 
   if [ -n "$pre_build_cmd" ]; then
     eval "$pre_build_cmd"
@@ -25,10 +25,10 @@ build_layer() {
   cd $ROOT
 }
 
-build_lambda() {
+build_python_lambda() {
   local package_name=$1
   local source_path=$2
-  echo "Building Lambda $package_name from $source_path..."
+  echo "Building Python Lambda $package_name from $source_path..."
   cd "$source_path"
   $ROOT/bin/package-lambda-layer --src . --output "$package_name.zip" --pypi $PYPI_URL
   mv ./build/"$package_name.zip" $OUTPUT_DIR/
@@ -36,11 +36,42 @@ build_lambda() {
   cd $ROOT
 }
 
+build_node_layer() {
+  local package_name=$1
+  local source_path=$2
+  echo "Building Node.js Lambda Layer $package_name from $source_path..."
+
+  cd "$source_path"
+
+  # Clean previous build
+  rm -rf build node_modules
+
+  # Create layer structure: nodejs/node_modules
+  mkdir -p build/nodejs
+
+  # Copy package.json and install production dependencies
+  cp package.json build/nodejs/
+  cd build/nodejs
+  npm install --omit=dev --production
+  cd ../..
+
+  # Create zip
+  cd build
+  zip -r "$package_name.zip" nodejs
+  mv "$package_name.zip" $OUTPUT_DIR/
+  cd ..
+  rm -rf build
+  cd $ROOT
+}
+
 echo "Building Python Lambda Layers..."
-build_layer "AimlAdcLisaCommonLayer" "./lib/core/layers/common"
-build_layer "AimlAdcLisaAuthLayer" "./lib/core/layers/authorizer"
-build_layer "AimlAdcLisaFastApiLayer" "./lib/core/layers/fastapi"
-build_layer "AimlAdcLisaRag" "./lib/rag/layer" "python3 scripts/cache-tiktoken-for-offline.py ./lib/rag/layer/TIKTOKEN_CACHE"
+build_python_layer "AimlAdcLisaCommonLayer" "./lib/core/layers/common"
+build_python_layer "AimlAdcLisaAuthLayer" "./lib/core/layers/authorizer"
+build_python_layer "AimlAdcLisaFastApiLayer" "./lib/core/layers/fastapi"
+build_python_layer "AimlAdcLisaRag" "./lib/rag/layer" "python3 scripts/cache-tiktoken-for-offline.py ./lib/rag/layer/TIKTOKEN_CACHE"
+
+echo "Building Node.js Lambda Layers..."
+build_node_layer "AimlAdcLisaCdkLayer" "./lib/core/layers/cdk"
 
 echo "Building Python Lambdas..."
-build_lambda "AimlAdcLisaLambda" "./lambda"
+build_python_lambda "AimlAdcLisaLambda" "./lambda"

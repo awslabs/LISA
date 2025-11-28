@@ -1,0 +1,865 @@
+{
+  "Resources": {
+    "TokenTable3625D248": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "token",
+            "AttributeType": "S"
+          }
+        ],
+        "BillingMode": "PAY_PER_REQUEST",
+        "KeySchema": [
+          {
+            "AttributeName": "token",
+            "KeyType": "HASH"
+          }
+        ],
+        "SSESpecification": {
+          "SSEEnabled": true
+        },
+        "TableName": "test-lisa-LISAApiBaseTokenTable"
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete"
+    },
+    "TokenTableNameParameter02DD6D39": {
+      "Type": "AWS::SSM::Parameter",
+      "Properties": {
+        "Description": "DynamoDB table name for API tokens",
+        "Name": "/dev/test-lisa/lisa/tokenTableName",
+        "Type": "String",
+        "Value": {
+          "Ref": "TokenTable3625D248"
+        }
+      }
+    },
+    "LisaApiBasemanagementEventBus92EB8785": {
+      "Type": "AWS::Events::EventBus",
+      "Properties": {
+        "Name": "test-lisa-management-events"
+      }
+    },
+    "LisaApiBasemanagementKeySecret88DE7B9D": {
+      "Type": "AWS::SecretsManager::Secret",
+      "Properties": {
+        "Description": "LISA management key secret",
+        "GenerateSecretString": {
+          "ExcludePunctuation": true,
+          "PasswordLength": 16
+        },
+        "Name": "test-lisa-management-key"
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete"
+    },
+    "LisaApiBasemanagementKeySecretRotationScheduleE78FFD43": {
+      "Type": "AWS::SecretsManager::RotationSchedule",
+      "Properties": {
+        "RotationLambdaARN": {
+          "Fn::GetAtt": [
+            "LisaApiBasemanagementKeyRotationLambda599C8C2D",
+            "Arn"
+          ]
+        },
+        "RotationRules": {
+          "ScheduleExpression": "rate(30 days)"
+        },
+        "SecretId": {
+          "Ref": "LisaApiBasemanagementKeySecret88DE7B9D"
+        }
+      },
+      "DependsOn": [
+        "LisaApiBasemanagementKeyRotationLambdaInvokeN0a2GKfZP0JmDqDEVhhu6A0TUv3NyNbk4YMFKNc86A1563B"
+      ]
+    },
+    "LisaApiBasemanagementKeySecretPolicyA498801D": {
+      "Type": "AWS::SecretsManager::ResourcePolicy",
+      "Properties": {
+        "ResourcePolicy": {
+          "Statement": [
+            {
+              "Action": "secretsmanager:DeleteSecret",
+              "Effect": "Deny",
+              "Principal": {
+                "AWS": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":iam::012345678901:root"
+                    ]
+                  ]
+                }
+              },
+              "Resource": "*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "SecretId": {
+          "Ref": "LisaApiBasemanagementKeySecret88DE7B9D"
+        }
+      }
+    },
+    "LisaApiBasemanagementKeyRotationRole5AABDC6F": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+              ]
+            ]
+          }
+        ],
+        "Policies": [
+          {
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Action": [
+                    "secretsmanager:DescribeSecret",
+                    "secretsmanager:GetSecretValue",
+                    "secretsmanager:PutSecretValue",
+                    "secretsmanager:UpdateSecretVersionStage"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": {
+                    "Ref": "LisaApiBasemanagementKeySecret88DE7B9D"
+                  }
+                },
+                {
+                  "Action": "events:PutEvents",
+                  "Effect": "Allow",
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "LisaApiBasemanagementEventBus92EB8785",
+                      "Arn"
+                    ]
+                  }
+                }
+              ],
+              "Version": "2012-10-17"
+            },
+            "PolicyName": "SecretsManagerRotation"
+          }
+        ]
+      }
+    },
+    "LisaApiBasemanagementKeyRotationRoleDefaultPolicyC8457441": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "secretsmanager:DescribeSecret",
+                "secretsmanager:GetSecretValue",
+                "secretsmanager:PutSecretValue",
+                "secretsmanager:UpdateSecretVersionStage"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Ref": "LisaApiBasemanagementKeySecret88DE7B9D"
+              }
+            },
+            {
+              "Action": "secretsmanager:GetRandomPassword",
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "LisaApiBasemanagementKeyRotationRoleDefaultPolicyC8457441",
+        "Roles": [
+          {
+            "Ref": "LisaApiBasemanagementKeyRotationRole5AABDC6F"
+          }
+        ]
+      }
+    },
+    "LisaApiBasemanagementKeyRotationLambda599C8C2D": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "EVENT_BUS_NAME": {
+              "Ref": "LisaApiBasemanagementEventBus92EB8785"
+            }
+          }
+        },
+        "Handler": "management_key.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "LisaApiBasemanagementKeyRotationRole5AABDC6F",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 300,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "LisaApiBasemanagementKeyRotationRoleDefaultPolicyC8457441",
+        "LisaApiBasemanagementKeyRotationRole5AABDC6F"
+      ]
+    },
+    "LisaApiBasemanagementKeyRotationLambdaInvokeN0a2GKfZP0JmDqDEVhhu6A0TUv3NyNbk4YMFKNc86A1563B": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "LisaApiBasemanagementKeyRotationLambda599C8C2D",
+            "Arn"
+          ]
+        },
+        "Principal": "secretsmanager.amazonaws.com"
+      }
+    },
+    "AppManagementKeySecretNameC2D2ED8A": {
+      "Type": "AWS::SSM::Parameter",
+      "Properties": {
+        "Name": "/dev/test-lisa/lisa/appManagementKeySecretName",
+        "Type": "String",
+        "Value": {
+          "Fn::Join": [
+            "-",
+            [
+              {
+                "Fn::Select": [
+                  0,
+                  {
+                    "Fn::Split": [
+                      "-",
+                      {
+                        "Fn::Select": [
+                          6,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "LisaApiBasemanagementKeySecret88DE7B9D"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "Fn::Select": [
+                  1,
+                  {
+                    "Fn::Split": [
+                      "-",
+                      {
+                        "Fn::Select": [
+                          6,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "LisaApiBasemanagementKeySecret88DE7B9D"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "Fn::Select": [
+                  2,
+                  {
+                    "Fn::Split": [
+                      "-",
+                      {
+                        "Fn::Select": [
+                          6,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "LisaApiBasemanagementKeySecret88DE7B9D"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "Fn::Select": [
+                  3,
+                  {
+                    "Fn::Split": [
+                      "-",
+                      {
+                        "Fn::Select": [
+                          6,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "LisaApiBasemanagementKeySecret88DE7B9D"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "LisaApiAuthorizerAuthorizerLambdaServiceRoleFC9BFB65": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          },
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    "LisaApiAuthorizerAuthorizerLambdaServiceRoleDefaultPolicy291388A2": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "dynamodb:BatchGetItem",
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator",
+                "dynamodb:Query",
+                "dynamodb:GetItem",
+                "dynamodb:Scan",
+                "dynamodb:ConditionCheckItem",
+                "dynamodb:DescribeTable"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "TokenTable3625D248",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Ref": "AWS::NoValue"
+                }
+              ]
+            },
+            {
+              "Action": [
+                "secretsmanager:GetSecretValue",
+                "secretsmanager:DescribeSecret"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":secretsmanager:us-iso-east-1:012345678901:secret:test-lisa-management-key-??????"
+                  ]
+                ]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "LisaApiAuthorizerAuthorizerLambdaServiceRoleDefaultPolicy291388A2",
+        "Roles": [
+          {
+            "Ref": "LisaApiAuthorizerAuthorizerLambdaServiceRoleFC9BFB65"
+          }
+        ]
+      }
+    },
+    "LisaApiAuthorizerAuthorizerLambdaF64E36CD": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+        },
+        "Description": "REST API and UI Authorization Lambda",
+        "Environment": {
+          "Variables": {
+            "CLIENT_ID": "test",
+            "AUTHORITY": "test",
+            "ADMIN_GROUP": "",
+            "USER_GROUP": "",
+            "JWT_GROUPS_PROP": "",
+            "MANAGEMENT_KEY_NAME": "test-lisa-management-key",
+            "TOKEN_TABLE_NAME": {
+              "Ref": "TokenTable3625D248"
+            }
+          }
+        },
+        "FunctionName": "LisaApiBase-lambda-authorizer",
+        "Handler": "authorizer.lambda_functions.lambda_handler",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionauthorizerC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "LisaApiAuthorizerAuthorizerLambdaServiceRoleFC9BFB65",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 30,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "LisaApiAuthorizerAuthorizerLambdaServiceRoleDefaultPolicy291388A2",
+        "LisaApiAuthorizerAuthorizerLambdaServiceRoleFC9BFB65"
+      ]
+    },
+    "LisaApiAuthorizerAuthorizerLambdaLisaApiBaseLisaApiAuthorizerAPIGWAuthorizer0706D1FFPermissions026E08A4": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "LisaApiAuthorizerAuthorizerLambdaF64E36CD",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Ref": "LisaApiBaseRestApiBD7EFE41"
+              },
+              "/authorizers/",
+              {
+                "Ref": "LisaApiAuthorizerAPIGWAuthorizerE7001880"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "LisaApiAuthorizerAPIGWAuthorizerE7001880": {
+      "Type": "AWS::ApiGateway::Authorizer",
+      "Properties": {
+        "AuthorizerResultTtlInSeconds": 0,
+        "AuthorizerUri": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Fn::Select": [
+                  1,
+                  {
+                    "Fn::Split": [
+                      ":",
+                      {
+                        "Fn::GetAtt": [
+                          "LisaApiAuthorizerAuthorizerLambdaF64E36CD",
+                          "Arn"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              ":apigateway:",
+              {
+                "Fn::Select": [
+                  3,
+                  {
+                    "Fn::Split": [
+                      ":",
+                      {
+                        "Fn::GetAtt": [
+                          "LisaApiAuthorizerAuthorizerLambdaF64E36CD",
+                          "Arn"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              ":lambda:path/2015-03-31/functions/",
+              {
+                "Fn::GetAtt": [
+                  "LisaApiAuthorizerAuthorizerLambdaF64E36CD",
+                  "Arn"
+                ]
+              },
+              "/invocations"
+            ]
+          ]
+        },
+        "IdentitySource": "method.request.header.Authorization",
+        "Name": "LisaApiBaseLisaApiAuthorizerAPIGWAuthorizer0706D1FF",
+        "RestApiId": {
+          "Ref": "LisaApiBaseRestApiBD7EFE41"
+        },
+        "Type": "REQUEST"
+      }
+    },
+    "LisaApiBaseRestApiBD7EFE41": {
+      "Type": "AWS::ApiGateway::RestApi",
+      "Properties": {
+        "BinaryMediaTypes": [
+          "font/*",
+          "image/*"
+        ],
+        "Description": "Base API Gateway for LISA.",
+        "EndpointConfiguration": {
+          "Types": [
+            "REGIONAL"
+          ]
+        },
+        "Name": "LisaApiBase-RestApi"
+      }
+    },
+    "LisaApiBaseRestApiCloudWatchRoleC64221F2": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "apigateway.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+              ]
+            ]
+          }
+        ]
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain"
+    },
+    "LisaApiBaseRestApiAccount63CB3D5A": {
+      "Type": "AWS::ApiGateway::Account",
+      "Properties": {
+        "CloudWatchRoleArn": {
+          "Fn::GetAtt": [
+            "LisaApiBaseRestApiCloudWatchRoleC64221F2",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "LisaApiBaseRestApiBD7EFE41"
+      ],
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain"
+    },
+    "LisaApiBaseRestApiDeployment0EFEF450a469aadc1179465edb3265abd2173fed": {
+      "Type": "AWS::ApiGateway::Deployment",
+      "Properties": {
+        "Description": "Base API Gateway for LISA.",
+        "RestApiId": {
+          "Ref": "LisaApiBaseRestApiBD7EFE41"
+        }
+      },
+      "DependsOn": [
+        "LisaApiBaseRestApiOPTIONSB08FDC9B"
+      ],
+      "Metadata": {
+        "aws:cdk:do-not-refactor": true
+      }
+    },
+    "LisaApiBaseRestApiDeploymentStagedev221E5167": {
+      "Type": "AWS::ApiGateway::Stage",
+      "Properties": {
+        "DeploymentId": {
+          "Ref": "LisaApiBaseRestApiDeployment0EFEF450a469aadc1179465edb3265abd2173fed"
+        },
+        "MethodSettings": [
+          {
+            "DataTraceEnabled": false,
+            "HttpMethod": "*",
+            "ResourcePath": "/*",
+            "ThrottlingBurstLimit": 100,
+            "ThrottlingRateLimit": 100
+          }
+        ],
+        "RestApiId": {
+          "Ref": "LisaApiBaseRestApiBD7EFE41"
+        },
+        "StageName": "dev"
+      },
+      "DependsOn": [
+        "LisaApiBaseRestApiAccount63CB3D5A"
+      ]
+    },
+    "LisaApiBaseRestApiOPTIONSB08FDC9B": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "Integration": {
+          "IntegrationResponses": [
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+              },
+              "StatusCode": "204"
+            }
+          ],
+          "RequestTemplates": {
+            "application/json": "{ statusCode: 200 }"
+          },
+          "Type": "MOCK"
+        },
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "StatusCode": "204"
+          }
+        ],
+        "ResourceId": {
+          "Fn::GetAtt": [
+            "LisaApiBaseRestApiBD7EFE41",
+            "RootResourceId"
+          ]
+        },
+        "RestApiId": {
+          "Ref": "LisaApiBaseRestApiBD7EFE41"
+        }
+      }
+    }
+  },
+  "Parameters": {
+    "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/layerVersion/common"
+    },
+    "SsmParameterValuedevtestlisalisalayerVersionauthorizerC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/layerVersion/authorizer"
+    },
+    "BootstrapVersion": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/cdk-bootstrap/hnb659fds/version",
+      "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+    }
+  },
+  "Outputs": {
+    "LisaApiBaseRestApiEndpoint24445B65": {
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            "https://",
+            {
+              "Ref": "LisaApiBaseRestApiBD7EFE41"
+            },
+            ".execute-api.us-iso-east-1.",
+            {
+              "Ref": "AWS::URLSuffix"
+            },
+            "/",
+            {
+              "Ref": "LisaApiBaseRestApiDeploymentStagedev221E5167"
+            },
+            "/"
+          ]
+        ]
+      }
+    },
+    "ExportsOutputFnGetAttLisaApiBaseRestApiBD7EFE41RootResourceId15433D4A": {
+      "Value": {
+        "Fn::GetAtt": [
+          "LisaApiBaseRestApiBD7EFE41",
+          "RootResourceId"
+        ]
+      },
+      "Export": {
+        "Name": "LisaApiBase:ExportsOutputFnGetAttLisaApiBaseRestApiBD7EFE41RootResourceId15433D4A"
+      }
+    },
+    "ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C": {
+      "Value": {
+        "Ref": "LisaApiBaseRestApiBD7EFE41"
+      },
+      "Export": {
+        "Name": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+      }
+    },
+    "ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB": {
+      "Value": {
+        "Ref": "LisaApiAuthorizerAPIGWAuthorizerE7001880"
+      },
+      "Export": {
+        "Name": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+      }
+    }
+  },
+  "Rules": {
+    "CheckBootstrapVersion": {
+      "Assertions": [
+        {
+          "Assert": {
+            "Fn::Not": [
+              {
+                "Fn::Contains": [
+                  [
+                    "1",
+                    "2",
+                    "3",
+                    "4",
+                    "5"
+                  ],
+                  {
+                    "Ref": "BootstrapVersion"
+                  }
+                ]
+              }
+            ]
+          },
+          "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+        }
+      ]
+    }
+  }
+}

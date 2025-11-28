@@ -33,7 +33,7 @@ import { createCdkId } from '../core/utils';
 import { BaseProps } from '../schema';
 import { Vpc } from '../networking/vpc';
 import { Roles } from '../core/iam/roles';
-import { getDefaultRuntime } from '../api-base/utils';
+import { getPythonRuntime } from '../api-base/utils';
 import { ECS_MODEL_PATH, LAMBDA_PATH } from '../util';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 
@@ -93,7 +93,7 @@ export class DockerImageBuilder extends Construct {
         const functionId = createCdkId([stackName, 'docker-image-builder']);
         this.dockerImageBuilderFn = new Function(this, functionId, {
             functionName: functionId,
-            runtime: getDefaultRuntime(),
+            runtime: getPythonRuntime(),
             handler: 'dockerimagebuilder.handler',
             code: Code.fromAsset(lambdaPath),
             timeout: Duration.minutes(1),

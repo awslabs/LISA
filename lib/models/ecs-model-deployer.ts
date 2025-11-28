@@ -15,7 +15,9 @@
  */
 
 import { Construct } from 'constructs';
-import { IFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { IFunction } from 'aws-cdk-lib/aws-lambda';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as ssm from 'aws-cdk-lib/aws-ssm';
 import {
     Effect,
     IRole,
@@ -30,8 +32,8 @@ import { Duration, Size, Stack } from 'aws-cdk-lib';
 import { createCdkId } from '../core/utils';
 import { BaseProps, Config } from '../schema';
 import { Vpc } from '../networking/vpc';
-import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { CodeFactory, ECS_MODEL_DEPLOYER_DIST_PATH } from '../util';
+import { getNodeRuntime } from '../api-base/utils';
 
 export type ECSModelDeployerProps = {
     securityGroupId: string;
@@ -70,17 +72,25 @@ export class ECSModelDeployer extends Construct {
             'condaUrl': props.config.condaUrl
         };
 
-        const functionId = createCdkId([stackName, 'ecs_model_deployer', 'Fn']);
+        // Get CDK layer for deployer Lambda
+        const cdkLambdaLayer = lambda.LayerVersion.fromLayerVersionArn(
+            this,
+            'cdk-lambda-layer',
+            ssm.StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/cdk`),
+        );
+
+        const functionId = createCdkId([stackName, 'ecs_model_deployer', 'Func']);
         const ecsModelDeployerPath = config.ecsModelDeployerPath || ECS_MODEL_DEPLOYER_DIST_PATH;
-        this.ecsModelDeployerFn = new NodejsFunction(this, functionId, {
+        this.ecsModelDeployerFn = new lambda.Function(this, functionId, {
             functionName: functionId,
             code: CodeFactory.createCode(ecsModelDeployerPath),
             timeout: Duration.minutes(10),
             ephemeralStorageSize: Size.mebibytes(2048),
-            runtime: Runtime.NODEJS_18_X,
+            runtime: getNodeRuntime(),
             handler: 'index.handler',
             memorySize: 1024,
             role,
+            layers: [cdkLambdaLayer],
             environment: {
                 'LISA_VPC_ID': props.vpc.vpc.vpcId,
                 'LISA_SECURITY_GROUP_ID': props.securityGroupId,

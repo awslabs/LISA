@@ -37,7 +37,7 @@ import { SecurityGroupEnum } from '../core/iam/SecurityGroups';
 import { SecurityGroupFactory } from '../networking/vpc/security-group-factory';
 import { LAMBDA_PATH, REST_API_PATH } from '../util';
 import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
-import { getDefaultRuntime } from '../api-base/utils';
+import { getPythonRuntime } from '../api-base/utils';
 import { ISecurityGroup, Port } from 'aws-cdk-lib/aws-ec2';
 import { ECSTasks } from '../api-base/ecsCluster';
 import { GuardrailsTable } from '../models/guardrails-table';
@@ -340,7 +340,7 @@ export class LisaServeApplicationConstruct extends Construct {
 
         // Create the Lambda function that will create the database user
         return new Function(scope, 'LISAServeCreateDbUserLambda', {
-            runtime: getDefaultRuntime(),
+            runtime: getPythonRuntime(),
             handler: 'utilities.db_setup_iam_auth.handler',
             code: Code.fromAsset(lambdaPath),
             timeout: Duration.minutes(2),

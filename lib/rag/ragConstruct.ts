@@ -47,7 +47,7 @@ import { LAMBDA_PATH, RAG_LAYER_PATH } from '../util';
 import { IngestionStack } from './ingestion/ingestion-stack';
 import * as child_process from 'child_process';
 import * as path from 'path';
-import { getDefaultRuntime } from '../api-base/utils';
+import { getPythonRuntime } from '../api-base/utils';
 import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
 
 export type LisaRagProps = {
@@ -730,7 +730,7 @@ export class LisaRagConstruct extends Construct {
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
 
         return new Function(this.scope, createCdkId([repositoryId, 'CreateDbUserLambda']), {
-            runtime: getDefaultRuntime(),
+            runtime: getPythonRuntime(),
             handler: 'utilities.db_setup_iam_auth.handler',
             code: Code.fromAsset(lambdaPath),
             timeout: Duration.minutes(2),

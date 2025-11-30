@@ -199,7 +199,7 @@ export class CreateModelStateMachine extends Construct {
 
         const createSchedule = new LambdaInvoke(this, 'CreateSchedule', {
             lambdaFunction: new Function(this, 'CreateScheduleFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'models.state_machine.schedule_handlers.handle_schedule_creation',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,

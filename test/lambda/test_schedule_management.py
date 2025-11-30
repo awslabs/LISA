@@ -479,7 +479,9 @@ class TestCreateScheduledActions:
     @patch("models.scheduling.schedule_management.get_model_baseline_capacity")
     @patch("models.scheduling.schedule_management.autoscaling_client")
     @patch("models.scheduling.schedule_management.model_table")
-    def test_create_scheduled_actions_recurring_daily(self, mock_model_table, mock_autoscaling_client, mock_get_baseline_capacity, mock_create_recurring):
+    def test_create_scheduled_actions_recurring_daily(
+        self, mock_model_table, mock_autoscaling_client, mock_get_baseline_capacity, mock_create_recurring
+    ):
         """Test creating scheduled actions for RECURRING type."""
         from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig
         from models.scheduling.schedule_management import create_scheduled_actions
@@ -495,13 +497,17 @@ class TestCreateScheduledActions:
         result = create_scheduled_actions("test-model", "test-asg", schedule_config)
 
         assert result == ["arn1", "arn2"]
-        mock_create_recurring.assert_called_once_with("test-model", "test-asg", schedule_config.recurringSchedule, "UTC")
+        mock_create_recurring.assert_called_once_with(
+            "test-model", "test-asg", schedule_config.recurringSchedule, "UTC"
+        )
 
     @patch("models.scheduling.schedule_management.create_daily_scheduled_actions")
-    @patch("models.scheduling.schedule_management.get_model_baseline_capacity") 
+    @patch("models.scheduling.schedule_management.get_model_baseline_capacity")
     @patch("models.scheduling.schedule_management.autoscaling_client")
     @patch("models.scheduling.schedule_management.model_table")
-    def test_create_scheduled_actions_each_day(self, mock_model_table, mock_autoscaling_client, mock_get_baseline_capacity, mock_create_daily):
+    def test_create_scheduled_actions_each_day(
+        self, mock_model_table, mock_autoscaling_client, mock_get_baseline_capacity, mock_create_daily
+    ):
         """Test creating scheduled actions for DAILY type."""
         from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig, WeeklySchedule
         from models.scheduling.schedule_management import create_scheduled_actions

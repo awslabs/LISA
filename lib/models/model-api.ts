@@ -158,7 +158,7 @@ export class ModelsApi extends Construct {
                 ecsModelDeployer.ecsModelDeployerFn.functionArn, lisaServeEndpointUrlPs.parameterArn, managementKeyName, config);
 
         const scheduleManagementLambda = new Function(this, 'ScheduleManagement', {
-            runtime: getDefaultRuntime(),
+            runtime: getPythonRuntime(),
             handler: 'models.scheduling.schedule_management.lambda_handler',
             code: Code.fromAsset(lambdaPath),
             layers: lambdaLayers,
@@ -173,7 +173,7 @@ export class ModelsApi extends Construct {
         });
 
         const scheduleMonitoringLambda = new Function(this, 'ScheduleMonitoring', {
-            runtime: getDefaultRuntime(),
+            runtime: getPythonRuntime(),
             handler: 'models.scheduling.schedule_monitoring.lambda_handler',
             code: Code.fromAsset(lambdaPath),
             layers: lambdaLayers,

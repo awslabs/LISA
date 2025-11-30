@@ -418,7 +418,7 @@ def create_recurring_scheduled_actions(
                 AutoScalingGroupName=auto_scaling_group, ScheduledActionName=start_action_name
             )
         except Exception:
-            pass
+            pass  # nosec B110
         raise
 
     return scheduled_action_arns
@@ -564,7 +564,7 @@ def cleanup_scheduled_actions(scheduled_action_arns: List[str]) -> None:
             autoscaling_client.delete_scheduled_action(AutoScalingGroupName=asg_name, ScheduledActionName=action_name)
         except Exception:
             # Ignore errors during cleanup
-            pass
+            pass  # nosec B110
 
 
 def cleanup_scheduled_actions_by_name_pattern(auto_scaling_group: str, model_id: str) -> None:

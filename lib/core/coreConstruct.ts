@@ -17,12 +17,13 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
-import { Layer } from './layers';
+import { Layer, NodeLayer } from './layers';
 import { BaseProps } from '../schema';
 import { RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 
-import { COMMON_LAYER_PATH, FASTAPI_LAYER_PATH, AUTHORIZER_LAYER_PATH } from '../util';
+import { COMMON_LAYER_PATH, FASTAPI_LAYER_PATH, AUTHORIZER_LAYER_PATH, CDK_LAYER_PATH } from '../util';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
+import { getNodeRuntime } from '../api-base/utils';
 
 export const ARCHITECTURE = lambda.Architecture.X86_64;
 process.env.DOCKER_DEFAULT_PLATFORM = ARCHITECTURE.dockerPlatform;
@@ -85,6 +86,15 @@ export class CoreConstruct extends Construct {
             assetPath: config.lambdaLayerAssets?.authorizerLayerPath,
         });
 
+        // Build CDK Lambda layer for deployer functions
+        const cdkLambdaLayer = new NodeLayer(scope, 'CdkLayer', {
+            config: config,
+            path: CDK_LAYER_PATH,
+            description: 'AWS CDK dependencies for deployer Lambdas',
+            runtime: getNodeRuntime(),
+            assetPath: config.lambdaLayerAssets?.cdkLayerPath,
+        });
+
         new StringParameter(scope, 'LisaCommonLamdaLayerStringParameter', {
             parameterName: `${config.deploymentPrefix}/layerVersion/common`,
             stringValue: commonLambdaLayer.layer.layerVersionArn,
@@ -101,6 +111,12 @@ export class CoreConstruct extends Construct {
             parameterName: `${config.deploymentPrefix}/layerVersion/authorizer`,
             stringValue: authorizerLambdaLayer.layer.layerVersionArn,
             description: 'Layer Version ARN for LISA Authorizer Lambda Layer',
+        });
+
+        new StringParameter(scope, 'LisaCdkLamdaLayerStringParameter', {
+            parameterName: `${config.deploymentPrefix}/layerVersion/cdk`,
+            stringValue: cdkLambdaLayer.layer.layerVersionArn,
+            description: 'Layer Version ARN for LISA CDK Lambda Layer',
         });
     }
 }

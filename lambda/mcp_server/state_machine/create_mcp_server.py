@@ -68,44 +68,55 @@ def handle_deploy_server(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     logger.info(f"Deploying MCP server: {event.get('id')}")
     output_dict = deepcopy(event)
 
-    # Validate and build server config using Pydantic model
-    # Exclude fields that the deployer doesn't need (owner, description, created, status)
-    server_config_model = HostedMcpServerModel.model_validate(event)
-    server_config = server_config_model.model_dump(
-        exclude_none=True, exclude={"owner", "description", "created", "status"}
-    )
+    try:
+        # Validate and build server config using Pydantic model
+        # Exclude fields that the deployer doesn't need (owner, description, created, status)
+        server_config_model = HostedMcpServerModel.model_validate(event)
+        server_config = server_config_model.model_dump(
+            exclude_none=True, exclude={"owner", "description", "created", "status"}
+        )
 
-    logger.info(f"Sending server config to deployer: {json.dumps(server_config)}")
+        logger.info(f"Sending server config to deployer: {json.dumps(server_config)}")
 
-    # Invoke the MCP server deployer
-    response = lambdaClient.invoke(
-        FunctionName=os.environ["MCP_SERVER_DEPLOYER_FN_ARN"],
-        Payload=json.dumps({"mcpServerConfig": server_config}),
-    )
+        # Invoke the MCP server deployer
+        response = lambdaClient.invoke(
+            FunctionName=os.environ["MCP_SERVER_DEPLOYER_FN_ARN"],
+            Payload=json.dumps({"mcpServerConfig": server_config}),
+        )
 
-    payload = response["Payload"].read()
-    payload = json.loads(payload)
-    stack_name = payload.get("stackName", None)
+        payload = response["Payload"].read()
+        payload = json.loads(payload)
+        stack_name = payload.get("stackName", None)
 
-    if not stack_name:
-        logger.error(f"MCP Server Deployer response: {payload}")
-        raise ValueError(f"Failed to create MCP server stack: {payload}")
+        if not stack_name:
+            logger.error(f"MCP Server Deployer response: {payload}")
+            raise ValueError(f"Failed to create MCP server stack: {payload}")
 
-    response = cfnClient.describe_stacks(StackName=stack_name)
-    stack_arn = response["Stacks"][0]["StackId"]
+        response = cfnClient.describe_stacks(StackName=stack_name)
+        stack_arn = response["Stacks"][0]["StackId"]
 
-    mcp_servers_table.update_item(
-        Key={"id": event.get("id")},
-        UpdateExpression="SET #status = :status, stack_name = :stack_name, cloudformation_stack_arn = :stack_arn,"
-        + " last_modified = :lm",
-        ExpressionAttributeNames={"#status": "status"},
-        ExpressionAttributeValues={
-            ":status": HostedMcpServerStatus.CREATING,
-            ":stack_name": stack_name,
-            ":stack_arn": stack_arn,
-            ":lm": int(datetime.now(UTC).timestamp()),
-        },
-    )
+        mcp_servers_table.update_item(
+            Key={"id": event.get("id")},
+            UpdateExpression="SET #status = :status, stack_name = :stack_name, cloudformation_stack_arn = :stack_arn,"
+            + " last_modified = :lm",
+            ExpressionAttributeNames={"#status": "status"},
+            ExpressionAttributeValues={
+                ":status": HostedMcpServerStatus.CREATING,
+                ":stack_name": stack_name,
+                ":stack_arn": stack_arn,
+                ":lm": int(datetime.now(UTC).timestamp()),
+            },
+        )
+    except Exception as e:
+        logger.error(f"Error deploying MCP server: {str(e)}")
+        raise Exception(
+            json.dumps(
+                {
+                    "error": f"Error deploying MCP server: {str(e)}",
+                    "event": event,
+                }
+            )
+        )
 
     output_dict["stack_name"] = stack_name
     output_dict["stack_arn"] = stack_arn
@@ -137,14 +148,28 @@ def handle_poll_deployment(event: Dict[str, Any], context: Any) -> Dict[str, Any
             output_dict["continue_polling"] = False
             output_dict["stack_status"] = stack_status
         elif stack_status.endswith("_FAILED") or stack_status.endswith("ROLLBACK_COMPLETE"):
-            raise Exception(f"Stack {stack_name} failed with status: {stack_status}")
+            raise Exception(
+                json.dumps(
+                    {
+                        "error": f"Stack {stack_name} failed with status: {stack_status}",
+                        "event": event,
+                    }
+                )
+            )
         else:
             # Still in progress
             output_dict["poll_count"] = poll_count + 1
             output_dict["continue_polling"] = True
     except Exception as e:
         logger.error(f"Error polling stack status: {str(e)}")
-        raise
+        raise Exception(
+            json.dumps(
+                {
+                    "error": f"Error polling stack status: {str(e)}",
+                    "event": event,
+                }
+            )
+        )
 
     return output_dict
 

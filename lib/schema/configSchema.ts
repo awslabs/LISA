@@ -901,6 +901,7 @@ export const RawConfigObject = z.object({
             commonLayerPath: z.string().optional().describe('Lambda common layer code path'),
             fastapiLayerPath: z.string().optional().describe('Lambda API code path'),
             ragLayerPath: z.string().optional().describe('Lambda RAG layer code path'),
+            cdkLayerPath: z.string().optional().describe('Lambda CDK layer code path'),
         })
         .optional()
         .describe('Configuration for local Lambda layer code'),

@@ -1,0 +1,10 @@
+{
+  "name": "cdk-layer",
+  "version": "1.0.0",
+  "description": "AWS CDK dependencies for deployer Lambdas",
+  "dependencies": {
+    "aws-cdk": "^2.185.0",
+    "aws-cdk-lib": "^2.185.0",
+    "zod": "^3.24.1"
+  }
+}

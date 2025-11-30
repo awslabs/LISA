@@ -57,7 +57,7 @@ const navLinks = [
       { text: 'Model Management UI', link: '/config/model-management-ui' },
       { text: 'Guardrails', link: '/config/guardrails' },
       { text: 'Usage & Features', link: '/config/usage' },
-      { text: 'RAG Vector Stores', link: '/config/vector-stores' },
+      { text: 'RAG Repository', link: '/config/repositories' },
       { text: 'Langfuse Tracing', link: '/config/langfuse-tracing'},
       {
         text: 'Configuration Schema',

@@ -8,6 +8,7 @@
 *.d.ts
 node_modules/
 /build
+**/build
 /dist
 __pycache__/
 .ruff_cache/

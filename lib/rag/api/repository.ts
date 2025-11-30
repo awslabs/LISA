@@ -21,7 +21,7 @@ import { IRole } from 'aws-cdk-lib/aws-iam';
 import { IFunction, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 
-import { getDefaultRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
+import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
 import { BaseProps } from '../../schema';
 import { Vpc } from '../../networking/vpc';
 import { LAMBDA_PATH } from '../../util';
@@ -277,6 +277,26 @@ export class RepositoryApi extends Construct {
                 environment: {
                     ...baseEnvironment,
                 },
+            },
+            {
+                name: 'list_bedrock_knowledge_bases',
+                resource: 'repository',
+                description: 'List all ACTIVE Bedrock Knowledge Bases',
+                path: 'bedrock-kb',
+                method: 'GET',
+                environment: {
+                    ...baseEnvironment,
+                },
+            },
+            {
+                name: 'list_bedrock_data_sources',
+                resource: 'repository',
+                description: 'List data sources for a Bedrock Knowledge Base',
+                path: 'bedrock-kb/{kbId}/data-sources',
+                method: 'GET',
+                environment: {
+                    ...baseEnvironment,
+                },
             }
         ];
 
@@ -288,7 +308,7 @@ export class RepositoryApi extends Construct {
                 lambdaPath,
                 commonLayers,
                 f,
-                getDefaultRuntime(),
+                getPythonRuntime(),
                 vpc,
                 securityGroups,
                 authorizer,

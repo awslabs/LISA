@@ -34,7 +34,7 @@ describe('RepositoryManagementComponent', () => {
     it('should render page header with description', () => {
         renderWithProviders(<RepositoryManagementComponent />);
 
-        expect(screen.getByText('Manage RAG repositories and vector stores')).toBeInTheDocument();
+        expect(screen.getByText('Manage repository and collections to support RAG')).toBeInTheDocument();
     });
 
     it('should render RepositoryTable component', () => {

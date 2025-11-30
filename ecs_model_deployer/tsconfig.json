@@ -32,6 +32,6 @@
     "outDir": "dist",
     "skipLibCheck": true
   },
-  "include": ["src/**/*", "test/**/*", "../lib/core", "**/*.json"],
+  "include": ["src/**/*", "test/**/*", "../lib/core", "../lib/api-base", "**/*.json"],
   "exclude": ["node_modules", "dist", ".git"]
 }

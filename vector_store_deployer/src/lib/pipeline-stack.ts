@@ -158,7 +158,8 @@ export abstract class PipelineStack extends Stack {
             detail
         };
 
-        const collectionName = `${repositoryId}-${pipelineConfig.collectionId ?? pipelineConfig.embeddingModel}`;
+        const collectionId = pipelineConfig.collectionId ?? pipelineConfig.embeddingModel;
+        const collectionName = `${repositoryId}-${collectionId}`;
         // Create a new EventBridge rule for the S3 event pattern
         return new Rule(this, `${repositoryId}-S3Event${eventName}Rule-${disambiguator}`, {
             ruleName: `${config.deploymentName}-${config.deploymentStage}-${config.appName}-${collectionName}-S3${eventName}Rule-${disambiguator}`.substring(0,127),
@@ -174,6 +175,7 @@ export abstract class PipelineStack extends Stack {
                     region: EventField.region,
                     detail: {
                         repositoryId,
+                        collectionId,
                         bucket: pipelineConfig.s3Bucket,
                         prefix: pipelineConfig.s3Prefix,
                         key: EventField.fromPath('$.detail.object.key'),

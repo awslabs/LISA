@@ -116,6 +116,9 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
             const submissionData = { ...toSubmit };
             if (submissionData.type === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE) {
                 delete submissionData.pipelines;
+            } else {
+                // For non-Bedrock repositories, remove bedrockKnowledgeBaseConfig
+                delete submissionData.bedrockKnowledgeBaseConfig;
             }
 
             // Additional validation: ensure repositoryId is not empty
@@ -126,10 +129,15 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
 
             if (isEdit) {
                 resetUpdate();
-                // For updates, only send the changed fields
+                // For Bedrock KB updates, send full bedrockKnowledgeBaseConfig to ensure all dataSources are included
+                const updates: any = { ...changesDiff };
+                if (submissionData.type === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE && submissionData.bedrockKnowledgeBaseConfig) {
+                    updates.bedrockKnowledgeBaseConfig = submissionData.bedrockKnowledgeBaseConfig;
+                }
+
                 updateRepositoryMutation({
                     repositoryId: submissionData.repositoryId,
-                    updates: changesDiff,
+                    updates: updates,
                 });
             } else {
                 resetCreate();
@@ -188,7 +196,7 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
     const steps = [
         {
             title: 'Repository Configuration',
-            description: 'Define your repository\'s configuration settings using these forms.',
+            description: 'Define your repository\'s configuration',
             content: (
                 <RepositoryConfigForm item={state.form} setFields={setFields} touchFields={touchFields}
                     formErrors={errors}
@@ -198,7 +206,7 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
         },
         {
             title: 'Pipeline Configuration',
-            description: 'Create pipelines for ingesting RAG documents from S3',
+            description: 'Create document ingestion pipelines from S3',
             content: (
                 <PipelineConfigForm
                     item={state.form.pipelines}

@@ -123,8 +123,17 @@
             {
               "Action": [
                 "bedrock:StartIngestionJob",
-                "bedrock:Retrieve"
+                "bedrock:Retrieve",
+                "bedrock:ListKnowledgeBases",
+                "bedrock:GetKnowledgeBase",
+                "bedrock:ListDataSources",
+                "bedrock:GetDataSource"
               ],
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": "cloudwatch:PutMetricData",
               "Effect": "Allow",
               "Resource": "*"
             }
@@ -583,6 +592,34 @@
                   ]
                 }
               ]
+            },
+            {
+              "Action": [
+                "dynamodb:GetItem",
+                "dynamodb:Query",
+                "dynamodb:Scan"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":dynamodb:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":table/*-LISAApi*TokenTable"
+                  ]
+                ]
+              }
             }
           ],
           "Version": "2012-10-17"

@@ -22,7 +22,7 @@ import { IFunction, LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
-import { getDefaultRuntime, registerAPIEndpoint } from '../api-base/utils';
+import { getPythonRuntime, registerAPIEndpoint } from '../api-base/utils';
 import { APP_MANAGEMENT_KEY, BaseProps } from '../schema';
 import { createCdkId, createLambdaRole } from '../core/utils';
 import { Vpc } from '../networking/vpc';
@@ -214,7 +214,7 @@ export class McpServerApi extends Construct {
                 method: 'POST',
                 environment: env
             },
-            getDefaultRuntime(),
+            getPythonRuntime(),
             vpc,
             securityGroups,
             authorizer,
@@ -235,7 +235,7 @@ export class McpServerApi extends Construct {
                 method: 'GET',
                 environment: env
             },
-            getDefaultRuntime(),
+            getPythonRuntime(),
             vpc,
             securityGroups,
             authorizer,
@@ -256,7 +256,7 @@ export class McpServerApi extends Construct {
                 method: 'GET',
                 environment: env
             },
-            getDefaultRuntime(),
+            getPythonRuntime(),
             vpc,
             securityGroups,
             authorizer,
@@ -277,7 +277,7 @@ export class McpServerApi extends Construct {
                 method: 'DELETE',
                 environment: env
             },
-            getDefaultRuntime(),
+            getPythonRuntime(),
             vpc,
             securityGroups,
             authorizer,
@@ -298,7 +298,7 @@ export class McpServerApi extends Construct {
                 method: 'PUT',
                 environment: env
             },
-            getDefaultRuntime(),
+            getPythonRuntime(),
             vpc,
             securityGroups,
             authorizer,

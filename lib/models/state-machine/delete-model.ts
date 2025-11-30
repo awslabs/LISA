@@ -33,7 +33,7 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH, POLLING_TIMEOUT } from './constants';
 import { IStringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Vpc } from '../../networking/vpc';
-import { getDefaultRuntime } from '../../api-base/utils';
+import { getPythonRuntime } from '../../api-base/utils';
 import { LAMBDA_PATH } from '../../util';
 
 type DeleteModelStateMachineProps = BaseProps & {
@@ -73,7 +73,7 @@ export class DeleteModelStateMachine extends Construct {
         // Input payload to state machine contains the model name that we want to delete.
         const setModelToDeleting = new LambdaInvoke(this, 'SetModelToDeleting', {
             lambdaFunction: new Function(this, 'SetModelToDeletingFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'models.state_machine.delete_model.handle_set_model_to_deleting',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
@@ -90,7 +90,7 @@ export class DeleteModelStateMachine extends Construct {
 
         const deleteFromLitellm = new LambdaInvoke(this, 'DeleteFromLitellm', {
             lambdaFunction: new Function(this, 'DeleteFromLitellmFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'models.state_machine.delete_model.handle_delete_from_litellm',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
@@ -107,7 +107,7 @@ export class DeleteModelStateMachine extends Construct {
 
         const deleteStack = new LambdaInvoke(this, 'DeleteStack', {
             lambdaFunction: new Function(this, 'DeleteStackFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'models.state_machine.delete_model.handle_delete_stack',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
@@ -124,7 +124,7 @@ export class DeleteModelStateMachine extends Construct {
 
         const monitorDeleteStack = new LambdaInvoke(this, 'MonitorDeleteStack', {
             lambdaFunction: new Function(this, 'MonitorDeleteStackFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'models.state_machine.delete_model.handle_monitor_delete_stack',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
@@ -141,7 +141,7 @@ export class DeleteModelStateMachine extends Construct {
 
         const deleteFromDdb = new LambdaInvoke(this, 'DeleteFromDdb', {
             lambdaFunction: new Function(this, 'DeleteFromDdbFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'models.state_machine.delete_model.handle_delete_from_ddb',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
@@ -158,7 +158,7 @@ export class DeleteModelStateMachine extends Construct {
 
         const deleteGuardrails = new LambdaInvoke(this, 'DeleteGuardrails', {
             lambdaFunction: new Function(this, 'DeleteGuardrailsFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'models.state_machine.delete_model.handle_delete_guardrails',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,

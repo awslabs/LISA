@@ -15,10 +15,21 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BedrockKnowledgeBaseConfigForm } from './BedrockKnowledgeBaseConfigForm';
 import { BedrockKnowledgeBaseInstanceConfig } from '#root/lib/schema';
 import { getDefaults } from '#root/lib/schema/zodUtil';
+
+// Mock the RTK Query hooks
+vi.mock('@/shared/reducers/rag.reducer', () => ({
+    useListBedrockKnowledgeBasesQuery: vi.fn(),
+    useListBedrockDataSourcesQuery: vi.fn(),
+}));
+
+import {
+    useListBedrockKnowledgeBasesQuery,
+    useListBedrockDataSourcesQuery,
+} from '@/shared/reducers/rag.reducer';
 
 describe('BedrockKnowledgeBaseConfigForm', () => {
     const mockSetFields = vi.fn();
@@ -32,6 +43,19 @@ describe('BedrockKnowledgeBaseConfigForm', () => {
         isEdit: false,
     };
 
+    beforeEach(() => {
+        vi.clearAllMocks();
+        // Mock the hooks to return empty data
+        (useListBedrockKnowledgeBasesQuery as any).mockReturnValue({
+            data: { knowledgeBases: [] },
+            isLoading: false,
+        });
+        (useListBedrockDataSourcesQuery as any).mockReturnValue({
+            data: { dataSources: [] },
+            isLoading: false,
+        });
+    });
+
     it('renders the informational alert about document management', () => {
         render(<BedrockKnowledgeBaseConfigForm {...defaultProps} />);
 
@@ -41,35 +65,35 @@ describe('BedrockKnowledgeBaseConfigForm', () => {
         expect(screen.getByText(/Only documents uploaded through LISA/)).toBeInTheDocument();
     });
 
-    it('renders all required form fields', () => {
+    it('renders Knowledge Base selector', () => {
         render(<BedrockKnowledgeBaseConfigForm {...defaultProps} />);
 
-        expect(screen.getByLabelText('Knowledge Base Name')).toBeInTheDocument();
-        expect(screen.getByLabelText('Knowledge Base ID')).toBeInTheDocument();
-        expect(screen.getByLabelText('Knowledge Base Datasource Name')).toBeInTheDocument();
-        expect(screen.getByLabelText('Knowledge Base Datasource ID')).toBeInTheDocument();
-        expect(screen.getByLabelText('Knowledge Base Datasource S3 Bucket')).toBeInTheDocument();
+        expect(screen.getByLabelText('Knowledge Base')).toBeInTheDocument();
+        expect(screen.getByText('Select a Bedrock Knowledge Base')).toBeInTheDocument();
     });
 
-    it('disables fields when in edit mode', () => {
-        render(<BedrockKnowledgeBaseConfigForm {...defaultProps} isEdit={true} />);
-
-        expect(screen.getByLabelText('Knowledge Base Name')).toBeDisabled();
-        expect(screen.getByLabelText('Knowledge Base ID')).toBeDisabled();
-        expect(screen.getByLabelText('Knowledge Base Datasource Name')).toBeDisabled();
-        expect(screen.getByLabelText('Knowledge Base Datasource ID')).toBeDisabled();
-        expect(screen.getByLabelText('Knowledge Base Datasource S3 Bucket')).toBeDisabled();
-    });
-
-    it('displays form errors when provided', () => {
-        const formErrors = {
-            bedrockKnowledgeBaseConfig: {
-                bedrockKnowledgeBaseId: 'Knowledge Base ID is required',
+    it('shows Knowledge Base ID in edit mode', () => {
+        const editProps = {
+            ...defaultProps,
+            isEdit: true,
+            item: {
+                bedrockKnowledgeBaseConfig: {
+                    bedrockKnowledgeBaseId: 'KB123456',
+                    bedrockKnowledgeBaseName: 'Test KB',
+                    dataSources: [],
+                },
             },
         };
 
-        render(<BedrockKnowledgeBaseConfigForm {...defaultProps} formErrors={formErrors} />);
+        render(<BedrockKnowledgeBaseConfigForm {...editProps} />);
 
-        expect(screen.getByText('Knowledge Base ID is required')).toBeInTheDocument();
+        expect(screen.getByText('Knowledge Base ID')).toBeInTheDocument();
+        expect(screen.getByText('Knowledge Base cannot be changed after creation')).toBeInTheDocument();
+    });
+
+    it('renders without errors when no form errors provided', () => {
+        render(<BedrockKnowledgeBaseConfigForm {...defaultProps} />);
+
+        expect(screen.getByText('How LISA manages your Knowledge Base documents')).toBeInTheDocument();
     });
 });

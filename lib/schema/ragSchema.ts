@@ -80,12 +80,15 @@ export enum RagRepositoryType {
     BEDROCK_KNOWLEDGE_BASE = 'bedrock_knowledge_base',
 }
 
+export const BedrockDataSource = z.object({
+    id: z.string().describe('The ID of the Bedrock Knowledge Base data source'),
+    name: z.string().describe('The name of the Bedrock Knowledge Base data source'),
+    s3Uri: z.string().regex(/^s3:\/\/[a-z0-9][a-z0-9.-]*[a-z0-9](\/.*)?$/, 'Must be a valid S3 URI (s3://bucket/prefix)').describe('The S3 URI of the data source'),
+});
+
 export const BedrockKnowledgeBaseInstanceConfig = z.object({
-    bedrockKnowledgeBaseName: z.string().describe('The name of the Bedrock Knowledge Base.'),
-    bedrockKnowledgeBaseId: z.string().describe('The id of the Bedrock Knowledge Base.'),
-    bedrockKnowledgeDatasourceName: z.string().describe('The name of the Bedrock Knowledge Datasource.'),
-    bedrockKnowledgeDatasourceId: z.string().describe('The id of the Bedrock Knowledge Datasource.'),
-    bedrockKnowledgeDatasourceS3Bucket: z.string().describe('The S3 bucket of the Bedrock Knowledge Base.'),
+    knowledgeBaseId: z.string().describe('The ID of the Bedrock Knowledge Base'),
+    dataSources: z.array(BedrockDataSource).min(1).describe('Array of data sources in this Knowledge Base'),
 });
 
 export const OpenSearchNewClusterConfig = z.object({
@@ -155,7 +158,7 @@ export const RagRepositoryConfigSchema = z
     .object({
         repositoryId: z.string()
             .nonempty()
-            .regex(/^[a-z0-9-]{1,63}/, 'Only lowercase alphanumeric characters and \'-\' are supported.')
+            .regex(/^[a-z0-9-]{3,20}/, 'Only lowercase alphanumeric characters and \'-\' are supported.')
             .regex(/^(?!-).*(?<!-)$/, 'Cannot start or end with a \'-\'.')
             .describe('A unique identifier for the repository, used in API calls and the UI. It must be distinct across all repositories.'),
         repositoryName: z.string().optional().describe('The user-friendly name displayed in the UI.'),

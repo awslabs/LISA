@@ -26,13 +26,12 @@ import { RagCollectionConfig, RagRepositoryType, VectorStoreStatus } from '#root
 
 export type CollectionConfigProps = {
     isEdit: boolean;
-    isDefaultCollection?: boolean;
 };
 
 export function CollectionConfigForm (
     props: FormProps<RagCollectionConfig> & CollectionConfigProps
 ): ReactElement {
-    const { item, touchFields, setFields, formErrors, isEdit, isDefaultCollection = false } = props;
+    const { item, touchFields, setFields, formErrors, isEdit } = props;
 
     // Fetch repositories for dropdown
     const { data: repositories, isLoading: isLoadingRepos } = useListRagRepositoriesQuery(undefined, {
@@ -96,9 +95,7 @@ export function CollectionConfigForm (
             <FormField
                 label='Repository'
                 errorText={formErrors?.repositoryId}
-                description={isDefaultCollection
-                    ? 'Repository cannot be changed for default collections'
-                    : 'The parent repository that will contain this collection'}
+                description='The parent repository that will contain this collection'
             >
                 <Select
                     selectedOption={
@@ -111,25 +108,23 @@ export function CollectionConfigForm (
                     }}
                     onBlur={() => touchFields(['repositoryId'])}
                     options={repositoryOptions}
-                    disabled={isEdit || isDefaultCollection}
+                    disabled={isEdit}
                     placeholder='Select a repository'
                     statusType={isLoadingRepos ? 'loading' : 'finished'}
                 />
             </FormField>
 
-            {/* Common Fields (Embedding Model) - hide for default collections */}
-            {!isDefaultCollection && (
-                <CommonFieldsForm
-                    item={item}
-                    setFields={setFields}
-                    touchFields={touchFields}
-                    formErrors={formErrors}
-                    repositoryId={item.repositoryId}
-                    showEmbeddingModel={true}
-                    showAllowedGroups={false}
-                    isEdit={isEdit}
-                />
-            )}
+            {/* Common Fields (Embedding Model) */}
+            <CommonFieldsForm
+                item={item}
+                setFields={setFields}
+                touchFields={touchFields}
+                formErrors={formErrors}
+                repositoryId={item.repositoryId}
+                showEmbeddingModel={true}
+                showAllowedGroups={false}
+                isEdit={isEdit}
+            />
 
             {/* S3 Bucket - only show if pipeline is enabled */}
             {item.pipelines && item.pipelines.length > 0 && (

@@ -234,6 +234,21 @@
       "UpdateReplacePolicy": "Delete",
       "DeletionPolicy": "Delete"
     },
+    "CdkLayer83325AB8": {
+      "Type": "AWS::Lambda::LayerVersion",
+      "Properties": {
+        "CompatibleRuntimes": [
+          "nodejs18.x"
+        ],
+        "Content": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "1ebc9d3ac2033816c4abb63e4afd69d350b4aba8704cc9236b82ea520b74f4b0.zip"
+        },
+        "Description": "AWS CDK dependencies for deployer Lambdas"
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete"
+    },
     "LisaCommonLamdaLayerStringParameter39A4663D": {
       "Type": "AWS::SSM::Parameter",
       "Properties": {
@@ -264,6 +279,17 @@
         "Type": "String",
         "Value": {
           "Ref": "AuthorizerLayer295C198D"
+        }
+      }
+    },
+    "LisaCdkLamdaLayerStringParameter0B55D3E2": {
+      "Type": "AWS::SSM::Parameter",
+      "Properties": {
+        "Description": "Layer Version ARN for LISA CDK Lambda Layer",
+        "Name": "/dev/test-lisa/lisa/layerVersion/cdk",
+        "Type": "String",
+        "Value": {
+          "Ref": "CdkLayer83325AB8"
         }
       }
     }

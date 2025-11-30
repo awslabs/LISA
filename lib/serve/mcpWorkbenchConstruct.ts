@@ -23,7 +23,7 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import { Duration, RemovalPolicy, StackProps } from 'aws-cdk-lib';
 import { createCdkId } from '../core/utils';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
-import { getDefaultRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
+import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { LAMBDA_PATH, MCP_WORKBENCH_PATH } from '../util';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
@@ -156,7 +156,7 @@ export class McpWorkbenchConstruct extends Construct {
                 lambdaPath,
                 lambdaLayers,
                 f,
-                getDefaultRuntime(),
+                getPythonRuntime(),
                 vpc,
                 securityGroups,
                 authorizer,
@@ -276,7 +276,7 @@ export class McpWorkbenchConstruct extends Construct {
         });
 
         const s3EventHandlerLambda = new lambda.Function(this, 'S3EventHandlerLambda', {
-            runtime: getDefaultRuntime(),
+            runtime: getPythonRuntime(),
             handler: 'mcp_workbench.s3_event_handler.handler',
             code: lambda.Code.fromAsset(config.lambdaPath ?? LAMBDA_PATH),
             timeout: Duration.minutes(2),

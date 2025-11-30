@@ -715,7 +715,7 @@ class RagDocument(BaseModel):
 
     pk: Optional[str] = None
     document_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    repository_id: str
+    repository_id: str = Field(min_length=3, max_length=20)
     collection_id: str
     document_name: str
     source: str
@@ -1069,6 +1069,9 @@ class PipelineConfig(BaseModel):
     chunkingStrategy: Optional[ChunkingStrategy] = Field(
         default=None, description="Chunking strategy for documents in this pipeline"
     )
+    collectionId: Optional[str] = Field(
+        default=None, description="Collection ID for this pipeline (for Bedrock KB, this is the data source ID)"
+    )
     s3Bucket: str = Field(min_length=1, description="S3 bucket for pipeline source")
     s3Prefix: str = Field(description="S3 prefix for pipeline source")
     trigger: PipelineTrigger = Field(description="Pipeline trigger type")
@@ -1298,17 +1301,31 @@ class RdsInstanceConfig(BaseModel):
     )
 
 
-class BedrockKnowledgeBaseConfig(BaseModel):
-    """Configuration for Bedrock Knowledge Base instance."""
+class BedrockDataSource(BaseModel):
+    """Configuration for a single Bedrock Knowledge Base data source."""
 
-    bedrockKnowledgeBaseName: str = Field(min_length=1, description="The name of the Bedrock Knowledge Base.")
-    bedrockKnowledgeBaseId: str = Field(min_length=1, description="The id of the Bedrock Knowledge Base.")
-    bedrockKnowledgeDatasourceName: str = Field(
-        min_length=1, description="The name of the Bedrock Knowledge Datasource."
-    )
-    bedrockKnowledgeDatasourceId: str = Field(min_length=1, description="The id of the Bedrock Knowledge Datasource.")
-    bedrockKnowledgeDatasourceS3Bucket: str = Field(
-        min_length=1, description="The S3 bucket of the Bedrock Knowledge Base."
+    id: str = Field(min_length=1, description="The ID of the Bedrock Knowledge Base data source")
+    name: str = Field(min_length=1, description="The name of the Bedrock Knowledge Base data source")
+    s3Uri: str = Field(min_length=1, description="The S3 URI of the data source (s3://bucket/prefix)")
+
+    @field_validator("s3Uri")
+    @classmethod
+    def validate_s3_uri(cls, v: str) -> str:
+        """Validate S3 URI format."""
+        if not v.startswith("s3://"):
+            raise ValueError("S3 URI must start with s3://")
+        return v
+
+
+class BedrockKnowledgeBaseConfig(BaseModel):
+    """Configuration for Bedrock Knowledge Base with multiple data sources.
+
+    Stores the KB ID and array of data sources. Backend converts to pipelines.
+    """
+
+    knowledgeBaseId: str = Field(min_length=1, description="The ID of the Bedrock Knowledge Base")
+    dataSources: List[BedrockDataSource] = Field(
+        min_length=1, description="Array of data sources in this Knowledge Base"
     )
 
 
@@ -1329,7 +1346,7 @@ class VectorStoreConfig(BaseModel):
     )
     rdsConfig: Optional[RdsInstanceConfig] = Field(default=None, description="RDS/PGVector configuration")
     bedrockKnowledgeBaseConfig: Optional[BedrockKnowledgeBaseConfig] = Field(
-        default=None, description="Bedrock Knowledge Base configuration"
+        default=None, description="Bedrock Knowledge Base configuration with data sources"
     )
     # Status and timestamps
     status: Optional[VectorStoreStatus] = Field(default=None, description="Repository Status")
@@ -1346,3 +1363,55 @@ class UpdateVectorStoreRequest(BaseModel):
     allowedGroups: Optional[List[str]] = Field(default=None, description="User groups with access")
     metadata: Optional[RepositoryMetadata] = Field(default=None, description="Repository metadata")
     pipelines: Optional[List[PipelineConfig]] = Field(default=None, description="Automated ingestion pipelines")
+    bedrockKnowledgeBaseConfig: Optional[BedrockKnowledgeBaseConfig] = Field(
+        default=None, description="Bedrock Knowledge Base configuration"
+    )
+
+
+class KnowledgeBaseMetadata(BaseModel):
+    """Metadata for a Bedrock Knowledge Base."""
+
+    knowledgeBaseId: str = Field(description="Knowledge Base ID")
+    name: str = Field(description="Knowledge Base name")
+    description: Optional[str] = Field(default="", description="Knowledge Base description")
+    status: str = Field(description="Knowledge Base status (ACTIVE, CREATING, DELETING, etc.)")
+    createdAt: Optional[datetime] = Field(default=None, description="Creation timestamp")
+    updatedAt: Optional[datetime] = Field(default=None, description="Last update timestamp")
+
+
+class DataSourceMetadata(BaseModel):
+    """Metadata for a Bedrock Knowledge Base data source."""
+
+    dataSourceId: str = Field(description="Data Source ID")
+    name: str = Field(description="Data Source name")
+    description: Optional[str] = Field(default="", description="Data Source description")
+    status: str = Field(description="Data Source status (AVAILABLE, CREATING, DELETING, etc.)")
+    s3Bucket: str = Field(description="S3 bucket for the data source")
+    s3Prefix: str = Field(default="", description="S3 prefix for the data source")
+    createdAt: Optional[datetime] = Field(default=None, description="Creation timestamp")
+    updatedAt: Optional[datetime] = Field(default=None, description="Last update timestamp")
+    managed: Optional[bool] = Field(default=False, description="Whether this data source is managed by a collection")
+    collectionId: Optional[str] = Field(default=None, description="Collection ID if managed")
+
+    @field_validator("s3Bucket")
+    @classmethod
+    def validate_s3_bucket(cls, v: str) -> str:
+        """Validate S3 bucket name format."""
+        if not v:
+            raise ValueError("S3 bucket cannot be empty")
+        # Basic S3 bucket name validation
+        if not re.match(r"^[a-z0-9][a-z0-9.-]*[a-z0-9]$", v):
+            raise ValueError(f"Invalid S3 bucket name format: {v}")
+        return v
+
+
+class DataSourceSelection(BaseModel):
+    """Represents a user's selection of a data source for collection creation.
+
+    Frontend sends this to backend, which creates pipelines and collections.
+    """
+
+    dataSourceId: str = Field(description="Data Source ID")
+    dataSourceName: str = Field(description="Data Source name")
+    s3Bucket: str = Field(description="S3 bucket for the data source")
+    s3Prefix: str = Field(default="", description="S3 prefix for the data source")

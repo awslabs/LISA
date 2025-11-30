@@ -641,7 +641,7 @@ class ChunkingStrategyType(StrEnum):
     NONE = auto()
 
 
-class IngestionStatus(str, Enum):
+class IngestionStatus(StrEnum):
     """Defines possible states for document ingestion process."""
 
     INGESTION_PENDING = "INGESTION_PENDING"

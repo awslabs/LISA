@@ -40,7 +40,7 @@ from repository.s3_metadata_manager import S3MetadataManager
 from repository.services.repository_service_factory import RepositoryServiceFactory
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.auth import get_username
-from utilities.bedrock_kb import ingest_document_to_kb
+from utilities.bedrock_kb import get_datasource_bucket_for_collection, ingest_document_to_kb, S3DocumentDiscoveryService
 from utilities.common_functions import retry_config
 from utilities.file_processing import generate_chunks
 from utilities.repository_types import RepositoryType
@@ -82,8 +82,19 @@ def pipeline_ingest_document(job: IngestionJob) -> None:
         repository = vs_repo.find_repository_by_id(job.repository_id)
         if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
             # Bedrock KB path: Copy document to KB bucket and track
-            bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
-            kb_bucket = bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket")
+            # Get KB bucket for this collection (supports multiple config formats)
+            try:
+                kb_bucket = get_datasource_bucket_for_collection(
+                    repository=repository,
+                    collection_id=job.collection_id,
+                )
+            except ValueError as e:
+                error_msg = str(e)
+                logger.error(error_msg)
+                job.status = IngestionStatus.INGESTION_FAILED
+                job.error_message = error_msg
+                ingestion_job_repository.save(job)
+                raise
 
             # Determine if document needs to be copied to KB bucket
             source_bucket = job.s3_path.split("/")[2]
@@ -251,13 +262,19 @@ def pipeline_ingest_documents(job: IngestionJob) -> None:
     Ingest multiple documents in batch (up to 100 at a time).
 
     Processes documents from s3_paths field containing list of S3 paths.
+    If s3_paths is empty, triggers S3 bucket scan to discover existing documents.
     """
     try:
         logger.info(f"Starting batch ingestion for job {job.id}")
 
-        # Extract document list from s3_paths field
+        # Check if this is an S3 discovery scan job (empty s3_paths)
         if not job.s3_paths:
-            raise ValueError("Batch ingestion job missing 's3_paths' field")
+            # Handle S3 bucket scanning for existing documents
+            _handle_s3_discovery_scan(job)
+            return
+
+        # Normal batch ingestion path
+        # Extract document list from s3_paths field
 
         document_paths = job.s3_paths
         if not isinstance(document_paths, list):
@@ -304,15 +321,8 @@ def pipeline_ingest_documents(job: IngestionJob) -> None:
                 logger.error(error_msg, exc_info=True)
                 errors.append(error_msg)
 
-        # Update job with document IDs and results
+        # Update job with document IDs
         job.document_ids = document_ids
-        if not job.metadata:
-            job.metadata = {}
-        job.metadata["results"] = {
-            "successful": successful,
-            "failed": failed,
-            "errors": errors[:10],  # Limit error messages
-        }
 
         if failed == 0:
             ingestion_job_repository.update_status(job, IngestionStatus.INGESTION_COMPLETED)
@@ -324,6 +334,73 @@ def pipeline_ingest_documents(job: IngestionJob) -> None:
     except Exception as e:
         ingestion_job_repository.update_status(job, IngestionStatus.INGESTION_FAILED)
         error_msg = f"Failed to process batch ingestion: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        raise Exception(error_msg)
+
+
+def _handle_s3_discovery_scan(job: IngestionJob) -> None:
+    """
+    Handle S3 bucket scanning for existing documents.
+
+    Delegates to S3DocumentDiscoveryService for the actual work.
+
+    Args:
+        job: Batch ingestion job with empty s3_paths (signals scan mode)
+    """
+    try:
+        logger.info(f"Starting S3 discovery scan for job {job.id}")
+
+        # Extract bucket and prefix from s3_path field
+        # Format: s3://bucket/prefix or s3://bucket/
+        if not job.s3_path or not job.s3_path.startswith("s3://"):
+            raise ValueError("S3 scan job missing valid 's3_path' field")
+
+        # Parse s3://bucket/prefix
+        path_parts = job.s3_path.replace("s3://", "").split("/", 1)
+        s3_bucket = path_parts[0]
+        s3_prefix = path_parts[1] if len(path_parts) > 1 else ""
+
+        # Remove trailing slash from prefix if present
+        if s3_prefix.endswith("/"):
+            s3_prefix = s3_prefix[:-1]
+
+        # Update job status
+        ingestion_job_repository.update_status(job, IngestionStatus.INGESTION_IN_PROGRESS)
+
+        # Initialize discovery service
+        metadata_generator = MetadataGenerator()
+        s3_metadata_manager = S3MetadataManager()
+
+        discovery_service = S3DocumentDiscoveryService(
+            s3_client=s3,
+            bedrock_agent_client=bedrock_agent,
+            rag_document_repository=rag_document_repository,
+            metadata_generator=metadata_generator,
+            s3_metadata_manager=s3_metadata_manager,
+            collection_service=collection_service,
+            vector_store_repo=vs_repo,
+        )
+
+        # Perform discovery and ingestion
+        result = discovery_service.discover_and_ingest_documents(
+            repository_id=job.repository_id,
+            collection_id=job.collection_id,
+            s3_bucket=s3_bucket,
+            s3_prefix=s3_prefix,
+            ingestion_type=job.ingestion_type,
+        )
+
+        # Update job with results
+        job.document_ids = result.document_ids
+
+        if result.failed == 0:
+            ingestion_job_repository.update_status(job, IngestionStatus.INGESTION_COMPLETED)
+        else:
+            ingestion_job_repository.update_status(job, IngestionStatus.INGESTION_FAILED)
+
+    except Exception as e:
+        ingestion_job_repository.update_status(job, IngestionStatus.INGESTION_FAILED)
+        error_msg = f"Failed to process S3 discovery scan: {str(e)}"
         logger.error(error_msg, exc_info=True)
         raise Exception(error_msg)
 
@@ -358,6 +435,7 @@ def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
         return
     repository_id = detail.get("repositoryId", None)
     pipeline_config = detail.get("pipelineConfig", None)
+    collection_id = detail.get("collectionId", None)
     s3_path = f"s3://{bucket}/{key}"
 
     # Get repository to determine type and configuration
@@ -365,14 +443,26 @@ def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
 
     # For Bedrock KB repositories, use data source ID as collection ID
     if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
-        bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
-        data_source_id = bedrock_config.get("bedrockKnowledgeDatasourceId")
+        if not collection_id:
+            # Fallback: try to get from bedrock config (legacy support)
+            bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
 
-        if not data_source_id:
+            # Try new structure with dataSources array
+            data_sources = bedrock_config.get("dataSources", [])
+            if data_sources:
+                first_data_source = data_sources[0]
+                if isinstance(first_data_source, dict):
+                    collection_id = first_data_source.get("id")
+                else:
+                    collection_id = getattr(first_data_source, "id", None)
+            else:
+                # Try legacy single data source ID
+                collection_id = bedrock_config.get("bedrockKnowledgeDatasourceId")
+
+        if not collection_id:
             logger.error(f"Bedrock KB repository {repository_id} missing data source ID")
             return
 
-        collection_id = data_source_id
         embedding_model = repository.get("embeddingModelId")
         chunk_strategy = NoneChunkingStrategy()  # KB manages chunking
 
@@ -385,7 +475,6 @@ def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
         )
     else:
         # Non-Bedrock KB path (existing logic)
-        collection_id = pipeline_config.get("collectionId", None)
         embedding_model = pipeline_config.get("embeddingModel", None)
 
         if collection_id:

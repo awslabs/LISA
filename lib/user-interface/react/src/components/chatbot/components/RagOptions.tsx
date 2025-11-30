@@ -82,16 +82,20 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
             }));
     }, [collections]);
 
-    // Update useRag flag based on repository and embedding model availability
+    // Update useRag flag based on repository type and configuration
     useEffect(() => {
         const hasRepository = !!ragConfig?.repositoryId;
-        const hasEmbeddingModel = !!ragConfig?.embeddingModel;
         const hasCollection = !!ragConfig?.collection;
-
-        // Enable RAG if repository is selected AND (embedding model is set OR collection is selected)
-        setUseRag(hasRepository && (hasEmbeddingModel || hasCollection));
-    }, [ragConfig?.repositoryId, ragConfig?.embeddingModel, ragConfig?.collection, setUseRag]);
-
+        const hasEmbeddingModel = !!ragConfig?.embeddingModel;
+        const isBedrockRepo = ragConfig?.repositoryType === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE;
+        // For Bedrock repositories: require both repository AND collection
+        // For non-Bedrock repositories: require repository AND embedding model (or collection as alternative)
+        if (isBedrockRepo) {
+            setUseRag(hasRepository && hasCollection);
+        } else {
+            setUseRag(hasRepository && (hasEmbeddingModel || hasCollection));
+        }
+    }, [ragConfig?.repositoryId, ragConfig?.repositoryType, ragConfig?.collection, ragConfig?.embeddingModel, setUseRag]);
     // Effect for handling repository changes, default collection, and default embedding model selection
     useEffect(() => {
         const currentRepositoryId = ragConfig?.repositoryId;

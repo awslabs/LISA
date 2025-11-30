@@ -18,6 +18,28 @@ import '@testing-library/jest-dom';
 import { cleanup } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';
 
+// Mock Axios to prevent real HTTP requests during tests
+vi.mock('axios', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('axios')>();
+    return {
+        ...actual,
+        default: {
+            ...actual.default,
+            create: vi.fn(() => ({
+                interceptors: {
+                    request: { use: vi.fn() },
+                    response: { use: vi.fn() },
+                },
+                get: vi.fn().mockResolvedValue({ data: {} }),
+                post: vi.fn().mockResolvedValue({ data: {} }),
+                put: vi.fn().mockResolvedValue({ data: {} }),
+                delete: vi.fn().mockResolvedValue({ data: {} }),
+                request: vi.fn().mockResolvedValue({ data: {} }),
+            })),
+        },
+    };
+});
+
 // Cleanup after each test
 afterEach(() => {
     cleanup();
@@ -29,6 +51,9 @@ Object.defineProperty(window, 'env', {
     value: {
         RESTAPI_URI: 'http://localhost:8080',
         RESTAPI_VERSION: 'v2',
+        API_BASE_URL: 'http://localhost:8080/v2',
+        AUTHORITY: 'http://localhost:8080',
+        CLIENT_ID: 'test-client-id',
     },
 });
 

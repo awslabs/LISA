@@ -28,7 +28,7 @@ import { ARCHITECTURE } from '../core';
 import { Layer } from '../core/layers';
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
-import { BaseProps, Config, RDSConfig } from '../schema';
+import { APP_MANAGEMENT_KEY, BaseProps, Config, RDSConfig } from '../schema';
 import { SecurityGroupEnum } from '../core/iam/SecurityGroups';
 import { SecurityGroupFactory } from '../networking/vpc/security-group-factory';
 import { Roles } from '../core/iam/roles';
@@ -47,7 +47,7 @@ import { LAMBDA_PATH, RAG_LAYER_PATH } from '../util';
 import { IngestionStack } from './ingestion/ingestion-stack';
 import * as child_process from 'child_process';
 import * as path from 'path';
-import { getDefaultRuntime } from '../api-base/utils';
+import { getPythonRuntime } from '../api-base/utils';
 import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
 
 export type LisaRagProps = {
@@ -218,7 +218,7 @@ export class LisaRagConstruct extends Construct {
             LISA_API_URL_PS_NAME: endpointUrl.parameterName,
             LISA_RAG_COLLECTIONS_TABLE: collectionsTable.tableName,
             LOG_LEVEL: config.logLevel,
-            MANAGEMENT_KEY_SECRET_NAME_PS: `${config.deploymentPrefix}/appManagementKeySecretName`,
+            MANAGEMENT_KEY_SECRET_NAME_PS: `${config.deploymentPrefix}/${APP_MANAGEMENT_KEY}`,
             MODEL_TABLE_NAME: modelTableNameStringParameter.stringValue,
             RAG_DOCUMENT_TABLE: docMetaTable.tableName,
             RAG_SUB_DOCUMENT_TABLE: subDocTable.tableName,
@@ -730,7 +730,7 @@ export class LisaRagConstruct extends Construct {
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
 
         return new Function(this.scope, createCdkId([repositoryId, 'CreateDbUserLambda']), {
-            runtime: getDefaultRuntime(),
+            runtime: getPythonRuntime(),
             handler: 'utilities.db_setup_iam_auth.handler',
             code: Code.fromAsset(lambdaPath),
             timeout: Duration.minutes(2),

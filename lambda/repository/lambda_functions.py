@@ -50,7 +50,13 @@ from repository.s3_metadata_manager import S3MetadataManager
 from repository.services import RepositoryServiceFactory
 from repository.vector_store_repo import VectorStoreRepository
 from utilities.auth import admin_only, get_groups, get_user_context, get_username, is_admin, user_has_group_access
-from utilities.bedrock_kb import add_default_pipeline_for_bedrock_kb
+from utilities.bedrock_kb import create_s3_scan_job
+from utilities.bedrock_kb_discovery import (
+    build_pipeline_configs_from_kb_config,
+    get_available_data_sources,
+    list_knowledge_bases,
+)
+from utilities.bedrock_kb_validation import validate_bedrock_kb_exists
 from utilities.common_functions import api_wrapper, retry_config
 from utilities.exceptions import HTTPException
 from utilities.repository_types import RepositoryType
@@ -168,7 +174,11 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
         else query_string_params.get("modelName")
     )
 
-    if not model_name and not RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
+    if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
+        # No collectionId will query the entire Knowledge base. Reserve for Admins.
+        if collection_id is None and not is_admin:
+            raise ValidationError("collectionId is required when searching Bedrock Knowledge Bases")
+    elif not model_name:
         raise ValidationError("modelName is required when collectionId is not provided")
 
     # Use repository service for similarity search
@@ -185,7 +195,7 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
         top_k=top_k,
         model_name=model_name,
         include_score=include_score,
-        bedrock_agent_client=bedrock_client if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB) else None,
+        bedrock_agent_client=bedrock_client,
     )
 
     doc_content = [
@@ -221,16 +231,20 @@ def get_repository(event: dict[str, Any], repository_id: str) -> dict[str, Any]:
 
 def create_bedrock_collection(event: dict, context: dict) -> Dict[str, Any]:
     """
-    Create a default collection for a Bedrock Knowledge Base repository.
+    Create collections for a Bedrock Knowledge Base repository based on pipeline configurations.
     This is called by the state machine during repository creation.
+
+    Each pipeline configuration represents a data source and should have a corresponding collection.
 
     Args:
         event (dict): The Lambda event object containing:
-            - ragConfig: Repository configuration with repositoryId
+            - ragConfig: Repository configuration with repositoryId and pipelines
         context (dict): The Lambda context object
 
     Returns:
-        Dict[str, Any]: A dictionary containing the created collection configuration
+        Dict[str, Any]: A dictionary containing:
+            - collections: List of created collection configurations
+            - count: Number of collections created
 
     Raises:
         ValidationError: If validation fails
@@ -244,28 +258,99 @@ def create_bedrock_collection(event: dict, context: dict) -> Dict[str, Any]:
         if not repository_id:
             raise ValidationError("repositoryId is required in ragConfig")
 
-        logger.info(f"Creating default collection for Bedrock KB repository: {repository_id}")
+        logger.info(f"Creating collection(s) for Bedrock KB repository: {repository_id}")
 
         # Get repository configuration
         repository = vs_repo.find_repository_by_id(repository_id=repository_id)
 
-        # Use repository service to create default collection
+        # Get pipeline configurations - each pipeline should have a collectionId
+        pipelines = repository.get("pipelines", [])
+
+        if not pipelines:
+            raise ValidationError(f"No pipelines found in Bedrock KB repository {repository_id}")
+
+        logger.info(f"Found {len(pipelines)} pipeline(s) to create collections for")
+
+        # Use repository service to create collections
         service = RepositoryServiceFactory.create_service(repository)
-        collection = service.create_default_collection()
 
-        if collection is None:
-            raise ValidationError(f"Failed to create default collection for repository {repository_id}")
+        # Create a collection for each pipeline (skip if already exists)
+        created_collections = []
+        skipped_collections = []
+        for pipeline in pipelines:
+            collection_id = pipeline.get("collectionId")
+            if not collection_id:
+                logger.warning(f"Pipeline missing collectionId, skipping: {pipeline}")
+                continue
 
-        # Save the collection
-        collection_service.create_collection(collection=collection, username="system")
-        logger.info(f"Successfully created default collection: {collection.collectionId}")
+            collection_name = pipeline.get("collectionName", collection_id)
+            s3_bucket = pipeline.get("s3Bucket", "")
+            s3_prefix = pipeline.get("s3Prefix", "")
+            s3_uri = f"s3://{s3_bucket}/{s3_prefix}" if s3_bucket else ""
 
-        # Return collection configuration
-        result: dict[str, Any] = collection.model_dump(mode="json")
+            # Check if collection already exists
+            try:
+                existing_collection = collection_service.get_collection(
+                    repository_id=repository_id,
+                    collection_id=collection_id,
+                    username="system",
+                    user_groups=[],
+                    is_admin=True,
+                )
+                if existing_collection:
+                    logger.info(f"Collection {collection_id} already exists, skipping creation")
+                    skipped_collections.append(existing_collection.model_dump(mode="json"))
+                    continue
+            except (HTTPException, ValidationError):
+                # Collection doesn't exist, proceed with creation
+                pass
+
+            logger.info(
+                f"Creating collection for pipeline with collectionId={collection_id}, "
+                f"collectionName={collection_name}, s3Uri={s3_uri}"
+            )
+
+            # Create collection using service helper
+            collection = service._create_collection_for_data_source(
+                data_source_id=collection_id, s3_uri=s3_uri, is_default=False, collection_name=collection_name
+            )
+
+            # Save the collection
+            collection_service.create_collection(collection=collection, username="system")
+            logger.info(f"Successfully saved collection: {collection.collectionId}")
+            created_collections.append(collection.model_dump(mode="json"))
+
+            # Create S3 scan job to ingest existing documents
+            if s3_bucket:
+                logger.info(f"Creating S3 scan job for bucket {s3_bucket} with prefix '{s3_prefix}'")
+                job_id = create_s3_scan_job(
+                    ingestion_job_repository=ingestion_job_repository,
+                    ingestion_service=ingestion_service,
+                    repository_id=repository_id,
+                    collection_id=collection_id,
+                    embedding_model=collection.embeddingModel,
+                    s3_bucket=s3_bucket,
+                    s3_prefix=s3_prefix,
+                )
+                logger.info(f"Created S3 scan job {job_id} for collection {collection_id}")
+
+        if not created_collections and not skipped_collections:
+            raise ValidationError(f"Failed to create any collections for repository {repository_id}")
+
+        # Return all created and skipped collections
+        all_collections = created_collections + skipped_collections
+        result: dict[str, Any] = {
+            "collections": all_collections,
+            "count": len(all_collections),
+            "created": len(created_collections),
+            "skipped": len(skipped_collections),
+        }
+        logger.info(f"Collection summary: {len(created_collections)} created, {len(skipped_collections)} skipped")
+        logger.info(f"Successfully created {len(created_collections)} collection(s) for repository {repository_id}")
         return result
 
     except Exception as e:
-        logger.error(f"Error creating Bedrock collection: {str(e)}")
+        logger.error(f"Error creating Bedrock collection(s): {str(e)}")
         raise
 
 
@@ -1195,11 +1280,23 @@ def create(event: dict, context: dict) -> Any:
     except Exception as e:
         raise ValidationError(f"Invalid VectorStoreConfig: {e}")
 
-    # Auto-add default pipeline for Bedrock Knowledge Base repositories
+    # Auto-convert Bedrock KB config to pipelines
     if vector_store_config.type == RepositoryType.BEDROCK_KB:
         if not vector_store_config.bedrockKnowledgeBaseConfig:
-            raise ValidationError("Bedrock Config must be supplied")
-        add_default_pipeline_for_bedrock_kb(vector_store_config)
+            raise ValidationError("Bedrock Knowledge Base configuration is required")
+
+        if (
+            not vector_store_config.bedrockKnowledgeBaseConfig.dataSources
+            or len(vector_store_config.bedrockKnowledgeBaseConfig.dataSources) == 0
+        ):
+            raise ValidationError(
+                "Bedrock Knowledge Base repositories require at least one data source. "
+                "Please select at least one data source."
+            )
+        # Convert bedrockKnowledgeBaseConfig to pipelines
+        vector_store_config.pipelines = build_pipeline_configs_from_kb_config(
+            vector_store_config.bedrockKnowledgeBaseConfig
+        )
 
     # Convert to dictionary for Step Functions input
     rag_config = vector_store_config.model_dump(mode="json", exclude_none=True)
@@ -1298,8 +1395,47 @@ def update_repository(event: dict, context: dict) -> Dict[str, Any]:
     # Build updates dictionary (only include fields that were provided)
     updates = request.model_dump(exclude_none=True, mode="json")
 
+    # Convert bedrockKnowledgeBaseConfig to pipelines for Bedrock KB repositories
+    repository_type = current_config.get("type")
+    if (
+        repository_type == RepositoryType.BEDROCK_KB
+        and hasattr(request, "bedrockKnowledgeBaseConfig")
+        and request.bedrockKnowledgeBaseConfig is not None
+    ):
+        # Validate at least one data source
+        if (
+            not request.bedrockKnowledgeBaseConfig.dataSources
+            or len(request.bedrockKnowledgeBaseConfig.dataSources) == 0
+        ):
+            raise ValidationError(
+                "Bedrock Knowledge Base repositories require at least one collection. "
+                "Please select at least one data source."
+            )
+        # Convert bedrockKnowledgeBaseConfig to pipelines
+        updates["pipelines"] = build_pipeline_configs_from_kb_config(request.bedrockKnowledgeBaseConfig)
+        logger.info(f"Converted {len(request.bedrockKnowledgeBaseConfig.dataSources)} data sources to pipeline configs")
+
     # Check if pipeline configuration has changed
-    require_deployment = request.pipelines is not None and request.pipelines != current_pipelines
+    # Use the converted pipelines from updates if available, otherwise use request.pipelines
+    new_pipelines = updates.get("pipelines") if "pipelines" in updates else request.pipelines
+    require_deployment = False
+
+    if new_pipelines is not None:
+        # For Bedrock KB repositories, only check if data source IDs (collectionIds) have changed
+        if repository_type == RepositoryType.BEDROCK_KB:
+            current_collection_ids = {p.get("collectionId") for p in (current_pipelines or []) if p.get("collectionId")}
+            new_collection_ids = {p.get("collectionId") for p in new_pipelines if p.get("collectionId")}
+
+            if current_collection_ids != new_collection_ids:
+                added = new_collection_ids - current_collection_ids
+                removed = current_collection_ids - new_collection_ids
+                logger.info(f"Bedrock KB data sources changed: added={list(added)}, removed={list(removed)}")
+                require_deployment = True
+            else:
+                logger.info("Bedrock KB data sources unchanged, no deployment needed")
+        else:
+            # For other repository types, compare full pipeline configs
+            require_deployment = new_pipelines != current_pipelines
 
     # Set status based on deployment requirement
     status = VectorStoreStatus.UPDATE_IN_PROGRESS if require_deployment else VectorStoreStatus.UPDATE_COMPLETE
@@ -1431,3 +1567,115 @@ def _remove_legacy(repository_id: str) -> None:
             Type="String",
             Overwrite=True,
         )
+
+
+@api_wrapper
+def list_bedrock_knowledge_bases(event: dict, context: dict) -> Dict[str, Any]:
+    """
+    List all ACTIVE Bedrock Knowledge Bases in the AWS account.
+
+    Marks KBs as unavailable if they're already associated with a repository.
+
+    Args:
+        event: Lambda event
+        context: Lambda context
+
+    Returns:
+        Dictionary with:
+            - knowledgeBases: List of ACTIVE Knowledge Base metadata with availability status
+            - totalKnowledgeBases: Count of ACTIVE KBs
+
+    Raises:
+        ValidationError: If discovery fails
+    """
+    logger.info("Listing all ACTIVE Knowledge Bases")
+
+    # Create bedrock-agent client
+    bedrock_agent_client = boto3.client("bedrock-agent", region_name, config=retry_config)
+
+    # Get all knowledge bases and filter to ACTIVE only
+    all_kbs = list_knowledge_bases(bedrock_agent_client)
+    active_kbs = [kb for kb in all_kbs if kb.status == "ACTIVE"]
+
+    # Get all existing repositories to check which KBs are already in use
+    existing_repos = vs_repo.get_registered_repositories()
+    used_kb_ids = set()
+
+    for repo in existing_repos:
+        config = repo.get("config", {})
+        bedrock_config = config.get("bedrockKnowledgeBaseConfig")
+        if bedrock_config and isinstance(bedrock_config, dict):
+            kb_id = bedrock_config.get("knowledgeBaseId")
+            if kb_id:
+                used_kb_ids.add(kb_id)
+
+    # Convert to dictionaries and mark KBs as available or unavailable
+    kb_list = []
+    for kb in active_kbs:
+        kb_dict = kb.model_dump(mode="json")
+        kb_dict["available"] = kb.knowledgeBaseId not in used_kb_ids
+        if not kb_dict["available"]:
+            kb_dict["unavailableReason"] = "Already associated with another repository"
+        kb_list.append(kb_dict)
+
+    logger.info(
+        f"Found {len(active_kbs)} ACTIVE Knowledge Bases out of {len(all_kbs)} total, "
+        f"{len(used_kb_ids)} already in use"
+    )
+
+    return {"knowledgeBases": kb_list, "totalKnowledgeBases": len(kb_list)}
+
+
+@api_wrapper
+def list_bedrock_data_sources(event: dict, context: dict) -> Dict[str, Any]:
+    """
+    List data sources for a specific Bedrock Knowledge Base.
+
+    Args:
+        event: Lambda event containing:
+            - pathParameters.kbId: Knowledge Base ID
+            - queryStringParameters.repositoryId (optional): Repository ID to check managed data sources
+            - queryStringParameters.refresh (optional): Force refresh cache (default: false)
+        context: Lambda context
+
+    Returns:
+        Dictionary with:
+            - knowledgeBase: KB metadata (id, name, description)
+            - availableDataSources: Data sources not yet managed
+            - managedDataSources: Data sources already managed by collections
+            - totalDataSources: Total count
+
+    Raises:
+        ValidationError: If KB not found or discovery fails
+    """
+    path_params = event.get("pathParameters", {})
+    query_params = event.get("queryStringParameters") or {}
+
+    kb_id = path_params.get("kbId")
+    if not kb_id:
+        raise ValidationError("kbId is required")
+
+    repository_id = query_params.get("repositoryId")
+
+    logger.info(f"Listing data sources for KB {kb_id}, repository={repository_id}")
+
+    # Create bedrock-agent client
+    bedrock_agent_client = boto3.client("bedrock-agent", region_name, config=retry_config)
+
+    # Validate KB exists and get metadata
+    kb_config = validate_bedrock_kb_exists(kb_id, bedrock_agent_client)
+
+    # Get available and managed data sources
+    data_sources = get_available_data_sources(
+        kb_id=kb_id,
+        repository_id=repository_id,
+        bedrock_agent_client=bedrock_agent_client,
+    )
+
+    return {
+        "knowledgeBase": {
+            "id": kb_id,
+            "name": kb_config.get("name"),
+        },
+        "dataSources": [ds.model_dump(mode="json") for ds in data_sources],
+    }

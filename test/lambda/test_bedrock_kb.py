@@ -17,16 +17,8 @@
 from unittest.mock import MagicMock
 
 import pytest
-from models.domain_objects import (
-    ChunkingStrategyType,
-    IngestionJob,
-    IngestionType,
-    JobActionType,
-    NoneChunkingStrategy,
-    VectorStoreConfig,
-)
+from models.domain_objects import IngestionJob, IngestionType, JobActionType, NoneChunkingStrategy
 from utilities.bedrock_kb import (
-    add_default_pipeline_for_bedrock_kb,
     bulk_delete_documents_from_kb,
     delete_document_from_kb,
     ingest_bedrock_s3_documents,
@@ -94,7 +86,7 @@ class TestIngestDocumentToKB:
 
         mock_bedrock_agent_client.start_ingestion_job.assert_called_once_with(
             knowledgeBaseId="KB123456",
-            dataSourceId="DS123456",
+            dataSourceId="test-collection",
         )
 
 
@@ -152,7 +144,7 @@ class TestDeleteDocumentFromKB:
 
         mock_bedrock_agent_client.start_ingestion_job.assert_called_once_with(
             knowledgeBaseId="KB123456",
-            dataSourceId="DS123456",
+            dataSourceId="test-collection",
         )
 
 
@@ -196,6 +188,7 @@ class TestBulkDeleteDocumentsFromKB:
             bedrock_agent_client=mock_bedrock_agent_client,
             repository=sample_repository,
             s3_paths=s3_paths,
+            data_source_id="DS123456",
         )
 
         # Assert
@@ -220,6 +213,7 @@ class TestBulkDeleteDocumentsFromKB:
             bedrock_agent_client=mock_bedrock_agent_client,
             repository=sample_repository,
             s3_paths=s3_paths,
+            data_source_id="DS123456",
         )
 
         # Assert - Should be called twice (1000 + 500)
@@ -235,97 +229,6 @@ class TestBulkDeleteDocumentsFromKB:
 
         # Verify ingestion job started once
         mock_bedrock_agent_client.start_ingestion_job.assert_called_once()
-
-
-class TestAddDefaultPipelineForBedrockKB:
-    """Test automatic pipeline addition for Bedrock KB repositories."""
-
-    def test_add_default_pipeline_when_none_exists(self):
-        """Test adding default pipeline when no pipelines configured."""
-        # Arrange
-        from models.domain_objects import BedrockKnowledgeBaseConfig
-
-        bedrock_config = BedrockKnowledgeBaseConfig(
-            bedrockKnowledgeBaseName="test-kb",
-            bedrockKnowledgeBaseId="KB123456",
-            bedrockKnowledgeDatasourceName="test-datasource",
-            bedrockKnowledgeDatasourceId="DS123456",
-            bedrockKnowledgeDatasourceS3Bucket="kb-datasource-bucket",
-        )
-
-        vector_store_config = VectorStoreConfig(
-            repositoryId="test-repo",
-            type="bedrock_knowledge_base",
-            embeddingModelId="amazon.titan-embed-text-v1",
-            bedrockKnowledgeBaseConfig=bedrock_config,
-        )
-
-        # Act
-        add_default_pipeline_for_bedrock_kb(vector_store_config)
-
-        # Assert
-        assert vector_store_config.pipelines is not None
-        assert len(vector_store_config.pipelines) == 1
-
-        pipeline = vector_store_config.pipelines[0]
-        assert pipeline.s3Bucket == "kb-datasource-bucket"
-        assert pipeline.s3Prefix == ""
-        assert pipeline.trigger == "event"
-        assert pipeline.autoRemove is True
-        assert pipeline.chunkingStrategy.type == ChunkingStrategyType.NONE
-
-    def test_add_default_pipeline_appends_to_existing(self):
-        """Test adding default pipeline appends to existing pipelines."""
-        # Arrange
-        from models.domain_objects import BedrockKnowledgeBaseConfig, PipelineConfig, PipelineTrigger
-
-        bedrock_config = BedrockKnowledgeBaseConfig(
-            bedrockKnowledgeBaseName="test-kb",
-            bedrockKnowledgeBaseId="KB123456",
-            bedrockKnowledgeDatasourceName="test-datasource",
-            bedrockKnowledgeDatasourceId="DS123456",
-            bedrockKnowledgeDatasourceS3Bucket="kb-datasource-bucket",
-        )
-
-        existing_pipeline = PipelineConfig(
-            s3Bucket="custom-bucket",
-            s3Prefix="custom/",
-            collectinoId=bedrock_config.bedrockKnowledgeDatasourceId,
-            trigger=PipelineTrigger.SCHEDULE,
-            autoRemove=False,
-            chunkingStrategy=NoneChunkingStrategy(type=ChunkingStrategyType.NONE),
-        )
-
-        vector_store_config = VectorStoreConfig(
-            repositoryId="test-repo",
-            type="bedrock_knowledge_base",
-            embeddingModelId="amazon.titan-embed-text-v1",
-            bedrockKnowledgeBaseConfig=bedrock_config,
-            pipelines=[existing_pipeline],
-        )
-
-        # Act
-        add_default_pipeline_for_bedrock_kb(vector_store_config)
-
-        # Assert
-        assert len(vector_store_config.pipelines) == 2
-        assert vector_store_config.pipelines[0].s3Bucket == "custom-bucket"
-        assert vector_store_config.pipelines[1].s3Bucket == "kb-datasource-bucket"
-
-    def test_no_pipeline_added_when_no_bedrock_config(self):
-        """Test no pipeline added when bedrockKnowledgeBaseConfig is None."""
-        # Arrange
-        vector_store_config = VectorStoreConfig(
-            repositoryId="test-repo",
-            type="opensearch",
-            embeddingModelId="amazon.titan-embed-text-v1",
-        )
-
-        # Act
-        add_default_pipeline_for_bedrock_kb(vector_store_config)
-
-        # Assert
-        assert vector_store_config.pipelines is None
 
 
 class TestIngestBedrockS3Documents:
@@ -494,3 +397,769 @@ class TestIngestBedrockS3Documents:
         assert discovered == 0
         assert skipped == 0
         mock_ingestion_job_repo.save.assert_not_called()
+
+
+class TestGetDatasourceBucketForCollection:
+    """Test getting datasource bucket for a collection."""
+
+    def test_get_bucket_legacy_format(self):
+        """Test getting bucket from legacy format."""
+        from utilities.bedrock_kb import get_datasource_bucket_for_collection
+
+        # Arrange
+        repository = {
+            "repositoryId": "test-repo",
+            "bedrockKnowledgeBaseConfig": {
+                "bedrockKnowledgeDatasourceS3Bucket": "legacy-bucket",
+            },
+        }
+
+        # Act
+        result = get_datasource_bucket_for_collection(repository, "test-collection")
+
+        # Assert
+        assert result == "legacy-bucket"
+
+    def test_get_bucket_from_pipelines(self):
+        """Test getting bucket from pipelines array."""
+        from utilities.bedrock_kb import get_datasource_bucket_for_collection
+
+        # Arrange
+        repository = {
+            "repositoryId": "test-repo",
+            "bedrockKnowledgeBaseConfig": {},
+            "pipelines": [
+                {"collectionId": "collection-1", "s3Bucket": "bucket-1"},
+                {"collectionId": "collection-2", "s3Bucket": "bucket-2"},
+            ],
+        }
+
+        # Act
+        result = get_datasource_bucket_for_collection(repository, "collection-2")
+
+        # Assert
+        assert result == "bucket-2"
+
+    def test_get_bucket_from_data_sources(self):
+        """Test getting bucket from dataSources array."""
+        from utilities.bedrock_kb import get_datasource_bucket_for_collection
+
+        # Arrange
+        repository = {
+            "repositoryId": "test-repo",
+            "bedrockKnowledgeBaseConfig": {
+                "dataSources": [
+                    {"id": "ds-1", "s3Uri": "s3://bucket-1/prefix1/"},
+                    {"id": "ds-2", "s3Uri": "s3://bucket-2/"},
+                ]
+            },
+        }
+
+        # Act
+        result = get_datasource_bucket_for_collection(repository, "ds-2")
+
+        # Assert
+        assert result == "bucket-2"
+
+    def test_get_bucket_invalid_s3_uri(self):
+        """Test handling of invalid S3 URI format."""
+        from utilities.bedrock_kb import get_datasource_bucket_for_collection
+
+        # Arrange
+        repository = {
+            "repositoryId": "test-repo",
+            "bedrockKnowledgeBaseConfig": {
+                "dataSources": [
+                    {"id": "ds-1", "s3Uri": "invalid-uri"},
+                ]
+            },
+        }
+
+        # Act & Assert
+        with pytest.raises(ValueError, match="invalid s3Uri format"):
+            get_datasource_bucket_for_collection(repository, "ds-1")
+
+    def test_get_bucket_not_found(self):
+        """Test handling when bucket configuration is not found."""
+        from utilities.bedrock_kb import get_datasource_bucket_for_collection
+
+        # Arrange
+        repository = {
+            "repositoryId": "test-repo",
+            "bedrockKnowledgeBaseConfig": {},
+            "pipelines": [],
+        }
+
+        # Act & Assert
+        with pytest.raises(ValueError, match="Cannot determine S3 bucket"):
+            get_datasource_bucket_for_collection(repository, "missing-collection")
+
+    def test_get_bucket_from_pipelines_object_format(self):
+        """Test getting bucket from pipelines with object format."""
+        from utilities.bedrock_kb import get_datasource_bucket_for_collection
+
+        # Arrange
+        class Pipeline:
+            def __init__(self, collection_id, s3_bucket):
+                self.collectionId = collection_id
+                self.s3Bucket = s3_bucket
+
+        repository = {
+            "repositoryId": "test-repo",
+            "bedrockKnowledgeBaseConfig": {},
+            "pipelines": [
+                Pipeline("collection-1", "bucket-1"),
+            ],
+        }
+
+        # Act
+        result = get_datasource_bucket_for_collection(repository, "collection-1")
+
+        # Assert
+        assert result == "bucket-1"
+
+
+class TestIngestDocumentToKBWithMultipleFormats:
+    """Test document ingestion with different repository config formats."""
+
+    @pytest.fixture
+    def mock_s3_client(self):
+        """Create mock S3 client."""
+        return MagicMock()
+
+    @pytest.fixture
+    def mock_bedrock_agent_client(self):
+        """Create mock bedrock-agent client."""
+        return MagicMock()
+
+    @pytest.fixture
+    def sample_job(self):
+        """Sample ingestion job."""
+        return IngestionJob(
+            repository_id="test-repo",
+            collection_id="test-collection",
+            embedding_model="amazon.titan-embed-text-v1",
+            chunk_strategy=NoneChunkingStrategy(),
+            s3_path="s3://source-bucket/document.pdf",
+            username="testuser",
+        )
+
+    def test_ingest_with_pipelines_config(self, mock_s3_client, mock_bedrock_agent_client, sample_job):
+        """Test ingestion with pipelines configuration."""
+        from utilities.bedrock_kb import ingest_document_to_kb
+
+        # Arrange
+        repository = {
+            "repositoryId": "test-repo",
+            "bedrockKnowledgeBaseConfig": {
+                "knowledgeBaseId": "KB123",
+            },
+            "pipelines": [
+                {"collectionId": "test-collection", "s3Bucket": "kb-bucket"},
+            ],
+        }
+
+        # Act
+        ingest_document_to_kb(mock_s3_client, mock_bedrock_agent_client, sample_job, repository)
+
+        # Assert
+        mock_s3_client.copy_object.assert_called_once()
+        assert mock_s3_client.copy_object.call_args[1]["Bucket"] == "kb-bucket"
+
+    def test_ingest_with_data_sources_config(self, mock_s3_client, mock_bedrock_agent_client, sample_job):
+        """Test ingestion with dataSources configuration."""
+        from utilities.bedrock_kb import ingest_document_to_kb
+
+        # Arrange
+        repository = {
+            "repositoryId": "test-repo",
+            "bedrockKnowledgeBaseConfig": {
+                "knowledgeBaseId": "KB123",
+                "dataSources": [
+                    {"id": "test-collection", "s3Uri": "s3://kb-bucket/prefix/"},
+                ],
+            },
+        }
+
+        # Act
+        ingest_document_to_kb(mock_s3_client, mock_bedrock_agent_client, sample_job, repository)
+
+        # Assert
+        mock_s3_client.copy_object.assert_called_once()
+        assert mock_s3_client.copy_object.call_args[1]["Bucket"] == "kb-bucket"
+
+    def test_ingest_missing_kb_id(self, mock_s3_client, mock_bedrock_agent_client, sample_job):
+        """Test ingestion with missing knowledge base ID."""
+        from utilities.bedrock_kb import ingest_document_to_kb
+
+        # Arrange
+        repository = {
+            "repositoryId": "test-repo",
+            "bedrockKnowledgeBaseConfig": {},
+            "pipelines": [
+                {"collectionId": "test-collection", "s3Bucket": "kb-bucket"},
+            ],
+        }
+
+        # Act & Assert
+        with pytest.raises(ValueError, match="missing required field"):
+            ingest_document_to_kb(mock_s3_client, mock_bedrock_agent_client, sample_job, repository)
+
+
+class TestDeleteDocumentFromKBWithMultipleFormats:
+    """Test document deletion with different repository config formats."""
+
+    @pytest.fixture
+    def mock_s3_client(self):
+        """Create mock S3 client."""
+        return MagicMock()
+
+    @pytest.fixture
+    def mock_bedrock_agent_client(self):
+        """Create mock bedrock-agent client."""
+        return MagicMock()
+
+    @pytest.fixture
+    def sample_job(self):
+        """Sample deletion job."""
+        return IngestionJob(
+            repository_id="test-repo",
+            collection_id="test-collection",
+            embedding_model="amazon.titan-embed-text-v1",
+            chunk_strategy=NoneChunkingStrategy(),
+            s3_path="s3://kb-bucket/document.pdf",
+            username="testuser",
+        )
+
+    def test_delete_with_pipelines_config(self, mock_s3_client, mock_bedrock_agent_client, sample_job):
+        """Test deletion with pipelines configuration."""
+        from utilities.bedrock_kb import delete_document_from_kb
+
+        # Arrange
+        repository = {
+            "repositoryId": "test-repo",
+            "bedrockKnowledgeBaseConfig": {
+                "knowledgeBaseId": "KB123",
+            },
+            "pipelines": [
+                {"collectionId": "test-collection", "s3Bucket": "kb-bucket"},
+            ],
+        }
+
+        # Act
+        delete_document_from_kb(mock_s3_client, mock_bedrock_agent_client, sample_job, repository)
+
+        # Assert
+        mock_s3_client.delete_object.assert_called_once()
+        assert mock_s3_client.delete_object.call_args[1]["Bucket"] == "kb-bucket"
+
+    def test_delete_missing_kb_id(self, mock_s3_client, mock_bedrock_agent_client, sample_job):
+        """Test deletion with missing knowledge base ID."""
+        from utilities.bedrock_kb import delete_document_from_kb
+
+        # Arrange
+        repository = {
+            "repositoryId": "test-repo",
+            "bedrockKnowledgeBaseConfig": {},
+            "pipelines": [
+                {"collectionId": "test-collection", "s3Bucket": "kb-bucket"},
+            ],
+        }
+
+        # Act & Assert
+        with pytest.raises(ValueError, match="missing required field"):
+            delete_document_from_kb(mock_s3_client, mock_bedrock_agent_client, sample_job, repository)
+
+
+class TestBulkDeleteWithMultipleFormats:
+    """Test bulk deletion with different repository config formats."""
+
+    @pytest.fixture
+    def mock_s3_client(self):
+        """Create mock S3 client."""
+        return MagicMock()
+
+    @pytest.fixture
+    def mock_bedrock_agent_client(self):
+        """Create mock bedrock-agent client."""
+        return MagicMock()
+
+    def test_bulk_delete_with_data_sources_array(self, mock_s3_client, mock_bedrock_agent_client):
+        """Test bulk delete with dataSources array."""
+        from utilities.bedrock_kb import bulk_delete_documents_from_kb
+
+        # Arrange
+        repository = {
+            "repositoryId": "test-repo",
+            "bedrockKnowledgeBaseConfig": {
+                "knowledgeBaseId": "KB123",
+                "bedrockKnowledgeDatasourceS3Bucket": "kb-bucket",
+                "dataSources": [
+                    {"id": "DS123", "s3Uri": "s3://kb-bucket/"},
+                ],
+            },
+        }
+        s3_paths = ["s3://kb-bucket/doc1.pdf"]
+
+        # Act
+        bulk_delete_documents_from_kb(mock_s3_client, mock_bedrock_agent_client, repository, s3_paths)
+
+        # Assert
+        mock_bedrock_agent_client.start_ingestion_job.assert_called_once()
+        assert mock_bedrock_agent_client.start_ingestion_job.call_args[1]["dataSourceId"] == "DS123"
+
+    def test_bulk_delete_with_data_sources_object_format(self, mock_s3_client, mock_bedrock_agent_client):
+        """Test bulk delete with dataSources in object format."""
+        from utilities.bedrock_kb import bulk_delete_documents_from_kb
+
+        # Arrange
+        class DataSource:
+            def __init__(self, id):
+                self.id = id
+
+        repository = {
+            "repositoryId": "test-repo",
+            "bedrockKnowledgeBaseConfig": {
+                "knowledgeBaseId": "KB123",
+                "bedrockKnowledgeDatasourceS3Bucket": "kb-bucket",
+                "dataSources": [DataSource("DS123")],
+            },
+        }
+        s3_paths = ["s3://kb-bucket/doc1.pdf"]
+
+        # Act
+        bulk_delete_documents_from_kb(mock_s3_client, mock_bedrock_agent_client, repository, s3_paths)
+
+        # Assert
+        mock_bedrock_agent_client.start_ingestion_job.assert_called_once()
+        assert mock_bedrock_agent_client.start_ingestion_job.call_args[1]["dataSourceId"] == "DS123"
+
+    def test_bulk_delete_with_legacy_datasource_id(self, mock_s3_client, mock_bedrock_agent_client):
+        """Test bulk delete with legacy datasource ID."""
+        from utilities.bedrock_kb import bulk_delete_documents_from_kb
+
+        # Arrange
+        repository = {
+            "repositoryId": "test-repo",
+            "bedrockKnowledgeBaseConfig": {
+                "knowledgeBaseId": "KB123",
+                "bedrockKnowledgeDatasourceS3Bucket": "kb-bucket",
+                "bedrockKnowledgeDatasourceId": "DS-LEGACY",
+            },
+        }
+        s3_paths = ["s3://kb-bucket/doc1.pdf"]
+
+        # Act
+        bulk_delete_documents_from_kb(mock_s3_client, mock_bedrock_agent_client, repository, s3_paths)
+
+        # Assert
+        mock_bedrock_agent_client.start_ingestion_job.assert_called_once()
+        assert mock_bedrock_agent_client.start_ingestion_job.call_args[1]["dataSourceId"] == "DS-LEGACY"
+
+    def test_bulk_delete_missing_kb_id(self, mock_s3_client, mock_bedrock_agent_client):
+        """Test bulk delete with missing knowledge base ID."""
+        from utilities.bedrock_kb import bulk_delete_documents_from_kb
+
+        # Arrange
+        repository = {
+            "repositoryId": "test-repo",
+            "bedrockKnowledgeBaseConfig": {
+                "bedrockKnowledgeDatasourceS3Bucket": "kb-bucket",
+            },
+        }
+        s3_paths = ["s3://kb-bucket/doc1.pdf"]
+
+        # Act & Assert
+        with pytest.raises(ValueError, match="missing required field"):
+            bulk_delete_documents_from_kb(mock_s3_client, mock_bedrock_agent_client, repository, s3_paths)
+
+
+class TestCreateS3ScanJob:
+    """Test creating S3 scan jobs."""
+
+    @pytest.fixture
+    def mock_ingestion_job_repo(self):
+        """Create mock ingestion job repository."""
+        return MagicMock()
+
+    @pytest.fixture
+    def mock_ingestion_service(self):
+        """Create mock ingestion service."""
+        return MagicMock()
+
+    def test_create_s3_scan_job_with_prefix(self, mock_ingestion_job_repo, mock_ingestion_service):
+        """Test creating S3 scan job with prefix."""
+        from utilities.bedrock_kb import create_s3_scan_job
+
+        # Act
+        create_s3_scan_job(
+            ingestion_job_repository=mock_ingestion_job_repo,
+            ingestion_service=mock_ingestion_service,
+            repository_id="test-repo",
+            collection_id="test-collection",
+            embedding_model="amazon.titan-embed-text-v1",
+            s3_bucket="test-bucket",
+            s3_prefix="documents/",
+        )
+
+        # Assert
+        mock_ingestion_job_repo.save.assert_called_once()
+        mock_ingestion_service.submit_create_job.assert_called_once()
+
+        saved_job = mock_ingestion_job_repo.save.call_args[0][0]
+        assert saved_job.s3_path == "s3://test-bucket/documents/"
+        assert saved_job.s3_paths == []
+        assert saved_job.job_type == JobActionType.DOCUMENT_BATCH_INGESTION
+        assert saved_job.ingestion_type == IngestionType.EXISTING
+
+    def test_create_s3_scan_job_without_prefix(self, mock_ingestion_job_repo, mock_ingestion_service):
+        """Test creating S3 scan job without prefix."""
+        from utilities.bedrock_kb import create_s3_scan_job
+
+        # Act
+        create_s3_scan_job(
+            ingestion_job_repository=mock_ingestion_job_repo,
+            ingestion_service=mock_ingestion_service,
+            repository_id="test-repo",
+            collection_id="test-collection",
+            embedding_model="amazon.titan-embed-text-v1",
+            s3_bucket="test-bucket",
+        )
+
+        # Assert
+        saved_job = mock_ingestion_job_repo.save.call_args[0][0]
+        assert saved_job.s3_path == "s3://test-bucket/"
+        assert saved_job.s3_paths == []
+
+
+class TestS3DocumentDiscoveryService:
+    """Test S3 document discovery service."""
+
+    @pytest.fixture
+    def mock_s3_client(self):
+        """Create mock S3 client."""
+        return MagicMock()
+
+    @pytest.fixture
+    def mock_bedrock_agent_client(self):
+        """Create mock bedrock-agent client."""
+        return MagicMock()
+
+    @pytest.fixture
+    def mock_rag_document_repo(self):
+        """Create mock RAG document repository."""
+        return MagicMock()
+
+    @pytest.fixture
+    def mock_metadata_generator(self):
+        """Create mock metadata generator."""
+        mock = MagicMock()
+        mock.generate_metadata_json.return_value = {"metadata": "test"}
+        return mock
+
+    @pytest.fixture
+    def mock_s3_metadata_manager(self):
+        """Create mock S3 metadata manager."""
+        return MagicMock()
+
+    @pytest.fixture
+    def mock_collection_service(self):
+        """Create mock collection service."""
+        return MagicMock()
+
+    @pytest.fixture
+    def mock_vector_store_repo(self):
+        """Create mock vector store repository."""
+        mock = MagicMock()
+        mock.find_repository_by_id.return_value = {
+            "repositoryId": "test-repo",
+            "bedrockKnowledgeBaseConfig": {"knowledgeBaseId": "KB123"},
+        }
+        return mock
+
+    @pytest.fixture
+    def discovery_service(
+        self,
+        mock_s3_client,
+        mock_bedrock_agent_client,
+        mock_rag_document_repo,
+        mock_metadata_generator,
+        mock_s3_metadata_manager,
+        mock_collection_service,
+        mock_vector_store_repo,
+    ):
+        """Create S3DocumentDiscoveryService instance."""
+        from utilities.bedrock_kb import S3DocumentDiscoveryService
+
+        return S3DocumentDiscoveryService(
+            s3_client=mock_s3_client,
+            bedrock_agent_client=mock_bedrock_agent_client,
+            rag_document_repository=mock_rag_document_repo,
+            metadata_generator=mock_metadata_generator,
+            s3_metadata_manager=mock_s3_metadata_manager,
+            collection_service=mock_collection_service,
+            vector_store_repo=mock_vector_store_repo,
+        )
+
+    def test_discover_and_ingest_documents_success(self, discovery_service, mock_s3_client, mock_rag_document_repo):
+        """Test successful document discovery and ingestion."""
+        # Arrange
+        mock_s3_client.list_objects_v2.return_value = {
+            "Contents": [
+                {"Key": "doc1.pdf"},
+                {"Key": "doc2.txt"},
+            ]
+        }
+        mock_rag_document_repo.find_by_source.return_value = iter([])
+
+        # Act
+        result = discovery_service.discover_and_ingest_documents(
+            repository_id="test-repo",
+            collection_id="test-collection",
+            s3_bucket="test-bucket",
+        )
+
+        # Assert
+        assert result.discovered == 2
+        assert result.successful == 2
+        assert result.failed == 0
+        assert len(result.document_ids) == 2
+
+    def test_discover_and_ingest_skips_existing_documents(
+        self, discovery_service, mock_s3_client, mock_rag_document_repo
+    ):
+        """Test that existing documents are skipped."""
+        # Arrange
+        mock_s3_client.list_objects_v2.return_value = {
+            "Contents": [
+                {"Key": "doc1.pdf"},
+            ]
+        }
+        existing_doc = MagicMock()
+        existing_doc.document_id = "existing-doc-id"
+
+        # Mock find_by_source to return existing doc twice (once for check, once for retrieval)
+        mock_rag_document_repo.find_by_source.side_effect = [
+            iter([existing_doc]),  # First call for _document_exists
+            iter([existing_doc]),  # Second call to get the document
+        ]
+
+        # Act
+        result = discovery_service.discover_and_ingest_documents(
+            repository_id="test-repo",
+            collection_id="test-collection",
+            s3_bucket="test-bucket",
+        )
+
+        # Assert
+        assert result.discovered == 1
+        assert result.successful == 1
+        assert result.document_ids[0] == "existing-doc-id"
+        # Should not save new document
+        mock_rag_document_repo.save.assert_not_called()
+
+    def test_discover_and_ingest_handles_errors(self, discovery_service, mock_s3_client, mock_rag_document_repo):
+        """Test handling of errors during document processing."""
+        # Arrange
+        mock_s3_client.list_objects_v2.return_value = {
+            "Contents": [
+                {"Key": "doc1.pdf"},
+                {"Key": "doc2.pdf"},
+            ]
+        }
+        mock_rag_document_repo.find_by_source.side_effect = [
+            iter([]),  # First doc succeeds
+            Exception("Database error"),  # Second doc fails
+        ]
+
+        # Act
+        result = discovery_service.discover_and_ingest_documents(
+            repository_id="test-repo",
+            collection_id="test-collection",
+            s3_bucket="test-bucket",
+        )
+
+        # Assert
+        assert result.discovered == 2
+        assert result.successful == 1
+        assert result.failed == 1
+        assert len(result.errors) == 1
+
+    def test_discover_and_ingest_empty_bucket(self, discovery_service, mock_s3_client):
+        """Test handling of empty bucket."""
+        # Arrange
+        mock_s3_client.list_objects_v2.return_value = {}
+
+        # Act
+        result = discovery_service.discover_and_ingest_documents(
+            repository_id="test-repo",
+            collection_id="test-collection",
+            s3_bucket="test-bucket",
+        )
+
+        # Assert
+        assert result.discovered == 0
+        assert result.successful == 0
+
+    def test_discover_and_ingest_with_prefix(self, discovery_service, mock_s3_client, mock_rag_document_repo):
+        """Test discovery with S3 prefix."""
+        # Arrange
+        mock_s3_client.list_objects_v2.return_value = {
+            "Contents": [
+                {"Key": "documents/doc1.pdf"},
+            ]
+        }
+        mock_rag_document_repo.find_by_source.return_value = iter([])
+
+        # Act
+        result = discovery_service.discover_and_ingest_documents(
+            repository_id="test-repo",
+            collection_id="test-collection",
+            s3_bucket="test-bucket",
+            s3_prefix="documents",
+        )
+
+        # Assert
+        assert result.discovered == 1
+        # Verify prefix was used in list_objects_v2 call
+        call_args = mock_s3_client.list_objects_v2.call_args[1]
+        assert "Prefix" in call_args
+        assert call_args["Prefix"] == "documents/"
+
+    def test_scan_s3_bucket_skips_metadata_and_directories(self, discovery_service, mock_s3_client):
+        """Test that metadata files and directories are skipped."""
+        # Arrange
+        mock_s3_client.list_objects_v2.return_value = {
+            "Contents": [
+                {"Key": "doc1.pdf"},
+                {"Key": "doc1.pdf.metadata.json"},
+                {"Key": "folder/"},
+                {"Key": "doc2.txt"},
+            ]
+        }
+
+        # Act
+        documents, skipped = discovery_service._scan_s3_bucket("test-bucket", "")
+
+        # Assert
+        assert len(documents) == 2
+        assert skipped == 2
+        assert "doc1.pdf" in documents
+        assert "doc2.txt" in documents
+
+    def test_discover_and_ingest_handles_collection_fetch_error(
+        self, discovery_service, mock_s3_client, mock_rag_document_repo, mock_collection_service
+    ):
+        """Test handling of collection fetch errors."""
+        # Arrange
+        mock_s3_client.list_objects_v2.return_value = {
+            "Contents": [
+                {"Key": "doc1.pdf"},
+            ]
+        }
+        mock_rag_document_repo.find_by_source.return_value = iter([])
+        mock_collection_service.get_collection.side_effect = Exception("Collection fetch error")
+
+        # Act
+        result = discovery_service.discover_and_ingest_documents(
+            repository_id="test-repo",
+            collection_id="test-collection",
+            s3_bucket="test-bucket",
+        )
+
+        # Assert - Should continue despite collection fetch error
+        assert result.discovered == 1
+        assert result.successful == 1
+
+    def test_discover_and_ingest_handles_metadata_creation_error(
+        self, discovery_service, mock_s3_client, mock_rag_document_repo, mock_metadata_generator
+    ):
+        """Test handling of metadata creation errors."""
+        # Arrange
+        mock_s3_client.list_objects_v2.return_value = {
+            "Contents": [
+                {"Key": "doc1.pdf"},
+            ]
+        }
+        mock_rag_document_repo.find_by_source.return_value = iter([])
+        mock_metadata_generator.generate_metadata_json.side_effect = Exception("Metadata error")
+
+        # Act
+        result = discovery_service.discover_and_ingest_documents(
+            repository_id="test-repo",
+            collection_id="test-collection",
+            s3_bucket="test-bucket",
+        )
+
+        # Assert - Should continue despite metadata error
+        assert result.discovered == 1
+        assert result.successful == 1
+
+    def test_discover_and_ingest_raises_on_critical_error(
+        self, discovery_service, mock_s3_client, mock_vector_store_repo
+    ):
+        """Test that critical errors are raised."""
+        # Arrange
+        mock_s3_client.list_objects_v2.return_value = {
+            "Contents": [
+                {"Key": "doc1.pdf"},
+            ]
+        }
+        mock_vector_store_repo.find_repository_by_id.side_effect = Exception("Critical error")
+
+        # Act & Assert
+        with pytest.raises(Exception, match="Critical error"):
+            discovery_service.discover_and_ingest_documents(
+                repository_id="test-repo",
+                collection_id="test-collection",
+                s3_bucket="test-bucket",
+            )
+
+    def test_trigger_kb_sync_missing_kb_id(self, discovery_service, mock_s3_client, mock_rag_document_repo):
+        """Test KB sync with missing knowledge base ID."""
+        # Arrange
+        mock_s3_client.list_objects_v2.return_value = {
+            "Contents": [
+                {"Key": "doc1.pdf"},
+            ]
+        }
+        mock_rag_document_repo.find_by_source.return_value = iter([])
+
+        # Mock repository without KB ID
+        discovery_service.vector_store_repo.find_repository_by_id.return_value = {
+            "repositoryId": "test-repo",
+            "bedrockKnowledgeBaseConfig": {},
+        }
+
+        # Act - Should not raise, just log warning
+        result = discovery_service.discover_and_ingest_documents(
+            repository_id="test-repo",
+            collection_id="test-collection",
+            s3_bucket="test-bucket",
+        )
+
+        # Assert
+        assert result.successful == 1
+
+    def test_trigger_kb_sync_error(
+        self, discovery_service, mock_s3_client, mock_rag_document_repo, mock_bedrock_agent_client
+    ):
+        """Test handling of KB sync errors."""
+        # Arrange
+        mock_s3_client.list_objects_v2.return_value = {
+            "Contents": [
+                {"Key": "doc1.pdf"},
+            ]
+        }
+        mock_rag_document_repo.find_by_source.return_value = iter([])
+        mock_bedrock_agent_client.start_ingestion_job.side_effect = Exception("Sync error")
+
+        # Act - Should not raise, just log error
+        result = discovery_service.discover_and_ingest_documents(
+            repository_id="test-repo",
+            collection_id="test-collection",
+            s3_bucket="test-bucket",
+        )
+
+        # Assert
+        assert result.successful == 1

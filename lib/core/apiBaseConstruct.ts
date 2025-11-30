@@ -28,7 +28,7 @@ import { Code, Function, } from 'aws-cdk-lib/aws-lambda';
 
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
-import { BaseProps, Config } from '../schema';
+import { APP_MANAGEMENT_KEY, BaseProps, Config } from '../schema';
 import {
     Effect,
     ManagedPolicy,
@@ -39,7 +39,7 @@ import {
 } from 'aws-cdk-lib/aws-iam';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { LAMBDA_PATH } from '../util';
-import { getDefaultRuntime } from '../api-base/utils';
+import { getPythonRuntime } from '../api-base/utils';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { EventBus } from 'aws-cdk-lib/aws-events';
 
@@ -160,7 +160,7 @@ export class LisaApiBaseConstruct extends Construct {
         });
 
         const rotationLambda = new Function(scope, createCdkId([scope.node.id, 'managementKeyRotationLambda']), {
-            runtime: getDefaultRuntime(),
+            runtime: getPythonRuntime(),
             handler: 'management_key.handler',
             code: Code.fromAsset(config.lambdaPath || LAMBDA_PATH),
             timeout: Duration.minutes(5),
@@ -204,7 +204,7 @@ export class LisaApiBaseConstruct extends Construct {
         });
 
         new StringParameter(scope, createCdkId(['AppManagementKeySecretName']), {
-            parameterName: `${config.deploymentPrefix}/appManagementKeySecretName`,
+            parameterName: `${config.deploymentPrefix}/${APP_MANAGEMENT_KEY}`,
             stringValue: managementKeySecret.secretName,
         });
 

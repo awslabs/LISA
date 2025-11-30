@@ -892,7 +892,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Description": "Lists available MCP Workbench tools",
         "Environment": {
@@ -948,7 +948,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Description": "Create MCP Workbench tools",
         "Environment": {
@@ -1004,7 +1004,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Description": "Get MCP Workbench tool",
         "Environment": {
@@ -1060,7 +1060,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Description": "Update MCP Workbench tool",
         "Environment": {
@@ -1116,7 +1116,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Description": "Delete MCP Workbench tool",
         "Environment": {
@@ -1172,7 +1172,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Description": "Validate Python code syntax",
         "Environment": {
@@ -1222,6 +1222,175 @@
         "McpWorkbenchLambdaExecutionRoleDefaultPolicyAB1DECE8",
         "McpWorkbenchLambdaExecutionRole43E4060B"
       ]
+    },
+    "McpWorkbenchS3EventHandlerRole545174C5": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Policies": [
+          {
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": "arn:aws:logs:*:*:*"
+                },
+                {
+                  "Action": [
+                    "ecs:UpdateService",
+                    "ecs:DescribeServices",
+                    "ecs:DescribeClusters"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": [
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "arn:aws:ecs:us-iso-east-1:*:cluster/",
+                          {
+                            "Fn::ImportValue": "LisaServe:ExportsOutputRefRestApiECSClustertestlisadevClC04148B6699D280E"
+                          },
+                          "*"
+                        ]
+                      ]
+                    },
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "arn:aws:ecs:us-iso-east-1:*:service/",
+                          {
+                            "Fn::ImportValue": "LisaServe:ExportsOutputRefRestApiECSClustertestlisadevClC04148B6699D280E"
+                          },
+                          "*/",
+                          {
+                            "Fn::ImportValue": "LisaServe:ExportsOutputFnGetAttRestApiECSClustertestlisaMCPWORKBENCHEc2SvcService1642D1D0Name81C9F72A"
+                          },
+                          "*"
+                        ]
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "Action": "ssm:GetParameter",
+                  "Effect": "Allow",
+                  "Resource": "arn:aws:ssm:us-iso-east-1:*:parameter/dev/test-lisa/lisa/deploymentName"
+                }
+              ],
+              "Version": "2012-10-17"
+            },
+            "PolicyName": "S3EventHandlerPolicy"
+          }
+        ]
+      }
+    },
+    "McpWorkbenchS3EventHandlerLambdaB4D5E3E4": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa",
+            "API_NAME": "MCPWorkbench",
+            "ECS_CLUSTER_NAME": {
+              "Fn::ImportValue": "LisaServe:ExportsOutputRefRestApiECSClustertestlisadevClC04148B6699D280E"
+            },
+            "MCPWORKBENCH_SERVICE_NAME": {
+              "Fn::ImportValue": "LisaServe:ExportsOutputFnGetAttRestApiECSClustertestlisaMCPWORKBENCHEc2SvcService1642D1D0Name81C9F72A"
+            }
+          }
+        },
+        "Handler": "mcp_workbench.s3_event_handler.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "McpWorkbenchS3EventHandlerRole545174C5",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 120
+      },
+      "DependsOn": [
+        "McpWorkbenchS3EventHandlerRole545174C5"
+      ]
+    },
+    "McpWorkbenchRescanMCPWorkbenchRule39806814": {
+      "Type": "AWS::Events::Rule",
+      "Properties": {
+        "EventPattern": {
+          "source": [
+            "aws.s3",
+            "debug"
+          ],
+          "detail-type": [
+            "Object Created",
+            "Object Deleted"
+          ],
+          "detail": {
+            "bucket": {
+              "name": [
+                "test-lisa-dev-mcpworkbench-012345678901"
+              ]
+            }
+          }
+        },
+        "State": "ENABLED",
+        "Targets": [
+          {
+            "Arn": {
+              "Fn::GetAtt": [
+                "McpWorkbenchS3EventHandlerLambdaB4D5E3E4",
+                "Arn"
+              ]
+            },
+            "Id": "Target0",
+            "RetryPolicy": {
+              "MaximumEventAgeInSeconds": 300,
+              "MaximumRetryAttempts": 2
+            }
+          }
+        ]
+      }
+    },
+    "McpWorkbenchRescanMCPWorkbenchRuleAllowEventRuleLisaMcpWorkbenchS3EventHandlerLambdaDBF04951106868B0": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpWorkbenchS3EventHandlerLambdaB4D5E3E4",
+            "Arn"
+          ]
+        },
+        "Principal": "events.amazonaws.com",
+        "SourceArn": {
+          "Fn::GetAtt": [
+            "McpWorkbenchRescanMCPWorkbenchRule39806814",
+            "Arn"
+          ]
+        }
+      }
     },
     "LISAMCPWorkbenchtestlisadevC221720C": {
       "Type": "AWS::S3::Bucket",
@@ -1524,182 +1693,9 @@
         "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleDefaultPolicy2CF63D36",
         "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleB6FB88EC"
       ]
-    },
-    "McpWorkbenchServiceS3EventHandlerRole49FEE688": {
-      "Type": "AWS::IAM::Role",
-      "Properties": {
-        "AssumeRolePolicyDocument": {
-          "Statement": [
-            {
-              "Action": "sts:AssumeRole",
-              "Effect": "Allow",
-              "Principal": {
-                "Service": "lambda.amazonaws.com"
-              }
-            }
-          ],
-          "Version": "2012-10-17"
-        },
-        "Policies": [
-          {
-            "PolicyDocument": {
-              "Statement": [
-                {
-                  "Action": [
-                    "logs:CreateLogGroup",
-                    "logs:CreateLogStream",
-                    "logs:PutLogEvents"
-                  ],
-                  "Effect": "Allow",
-                  "Resource": "arn:aws:logs:*:*:*"
-                },
-                {
-                  "Action": [
-                    "ecs:UpdateService",
-                    "ecs:DescribeServices",
-                    "ecs:DescribeClusters"
-                  ],
-                  "Effect": "Allow",
-                  "Resource": [
-                    {
-                      "Fn::Join": [
-                        "",
-                        [
-                          "arn:aws:ecs:us-iso-east-1:*:cluster/",
-                          {
-                            "Fn::ImportValue": "LisaServe:ExportsOutputRefRestApiECSClustertestlisadevClC04148B6699D280E"
-                          },
-                          "*"
-                        ]
-                      ]
-                    },
-                    {
-                      "Fn::Join": [
-                        "",
-                        [
-                          "arn:aws:ecs:us-iso-east-1:*:service/",
-                          {
-                            "Fn::ImportValue": "LisaServe:ExportsOutputRefRestApiECSClustertestlisadevClC04148B6699D280E"
-                          },
-                          "*/",
-                          {
-                            "Fn::ImportValue": "LisaServe:ExportsOutputFnGetAttRestApiECSClustertestlisaMCPWORKBENCHEc2SvcService1642D1D0Name81C9F72A"
-                          },
-                          "*"
-                        ]
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "Action": "ssm:GetParameter",
-                  "Effect": "Allow",
-                  "Resource": "arn:aws:ssm:us-iso-east-1:*:parameter/dev/test-lisa/lisa/deploymentName"
-                }
-              ],
-              "Version": "2012-10-17"
-            },
-            "PolicyName": "S3EventHandlerPolicy"
-          }
-        ]
-      }
-    },
-    "McpWorkbenchServiceS3EventHandlerLambda833B80DB": {
-      "Type": "AWS::Lambda::Function",
-      "Properties": {
-        "Code": {
-          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
-        },
-        "Environment": {
-          "Variables": {
-            "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa",
-            "API_NAME": "MCPWorkbench",
-            "ECS_CLUSTER_NAME": {
-              "Fn::ImportValue": "LisaServe:ExportsOutputRefRestApiECSClustertestlisadevClC04148B6699D280E"
-            },
-            "MCPWORKBENCH_SERVICE_NAME": {
-              "Fn::ImportValue": "LisaServe:ExportsOutputFnGetAttRestApiECSClustertestlisaMCPWORKBENCHEc2SvcService1642D1D0Name81C9F72A"
-            }
-          }
-        },
-        "Handler": "mcp_workbench.s3_event_handler.handler",
-        "Role": {
-          "Fn::GetAtt": [
-            "McpWorkbenchServiceS3EventHandlerRole49FEE688",
-            "Arn"
-          ]
-        },
-        "Runtime": "python3.11",
-        "Timeout": 120
-      },
-      "DependsOn": [
-        "McpWorkbenchServiceS3EventHandlerRole49FEE688"
-      ]
-    },
-    "McpWorkbenchServiceRescanMCPWorkbenchRule7B9F0946": {
-      "Type": "AWS::Events::Rule",
-      "Properties": {
-        "EventPattern": {
-          "source": [
-            "aws.s3",
-            "debug"
-          ],
-          "detail-type": [
-            "Object Created",
-            "Object Deleted"
-          ],
-          "detail": {
-            "bucket": {
-              "name": [
-                "test-lisa-dev-mcpworkbench-012345678901"
-              ]
-            }
-          }
-        },
-        "State": "ENABLED",
-        "Targets": [
-          {
-            "Arn": {
-              "Fn::GetAtt": [
-                "McpWorkbenchServiceS3EventHandlerLambda833B80DB",
-                "Arn"
-              ]
-            },
-            "Id": "Target0",
-            "RetryPolicy": {
-              "MaximumEventAgeInSeconds": 300,
-              "MaximumRetryAttempts": 2
-            }
-          }
-        ]
-      }
-    },
-    "McpWorkbenchServiceRescanMCPWorkbenchRuleAllowEventRuleLisaMcpWorkbenchMcpWorkbenchServiceS3EventHandlerLambdaDAC36E6D19509B7A": {
-      "Type": "AWS::Lambda::Permission",
-      "Properties": {
-        "Action": "lambda:InvokeFunction",
-        "FunctionName": {
-          "Fn::GetAtt": [
-            "McpWorkbenchServiceS3EventHandlerLambda833B80DB",
-            "Arn"
-          ]
-        },
-        "Principal": "events.amazonaws.com",
-        "SourceArn": {
-          "Fn::GetAtt": [
-            "McpWorkbenchServiceRescanMCPWorkbenchRule7B9F0946",
-            "Arn"
-          ]
-        }
-      }
     }
   },
   "Parameters": {
-    "SsmParameterValuedevtestlisalisabucketbucketaccesslogsC96584B6F00A464EAD1953AFF4B05118Parameter": {
-      "Type": "AWS::SSM::Parameter::Value<String>",
-      "Default": "/dev/test-lisa/lisa/bucket/bucket-access-logs"
-    },
     "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter": {
       "Type": "AWS::SSM::Parameter::Value<String>",
       "Default": "/dev/test-lisa/lisa/layerVersion/common"
@@ -1707,6 +1703,10 @@
     "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter": {
       "Type": "AWS::SSM::Parameter::Value<String>",
       "Default": "/dev/test-lisa/lisa/layerVersion/fastapi"
+    },
+    "SsmParameterValuedevtestlisalisabucketbucketaccesslogsC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/bucket/bucket-access-logs"
     },
     "BootstrapVersion": {
       "Type": "AWS::SSM::Parameter::Value<String>",

@@ -23,7 +23,7 @@ import { FastApiContainer } from '../api-base/fastApiContainer';
 import { ECSCluster } from '../api-base/ecsCluster';
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
-import { BaseProps, Config } from '../schema';
+import { APP_MANAGEMENT_KEY, BaseProps, Config } from '../schema';
 import {
     Effect,
     Policy,
@@ -37,7 +37,7 @@ import { SecurityGroupEnum } from '../core/iam/SecurityGroups';
 import { SecurityGroupFactory } from '../networking/vpc/security-group-factory';
 import { LAMBDA_PATH, REST_API_PATH } from '../util';
 import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
-import { getDefaultRuntime } from '../api-base/utils';
+import { getPythonRuntime } from '../api-base/utils';
 import { ISecurityGroup, Port } from 'aws-cdk-lib/aws-ec2';
 import { ECSTasks } from '../api-base/ecsCluster';
 import { GuardrailsTable } from '../models/guardrails-table';
@@ -84,7 +84,7 @@ export class LisaServeApplicationConstruct extends Construct {
         );
         this.tokenTable = tokenTable;
 
-        const managementKeySecretNameStringParameter = StringParameter.fromStringParameterName(this, createCdkId([id, 'managementKeyStringParameter']), `${config.deploymentPrefix}/appManagementKeySecretName`);
+        const managementKeySecretNameStringParameter = StringParameter.fromStringParameterName(this, createCdkId([id, 'managementKeyStringParameter']), `${config.deploymentPrefix}/${APP_MANAGEMENT_KEY}`);
 
         // Create guardrails table in serve stack to avoid circular dependency
         const guardrailsTableConstruct = new GuardrailsTable(scope, 'GuardrailsTable', {
@@ -340,7 +340,7 @@ export class LisaServeApplicationConstruct extends Construct {
 
         // Create the Lambda function that will create the database user
         return new Function(scope, 'LISAServeCreateDbUserLambda', {
-            runtime: getDefaultRuntime(),
+            runtime: getPythonRuntime(),
             handler: 'utilities.db_setup_iam_auth.handler',
             code: Code.fromAsset(lambdaPath),
             timeout: Duration.minutes(2),

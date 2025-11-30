@@ -27,7 +27,7 @@ import { Roles } from '../../core/iam/roles';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH } from './constants';
-import { getDefaultRuntime } from '../../api-base/utils';
+import { getPythonRuntime } from '../../api-base/utils';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 
 export type PipelineStateMachineProps = BaseProps & {
@@ -108,7 +108,7 @@ export class PipelineStateMachine extends Construct {
         // Lambda function for input validation
         const validateInputLambda = new lambda.Function(this, 'ValidateInputLambda', {
             functionName: `${config.deploymentName}-${config.deploymentStage}-pipeline-validate-input`,
-            runtime: getDefaultRuntime(),
+            runtime: getPythonRuntime(),
             handler: 'repository.state_machine.pipeline_validate_input.handler',
             code: lambda.Code.fromAsset('./lambda'),
             timeout: Duration.seconds(30),
@@ -123,7 +123,7 @@ export class PipelineStateMachine extends Construct {
         // Lambda function for creating pipeline rules
         const createPipelineRulesLambda = new lambda.Function(this, 'CreatePipelineRulesLambda', {
             functionName: `${config.deploymentName}-${config.deploymentStage}-pipeline-create-rules`,
-            runtime: getDefaultRuntime(),
+            runtime: getPythonRuntime(),
             handler: 'repository.state_machine.pipeline_create_rules.handler',
             code: lambda.Code.fromAsset('./lambda'),
             timeout: LAMBDA_TIMEOUT,
@@ -138,7 +138,7 @@ export class PipelineStateMachine extends Construct {
         // Lambda function for updating pipeline rules
         const updatePipelineRulesLambda = new lambda.Function(this, 'UpdatePipelineRulesLambda', {
             functionName: `${config.deploymentName}-${config.deploymentStage}-pipeline-update-rules`,
-            runtime: getDefaultRuntime(),
+            runtime: getPythonRuntime(),
             handler: 'repository.state_machine.pipeline_update_rules.handler',
             code: lambda.Code.fromAsset('./lambda'),
             timeout: LAMBDA_TIMEOUT,
@@ -153,7 +153,7 @@ export class PipelineStateMachine extends Construct {
         // Lambda function for deleting pipeline rules
         const deletePipelineRulesLambda = new lambda.Function(this, 'DeletePipelineRulesLambda', {
             functionName: `${config.deploymentName}-${config.deploymentStage}-pipeline-delete-rules`,
-            runtime: getDefaultRuntime(),
+            runtime: getPythonRuntime(),
             handler: 'repository.state_machine.pipeline_delete_rules.handler',
             code: lambda.Code.fromAsset('./lambda'),
             timeout: LAMBDA_TIMEOUT,
@@ -168,7 +168,7 @@ export class PipelineStateMachine extends Construct {
         // Lambda function for updating collection status
         const updateCollectionStatusLambda = new lambda.Function(this, 'UpdateCollectionStatusLambda', {
             functionName: `${config.deploymentName}-${config.deploymentStage}-pipeline-update-status`,
-            runtime: getDefaultRuntime(),
+            runtime: getPythonRuntime(),
             handler: 'repository.state_machine.pipeline_update_status.handler',
             code: lambda.Code.fromAsset('./lambda'),
             timeout: Duration.seconds(30),

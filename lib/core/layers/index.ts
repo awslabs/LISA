@@ -14,13 +14,14 @@
   limitations under the License.
 */
 
-import { Architecture, Code, LayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { Architecture, Code, LayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import { PythonLayerVersion } from '@aws-cdk/aws-lambda-python-alpha';
 import { BaseProps } from '../../schema';
-import { getDefaultRuntime } from '../../api-base/utils';
+import { getPythonRuntime } from '../../api-base/utils';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
+import { execSync } from 'node:child_process';
 /**
  * Properties for Layer Construct.
  * @property {string} path - The path to the directory containing relevant files.
@@ -68,7 +69,7 @@ export class Layer extends Construct {
                 this.layer = new LayerVersion(this, 'Layer', {
                     code: Code.fromAsset(assetPath),
                     description,
-                    compatibleRuntimes: [getDefaultRuntime()],
+                    compatibleRuntimes: [getPythonRuntime()],
                     removalPolicy: config.removalPolicy,
                 });
             } else {
@@ -77,7 +78,7 @@ export class Layer extends Construct {
                 this.layer = new PythonLayerVersion(this, 'Layer', {
                     entry: layerPath,
                     description,
-                    compatibleRuntimes: [getDefaultRuntime()],
+                    compatibleRuntimes: [getPythonRuntime()],
                     removalPolicy: config.removalPolicy,
                     bundling: {
                         platform: architecture.dockerPlatform,
@@ -104,6 +105,87 @@ export class Layer extends Construct {
             console.error('Asset path:', layerPath);
             console.error('Current working directory:', process.cwd());
             throw error;
+        }
+    }
+}
+
+/**
+ * Properties for Node.js Layer Construct.
+ */
+type NodeLayerProps = {
+    path: string;
+    description: string;
+    runtime: Runtime;
+    assetPath?: string;
+} & BaseProps;
+
+/**
+ * Create a Node.js Lambda layer.
+ */
+export class NodeLayer extends Construct {
+    /** The Lambda LayerVersion to use across Lambda functions. */
+    public layer!: LayerVersion;
+
+    /**
+   * @param {Construct} scope - The parent or owner of the construct.
+   * @param {string} id - The unique identifier for the construct within its scope.
+   * @param {NodeLayerProps} props - The properties of the construct.
+   */
+    constructor (scope: Construct, id: string, props: NodeLayerProps) {
+        super(scope, id);
+
+        const { assetPath, config, path: layerPath, description, runtime } = props;
+
+        if (assetPath) {
+            this.layer = new LayerVersion(this, 'Layer', {
+                code: Code.fromAsset(assetPath),
+                description,
+                compatibleRuntimes: [runtime],
+                removalPolicy: config.removalPolicy,
+            });
+        } else if (process.env.NODE_ENV === 'test') {
+            // Skip npm install during tests - use mock layer directory
+            const mockLayerDir = './test/cdk/mocks/layers';
+            fs.mkdirSync(mockLayerDir, { recursive: true });
+            this.layer = new LayerVersion(this, 'Layer', {
+                code: Code.fromAsset(mockLayerDir),
+                description,
+                compatibleRuntimes: [runtime],
+                removalPolicy: config.removalPolicy,
+            });
+        } else {
+            // Build the layer locally
+            const packageJsonPath = path.join(layerPath, 'package.json');
+            if (!fs.existsSync(packageJsonPath)) {
+                throw new Error(`package.json not found in ${layerPath}`);
+            }
+
+            // Create a temporary build directory
+            const buildDir = path.join(layerPath, 'build');
+            const nodejsDir = path.join(buildDir, 'nodejs');
+
+            // Clean and create build directory
+            if (fs.existsSync(buildDir)) {
+                fs.rmSync(buildDir, { recursive: true, force: true });
+            }
+            fs.mkdirSync(nodejsDir, { recursive: true });
+
+            // Copy package.json to build directory
+            fs.copyFileSync(packageJsonPath, path.join(nodejsDir, 'package.json'));
+
+            // Install dependencies
+            console.log(`Building Node.js layer: ${id} at ${layerPath}`);
+            execSync('npm install --omit=dev --production', {
+                cwd: nodejsDir,
+                stdio: 'inherit',
+            });
+
+            this.layer = new LayerVersion(this, 'Layer', {
+                code: Code.fromAsset(buildDir),
+                description,
+                compatibleRuntimes: [runtime],
+                removalPolicy: config.removalPolicy,
+            });
         }
     }
 }

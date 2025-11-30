@@ -150,6 +150,7 @@ def pipeline_delete_collection(job: IngestionJob) -> None:
                         bedrock_agent_client=bedrock_agent,
                         repository=repository,
                         s3_paths=s3_paths,
+                        data_source_id=job.collection_id,
                     )
                     logger.info(
                         f"Successfully bulk deleted {len(s3_paths)} LISA-managed documents from KB, "
@@ -288,7 +289,8 @@ def pipeline_delete_documents(job: IngestionJob) -> None:
         successful = 0
         failed = 0
         errors = []
-        s3_paths_for_kb = []
+        # For Bedrock KB, group S3 paths by data source (collection_id)
+        s3_paths_by_data_source = {}
 
         for document_id in document_ids:
             try:
@@ -296,9 +298,12 @@ def pipeline_delete_documents(job: IngestionJob) -> None:
                 rag_document = rag_document_repository.find_by_id(document_id, join_docs=True)
 
                 if rag_document:
-                    # For Bedrock KB, collect S3 paths for bulk deletion
+                    # For Bedrock KB, collect S3 paths for bulk deletion grouped by data source
                     if is_bedrock_kb:
-                        s3_paths_for_kb.append(rag_document.source)
+                        data_source_id = rag_document.collection_id
+                        if data_source_id not in s3_paths_by_data_source:
+                            s3_paths_by_data_source[data_source_id] = []
+                        s3_paths_by_data_source[data_source_id].append(rag_document.source)
                     else:
                         # Remove from vector store immediately for non-Bedrock
                         remove_document_from_vectorstore(rag_document)
@@ -318,19 +323,29 @@ def pipeline_delete_documents(job: IngestionJob) -> None:
                 logger.error(error_msg, exc_info=True)
                 errors.append(error_msg)
 
-        # For Bedrock KB, perform bulk deletion
-        if is_bedrock_kb and s3_paths_for_kb:
-            try:
-                bulk_delete_documents_from_kb(
-                    s3_client=s3,
-                    bedrock_agent_client=bedrock_agent,
-                    repository=repository,
-                    s3_paths=s3_paths_for_kb,
-                )
-                logger.info(f"Successfully bulk deleted {len(s3_paths_for_kb)} documents from Bedrock KB")
-            except Exception as e:
-                logger.error(f"Failed to bulk delete from Bedrock KB: {e}", exc_info=True)  # nosec B608
-                # Documents already deleted from DynamoDB, continue with partial success
+        # For Bedrock KB, perform bulk deletion per data source
+        if is_bedrock_kb and s3_paths_by_data_source:
+            for data_source_id, s3_paths in s3_paths_by_data_source.items():
+                try:
+                    bulk_delete_documents_from_kb(
+                        s3_client=s3,
+                        bedrock_agent_client=bedrock_agent,
+                        repository=repository,
+                        s3_paths=s3_paths,
+                        data_source_id=data_source_id,
+                    )
+                    logger.info(
+                        f"Successfully bulk deleted {len(s3_paths)} documents from Bedrock KB "
+                        "data source {data_source_id}"
+                    )
+                except Exception as e:
+                    logger.error(
+                        "Failed to bulk delete from Bedrock KB data source %s: %s",
+                        data_source_id,
+                        e,
+                        exc_info=True,
+                    )
+                    # Documents already deleted from DynamoDB, continue with partial success
                 # This is acceptable because DynamoDB is source of truth
 
         # Update job with results in metadata
@@ -365,6 +380,8 @@ def handle_pipeline_delete_event(event: Dict[str, Any], context: Any) -> None:
     bucket = detail.get("bucket", None)
     key = detail.get("key", None)
     repository_id = detail.get("repositoryId", None)
+    collection_id = detail.get("collectionId", None)
+    pipeline_config = detail.get("pipelineConfig", None)
     s3_path = f"s3://{bucket}/{key}"
 
     if not repository_id:
@@ -379,22 +396,30 @@ def handle_pipeline_delete_event(event: Dict[str, Any], context: Any) -> None:
 
     # For Bedrock KB repositories, use data source ID as collection ID
     if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
-        bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
-        data_source_id = bedrock_config.get("bedrockKnowledgeDatasourceId")
+        if not collection_id:
+            # Fallback: try to get from bedrock config (legacy support)
+            bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
 
-        if not data_source_id:
+            # Try new structure with dataSources array
+            data_sources = bedrock_config.get("dataSources", [])
+            if data_sources:
+                first_data_source = data_sources[0]
+                collection_id = (
+                    first_data_source.get("id") if isinstance(first_data_source, dict) else first_data_source.id
+                )
+            else:
+                # Try legacy single data source ID
+                collection_id = bedrock_config.get("bedrockKnowledgeDatasourceId")
+
+        if not collection_id:
             logger.error(f"Bedrock KB repository {repository_id} missing data source ID")
             return
-
-        collection_id = data_source_id
 
         logger.info(
             f"Processing Bedrock KB document deletion {s3_path} for repository {repository_id}, "
             f"collection {collection_id}"
         )
     else:
-        # Non-Bedrock KB path (existing logic)
-        pipeline_config = detail.get("pipelineConfig", None)
         if not pipeline_config or not isinstance(pipeline_config, dict):
             logger.warning("No pipeline_config in event, skipping deletion")
             return

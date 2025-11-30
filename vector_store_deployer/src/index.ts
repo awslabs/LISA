@@ -17,6 +17,8 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, readdirSync, rmSync, symlinkSync } from 'node:fs';
 
+const CDK = '/opt/nodejs/node_modules/aws-cdk/bin/cdk';
+
 /*
   cdk CLI always wants ./ to be writable in order to write cdk.context.json.
   This should really be an environment variable or something, but this function
@@ -72,13 +74,13 @@ export const handler = async (event: any) => {
     const stackName = [config.appName, config.deploymentName, config.deploymentStage, 'vector-store', ragConfig.repositoryId].join('-');
     process.env['LISA_STACK_NAME'] = stackName;
 
-    const ret = spawnSync('./node_modules/aws-cdk/bin/cdk', ['synth', '-o', '/tmp/cdk.out'], {stdio: 'inherit'});
+    const ret = spawnSync(CDK, ['synth', '-o', '/tmp/cdk.out'], {stdio: 'inherit'});
     if ( ret.status !== 0 ) {
         throw new Error('Stack failed to synthesize');
     }
 
     const deploy_promise: Promise<number> = new Promise( (resolve, reject) => {
-        const cp = spawn('./node_modules/aws-cdk/bin/cdk', ['deploy', stackName, '-o', '/tmp/cdk.out'], {
+        const cp = spawn(CDK, ['deploy', stackName, '-o', '/tmp/cdk.out'], {
             env: {...process.env},
             stdio: 'inherit'
         });
@@ -105,6 +107,13 @@ export const handler = async (event: any) => {
 
     try {
         await deploy_promise;
+
+        // Check if ragConfig is for Bedrock KB without pipelines
+        if (ragConfig.type === 'bedrock_knowledge_base' && (!ragConfig.pipelines || ragConfig.pipelines.length === 0)) {
+            console.log('Bedrock KB repository without pipelines - no stack created');
+            return { stackName: null };
+        }
+
         return { stackName: stackName };
     } catch (error) {
         console.error('Deployment failed:', error);

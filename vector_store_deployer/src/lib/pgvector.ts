@@ -27,7 +27,7 @@ import { Roles } from '../../../lib/core/iam/roles';
 import { PipelineStack } from './pipeline-stack';
 import { SecurityGroupFactory } from '../../../lib/networking/vpc/security-group-factory';
 import { SecurityGroupEnum } from '../../../lib/core/iam/SecurityGroups';
-import { getDefaultRuntime } from '../../../lib/api-base/utils';
+import { getPythonRuntime } from '../../../lib/api-base/utils';
 import { LAMBDA_PATH } from '../../../lib/util';
 import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
 
@@ -209,7 +209,7 @@ export class PGVectorStoreStack extends PipelineStack {
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
 
         return new Function(this, createCdkId([repositoryId, 'CreateDbUserLambda']), {
-            runtime: getDefaultRuntime(),
+            runtime: getPythonRuntime(),
             handler: 'utilities.db_setup_iam_auth.handler',
             code: Code.fromAsset(lambdaPath),
             timeout: Duration.minutes(2),

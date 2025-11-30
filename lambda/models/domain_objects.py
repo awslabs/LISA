@@ -613,7 +613,7 @@ class GetScheduleStatusResponse(BaseModel):
     lastScheduleFailure: Optional[Dict[str, Any]] = None
 
 
-class IngestionType(str, Enum):
+class IngestionType(StrEnum):
     """Specifies whether ingestion was automatic or manual."""
 
     AUTO = auto()  # Automatic ingestion via pipeline (event-driven)

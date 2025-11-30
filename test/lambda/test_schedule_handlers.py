@@ -96,7 +96,7 @@ def sample_model_item():
                     "scheduleEnabled": True,
                     "scheduleConfigured": True,
                     "lastScheduleFailed": False,
-                    "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"},
+                    "recurringSchedule": {"startTime": "09:00", "stopTime": "17:00"},
                     "nextScheduledAction": {"action": "START", "scheduledTime": "2025-01-15T09:00:00Z"},
                     "lastScheduleUpdate": "2025-01-14T12:00:00Z",
                 }
@@ -108,9 +108,9 @@ def sample_model_item():
 @pytest.fixture
 def sample_schedule_config():
     """Sample scheduling configuration."""
-    daily_schedule = DaySchedule(startTime="10:00", stopTime="18:00")
+    recurring_schedule = DaySchedule(startTime="10:00", stopTime="18:00")
     return SchedulingConfig(
-        scheduleType=ScheduleType.RECURRING, timezone="America/New_York", dailySchedule=daily_schedule
+        scheduleType=ScheduleType.RECURRING, timezone="America/New_York", recurringSchedule=recurring_schedule
     )
 
 

@@ -27,6 +27,7 @@ os.environ["AWS_SECURITY_TOKEN"] = "testing"
 os.environ["AWS_SESSION_TOKEN"] = "testing"
 os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 os.environ["MODEL_TABLE_NAME"] = "test-model-table"
+os.environ["AWS_ACCOUNT_ID"] = "123456789012"
 
 
 @pytest.fixture
@@ -474,13 +475,16 @@ class TestScheduleManagementHelperFunctions:
 class TestCreateScheduledActions:
     """Test create_scheduled_actions and related functions."""
 
-    @patch("models.scheduling.schedule_management.create_daily_scheduled_actions")
-    def test_create_scheduled_actions_recurring_daily(self, mock_create_daily):
+    @patch("models.scheduling.schedule_management.create_recurring_scheduled_actions")
+    @patch("models.scheduling.schedule_management.get_model_baseline_capacity")
+    @patch("models.scheduling.schedule_management.autoscaling_client")
+    @patch("models.scheduling.schedule_management.model_table")
+    def test_create_scheduled_actions_recurring_daily(self, mock_model_table, mock_autoscaling_client, mock_get_baseline_capacity, mock_create_recurring):
         """Test creating scheduled actions for RECURRING type."""
         from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig
         from models.scheduling.schedule_management import create_scheduled_actions
 
-        mock_create_daily.return_value = ["arn1", "arn2"]
+        mock_create_recurring.return_value = ["arn1", "arn2"]
 
         schedule_config = SchedulingConfig(
             scheduleType=ScheduleType.RECURRING,
@@ -491,15 +495,18 @@ class TestCreateScheduledActions:
         result = create_scheduled_actions("test-model", "test-asg", schedule_config)
 
         assert result == ["arn1", "arn2"]
-        mock_create_daily.assert_called_once_with("test-model", "test-asg", schedule_config.recurringSchedule, "UTC")
+        mock_create_recurring.assert_called_once_with("test-model", "test-asg", schedule_config.recurringSchedule, "UTC")
 
-    @patch("models.scheduling.schedule_management.create_weekly_scheduled_actions")
-    def test_create_scheduled_actions_each_day(self, mock_create_weekly):
+    @patch("models.scheduling.schedule_management.create_daily_scheduled_actions")
+    @patch("models.scheduling.schedule_management.get_model_baseline_capacity") 
+    @patch("models.scheduling.schedule_management.autoscaling_client")
+    @patch("models.scheduling.schedule_management.model_table")
+    def test_create_scheduled_actions_each_day(self, mock_model_table, mock_autoscaling_client, mock_get_baseline_capacity, mock_create_daily):
         """Test creating scheduled actions for DAILY type."""
         from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig, WeeklySchedule
         from models.scheduling.schedule_management import create_scheduled_actions
 
-        mock_create_weekly.return_value = ["arn1", "arn2", "arn3"]
+        mock_create_daily.return_value = ["arn1", "arn2", "arn3"]
 
         weekly_schedule = WeeklySchedule(
             monday=DaySchedule(startTime="09:00", stopTime="17:00"),
@@ -513,7 +520,7 @@ class TestCreateScheduledActions:
         result = create_scheduled_actions("test-model", "test-asg", schedule_config)
 
         assert result == ["arn1", "arn2", "arn3"]
-        mock_create_weekly.assert_called_once_with("test-model", "test-asg", schedule_config.dailySchedule, "UTC")
+        mock_create_daily.assert_called_once_with("test-model", "test-asg", schedule_config.dailySchedule, "UTC")
 
     def test_create_scheduled_actions_recurring_daily_missing_schedule(self):
         """Test error when recurringSchedule is missing for RECURRING."""
@@ -585,10 +592,10 @@ class TestUpdateModelScheduleRecord:
             }
         }
 
-        # Create valid SchedulingConfig with required dailySchedule for RECURRING
-        daily_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
+        # Create valid SchedulingConfig with required recurringSchedule for RECURRING type
+        recurring_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
         schedule_config = SchedulingConfig(
-            scheduleType=ScheduleType.RECURRING, timezone="UTC", dailySchedule=daily_schedule
+            scheduleType=ScheduleType.RECURRING, timezone="UTC", recurringSchedule=recurring_schedule
         )
 
         update_model_schedule_record("test-model", schedule_config, ["arn1"], True)

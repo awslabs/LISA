@@ -129,7 +129,7 @@ endif
 
 ## Set up Python interpreter environment to match LISA deployed version
 createPythonEnvironment:
-	python3.14 -m venv .venv
+	python3.13 -m venv .venv
 	@printf ">>> New virtual environment created. To activate run: 'source .venv/bin/activate'"
 
 

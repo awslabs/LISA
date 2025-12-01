@@ -152,7 +152,7 @@ function getOrCreateResource (scope: Construct, parentResource: IResource, path:
 }
 
 export function getPythonRuntime (): Runtime{
-    return Runtime.PYTHON_3_14;
+    return Runtime.PYTHON_3_13;
 }
 
 export function getNodeRuntime (): Runtime{

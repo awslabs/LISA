@@ -29,7 +29,7 @@ import ChatBubble from '@cloudscape-design/chat-components/chat-bubble';
 import Avatar from '@cloudscape-design/chat-components/avatar';
 import remarkBreaks from 'remark-breaks';
 import remarkMath from 'remark-math';
-import rehypeMathjax from 'rehype-mathjax';
+import rehypeMathjax from 'rehype-mathjax/browser';
 import { MessageContent } from '@langchain/core/messages';
 import { base64ToBlob, fetchImage, getDisplayableMessage, messageContainsImage } from '@/components/utils';
 import React, { useEffect, useState, useMemo } from 'react';

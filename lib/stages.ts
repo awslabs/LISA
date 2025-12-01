@@ -188,6 +188,20 @@ class RemoveEventRuleTagsAspect implements IAspect {
     }
 }
 
+/**
+ * Removes invalid DynamoDB stream actions from table resource policies.
+ * CDK 2.x can incorrectly add dynamodb:GetRecords and dynamodb:GetShardIterator
+ * to table resource policies, but these are stream-only actions and cause deployment failures.
+ */
+class RemoveDynamoDBStreamActionsFromTablePolicyAspect implements IAspect {
+    public visit (node: Construct): void {
+        if (node instanceof CfnResource && node.cfnResourceType === 'AWS::DynamoDB::Table') {
+            // Remove the ResourcePolicy property entirely to avoid the invalid stream actions
+            node.addPropertyDeletionOverride('ResourcePolicy');
+        }
+    }
+}
+
 
 export type CommonStackProps = {
     synthesizer?: IStackSynthesizer;
@@ -474,6 +488,10 @@ export class LisaServeApplicationStage extends Stage {
 
         // Enforce updates to EC2 launch templates
         Aspects.of(this).add(new UpdateLaunchTemplateMetadataOptions());
+
+        // Remove invalid DynamoDB stream actions from table resource policies
+        // CDK 2.x bug adds GetRecords/GetShardIterator to table policies which are stream-only actions
+        Aspects.of(this).add(new RemoveDynamoDBStreamActionsFromTablePolicyAspect());
 
         // Apply EventSourceMapping tags removal aspect for AWS GovCloud regions
         // AWS GovCloud regions don't support Tags on EventSourceMapping resources

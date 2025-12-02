@@ -309,8 +309,9 @@ class AutoScalingConfig(BaseModel):
     """Specifies auto-scaling parameters for model deployment."""
 
     blockDeviceVolumeSize: Optional[NonNegativeInt] = 50
-    minCapacity: NonNegativeInt
-    maxCapacity: NonNegativeInt
+    minCapacity: PositiveInt
+    maxCapacity: PositiveInt
+    desiredCapacity: Optional[PositiveInt] = None
     cooldown: PositiveInt
     defaultInstanceWarmup: PositiveInt
     metricConfig: MetricConfig
@@ -323,6 +324,10 @@ class AutoScalingConfig(BaseModel):
             raise ValueError("minCapacity must be less than or equal to the maxCapacity.")
         if self.blockDeviceVolumeSize is not None and self.blockDeviceVolumeSize < 30:
             raise ValueError("blockDeviceVolumeSize must be greater than or equal to 30.")
+        if self.desiredCapacity and self.desiredCapacity > self.maxCapacity:
+            raise ValueError("Desired capacity must be less than or equal to max capacity.")
+        if self.desiredCapacity and self.desiredCapacity < self.minCapacity:
+            raise ValueError("Desired capacity must be greater than or equal to minimum capacity.")
         return self
 
 

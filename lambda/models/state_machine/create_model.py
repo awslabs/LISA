@@ -31,6 +31,7 @@ from models.exception import (
     StackFailedToCreateException,
     UnexpectedCloudFormationStateException,
 )
+from models.scheduling import schedule_monitoring
 from utilities.common_functions import (
     get_account_and_partition,
     get_cert_path,
@@ -545,6 +546,19 @@ def handle_add_model_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str
             ":asg": event.get("autoScalingGroup", ""),
         },
     )
+
+    # If scheduling is configured, sync model status to ensure it reflects actual ASG state
+    scheduling_config = event.get("autoScalingConfig", {}).get("scheduling")
+    auto_scaling_group = event.get("autoScalingGroup")
+
+    if scheduling_config and auto_scaling_group:
+        try:
+            schedule_monitoring.sync_model_status(
+                {"operation": "sync_status", "modelId": event["modelId"], "autoScalingGroup": auto_scaling_group}
+            )
+            logger.info(f"Synced model status after creation for {event['modelId']}")
+        except Exception as sync_error:
+            logger.error(f"Failed to sync status after model creation: {sync_error}")
 
     return output_dict
 

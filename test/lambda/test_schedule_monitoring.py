@@ -975,7 +975,7 @@ class TestScheduleMonitoringEdgeCases:
         from models.scheduling.schedule_monitoring import sync_model_status
 
         # Mock model info
-        mock_get_model_info.return_value = {"autoScalingGroup": "test-asg"}  # Test alternative field name
+        mock_get_model_info.return_value = {"auto_scaling_group": "test-asg"}
 
         # Mock ASG with no instances in service
         mock_autoscaling_client.describe_auto_scaling_groups.return_value = {

@@ -212,16 +212,19 @@ def sync_model_status(event: Dict[str, Any]) -> Dict[str, Any]:
     try:
         logger.info(f"Syncing status for model {model_id}")
 
-        # Get model info
-        model_info = get_model_info(model_id)
-        if not model_info:
-            raise ValueError(f"Model {model_id} not found")
-
-        # Get ASG name from model record
-        asg_name = model_info.get("auto_scaling_group") or model_info.get("autoScalingGroup")
+        # Check if ASG name is provided directly
+        asg_name = event.get("autoScalingGroup")
 
         if not asg_name:
-            raise ValueError(f"No ASG information found for model {model_id}")
+            # Get model info and ASG name from model record as fallback
+            model_info = get_model_info(model_id)
+            if not model_info:
+                raise ValueError(f"Model {model_id} not found")
+
+            asg_name = model_info.get("auto_scaling_group")
+
+            if not asg_name:
+                raise ValueError(f"No ASG information found for model {model_id}")
 
         logger.info(f"Checking ASG state: {asg_name}")
 

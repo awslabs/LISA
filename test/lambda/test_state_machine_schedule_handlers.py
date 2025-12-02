@@ -139,7 +139,7 @@ class TestStateMachineScheduleHandlers:
         }
 
         # Mock schedule management error response
-        mock_update_schedule.return_value = {"statusCode": 500, "body": {"message": "Schedule management failed"}}
+        mock_update_schedule.side_effect = Exception("Schedule management failed")
 
         # Execute
         result = handle_schedule_creation(event, lambda_context)

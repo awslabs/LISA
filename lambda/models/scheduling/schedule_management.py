@@ -35,12 +35,6 @@ dynamodb = boto3.resource("dynamodb", config=retry_config)
 model_table = dynamodb.Table(os.environ.get("MODEL_TABLE_NAME"))
 
 
-class ScheduleManagementError(Exception):
-    """Exception for schedule operations"""
-
-    pass
-
-
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Main Lambda handler for schedule management operations"""
     try:
@@ -121,7 +115,7 @@ def update_schedule(event: Dict[str, Any]) -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Failed to update schedule for model {model_id}: {str(e)}")
-        raise ScheduleManagementError(f"Failed to update schedule: {str(e)}")
+        raise RuntimeError(f"Failed to update schedule: {str(e)}")
 
 
 def delete_schedule(event: Dict[str, Any]) -> Dict[str, Any]:
@@ -161,7 +155,7 @@ def delete_schedule(event: Dict[str, Any]) -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Failed to delete schedule for model {model_id}: {str(e)}")
-        raise ScheduleManagementError(f"Failed to delete schedule: {str(e)}")
+        raise RuntimeError(f"Failed to delete schedule: {str(e)}")
 
 
 def get_schedule(event: Dict[str, Any]) -> Dict[str, Any]:
@@ -187,7 +181,7 @@ def get_schedule(event: Dict[str, Any]) -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Failed to get schedule for model {model_id}: {str(e)}")
-        raise ScheduleManagementError(f"Failed to get schedule: {str(e)}")
+        raise RuntimeError(f"Failed to get schedule: {str(e)}")
 
 
 def create_scheduled_actions(model_id: str, auto_scaling_group: str, schedule_config: SchedulingConfig) -> List[str]:
@@ -225,7 +219,7 @@ def get_existing_asg_capacity(auto_scaling_group: str) -> Dict[str, int]:
         response = autoscaling_client.describe_auto_scaling_groups(AutoScalingGroupNames=[auto_scaling_group])
 
         if not response["AutoScalingGroups"]:
-            raise ScheduleManagementError(f"Auto Scaling Group {auto_scaling_group} not found")
+            raise ValueError(f"Auto Scaling Group {auto_scaling_group} not found")
 
         asg = response["AutoScalingGroups"][0]
         logger.info(
@@ -237,7 +231,7 @@ def get_existing_asg_capacity(auto_scaling_group: str) -> Dict[str, int]:
 
     except ClientError as e:
         logger.error(f"Failed to get ASG capacity for {auto_scaling_group}: {e}")
-        raise ScheduleManagementError(f"Failed to get ASG capacity: {str(e)}")
+        raise RuntimeError(f"Failed to get ASG capacity: {str(e)}")
 
 
 def get_model_baseline_capacity(model_id: str) -> Dict[str, int]:
@@ -246,7 +240,7 @@ def get_model_baseline_capacity(model_id: str) -> Dict[str, int]:
         response = model_table.get_item(Key={"model_id": model_id})
 
         if "Item" not in response:
-            raise ScheduleManagementError(f"Model {model_id} not found in DynamoDB")
+            raise ValueError(f"Model {model_id} not found in DynamoDB")
 
         model_item = response["Item"]
         model_config = model_item.get("model_config", {})
@@ -272,7 +266,7 @@ def get_model_baseline_capacity(model_id: str) -> Dict[str, int]:
 
     except Exception as e:
         logger.error(f"Failed to get baseline capacity for model {model_id}: {e}")
-        raise ScheduleManagementError(f"Failed to get baseline capacity: {str(e)}")
+        raise RuntimeError(f"Failed to get baseline capacity: {str(e)}")
 
 
 def check_daily_immediate_scaling(auto_scaling_group: str, daily_schedule: WeeklySchedule, timezone_name: str) -> None:

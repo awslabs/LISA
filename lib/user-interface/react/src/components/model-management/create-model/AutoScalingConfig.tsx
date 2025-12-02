@@ -76,37 +76,66 @@ export function AutoScalingConfig (props: AutoScalingConfigProps) : ReactElement
                     </FormField>
                     <FormField
                         label='Min Capacity'
-                        description='Minimum number of instances to maintain in the auto scaling group.'
-                        errorText={props.formErrors?.autoScalingConfig?.minCapacity}
+                        description='Minimum number of instances to maintain in the auto scaling group'
+                        errorText={props.formErrors?.autoScalingConfig?.minCapacity || (props.item.minCapacity < 1 ? 'Value must be greater than or equal to 1' : undefined)}
                     >
                         <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
-                            <Input value={props.item.minCapacity.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.minCapacity'])} onChange={({ detail }) => {
-                                props.setFields({ 'autoScalingConfig.minCapacity': Number(detail.value) });
-                            }}/>
+                            <Input
+                                value={props.item.minCapacity.toString()}
+                                type='number'
+                                inputMode='numeric'
+                                onBlur={() => props.touchFields(['autoScalingConfig.minCapacity'])}
+                                onChange={({ detail }) => {
+                                    props.setFields({ 'autoScalingConfig.minCapacity': Number(detail.value) });
+                                }}
+                            />
                             <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>instances</span>
                         </Grid>
                     </FormField>
                     <FormField
                         label='Max Capacity'
                         description='Maximum number of instances allowed in the auto scaling group.'
-                        errorText={props.formErrors?.autoScalingConfig?.maxCapacity}
+                        errorText={props.formErrors?.autoScalingConfig?.maxCapacity || (props.item.maxCapacity < 1 ? 'Value must be greater than or equal to 1' : undefined)}
                     >
                         <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
-                            <Input value={props.item.maxCapacity.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.maxCapacity'])} onChange={({ detail }) => {
-                                props.setFields({ 'autoScalingConfig.maxCapacity': Number(detail.value) });
-                            }}/>
+                            <Input
+                                value={props.item.maxCapacity.toString()}
+                                type='number'
+                                inputMode='numeric'
+                                onBlur={() => props.touchFields(['autoScalingConfig.maxCapacity'])}
+                                onChange={({ detail }) => {
+                                    props.setFields({ 'autoScalingConfig.maxCapacity': Number(detail.value) });
+                                }}
+                            />
                             <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>instances</span>
                         </Grid>
                     </FormField>
                     <FormField
                         label='Desired Capacity'
                         description='Target number of instances to maintain. Must be between min and max capacity.'
-                        errorText={props.formErrors?.autoScalingConfig?.desiredCapacity}
+                        errorText={
+                            props.formErrors?.autoScalingConfig?.desiredCapacity ||
+                            (props.item.desiredCapacity && props.item.desiredCapacity < 1 ? 'Value must be greater than or equal to 1' :
+                                props.item.desiredCapacity && props.item.desiredCapacity < props.item.minCapacity ? `Value must be greater than or equal to Min Capacity (${props.item.minCapacity})` :
+                                    props.item.desiredCapacity && props.item.desiredCapacity > props.item.maxCapacity ? `Value must be less than or equal to Max Capacity (${props.item.maxCapacity})` :
+                                        undefined)
+                        }
                     >
                         <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
-                            <Input value={String(props.item.desiredCapacity)} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.desiredCapacity'])} onChange={({ detail }) => {
-                                props.setFields({ 'autoScalingConfig.desiredCapacity': detail.value.trim().length > 0 ? Number(detail.value) : undefined });
-                            }}/>
+                            <Input
+                                value={String(props.item.desiredCapacity)}
+                                type='number'
+                                inputMode='numeric'
+                                placeholder='Optional'
+                                onBlur={() => props.touchFields(['autoScalingConfig.desiredCapacity'])}
+                                onChange={({ detail }) => {
+                                    if (detail.value.trim().length === 0) {
+                                        props.setFields({ 'autoScalingConfig.desiredCapacity': undefined });
+                                    } else {
+                                        props.setFields({ 'autoScalingConfig.desiredCapacity': Number(detail.value) });
+                                    }
+                                }}
+                            />
                             <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>instances</span>
                         </Grid>
                     </FormField>

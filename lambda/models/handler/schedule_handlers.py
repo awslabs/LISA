@@ -71,19 +71,6 @@ class UpdateScheduleHandler(ScheduleBaseHandler):
 
         try:
             result = schedule_management.update_schedule(payload)
-
-            if result.get("statusCode") != 200:
-                body = result.get("body", "Unknown error")
-                if isinstance(body, str):
-                    try:
-                        body_dict = json.loads(body)
-                        error_message = body_dict.get("message", body)
-                    except json.JSONDecodeError:
-                        error_message = body
-                else:
-                    error_message = body.get("message", "Unknown error") if isinstance(body, dict) else str(body)
-                raise ValueError(f"Failed to create/update schedule: {error_message}")
-
         except Exception as e:
             raise ValueError(f"Failed to create/update schedule: {str(e)}")
 
@@ -109,11 +96,6 @@ class GetScheduleHandler(ScheduleBaseHandler):
 
         try:
             result = schedule_management.get_schedule(payload)
-
-            if result.get("statusCode") != 200:
-                error_message = result.get("body", {}).get("message", "Unknown error")
-                raise ValueError(f"Failed to get schedule: {error_message}")
-
             schedule_data = json.loads(result["body"]) if isinstance(result["body"], str) else result["body"]
 
             return GetScheduleResponse(
@@ -139,12 +121,7 @@ class DeleteScheduleHandler(ScheduleBaseHandler):
         payload = {"operation": "delete", "modelId": model_id}
 
         try:
-            result = schedule_management.delete_schedule(payload)
-
-            if result.get("statusCode") != 200:
-                error_message = result.get("body", {}).get("message", "Unknown error")
-                raise ValueError(f"Failed to delete schedule: {error_message}")
-
+            schedule_management.delete_schedule(payload)
         except Exception as e:
             raise ValueError(f"Failed to delete schedule: {str(e)}")
 

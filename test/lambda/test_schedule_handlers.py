@@ -786,7 +786,7 @@ class TestLambdaInvocationErrorHandling:
         mock_model_table.get_item.return_value = {"Item": sample_model_item}
 
         # Setup mock schedule management error response with string body
-        mock_update_schedule.return_value = {"statusCode": 500, "body": "Internal server error"}
+        mock_update_schedule.side_effect = RuntimeError("Internal server error")
 
         handler = UpdateScheduleHandler(
             autoscaling_client=mock_autoscaling_client,
@@ -813,7 +813,7 @@ class TestLambdaInvocationErrorHandling:
         mock_model_table.get_item.return_value = {"Item": sample_model_item}
 
         # Setup mock schedule management error response with invalid JSON string
-        mock_update_schedule.return_value = {"statusCode": 500, "body": "invalid json {"}
+        mock_update_schedule.side_effect = RuntimeError("invalid json {")
 
         handler = UpdateScheduleHandler(
             autoscaling_client=mock_autoscaling_client,
@@ -839,7 +839,7 @@ class TestLambdaInvocationErrorHandling:
         mock_model_table.get_item.return_value = {"Item": sample_model_item}
 
         # Setup mock schedule management error response
-        mock_get_schedule.return_value = {"statusCode": 500, "body": {"message": "Schedule management failed"}}
+        mock_get_schedule.side_effect = RuntimeError("Schedule management failed")
 
         handler = GetScheduleHandler(
             autoscaling_client=mock_autoscaling_client,
@@ -865,7 +865,7 @@ class TestLambdaInvocationErrorHandling:
         mock_model_table.get_item.return_value = {"Item": sample_model_item}
 
         # Setup mock schedule management error response
-        mock_delete_schedule.return_value = {"statusCode": 500, "body": {"message": "Schedule management failed"}}
+        mock_delete_schedule.side_effect = RuntimeError("Schedule management failed")
 
         handler = DeleteScheduleHandler(
             autoscaling_client=mock_autoscaling_client,

@@ -301,26 +301,26 @@ class TestScheduleManagementHelperFunctions:
     @patch("models.scheduling.schedule_management.autoscaling_client")
     def test_get_existing_asg_capacity_not_found(self, mock_autoscaling_client):
         """Test ASG not found error."""
-        from models.scheduling.schedule_management import get_existing_asg_capacity, ScheduleManagementError
+        from models.scheduling.schedule_management import get_existing_asg_capacity
 
         # Mock empty ASG response
         mock_autoscaling_client.describe_auto_scaling_groups.return_value = {"AutoScalingGroups": []}
 
-        with pytest.raises(ScheduleManagementError, match="Auto Scaling Group test-asg not found"):
+        with pytest.raises(ValueError, match="Auto Scaling Group test-asg not found"):
             get_existing_asg_capacity("test-asg")
 
     @patch("models.scheduling.schedule_management.autoscaling_client")
     def test_get_existing_asg_capacity_client_error(self, mock_autoscaling_client):
         """Test ASG client error handling."""
         from botocore.exceptions import ClientError
-        from models.scheduling.schedule_management import get_existing_asg_capacity, ScheduleManagementError
+        from models.scheduling.schedule_management import get_existing_asg_capacity
 
         # Mock client error
         mock_autoscaling_client.describe_auto_scaling_groups.side_effect = ClientError(
             {"Error": {"Code": "ValidationError", "Message": "Invalid ASG name"}}, "DescribeAutoScalingGroups"
         )
 
-        with pytest.raises(ScheduleManagementError, match="Failed to get ASG capacity"):
+        with pytest.raises(RuntimeError, match="Failed to get ASG capacity"):
             get_existing_asg_capacity("invalid-asg")
 
     def test_construct_scheduled_action_arn_with_account_id(self):

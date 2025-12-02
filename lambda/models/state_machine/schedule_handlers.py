@@ -64,24 +64,11 @@ def handle_schedule_creation(event: Dict[str, Any], context: Any) -> Dict[str, A
         }
 
         result = schedule_management.update_schedule(payload)
+        result_body = json.loads(result["body"]) if isinstance(result["body"], str) else result["body"]
+        scheduled_action_arns = result_body.get("scheduledActionArns", [])
 
-        if result.get("statusCode") == 200:
-            result_body = json.loads(result["body"]) if isinstance(result["body"], str) else result["body"]
-            scheduled_action_arns = result_body.get("scheduledActionArns", [])
-
-            logger.info(f"Created {len(scheduled_action_arns)} scheduled actions for model {model_id}")
-            output_dict["scheduled_action_arns"] = scheduled_action_arns
-        else:
-            error_message = result.get("body", {}).get("message", "Unknown error")
-            logger.error(f"Failed to create scheduled actions for model {model_id}: {error_message}")
-
-            # Update model with failure status but don't fail the entire model creation
-            update_schedule_failure_status(model_id, error_message)
-
-            # Log error but don't fail model creation - schedule can be added later
-            logger.warning(
-                f"Model {model_id} created successfully but scheduling failed. User can add schedule later via API."
-            )
+        logger.info(f"Created {len(scheduled_action_arns)} scheduled actions for model {model_id}")
+        output_dict["scheduled_action_arns"] = scheduled_action_arns
 
     except Exception as e:
         logger.error(f"Failed to create scheduled actions for model {model_id}: {str(e)}")
@@ -121,22 +108,11 @@ def handle_schedule_update(event: Dict[str, Any], context: Any) -> Dict[str, Any
         }
 
         result = schedule_management.update_schedule(payload)
+        result_body = json.loads(result["body"]) if isinstance(result["body"], str) else result["body"]
+        scheduled_action_arns = result_body.get("scheduledActionArns", [])
 
-        if result.get("statusCode") == 200:
-            result_body = json.loads(result["body"]) if isinstance(result["body"], str) else result["body"]
-            scheduled_action_arns = result_body.get("scheduledActionArns", [])
-
-            logger.info(f"Updated schedule for model {model_id}: {len(scheduled_action_arns)} actions")
-            output_dict["scheduled_action_arns"] = scheduled_action_arns
-        else:
-            error_message = result.get("body", {}).get("message", "Unknown error")
-            logger.error(f"Failed to update scheduled actions for model {model_id}: {error_message}")
-
-            # Update schedule status to failed
-            update_schedule_failure_status(model_id, error_message)
-
-            # Don't fail the model update - just log the scheduling failure
-            logger.warning(f"Model {model_id} updated successfully but schedule update failed.")
+        logger.info(f"Updated schedule for model {model_id}: {len(scheduled_action_arns)} actions")
+        output_dict["scheduled_action_arns"] = scheduled_action_arns
 
     except Exception as e:
         logger.error(f"Failed to update scheduled actions for model {model_id}: {str(e)}")
@@ -160,13 +136,8 @@ def handle_cleanup_schedule(event: Dict[str, Any], context: Any) -> Dict[str, An
     try:
         payload = {"operation": "delete", "modelId": model_id}
 
-        result = schedule_management.delete_schedule(payload)
-
-        if result.get("statusCode") == 200:
-            logger.info(f"Successfully cleaned up schedule for model {model_id}")
-        else:
-            error_message = result.get("body", {}).get("message", "Unknown error")
-            logger.warning(f"Failed to cleanup scheduled actions for model {model_id}: {error_message}")
+        schedule_management.delete_schedule(payload)
+        logger.info(f"Successfully cleaned up schedule for model {model_id}")
 
     except Exception as e:
         logger.warning(f"Failed to cleanup scheduled actions for model {model_id}: {str(e)}")

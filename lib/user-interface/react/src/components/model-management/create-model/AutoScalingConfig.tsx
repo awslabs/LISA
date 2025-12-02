@@ -35,6 +35,38 @@ export function AutoScalingConfig (props: AutoScalingConfigProps) : ReactElement
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
     };
 
+    // Helper function to validate desired capacity
+    const getDesiredCapacityError = (): string | undefined => {
+        // First check for form validation errors
+        if (props.formErrors?.autoScalingConfig?.desiredCapacity) {
+            return props.formErrors.autoScalingConfig.desiredCapacity;
+        }
+
+        const { desiredCapacity, minCapacity, maxCapacity } = props.item;
+        
+        // If no desired capacity is set, no validation needed
+        if (!desiredCapacity) {
+            return undefined;
+        }
+
+        // Check minimum value constraint
+        if (desiredCapacity < 1) {
+            return 'Value must be greater than or equal to 1';
+        }
+
+        // Check minimum capacity constraint
+        if (desiredCapacity < minCapacity) {
+            return `Value must be greater than or equal to Min Capacity (${minCapacity})`;
+        }
+
+        // Check maximum capacity constraint
+        if (desiredCapacity > maxCapacity) {
+            return `Value must be less than or equal to Max Capacity (${maxCapacity})`;
+        }
+
+        return undefined;
+    };
+
     return (
         <SpaceBetween size={'s'}>
             <ScheduleConfig
@@ -113,13 +145,7 @@ export function AutoScalingConfig (props: AutoScalingConfigProps) : ReactElement
                     <FormField
                         label='Desired Capacity'
                         description='Target number of instances to maintain. Must be between min and max capacity.'
-                        errorText={
-                            props.formErrors?.autoScalingConfig?.desiredCapacity ||
-                            (props.item.desiredCapacity && props.item.desiredCapacity < 1 ? 'Value must be greater than or equal to 1' :
-                                props.item.desiredCapacity && props.item.desiredCapacity < props.item.minCapacity ? `Value must be greater than or equal to Min Capacity (${props.item.minCapacity})` :
-                                    props.item.desiredCapacity && props.item.desiredCapacity > props.item.maxCapacity ? `Value must be less than or equal to Max Capacity (${props.item.maxCapacity})` :
-                                        undefined)
-                        }
+                        errorText={getDesiredCapacityError()}
                     >
                         <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
                             <Input

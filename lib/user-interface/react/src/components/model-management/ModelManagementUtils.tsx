@@ -39,7 +39,7 @@ const formatScheduleType = (model: IModel): string => {
     const scheduling = model.autoScalingConfig?.scheduling;
 
     if (!scheduling?.scheduleEnabled || !scheduling?.scheduleType || scheduling.scheduleType === ScheduleType.NONE) {
-        return '24/7';
+        return 'Always on';
     }
 
     switch (scheduling.scheduleType) {
@@ -48,7 +48,7 @@ const formatScheduleType = (model: IModel): string => {
         case ScheduleType.RECURRING:
             return 'Recurring Schedule';
         default:
-            return '24/7';
+            return 'Always on';
     }
 };
 
@@ -86,7 +86,7 @@ const formatScheduleDetails = (model: IModel) => {
         if (daysWithSchedule.length === 0) {
             return (
                 <Box color='text-status-inactive'>
-                    <em>No days configured - Model runs 24/7</em>
+                    <em>No days configured - Model is always on.</em>
                 </Box>
             );
         }

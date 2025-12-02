@@ -22,9 +22,8 @@ from typing import Any, Dict, Optional
 import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
-from models.clients.litellm_client import LiteLLMClient
 from models.domain_objects import ModelStatus
-from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint
+from models.exception import ModelNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -124,11 +123,6 @@ def handle_successful_scaling(model_id: str, auto_scaling_group: str, detail: Di
         # Update model status in DynamoDB
         update_model_status(model_id, new_status, reason)
 
-        if new_status == ModelStatus.IN_SERVICE:
-            register_litellm(model_id)
-        elif new_status == ModelStatus.STOPPED:
-            remove_litellm(model_id)
-
         logger.info(f"Updated model {model_id} status to {new_status}")
 
         return {
@@ -219,7 +213,7 @@ def sync_model_status(event: Dict[str, Any]) -> Dict[str, Any]:
             # Get model info and ASG name from model record as fallback
             model_info = get_model_info(model_id)
             if not model_info:
-                raise ValueError(f"Model {model_id} not found")
+                raise ModelNotFoundError(f"Model {model_id} not found")
 
             asg_name = model_info.get("auto_scaling_group")
 
@@ -256,12 +250,6 @@ def sync_model_status(event: Dict[str, Any]) -> Dict[str, Any]:
         # Update model status
         update_model_status(model_id, new_status, f"Manual sync: {reason}")
 
-        # Handle LiteLLM registration/removal based on new status
-        if new_status == ModelStatus.IN_SERVICE:
-            register_litellm(model_id)
-        elif new_status == ModelStatus.STOPPED:
-            remove_litellm(model_id)
-
         return {
             "statusCode": 200,
             "body": json.dumps(
@@ -289,7 +277,7 @@ def retry_failed_scaling(event: Dict[str, Any]) -> Dict[str, Any]:
         # Get model information to verify it exists
         model_info = get_model_info(model_id)
         if not model_info:
-            raise ValueError(f"Model {model_id} not found")
+            raise ModelNotFoundError(f"Model {model_id} not found")
 
         logger.info(f"Manually resetting retry count for model {model_id}")
 
@@ -440,128 +428,6 @@ def reset_retry_count(model_id: str) -> None:
 
     except Exception as e:
         logger.error(f"Failed to reset retry count for model {model_id}: {e}")
-
-
-def register_litellm(model_id: str) -> None:
-    """Register model with LiteLLM if missing"""
-    try:
-        model_key = {"model_id": model_id}
-        ddb_item = model_table.get_item(Key=model_key, ConsistentRead=True).get("Item")
-
-        if not ddb_item:
-            logger.warning(f"Model {model_id} not found in DynamoDB")
-            return
-
-        # Check if already registered
-        existing_litellm_id = ddb_item.get("litellm_id")
-        if existing_litellm_id:
-            logger.info(f"Model {model_id} already registered with LiteLLM")
-            return
-
-        model_url = ddb_item.get("model_url")
-        if not model_url:
-            logger.warning(f"Model {model_id} has no model_url")
-            return
-
-        # Initialize LiteLLM client
-        secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
-        iam_client = boto3.client("iam", region_name=os.environ["AWS_REGION"], config=retry_config)
-
-        cert_path = get_cert_path(iam_client)
-        verify_ssl = cert_path if isinstance(cert_path, str) else False
-
-        litellm_client = LiteLLMClient(
-            base_uri=get_rest_api_container_endpoint(),
-            verify=verify_ssl,
-            headers={
-                "Authorization": secrets_manager.get_secret_value(
-                    SecretId=os.environ.get("MANAGEMENT_KEY_NAME"), VersionStage="AWSCURRENT"
-                )["SecretString"],
-                "Content-Type": "application/json",
-            },
-        )
-
-        litellm_config_str = os.environ.get("LITELLM_CONFIG_OBJ", json.dumps({}))
-        try:
-            litellm_params = json.loads(litellm_config_str)
-            litellm_params = litellm_params.get("litellm_settings", {})
-        except json.JSONDecodeError:
-            litellm_params = {}
-
-        model_name = ddb_item["model_config"]["modelName"]
-        litellm_params["model"] = f"openai/{model_name}"
-        litellm_params["api_base"] = model_url
-
-        # Register with LiteLLM
-        litellm_response = litellm_client.add_model(
-            model_name=model_id,
-            litellm_params=litellm_params,
-        )
-
-        litellm_id = litellm_response["model_info"]["id"]
-        logger.info(f"Registered model {model_id} with LiteLLM: {litellm_id}")
-
-        # Update DynamoDB with new litellm_id
-        model_table.update_item(
-            Key=model_key,
-            UpdateExpression="SET litellm_id = :lid",
-            ExpressionAttributeValues={":lid": litellm_id},
-        )
-
-    except Exception as e:
-        logger.error(f"Failed to register {model_id} with LiteLLM: {e}", exc_info=True)
-
-
-def remove_litellm(model_id: str) -> None:
-    """Remove model from LiteLLM if registered"""
-    try:
-        model_key = {"model_id": model_id}
-        ddb_item = model_table.get_item(Key=model_key, ConsistentRead=True).get("Item")
-
-        if not ddb_item:
-            logger.warning(f"Model {model_id} not found in DynamoDB")
-            return
-
-        litellm_id = ddb_item.get("litellm_id")
-        if not litellm_id:
-            logger.info(f"Model {model_id} has no LiteLLM registration to remove")
-            return
-
-        try:
-            # Initialize LiteLLM client
-            secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
-            iam_client = boto3.client("iam", region_name=os.environ["AWS_REGION"], config=retry_config)
-
-            cert_path = get_cert_path(iam_client)
-            verify_ssl = cert_path if isinstance(cert_path, str) else False
-
-            litellm_client = LiteLLMClient(
-                base_uri=get_rest_api_container_endpoint(),
-                verify=verify_ssl,
-                headers={
-                    "Authorization": secrets_manager.get_secret_value(
-                        SecretId=os.environ.get("MANAGEMENT_KEY_NAME"), VersionStage="AWSCURRENT"
-                    )["SecretString"],
-                    "Content-Type": "application/json",
-                },
-            )
-
-            # Remove from LiteLLM
-            litellm_client.delete_model(identifier=litellm_id)
-            logger.info(f"Removed model {model_id} from LiteLLM: {litellm_id}")
-
-            # Clear litellm_id from DynamoDB
-            model_table.update_item(
-                Key=model_key,
-                UpdateExpression="SET litellm_id = :li",
-                ExpressionAttributeValues={":li": None},
-            )
-
-        except Exception as e:
-            logger.error(f"Failed to remove {model_id} from LiteLLM: {e}", exc_info=True)
-
-    except Exception as e:
-        logger.error(f"Error in remove_litellm for {model_id}: {e}", exc_info=True)
 
 
 def get_model_info(model_id: str) -> Optional[Dict[str, Any]]:

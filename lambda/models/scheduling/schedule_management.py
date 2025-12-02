@@ -24,6 +24,7 @@ import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
 from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig, WeeklySchedule
+from models.exception import ModelNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +127,7 @@ def delete_schedule(event: Dict[str, Any]) -> Dict[str, Any]:
         # Get model info to find the Auto Scaling Group
         response = model_table.get_item(Key={"model_id": model_id})
         if "Item" not in response:
-            raise ValueError(f"Model {model_id} not found")
+            raise ModelNotFoundError(f"Model {model_id} not found")
 
         model_item = response["Item"]
         auto_scaling_group = model_item.get("auto_scaling_group")
@@ -167,7 +168,7 @@ def get_schedule(event: Dict[str, Any]) -> Dict[str, Any]:
         response = model_table.get_item(Key={"model_id": model_id})
 
         if "Item" not in response:
-            raise ValueError(f"Model {model_id} not found")
+            raise ModelNotFoundError(f"Model {model_id} not found")
 
         model_item = response["Item"]
         model_config = model_item.get("model_config", {})
@@ -190,9 +191,6 @@ def create_scheduled_actions(model_id: str, auto_scaling_group: str, schedule_co
 
     if schedule_config.scheduleType == ScheduleType.RECURRING:
         # Create daily recurring schedule
-        if not schedule_config.recurringSchedule:
-            raise ValueError("recurringSchedule required for RECURRING type")
-
         scheduled_action_arns.extend(
             create_recurring_scheduled_actions(
                 model_id, auto_scaling_group, schedule_config.recurringSchedule, schedule_config.timezone
@@ -201,9 +199,6 @@ def create_scheduled_actions(model_id: str, auto_scaling_group: str, schedule_co
 
     elif schedule_config.scheduleType == ScheduleType.DAILY:
         # Create individual day schedules
-        if not schedule_config.dailySchedule:
-            raise ValueError("dailySchedule required for DAILY type")
-
         scheduled_action_arns.extend(
             create_daily_scheduled_actions(
                 model_id, auto_scaling_group, schedule_config.dailySchedule, schedule_config.timezone
@@ -240,7 +235,7 @@ def get_model_baseline_capacity(model_id: str) -> Dict[str, int]:
         response = model_table.get_item(Key={"model_id": model_id})
 
         if "Item" not in response:
-            raise ValueError(f"Model {model_id} not found in DynamoDB")
+            raise ModelNotFoundError(f"Model {model_id} not found in DynamoDB")
 
         model_item = response["Item"]
         model_config = model_item.get("model_config", {})
@@ -681,7 +676,7 @@ def update_model_schedule_record(
         # Check if model_config.autoScalingConfig exists first
         response = model_table.get_item(Key={"model_id": model_id})
         if "Item" not in response:
-            raise ValueError(f"Model {model_id} not found")
+            raise ModelNotFoundError(f"Model {model_id} not found")
 
         model_item = response["Item"]
         model_config_exists = "model_config" in model_item

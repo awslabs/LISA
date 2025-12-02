@@ -40,7 +40,7 @@ def handle_schedule_creation(event: Dict[str, Any], context: Any) -> Dict[str, A
     # Only proceed if scheduling is configured
     scheduling_config = event.get("autoScalingConfig", {}).get("scheduling")
     if not scheduling_config:
-        logger.info(f"No scheduling configured for model {event.get('modelId')} - model will run 24/7")
+        logger.info(f"No scheduling configured for model {event.get('modelId')} - model will always be on")
         return output_dict
 
     model_id = event["modelId"]

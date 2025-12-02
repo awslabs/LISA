@@ -281,7 +281,7 @@ export function ScheduleConfig (props: ScheduleConfigProps): ReactElement {
                             statusIconAriaLabel='Warning'
                             type='warning'
                         >
-                            When Auto Scaling is deactivated, the model will run 24/7
+                            When Auto Scaling is deactivated, the model will always be on.
                         </Alert>
                     )}
 

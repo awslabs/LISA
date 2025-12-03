@@ -43,7 +43,7 @@ export function AutoScalingConfig (props: AutoScalingConfigProps) : ReactElement
         }
 
         const { desiredCapacity, minCapacity, maxCapacity } = props.item;
-        
+
         // If no desired capacity is set, no validation needed
         if (!desiredCapacity) {
             return undefined;

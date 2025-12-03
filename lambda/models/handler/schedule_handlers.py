@@ -138,7 +138,7 @@ class GetScheduleStatusHandler(ScheduleBaseHandler):
         # Validate model exists and user access
         model_item = get_model_and_validate_access(self._model_table, model_id, user_groups, is_admin)
 
-        auto_scaling_config = model_item.get("autoScalingConfig", {})
+        auto_scaling_config = model_item.get("model_config", {}).get("autoScalingConfig", {})
         scheduling_config = auto_scaling_config.get("scheduling", {})
 
         # Return schedule status information using boolean flags

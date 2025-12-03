@@ -347,7 +347,8 @@ def get_current_retry_count(model_id: str) -> int:
             return 0
 
         model_item = response["Item"]
-        auto_scaling_config = model_item.get("autoScalingConfig", {})
+        model_config = model_item.get("model_config", {})
+        auto_scaling_config = model_config.get("autoScalingConfig", {})
         scheduling_config = auto_scaling_config.get("scheduling", {})
         last_failure = scheduling_config.get("lastScheduleFailure", {})
 

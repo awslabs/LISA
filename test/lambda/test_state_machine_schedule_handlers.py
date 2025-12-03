@@ -218,84 +218,6 @@ class TestStateMachineScheduleHandlers:
         mock_delete_schedule.assert_called_once()
 
     @patch("models.state_machine.schedule_handlers.model_table")
-    def test_detect_schedule_changes_with_changes(self, mock_model_table, lambda_context):
-        """Test detecting schedule changes when changes exist."""
-        from models.state_machine.schedule_handlers import detect_schedule_changes
-
-        # Mock event with new schedule
-        event = {
-            "modelId": "test-model",
-            "autoScalingConfig": {
-                "scheduling": {
-                    "scheduleType": "RECURRING_DAILY",
-                    "timezone": "UTC",
-                    "dailySchedule": {"startTime": "10:00", "stopTime": "18:00"},
-                }
-            },
-        }
-
-        # Mock existing model with different schedule
-        mock_model_table.get_item.return_value = {
-            "Item": {
-                "model_id": "test-model",
-                "autoScalingConfig": {
-                    "scheduling": {
-                        "scheduleType": "RECURRING_DAILY",
-                        "timezone": "UTC",
-                        "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"},
-                        "scheduledActionArns": ["existing-arn1", "existing-arn2"],
-                    }
-                },
-            }
-        }
-
-        # Execute
-        result = detect_schedule_changes(event, lambda_context)
-
-        # Verify result
-        assert result["modelId"] == "test-model"
-        assert result["has_schedule_update"] is True
-        assert result["existing_scheduled_action_arns"] == ["existing-arn1", "existing-arn2"]
-
-    @patch("models.state_machine.schedule_handlers.model_table")
-    def test_detect_schedule_changes_no_changes(self, mock_model_table, lambda_context):
-        """Test detecting schedule changes when no changes exist."""
-        from models.state_machine.schedule_handlers import detect_schedule_changes
-
-        # Mock event with same schedule
-        event = {
-            "modelId": "test-model",
-            "autoScalingConfig": {
-                "scheduling": {
-                    "scheduleType": "RECURRING_DAILY",
-                    "timezone": "UTC",
-                    "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"},
-                }
-            },
-        }
-
-        # Mock existing model with same schedule
-        mock_model_table.get_item.return_value = {
-            "Item": {
-                "model_id": "test-model",
-                "autoScalingConfig": {
-                    "scheduling": {
-                        "scheduleType": "RECURRING_DAILY",
-                        "timezone": "UTC",
-                        "dailySchedule": {"startTime": "09:00", "stopTime": "17:00"},
-                    }
-                },
-            }
-        }
-
-        # Execute
-        result = detect_schedule_changes(event, lambda_context)
-
-        # Verify result
-        assert result["modelId"] == "test-model"
-        assert result["has_schedule_update"] is False
-
-    @patch("models.state_machine.schedule_handlers.model_table")
     def test_update_schedule_failure_status_success(self, mock_model_table):
         """Test successful schedule failure status update."""
         from models.state_machine.schedule_handlers import update_schedule_failure_status
@@ -390,33 +312,6 @@ class TestScheduleCreationEdgeCases:
 
         # Verify result (should pass through even with exception)
         assert result["modelId"] == "test-model"
-
-    @patch("models.state_machine.schedule_handlers.model_table")
-    def test_detect_schedule_changes_exception(self, mock_model_table, lambda_context):
-        """Test detecting schedule changes with exception."""
-        from models.state_machine.schedule_handlers import detect_schedule_changes
-
-        # Mock event with new schedule
-        event = {
-            "modelId": "test-model",
-            "autoScalingConfig": {
-                "scheduling": {
-                    "scheduleType": "RECURRING_DAILY",
-                    "timezone": "UTC",
-                    "dailySchedule": {"startTime": "10:00", "stopTime": "18:00"},
-                }
-            },
-        }
-
-        # Mock DynamoDB exception
-        mock_model_table.get_item.side_effect = Exception("DynamoDB error")
-
-        # Execute
-        result = detect_schedule_changes(event, lambda_context)
-
-        # Verify result (should assume update needed when can't check)
-        assert result["modelId"] == "test-model"
-        assert result["has_schedule_update"] is True
 
     @patch("models.state_machine.schedule_handlers.model_table")
     def test_update_schedule_failure_status_exception(self, mock_model_table):

@@ -145,53 +145,6 @@ def handle_cleanup_schedule(event: Dict[str, Any], context: Any) -> Dict[str, An
     return output_dict
 
 
-def detect_schedule_changes(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
-    """Detect if schedule configuration has changed during model update"""
-    logger.info(f"Detecting schedule changes for model: {event.get('modelId')}")
-    output_dict = event.copy()
-
-    model_id = event["modelId"]
-    new_auto_scaling_config = event.get("autoScalingConfig", {})
-    new_scheduling_config = new_auto_scaling_config.get("scheduling")
-
-    has_schedule_update = False
-
-    try:
-        # Get current model to compare schedules
-        response = model_table.get_item(Key={"model_id": model_id})
-        if "Item" in response:
-            current_auto_scaling_config = response["Item"].get("autoScalingConfig", {})
-            current_scheduling_config = current_auto_scaling_config.get("scheduling")
-
-            # Compare schedules to see if update is needed
-            if current_scheduling_config != new_scheduling_config:
-                has_schedule_update = True
-                logger.info(f"Schedule change detected for model {model_id}")
-
-                # Store existing scheduled action ARNs for cleanup
-                existing_arns = (
-                    current_scheduling_config.get("scheduledActionArns", [])
-                    if isinstance(current_scheduling_config, dict)
-                    else []
-                )
-                output_dict["existing_scheduled_action_arns"] = existing_arns
-        else:
-            # New schedule for existing model
-            if new_scheduling_config:
-                has_schedule_update = True
-                logger.info(f"New schedule detected for model {model_id}")
-
-    except Exception as e:
-        logger.warning(f"Could not check existing schedule for {model_id}: {e}")
-        # Assume update needed if we can't check
-        if new_scheduling_config:
-            has_schedule_update = True
-
-    output_dict["has_schedule_update"] = has_schedule_update
-
-    return output_dict
-
-
 def update_schedule_failure_status(model_id: str, error_message: str) -> None:
     """Update model with schedule failure status using boolean flags"""
     try:
@@ -200,8 +153,8 @@ def update_schedule_failure_status(model_id: str, error_message: str) -> None:
         model_table.update_item(
             Key={"model_id": model_id},
             UpdateExpression=(
-                "SET autoScalingConfig.scheduling.lastScheduleFailed = :failed, "
-                "autoScalingConfig.scheduling.lastScheduleFailure = :failure"
+                "SET model_config.autoScalingConfig.scheduling.lastScheduleFailed = :failed, "
+                "model_config.autoScalingConfig.scheduling.lastScheduleFailure = :failure"
             ),
             ExpressionAttributeValues={":failed": True, ":failure": failure_info},
         )

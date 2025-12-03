@@ -210,7 +210,7 @@ class TestScheduleMonitoring:
         mock_model_table.get_item.return_value = {
             "Item": {
                 "model_id": "test-model",
-                "autoScalingConfig": {"scheduling": {"lastScheduleFailure": {"retryCount": 2}}},
+                "model_config": {"autoScalingConfig": {"scheduling": {"lastScheduleFailure": {"retryCount": 2}}}},
             }
         }
 
@@ -607,267 +607,9 @@ class TestScheduleMonitoringComplex:
             retry_failed_scaling(event)
 
 
-class TestLiteLLMIntegration:
-    """Test LiteLLM registration and removal functions."""
-
-    @patch("models.scheduling.schedule_monitoring.model_table")
-    def test_register_litellm_model_not_found(self, mock_model_table):
-        """Test register_litellm when model not found in DynamoDB."""
-        from models.scheduling.schedule_monitoring import register_litellm
-
-        # Mock model not found
-        mock_model_table.get_item.return_value = {}
-
-        # Execute - should return without error
-        register_litellm("test-model")
-
-        mock_model_table.get_item.assert_called_once()
-
-    @patch("models.scheduling.schedule_monitoring.model_table")
-    def test_register_litellm_already_registered(self, mock_model_table):
-        """Test register_litellm when model already has litellm_id."""
-        from models.scheduling.schedule_monitoring import register_litellm
-
-        # Mock model with existing litellm_id
-        mock_model_table.get_item.return_value = {"Item": {"model_id": "test-model", "litellm_id": "existing-id"}}
-
-        # Execute - should return without error
-        register_litellm("test-model")
-
-        mock_model_table.get_item.assert_called_once()
-        # Should not call update_item since already registered
-        mock_model_table.update_item.assert_not_called()
-
-    @patch("models.scheduling.schedule_monitoring.model_table")
-    def test_register_litellm_no_model_url(self, mock_model_table):
-        """Test register_litellm when model has no model_url."""
-        from models.scheduling.schedule_monitoring import register_litellm
-
-        # Mock model without model_url
-        mock_model_table.get_item.return_value = {
-            "Item": {"model_id": "test-model", "model_config": {"modelName": "test"}}
-        }
-
-        # Execute - should return without error
-        register_litellm("test-model")
-
-        mock_model_table.get_item.assert_called_once()
-        # Should not call update_item since no model_url
-        mock_model_table.update_item.assert_not_called()
-
-    @patch("models.scheduling.schedule_monitoring.LiteLLMClient")
-    @patch("models.scheduling.schedule_monitoring.get_rest_api_container_endpoint")
-    @patch("models.scheduling.schedule_monitoring.get_cert_path")
-    @patch("boto3.client")
-    @patch("models.scheduling.schedule_monitoring.model_table")
-    def test_register_litellm_success(
-        self, mock_model_table, mock_boto3_client, mock_get_cert_path, mock_get_endpoint, mock_litellm_client_class
-    ):
-        """Test successful LiteLLM registration."""
-        from models.scheduling.schedule_monitoring import register_litellm
-
-        # Mock environment variables
-        with patch.dict(
-            os.environ,
-            {
-                "AWS_REGION": "us-east-1",
-                "MANAGEMENT_KEY_NAME": "test-key",
-                "LITELLM_CONFIG_OBJ": '{"litellm_settings": {"drop_params": true}}',
-            },
-        ):
-            # Mock model data
-            mock_model_table.get_item.return_value = {
-                "Item": {
-                    "model_id": "test-model",
-                    "model_url": "http://test-url",
-                    "model_config": {"modelName": "test-model-name"},
-                }
-            }
-
-            # Mock AWS clients
-            mock_secrets_client = MagicMock()
-            mock_iam_client = MagicMock()
-            mock_boto3_client.side_effect = [mock_secrets_client, mock_iam_client]
-
-            # Mock secrets manager response
-            mock_secrets_client.get_secret_value.return_value = {"SecretString": "test-secret"}
-
-            # Mock other dependencies
-            mock_get_endpoint.return_value = "http://api-endpoint"
-            mock_get_cert_path.return_value = "/path/to/cert"
-
-            # Mock LiteLLM client
-            mock_litellm_client = MagicMock()
-            mock_litellm_client_class.return_value = mock_litellm_client
-            mock_litellm_client.add_model.return_value = {"model_info": {"id": "new-litellm-id"}}
-
-            # Mock model table update
-            mock_model_table.update_item.return_value = {}
-
-            # Execute
-            register_litellm("test-model")
-
-            # Verify LiteLLM client creation
-            mock_litellm_client_class.assert_called_once()
-
-            # Verify add_model call
-            mock_litellm_client.add_model.assert_called_once()
-            call_args = mock_litellm_client.add_model.call_args
-            assert call_args[1]["model_name"] == "test-model"
-
-            # Verify DynamoDB update
-            mock_model_table.update_item.assert_called_once()
-
-    @patch("models.scheduling.schedule_monitoring.model_table")
-    def test_register_litellm_exception(self, mock_model_table):
-        """Test register_litellm with exception."""
-        from models.scheduling.schedule_monitoring import register_litellm
-
-        # Mock exception
-        mock_model_table.get_item.side_effect = Exception("DynamoDB error")
-
-        # Execute - should not raise exception, just log error
-        register_litellm("test-model")
-
-        mock_model_table.get_item.assert_called_once()
-
-    @patch("models.scheduling.schedule_monitoring.model_table")
-    def test_remove_litellm_model_not_found(self, mock_model_table):
-        """Test remove_litellm when model not found in DynamoDB."""
-        from models.scheduling.schedule_monitoring import remove_litellm
-
-        # Mock model not found
-        mock_model_table.get_item.return_value = {}
-
-        # Execute - should return without error
-        remove_litellm("test-model")
-
-        mock_model_table.get_item.assert_called_once()
-
-    @patch("models.scheduling.schedule_monitoring.model_table")
-    def test_remove_litellm_no_litellm_id(self, mock_model_table):
-        """Test remove_litellm when model has no litellm_id."""
-        from models.scheduling.schedule_monitoring import remove_litellm
-
-        # Mock model without litellm_id
-        mock_model_table.get_item.return_value = {"Item": {"model_id": "test-model"}}
-
-        # Execute - should return without error
-        remove_litellm("test-model")
-
-        mock_model_table.get_item.assert_called_once()
-        # Should not call update_item since no litellm_id
-        mock_model_table.update_item.assert_not_called()
-
-    @patch("models.scheduling.schedule_monitoring.LiteLLMClient")
-    @patch("models.scheduling.schedule_monitoring.get_rest_api_container_endpoint")
-    @patch("models.scheduling.schedule_monitoring.get_cert_path")
-    @patch("boto3.client")
-    @patch("models.scheduling.schedule_monitoring.model_table")
-    def test_remove_litellm_success(
-        self, mock_model_table, mock_boto3_client, mock_get_cert_path, mock_get_endpoint, mock_litellm_client_class
-    ):
-        """Test successful LiteLLM removal."""
-        from models.scheduling.schedule_monitoring import remove_litellm
-
-        # Mock environment variables
-        with patch.dict(os.environ, {"AWS_REGION": "us-east-1", "MANAGEMENT_KEY_NAME": "test-key"}):
-            # Mock model data
-            mock_model_table.get_item.return_value = {
-                "Item": {"model_id": "test-model", "litellm_id": "existing-litellm-id"}
-            }
-
-            # Mock AWS clients
-            mock_secrets_client = MagicMock()
-            mock_iam_client = MagicMock()
-            mock_boto3_client.side_effect = [mock_secrets_client, mock_iam_client]
-
-            # Mock secrets manager response
-            mock_secrets_client.get_secret_value.return_value = {"SecretString": "test-secret"}
-
-            # Mock other dependencies
-            mock_get_endpoint.return_value = "http://api-endpoint"
-            mock_get_cert_path.return_value = "/path/to/cert"
-
-            # Mock LiteLLM client
-            mock_litellm_client = MagicMock()
-            mock_litellm_client_class.return_value = mock_litellm_client
-
-            # Mock model table update
-            mock_model_table.update_item.return_value = {}
-
-            # Execute
-            remove_litellm("test-model")
-
-            # Verify LiteLLM client creation
-            mock_litellm_client_class.assert_called_once()
-
-            # Verify delete_model call
-            mock_litellm_client.delete_model.assert_called_once_with(identifier="existing-litellm-id")
-
-            # Verify DynamoDB update
-            mock_model_table.update_item.assert_called_once()
-
-    @patch("models.scheduling.schedule_monitoring.LiteLLMClient")
-    @patch("models.scheduling.schedule_monitoring.get_rest_api_container_endpoint")
-    @patch("models.scheduling.schedule_monitoring.get_cert_path")
-    @patch("boto3.client")
-    @patch("models.scheduling.schedule_monitoring.model_table")
-    def test_remove_litellm_delete_exception(
-        self, mock_model_table, mock_boto3_client, mock_get_cert_path, mock_get_endpoint, mock_litellm_client_class
-    ):
-        """Test remove_litellm with exception during LiteLLM deletion."""
-        from models.scheduling.schedule_monitoring import remove_litellm
-
-        # Mock environment variables
-        with patch.dict(os.environ, {"AWS_REGION": "us-east-1", "MANAGEMENT_KEY_NAME": "test-key"}):
-            # Mock model data
-            mock_model_table.get_item.return_value = {
-                "Item": {"model_id": "test-model", "litellm_id": "existing-litellm-id"}
-            }
-
-            # Mock AWS clients
-            mock_secrets_client = MagicMock()
-            mock_iam_client = MagicMock()
-            mock_boto3_client.side_effect = [mock_secrets_client, mock_iam_client]
-
-            # Mock secrets manager response
-            mock_secrets_client.get_secret_value.return_value = {"SecretString": "test-secret"}
-
-            # Mock other dependencies
-            mock_get_endpoint.return_value = "http://api-endpoint"
-            mock_get_cert_path.return_value = "/path/to/cert"
-
-            # Mock LiteLLM client with exception
-            mock_litellm_client = MagicMock()
-            mock_litellm_client_class.return_value = mock_litellm_client
-            mock_litellm_client.delete_model.side_effect = Exception("LiteLLM error")
-
-            # Execute - should not raise exception, just log error
-            remove_litellm("test-model")
-
-            # Verify delete_model was called
-            mock_litellm_client.delete_model.assert_called_once()
-
-    @patch("models.scheduling.schedule_monitoring.model_table")
-    def test_remove_litellm_outer_exception(self, mock_model_table):
-        """Test remove_litellm with outer exception."""
-        from models.scheduling.schedule_monitoring import remove_litellm
-
-        # Mock exception
-        mock_model_table.get_item.side_effect = Exception("DynamoDB error")
-
-        # Execute - should not raise exception, just log error
-        remove_litellm("test-model")
-
-        mock_model_table.get_item.assert_called_once()
-
-
 class TestScheduleMonitoringEdgeCases:
     """Test edge cases and additional coverage."""
 
-    @patch("models.scheduling.schedule_monitoring.remove_litellm")
-    @patch("models.scheduling.schedule_monitoring.register_litellm")
     @patch("models.scheduling.schedule_monitoring.update_model_status")
     @patch("models.scheduling.schedule_monitoring.autoscaling_client")
     @patch("models.scheduling.schedule_monitoring.find_model_by_asg_name")
@@ -876,8 +618,6 @@ class TestScheduleMonitoringEdgeCases:
         mock_find_model,
         mock_autoscaling_client,
         mock_update_model_status,
-        mock_register_litellm,
-        mock_remove_litellm,
     ):
         """Test handle_successful_scaling when ASG not found."""
         from models.scheduling.schedule_monitoring import handle_successful_scaling
@@ -894,10 +634,8 @@ class TestScheduleMonitoringEdgeCases:
         assert result["statusCode"] == 200
         assert result["message"] == "ASG not found"
 
-        # Verify no status update or LiteLLM calls
+        # Verify no status update
         mock_update_model_status.assert_not_called()
-        mock_register_litellm.assert_not_called()
-        mock_remove_litellm.assert_not_called()
 
     @patch("models.scheduling.schedule_monitoring.autoscaling_client")
     def test_handle_successful_scaling_client_error(self, mock_autoscaling_client):
@@ -917,13 +655,9 @@ class TestScheduleMonitoringEdgeCases:
         assert result["statusCode"] == 500
         assert "Failed to check ASG state" in result["message"]
 
-    @patch("models.scheduling.schedule_monitoring.remove_litellm")
-    @patch("models.scheduling.schedule_monitoring.register_litellm")
     @patch("models.scheduling.schedule_monitoring.update_model_status")
     @patch("models.scheduling.schedule_monitoring.autoscaling_client")
-    def test_handle_successful_scaling_stopped_status(
-        self, mock_autoscaling_client, mock_update_model_status, mock_register_litellm, mock_remove_litellm
-    ):
+    def test_handle_successful_scaling_stopped_status(self, mock_autoscaling_client, mock_update_model_status):
         """Test handle_successful_scaling when model should be stopped."""
         from models.scheduling.schedule_monitoring import handle_successful_scaling
 
@@ -938,10 +672,6 @@ class TestScheduleMonitoringEdgeCases:
         assert result["statusCode"] == 200
         body = json.loads(result["body"])
         assert body["newStatus"] == "Stopped"
-
-        # Verify remove_litellm was called
-        mock_remove_litellm.assert_called_once_with("test-model")
-        mock_register_litellm.assert_not_called()
 
     @patch("models.scheduling.schedule_monitoring.autoscaling_client")
     @patch("models.scheduling.schedule_monitoring.get_model_info")

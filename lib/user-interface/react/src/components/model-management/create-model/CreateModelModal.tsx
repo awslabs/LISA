@@ -266,21 +266,19 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                 if (!updateFields.autoScalingConfig?.scheduling) {
                     return false;
                 }
-                
+
                 // autoScalingConfig should only contain scheduling (no other properties)
                 const autoScalingKeys = Object.keys(updateFields.autoScalingConfig);
                 const hasOnlyScheduling = autoScalingKeys.length === 1 && autoScalingKeys.includes('scheduling');
-                
+
                 if (!hasOnlyScheduling) {
                     return false;
                 }
-                
+
                 // updateFields should only contain modelId and autoScalingConfig (no other updates)
                 const updateKeys = Object.keys(updateFields);
                 const expectedKeys = ['modelId', 'autoScalingConfig'];
-                const hasOnlyExpectedKeys = updateKeys.length === expectedKeys.length && 
-                    expectedKeys.every(key => updateKeys.includes(key));
-                
+                const hasOnlyExpectedKeys = updateKeys.length === expectedKeys.length && expectedKeys.every((key) => updateKeys.includes(key));
                 return hasOnlyExpectedKeys;
             })();
 

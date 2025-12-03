@@ -35,7 +35,7 @@ from models.handler.schedule_handlers import (
     GetScheduleStatusHandler,
     UpdateScheduleHandler,
 )
-from utilities.common_functions import user_has_group_access
+from utilities.auth import user_has_group_access
 
 # Set mock AWS credentials
 os.environ["AWS_ACCESS_KEY_ID"] = "testing"
@@ -391,18 +391,20 @@ class TestGetScheduleStatusHandler:
         mock_stepfunctions_client,
     ):
         """Test successful schedule status retrieval."""
-        # Handler reads from autoScalingConfig at root level, not model_config
+        # Handler reads from model_config.autoScalingConfig
         model_item = {
             "model_id": "test-model",
             "model_status": "InService",
             "auto_scaling_group": "test-asg",
-            "autoScalingConfig": {
-                "scheduling": {
-                    "scheduleType": "RECURRING",
-                    "timezone": "UTC",
-                    "scheduleEnabled": True,
-                    "scheduleConfigured": True,
-                    "lastScheduleFailed": False,
+            "model_config": {
+                "autoScalingConfig": {
+                    "scheduling": {
+                        "scheduleType": "RECURRING",
+                        "timezone": "UTC",
+                        "scheduleEnabled": True,
+                        "scheduleConfigured": True,
+                        "lastScheduleFailed": False,
+                    }
                 }
             },
         }
@@ -434,7 +436,9 @@ class TestGetScheduleStatusHandler:
         """Test schedule status when schedule is disabled."""
         model_no_schedule = {
             "model_id": "test-model",
-            "autoScalingConfig": {"scheduling": {"scheduleConfigured": False, "lastScheduleFailed": False}},
+            "model_config": {
+                "autoScalingConfig": {"scheduling": {"scheduleConfigured": False, "lastScheduleFailed": False}}
+            },
         }
         mock_model_table.get_item.return_value = {"Item": model_no_schedule}
 
@@ -456,15 +460,17 @@ class TestGetScheduleStatusHandler:
         self, mock_model_table, mock_guardrails_table, mock_autoscaling_client, mock_stepfunctions_client
     ):
         """Test schedule status when schedule has failed."""
-        # Handler reads from autoScalingConfig at root level, not model_config
+        # Handler reads from model_config.autoScalingConfig
         model_failed_schedule = {
             "model_id": "test-model",
-            "autoScalingConfig": {
-                "scheduling": {
-                    "scheduleConfigured": True,
-                    "lastScheduleFailed": True,
-                    "scheduleType": "RECURRING",
-                    "timezone": "UTC",
+            "model_config": {
+                "autoScalingConfig": {
+                    "scheduling": {
+                        "scheduleConfigured": True,
+                        "lastScheduleFailed": True,
+                        "scheduleType": "RECURRING",
+                        "timezone": "UTC",
+                    }
                 }
             },
         }
@@ -488,7 +494,7 @@ class TestGetScheduleStatusHandler:
         self, mock_model_table, mock_guardrails_table, mock_autoscaling_client, mock_stepfunctions_client
     ):
         """Test model without scheduling configuration."""
-        model_no_scheduling = {"model_id": "test-model", "autoScalingConfig": {}}
+        model_no_scheduling = {"model_id": "test-model", "model_config": {"autoScalingConfig": {}}}
         mock_model_table.get_item.return_value = {"Item": model_no_scheduling}
 
         handler = GetScheduleStatusHandler(
@@ -574,7 +580,9 @@ class TestUpdateScheduleHandlerGroupAccess:
             "model_id": "test-model",
             "model_status": "InService",
             "auto_scaling_group": "test-asg",
-            "allowedGroups": ["developers", "admins"],
+            "model_config": {
+                "allowedGroups": ["developers", "admins"],
+            },
         }
         mock_model_table.get_item.return_value = {"Item": model_item}
 
@@ -623,7 +631,9 @@ class TestUpdateScheduleHandlerGroupAccess:
             "model_id": "test-model",
             "model_status": "InService",
             "auto_scaling_group": "test-asg",
-            "allowedGroups": ["developers", "admins"],
+            "model_config": {
+                "allowedGroups": ["developers", "admins"],
+            },
         }
         mock_model_table.get_item.return_value = {"Item": model_item}
 
@@ -635,7 +645,7 @@ class TestUpdateScheduleHandlerGroupAccess:
         )
 
         # Execute with non-matching user groups
-        with pytest.raises(ModelNotFoundError, match="Model test-model not found"):
+        with pytest.raises(ModelNotFoundError, match=r"Access denied to access model test-model"):
             handler(
                 model_id="test-model",
                 schedule_config=sample_schedule_config,
@@ -657,7 +667,9 @@ class TestUpdateScheduleHandlerGroupAccess:
             "model_id": "test-model",
             "model_status": "InService",
             "auto_scaling_group": "test-asg",
-            "allowedGroups": ["developers"],
+            "model_config": {
+                "allowedGroups": ["developers"],
+            },
         }
         mock_model_table.get_item.return_value = {"Item": model_item}
 
@@ -700,7 +712,9 @@ class TestGetScheduleHandlerGroupAccess:
         # Setup model with allowed groups
         model_item = {
             "model_id": "test-model",
-            "allowedGroups": ["developers"],
+            "model_config": {
+                "allowedGroups": ["developers"],
+            },
         }
         mock_model_table.get_item.return_value = {"Item": model_item}
 
@@ -712,7 +726,7 @@ class TestGetScheduleHandlerGroupAccess:
         )
 
         # Execute with non-matching user groups
-        with pytest.raises(ModelNotFoundError, match="Model test-model not found"):
+        with pytest.raises(ModelNotFoundError, match=r"Access denied to access model test-model"):
             handler(model_id="test-model", user_groups=["managers"], is_admin=False)
 
 
@@ -726,7 +740,10 @@ class TestDeleteScheduleHandlerGroupAccess:
         # Setup model with allowed groups
         model_item = {
             "model_id": "test-model",
-            "allowedGroups": ["developers"],
+            "model_status": "InService",
+            "model_config": {
+                "allowedGroups": ["developers"],
+            },
         }
         mock_model_table.get_item.return_value = {"Item": model_item}
 
@@ -738,7 +755,7 @@ class TestDeleteScheduleHandlerGroupAccess:
         )
 
         # Execute with non-matching user groups
-        with pytest.raises(ModelNotFoundError, match="Model test-model not found"):
+        with pytest.raises(ModelNotFoundError, match=r"Access denied to access model test-model"):
             handler(model_id="test-model", user_groups=["managers"], is_admin=False)
 
 
@@ -752,7 +769,9 @@ class TestGetScheduleStatusHandlerGroupAccess:
         # Setup model with allowed groups
         model_item = {
             "model_id": "test-model",
-            "allowedGroups": ["developers"],
+            "model_config": {
+                "allowedGroups": ["developers"],
+            },
         }
         mock_model_table.get_item.return_value = {"Item": model_item}
 
@@ -764,7 +783,7 @@ class TestGetScheduleStatusHandlerGroupAccess:
         )
 
         # Execute with non-matching user groups
-        with pytest.raises(ModelNotFoundError, match="Model test-model not found"):
+        with pytest.raises(ModelNotFoundError, match=r"Access denied to access model test-model"):
             handler(model_id="test-model", user_groups=["managers"], is_admin=False)
 
 

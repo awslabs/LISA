@@ -159,7 +159,6 @@ def adjust_initial_capacity_for_schedule(prepared_event: Dict[str, Any]) -> None
                 logger.info(f"Current time {current_time} ({timezone_name}) is outside scheduled hours")
                 # Set desired capacity to 0 for deployment outside scheduled hours
                 auto_scaling_config["minCapacity"] = 0
-                # Keep maxCapacity at original value - CloudFormation requires maxCapacity > 0
                 auto_scaling_config["desiredCapacity"] = 0
 
         except Exception as time_error:

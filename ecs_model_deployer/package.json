@@ -18,7 +18,7 @@
     "@cdklabs/cdk-enterprise-iac": "^0.1.0",
     "@types/node": "^24.10.1",
     "aws-cdk": "^2.1033.0",
-    "aws-cdk-lib": "^2.230.0",
+    "aws-cdk-lib": "^2.231.0",
     "esbuild": "^0.27.0",
     "zod": "^4.1.13"
   }

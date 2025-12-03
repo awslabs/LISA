@@ -675,7 +675,7 @@ def _calculate_next_daily_action(
     # Check today first
     today_schedule = day_schedules[current_weekday]
     if today_schedule:
-        next_action = _get_next_action_for_day(today_schedule, now, tz, 0)
+        next_action = _get_next_action_for_today(today_schedule, now, tz)
         if next_action:
             return next_action
 
@@ -696,33 +696,29 @@ def _calculate_next_daily_action(
     return None
 
 
-def _get_next_action_for_day(
-    day_schedule: DaySchedule, now: datetime, tz: ZoneInfo, days_offset: int
-) -> Optional[Dict[str, str]]:
-    """Get next action for a specific day"""
-    target_date = now.date() + timedelta(days=days_offset)
+def _get_next_action_for_today(day_schedule: DaySchedule, now: datetime, tz: ZoneInfo) -> Optional[Dict[str, str]]:
+    """Get next action for today's schedule only"""
+    today = now.date()
 
     # Parse schedule times
     start_hour, start_minute = map(int, day_schedule.startTime.split(":"))
     stop_hour, stop_minute = map(int, day_schedule.stopTime.split(":"))
 
-    # Create time objects for the target date
-    start_time = datetime.combine(
-        target_date, datetime.min.time().replace(hour=start_hour, minute=start_minute)
-    ).replace(tzinfo=tz)
-    stop_time = datetime.combine(target_date, datetime.min.time().replace(hour=stop_hour, minute=stop_minute)).replace(
+    # Create time objects for today
+    start_time = datetime.combine(today, datetime.min.time().replace(hour=start_hour, minute=start_minute)).replace(
+        tzinfo=tz
+    )
+    stop_time = datetime.combine(today, datetime.min.time().replace(hour=stop_hour, minute=stop_minute)).replace(
         tzinfo=tz
     )
 
-    if days_offset == 0:  # Today
-        if now < start_time:
-            return {"action": "START", "scheduledTime": start_time.isoformat()}
-        elif now < stop_time:
-            return {"action": "STOP", "scheduledTime": stop_time.isoformat()}
-    else:  # Future day
-        # Next action is always START at beginning of scheduled day
+    # Check what's the next action for today
+    if now < start_time:
         return {"action": "START", "scheduledTime": start_time.isoformat()}
+    elif now < stop_time:
+        return {"action": "STOP", "scheduledTime": stop_time.isoformat()}
 
+    # If we're past stop time today, no more actions for today
     return None
 
 

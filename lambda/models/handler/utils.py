@@ -17,6 +17,7 @@
 from typing import Any, Dict, List, Optional
 
 from utilities.auth import user_has_group_access
+from utilities.validation import ValidationError
 
 from ..domain_objects import GuardrailConfig, LISAModel
 from ..exception import InvalidStateTransitionError, ModelNotFoundError
@@ -47,7 +48,8 @@ def get_model_and_validate_access(
         Dict: Model item from DynamoDB
 
     Raises:
-        ModelNotFoundError: If model doesn't exist or user lacks access
+        ModelNotFoundError: If model doesn't exist
+        ValidationError: If user doesn't have access to model
     """
     model_response = model_table.get_item(Key={"model_id": model_id})
     if "Item" not in model_response:
@@ -62,7 +64,7 @@ def get_model_and_validate_access(
 
         # Check if user has access
         if not user_has_group_access(user_groups, allowed_groups):
-            raise ModelNotFoundError(f"Access denied to access model {model_id}")
+            raise ValidationError(f"Access denied to access model {model_id}")
 
     return model_item
 
@@ -89,7 +91,8 @@ def get_model_and_validate_status(
         Dict: Model item from DynamoDB
 
     Raises:
-        ModelNotFoundError: If model doesn't exist or user lacks access
+        ModelNotFoundError: If model doesn't exist
+        ValidationError: If user doesn't have access to model
         InvalidStateTransitionError: If model is not in allowed status
     """
     if allowed_statuses is None:

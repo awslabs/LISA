@@ -36,6 +36,7 @@ from models.handler.schedule_handlers import (
     UpdateScheduleHandler,
 )
 from utilities.auth import user_has_group_access
+from utilities.validation import ValidationError
 
 # Set mock AWS credentials
 os.environ["AWS_ACCESS_KEY_ID"] = "testing"
@@ -645,7 +646,7 @@ class TestUpdateScheduleHandlerGroupAccess:
         )
 
         # Execute with non-matching user groups
-        with pytest.raises(ModelNotFoundError, match=r"Access denied to access model test-model"):
+        with pytest.raises(ValidationError, match=r"Access denied to access model test-model"):
             handler(
                 model_id="test-model",
                 schedule_config=sample_schedule_config,
@@ -726,7 +727,7 @@ class TestGetScheduleHandlerGroupAccess:
         )
 
         # Execute with non-matching user groups
-        with pytest.raises(ModelNotFoundError, match=r"Access denied to access model test-model"):
+        with pytest.raises(ValidationError, match=r"Access denied to access model test-model"):
             handler(model_id="test-model", user_groups=["managers"], is_admin=False)
 
 
@@ -755,7 +756,7 @@ class TestDeleteScheduleHandlerGroupAccess:
         )
 
         # Execute with non-matching user groups
-        with pytest.raises(ModelNotFoundError, match=r"Access denied to access model test-model"):
+        with pytest.raises(ValidationError, match=r"Access denied to access model test-model"):
             handler(model_id="test-model", user_groups=["managers"], is_admin=False)
 
 
@@ -783,7 +784,7 @@ class TestGetScheduleStatusHandlerGroupAccess:
         )
 
         # Execute with non-matching user groups
-        with pytest.raises(ModelNotFoundError, match=r"Access denied to access model test-model"):
+        with pytest.raises(ValidationError, match=r"Access denied to access model test-model"):
             handler(model_id="test-model", user_groups=["managers"], is_admin=False)
 
 

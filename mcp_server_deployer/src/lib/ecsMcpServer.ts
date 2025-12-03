@@ -546,7 +546,7 @@ export class EcsMcpServer extends Construct {
 
         // Default: use a common base image
         // This should be replaced with a proper base image for MCP servers
-        return ContainerImage.fromRegistry('node:20-slim');
+        return ContainerImage.fromRegistry('node:24-slim');
     }
 
     /**

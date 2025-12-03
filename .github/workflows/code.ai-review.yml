@@ -23,8 +23,8 @@ jobs:
     runs-on: ubuntu-latest
     # Only run if the comment contains "/ai-review" or if it's a PR review comment
     if: |
-      (github.event_name == 'issue_comment' && 
-       github.event.issue.pull_request && 
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request &&
        contains(github.event.comment.body, '/ai-review')) ||
       github.event_name == 'pull_request_review_comment'
     steps:
@@ -66,15 +66,15 @@ jobs:
               repo: context.repo.repo,
               issue_number: ${{ steps.pr.outputs.number }},
             });
-            
+
             // Find comments from the bot (GitHub Actions bot or specific user)
-            const botComments = comments.data.filter(comment => 
+            const botComments = comments.data.filter(comment =>
               comment.user.login === 'github-actions[bot]' &&
-              (comment.body.includes('## Summary') || 
+              (comment.body.includes('## Summary') ||
                comment.body.includes('AI Code Review') ||
                comment.body.includes('## Changes'))
             );
-            
+
             // Delete old bot comments
             for (const comment of botComments) {
               try {
@@ -96,11 +96,11 @@ jobs:
                 repo: context.repo.repo,
                 pull_number: ${{ steps.pr.outputs.number }},
               });
-              
-              const botReviewComments = reviewComments.data.filter(comment => 
+
+              const botReviewComments = reviewComments.data.filter(comment =>
                 comment.user.login === 'github-actions[bot]'
               );
-              
+
               for (const comment of botReviewComments) {
                 try {
                   await github.rest.pulls.deleteReviewComment({

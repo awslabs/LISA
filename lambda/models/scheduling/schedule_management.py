@@ -265,7 +265,7 @@ def get_model_baseline_capacity(model_id: str) -> Dict[str, int]:
 
 
 def check_daily_immediate_scaling(auto_scaling_group: str, daily_schedule: WeeklySchedule, timezone_name: str) -> None:
-    """Check current day and time, scale ASG if outside any scheduled windows for daily schedules"""
+    """Check current day and time, scale ASG down to 0 if outside scheduled window for daily schedules"""
     try:
         tz = ZoneInfo(timezone_name)
         now = datetime.now(tz)
@@ -298,7 +298,7 @@ def check_daily_immediate_scaling(auto_scaling_group: str, daily_schedule: Weekl
             logger.info(f"Successfully scaled down ASG {auto_scaling_group} to 0 instances (no schedule today)")
 
     except Exception as e:
-        logger.error(f"Failed to check weekly immediate scaling for ASG {auto_scaling_group}: {e}")
+        logger.error(f"Failed to check daily immediate scaling for ASG {auto_scaling_group}: {e}")
 
 
 def scale_immediately(auto_scaling_group: str, day_schedule: DaySchedule, timezone_name: str) -> None:
@@ -315,13 +315,8 @@ def scale_immediately(auto_scaling_group: str, day_schedule: DaySchedule, timezo
         start_time_obj = datetime.min.time().replace(hour=start_hour, minute=start_minute)
         stop_time_obj = datetime.min.time().replace(hour=stop_hour, minute=stop_minute)
 
-        # Handle schedules that cross midnight
-        if start_time_obj <= stop_time_obj:
-            # Normal schedule within same day
-            is_within_window = start_time_obj <= current_time <= stop_time_obj
-        else:
-            # Schedule crosses midnight
-            is_within_window = current_time >= start_time_obj or current_time <= stop_time_obj
+        # Simple 24-hour window check
+        is_within_window = start_time_obj <= current_time <= stop_time_obj
 
         if not is_within_window:
             logger.info(

@@ -61,21 +61,20 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            // Get all PR comments
             const comments = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: ${{ steps.pr.outputs.number }},
             });
 
-            // Find comments from the bot (GitHub Actions bot or specific user)
+            // Delete ALL comments from bots
             const botComments = comments.data.filter(comment =>
-              comment.user.login === 'github-actions[bot]' &&
-              (comment.body.includes('## Summary') ||
-               comment.body.includes('AI Code Review') ||
-               comment.body.includes('## Changes'))
+              comment.user.type === 'Bot' || comment.user.login.includes('[bot]')
             );
 
-            // Delete old bot comments
+            console.log(`Found ${botComments.length} bot comments to delete`);
+
             for (const comment of botComments) {
               try {
                 await github.rest.issues.deleteComment({
@@ -83,13 +82,13 @@ jobs:
                   repo: context.repo.repo,
                   comment_id: comment.id,
                 });
-                console.log(`Deleted comment ${comment.id}`);
+                console.log(`Deleted comment ${comment.id} by ${comment.user.login}`);
               } catch (error) {
                 console.log(`Failed to delete comment ${comment.id}: ${error.message}`);
               }
             }
 
-            // Also clean up review comments if any
+            // Also clean up ALL bot review comments
             try {
               const reviewComments = await github.rest.pulls.listReviewComments({
                 owner: context.repo.owner,
@@ -98,8 +97,10 @@ jobs:
               });
 
               const botReviewComments = reviewComments.data.filter(comment =>
-                comment.user.login === 'github-actions[bot]'
+                comment.user.type === 'Bot' || comment.user.login.includes('[bot]')
               );
+
+              console.log(`Found ${botReviewComments.length} bot review comments to delete`);
 
               for (const comment of botReviewComments) {
                 try {
@@ -108,7 +109,7 @@ jobs:
                     repo: context.repo.repo,
                     comment_id: comment.id,
                   });
-                  console.log(`Deleted review comment ${comment.id}`);
+                  console.log(`Deleted review comment ${comment.id} by ${comment.user.login}`);
                 } catch (error) {
                   console.log(`Failed to delete review comment ${comment.id}: ${error.message}`);
                 }

@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT }}:role/${{ vars.ROLE_NAME_TO_ASSUME }}

@@ -35,10 +35,6 @@ autoscaling_client = boto3.client("autoscaling", config=retry_config)
 dynamodb = boto3.resource("dynamodb", config=retry_config)
 model_table = dynamodb.Table(os.environ.get("MODEL_TABLE_NAME", "LISAModels"))
 
-# Retry configuration for failed scaling operations
-MAX_RETRY_ATTEMPTS = 3
-RETRY_DELAY_BASE = 60
-
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Main Lambda handler for CloudWatch Events from Auto Scaling Groups"""
@@ -54,8 +50,6 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
             if operation == "sync_status":
                 return sync_model_status(event)
-            elif operation == "retry_failed":
-                return retry_failed_scaling(event)
             else:
                 logger.warning(f"Unknown operation: {operation}")
                 return {"statusCode": 200, "message": "Event processed (no action taken)"}
@@ -144,59 +138,6 @@ def handle_successful_scaling(model_id: str, auto_scaling_group: str, detail: Di
         raise
 
 
-def handle_failed_scaling(model_id: str, auto_scaling_group: str, detail: Dict[str, Any]) -> Dict[str, Any]:
-    """Handle failed Auto Scaling actions with retry logic"""
-    try:
-        error_message = detail.get("StatusMessage", "Unknown scaling failure")
-        logger.error(f"Auto Scaling action failed for model {model_id}: {error_message}")
-
-        # Get current retry count for this model
-        retry_count = get_current_retry_count(model_id)
-
-        if retry_count < MAX_RETRY_ATTEMPTS:
-            # Attempt retry with exponential backoff
-            delay_seconds = RETRY_DELAY_BASE * (2**retry_count)
-            logger.info(f"Scheduling retry {retry_count + 1} for model {model_id} in {delay_seconds} seconds")
-
-            # Update failure tracking in DynamoDB
-            update_schedule_failure(model_id, error_message, retry_count + 1)
-
-            # Log the retry attempt
-            schedule_retry(model_id, auto_scaling_group, delay_seconds, retry_count + 1)
-
-            return {
-                "statusCode": 200,
-                "body": json.dumps(
-                    {
-                        "message": "Scaling failure detected, retry scheduled",
-                        "modelId": model_id,
-                        "retryCount": retry_count + 1,
-                        "delaySeconds": delay_seconds,
-                    }
-                ),
-            }
-        else:
-            # Max retries exceeded, mark as failed
-            logger.error(f"Max retries exceeded for model {model_id}, marking schedule as failed")
-
-            update_schedule_status(model_id, True, error_message)
-
-            return {
-                "statusCode": 200,
-                "body": json.dumps(
-                    {
-                        "message": "Max retries exceeded, schedule marked as failed",
-                        "modelId": model_id,
-                        "finalError": error_message,
-                    }
-                ),
-            }
-
-    except Exception as e:
-        logger.error(f"Failed to handle scaling failure for model {model_id}: {str(e)}")
-        raise
-
-
 def sync_model_status(event: Dict[str, Any]) -> Dict[str, Any]:
     """Manually sync model status using ASG state"""
     model_id = event.get("modelId")
@@ -267,35 +208,6 @@ def sync_model_status(event: Dict[str, Any]) -> Dict[str, Any]:
         raise ValueError(f"Failed to sync status: {str(e)}")
 
 
-def retry_failed_scaling(event: Dict[str, Any]) -> Dict[str, Any]:
-    """Reset retry count for a failed scaling operation (manual intervention)"""
-    model_id = event.get("modelId")
-    if not model_id:
-        raise ValueError("modelId is required for retry_failed operation")
-
-    try:
-        # Get model information to verify it exists
-        model_info = get_model_info(model_id)
-        if not model_info:
-            raise ModelNotFoundError(f"Model {model_id} not found")
-
-        logger.info(f"Manually resetting retry count for model {model_id}")
-
-        # Reset retry count - this allows the normal scheduling process to retry
-        reset_retry_count(model_id)
-
-        return {
-            "statusCode": 200,
-            "body": json.dumps(
-                {"message": "Retry count reset - normal scheduling will retry the operation", "modelId": model_id}
-            ),
-        }
-
-    except Exception as e:
-        logger.error(f"Failed to reset retry count for model {model_id}: {str(e)}")
-        raise ValueError(f"Failed to reset retry count: {str(e)}")
-
-
 def find_model_by_asg_name(asg_name: str) -> Optional[str]:
     """Find model ID by looking up which model uses the given Auto Scaling Group"""
     try:
@@ -336,99 +248,6 @@ def update_model_status(model_id: str, new_status: ModelStatus, reason: str) -> 
     except Exception as e:
         logger.error(f"Failed to update model status for {model_id}: {e}")
         raise
-
-
-def get_current_retry_count(model_id: str) -> int:
-    """Get current retry count for a model's schedule failures"""
-    try:
-        response = model_table.get_item(Key={"model_id": model_id})
-
-        if "Item" not in response:
-            return 0
-
-        model_item = response["Item"]
-        model_config = model_item.get("model_config", {})
-        auto_scaling_config = model_config.get("autoScalingConfig", {})
-        scheduling_config = auto_scaling_config.get("scheduling", {})
-        last_failure = scheduling_config.get("lastScheduleFailure", {})
-
-        return last_failure.get("retryCount", 0)
-
-    except Exception as e:
-        logger.error(f"Failed to get retry count for model {model_id}: {e}")
-        return 0
-
-
-def update_schedule_failure(model_id: str, error_message: str, retry_count: int) -> None:
-    """Update schedule failure information in DynamoDB"""
-    try:
-        failure_info = {
-            "timestamp": datetime.now(dt_timezone.utc).isoformat(),
-            "error": error_message,
-            "retryCount": retry_count,
-        }
-
-        model_table.update_item(
-            Key={"model_id": model_id},
-            UpdateExpression="SET autoScalingConfig.scheduling.lastScheduleFailure = :failure",
-            ExpressionAttributeValues={":failure": failure_info},
-        )
-
-        logger.info(f"Updated schedule failure info for model {model_id}: retry {retry_count}")
-
-    except Exception as e:
-        logger.error(f"Failed to update schedule failure for model {model_id}: {e}")
-        raise
-
-
-def update_schedule_status(model_id: str, failed: bool, error_message: Optional[str] = None) -> None:
-    """Update schedule status in DynamoDB using boolean flags"""
-    try:
-        update_expression = "SET autoScalingConfig.scheduling.lastScheduleFailed = :failed"
-        expression_values = {":failed": failed}
-
-        if error_message and failed:
-            update_expression += ", autoScalingConfig.scheduling.lastScheduleFailure = :failure"
-            expression_values[":failure"] = {
-                "timestamp": datetime.now(dt_timezone.utc).isoformat(),
-                "error": error_message,
-                "retryCount": get_current_retry_count(model_id),
-            }
-        elif not failed:
-            # Clear failure info on success
-            update_expression += " REMOVE autoScalingConfig.scheduling.lastScheduleFailure"
-
-        model_table.update_item(
-            Key={"model_id": model_id}, UpdateExpression=update_expression, ExpressionAttributeValues=expression_values
-        )
-
-        status_text = "failed" if failed else "successful"
-        logger.info(f"Updated schedule status for model {model_id} to {status_text}")
-
-    except Exception as e:
-        logger.error(f"Failed to update schedule status for model {model_id}: {e}")
-        raise
-
-
-def schedule_retry(model_id: str, auto_scaling_group: str, delay_seconds: int, retry_count: int) -> None:
-    """Schedule a retry for a failed scaling operation"""
-    logger.info(
-        f"Retry scheduled for model {model_id}: "
-        f"ASG={auto_scaling_group}, delay={delay_seconds}s, attempt={retry_count}"
-    )
-
-
-def reset_retry_count(model_id: str) -> None:
-    """Reset retry count after successful operation"""
-    try:
-        model_table.update_item(
-            Key={"model_id": model_id}, UpdateExpression="REMOVE autoScalingConfig.scheduling.lastScheduleFailure"
-        )
-
-        logger.info(f"Reset retry count for model {model_id}")
-
-    except Exception as e:
-        logger.error(f"Failed to reset retry count for model {model_id}: {e}")
 
 
 def get_model_info(model_id: str) -> Optional[Dict[str, Any]]:

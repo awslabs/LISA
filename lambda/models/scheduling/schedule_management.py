@@ -15,7 +15,7 @@
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from datetime import timezone as dt_timezone
 from typing import Any, Dict, List, Optional
 from zoneinfo import ZoneInfo
@@ -177,7 +177,14 @@ def get_schedule(event: Dict[str, Any]) -> Dict[str, Any]:
 
         return {
             "statusCode": 200,
-            "body": json.dumps({"modelId": model_id, "scheduling": scheduling_config}, default=str),
+            "body": json.dumps(
+                {
+                    "modelId": model_id,
+                    "scheduling": scheduling_config,
+                    "nextScheduledAction": scheduling_config.get("nextScheduledAction"),
+                },
+                default=str,
+            ),
         }
 
     except Exception as e:
@@ -604,6 +611,121 @@ def cleanup_scheduled_actions_by_name_pattern(auto_scaling_group: str, model_id:
         logger.error(f"Failed to cleanup scheduled actions by pattern for model {model_id}: {e}")
 
 
+def calculate_next_scheduled_action(schedule_config: SchedulingConfig, timezone_name: str) -> Optional[Dict[str, str]]:
+    """Calculate the next scheduled action (START or STOP) based on the schedule configuration"""
+    try:
+        tz = ZoneInfo(timezone_name)
+        now = datetime.now(tz)
+
+        if schedule_config.scheduleType == ScheduleType.RECURRING:
+            return _calculate_next_recurring_action(schedule_config.recurringSchedule, now, tz)
+        elif schedule_config.scheduleType == ScheduleType.DAILY:
+            return _calculate_next_daily_action(schedule_config.dailySchedule, now, tz)
+
+        return None
+    except Exception as e:
+        logger.error(f"Failed to calculate next scheduled action: {e}")
+        return None
+
+
+def _calculate_next_recurring_action(day_schedule: DaySchedule, now: datetime, tz: ZoneInfo) -> Dict[str, str]:
+    """Calculate next action for recurring schedule"""
+    # Parse schedule times
+    start_hour, start_minute = map(int, day_schedule.startTime.split(":"))
+    stop_hour, stop_minute = map(int, day_schedule.stopTime.split(":"))
+
+    # Create time objects for today
+    today = now.date()
+    start_time = datetime.combine(today, datetime.min.time().replace(hour=start_hour, minute=start_minute)).replace(
+        tzinfo=tz
+    )
+    stop_time = datetime.combine(today, datetime.min.time().replace(hour=stop_hour, minute=stop_minute)).replace(
+        tzinfo=tz
+    )
+
+    # Check which action comes next
+    if now < start_time:
+        # Before start time today - next action is START today
+        return {"action": "START", "scheduledTime": start_time.isoformat()}
+    elif now < stop_time:
+        # Between start and stop today - next action is STOP today
+        return {"action": "STOP", "scheduledTime": stop_time.isoformat()}
+    else:
+        # After stop time today - next action is START tomorrow
+        tomorrow_start = start_time + timedelta(days=1)
+        return {"action": "START", "scheduledTime": tomorrow_start.isoformat()}
+
+
+def _calculate_next_daily_action(
+    daily_schedule: WeeklySchedule, now: datetime, tz: ZoneInfo
+) -> Optional[Dict[str, str]]:
+    """Calculate next action for daily schedule"""
+    current_weekday = now.weekday()
+
+    day_schedules = [
+        daily_schedule.monday,  # 0: Monday
+        daily_schedule.tuesday,  # 1: Tuesday
+        daily_schedule.wednesday,  # 2: Wednesday
+        daily_schedule.thursday,  # 3: Thursday
+        daily_schedule.friday,  # 4: Friday
+        daily_schedule.saturday,  # 5: Saturday
+        daily_schedule.sunday,  # 6: Sunday
+    ]
+
+    # Check today first
+    today_schedule = day_schedules[current_weekday]
+    if today_schedule:
+        next_action = _get_next_action_for_day(today_schedule, now, tz, 0)
+        if next_action:
+            return next_action
+
+    # Look ahead for the next 7 days to find the next scheduled action
+    for days_ahead in range(1, 8):
+        future_date = now.date() + timedelta(days=days_ahead)
+        future_weekday = future_date.weekday()
+        future_schedule = day_schedules[future_weekday]
+
+        if future_schedule:
+            # Found a schedule for this day - next action is START at beginning of that day
+            start_hour, start_minute = map(int, future_schedule.startTime.split(":"))
+            future_start = datetime.combine(
+                future_date, datetime.min.time().replace(hour=start_hour, minute=start_minute)
+            ).replace(tzinfo=tz)
+
+            return {"action": "START", "scheduledTime": future_start.isoformat()}
+    return None
+
+
+def _get_next_action_for_day(
+    day_schedule: DaySchedule, now: datetime, tz: ZoneInfo, days_offset: int
+) -> Optional[Dict[str, str]]:
+    """Get next action for a specific day"""
+    target_date = now.date() + timedelta(days=days_offset)
+
+    # Parse schedule times
+    start_hour, start_minute = map(int, day_schedule.startTime.split(":"))
+    stop_hour, stop_minute = map(int, day_schedule.stopTime.split(":"))
+
+    # Create time objects for the target date
+    start_time = datetime.combine(
+        target_date, datetime.min.time().replace(hour=start_hour, minute=start_minute)
+    ).replace(tzinfo=tz)
+    stop_time = datetime.combine(target_date, datetime.min.time().replace(hour=stop_hour, minute=stop_minute)).replace(
+        tzinfo=tz
+    )
+
+    if days_offset == 0:  # Today
+        if now < start_time:
+            return {"action": "START", "scheduledTime": start_time.isoformat()}
+        elif now < stop_time:
+            return {"action": "STOP", "scheduledTime": stop_time.isoformat()}
+    else:  # Future day
+        # Next action is always START at beginning of scheduled day
+        return {"action": "START", "scheduledTime": start_time.isoformat()}
+
+    return None
+
+
 def merge_schedule_data(model_id: str, partial_update: Dict[str, Any]) -> Dict[str, Any]:
     """Merge partial schedule update with existing schedule data"""
     # Get existing schedule data from model_config.autoScalingConfig.scheduling
@@ -685,6 +807,11 @@ def update_model_schedule_record(
             schedule_data["lastScheduleUpdate"] = datetime.now(dt_timezone.utc).isoformat()
             schedule_data["scheduleConfigured"] = enabled
             schedule_data["lastScheduleFailed"] = False
+            schedule_data["lastScheduleFailure"] = None
+
+            # Calculate and store next scheduled action
+            next_action = calculate_next_scheduled_action(scheduling_config, scheduling_config.timezone)
+            schedule_data["nextScheduledAction"] = next_action
 
             if auto_scaling_config_exists:
                 # Update existing model_config.autoScalingConfig.scheduling

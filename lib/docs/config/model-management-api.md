@@ -485,6 +485,7 @@ DELETE https://<apigw_endpoint>/models/{modelId}/schedule
 ### Schedule Validation Rules
 
 - **Time Format**: All times must be in HH:MM format using 24-hour notation (00:00 to 23:59)
+- **24-Hour Window Constraint**: Start time must be before stop time within the same day
 - **Minimum Duration**: Stop time must be at least 2 hours after start time
 - **Daily Schedule**: At least one day must have a schedule configured for DAILY type
 - **Timezone**: Must be a valid IANA timezone identifier
@@ -494,8 +495,15 @@ DELETE https://<apigw_endpoint>/models/{modelId}/schedule
 ### Schedule Behavior
 
 - **Automatic Actions**: Models are automatically started and stopped according to their configured schedules
-- **Cross-Day Schedules**: Schedules can span midnight (e.g., start at 23:00, stop at 01:00 next day)
+- **24-Hour Constraint**: Each day's schedule operates within a single 24-hour period
+- **Consecutive Schedule Gaps**: For schedules ending at 23:59 and starting at 00:00 the next day, there may be a brief 1-minute service gap
 - **Weekend Handling**: Days without configured schedules remain unaffected by scheduling
-- **Failure Handling**: Failed schedule actions are logged and can be monitored via the status endpoint
+- **Failure Handling**: Failed schedule actions are logged and can be monitored via the status endpoint (AWS ASG handles automatic retries for internal failures; however, some failures like EBS volume must be addressed directly by administrators)
 - **Manual Override**: Manual start/stop operations work independently of scheduling
 - **Update Handling**: Schedule updates take effect immediately and recalculate next actions
+
+### Schedule Design Considerations
+
+- **Avoiding Service Gaps**: To minimize service interruptions, avoid scheduling patterns where one day ends at 23:59 and the next day starts at 00:00
+- **Recommended Patterns**: For continuous coverage, consider using patterns like Monday 09:00-23:58 and Tuesday 00:01-17:00 to create small buffers
+- **Night Shift Operations**: For operations spanning midnight, split the schedule across two days (e.g., Monday 21:00-23:59, Tuesday 00:00-03:00)

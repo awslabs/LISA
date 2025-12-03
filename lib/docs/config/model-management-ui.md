@@ -269,8 +269,8 @@ The Model Management UI displays comprehensive schedule information:
 #### Time Format Requirements
 - All times must be in 24-hour format (HH:MM)
 - Valid range: 00:00 to 23:59
+- Start time must be before stop time within the same day
 - Stop time must be at least 2 hours after start time
-- Cross-day schedules are supported (e.g., start at 23:00, stop at 01:00 next day)
 
 #### Schedule Execution
 - **Automatic Actions**: Models are automatically started and stopped according to configured schedules
@@ -330,6 +330,7 @@ The UI provides several indicators for schedule health:
 
 #### Schedule Design
 - Use meaningful time buffers (minimum 2-hour duration requirement exists for good reason)
-- Consider cross-day schedules for global usage patterns
+- For operations spanning midnight, split schedules across consecutive days (e.g., Monday 21:00-23:59, Tuesday 00:00-03:00)
 - Plan for holiday and special event schedule modifications
 - Implement gradual rollout of new schedules across model fleet
+- Consider small gaps between consecutive day schedules to avoid brief service interruptions (e.g., Monday ends 23:58, Tuesday starts 00:01)

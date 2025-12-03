@@ -668,3 +668,361 @@ class TestScheduleValidation:
         assert result["statusCode"] == 500
         body = json.loads(result["body"])
         assert "Update failed" in body["message"]
+
+
+class TestNextScheduledActionCalculation:
+    """Test nextScheduledAction calculation functions."""
+
+    @patch("models.scheduling.schedule_management.datetime")
+    def test_calculate_next_scheduled_action_recurring(self, mock_datetime):
+        """Test next scheduled action calculation for recurring schedule."""
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+
+        from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig
+        from models.scheduling.schedule_management import calculate_next_scheduled_action
+
+        # Test before start time
+        recurring_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
+        schedule_config = SchedulingConfig(
+            scheduleType=ScheduleType.RECURRING, timezone="UTC", recurringSchedule=recurring_schedule
+        )
+
+        # Mock current time as 8:00 AM (before start)
+        mock_now = datetime(2024, 1, 15, 8, 0, tzinfo=ZoneInfo("UTC"))
+        mock_datetime.now.return_value = mock_now
+        mock_datetime.min.time.return_value = datetime.min.time()
+        mock_datetime.combine = datetime.combine
+
+        result = calculate_next_scheduled_action(schedule_config, "UTC")
+
+        assert result is not None
+        assert result["action"] == "START"
+        assert "2024-01-15T09:00:00+00:00" in result["scheduledTime"]
+
+    @patch("models.scheduling.schedule_management.datetime")
+    def test_calculate_next_scheduled_action_daily(self, mock_datetime):
+        """Test next scheduled action calculation for daily schedule."""
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+
+        from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig, WeeklySchedule
+        from models.scheduling.schedule_management import calculate_next_scheduled_action
+
+        # Create weekly schedule with Monday and Tuesday
+        weekly_schedule = WeeklySchedule(
+            monday=DaySchedule(startTime="09:00", stopTime="17:00"),
+            tuesday=DaySchedule(startTime="10:00", stopTime="18:00"),
+        )
+        schedule_config = SchedulingConfig(
+            scheduleType=ScheduleType.DAILY, timezone="UTC", dailySchedule=weekly_schedule
+        )
+
+        # Mock current time as Monday 8:00 AM (before start)
+        mock_now = datetime(2024, 1, 15, 8, 0, tzinfo=ZoneInfo("UTC"))  # Monday
+        mock_datetime.now.return_value = mock_now
+        mock_datetime.min.time.return_value = datetime.min.time()
+        mock_datetime.combine = datetime.combine
+
+        result = calculate_next_scheduled_action(schedule_config, "UTC")
+
+        assert result is not None
+        assert result["action"] == "START"
+        assert "2024-01-15T09:00:00+00:00" in result["scheduledTime"]
+
+    @patch("models.scheduling.schedule_management.ZoneInfo")
+    def test_calculate_next_scheduled_action_exception(self, mock_zoneinfo):
+        """Test next scheduled action calculation with exception."""
+        from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig
+        from models.scheduling.schedule_management import calculate_next_scheduled_action
+
+        # Create valid config but mock ZoneInfo to raise exception
+        recurring_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
+        schedule_config = SchedulingConfig(
+            scheduleType=ScheduleType.RECURRING, timezone="UTC", recurringSchedule=recurring_schedule
+        )
+
+        # Mock ZoneInfo to raise exception
+        mock_zoneinfo.side_effect = Exception("Invalid timezone")
+
+        result = calculate_next_scheduled_action(schedule_config, "UTC")
+
+        # Should return None on exception
+        assert result is None
+
+
+class TestModelBaselineCapacity:
+    """Test get_model_baseline_capacity function."""
+
+    @patch("models.scheduling.schedule_management.model_table")
+    def test_get_model_baseline_capacity_success(self, mock_model_table):
+        """Test successful baseline capacity retrieval."""
+        from models.scheduling.schedule_management import get_model_baseline_capacity
+
+        # Mock model table response
+        mock_model_table.get_item.return_value = {
+            "Item": {
+                "model_id": "test-model",
+                "model_config": {
+                    "autoScalingConfig": {
+                        "minCapacity": 2,
+                        "maxCapacity": 8,
+                        "desiredCapacity": 4,
+                    }
+                },
+            }
+        }
+
+        result = get_model_baseline_capacity("test-model")
+
+        assert result == {"MinSize": 2, "MaxSize": 8, "DesiredCapacity": 4}
+
+    @patch("models.scheduling.schedule_management.model_table")
+    def test_get_model_baseline_capacity_no_desired(self, mock_model_table):
+        """Test baseline capacity retrieval without desired capacity."""
+        from models.scheduling.schedule_management import get_model_baseline_capacity
+
+        # Mock model table response without desiredCapacity
+        mock_model_table.get_item.return_value = {
+            "Item": {
+                "model_id": "test-model",
+                "model_config": {
+                    "autoScalingConfig": {
+                        "minCapacity": 1,
+                        "maxCapacity": 5,
+                    }
+                },
+            }
+        }
+
+        result = get_model_baseline_capacity("test-model")
+
+        # Should default desiredCapacity to minCapacity
+        assert result == {"MinSize": 1, "MaxSize": 5, "DesiredCapacity": 1}
+
+    @patch("models.scheduling.schedule_management.model_table")
+    def test_get_model_baseline_capacity_model_not_found(self, mock_model_table):
+        """Test baseline capacity retrieval when model not found."""
+        from models.scheduling.schedule_management import get_model_baseline_capacity
+
+        # Mock model not found
+        mock_model_table.get_item.return_value = {}
+
+        with pytest.raises(RuntimeError, match="Failed to get baseline capacity"):
+            get_model_baseline_capacity("nonexistent-model")
+
+
+class TestMergeScheduleData:
+    """Test merge_schedule_data function."""
+
+    @patch("models.scheduling.schedule_management.model_table")
+    def test_merge_schedule_data_with_existing(self, mock_model_table):
+        """Test merging schedule data with existing schedule."""
+        from models.scheduling.schedule_management import merge_schedule_data
+
+        # Mock existing schedule data
+        mock_model_table.get_item.return_value = {
+            "Item": {
+                "model_id": "test-model",
+                "model_config": {
+                    "autoScalingConfig": {
+                        "scheduling": {
+                            "scheduleType": "RECURRING",
+                            "timezone": "UTC",
+                            "scheduleEnabled": True,
+                        }
+                    }
+                },
+            }
+        }
+
+        partial_update = {"timezone": "America/New_York", "newField": "value"}
+
+        result = merge_schedule_data("test-model", partial_update)
+
+        # Should merge existing with new data
+        assert result["scheduleType"] == "RECURRING"  # Existing
+        assert result["timezone"] == "America/New_York"  # Updated
+        assert result["newField"] == "value"  # New
+        # Metadata fields should be removed
+        assert "scheduleEnabled" not in result
+
+    @patch("models.scheduling.schedule_management.model_table")
+    def test_merge_schedule_data_no_existing(self, mock_model_table):
+        """Test merging schedule data without existing schedule."""
+        from models.scheduling.schedule_management import merge_schedule_data
+
+        # Mock no existing schedule
+        mock_model_table.get_item.return_value = {"Item": {"model_id": "test-model"}}
+
+        partial_update = {"scheduleType": "DAILY", "timezone": "UTC"}
+
+        result = merge_schedule_data("test-model", partial_update)
+
+        # Should just return the partial update
+        assert result == partial_update
+
+    @patch("models.scheduling.schedule_management.model_table")
+    def test_merge_schedule_data_exception(self, mock_model_table):
+        """Test merging schedule data with exception."""
+        from models.scheduling.schedule_management import merge_schedule_data
+
+        # Mock exception
+        mock_model_table.get_item.side_effect = Exception("DynamoDB error")
+
+        partial_update = {"scheduleType": "DAILY", "timezone": "UTC"}
+
+        result = merge_schedule_data("test-model", partial_update)
+
+        # Should still return the partial update despite exception
+        assert result == partial_update
+
+
+class TestImmediateScaling:
+    """Test immediate scaling functions."""
+
+    @patch("models.scheduling.schedule_management.autoscaling_client")
+    def test_scale_immediately_outside_window(self, mock_autoscaling_client):
+        """Test immediate scaling outside scheduled window."""
+        from datetime import datetime, time
+        from zoneinfo import ZoneInfo
+
+        from models.domain_objects import DaySchedule
+        from models.scheduling.schedule_management import scale_immediately
+
+        day_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
+
+        with patch("models.scheduling.schedule_management.datetime") as mock_datetime:
+            # Mock current time as 8:00 AM (outside window)
+            mock_now = datetime(2024, 1, 15, 8, 0, tzinfo=ZoneInfo("UTC"))
+            mock_datetime.now.return_value = mock_now
+            mock_datetime.min.time.return_value = time.min
+
+            scale_immediately("test-asg", day_schedule, "UTC")
+
+            # Should scale down to 0
+            mock_autoscaling_client.update_auto_scaling_group.assert_called_once_with(
+                AutoScalingGroupName="test-asg", MinSize=0, MaxSize=0, DesiredCapacity=0
+            )
+
+    @patch("models.scheduling.schedule_management.autoscaling_client")
+    def test_scale_immediately_inside_window(self, mock_autoscaling_client):
+        """Test immediate scaling inside scheduled window."""
+        from datetime import datetime, time
+        from zoneinfo import ZoneInfo
+
+        from models.domain_objects import DaySchedule
+        from models.scheduling.schedule_management import scale_immediately
+
+        day_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
+
+        with patch("models.scheduling.schedule_management.datetime") as mock_datetime:
+            # Mock current time as 10:00 AM (inside window)
+            mock_now = datetime(2024, 1, 15, 10, 0, tzinfo=ZoneInfo("UTC"))
+            mock_datetime.now.return_value = mock_now
+            mock_datetime.min.time.return_value = time.min
+
+            scale_immediately("test-asg", day_schedule, "UTC")
+
+            # Should not scale (no ASG calls)
+            mock_autoscaling_client.update_auto_scaling_group.assert_not_called()
+
+
+class TestCleanupScheduledActions:
+    """Test cleanup_scheduled_actions_by_name_pattern function."""
+
+    @patch("models.scheduling.schedule_management.autoscaling_client")
+    def test_cleanup_scheduled_actions_by_name_pattern_success(self, mock_autoscaling_client):
+        """Test successful cleanup by name pattern."""
+        from models.scheduling.schedule_management import cleanup_scheduled_actions_by_name_pattern
+
+        # Mock scheduled actions response
+        mock_autoscaling_client.describe_scheduled_actions.return_value = {
+            "ScheduledUpdateGroupActions": [
+                {"ScheduledActionName": "test-model-daily-start"},
+                {"ScheduledActionName": "test-model-monday-stop"},
+                {"ScheduledActionName": "other-model-daily-start"},
+                {"ScheduledActionName": "test-model-tuesday-start"},
+            ]
+        }
+
+        cleanup_scheduled_actions_by_name_pattern("test-asg", "test-model")
+
+        # Should delete actions matching the pattern (3 out of 4)
+        assert mock_autoscaling_client.delete_scheduled_action.call_count == 3
+        mock_autoscaling_client.delete_scheduled_action.assert_any_call(
+            AutoScalingGroupName="test-asg", ScheduledActionName="test-model-daily-start"
+        )
+        mock_autoscaling_client.delete_scheduled_action.assert_any_call(
+            AutoScalingGroupName="test-asg", ScheduledActionName="test-model-monday-stop"
+        )
+        mock_autoscaling_client.delete_scheduled_action.assert_any_call(
+            AutoScalingGroupName="test-asg", ScheduledActionName="test-model-tuesday-start"
+        )
+
+    @patch("models.scheduling.schedule_management.autoscaling_client")
+    def test_cleanup_scheduled_actions_by_name_pattern_client_error(self, mock_autoscaling_client):
+        """Test cleanup with client error."""
+        from botocore.exceptions import ClientError
+        from models.scheduling.schedule_management import cleanup_scheduled_actions_by_name_pattern
+
+        # Mock client error on describe
+        mock_autoscaling_client.describe_scheduled_actions.side_effect = ClientError(
+            {"Error": {"Code": "ValidationError", "Message": "ASG not found"}}, "DescribeScheduledActions"
+        )
+
+        # Should not raise exception
+        cleanup_scheduled_actions_by_name_pattern("nonexistent-asg", "test-model")
+
+
+class TestCreateScheduledActionsHelpers:
+    """Test create scheduled actions helper functions."""
+
+    @patch("models.scheduling.schedule_management.construct_scheduled_action_arn")
+    @patch("models.scheduling.schedule_management.get_model_baseline_capacity")
+    @patch("models.scheduling.schedule_management.scale_immediately")
+    @patch("models.scheduling.schedule_management.autoscaling_client")
+    def test_create_recurring_scheduled_actions_success(
+        self, mock_autoscaling_client, mock_scale_immediately, mock_get_baseline_capacity, mock_construct_arn
+    ):
+        """Test successful creation of recurring scheduled actions."""
+        from models.domain_objects import DaySchedule
+        from models.scheduling.schedule_management import create_recurring_scheduled_actions
+
+        # Mock dependencies
+        mock_get_baseline_capacity.return_value = {"MinSize": 1, "MaxSize": 5, "DesiredCapacity": 2}
+        mock_construct_arn.side_effect = ["start-arn", "stop-arn"]
+
+        day_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
+
+        result = create_recurring_scheduled_actions("test-model", "test-asg", day_schedule, "UTC")
+
+        assert result == ["start-arn", "stop-arn"]
+        assert mock_autoscaling_client.put_scheduled_update_group_action.call_count == 2
+        mock_scale_immediately.assert_called_once()
+
+    @patch("models.scheduling.schedule_management.construct_scheduled_action_arn")
+    @patch("models.scheduling.schedule_management.get_model_baseline_capacity")
+    @patch("models.scheduling.schedule_management.check_daily_immediate_scaling")
+    @patch("models.scheduling.schedule_management.autoscaling_client")
+    def test_create_daily_scheduled_actions_success(
+        self, mock_autoscaling_client, mock_check_daily_scaling, mock_get_baseline_capacity, mock_construct_arn
+    ):
+        """Test successful creation of daily scheduled actions."""
+        from models.domain_objects import DaySchedule, WeeklySchedule
+        from models.scheduling.schedule_management import create_daily_scheduled_actions
+
+        # Mock dependencies
+        mock_get_baseline_capacity.return_value = {"MinSize": 1, "MaxSize": 5, "DesiredCapacity": 2}
+        mock_construct_arn.side_effect = ["mon-start-arn", "mon-stop-arn", "tue-start-arn", "tue-stop-arn"]
+
+        weekly_schedule = WeeklySchedule(
+            monday=DaySchedule(startTime="09:00", stopTime="17:00"),
+            tuesday=DaySchedule(startTime="10:00", stopTime="18:00"),
+        )
+
+        result = create_daily_scheduled_actions("test-model", "test-asg", weekly_schedule, "UTC")
+
+        assert result == ["mon-start-arn", "mon-stop-arn", "tue-start-arn", "tue-stop-arn"]
+        assert mock_autoscaling_client.put_scheduled_update_group_action.call_count == 4
+        mock_check_daily_scaling.assert_called_once()

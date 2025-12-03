@@ -15,6 +15,7 @@
  */
 
 import { defineConfig } from 'vitepress';
+import { tabsMarkdownPlugin } from 'vitepress-plugin-tabs'
 
 const navLinks = [
   {
@@ -93,6 +94,11 @@ export default defineConfig({
   outDir: 'dist',
   base: '/LISA/',
   head: [['link', { rel: 'icon', href: '/LISA/favicon.ico' }]],
+  markdown: {
+    config(md) {
+      md.use(tabsMarkdownPlugin)
+    },
+  },
   // https://vitepress.dev/reference/default-theme-config
   themeConfig: {
     logo: {

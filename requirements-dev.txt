@@ -37,3 +37,4 @@ cachetools==5.5.0
 black==24.3.0
 flake8==7.0.0
 mypy==1.9.0
+yq==3.4.3

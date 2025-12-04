@@ -24,8 +24,7 @@ from models.domain_objects import (
     DeleteScheduleResponse,
     GetScheduleResponse,
     GetScheduleStatusResponse,
-    ScheduleType,
-    SchedulingConfig,
+    RecurringSchedulingConfig,
     UpdateScheduleResponse,
 )
 from models.exception import InvalidStateTransitionError, ModelNotFoundError
@@ -110,9 +109,7 @@ def sample_model_item():
 def sample_schedule_config():
     """Sample scheduling configuration."""
     recurring_schedule = DaySchedule(startTime="10:00", stopTime="18:00")
-    return SchedulingConfig(
-        scheduleType=ScheduleType.RECURRING, timezone="America/New_York", recurringSchedule=recurring_schedule
-    )
+    return RecurringSchedulingConfig(timezone="America/New_York", recurringSchedule=recurring_schedule)
 
 
 class TestUpdateScheduleHandler:

@@ -83,6 +83,14 @@ export function ReviewChanges (props: ReviewChangesProps): ReactElement {
                 const cleanedScheduling = {};
                 for (const [schedKey, schedValue] of Object.entries(value)) {
                     if (schedValue !== undefined && schedValue !== null) {
+                        // Skip schedule-related fields that are undefined or empty when scheduling is disabled
+                        if ((schedKey === 'nextScheduledAction' || schedKey === 'lastScheduleUpdate' ||
+                            schedKey === 'scheduleStatus' || schedKey === 'scheduleConfigured' ||
+                            schedKey === 'lastScheduleFailed' || schedKey === 'scheduledActionArns') &&
+                            (schedValue === undefined || schedValue === null || schedValue === '')) {
+                            continue;
+                        }
+
                         if (schedKey === 'dailySchedule' && _.isPlainObject(schedValue)) {
                             // Clean dailySchedule object
                             const cleanedDailySchedule = {};
@@ -121,8 +129,14 @@ export function ReviewChanges (props: ReviewChangesProps): ReactElement {
                     }
                 }
 
-                // Check if scheduling is effectively disabled
-                if (Object.keys(cleanedScheduling).length === 0) {
+                // Check if scheduling is effectively disabled (no valid scheduling config or only has basic fields)
+                const hasValidScheduleConfig = Object.keys(cleanedScheduling).some((key) =>
+                    key === 'dailySchedule' || key === 'recurringSchedule' ||
+                    (key === 'scheduleEnabled' && cleanedScheduling[key] === true &&
+                     cleanedScheduling['scheduleType'] && cleanedScheduling['scheduleType'] !== 'NONE')
+                );
+
+                if (!hasValidScheduleConfig || Object.keys(cleanedScheduling).length === 0) {
                     output.push((
                         <li key={propIndex.index++}><p><strong>Auto Scaling Schedule</strong>: Disabled - Model will always be on.</p>
                         </li>));

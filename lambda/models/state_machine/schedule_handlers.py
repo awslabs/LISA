@@ -29,7 +29,7 @@ retry_config = Config(
     region_name=os.environ.get("AWS_REGION", "us-east-1"), retries={"max_attempts": 3, "mode": "adaptive"}
 )
 dynamodb = boto3.resource("dynamodb", config=retry_config)
-model_table = dynamodb.Table(os.environ.get("MODEL_TABLE_NAME", "LISAModels"))
+model_table = dynamodb.Table(os.environ.get("MODEL_TABLE_NAME"))
 
 
 def handle_schedule_creation(event: Dict[str, Any], context: Any) -> Dict[str, Any]:

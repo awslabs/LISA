@@ -111,10 +111,10 @@ class TestScheduleManagement:
         assert body["scheduleEnabled"]
 
         # Verify Auto Scaling calls
-        assert mock_autoscaling_client.put_scheduled_update_group_action.call_count == 2  # START and STOP
+        assert mock_autoscaling_client.put_scheduled_update_group_action.call_count == 2
 
         # Verify DynamoDB update
-        mock_model_table.update_item.assert_called_once()
+        assert mock_model_table.update_item.call_count == 2
 
     @patch("models.scheduling.schedule_management.model_table")
     def test_get_operation_success(self, mock_model_table, lambda_context, sample_schedule_config):
@@ -483,13 +483,12 @@ class TestCreateScheduledActions:
         self, mock_model_table, mock_autoscaling_client, mock_get_baseline_capacity, mock_create_recurring
     ):
         """Test creating scheduled actions for RECURRING type."""
-        from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig
+        from models.domain_objects import DaySchedule, RecurringSchedulingConfig
         from models.scheduling.schedule_management import create_scheduled_actions
 
         mock_create_recurring.return_value = ["arn1", "arn2"]
 
-        schedule_config = SchedulingConfig(
-            scheduleType=ScheduleType.RECURRING,
+        schedule_config = RecurringSchedulingConfig(
             timezone="UTC",
             recurringSchedule=DaySchedule(startTime="09:00", stopTime="17:00"),
         )
@@ -509,7 +508,7 @@ class TestCreateScheduledActions:
         self, mock_model_table, mock_autoscaling_client, mock_get_baseline_capacity, mock_create_daily
     ):
         """Test creating scheduled actions for DAILY type."""
-        from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig, WeeklySchedule
+        from models.domain_objects import DailySchedulingConfig, DaySchedule, WeeklySchedule
         from models.scheduling.schedule_management import create_scheduled_actions
 
         mock_create_daily.return_value = ["arn1", "arn2", "arn3"]
@@ -519,9 +518,7 @@ class TestCreateScheduledActions:
             tuesday=DaySchedule(startTime="10:00", stopTime="18:00"),
         )
 
-        schedule_config = SchedulingConfig(
-            scheduleType=ScheduleType.DAILY, timezone="UTC", dailySchedule=weekly_schedule
-        )
+        schedule_config = DailySchedulingConfig(timezone="UTC", dailySchedule=weekly_schedule)
 
         result = create_scheduled_actions("test-model", "test-asg", schedule_config)
 
@@ -531,7 +528,7 @@ class TestCreateScheduledActions:
     @patch("models.scheduling.schedule_management.get_model_baseline_capacity")
     def test_create_scheduled_actions_recurring_daily_missing_schedule(self, mock_get_baseline_capacity):
         """Test error when recurringSchedule is missing for RECURRING."""
-        from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig
+        from models.domain_objects import DaySchedule, RecurringSchedulingConfig
         from models.scheduling.schedule_management import create_scheduled_actions
 
         # Mock baseline capacity
@@ -539,9 +536,7 @@ class TestCreateScheduledActions:
 
         # Create a valid config first, then manually set recurringSchedule to None
         valid_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
-        schedule_config = SchedulingConfig(
-            scheduleType=ScheduleType.RECURRING, timezone="UTC", recurringSchedule=valid_schedule
-        )
+        schedule_config = RecurringSchedulingConfig(timezone="UTC", recurringSchedule=valid_schedule)
         # Now manually set to None to test the runtime behavior
         schedule_config.recurringSchedule = None
 
@@ -552,7 +547,7 @@ class TestCreateScheduledActions:
     @patch("models.scheduling.schedule_management.get_model_baseline_capacity")
     def test_create_scheduled_actions_each_day_missing_schedule(self, mock_get_baseline_capacity):
         """Test error when dailySchedule is missing for DAILY."""
-        from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig, WeeklySchedule
+        from models.domain_objects import DailySchedulingConfig, DaySchedule, WeeklySchedule
         from models.scheduling.schedule_management import create_scheduled_actions
 
         # Mock baseline capacity
@@ -560,7 +555,7 @@ class TestCreateScheduledActions:
 
         # Create a valid config first, then manually set dailySchedule to None
         valid_weekly = WeeklySchedule(monday=DaySchedule(startTime="09:00", stopTime="17:00"))
-        schedule_config = SchedulingConfig(scheduleType=ScheduleType.DAILY, timezone="UTC", dailySchedule=valid_weekly)
+        schedule_config = DailySchedulingConfig(timezone="UTC", dailySchedule=valid_weekly)
         # Now manually set to None to test the runtime behavior
         schedule_config.dailySchedule = None
 
@@ -575,7 +570,7 @@ class TestUpdateModelScheduleRecord:
     @patch("models.scheduling.schedule_management.model_table")
     def test_update_model_schedule_record_existing_config(self, mock_model_table):
         """Test updating model with existing autoScalingConfig."""
-        from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig
+        from models.domain_objects import DaySchedule, RecurringSchedulingConfig
         from models.scheduling.schedule_management import update_model_schedule_record
 
         # Mock existing model with model_config.autoScalingConfig
@@ -583,23 +578,21 @@ class TestUpdateModelScheduleRecord:
             "Item": {"model_id": "test-model", "model_config": {"autoScalingConfig": {"existing": "config"}}}
         }
 
-        # Create valid SchedulingConfig with required recurringSchedule for RECURRING
+        # Create valid RecurringSchedulingConfig
         daily_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
-        schedule_config = SchedulingConfig(
-            scheduleType=ScheduleType.RECURRING, timezone="UTC", recurringSchedule=daily_schedule
-        )
+        schedule_config = RecurringSchedulingConfig(timezone="UTC", recurringSchedule=daily_schedule)
 
         update_model_schedule_record("test-model", schedule_config, ["arn1"], True)
 
-        # Verify update_item was called with correct expression
-        mock_model_table.update_item.assert_called_once()
-        call_args = mock_model_table.update_item.call_args
-        assert call_args[1]["UpdateExpression"] == "SET model_config.autoScalingConfig.scheduling = :scheduling"
+        # Verify update_item was called
+        assert mock_model_table.update_item.call_count == 2
+        call_args = mock_model_table.update_item.call_args_list
+        assert call_args[0][1]["UpdateExpression"] == "SET model_config.autoScalingConfig.scheduling = :scheduling"
 
     @patch("models.scheduling.schedule_management.model_table")
     def test_update_model_schedule_record_new_config(self, mock_model_table):
         """Test updating model without existing autoScalingConfig."""
-        from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig
+        from models.domain_objects import DaySchedule, RecurringSchedulingConfig
         from models.scheduling.schedule_management import update_model_schedule_record
 
         # Mock model without model_config.autoScalingConfig
@@ -610,18 +603,16 @@ class TestUpdateModelScheduleRecord:
             }
         }
 
-        # Create valid SchedulingConfig with required recurringSchedule for RECURRING type
+        # Create valid RecurringSchedulingConfig
         recurring_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
-        schedule_config = SchedulingConfig(
-            scheduleType=ScheduleType.RECURRING, timezone="UTC", recurringSchedule=recurring_schedule
-        )
+        schedule_config = RecurringSchedulingConfig(timezone="UTC", recurringSchedule=recurring_schedule)
 
         update_model_schedule_record("test-model", schedule_config, ["arn1"], True)
 
-        # Verify update_item was called with correct expression
-        mock_model_table.update_item.assert_called_once()
-        call_args = mock_model_table.update_item.call_args
-        assert call_args[1]["UpdateExpression"] == "SET model_config.autoScalingConfig = :autoScalingConfig"
+        # Verify update_item was called
+        assert mock_model_table.update_item.call_count == 2
+        call_args = mock_model_table.update_item.call_args_list
+        assert call_args[0][1]["UpdateExpression"] == "SET model_config.autoScalingConfig = :autoScalingConfig"
 
     # Removed test_update_model_schedule_record_model_not_found as it tests
     # an error condition that properly propagates exceptions as designed
@@ -679,14 +670,12 @@ class TestNextScheduledActionCalculation:
         from datetime import datetime
         from zoneinfo import ZoneInfo
 
-        from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig
+        from models.domain_objects import DaySchedule, RecurringSchedulingConfig
         from models.scheduling.schedule_management import calculate_next_scheduled_action
 
         # Test before start time
         recurring_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
-        schedule_config = SchedulingConfig(
-            scheduleType=ScheduleType.RECURRING, timezone="UTC", recurringSchedule=recurring_schedule
-        )
+        schedule_config = RecurringSchedulingConfig(timezone="UTC", recurringSchedule=recurring_schedule)
 
         # Mock current time as 8:00 AM (before start)
         mock_now = datetime(2024, 1, 15, 8, 0, tzinfo=ZoneInfo("UTC"))
@@ -706,7 +695,7 @@ class TestNextScheduledActionCalculation:
         from datetime import datetime
         from zoneinfo import ZoneInfo
 
-        from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig, WeeklySchedule
+        from models.domain_objects import DailySchedulingConfig, DaySchedule, WeeklySchedule
         from models.scheduling.schedule_management import calculate_next_scheduled_action
 
         # Create weekly schedule with Monday and Tuesday
@@ -714,9 +703,7 @@ class TestNextScheduledActionCalculation:
             monday=DaySchedule(startTime="09:00", stopTime="17:00"),
             tuesday=DaySchedule(startTime="10:00", stopTime="18:00"),
         )
-        schedule_config = SchedulingConfig(
-            scheduleType=ScheduleType.DAILY, timezone="UTC", dailySchedule=weekly_schedule
-        )
+        schedule_config = DailySchedulingConfig(timezone="UTC", dailySchedule=weekly_schedule)
 
         # Mock current time as Monday 8:00 AM (before start)
         mock_now = datetime(2024, 1, 15, 8, 0, tzinfo=ZoneInfo("UTC"))  # Monday
@@ -733,14 +720,12 @@ class TestNextScheduledActionCalculation:
     @patch("models.scheduling.schedule_management.ZoneInfo")
     def test_calculate_next_scheduled_action_exception(self, mock_zoneinfo):
         """Test next scheduled action calculation with exception."""
-        from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig
+        from models.domain_objects import DaySchedule, RecurringSchedulingConfig
         from models.scheduling.schedule_management import calculate_next_scheduled_action
 
         # Create valid config but mock ZoneInfo to raise exception
         recurring_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
-        schedule_config = SchedulingConfig(
-            scheduleType=ScheduleType.RECURRING, timezone="UTC", recurringSchedule=recurring_schedule
-        )
+        schedule_config = RecurringSchedulingConfig(timezone="UTC", recurringSchedule=recurring_schedule)
 
         # Mock ZoneInfo to raise exception
         mock_zoneinfo.side_effect = Exception("Invalid timezone")

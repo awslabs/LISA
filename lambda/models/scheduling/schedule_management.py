@@ -23,7 +23,14 @@ from zoneinfo import ZoneInfo
 import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
-from models.domain_objects import DaySchedule, ScheduleType, SchedulingConfig, WeeklySchedule
+from models.domain_objects import (
+    DailySchedulingConfig,
+    DaySchedule,
+    RecurringSchedulingConfig,
+    ScheduleType,
+    SchedulingConfig,
+    WeeklySchedule,
+)
 from models.exception import ModelNotFoundError
 
 logger = logging.getLogger(__name__)
@@ -84,7 +91,7 @@ def update_schedule(event: Dict[str, Any]) -> Dict[str, Any]:
         # Create new scheduled actions if schedule is provided
         if schedule_config and auto_scaling_group:
             full_schedule_data = merge_schedule_data(model_id, schedule_config)
-            scheduling_config = SchedulingConfig(**full_schedule_data)
+            scheduling_config = create_scheduling_config(full_schedule_data)
             scheduled_action_arns = create_scheduled_actions(
                 model_id=model_id, auto_scaling_group=auto_scaling_group, schedule_config=scheduling_config
             )
@@ -213,6 +220,18 @@ def create_scheduled_actions(model_id: str, auto_scaling_group: str, schedule_co
         )
 
     return scheduled_action_arns
+
+
+def create_scheduling_config(schedule_data: Dict[str, Any]) -> SchedulingConfig:
+    """Create the appropriate scheduling config instance based on scheduleType"""
+    schedule_type = schedule_data.get("scheduleType")
+
+    if schedule_type == ScheduleType.DAILY:
+        return DailySchedulingConfig(**schedule_data)
+    elif schedule_type == ScheduleType.RECURRING:
+        return RecurringSchedulingConfig(**schedule_data)
+    else:
+        raise ValueError(f"Unknown schedule type: {schedule_type}")
 
 
 def get_existing_asg_capacity(auto_scaling_group: str) -> Dict[str, int]:
@@ -805,10 +824,7 @@ def update_model_schedule_record(
             schedule_data["lastScheduleFailed"] = False
             schedule_data["lastScheduleFailure"] = None
 
-            # Calculate and store next scheduled action
-            next_action = calculate_next_scheduled_action(scheduling_config, scheduling_config.timezone)
-            schedule_data["nextScheduledAction"] = next_action
-
+            # Update DynamoDB schedule data
             if auto_scaling_config_exists:
                 # Update existing model_config.autoScalingConfig.scheduling
                 model_table.update_item(
@@ -823,6 +839,14 @@ def update_model_schedule_record(
                     UpdateExpression="SET model_config.autoScalingConfig = :autoScalingConfig",
                     ExpressionAttributeValues={":autoScalingConfig": {"scheduling": schedule_data}},
                 )
+
+            # Calculate and update next scheduled action after initial DDB update is saved
+            next_action = calculate_next_scheduled_action(scheduling_config, scheduling_config.timezone)
+            model_table.update_item(
+                Key={"model_id": model_id},
+                UpdateExpression="SET model_config.autoScalingConfig.scheduling.nextScheduledAction = :next_action",
+                ExpressionAttributeValues={":next_action": next_action},
+            )
         else:
             # Set scheduling configuration to null for always run behavior
             if auto_scaling_config_exists:

@@ -124,12 +124,10 @@ export type IWeeklySchedule = {
     sunday?: IDaySchedule;
 };
 
-export type IScheduleConfig = {
+// Base interface for common schedule fields
+type IBaseScheduleConfig = {
     scheduleEnabled: boolean;
-    scheduleType: ScheduleType;
     timezone: string;
-    dailySchedule?: IWeeklySchedule;
-    recurringSchedule?: IDaySchedule;
     nextScheduledAction?: string;
     lastScheduleUpdate?: string;
     scheduleStatus?: string;
@@ -137,6 +135,24 @@ export type IScheduleConfig = {
     lastScheduleFailed?: boolean;
     scheduledActionArns?: string[];
 };
+
+// Discriminated union for schedule configurations
+export type IScheduleConfig =
+    | (IBaseScheduleConfig & {
+        scheduleType: ScheduleType.DAILY;
+        dailySchedule: IWeeklySchedule;
+        recurringSchedule?: never;
+    })
+    | (IBaseScheduleConfig & {
+        scheduleType: ScheduleType.RECURRING;
+        recurringSchedule: IDaySchedule;
+        dailySchedule?: never;
+    })
+    | (IBaseScheduleConfig & {
+        scheduleType: ScheduleType.NONE;
+        dailySchedule?: never;
+        recurringSchedule?: never;
+    });
 
 export type IAutoScalingConfig = {
     blockDeviceVolumeSize: number;
@@ -290,58 +306,57 @@ const weeklyScheduleSchema = z.object({
     sunday: dayScheduleSchema.optional(),
 });
 
-export const scheduleConfigSchema = z.object({
+// Base schema for common schedule fields
+const baseScheduleConfigSchema = z.object({
     scheduleEnabled: z.boolean().default(false),
-    scheduleType: z.nativeEnum(ScheduleType).optional(),
     timezone: z.string().default('UTC'),
-    dailySchedule: weeklyScheduleSchema.optional(),
-    recurringSchedule: dayScheduleSchema.optional(),
     nextScheduledAction: z.string().optional(),
     lastScheduleUpdate: z.string().optional(),
     scheduleStatus: z.string().optional(),
     scheduleConfigured: z.boolean().optional(),
     lastScheduleFailed: z.boolean().optional(),
     scheduledActionArns: z.array(z.string()).optional(),
-}).superRefine((value, context) => {
-    // Validate schedule configuration based on type
-    if (value.scheduleEnabled && value.scheduleType && value.scheduleType !== ScheduleType.NONE) {
-        // Require timezone when scheduling is enabled
+});
+
+// Discriminated union schema for schedule configurations
+export const scheduleConfigSchema = z.discriminatedUnion('scheduleType', [
+    // DAILY schedule type
+    baseScheduleConfigSchema.extend({
+        scheduleType: z.literal(ScheduleType.DAILY),
+        dailySchedule: weeklyScheduleSchema.superRefine((value, context) => {
+            // Check that at least one day has schedules
+            const hasAnySchedule = Object.values(value).some(
+                (daySchedule) => daySchedule && daySchedule.startTime && daySchedule.stopTime
+            );
+            if (!hasAnySchedule) {
+                context.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: 'At least one day must have a schedule configured',
+                    path: []
+                });
+            }
+        }),
+    }),
+
+    // RECURRING schedule type
+    baseScheduleConfigSchema.extend({
+        scheduleType: z.literal(ScheduleType.RECURRING),
+        recurringSchedule: dayScheduleSchema,
+    }),
+
+    // NONE schedule type
+    baseScheduleConfigSchema.extend({
+        scheduleType: z.literal(ScheduleType.NONE),
+    })
+]).superRefine((value, context) => {
+    // Validate timezone when scheduling is enabled
+    if (value.scheduleEnabled && value.scheduleType !== ScheduleType.NONE) {
         if (!value.timezone || value.timezone === '') {
             context.addIssue({
                 code: z.ZodIssueCode.custom,
                 message: 'Timezone is required when auto scaling is enabled',
                 path: ['timezone']
             });
-        }
-
-        if (value.scheduleType === ScheduleType.DAILY) {
-            if (!value.dailySchedule) {
-                context.addIssue({
-                    code: z.ZodIssueCode.custom,
-                    message: 'Daily schedule is required for daily scheduling',
-                    path: ['dailySchedule']
-                });
-            } else {
-                // Check that at least one day has schedules
-                const hasAnySchedule = Object.values(value.dailySchedule).some(
-                    (daySchedule) => daySchedule && daySchedule.startTime && daySchedule.stopTime
-                );
-                if (!hasAnySchedule) {
-                    context.addIssue({
-                        code: z.ZodIssueCode.custom,
-                        message: 'At least one day must have a schedule configured',
-                        path: ['dailySchedule']
-                    });
-                }
-            }
-        } else if (value.scheduleType === ScheduleType.RECURRING) {
-            if (!value.recurringSchedule) {
-                context.addIssue({
-                    code: z.ZodIssueCode.custom,
-                    message: 'Recurring schedule must be configured',
-                    path: ['recurringSchedule']
-                });
-            }
         }
     }
 });

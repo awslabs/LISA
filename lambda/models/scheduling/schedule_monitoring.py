@@ -33,7 +33,7 @@ retry_config = Config(
 )
 autoscaling_client = boto3.client("autoscaling", config=retry_config)
 dynamodb = boto3.resource("dynamodb", config=retry_config)
-model_table = dynamodb.Table(os.environ.get("MODEL_TABLE_NAME", "LISAModels"))
+model_table = dynamodb.Table(os.environ.get("MODEL_TABLE_NAME"))
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:

@@ -15,12 +15,12 @@
  */
 
 import react from '@vitejs/plugin-react-swc';
-import { defineConfig, splitVendorChunkPlugin } from 'vite';
+import { defineConfig } from 'vite';
 import { resolve } from 'node:path';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-    plugins: [react(), splitVendorChunkPlugin()],
+    plugins: [react()],
     server: {
         port: 3000,
     },

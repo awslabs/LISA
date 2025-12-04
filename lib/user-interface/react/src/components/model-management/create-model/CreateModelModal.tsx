@@ -326,7 +326,13 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         }
     }
 
-    const requiredFields = [['modelId', 'modelName'], ['containerConfig.image.baseImage'], [], [], []];
+    const requiredFields = [
+        ['modelId', 'modelName'],               // Step 0: Base Config
+        ['containerConfig.image.baseImage'],    // Step 1: Container
+        [],                                     // Step 2: Auto Scaling
+        [],                                     // Step 3: Load Balancer
+        [],                                     // Step 4: Guardrails
+    ];
 
     useEffect(() => {
         const parsedValue = _.mergeWith({}, initialForm, props.selectedItems[0], (a: IModelRequest, b: IModelRequest) => b === null ? a : undefined);
@@ -449,6 +455,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
             content: (
                 <GuardrailsConfig item={state.form.guardrailsConfig || {}} setFields={setFields} touchFields={touchFields} formErrors={errors} isEdit={props.isEdit} />
             ),
+            isOptional: true,
             onEdit: true,
             forExternalModel: true
         },
@@ -474,22 +481,8 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
     ];
 
     const steps = allSteps.filter((step) => {
-        if (props.isEdit) {
-            // For edit mode, use the same logic as create mode
-            if (!state.form.lisaHostedModel) {
-                return step.forExternalModel;
-            } else {
-                return true; // Show all steps for LISA hosted models
-            }
-        } else {
-            if (!state.form.lisaHostedModel) {
-                return step.forExternalModel;
-            } else {
-                return true; // Show all steps for LISA hosted models
-            }
-        }
+        return state.form.lisaHostedModel || step.forExternalModel;
     });
-
 
     return (
         <Modal size={'large'} onDismiss={() => {

@@ -38,11 +38,11 @@ jobs:
         config: |
           name: "Custom CodeQL Analysis"
 
-    - name: Set up Python 3.11
+    - name: Set up Python 3.13
       if: matrix.language == 'python'
       uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v5
       with:
-        python-version: "3.11"
+        python-version: "3.13"
 
     - name: Install Python dependencies
       if: matrix.language == 'python'
@@ -56,11 +56,11 @@ jobs:
         fi
         pip install -e ./lisa-sdk
 
-    - name: Use Node.js 20.x
+    - name: Use Node.js 24.x
       if: matrix.language == 'javascript'
       uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v4
       with:
-        node-version: 20.x
+        node-version: 24.x
 
     - name: Install Node.js dependencies
       if: matrix.language == 'javascript'

@@ -51,6 +51,9 @@
     "@aws-cdk/aws-efs:denyAnonymousAccess": true,
     "@aws-cdk/aws-opensearchservice:enableOpensearchMultiAzWithStandby": true,
     "@aws-cdk/aws-lambda-nodejs:useLatestRuntimeVersion": true,
-    "@aws-cdk/aws-efs:mountTargetOrderInsensitiveLogicalId": true
+    "@aws-cdk/aws-efs:mountTargetOrderInsensitiveLogicalId": true,
+    "@aws-cdk/aws-dynamodb:resourcePolicyPerReplica": false,
+    "@aws-cdk/aws-dynamodb:tablePolicyWithGrants": false,
+    "@aws-cdk/aws-dynamodb:disable-resource-based-policy": true
   }
 }

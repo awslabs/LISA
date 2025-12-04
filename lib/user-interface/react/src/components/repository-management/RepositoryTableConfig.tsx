@@ -13,11 +13,11 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
-import { CollectionPreferencesProps, TableProps } from '@cloudscape-design/components';
+import { TableProps } from '@cloudscape-design/components';
+import { CollectionPreferencesProps } from '@cloudscape-design/components/collection-preferences';
 import { DEFAULT_PAGE_SIZE_OPTIONS } from '@/shared/preferences/common-preferences';
 import StatusIndicator, { StatusIndicatorProps } from '@cloudscape-design/components/status-indicator';
 import { ReactNode } from 'react';
-import ContentDisplayOption = CollectionPreferencesProps.ContentDisplayOption;
 import { VectorStoreStatus } from '#root/lib/schema';
 
 export const PAGE_SIZE_OPTIONS = DEFAULT_PAGE_SIZE_OPTIONS('Repositories');
@@ -97,7 +97,7 @@ function getStatusIcon (status: VectorStoreStatus): ReactNode {
     return <StatusIndicator type={type}>{status}</StatusIndicator>;
 }
 
-export function getTablePreference (tableDefinition: ReadonlyArray<TableRow>): ReadonlyArray<ContentDisplayOption> {
+export function getTablePreference (tableDefinition: ReadonlyArray<TableRow>): ReadonlyArray<CollectionPreferencesProps.ContentDisplayOption> {
     return tableDefinition.map((c) => ({
         id: c.id,
         label: c.header,

@@ -460,7 +460,7 @@ export const ContainerConfigSchema = z.object({
         .default({})
         .describe('Environment variables for the container.'),
     sharedMemorySize: z.number().min(0).default(0).describe('The value for the size of the /dev/shm volume.'),
-    healthCheckConfig: ContainerHealthCheckConfigSchema.default(ContainerHealthCheckConfigSchema.parse({})),
+    healthCheckConfig: ContainerHealthCheckConfigSchema.parse({}),
     privileged: z.boolean().optional(),
     memoryReservation: z.number().min(0).optional().describe('Memory reservation in MiB for the container.')
 }).describe('Configuration for the container.');

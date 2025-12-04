@@ -70,14 +70,14 @@ export const CollectionMetadataSchema = z.object({
             .max(50)
             .regex(/^[a-zA-Z0-9_-]+$/, 'Tags must contain only alphanumeric characters, hyphens, and underscores')
     ).max(50).default([]).describe('Metadata tags for the collection (max 50 tags, each max 50 chars)'),
-    customFields: z.record(z.any()).default({}).describe('Custom metadata fields'),
+    customFields: z.record(z.string(), z.any()).default({}).describe('Custom metadata fields'),
 });
 
 /**
  * RAG Collection configuration schema
  */
 export const RagCollectionConfigSchema = z.object({
-    collectionId: z.string().uuid().describe('Unique collection identifier (UUID)'),
+    collectionId: z.uuid().describe('Unique collection identifier (UUID)'),
     repositoryId: z.string().min(1).describe('Parent vector store ID'),
     name: z.string()
         .max(100)
@@ -91,9 +91,9 @@ export const RagCollectionConfigSchema = z.object({
     allowedGroups: z.array(z.string()).optional().describe('User groups with access to collection (inherits from parent if omitted)'),
     embeddingModel: z.string().min(1).describe('Embedding model ID (can be set at creation, inherits from parent if omitted, immutable after creation)'),
     createdBy: z.string().min(1).describe('User ID of creator'),
-    createdAt: z.string().datetime().describe('Creation timestamp (ISO 8601)'),
-    updatedAt: z.string().datetime().describe('Last update timestamp (ISO 8601)'),
-    status: z.nativeEnum(CollectionStatus).default(CollectionStatus.ACTIVE).describe('Collection status'),
+    createdAt: z.iso.datetime().describe('Creation timestamp (ISO 8601)'),
+    updatedAt: z.iso.datetime().describe('Last update timestamp (ISO 8601)'),
+    status: z.enum(CollectionStatus).default(CollectionStatus.ACTIVE).describe('Collection status'),
     pipelines: z.array(PipelineConfigSchema).default([]).describe('Automated ingestion pipelines'),
     default: z.boolean().default(false).optional().describe('Indicates if this is a default collection (virtual, no DB entry)'),
 });
@@ -119,12 +119,12 @@ export enum SortOrder {
  * List collections query parameters schema
  */
 export const ListCollectionsQuerySchema = z.object({
-    page: z.number().int().min(1).default(1).describe('Page number'),
-    pageSize: z.number().int().min(1).max(100).default(20).describe('Number of items per page'),
+    page: z.int().min(1).default(1).describe('Page number'),
+    pageSize: z.int().min(1).max(100).default(20).describe('Number of items per page'),
     filter: z.string().optional().describe('Filter by name or description (substring match)'),
-    sortBy: z.nativeEnum(CollectionSortBy).default(CollectionSortBy.CREATED_AT).describe('Sort field'),
-    sortOrder: z.nativeEnum(SortOrder).default(SortOrder.DESC).describe('Sort order'),
-    status: z.nativeEnum(CollectionStatus).optional().describe('Filter by status'),
+    sortBy: z.enum(CollectionSortBy).default(CollectionSortBy.CREATED_AT).describe('Sort field'),
+    sortOrder: z.enum(SortOrder).default(SortOrder.DESC).describe('Sort order'),
+    status: z.enum(CollectionStatus).optional().describe('Filter by status'),
 });
 
 /**
@@ -132,12 +132,12 @@ export const ListCollectionsQuerySchema = z.object({
  */
 export const ListCollectionsResponseSchema = z.object({
     collections: z.array(RagCollectionConfigSchema).describe('List of collections'),
-    totalCount: z.number().int().optional().describe('Total number of collections'),
-    currentPage: z.number().int().optional().describe('Current page number'),
-    totalPages: z.number().int().optional().describe('Total number of pages'),
+    totalCount: z.int().optional().describe('Total number of collections'),
+    currentPage: z.int().optional().describe('Current page number'),
+    totalPages: z.int().optional().describe('Total number of pages'),
     hasNextPage: z.boolean().default(false).describe('Whether there is a next page'),
     hasPreviousPage: z.boolean().default(false).describe('Whether there is a previous page'),
-    lastEvaluatedKey: z.record(z.string()).optional().describe('Last evaluated key for pagination'),
+    lastEvaluatedKey: z.record(z.string(), z.string()).optional().describe('Last evaluated key for pagination'),
 });
 
 /**

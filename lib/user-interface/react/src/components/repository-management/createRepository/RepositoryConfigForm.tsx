@@ -40,7 +40,7 @@ export type RepositoryConfigProps = {
 
 export function RepositoryConfigForm (props: FormProps<RagRepositoryConfig> & RepositoryConfigProps): ReactElement {
     const { item, touchFields, setFields, formErrors, isEdit } = props;
-    const shape = RagRepositoryConfigSchema.innerType().shape;
+    const shape = RagRepositoryConfigSchema.shape;
 
     return (
         <SpaceBetween size={'s'}>

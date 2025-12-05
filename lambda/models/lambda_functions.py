@@ -18,7 +18,7 @@ from typing import Annotated, Union
 
 import boto3
 import botocore.session
-from fastapi import FastAPI, Path, Request
+from fastapi import FastAPI, HTTPException, Path, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -61,6 +61,21 @@ guardrails_table = dynamodb.Table(os.environ["GUARDRAILS_TABLE_NAME"])
 stepfunctions = boto3.client("stepfunctions", region_name=os.environ["AWS_REGION"], config=retry_config)
 
 
+def get_admin_status_and_groups(request: Request) -> tuple[bool, list[str]]:
+    admin_status = False
+    user_groups = []
+
+    if "aws.event" in request.scope:
+        event = request.scope["aws.event"]
+        try:
+            user_groups = get_groups(event)
+            admin_status = is_admin(event)
+        except Exception:
+            user_groups = []
+            admin_status = False
+    return admin_status, user_groups
+
+
 @app.exception_handler(ModelNotFoundError)
 async def model_not_found_handler(request: Request, exc: ModelNotFoundError) -> JSONResponse:
     """Handle exception when model cannot be found and translate to a 404 error."""
@@ -87,8 +102,11 @@ async def user_error_handler(
 
 @app.post(path="", include_in_schema=False)
 @app.post(path="/")
-async def create_model(create_request: CreateModelRequest) -> CreateModelResponse:
+async def create_model(create_request: CreateModelRequest, request: Request) -> CreateModelResponse:
     """Endpoint to create a model."""
+    admin_status, _ = get_admin_status_and_groups(request)
+    if not admin_status:
+        raise HTTPException(status_code=403, detail="User does not have permission to create models.")
     create_handler = CreateModelHandler(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
@@ -109,18 +127,7 @@ async def list_models(request: Request) -> ListModelsResponse:
         guardrails_table_resource=guardrails_table,
     )
 
-    user_groups = []
-    admin_status = False
-
-    if "aws.event" in request.scope:
-        event = request.scope["aws.event"]
-        try:
-            user_groups = get_groups(event)
-            admin_status = is_admin(event)
-        except Exception:
-            user_groups = []
-            admin_status = False
-
+    admin_status, user_groups = get_admin_status_and_groups(request)
     return list_handler(user_groups=user_groups, is_admin=admin_status)
 
 
@@ -136,18 +143,7 @@ async def get_model(
         guardrails_table_resource=guardrails_table,
     )
 
-    user_groups = []
-    admin_status = False
-
-    if "aws.event" in request.scope:
-        event = request.scope["aws.event"]
-        try:
-            user_groups = get_groups(event)
-            admin_status = is_admin(event)
-        except Exception:
-            user_groups = []
-            admin_status = False
-
+    admin_status, user_groups = get_admin_status_and_groups(request)
     return get_handler(model_id=model_id, user_groups=user_groups, is_admin=admin_status)
 
 
@@ -155,8 +151,12 @@ async def get_model(
 async def update_model(
     model_id: Annotated[str, Path(title="The unique model ID of the model to update")],
     update_request: UpdateModelRequest,
+    request: Request,
 ) -> UpdateModelResponse:
     """Endpoint to update a model."""
+    admin_status, _ = get_admin_status_and_groups(request)
+    if not admin_status:
+        raise HTTPException(status_code=403, detail="User does not have permission to update models.")
     update_handler = UpdateModelHandler(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
@@ -171,6 +171,9 @@ async def delete_model(
     model_id: Annotated[str, Path(title="The unique model ID of the model to delete")], request: Request
 ) -> DeleteModelResponse:
     """Endpoint to delete a model."""
+    admin_status, _ = get_admin_status_and_groups(request)
+    if not admin_status:
+        raise HTTPException(status_code=403, detail="User does not have permission to delete models.")
     delete_handler = DeleteModelHandler(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,

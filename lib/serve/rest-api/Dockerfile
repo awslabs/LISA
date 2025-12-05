@@ -1,8 +1,8 @@
 ARG BASE_IMAGE=python:3.11
 FROM ${BASE_IMAGE}
 
-ARG NODEENV_CACHE_DIR=NODEENV_CACHE
-ENV NODEENV_CACHE_DIR=$NODEENV_CACHE_DIR
+ARG PRISMA_CACHE_DIR=PRISMA_CACHE
+ENV PRISMA_CACHE_DIR=$PRISMA_CACHE_DIR
 
 # Install build dependencies for madoka package
 RUN apt-get update && apt-get install -y \
@@ -28,13 +28,21 @@ WORKDIR /app
 COPY src/requirements.txt .
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
-# Copy nodeenv cache directory (always exists, may be empty or populated)
-COPY ${NODEENV_CACHE_DIR} /tmp/nodeenv-cache/
+# Copy prisma cache directory (always exists, may be empty or populated)
+COPY ${PRISMA_CACHE_DIR} /tmp/prisma-cache/
 
-# Pre-cache nodeenv for prisma-client-py
+# Pre-cache prisma for prisma-client-py
 # If the copied directory has content, use it (for offline environments)
 # Otherwise, download it during build (requires internet)
-RUN python -m prisma version
+RUN mkdir -p /root/.cache && \
+    if [ -d "/tmp/prisma-cache" ] && [ -n "$(ls /tmp/prisma-cache 2>/dev/null)" ]; then \
+        echo "Using pre-cached Prisma dependencies from host" && \
+        cp -r /tmp/prisma-cache/prisma* /root/.cache && \
+        rm -rf /tmp/prisma-cache; \
+    else \
+        echo "Fetching Prisma Dependencies (requires internet)" && \
+        prisma version; \
+    fi
 
 # Copy the source code into the container
 COPY src/ ./src

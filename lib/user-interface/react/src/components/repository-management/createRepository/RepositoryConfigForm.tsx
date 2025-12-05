@@ -94,21 +94,21 @@ export function RepositoryConfigForm (props: FormProps<RagRepositoryConfig> & Re
                         }
                         if (detail.selectedOption.value === RagRepositoryType.PGVECTOR) {
                             if (item.rdsConfig === undefined) {
-                                setFields({ 'rdsConfig': RdsInstanceConfig.parse({}) });
+                                setFields({ 'rdsConfig': RdsInstanceConfig.partial().parse({}) });
                             }
                             setFields({ 'opensearchConfig': undefined });
                             setFields({ 'bedrockKnowledgeBaseConfig': undefined });
                         }
                         if (detail.selectedOption.value === RagRepositoryType.OPENSEARCH) {
                             if (item.opensearchConfig === undefined) {
-                                setFields({ 'opensearchConfig': OpenSearchNewClusterConfig.parse({}) });
+                                setFields({ 'opensearchConfig': OpenSearchNewClusterConfig.partial().parse({}) });
                             }
                             setFields({ 'rdsConfig': undefined });
                             setFields({ 'bedrockKnowledgeBaseConfig': undefined });
                         }
                         if (detail.selectedOption.value === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE) {
                             if (item.bedrockKnowledgeBaseConfig === undefined) {
-                                setFields({ 'bedrockKnowledgeBaseConfig': BedrockKnowledgeBaseInstanceConfig.parse({}) });
+                                setFields({ 'bedrockKnowledgeBaseConfig': BedrockKnowledgeBaseInstanceConfig.partial().parse({}) });
                             }
                             setFields({ 'rdsConfig': undefined });
                             setFields({ 'opensearchConfig': undefined });

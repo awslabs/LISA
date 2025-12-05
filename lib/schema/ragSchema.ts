@@ -122,7 +122,7 @@ export const RagRepositoryPipeline = z.object({
     chunkingStrategy: ChunkingStrategySchema.optional().describe('Chunking strategy for documents in this pipeline.'),
     embeddingModel: z.string().optional().describe('The embedding model used for document ingestion in this pipeline.'),
     collectionId: z.string().optional().describe('The collection ID to ingest documents into.'),
-    s3Bucket: z.string().describe('The S3 bucket monitored by this pipeline for document processing.'),
+    s3Bucket: z.string().min(1, 'S3 bucket is required').describe('The S3 bucket monitored by this pipeline for document processing.'),
     s3Prefix: z.string()
         .regex(/^(?!.*(?:^|\/)\.\.?(\/|$)).*/, 'Prefix cannot contain relative path components (ie `.` or `..`)')
         .regex(/^([a-zA-Z0-9!_.*'()/=-]+\/)*[a-zA-Z0-9!_.*'()/=-]*$/, 'Prefix must be a valid S3 prefix.')

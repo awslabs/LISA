@@ -74,7 +74,7 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
     };
 
     const addConfig = () => {
-        setFields({ pipelines: [...(item || []), RagRepositoryPipeline.parse({})] });
+        setFields({ pipelines: [...(item || []), RagRepositoryPipeline.partial().parse({})] });
     };
 
     const removeConfig = (index: number) => {
@@ -171,6 +171,7 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
 
                         <FormField
                             label='S3 Bucket'
+                            constraintText='Required'
                             errorText={formErrors.pipelines?.[index]?.s3Bucket}
                             description={RagRepositoryPipeline.shape.s3Bucket.description}
                         >

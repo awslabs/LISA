@@ -14,12 +14,12 @@
  limitations under the License.
  */
 
-import React, { ReactElement, useMemo } from 'react';
+import { ReactElement, useMemo } from 'react';
 import FormField from '@cloudscape-design/components/form-field';
 import { Autosuggest, SpaceBetween } from '@cloudscape-design/components';
 import { useGetAllModelsQuery } from '../reducers/model-management.reducer';
 import { ModelStatus, ModelType } from '../model/model-management.model';
-import { ArrayInputField } from './array-input';
+import { UserGroupsInput } from './UserGroupsInput';
 import { ModifyMethod } from './form-props';
 
 export type CommonFieldsFormProps = {
@@ -105,7 +105,7 @@ export function CommonFieldsForm (props: CommonFieldsFormProps): ReactElement {
 
             {/* Allowed Groups */}
             {showAllowedGroups && (
-                <ArrayInputField
+                <UserGroupsInput
                     label='Allowed Groups'
                     errorText={formErrors?.allowedGroups}
                     values={item.allowedGroups || []}

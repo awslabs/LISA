@@ -17,31 +17,31 @@
 import { z } from 'zod';
 
 function isZodTransform (schema: z.ZodTypeAny): schema is z.ZodTransform<any, any> {
-    return schema instanceof z.ZodTransform;
+    return schema._def.typeName === 'ZodEffects' && (schema as any)._def.effect?.type === 'transform';
 }
 
 function isDefault (schema: z.ZodTypeAny): schema is z.ZodDefault<any> {
-    return schema instanceof z.ZodDefault;
+    return schema._def.typeName === 'ZodDefault';
 }
 
 function isOptional (schema: z.ZodTypeAny): schema is z.ZodOptional<any> {
-    return schema instanceof z.ZodOptional;
+    return schema._def.typeName === 'ZodOptional';
 }
 
 function isNullable (schema: z.ZodTypeAny): schema is z.ZodNullable<any> {
-    return schema instanceof z.ZodNullable;
+    return schema._def.typeName === 'ZodNullable';
 }
 
 function isArray (schema: z.ZodTypeAny): schema is z.ZodArray<any> {
-    return schema instanceof z.ZodArray || schema instanceof z.ZodSet;
+    return schema._def.typeName === 'ZodArray' || schema._def.typeName === 'ZodSet';
 }
 
 function isString (schema: z.ZodTypeAny): schema is z.ZodString {
-    return schema instanceof z.ZodString;
+    return schema._def.typeName === 'ZodString';
 }
 
 function isObject (schema: z.ZodTypeAny): schema is z.ZodObject<any> {
-    return schema instanceof z.ZodObject;
+    return schema._def.typeName === 'ZodObject';
 }
 
 // Builds an object consisting of the default values for all validators.
@@ -59,24 +59,24 @@ export function getDefaults<T extends z.ZodTypeAny> (schema: z.ZodObject<any> | 
             const defaultVal = (schema as any)._def.defaultValue;
             return typeof defaultVal === 'function' ? defaultVal() : defaultVal;
         }
-        
+
         // Handle optional - unwrap and get default of inner type
         if (isOptional(schema)) {
             return getDefaultValue(schema.unwrap());
         }
-        
+
         // Handle nullable - unwrap and get default of inner type
         if (isNullable(schema)) {
             return getDefaultValue(schema.unwrap());
         }
-        
+
         // return an empty array if it is
         if (isArray(schema)) return [];
         // return an empty string if it is
         if (isString(schema)) return '';
         // return content of object recursively
         if (isObject(schema)) return getDefaults(schema);
-        
+
         return undefined;
     }
 

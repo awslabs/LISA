@@ -28,7 +28,6 @@ import {
     RdsInstanceConfig,
     BedrockKnowledgeBaseInstanceConfig
 } from '#root/lib/schema';
-import { getDefaults } from '#root/lib/schema/zodUtil';
 import { RdsConfigForm } from './RdsConfigForm';
 import { OpenSearchConfigForm } from './OpenSearchConfigForm';
 import { BedrockKnowledgeBaseConfigForm } from './BedrockKnowledgeBaseConfigForm';
@@ -95,21 +94,21 @@ export function RepositoryConfigForm (props: FormProps<RagRepositoryConfig> & Re
                         }
                         if (detail.selectedOption.value === RagRepositoryType.PGVECTOR) {
                             if (item.rdsConfig === undefined) {
-                                setFields({ 'rdsConfig': getDefaults(RdsInstanceConfig) });
+                                setFields({ 'rdsConfig': RdsInstanceConfig.parse({}) });
                             }
                             setFields({ 'opensearchConfig': undefined });
                             setFields({ 'bedrockKnowledgeBaseConfig': undefined });
                         }
                         if (detail.selectedOption.value === RagRepositoryType.OPENSEARCH) {
                             if (item.opensearchConfig === undefined) {
-                                setFields({ 'opensearchConfig': getDefaults(OpenSearchNewClusterConfig) });
+                                setFields({ 'opensearchConfig': OpenSearchNewClusterConfig.parse({}) });
                             }
                             setFields({ 'rdsConfig': undefined });
                             setFields({ 'bedrockKnowledgeBaseConfig': undefined });
                         }
                         if (detail.selectedOption.value === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE) {
                             if (item.bedrockKnowledgeBaseConfig === undefined) {
-                                setFields({ 'bedrockKnowledgeBaseConfig': getDefaults(BedrockKnowledgeBaseInstanceConfig) });
+                                setFields({ 'bedrockKnowledgeBaseConfig': BedrockKnowledgeBaseInstanceConfig.parse({}) });
                             }
                             setFields({ 'rdsConfig': undefined });
                             setFields({ 'opensearchConfig': undefined });

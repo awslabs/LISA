@@ -27,7 +27,6 @@ import { getJsonDifference, normalizeError } from '../../../shared/util/validati
 import { ModifyMethod } from '../../../shared/validation/modify-method';
 import { PipelineConfigForm } from './PipelineConfigForm';
 import _ from 'lodash';
-import { getDefaults } from '#root/lib/schema/zodUtil';
 import { RagRepositoryConfig, RagRepositoryConfigSchema, RagRepositoryType } from '#root/lib/schema';
 
 export type CreateRepositoryModalProps = {
@@ -70,7 +69,7 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
     ] = useUpdateRagRepositoryMutation();
 
     const initialForm: RagRepositoryConfig = {
-        ...getDefaults(RagRepositoryConfigSchema),
+        ...RagRepositoryConfigSchema.parse({}),
     };
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);

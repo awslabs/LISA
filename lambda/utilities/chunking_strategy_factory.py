@@ -18,8 +18,8 @@ import os
 from abc import ABC, abstractmethod
 from typing import List
 
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from models.domain_objects import ChunkingStrategy, ChunkingStrategyType, FixedChunkingStrategy
 from utilities.exceptions import RagUploadException
 

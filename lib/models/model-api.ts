@@ -19,6 +19,8 @@ import crypto from 'node:crypto';
 import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Repository } from 'aws-cdk-lib/aws-ecr';
+import { Rule } from 'aws-cdk-lib/aws-events';
+import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
 import {
     Effect,
     IRole,
@@ -155,6 +157,68 @@ export class ModelsApi extends Construct {
             this.createStateMachineLambdaRole(modelTable.tableArn, guardrailsTable.tableArn, dockerImageBuilder.dockerImageBuilderFn.functionArn,
                 ecsModelDeployer.ecsModelDeployerFn.functionArn, lisaServeEndpointUrlPs.parameterArn, managementKeyName, config);
 
+        const scheduleManagementLambda = new Function(this, 'ScheduleManagement', {
+            runtime: getPythonRuntime(),
+            handler: 'models.scheduling.schedule_management.lambda_handler',
+            code: Code.fromAsset(lambdaPath),
+            layers: lambdaLayers,
+            environment: {
+                MODEL_TABLE_NAME: modelTable.tableName,
+            },
+            role: stateMachinesLambdaRole,
+            vpc: vpc.vpc,
+            securityGroups: securityGroups,
+            timeout: Duration.minutes(5),
+            description: 'Manages Auto Scaling scheduled actions for LISA model scheduling',
+        });
+
+        const scheduleMonitoringLambda = new Function(this, 'ScheduleMonitoring', {
+            runtime: getPythonRuntime(),
+            handler: 'models.scheduling.schedule_monitoring.lambda_handler',
+            code: Code.fromAsset(lambdaPath),
+            layers: lambdaLayers,
+            environment: {
+                MODEL_TABLE_NAME: modelTable.tableName,
+                ECS_CLUSTER_NAME: `${config.deploymentPrefix}-ECS-Cluster`,
+                LISA_API_URL_PS_NAME: lisaServeEndpointUrlPs.parameterName,
+                MANAGEMENT_KEY_NAME: managementKeyName,
+                REST_API_VERSION: 'v2',
+            },
+            role: stateMachinesLambdaRole,
+            vpc: vpc.vpc,
+            securityGroups: securityGroups,
+            timeout: Duration.minutes(5),
+            description: 'Processes Auto Scaling Group CloudWatch events to update model status',
+        });
+
+        // Add permission for state machine lambdas to invoke the ScheduleManagement lambda
+        const scheduleManagementPermission = new Policy(this, 'ScheduleManagementInvokePerms', {
+            statements: [
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: [
+                        'lambda:InvokeFunction',
+                    ],
+                    resources: [
+                        scheduleManagementLambda.functionArn,
+                    ],
+                })
+            ]
+        });
+        stateMachinesLambdaRole.attachInlinePolicy(scheduleManagementPermission);
+
+        new Rule(this, 'AutoScalingEventsRule', {
+            eventPattern: {
+                source: ['aws.autoscaling'],
+                detailType: [
+                    'EC2 Instance Launch Successful',
+                    'EC2 Instance Terminate Successful'
+                ]
+            },
+            targets: [new LambdaFunction(scheduleMonitoringLambda)],
+            description: 'Triggers ScheduleMonitoring Lambda when Auto Scaling Group instances launch or terminate successfully',
+        });
+
         const createModelStateMachine = new CreateModelStateMachine(this, 'CreateModelWorkflow', {
             config: config,
             modelTable: modelTable,
@@ -168,6 +232,7 @@ export class ModelsApi extends Construct {
             ecsModelImageRepository: ecsModelBuildRepo,
             restApiContainerEndpointPs: lisaServeEndpointUrlPs,
             managementKeyName: managementKeyName,
+            scheduleManagementFunctionName: scheduleManagementLambda.functionName,
             ...(stateMachineExecutionRole),
         });
 
@@ -195,21 +260,6 @@ export class ModelsApi extends Construct {
             restApiContainerEndpointPs: lisaServeEndpointUrlPs,
             managementKeyName: managementKeyName,
             ...(stateMachineExecutionRole),
-        });
-
-        const scheduleManagementLambda = new Function(this, 'ScheduleManagement', {
-            runtime: getDefaultRuntime(),
-            handler: 'models.scheduling.schedule_management.lambda_handler',
-            code: Code.fromAsset(lambdaPath),
-            layers: lambdaLayers,
-            environment: {
-                MODEL_TABLE_NAME: modelTable.tableName,
-            },
-            role: stateMachinesLambdaRole,
-            vpc: vpc.vpc,
-            securityGroups: securityGroups,
-            timeout: Duration.minutes(5),
-            description: 'Manages Auto Scaling scheduled actions for LISA model scheduling',
         });
 
         const environment = {
@@ -336,6 +386,7 @@ export class ModelsApi extends Construct {
                     effect: Effect.ALLOW,
                     actions: [
                         'dynamodb:GetItem',
+                        'dynamodb:UpdateItem',
                         'dynamodb:Scan',
                     ],
                     resources: [
@@ -362,6 +413,10 @@ export class ModelsApi extends Construct {
                     effect: Effect.ALLOW,
                     actions: [
                         'autoscaling:DescribeAutoScalingGroups',
+                        'autoscaling:UpdateAutoScalingGroup',
+                        'autoscaling:PutScheduledUpdateGroupAction',
+                        'autoscaling:DeleteScheduledAction',
+                        'autoscaling:DescribeScheduledActions',
                     ],
                     resources: ['*'],  // we do not know ASG names in advance
                 }),

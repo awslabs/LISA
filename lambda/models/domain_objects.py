@@ -25,7 +25,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import auto, Enum, StrEnum
-from typing import Annotated, Any, Dict, Generator, List, Optional, TypeAlias, Union
+from typing import Annotated, Any, Dict, Generator, List, Literal, Optional, TypeAlias, Union
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
@@ -159,8 +159,8 @@ class ScheduleType(str, Enum):
         """Returns string representation of the enum value"""
         return str(self.value)
 
-    EACH_DAY = "EACH_DAY"
-    RECURRING_DAILY = "RECURRING_DAILY"
+    DAILY = "DAILY"
+    RECURRING = "RECURRING"
 
 
 class DaySchedule(BaseModel):
@@ -247,17 +247,10 @@ class ScheduleFailure(BaseModel):
     retryCount: int
 
 
-class SchedulingConfig(BaseModel):
-    """Defines scheduling configuration for model resource management"""
+class BaseSchedulingConfig(BaseModel):
+    """Base configuration shared by all scheduling types"""
 
-    scheduleType: Optional[ScheduleType] = None
     timezone: str = Field(default="UTC")
-
-    # Weekly schedule (for EACH_DAY type)
-    weeklySchedule: Optional[WeeklySchedule] = None
-
-    # Daily schedule (for RECURRING_DAILY and WEEKDAYS_ONLY types)
-    dailySchedule: Optional[DaySchedule] = None
 
     # Schedule metadata and tracking
     scheduleEnabled: bool = False
@@ -284,33 +277,50 @@ class SchedulingConfig(BaseModel):
             raise ValueError(f"Invalid timezone: {v}, timezone must be a valid IANA timezone identifier")
         return v
 
+
+class DailySchedulingConfig(BaseSchedulingConfig):
+    """Configuration for daily schedules with different times per day"""
+
+    scheduleType: Literal["DAILY"] = "DAILY"
+    dailySchedule: WeeklySchedule
+
     @model_validator(mode="after")
-    def validate_schedule_consistency(self) -> Self:
-        """Validates schedule configuration consistency"""
-        # Skip validation if no schedule type is configured
-        if self.scheduleType is None:
-            return self
-
-        if self.scheduleType == ScheduleType.EACH_DAY:
-            if not self.weeklySchedule:
-                raise ValueError("weeklySchedule required for EACH_DAY type")
-            if self.dailySchedule:
-                raise ValueError("dailySchedule not allowed for EACH_DAY type")
-        elif self.scheduleType == ScheduleType.RECURRING_DAILY:
-            if not self.dailySchedule:
-                raise ValueError(f"dailySchedule required for {self.scheduleType} type")
-            if self.weeklySchedule:
-                raise ValueError(f"weeklySchedule not allowed for {self.scheduleType} type")
-
+    def validate_daily_schedule_exclusivity(self) -> Self:
+        """Validates that only dailySchedule is present for DAILY type"""
+        # Check if any recurring schedule data was included
+        if hasattr(self, "recurringSchedule"):
+            raise ValueError("recurringSchedule not allowed for DAILY schedule type")
         return self
+
+
+class RecurringSchedulingConfig(BaseSchedulingConfig):
+    """Configuration for recurring schedules with same time every day"""
+
+    scheduleType: Literal["RECURRING"] = "RECURRING"
+    recurringSchedule: DaySchedule
+
+    @model_validator(mode="after")
+    def validate_recurring_schedule_exclusivity(self) -> Self:
+        """Validates that only recurringSchedule is present for RECURRING type"""
+        # Check if any daily schedule data was included
+        if hasattr(self, "dailySchedule"):
+            raise ValueError("dailySchedule not allowed for RECURRING schedule type")
+        return self
+
+
+# Discriminated union type for scheduling configurations
+SchedulingConfig = Annotated[
+    Union[DailySchedulingConfig, RecurringSchedulingConfig], Field(discriminator="scheduleType")
+]
 
 
 class AutoScalingConfig(BaseModel):
     """Specifies auto-scaling parameters for model deployment."""
 
     blockDeviceVolumeSize: Optional[NonNegativeInt] = 50
-    minCapacity: NonNegativeInt
-    maxCapacity: NonNegativeInt
+    minCapacity: PositiveInt
+    maxCapacity: PositiveInt
+    desiredCapacity: Optional[PositiveInt] = None
     cooldown: PositiveInt
     defaultInstanceWarmup: PositiveInt
     metricConfig: MetricConfig
@@ -323,6 +333,10 @@ class AutoScalingConfig(BaseModel):
             raise ValueError("minCapacity must be less than or equal to the maxCapacity.")
         if self.blockDeviceVolumeSize is not None and self.blockDeviceVolumeSize < 30:
             raise ValueError("blockDeviceVolumeSize must be greater than or equal to 30.")
+        if self.desiredCapacity and self.desiredCapacity > self.maxCapacity:
+            raise ValueError("Desired capacity must be less than or equal to max capacity.")
+        if self.desiredCapacity and self.desiredCapacity < self.minCapacity:
+            raise ValueError("Desired capacity must be greater than or equal to minimum capacity.")
         return self
 
 
@@ -613,7 +627,7 @@ class GetScheduleStatusResponse(BaseModel):
     lastScheduleFailure: Optional[Dict[str, Any]] = None
 
 
-class IngestionType(str, Enum):
+class IngestionType(StrEnum):
     """Specifies whether ingestion was automatic or manual."""
 
     AUTO = auto()  # Automatic ingestion via pipeline (event-driven)

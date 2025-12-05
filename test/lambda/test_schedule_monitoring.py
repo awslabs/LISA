@@ -52,7 +52,7 @@ def sample_model_with_schedule():
         "auto_scaling_group": "test-asg",
         "autoScalingConfig": {
             "scheduling": {
-                "scheduleType": "RECURRING_DAILY",
+                "scheduleType": "RECURRING",
                 "timezone": "UTC",
                 "scheduleEnabled": True,
                 "scheduleConfigured": True,
@@ -71,15 +71,16 @@ def sample_model_with_schedule():
 class TestScheduleMonitoring:
     """Test schedule monitoring Lambda function."""
 
-    @patch("models.scheduling.schedule_monitoring.ecs_client")
+    @patch("models.scheduling.schedule_monitoring.autoscaling_client")
     @patch("models.scheduling.schedule_monitoring.model_table")
-    def test_lambda_handler_autoscaling_event_success(self, mock_model_table, mock_ecs_client, lambda_context):
+    def test_lambda_handler_autoscaling_event_success(self, mock_model_table, mock_autoscaling_client, lambda_context):
         """Test successful autoscaling event handling."""
         from models.scheduling.schedule_monitoring import lambda_handler
 
         # Mock autoscaling event
         event = {
             "source": "aws.autoscaling",
+            "detail-type": "EC2 Instance Launch Successful",
             "detail": {
                 "StatusCode": "Successful",
                 "AutoScalingGroupName": "test-asg",
@@ -90,16 +91,12 @@ class TestScheduleMonitoring:
         # Mock model lookup
         mock_model_table.scan.return_value = {"Items": [{"model_id": "test-model"}], "Count": 1}
 
-        # Mock model get_item
-        mock_model_table.get_item.return_value = {
-            "Item": {
-                "model_id": "test-model",
-                "ecs_service_arn": "arn:aws:ecs:us-east-1:123456789012:service/test-cluster/test-service",
-            }
+        # Mock ASG describe call
+        mock_autoscaling_client.describe_auto_scaling_groups.return_value = {
+            "AutoScalingGroups": [
+                {"Instances": [{"LifecycleState": "InService"}, {"LifecycleState": "InService"}], "DesiredCapacity": 2}
+            ]
         }
-
-        # Mock ECS service
-        mock_ecs_client.describe_services.return_value = {"services": [{"runningCount": 1}]}
 
         # Mock update_item
         mock_model_table.update_item.return_value = {}
@@ -189,59 +186,6 @@ class TestScheduleMonitoring:
         assert result is None
 
     @patch("models.scheduling.schedule_monitoring.model_table")
-    def test_get_ecs_service_name_success(self, mock_model_table):
-        """Test successful ECS service name retrieval."""
-        from models.scheduling.schedule_monitoring import get_ecs_service_name
-
-        # Mock model table response
-        mock_model_table.get_item.return_value = {
-            "Item": {
-                "model_id": "test-model",
-                "ecs_service_arn": "arn:aws:ecs:us-east-1:123456789012:service/test-cluster/test-service",
-            }
-        }
-
-        result = get_ecs_service_name("test-model")
-
-        assert result == "arn:aws:ecs:us-east-1:123456789012:service/test-cluster/test-service"
-
-    @patch("models.scheduling.schedule_monitoring.model_table")
-    def test_get_ecs_service_name_not_found(self, mock_model_table):
-        """Test ECS service name retrieval when model not found."""
-        from models.scheduling.schedule_monitoring import get_ecs_service_name
-
-        # Mock model not found
-        mock_model_table.get_item.return_value = {}
-
-        result = get_ecs_service_name("nonexistent-model")
-
-        assert result is None
-
-    @patch("models.scheduling.schedule_monitoring.ecs_client")
-    def test_get_ecs_service_running_count_success(self, mock_ecs_client):
-        """Test successful ECS service running count retrieval."""
-        from models.scheduling.schedule_monitoring import get_ecs_service_running_count
-
-        # Mock ECS client response
-        mock_ecs_client.describe_services.return_value = {"services": [{"runningCount": 2}]}
-
-        result = get_ecs_service_running_count("test-service-arn")
-
-        assert result == 2
-
-    @patch("models.scheduling.schedule_monitoring.ecs_client")
-    def test_get_ecs_service_running_count_not_found(self, mock_ecs_client):
-        """Test ECS service running count when service not found."""
-        from models.scheduling.schedule_monitoring import get_ecs_service_running_count
-
-        # Mock empty services response
-        mock_ecs_client.describe_services.return_value = {"services": []}
-
-        result = get_ecs_service_running_count("nonexistent-service")
-
-        assert result == 0
-
-    @patch("models.scheduling.schedule_monitoring.model_table")
     def test_update_model_status_success(self, mock_model_table):
         """Test successful model status update."""
         from models.domain_objects import ModelStatus
@@ -257,100 +201,9 @@ class TestScheduleMonitoring:
         call_args = mock_model_table.update_item.call_args
         assert call_args[1]["Key"] == {"model_id": "test-model"}
 
-    @patch("models.scheduling.schedule_monitoring.model_table")
-    def test_get_current_retry_count_success(self, mock_model_table):
-        """Test successful retry count retrieval."""
-        from models.scheduling.schedule_monitoring import get_current_retry_count
-
-        # Mock model with retry count
-        mock_model_table.get_item.return_value = {
-            "Item": {
-                "model_id": "test-model",
-                "autoScalingConfig": {"scheduling": {"lastScheduleFailure": {"retryCount": 2}}},
-            }
-        }
-
-        result = get_current_retry_count("test-model")
-
-        assert result == 2
-
-    @patch("models.scheduling.schedule_monitoring.model_table")
-    def test_get_current_retry_count_no_failure(self, mock_model_table):
-        """Test retry count retrieval when no failure exists."""
-        from models.scheduling.schedule_monitoring import get_current_retry_count
-
-        # Mock model without failure info
-        mock_model_table.get_item.return_value = {
-            "Item": {"model_id": "test-model", "autoScalingConfig": {"scheduling": {}}}
-        }
-
-        result = get_current_retry_count("test-model")
-
-        assert result == 0
-
 
 class TestScheduleMonitoringHelpers:
     """Test actual helper functions that exist in schedule monitoring."""
-
-    @patch("models.scheduling.schedule_monitoring.model_table")
-    def test_update_schedule_failure_success(self, mock_model_table):
-        """Test successful schedule failure update."""
-        from models.scheduling.schedule_monitoring import update_schedule_failure
-
-        mock_model_table.update_item.return_value = {}
-
-        # Execute
-        update_schedule_failure("test-model", "Test error", 1)
-
-        # Verify update_item was called
-        mock_model_table.update_item.assert_called_once()
-        call_args = mock_model_table.update_item.call_args
-        assert call_args[1]["Key"] == {"model_id": "test-model"}
-
-    @patch("models.scheduling.schedule_monitoring.model_table")
-    def test_update_schedule_status_failed(self, mock_model_table):
-        """Test updating schedule status to failed."""
-        from models.scheduling.schedule_monitoring import update_schedule_status
-
-        mock_model_table.update_item.return_value = {}
-
-        # Execute
-        update_schedule_status("test-model", True, "Test error")
-
-        # Verify update_item was called
-        mock_model_table.update_item.assert_called_once()
-        call_args = mock_model_table.update_item.call_args
-        assert call_args[1]["ExpressionAttributeValues"][":failed"] is True
-
-    @patch("models.scheduling.schedule_monitoring.model_table")
-    def test_update_schedule_status_success(self, mock_model_table):
-        """Test updating schedule status to success."""
-        from models.scheduling.schedule_monitoring import update_schedule_status
-
-        mock_model_table.update_item.return_value = {}
-
-        # Execute
-        update_schedule_status("test-model", False)
-
-        # Verify update_item was called
-        mock_model_table.update_item.assert_called_once()
-        call_args = mock_model_table.update_item.call_args
-        assert call_args[1]["ExpressionAttributeValues"][":failed"] is False
-
-    @patch("models.scheduling.schedule_monitoring.model_table")
-    def test_reset_retry_count_success(self, mock_model_table):
-        """Test successful retry count reset."""
-        from models.scheduling.schedule_monitoring import reset_retry_count
-
-        mock_model_table.update_item.return_value = {}
-
-        # Execute
-        reset_retry_count("test-model")
-
-        # Verify update_item was called
-        mock_model_table.update_item.assert_called_once()
-        call_args = mock_model_table.update_item.call_args
-        assert call_args[1]["Key"] == {"model_id": "test-model"}
 
     @patch("models.scheduling.schedule_monitoring.model_table")
     def test_get_model_info_success(self, mock_model_table):
@@ -376,3 +229,195 @@ class TestScheduleMonitoringHelpers:
         result = get_model_info("nonexistent-model")
 
         assert result is None
+
+    @patch("models.scheduling.schedule_monitoring.model_table")
+    def test_get_model_info_exception(self, mock_model_table):
+        """Test model info retrieval with exception."""
+        from models.scheduling.schedule_monitoring import get_model_info
+
+        # Mock exception
+        mock_model_table.get_item.side_effect = Exception("DynamoDB error")
+
+        result = get_model_info("test-model")
+
+        assert result is None
+
+    @patch("models.scheduling.schedule_monitoring.model_table")
+    def test_find_model_by_asg_name_exception(self, mock_model_table):
+        """Test model lookup by ASG name with exception."""
+        from models.scheduling.schedule_monitoring import find_model_by_asg_name
+
+        # Mock exception
+        mock_model_table.scan.side_effect = Exception("DynamoDB error")
+
+        result = find_model_by_asg_name("test-asg")
+
+        assert result is None
+
+    @patch("models.scheduling.schedule_monitoring.model_table")
+    def test_update_model_status_exception(self, mock_model_table):
+        """Test model status update with exception."""
+        from models.domain_objects import ModelStatus
+        from models.scheduling.schedule_monitoring import update_model_status
+
+        # Mock exception
+        mock_model_table.update_item.side_effect = Exception("DynamoDB error")
+
+        # Execute - should raise exception
+        with pytest.raises(Exception):
+            update_model_status("test-model", ModelStatus.IN_SERVICE, "Test reason")
+
+
+class TestScheduleMonitoringEdgeCases:
+    """Test edge cases and additional coverage."""
+
+    @patch("models.scheduling.schedule_monitoring.update_model_status")
+    @patch("models.scheduling.schedule_monitoring.autoscaling_client")
+    @patch("models.scheduling.schedule_monitoring.find_model_by_asg_name")
+    def test_handle_successful_scaling_asg_not_found(
+        self,
+        mock_find_model,
+        mock_autoscaling_client,
+        mock_update_model_status,
+    ):
+        """Test handle_successful_scaling when ASG not found."""
+        from models.scheduling.schedule_monitoring import handle_successful_scaling
+
+        # Mock model found
+        mock_find_model.return_value = "test-model"
+
+        # Mock ASG not found
+        mock_autoscaling_client.describe_auto_scaling_groups.return_value = {"AutoScalingGroups": []}
+
+        result = handle_successful_scaling("test-model", "test-asg", {})
+
+        # Verify response
+        assert result["statusCode"] == 200
+        assert result["message"] == "ASG not found"
+
+        # Verify no status update
+        mock_update_model_status.assert_not_called()
+
+    @patch("models.scheduling.schedule_monitoring.autoscaling_client")
+    def test_handle_successful_scaling_client_error(self, mock_autoscaling_client):
+        """Test handle_successful_scaling with ClientError."""
+        from botocore.exceptions import ClientError
+        from models.scheduling.schedule_monitoring import handle_successful_scaling
+
+        # Mock ClientError
+        error_response = {"Error": {"Code": "Throttling", "Message": "Rate exceeded"}}
+        mock_autoscaling_client.describe_auto_scaling_groups.side_effect = ClientError(
+            error_response, "DescribeAutoScalingGroups"
+        )
+
+        result = handle_successful_scaling("test-model", "test-asg", {})
+
+        # Verify error response
+        assert result["statusCode"] == 500
+        assert "Failed to check ASG state" in result["message"]
+
+    @patch("models.scheduling.schedule_monitoring.update_model_status")
+    @patch("models.scheduling.schedule_monitoring.autoscaling_client")
+    def test_handle_successful_scaling_stopped_status(self, mock_autoscaling_client, mock_update_model_status):
+        """Test handle_successful_scaling when model should be stopped."""
+        from models.scheduling.schedule_monitoring import handle_successful_scaling
+
+        # Mock ASG with no instances in service
+        mock_autoscaling_client.describe_auto_scaling_groups.return_value = {
+            "AutoScalingGroups": [{"Instances": [{"LifecycleState": "Terminating"}], "DesiredCapacity": 0}]
+        }
+
+        result = handle_successful_scaling("test-model", "test-asg", {})
+
+        # Verify response
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        assert body["newStatus"] == "Stopped"
+
+    @patch("models.scheduling.schedule_monitoring.autoscaling_client")
+    @patch("models.scheduling.schedule_monitoring.get_model_info")
+    def test_sync_model_status_client_error(self, mock_get_model_info, mock_autoscaling_client):
+        """Test sync_model_status with ClientError."""
+        from botocore.exceptions import ClientError
+        from models.scheduling.schedule_monitoring import sync_model_status
+
+        # Mock model info
+        mock_get_model_info.return_value = {"auto_scaling_group": "test-asg"}
+
+        # Mock ClientError
+        error_response = {"Error": {"Code": "Throttling", "Message": "Rate exceeded"}}
+        mock_autoscaling_client.describe_auto_scaling_groups.side_effect = ClientError(
+            error_response, "DescribeAutoScalingGroups"
+        )
+
+        event = {"modelId": "test-model"}
+
+        # Execute - should raise exception
+        with pytest.raises(ValueError, match="Failed to check ASG test-asg"):
+            sync_model_status(event)
+
+    @patch("models.scheduling.schedule_monitoring.autoscaling_client")
+    @patch("models.scheduling.schedule_monitoring.update_model_status")
+    @patch("models.scheduling.schedule_monitoring.get_model_info")
+    def test_sync_model_status_stopped_state(
+        self, mock_get_model_info, mock_update_model_status, mock_autoscaling_client
+    ):
+        """Test sync_model_status when ASG shows stopped state."""
+        from models.scheduling.schedule_monitoring import sync_model_status
+
+        # Mock model info
+        mock_get_model_info.return_value = {"auto_scaling_group": "test-asg"}
+
+        # Mock ASG with no instances in service
+        mock_autoscaling_client.describe_auto_scaling_groups.return_value = {
+            "AutoScalingGroups": [{"Instances": [], "DesiredCapacity": 0}]
+        }
+
+        event = {"modelId": "test-model"}
+        result = sync_model_status(event)
+
+        # Verify response
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        assert body["newStatus"] == "Stopped"
+
+    @patch("models.scheduling.schedule_monitoring.autoscaling_client")
+    @patch("models.scheduling.schedule_monitoring.find_model_by_asg_name")
+    def test_handle_autoscaling_event_asg_not_found(self, mock_find_model, mock_autoscaling_client):
+        """Test handle_autoscaling_event when ASG not associated with LISA models."""
+        from models.scheduling.schedule_monitoring import handle_autoscaling_event
+
+        # Mock model not found
+        mock_find_model.return_value = None
+
+        event = {
+            "source": "aws.autoscaling",
+            "detail-type": "EC2 Instance Launch Successful",
+            "detail": {"AutoScalingGroupName": "unknown-asg"},
+        }
+
+        result = handle_autoscaling_event(event)
+
+        # Verify response
+        assert result["statusCode"] == 200
+        assert result["message"] == "ASG not related to LISA models"
+
+    @patch("models.scheduling.schedule_monitoring.find_model_by_asg_name")
+    def test_handle_autoscaling_event_unsupported_type(self, mock_find_model):
+        """Test handle_autoscaling_event with unsupported event type."""
+        from models.scheduling.schedule_monitoring import handle_autoscaling_event
+
+        # Mock model found so we get past the ASG check
+        mock_find_model.return_value = "test-model"
+
+        event = {
+            "source": "aws.autoscaling",
+            "detail-type": "EC2 Instance Launch Failed",
+            "detail": {"AutoScalingGroupName": "test-asg"},
+        }
+
+        result = handle_autoscaling_event(event)
+
+        # Verify response
+        assert result["statusCode"] == 200
+        assert "Event type EC2 Instance Launch Failed ignored" in result["message"]

@@ -213,6 +213,7 @@ async def update_schedule(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
     )
 
     user_groups = []
@@ -241,6 +242,7 @@ async def get_schedule(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
     )
 
     user_groups = []
@@ -267,6 +269,7 @@ async def delete_schedule(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
     )
 
     user_groups = []
@@ -294,6 +297,7 @@ async def get_schedule_status(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
     )
 
     user_groups = []

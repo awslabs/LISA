@@ -16,14 +16,15 @@
 
 import pytest
 from models.domain_objects import (
+    DailySchedulingConfig,
     DaySchedule,
     DeleteScheduleResponse,
     GetScheduleResponse,
     GetScheduleStatusResponse,
     NextScheduledAction,
+    RecurringSchedulingConfig,
     ScheduleFailure,
     ScheduleType,
-    SchedulingConfig,
     UpdateScheduleResponse,
     WeeklySchedule,
 )
@@ -122,75 +123,57 @@ class TestSchedulingConfig:
     """Test SchedulingConfig domain object."""
 
     def test_recurring_daily_schedule(self):
-        """Test RECURRING_DAILY schedule type."""
+        """Test RECURRING schedule type."""
         daily_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
-        config = SchedulingConfig(
-            scheduleType=ScheduleType.RECURRING_DAILY, timezone="UTC", dailySchedule=daily_schedule
-        )
+        config = RecurringSchedulingConfig(timezone="UTC", recurringSchedule=daily_schedule)
 
-        assert config.scheduleType == ScheduleType.RECURRING_DAILY
         assert config.timezone == "UTC"
-        assert config.dailySchedule == daily_schedule
-        assert config.weeklySchedule is None
+        assert config.scheduleType == ScheduleType.RECURRING
+        assert config.recurringSchedule == daily_schedule
 
     def test_each_day_schedule(self):
-        """Test EACH_DAY schedule type."""
+        """Test DAILY schedule type."""
         monday_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
         weekly_schedule = WeeklySchedule(monday=monday_schedule)
 
-        config = SchedulingConfig(
-            scheduleType=ScheduleType.EACH_DAY, timezone="America/New_York", weeklySchedule=weekly_schedule
-        )
+        config = DailySchedulingConfig(timezone="America/New_York", dailySchedule=weekly_schedule)
 
-        assert config.scheduleType == ScheduleType.EACH_DAY
-        assert config.weeklySchedule == weekly_schedule
-        assert config.dailySchedule is None
-
-    def test_none_schedule_type(self):
-        """Test None schedule type."""
-        config = SchedulingConfig(scheduleType=None)
-
-        assert config.scheduleType is None
-        assert config.dailySchedule is None
-        assert config.weeklySchedule is None
+        assert config.scheduleType == ScheduleType.DAILY
+        assert config.dailySchedule == weekly_schedule
 
     def test_invalid_schedule_consistency(self):
-        """Test invalid schedule consistency raises ValidationError."""
-        daily_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
+        """Test invalid schedule consistency."""
 
-        # RECURRING_DAILY with weeklySchedule should fail
-        with pytest.raises(ValidationError, match="weeklySchedule not allowed for RECURRING_DAILY type"):
-            SchedulingConfig(
-                scheduleType=ScheduleType.RECURRING_DAILY,
-                dailySchedule=daily_schedule,
-                weeklySchedule=WeeklySchedule(monday=daily_schedule),
-            )
+        # Test RecurringSchedulingConfig requires recurringSchedule
+        with pytest.raises(ValidationError, match="Field required"):
+            RecurringSchedulingConfig(timezone="UTC")
 
-        # EACH_DAY without weeklySchedule should fail
-        with pytest.raises(ValidationError, match="weeklySchedule required for EACH_DAY type"):
-            SchedulingConfig(scheduleType=ScheduleType.EACH_DAY)
+        # Test DailySchedulingConfig requires dailySchedule
+        with pytest.raises(ValidationError, match="Field required"):
+            DailySchedulingConfig(timezone="UTC")
 
     def test_timezone_validation(self):
         """Test timezone validation."""
         daily_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
 
-        # Valid timezone
-        config = SchedulingConfig(
-            scheduleType=ScheduleType.RECURRING_DAILY, timezone="America/New_York", dailySchedule=daily_schedule
-        )
+        # Valid timezone with RecurringSchedulingConfig
+        config = RecurringSchedulingConfig(timezone="America/New_York", recurringSchedule=daily_schedule)
         assert config.timezone == "America/New_York"
 
         # UTC should always be valid
-        config = SchedulingConfig(
-            scheduleType=ScheduleType.RECURRING_DAILY, timezone="UTC", dailySchedule=daily_schedule
-        )
+        config = RecurringSchedulingConfig(timezone="UTC", recurringSchedule=daily_schedule)
         assert config.timezone == "UTC"
+
+        # Test with DailySchedulingConfig too
+        weekly_schedule = WeeklySchedule(monday=daily_schedule)
+        config = DailySchedulingConfig(timezone="Europe/London", dailySchedule=weekly_schedule)
+        assert config.timezone == "Europe/London"
 
     def test_invalid_timezone_validation(self):
         """Test invalid timezone raises ValidationError."""
         daily_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
 
-        # Test various invalid timezone formats
+        # Test various invalid timezone formats with RecurringSchedulingConfig
         invalid_timezones = [
             "Invalid/Timezone",
             "NotReal/Zone",
@@ -205,9 +188,15 @@ class TestSchedulingConfig:
             with pytest.raises(
                 ValidationError, match="Invalid timezone.*timezone must be a valid IANA timezone identifier"
             ):
-                SchedulingConfig(
-                    scheduleType=ScheduleType.RECURRING_DAILY, timezone=invalid_tz, dailySchedule=daily_schedule
-                )
+                RecurringSchedulingConfig(timezone=invalid_tz, recurringSchedule=daily_schedule)
+
+        # Also test with DailySchedulingConfig
+        weekly_schedule = WeeklySchedule(monday=daily_schedule)
+        for invalid_tz in invalid_timezones:
+            with pytest.raises(
+                ValidationError, match="Invalid timezone.*timezone must be a valid IANA timezone identifier"
+            ):
+                DailySchedulingConfig(timezone=invalid_tz, dailySchedule=weekly_schedule)
 
 
 class TestNextScheduledAction:
@@ -253,7 +242,7 @@ class TestScheduleResponseObjects:
 
     def test_get_schedule_response(self):
         """Test GetScheduleResponse."""
-        scheduling_data = {"scheduleType": "RECURRING_DAILY", "timezone": "UTC"}
+        scheduling_data = {"scheduleType": "RECURRING", "timezone": "UTC"}
         next_action = {"action": "START", "scheduledTime": "2025-01-15T09:00:00Z"}
 
         response = GetScheduleResponse(
@@ -282,7 +271,7 @@ class TestScheduleResponseObjects:
             scheduleConfigured=True,
             lastScheduleFailed=False,
             scheduleStatus="ACTIVE",
-            scheduleType="RECURRING_DAILY",
+            scheduleType="RECURRING",
             timezone="UTC",
             nextScheduledAction={"action": "START", "scheduledTime": "2025-01-15T09:00:00Z"},
             lastScheduleUpdate="2025-01-14T12:00:00Z",
@@ -294,5 +283,5 @@ class TestScheduleResponseObjects:
         assert response.scheduleConfigured is True
         assert response.lastScheduleFailed is False
         assert response.scheduleStatus == "ACTIVE"
-        assert response.scheduleType == "RECURRING_DAILY"
+        assert response.scheduleType == "RECURRING"
         assert response.timezone == "UTC"

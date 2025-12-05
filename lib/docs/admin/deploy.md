@@ -334,7 +334,7 @@ cp -r ~/.cache/prisma* lib/serve/rest-api/PRISMA_CACHE/
 ```
 
 **Important Notes:**
-- The cache is platform-specific. Generate it on a system matching your Docker base image (e.g., Amazon Linux 2023 for `python:3.13-slim` which is Debian-based, so you may want to use a Debian-based system)
+- The cache is platform-specific. Generate it on a system matching your Docker base image (e.g., for `python:3.13-slim` which is Debian-based, so you may want to use a Debian-based system)
 - The `prisma version` command downloads binaries for your current platform
 - Both `prisma/` and `prisma-python/` directories are required for offline operation
 

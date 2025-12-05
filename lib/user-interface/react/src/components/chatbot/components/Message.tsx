@@ -77,7 +77,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
 
     // Memoize the ReactMarkdown components to prevent re-creation on every render
     const markdownComponents = useMemo(() => ({
-        code ({ className, children, ...props }: any) {
+        code({ className, children, ...props }: any) {
             const match = /language-(\w+)/.exec(className || '');
             const codeString = String(children).replace(/\n$/, '');
 

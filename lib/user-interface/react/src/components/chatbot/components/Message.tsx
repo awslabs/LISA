@@ -27,9 +27,12 @@ import { useAppSelector } from '@/config/store';
 import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
 import ChatBubble from '@cloudscape-design/chat-components/chat-bubble';
 import Avatar from '@cloudscape-design/chat-components/avatar';
+
 import remarkBreaks from 'remark-breaks';
 import remarkMath from 'remark-math';
-import rehypeMathjax from 'rehype-mathjax/browser';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
+
 import { MessageContent } from '@langchain/core/messages';
 import { base64ToBlob, fetchImage, getDisplayableMessage, messageContainsImage } from '@/components/utils';
 import React, { useEffect, useState, useMemo } from 'react';
@@ -74,7 +77,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
 
     // Memoize the ReactMarkdown components to prevent re-creation on every render
     const markdownComponents = useMemo(() => ({
-        code ({ className, children, ...props }: any) {
+        code({ className, children, ...props }: any) {
             const match = /language-(\w+)/.exec(className || '');
             const codeString = String(children).replace(/\n$/, '');
 
@@ -276,7 +279,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                 {markdownDisplay ? (
                     <ReactMarkdown
                         remarkPlugins={[remarkBreaks, remarkMath]}
-                        rehypePlugins={[rehypeMathjax]}
+                        rehypePlugins={[rehypeKatex]}
                         children={getDisplayableMessage(content, message.type === MessageTypes.AI ? ragCitations : undefined)}
                         components={markdownComponents}
                     />

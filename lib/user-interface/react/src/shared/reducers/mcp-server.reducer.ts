@@ -62,7 +62,7 @@ export const mcpServerApi = createApi({
     baseQuery: lisaBaseQuery(),
     tagTypes: ['mcpServers'],
     refetchOnFocus: true,
-    refetchOnReconnect: true,
+    refetchOnMountOrArgChange: true,
     endpoints: (builder) => ({
         createMcpServer: builder.mutation<McpServer, NewMcpServer>({
             query: (mcpServer) => ({

@@ -101,7 +101,7 @@ export const ragApi = createApi({
     baseQuery: lisaBaseQuery(),
     tagTypes: ['repositories', 'docs', 'repository-status', 'jobs'],
     refetchOnFocus: true,
-    refetchOnReconnect: true,
+    refetchOnMountOrArgChange: true,
     endpoints: (builder) => ({
         listRagRepositories: builder.query<RagRepositoryConfig[], void>({
             query: () => ({

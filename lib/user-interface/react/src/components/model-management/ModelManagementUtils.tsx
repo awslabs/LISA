@@ -95,7 +95,7 @@ const formatScheduleDetails = (model: IModel) => {
             <Box>
                 <div>Timezone: {timezone}</div>
                 {daysWithSchedule.map((daySchedule, index) => (
-                    <div key={index}><small>{daySchedule}</small></div>
+                    <div key={index}>{daySchedule}</div>
                 ))}
             </Box>
         );

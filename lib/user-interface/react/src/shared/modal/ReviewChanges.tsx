@@ -56,7 +56,7 @@ export function ReviewChanges (props: ReviewChangesProps): ReactElement {
 
             if (key === 'scheduling' && (value === null || value === undefined)) {
                 output.push((
-                    <li key={propIndex.index++}><p><strong>Auto Scaling Schedule</strong>: Disabled - Model will always be on.</p>
+                    <li key={propIndex.index++}><p><strong>Auto Scaling Schedule</strong>: Disabled - Model will always be running.</p>
                     </li>));
                 continue;
             }
@@ -74,7 +74,7 @@ export function ReviewChanges (props: ReviewChangesProps): ReactElement {
 
                 if (isExplicitlyDisabled) {
                     output.push((
-                        <li key={propIndex.index++}><p><strong>Auto Scaling Schedule</strong>: Disabled - Model will always be on.</p>
+                        <li key={propIndex.index++}><p><strong>Auto Scaling Schedule</strong>: Disabled - Model will always be running.</p>
                         </li>));
                     continue;
                 }
@@ -138,7 +138,7 @@ export function ReviewChanges (props: ReviewChangesProps): ReactElement {
 
                 if (!hasValidScheduleConfig || Object.keys(cleanedScheduling).length === 0) {
                     output.push((
-                        <li key={propIndex.index++}><p><strong>Auto Scaling Schedule</strong>: Disabled - Model will always be on.</p>
+                        <li key={propIndex.index++}><p><strong>Auto Scaling Schedule</strong>: Disabled - Model will always be running.</p>
                         </li>));
                     continue;
                 }

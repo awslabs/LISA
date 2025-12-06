@@ -1007,7 +1007,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
             query_params=query_params,
             s3_path=f"s3://{bucket}/{key}",
             username=username,
-            metadata=None,
+            metadata=request.metadata,
             ingestion_type=IngestionType.MANUAL,
         )
         ingestion_job_repository.save(job)

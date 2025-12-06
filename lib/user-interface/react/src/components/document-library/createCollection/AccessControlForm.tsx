@@ -14,13 +14,11 @@
  limitations under the License.
  */
 
-import React, { ReactElement } from 'react';
-import FormField from '@cloudscape-design/components/form-field';
+import { ReactElement } from 'react';
 import { Alert, SpaceBetween } from '@cloudscape-design/components';
-import { ArrayInputField } from '../../../shared/form/array-input';
-import { CommonFieldsForm } from '../../../shared/form/CommonFieldsForm';
+import { CommonFieldsForm } from '@/shared/form/CommonFieldsForm';
 import { RagCollectionConfig } from '#root/lib/schema';
-import { ModifyMethod } from '../../../shared/form/form-props';
+import { ModifyMethod } from '@/shared/form/form-props';
 
 export type AccessControlFormProps = {
     item: RagCollectionConfig;
@@ -49,19 +47,6 @@ export function AccessControlForm (props: AccessControlFormProps): ReactElement 
                 showEmbeddingModel={false}
                 showAllowedGroups={true}
             />
-
-            {/* Metadata Tags */}
-            <FormField
-                label='Tags (optional)'
-                errorText={formErrors?.['metadata.tags'] || formErrors?.metadata?.tags}
-                description='Metadata tags for further organizing and filtering information (max 50 tags)'
-            >
-                <ArrayInputField
-                    values={item.metadata?.tags || []}
-                    onChange={(tags) => setFields({ 'metadata.tags': tags })}
-                    placeholder='Add tag'
-                />
-            </FormField>
         </SpaceBetween>
     );
 }

@@ -14,7 +14,8 @@
  limitations under the License.
  */
 
-import { Modal, Wizard } from '@cloudscape-design/components';
+import { Modal, SpaceBetween, Wizard } from '@cloudscape-design/components';
+import { TagsInput } from '@/shared/form/TagsInput';
 import { ReactElement, useEffect, useMemo } from 'react';
 import { scrollToInvalid, useValidationReducer } from '@/shared/validation';
 import { useAppDispatch } from '@/config/store';
@@ -240,18 +241,28 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
             ),
         },
         {
-            title: 'Chunking Configuration',
+            title: 'Chunking / Tagging',
             description: disableChunking
                 ? 'Chunking is managed by Bedrock Knowledge Base and cannot be modified'
-                : 'Configure how documents are split into chunks',
+                : 'Configure how documents are split into chunks and add metadata tags',
             content: (
-                <ChunkingConfigForm
-                    item={state.form.chunkingStrategy}
-                    setFields={setFields}
-                    touchFields={touchFields}
-                    formErrors={errors}
-                    disabled={disableChunking}
-                />
+                <SpaceBetween size='s'>
+                    <ChunkingConfigForm
+                        item={state.form.chunkingStrategy}
+                        setFields={setFields}
+                        touchFields={touchFields}
+                        formErrors={errors}
+                        disabled={disableChunking}
+                    />
+                    <TagsInput
+                        label='Tags (optional)'
+                        errorText={errors?.['metadata.tags'] || errors?.metadata?.tags}
+                        description='Metadata tags for further organizing and filtering information (max 50 tags)'
+                        values={state.form.metadata?.tags || []}
+                        onChange={(tags) => setFields({ 'metadata.tags': tags })}
+                        placeholder='Add tag'
+                    />
+                </SpaceBetween>
             ),
             isOptional: true,
         },

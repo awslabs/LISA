@@ -14,13 +14,13 @@
  limitations under the License.
  */
 
-import React, { ReactElement } from 'react';
+import { ReactElement } from 'react';
 import FormField from '@cloudscape-design/components/form-field';
 import Input from '@cloudscape-design/components/input';
 import Select from '@cloudscape-design/components/select';
 import { SpaceBetween } from '@cloudscape-design/components';
 import { ChunkingStrategy, ChunkingStrategyType } from '#root/lib/schema';
-import { ModifyMethod } from '../../../shared/form/form-props';
+import { ModifyMethod } from '@/shared/form/form-props';
 
 // Utility function to create default chunking strategy
 function createDefaultChunkingStrategy () {

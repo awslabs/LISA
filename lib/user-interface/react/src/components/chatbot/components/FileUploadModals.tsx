@@ -40,6 +40,7 @@ import { ChunkingStrategy, ChunkingStrategyType, RagRepositoryType } from '#root
 import { IModel } from '@/shared/model/model-management.model';
 import { JobStatusTable } from '@/components/chatbot/components/JobStatusTable';
 import { ChunkingConfigForm } from '@/components/document-library/createCollection/ChunkingConfigForm';
+import { TagsInput } from '@/shared/form/TagsInput';
 
 export const renameFile = (originalFile: File) => {
     // Add timestamp to filename for RAG uploads to not conflict with existing S3 files
@@ -224,6 +225,7 @@ export const RagUploadModal = ({
         size: 512,
         overlap: 51,
     });
+    const [tags, setTags] = useState<string[]>([]);
     const dispatch = useAppDispatch();
     const [getPresignedUrl] = useLazyGetPresignedUrlQuery();
     const notificationService = useNotificationService(dispatch);
@@ -262,6 +264,7 @@ export const RagUploadModal = ({
                 collectionId: ragConfig.collection?.collectionId,
                 repostiroyType: ragConfig.repositoryType,
                 chunkingStrategy: overrideChunkingStrategy ? chunkingStrategy : undefined,
+                metadata: tags.length > 0 ? { tags } : undefined,
             });
 
             if ('error' in ingestResp) {
@@ -289,6 +292,7 @@ export const RagUploadModal = ({
                 setShowRagUploadModal(false);
                 setSelectedFiles([]);
                 setIngestingFiles(false);
+                setTags([]);
             }}
             visible={showRagUploadModal}
             header='Upload to RAG'
@@ -369,6 +373,15 @@ export const RagUploadModal = ({
                         formErrors={{}}
                     />
                 )}
+
+                {/* Tags Input */}
+                <TagsInput
+                    label='Tags (optional)'
+                    description='Add tags to help organize and filter uploaded documents'
+                    values={tags}
+                    onChange={setTags}
+                    placeholder='Add tag'
+                />
 
                 <FileUpload
                     onChange={({ detail }) => setSelectedFiles(detail.value)}

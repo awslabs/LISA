@@ -67,6 +67,11 @@ export function ReviewChanges (props: ReviewChangesProps): ReactElement {
                 }
             }
 
+            // Hide "Schedule Enabled: true" when scheduling was originally disabled then re-enabled
+            if (key === 'scheduleEnabled' && value === true) {
+                continue;
+            }
+
             // Handle nested scheduling objects that contain undefined values
             if (key === 'scheduling' && _.isPlainObject(value)) {
                 // Check if this is explicitly disabled (scheduleEnabled === false or scheduleType === 'NONE')
@@ -154,8 +159,15 @@ export function ReviewChanges (props: ReviewChangesProps): ReactElement {
             }
 
             const isNested = _.isObject(value);
+            
+            // Format schedule type value to title case
+            let displayValue = value;
+            if (key === 'scheduleType' && typeof value === 'string') {
+                displayValue = _.startCase(value.toLowerCase());
+            }
+            
             output.push((
-                <li key={propIndex.index++}><p><strong>{_.startCase(key)}</strong>{isNested ? '' : `: ${value}`}</p>
+                <li key={propIndex.index++}><p><strong>{_.startCase(key)}</strong>{isNested ? '' : `: ${displayValue}`}</p>
                 </li>));
             if (_.isPlainObject(value)) {
                 output.push((jsonToOutline(value, propIndex)));

@@ -159,13 +159,13 @@ export function ReviewChanges (props: ReviewChangesProps): ReactElement {
             }
 
             const isNested = _.isObject(value);
-            
+
             // Format schedule type value to title case
             let displayValue = value;
             if (key === 'scheduleType' && typeof value === 'string') {
                 displayValue = _.startCase(value.toLowerCase());
             }
-            
+
             output.push((
                 <li key={propIndex.index++}><p><strong>{_.startCase(key)}</strong>{isNested ? '' : `: ${displayValue}`}</p>
                 </li>));

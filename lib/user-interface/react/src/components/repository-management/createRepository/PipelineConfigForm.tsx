@@ -130,7 +130,7 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                         <ChunkingConfigForm
                             item={pipeline.chunkingStrategy}
                             setFields={(values) => {
-                                const updatedFields = {};
+                                const updatedFields: Record<string, unknown> = {};
                                 // Store using the new chunkingStrategy structure
                                 if (values.chunkingStrategy) {
                                     updatedFields[`pipelines[${index}].chunkingStrategy`] = values.chunkingStrategy;
@@ -141,13 +141,17 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                                 if (values['chunkingStrategy.overlap'] !== undefined) {
                                     updatedFields[`pipelines[${index}].chunkingStrategy.overlap`] = values['chunkingStrategy.overlap'];
                                 }
+                                if (values['metadata.tags'] !== undefined) {
+                                    updatedFields[`pipelines[${index}].metadata.tags`] = values['metadata.tags'];
+                                }
                                 setFields(updatedFields);
                             }}
                             touchFields={(fields) => {
                                 const updatedFields = fields.map((field) => `pipelines[${index}].${field}`);
                                 touchFields(updatedFields);
                             }}
-                            formErrors={formErrors.pipelines?.[index]?.chunkingStrategy || {}}
+                            formErrors={formErrors.pipelines?.[index] || {}}
+                            metadata={pipeline.metadata}
                         />
 
                         <FormField

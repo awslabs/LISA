@@ -42,8 +42,8 @@ describe('ChunkingConfigForm', () => {
                 />
             );
 
-            // Click the dropdown to open it (find by text content)
-            const dropdown = screen.getByRole('button');
+            // Click the dropdown to open it (find by the combobox role)
+            const dropdown = screen.getByRole('button', { name: /chunking type/i });
             await user.click(dropdown);
 
             // Verify both options are present using getAllByText since they appear multiple times
@@ -192,7 +192,7 @@ describe('ChunkingConfigForm', () => {
             );
 
             // Click dropdown and select NONE
-            const dropdown = screen.getByRole('button');
+            const dropdown = screen.getByRole('button', { name: /chunking type/i });
             await user.click(dropdown);
 
             const noneOption = screen.getByText('None (No Chunking)');
@@ -274,7 +274,7 @@ describe('ChunkingConfigForm', () => {
             );
 
             // Click dropdown and select FIXED
-            const dropdown = screen.getByRole('button');
+            const dropdown = screen.getByRole('button', { name: /chunking type/i });
             await user.click(dropdown);
 
             const fixedOption = screen.getByText('Fixed Size');

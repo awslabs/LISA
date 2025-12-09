@@ -21,6 +21,7 @@ import Select from '@cloudscape-design/components/select';
 import { SpaceBetween } from '@cloudscape-design/components';
 import { ChunkingStrategy, ChunkingStrategyType } from '#root/lib/schema';
 import { ModifyMethod } from '@/shared/form/form-props';
+import { TagsInput } from '@/shared/form/TagsInput';
 
 // Utility function to create default chunking strategy
 function createDefaultChunkingStrategy () {
@@ -37,10 +38,11 @@ export type ChunkingConfigFormProps = {
     touchFields(fields: string[], method?: ModifyMethod): void;
     formErrors: any;
     disabled?: boolean;
+    metadata?: { tags?: string[] };
 };
 
 export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElement {
-    const { item, touchFields, setFields, formErrors, disabled = false } = props;
+    const { item, touchFields, setFields, formErrors, disabled = false, metadata } = props;
 
     // Chunking type options
     const chunkingTypeOptions = [
@@ -125,6 +127,16 @@ export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElemen
                     </FormField>
                 </>
             )}
+
+            {/* Metadata Tags */}
+            <TagsInput
+                label='Tags (optional)'
+                errorText={formErrors?.['metadata.tags'] || formErrors?.metadata?.tags}
+                description='Metadata tags for further organizing and filtering information (max 50 tags)'
+                values={metadata?.tags || []}
+                onChange={(tags) => setFields({ 'metadata.tags': tags })}
+                placeholder='Add tag'
+            />
         </SpaceBetween>
     );
 }

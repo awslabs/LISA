@@ -294,10 +294,10 @@ npmConfig:
 # Use ADC-accessible base images for LISA-Serve and Batch Ingestion
 baseImage: <adc-registry>/python:3.11
 
-# Configure offline build dependencies for REST API (nodeenv for prisma-client-py)
+# Configure offline build dependencies for REST API (prisma-client-py dependencies)
 restApiConfig:
   buildConfig:
-    NODEENV_CACHE_DIR: "./nodeenv-cache"  # Path relative to lib/serve/rest-api/
+    PRISMA_CACHE_DIR: "./PRISMA_CACHE"  # Path relative to lib/serve/rest-api/
 
 # Configure offline build dependencies for MCP Workbench (S6 Overlay and rclone)
 mcpWorkbenchBuildConfig:
@@ -311,11 +311,32 @@ You'll also want any model hosting base containers available, e.g. vllm/vllm-ope
 
 For environments without internet access during Docker builds, you can pre-cache required dependencies:
 
-**REST API nodeenv cache** (required by prisma-client-py):
+**REST API Prisma cache** (required by prisma-client-py):
+
+The `prisma-client-py` package requires platform-specific binaries and a Node.js environment to function. When Prisma runs for the first time, it downloads these dependencies to `~/.cache/prisma/` and `~/.cache/prisma-python/`. For offline deployments, you need to pre-populate this cache.
+
+Below is an example workflow using an Amazon Linux 2023 instance with Python 3.12:
+
 ```bash
-# Create the cache directory in the REST API build context
-python -m nodeenv lib/serve/rest-api/nodeenv-cache
+# Ensure Pip is up-to-date
+pip3 install --upgrade pip
+
+# Install Prisma Python package
+pip3 install prisma
+
+# Trigger Prisma to download all required binaries and create its Node.js environment
+# This populates ~/.cache/prisma/ and ~/.cache/prisma-python/
+prisma version
+
+# Copy the complete Prisma cache to your build context
+# The wildcard captures both 'prisma' and 'prisma-python' directories
+cp -r ~/.cache/prisma* lib/serve/rest-api/PRISMA_CACHE/
 ```
+
+**Important Notes:**
+- The cache is platform-specific. Generate it on a system matching your Docker base image (e.g., for `python:3.13-slim` which is Debian-based, so you may want to use a Debian-based system)
+- The `prisma version` command downloads binaries for your current platform
+- Both `prisma/` and `prisma-python/` directories are required for offline operation
 
 **MCP Workbench dependencies** (S6 Overlay and rclone):
 ```bash

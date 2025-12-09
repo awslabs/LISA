@@ -23,7 +23,7 @@ export const modelManagementApi = createApi({
     baseQuery: lisaBaseQuery(),
     tagTypes: ['models'],
     refetchOnFocus: true,
-    refetchOnReconnect: true,
+    refetchOnMountOrArgChange: true,
     endpoints: (builder) => ({
         getAllModels: builder.query<IModelListResponse['models'], void>({
             query: () => ({

@@ -50,7 +50,7 @@ export const userPreferencesApi = createApi({
     baseQuery: lisaBaseQuery(),
     tagTypes: ['user-preferences'],
     refetchOnFocus: true,
-    refetchOnReconnect: true,
+    refetchOnMountOrArgChange: true,
     endpoints: (builder) => ({
         updateUserPreferences: builder.mutation<UserPreferences, UserPreferences>({
             query: (userPreferences) => ({

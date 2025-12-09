@@ -42,7 +42,7 @@
     "watch": "tsc -w",
     "test": "jest && npm run test -ws",
     "cdk": "cdk",
-    "prepare": "husky",
+    "prepare": "husky || true",
     "dev": "cd lib/user-interface/react/ && npm run dev",
     "prepublishOnly": "npm run build && npm run copy-dist -ws",
     "migrate-properties": "node ./scripts/migrate-properties.mjs",

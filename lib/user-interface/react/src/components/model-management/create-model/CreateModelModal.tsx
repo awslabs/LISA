@@ -59,9 +59,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         updateModelMutation,
         { isSuccess: isUpdateSuccess, isError: isUpdateError, error: updateError, isLoading: isUpdating, reset: resetUpdate },
     ] = useUpdateModelMutation();
-    const initialForm = {
-        ...ModelRequestSchema.partial().parse({}),
-    };
+    const initialForm = ModelRequestSchema.partial().parse({});
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
 

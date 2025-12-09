@@ -35,7 +35,7 @@ describe('BedrockKnowledgeBaseConfigForm', () => {
     const mockTouchFields = vi.fn();
 
     const defaultProps = {
-        item: BedrockKnowledgeBaseInstanceConfig.parse({}),
+        item: BedrockKnowledgeBaseInstanceConfig.partial().parse({}),
         setFields: mockSetFields,
         touchFields: mockTouchFields,
         formErrors: {},

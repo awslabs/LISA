@@ -68,9 +68,7 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
         },
     ] = useUpdateRagRepositoryMutation();
 
-    const initialForm: RagRepositoryConfig = {
-        ...RagRepositoryConfigSchema.parse({}),
-    };
+    const initialForm = RagRepositoryConfigSchema.partial().parse({});
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
 

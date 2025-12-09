@@ -38,8 +38,8 @@
     "fdir": "^6.5.0",
     "git-repo-info": "^2.1.1",
     "jszip": "^3.10.1",
-    "langchain": "^0.3.15",
     "katex": "^0.16.25",
+    "langchain": "^0.3.15",
     "lodash": "^4.17.21",
     "luxon": "^3.5.0",
     "mermaid": "^11.10.1",
@@ -63,7 +63,8 @@
     "typescript": "~5.9.3",
     "unraw": "^3.0.0",
     "use-mcp": "^0.0.18",
-    "vitepress": "^1.6.4"
+    "vitepress": "^1.6.4",
+    "web-namespaces": "^2.0.1"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",

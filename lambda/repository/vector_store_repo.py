@@ -177,3 +177,40 @@ class VectorStoreRepository:
             return True
         except Exception as e:
             raise ValueError(f"Failed to delete repository: {repository_id}", e)
+
+    def find_repositories_using_model(self, model_id: str) -> List[dict]:
+        """
+        Find all repositories that use a specific model.
+
+        Args:
+            model_id: The model ID to search for
+
+        Returns:
+            List of dictionaries containing repository_id and usage_type (either 'repository' or 'pipeline')
+        """
+        # Scan all repositories
+        response = self.table.scan()
+        repositories = response["Items"]
+        while "LastEvaluatedKey" in response:
+            response = self.table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
+            repositories.extend(response["Items"])
+
+        usages = []
+
+        # Check each repository for the model
+        for repo in repositories:
+            config = repo.get("config", {})
+            repository_id = config.get("repositoryId", "unknown")
+
+            # Check repository-level embeddingModelId
+            if config.get("embeddingModelId") == model_id:
+                usages.append({"repository_id": repository_id, "usage_type": "repository"})
+
+            # Check pipelines for embeddingModel
+            pipelines = config.get("pipelines", [])
+            for pipeline in pipelines:
+                if pipeline.get("embeddingModel") == model_id:
+                    usages.append({"repository_id": repository_id, "usage_type": "pipeline"})
+                    break  # Only report once per repository for pipeline usage
+
+        return usages

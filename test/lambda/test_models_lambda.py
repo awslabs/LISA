@@ -37,7 +37,12 @@ from models.domain_objects import (
     ModelType,
     UpdateModelRequest,
 )
-from models.exception import InvalidStateTransitionError, ModelAlreadyExistsError, ModelNotFoundError
+from models.exception import (
+    InvalidStateTransitionError,
+    ModelAlreadyExistsError,
+    ModelInUseError,
+    ModelNotFoundError,
+)
 from models.handler.base_handler import BaseApiHandler
 from models.handler.create_model_handler import CreateModelHandler
 from models.handler.delete_model_handler import DeleteModelHandler
@@ -53,7 +58,9 @@ os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
 os.environ["AWS_SECURITY_TOKEN"] = "testing"
 os.environ["AWS_SESSION_TOKEN"] = "testing"
 os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+os.environ["AWS_REGION"] = "us-east-1"
 os.environ["MODEL_TABLE_NAME"] = "model-table"
+os.environ["LISA_RAG_VECTOR_STORE_TABLE"] = "vector-store-table"
 os.environ["CREATE_SFN_ARN"] = "arn:aws:states:us-east-1:123456789012:stateMachine:CreateModelStateMachine"
 os.environ["DELETE_SFN_ARN"] = "arn:aws:states:us-east-1:123456789012:stateMachine:DeleteModelStateMachine"
 os.environ["UPDATE_SFN_ARN"] = "arn:aws:states:us-east-1:123456789012:stateMachine:UpdateModelStateMachine"
@@ -331,16 +338,90 @@ def test_delete_model_handler(
         guardrails_table_resource=guardrails_table,
     )
 
-    # Call handler
-    response = handler("test-model")
+    # Mock VectorStoreRepository to return no usages
+    with patch("models.handler.delete_model_handler.VectorStoreRepository") as mock_repo_class:
+        mock_repo = mock_repo_class.return_value
+        mock_repo.find_repositories_using_model.return_value = []
 
-    # Verify response
-    assert isinstance(response.model, LISAModel)
-    assert response.model.modelId == "test-model"
+        # Call handler
+        response = handler("test-model")
+
+        # Verify response
+        assert isinstance(response.model, LISAModel)
+        assert response.model.modelId == "test-model"
+
+        # Verify the repository was checked
+        mock_repo.find_repositories_using_model.assert_called_once_with("test-model")
 
     # Test with non-existent model
     with pytest.raises(ModelNotFoundError, match="Model 'non-existent-model' was not found"):
         handler("non-existent-model")
+
+
+def test_delete_model_handler_model_in_use_by_repository(
+    mock_stepfunctions_client, model_table, sample_model, mock_autoscaling_client, guardrails_table
+):
+    """Test DeleteModelHandler raises error when model is in use by repository."""
+    # Add sample model to table
+    model_table.put_item(Item=sample_model)
+
+    # Create handler instance
+    handler = DeleteModelHandler(
+        autoscaling_client=mock_autoscaling_client,
+        stepfunctions_client=mock_stepfunctions_client,
+        model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
+    )
+
+    # Mock VectorStoreRepository to return repository usage
+    with patch("models.handler.delete_model_handler.VectorStoreRepository") as mock_repo_class:
+        mock_repo = mock_repo_class.return_value
+        mock_repo.find_repositories_using_model.return_value = [
+            {"repository_id": "test-repo", "usage_type": "repository"}
+        ]
+
+        # Call handler and expect error
+        with pytest.raises(
+            ModelInUseError,
+            match="Model 'test-model' is currently in use by repository 'test-repo'",
+        ):
+            handler("test-model")
+
+        # Verify the repository was checked
+        mock_repo.find_repositories_using_model.assert_called_once_with("test-model")
+
+
+def test_delete_model_handler_model_in_use_by_pipeline(
+    mock_stepfunctions_client, model_table, sample_model, mock_autoscaling_client, guardrails_table
+):
+    """Test DeleteModelHandler raises error when model is in use by pipeline."""
+    # Add sample model to table
+    model_table.put_item(Item=sample_model)
+
+    # Create handler instance
+    handler = DeleteModelHandler(
+        autoscaling_client=mock_autoscaling_client,
+        stepfunctions_client=mock_stepfunctions_client,
+        model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
+    )
+
+    # Mock VectorStoreRepository to return pipeline usage
+    with patch("models.handler.delete_model_handler.VectorStoreRepository") as mock_repo_class:
+        mock_repo = mock_repo_class.return_value
+        mock_repo.find_repositories_using_model.return_value = [
+            {"repository_id": "test-repo", "usage_type": "pipeline"}
+        ]
+
+        # Call handler and expect error
+        with pytest.raises(
+            ModelInUseError,
+            match="Model 'test-model' is currently in use by repository 'test-repo'",
+        ):
+            handler("test-model")
+
+        # Verify the repository was checked
+        mock_repo.find_repositories_using_model.assert_called_once_with("test-model")
 
 
 def test_get_model_handler(

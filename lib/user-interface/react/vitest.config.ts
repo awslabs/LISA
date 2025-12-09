@@ -42,7 +42,6 @@ export default defineConfig({
             include: [
                 'src/**/*.{ts,tsx}',
             ],
-            all: true,
         },
     },
     resolve: {

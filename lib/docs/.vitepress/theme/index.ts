@@ -14,21 +14,14 @@
   limitations under the License.
 */
 
-const esbuild = require('esbuild');
+// .vitepress/theme/index.ts
+import type { Theme } from 'vitepress';
+import DefaultTheme from 'vitepress/theme';
+import { enhanceAppWithTabs } from 'vitepress-plugin-tabs/client';
 
-esbuild.build({
-    entryPoints: ['src/index.ts', 'src/lib/index.ts'],
-    bundle: true,
-    minify: true,
-    sourcemap: true,
-    platform: 'node',
-    target: 'node20',
-    outdir: 'dist',
-    // CDK packages and zod will come from Lambda layer
-    external: [
-        'aws-cdk',
-        'aws-cdk-lib',
-        'zod',
-    ],
-    format: 'cjs',
-}).catch(() => process.exit(1));
+export default {
+    extends: DefaultTheme,
+    enhanceApp ({ app }) {
+        enhanceAppWithTabs(app);
+    },
+} satisfies Theme;

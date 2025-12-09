@@ -11,8 +11,8 @@
 ## Software
 
 * AWS CLI installed and configured
-* Python 3.11
-* Node.js 20
+* Python 3.13
+* Node.js 24
 * Docker installed and running
 * Sufficient disk space for model downloads and conversions
 
@@ -51,6 +51,9 @@ export CDK_DOCKER=finch # Optional, only required if not using docker as contain
 
 Install system dependencies and set up both Python and TypeScript environments:
 
+:::tabs
+== Debian
+
 ```bash
 # Install system dependencies
 sudo apt-get update
@@ -61,10 +64,7 @@ pip3 install --user --upgrade pip
 pip3 install yq huggingface_hub s5cmd
 
 # Set up Python environment
-make createPythonEnvironment
-
-# Activate your python environment
-# The command is the output from the previous make command)
+make createPythonEnvironment && source .venv/bin/activate
 
 # Install Python Requirements
 make installPythonRequirements
@@ -73,6 +73,32 @@ make installPythonRequirements
 make createTypeScriptEnvironment
 make installTypeScriptRequirements
 ```
+
+== EL / AL2
+
+```bash
+# Install system dependencies
+sudo yum update -y && yum install -y git jq yq
+
+# Install runtimes (use mise for installation - https://mise.jdx.dev/installing-mise.html)
+mise use --global python@3.13 node@24
+
+# Install Python packages
+pip3 install --user --upgrade pip
+pip3 install yq huggingface_hub s5cmd
+
+# Set up Python environment
+make createPythonEnvironment && source .venv/bin/activate
+
+# Install Python Requirements
+make installPythonRequirements
+
+# Set up TypeScript environment
+make createTypeScriptEnvironment
+make installTypeScriptRequirements
+```
+
+:::
 
 ### Step 4: Configure LISA
 
@@ -292,7 +318,7 @@ npmConfig:
   registry: https://your-adc-npm-registry.com
 
 # Use ADC-accessible base images for LISA-Serve and Batch Ingestion
-baseImage: <adc-registry>/python:3.11
+baseImage: <adc-registry>/python:3.13-slim
 
 # Configure offline build dependencies for REST API (nodeenv for prisma-client-py)
 restApiConfig:

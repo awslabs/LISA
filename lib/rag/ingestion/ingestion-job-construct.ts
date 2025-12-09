@@ -29,7 +29,7 @@ import * as batch from 'aws-cdk-lib/aws-batch';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import { getDefaultRuntime } from '../../api-base/utils';
+import { getPythonRuntime } from '../../api-base/utils';
 import { Vpc } from '../../networking/vpc';
 import path from 'path';
 import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
@@ -200,7 +200,7 @@ export class IngestionJobConstruct extends Construct {
         // Lambda function for handling scheduled document ingestion - using container image
         const handlePipelineIngestScheduleLambda = new lambda.Function(this, 'handlePipelineIngestSchedule', {
             functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-ingest-schedule-${hash}`,
-            runtime: getDefaultRuntime(),
+            runtime: getPythonRuntime(),
             handler: 'repository.pipeline_ingest_documents.handle_pipline_ingest_schedule',
             code: lambda.Code.fromAsset('./lambda'),
             timeout: Duration.seconds(60),
@@ -227,7 +227,7 @@ export class IngestionJobConstruct extends Construct {
         // Lambda function for handling S3 event-based document ingestion - using container image
         const handlePipelineIngestEvent = new lambda.Function(this, 'handlePipelineIngestEvent', {
             functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-ingest-event-${hash}`,
-            runtime: getDefaultRuntime(),
+            runtime: getPythonRuntime(),
             handler: 'repository.pipeline_ingest_documents.handle_pipeline_ingest_event',
             code: lambda.Code.fromAsset('./lambda'),
             timeout: Duration.seconds(60),
@@ -254,7 +254,7 @@ export class IngestionJobConstruct extends Construct {
         // Lambda function for handling document deletion events - using container image
         const handlePipelineDeleteEvent = new lambda.Function(this, 'handlePipelineDeleteEvent', {
             functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-delete-event-${hash}`,
-            runtime: getDefaultRuntime(),
+            runtime: getPythonRuntime(),
             handler: 'repository.pipeline_ingest_documents.handle_pipeline_delete_event',
             code: lambda.Code.fromAsset('./lambda'),
             timeout: Duration.seconds(60),

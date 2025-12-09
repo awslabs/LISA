@@ -35,7 +35,7 @@ import { CustomResource, Duration } from 'aws-cdk-lib';
 import { Provider } from 'aws-cdk-lib/custom-resources';
 import { Construct } from 'constructs';
 
-import { getDefaultRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
+import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
 import { APP_MANAGEMENT_KEY, BaseProps } from '../schema';
 import { Vpc } from '../networking/vpc';
 
@@ -223,7 +223,7 @@ export class ModelsApi extends Construct {
                 method: 'ANY',
                 environment
             },
-            getDefaultRuntime(),
+            getPythonRuntime(),
             vpc,
             securityGroups,
             authorizer,
@@ -295,7 +295,7 @@ export class ModelsApi extends Construct {
                 lambdaPath,
                 lambdaLayers,
                 f,
-                getDefaultRuntime(),
+                getPythonRuntime(),
                 vpc,
                 securityGroups,
                 authorizer,
@@ -355,7 +355,7 @@ export class ModelsApi extends Construct {
 
         // Model API key cleanup - runs once per deployment version
         const modelApiKeyCleanupLambda = new Function(this, 'ModelApiKeyCleanup', {
-            runtime: getDefaultRuntime(),
+            runtime: getPythonRuntime(),
             handler: 'models.model_api_key_cleanup.lambda_handler',
             code: Code.fromAsset(lambdaPath),
             layers: lambdaLayers,

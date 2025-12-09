@@ -24,13 +24,11 @@ esbuild.build({
     platform: 'node',
     target: 'node20',
     outdir: 'dist',
-    // Exclude these from esbuild. We will add them explicily during with npm pack:prod
+    // CDK packages and zod will come from Lambda layer
     external: [
-    // '@cdklabs/cdk-enterprise-iac', // Include this with ESbuild because it is too big to include via node_modules
         'aws-cdk',
         'aws-cdk-lib',
-        '@aws-sdk/client-iam',
-        'zod'
+        'zod',
     ],
     format: 'cjs',
 }).catch(() => process.exit(1));

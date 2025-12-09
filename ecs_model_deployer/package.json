@@ -4,23 +4,22 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "node esbuild.js && npm run copy-assets && npm run pack:prod && npm run copy-dist",
+    "build": "npm run clean:dist && node esbuild.js && npm run copy-assets && npm run copy-dist",
     "copy-assets": "cp package.json ./src/cdk*json ../VERSION ./dist",
-    "pack:prod": "cd ./dist && npm i --omit dev",
     "copy-dist": "mkdir -p ../dist/ecs_model_deployer && cp -r ./dist/* ../dist/ecs_model_deployer/",
-    "clean": "rm -rf ./dist/",
+    "clean": "rm -rf ./dist ./node_modules",
+    "clean:dist": "rm -rf ./dist",
     "test": "echo \"No tests for ECS model deployer package\""
   },
   "author": "",
   "license": "Apache-2.0",
-  "dependencies": {
-    "aws-cdk": "^2.177.0",
-    "aws-cdk-lib": "^2.185.0",
-    "zod": "^3.24.1"
-  },
+  "dependencies": {},
   "devDependencies": {
-    "esbuild": "^0.25.1",
-    "@cdklabs/cdk-enterprise-iac": "^0.0.512",
-    "@types/node": "^22.4.1"
+    "@cdklabs/cdk-enterprise-iac": "^0.1.0",
+    "@types/node": "^24.10.1",
+    "aws-cdk": "^2.1033.0",
+    "aws-cdk-lib": "^2.230.0",
+    "esbuild": "^0.27.0",
+    "zod": "^4.1.13"
   }
 }

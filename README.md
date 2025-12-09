@@ -1,14 +1,27 @@
 # LLM Inference Solution for Amazon Dedicated Cloud (LISA)
 [![Full Documentation](https://img.shields.io/badge/Full%20Documentation-blue?style=for-the-badge&logo=Vite&logoColor=white)](https://awslabs.github.io/LISA/)
+[![Contact Us](https://img.shields.io/badge/Contact%20Us-green?style=for-the-badge&logo=maildotru&logoColor=white)](mailto:lisa-product-team@amazon.com)
 ## What is LISA?
-Our large language model (LLM) inference solution for the Amazon Dedicated Cloud (ADC), LISA, is an open source infrastructure-as-code solution. Customers deploy LISA directly into an Amazon Web Services (AWS) account. While specially designed for ADC regions that support government customers' most sensitive workloads, LISA is also compatible with commercial regions. LISA supports model self-hosting via Amazon Elastic Container Service (ECS). LISA's LiteLLM support also makes it compatible with 100+ models hosted by external model providers, including Amazon Bedrock. LISA further complements Amazon Bedrock by accelerating GenAI adoption. LISA's optional chat assistant user interface (UI) supports model management, model prompting, document summarization, chat session management, prompt libraries, retrieval augmented generation (RAG), automated document ingestion pipelines, and other advanced features. Customers can choose to integrate custom UIs directly with LISA, relying on LISA for centralized model orchestration, chat session management, and RAG. LISA is scalable and ready to support production use cases. The roadmap is customer-driven, with new capabilities launching monthly.
+Our large language model (LLM) inference solution for the Amazon Dedicated Cloud (ADC), LISA, is open source infrastructure-as-code. Customers deploy it directly into an Amazon Web Services (AWS) account in any region. LISA is scalable and ready to support production use cases.
+
+LISA accelerates GenAI adoption by offering built-in configurability with Amazon Bedrock models, Knowledge Bases, and Guardrails. Also by offering advanced capabilities like an optional enterprise-ready chat user interface (UI) with configurable features, authentication, resource access control, centralized model orchestration via LiteLLM, model self-hosting via Amazon ECS, retrieval augmented generation (RAG), APIs, and broad model context protocol (MCP) support and features. LISA is also compatible with OpenAI’s API specification making it easily configurable with supporting solutions. For example, the Continue plugin for VSCode and JetBrains integrated development environments (IDE).
+
+LISA's roadmap is customer-driven, with new capabilities launching monthly. Reach out to the product team to ask questions, provide feedback, and send feature requests via the "Contact Us" button above.
+
 ## Key Features
-* **Open source**: No subscription or licensing fees. LISA costs are based on service usage. The roadmap is customer-driven with monthly releases. LISA is backed by a software development team.
-* **Model Flexibility**: Bring your own models for self-hosting, or quickly configure LISA with 100+ models supported by third-party model providers, including Amazon Bedrock.
+* **Open Source**: No subscription or licensing fees. LISA costs are based on service usage.
+* **Ongoing Releases**: The product roadmap is customer-driven with releases typically every 2-4 weeks. LISA is backed by a software development team that builds production grade solutions to accelerate customers' GenAI adoption.
+* **Model Flexibility**: Bring your own models for self-hosting, or quickly configure LISA with 100+ models supported by third-party model providers, including Amazon Bedrock and Jumpstart.
 * **Model Orchestration**: Centralize and standardize unique API calls to third-party model providers automatically with LISA via LiteLLM. LISA standardizes the unique API calls into the OpenAI format automatically. All that is required is an API key, model name, and API endpoint.
 * **Modular Components**: Accelerate GenAI adoption with secure, scalable software. LISA supports various use cases through configurable components: model serving and orchestration, chat user interface with advanced capabilities, authentication, retrieval augmented generation (RAG), Anthropic’s Model Context Protocol (MCP), and APIs.
-* **CodeGen**: Supports OpenAI’s API specification, making LISA easily configurable with compatible solutions like the Continue plugin for VSCode and JetBrains integrated development environments (IDEs). This allows users to select from any LISA configured model to support LLM prompting directly in their IDE.
+* **CodeGen**: LISA supports OpenAI’s API specification, making it easily configurable with compatible solutions like the Continue plugin for VSCode and JetBrains IDEs.
 * **FedRAMP**: Leverages FedRAMP High compliant services.
+
+## Major Components
+LISA’s four major components include Serve, a Chat UI, RAG, and MCP. LISA Serve and LISA MCP are standalone, foundational core solutions with APIs for customers not leveraging LISA’s Chat UI. Both LISA’s Chat UI and RAG are optional components, but must be used with Serve.
+
+Read more in the Architecture Overview section of LISA's documentation site linked above.
+
 ## Deployment Prerequisites
 ### Pre-Deployment Steps
 * Set up or have access to an AWS account.
@@ -19,8 +32,8 @@ Our large language model (LLM) inference solution for the Amazon Dedicated Cloud
 * AWS CDK and Model Management both leverage AWS Systems Manager Agent (SSM) parameter store. Confirm that SSM is approved for use by your organization before beginning. If you're new to CDK, review the [AWS CDK Documentation](https://docs.aws.amazon.com/cdk/v2/guide/home.html) and consult with your AWS support team.
 ### Software
 * AWS CLI installed and configured
-* Python 3.11
-* Node.js 20
+* Python 3.13
+* Node.js 24
 * Docker installed and running
 * Sufficient disk space for model downloads and conversions
 ## Getting Started

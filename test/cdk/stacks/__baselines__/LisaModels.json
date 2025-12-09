@@ -609,12 +609,12 @@
         ]
       }
     },
-    "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFn9C16A03D": {
+    "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFunc775C7BAD": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "def2b495b7c3e55fb5cb52b4b1a5f1b6494df311eb33a447447cd779f136122b.zip"
+          "S3Key": "2c6ff821ee55bfd1624f5e2f39d39ce7d761c97bf6108ca29c30102c56b68a1a.zip"
         },
         "Environment": {
           "Variables": {
@@ -630,8 +630,13 @@
         "EphemeralStorage": {
           "Size": 2048
         },
-        "FunctionName": "LisaModels-ecs_model_deployer-Fn",
+        "FunctionName": "LisaModels-ecs_model_deployer-Func",
         "Handler": "index.handler",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncdkC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
         "MemorySize": 1024,
         "Role": {
           "Fn::GetAtt": [
@@ -968,7 +973,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Environment": {
           "Variables": {
@@ -1103,7 +1108,8 @@
                     "dynamodb:GetItem",
                     "dynamodb:PutItem",
                     "dynamodb:UpdateItem",
-                    "dynamodb:Scan"
+                    "dynamodb:Scan",
+                    "dynamodb:Query"
                   ],
                   "Effect": "Allow",
                   "Resource": [
@@ -1122,6 +1128,20 @@
                               "ModelsApiModelTable72B9582E",
                               "Arn"
                             ]
+                          },
+                          "/*"
+                        ]
+                      ]
+                    },
+                    {
+                      "Fn::ImportValue": "LisaServe:ExportsOutputFnGetAttGuardrailsTableCEF5B750Arn22DC7C03"
+                    },
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          {
+                            "Fn::ImportValue": "LisaServe:ExportsOutputFnGetAttGuardrailsTableCEF5B750Arn22DC7C03"
                           },
                           "/*"
                         ]
@@ -1150,7 +1170,7 @@
                     },
                     {
                       "Fn::GetAtt": [
-                        "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFn9C16A03D",
+                        "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFunc775C7BAD",
                         "Arn"
                       ]
                     }
@@ -1201,7 +1221,7 @@
                         },
                         ":secretsmanager:us-iso-east-1:012345678901:secret:",
                         {
-                          "Ref": "SsmParameterValuedevtestlisalisamanagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+                          "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
                         },
                         "-??????"
                       ]
@@ -1239,7 +1259,8 @@
                 {
                   "Action": [
                     "bedrock:InvokeModel",
-                    "bedrock:InvokeModelWithResponseStream"
+                    "bedrock:InvokeModelWithResponseStream",
+                    "bedrock:ApplyGuardrail"
                   ],
                   "Effect": "Allow",
                   "Resource": "*"
@@ -1261,7 +1282,7 @@
                       ]
                     },
                     "arn:aws:ssm:us-iso-east-1:012345678901:parameter/dev/test-lisa/lisa/lisaServeRestApiUri",
-                    "arn:aws:ssm:us-iso-east-1:012345678901:parameter/LISA-lisa-management-key",
+                    "arn:aws:ssm:us-iso-east-1:012345678901:parameter/LISA-management-key",
                     "arn:aws:ssm:us-iso-east-1:012345678901:parameter/dev/test-lisa/lisa/LiteLLMDbConnectionInfo",
                     "arn:aws:ssm:us-iso-east-1:012345678901:parameter/dev/test-lisa/lisa/modelTableName"
                   ]
@@ -1284,7 +1305,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Environment": {
           "Variables": {
@@ -1305,7 +1326,7 @@
             },
             "ECS_MODEL_DEPLOYER_FN_ARN": {
               "Fn::GetAtt": [
-                "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFn9C16A03D",
+                "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFunc775C7BAD",
                 "Arn"
               ]
             },
@@ -1313,9 +1334,12 @@
             "MODEL_TABLE_NAME": {
               "Ref": "ModelsApiModelTable72B9582E"
             },
+            "GUARDRAILS_TABLE_NAME": {
+              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+            },
             "REST_API_VERSION": "v2",
             "MANAGEMENT_KEY_NAME": {
-              "Ref": "SsmParameterValuedevtestlisalisamanagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}",
@@ -1366,7 +1390,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Environment": {
           "Variables": {
@@ -1387,7 +1411,7 @@
             },
             "ECS_MODEL_DEPLOYER_FN_ARN": {
               "Fn::GetAtt": [
-                "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFn9C16A03D",
+                "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFunc775C7BAD",
                 "Arn"
               ]
             },
@@ -1395,9 +1419,12 @@
             "MODEL_TABLE_NAME": {
               "Ref": "ModelsApiModelTable72B9582E"
             },
+            "GUARDRAILS_TABLE_NAME": {
+              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+            },
             "REST_API_VERSION": "v2",
             "MANAGEMENT_KEY_NAME": {
-              "Ref": "SsmParameterValuedevtestlisalisamanagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}",
@@ -1448,7 +1475,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Environment": {
           "Variables": {
@@ -1469,7 +1496,7 @@
             },
             "ECS_MODEL_DEPLOYER_FN_ARN": {
               "Fn::GetAtt": [
-                "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFn9C16A03D",
+                "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFunc775C7BAD",
                 "Arn"
               ]
             },
@@ -1477,9 +1504,12 @@
             "MODEL_TABLE_NAME": {
               "Ref": "ModelsApiModelTable72B9582E"
             },
+            "GUARDRAILS_TABLE_NAME": {
+              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+            },
             "REST_API_VERSION": "v2",
             "MANAGEMENT_KEY_NAME": {
-              "Ref": "SsmParameterValuedevtestlisalisamanagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}",
@@ -1530,7 +1560,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Environment": {
           "Variables": {
@@ -1551,7 +1581,7 @@
             },
             "ECS_MODEL_DEPLOYER_FN_ARN": {
               "Fn::GetAtt": [
-                "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFn9C16A03D",
+                "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFunc775C7BAD",
                 "Arn"
               ]
             },
@@ -1559,9 +1589,12 @@
             "MODEL_TABLE_NAME": {
               "Ref": "ModelsApiModelTable72B9582E"
             },
+            "GUARDRAILS_TABLE_NAME": {
+              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+            },
             "REST_API_VERSION": "v2",
             "MANAGEMENT_KEY_NAME": {
-              "Ref": "SsmParameterValuedevtestlisalisamanagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}",
@@ -1612,7 +1645,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Environment": {
           "Variables": {
@@ -1633,7 +1666,7 @@
             },
             "ECS_MODEL_DEPLOYER_FN_ARN": {
               "Fn::GetAtt": [
-                "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFn9C16A03D",
+                "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFunc775C7BAD",
                 "Arn"
               ]
             },
@@ -1641,9 +1674,12 @@
             "MODEL_TABLE_NAME": {
               "Ref": "ModelsApiModelTable72B9582E"
             },
+            "GUARDRAILS_TABLE_NAME": {
+              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+            },
             "REST_API_VERSION": "v2",
             "MANAGEMENT_KEY_NAME": {
-              "Ref": "SsmParameterValuedevtestlisalisamanagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}",
@@ -1694,7 +1730,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Environment": {
           "Variables": {
@@ -1715,7 +1751,7 @@
             },
             "ECS_MODEL_DEPLOYER_FN_ARN": {
               "Fn::GetAtt": [
-                "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFn9C16A03D",
+                "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFunc775C7BAD",
                 "Arn"
               ]
             },
@@ -1723,9 +1759,12 @@
             "MODEL_TABLE_NAME": {
               "Ref": "ModelsApiModelTable72B9582E"
             },
+            "GUARDRAILS_TABLE_NAME": {
+              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+            },
             "REST_API_VERSION": "v2",
             "MANAGEMENT_KEY_NAME": {
-              "Ref": "SsmParameterValuedevtestlisalisamanagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}",
@@ -1776,7 +1815,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Environment": {
           "Variables": {
@@ -1797,7 +1836,7 @@
             },
             "ECS_MODEL_DEPLOYER_FN_ARN": {
               "Fn::GetAtt": [
-                "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFn9C16A03D",
+                "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFunc775C7BAD",
                 "Arn"
               ]
             },
@@ -1805,9 +1844,12 @@
             "MODEL_TABLE_NAME": {
               "Ref": "ModelsApiModelTable72B9582E"
             },
+            "GUARDRAILS_TABLE_NAME": {
+              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+            },
             "REST_API_VERSION": "v2",
             "MANAGEMENT_KEY_NAME": {
-              "Ref": "SsmParameterValuedevtestlisalisamanagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}",
@@ -1816,6 +1858,91 @@
           }
         },
         "Handler": "models.state_machine.create_model.handle_add_model_to_litellm",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiCreateModelWorkflowAddGuardrailsToLitellmFunc539E23C4": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "DOCKER_IMAGE_BUILDER_FN_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApidockerimagebuilderLisaModelsdockerimagebuilder35917FEB",
+                "Arn"
+              ]
+            },
+            "ECR_REPOSITORY_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApiecsmodelbuildrepo74B1906D",
+                "Arn"
+              ]
+            },
+            "ECR_REPOSITORY_NAME": {
+              "Ref": "ModelsApiecsmodelbuildrepo74B1906D"
+            },
+            "ECS_MODEL_DEPLOYER_FN_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFunc775C7BAD",
+                "Arn"
+              ]
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+            },
+            "REST_API_VERSION": "v2",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
+            "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}",
+            "AWS_ACCOUNT_ID": "012345678901",
+            "AWS_PARTITION": "aws"
+          }
+        },
+        "Handler": "models.state_machine.create_model.handle_add_guardrails_to_litellm",
         "Layers": [
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -1933,6 +2060,58 @@
               "Resource": [
                 {
                   "Fn::GetAtt": [
+                    "ModelsApiCreateModelWorkflowAddGuardrailsToLitellmFunc539E23C4",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiCreateModelWorkflowAddGuardrailsToLitellmFunc539E23C4",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiCreateModelWorkflowHandleFailureFunc7CC3D0A8",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiCreateModelWorkflowHandleFailureFunc7CC3D0A8",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
                     "ModelsApiCreateModelWorkflowStartCopyDockerImageFuncE508BA76",
                     "Arn"
                   ]
@@ -2030,32 +2209,6 @@
                   ]
                 }
               ]
-            },
-            {
-              "Action": "lambda:InvokeFunction",
-              "Effect": "Allow",
-              "Resource": [
-                {
-                  "Fn::GetAtt": [
-                    "ModelsApiCreateModelWorkflowHandleFailureFunc7CC3D0A8",
-                    "Arn"
-                  ]
-                },
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      {
-                        "Fn::GetAtt": [
-                          "ModelsApiCreateModelWorkflowHandleFailureFunc7CC3D0A8",
-                          "Arn"
-                        ]
-                      },
-                      ":*"
-                    ]
-                  ]
-                }
-              ]
             }
           ],
           "Version": "2012-10-17"
@@ -2086,7 +2239,7 @@
                   "Arn"
                 ]
               },
-              "\",\"Payload.$\":\"$\"}},\"CreateModelInfraChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.create_infra\",\"BooleanEquals\":true,\"Next\":\"StartCopyDockerImage\"}],\"Default\":\"AddModelToLitellm\"},\"AddModelToLitellm\":{\"Next\":\"CreateSuccess\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              "\",\"Payload.$\":\"$\"}},\"CreateModelInfraChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.create_infra\",\"BooleanEquals\":true,\"Next\":\"StartCopyDockerImage\"}],\"Default\":\"AddModelToLitellm\"},\"AddModelToLitellm\":{\"Next\":\"CheckGuardrailsChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
               {
                 "Ref": "AWS::Partition"
               },
@@ -2097,7 +2250,29 @@
                   "Arn"
                 ]
               },
-              "\",\"Payload.$\":\"$\"}},\"CreateSuccess\":{\"Type\":\"Succeed\"},\"StartCopyDockerImage\":{\"Next\":\"CheckImageTypeChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.TaskFailed\"],\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              "\",\"Payload.$\":\"$\"}},\"CheckGuardrailsChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.guardrailsConfig\",\"IsPresent\":true,\"Next\":\"AddGuardrailsToLitellm\"}],\"Default\":\"CreateSuccess\"},\"CreateSuccess\":{\"Type\":\"Succeed\"},\"AddGuardrailsToLitellm\":{\"Next\":\"CreateSuccess\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.TaskFailed\"],\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiCreateModelWorkflowAddGuardrailsToLitellmFunc539E23C4",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"HandleFailure\":{\"Next\":\"CreateFailed\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiCreateModelWorkflowHandleFailureFunc7CC3D0A8",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"StartCopyDockerImage\":{\"Next\":\"CheckImageTypeChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.TaskFailed\"],\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
               {
                 "Ref": "AWS::Partition"
               },
@@ -2141,18 +2316,7 @@
                   "Arn"
                 ]
               },
-              "\",\"Payload.$\":\"$\"}},\"WaitBeforePollingCreateStack\":{\"Type\":\"Wait\",\"Seconds\":60,\"Next\":\"PollCreateStack\"},\"PollCreateStackChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.continue_polling_stack\",\"BooleanEquals\":true,\"Next\":\"WaitBeforePollingCreateStack\"}],\"Default\":\"AddModelToLitellm\"},\"HandleFailure\":{\"Next\":\"CreateFailed\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
-              {
-                "Ref": "AWS::Partition"
-              },
-              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
-              {
-                "Fn::GetAtt": [
-                  "ModelsApiCreateModelWorkflowHandleFailureFunc7CC3D0A8",
-                  "Arn"
-                ]
-              },
-              "\",\"Payload.$\":\"$\"}},\"CreateFailed\":{\"Type\":\"Fail\"}}}"
+              "\",\"Payload.$\":\"$\"}},\"WaitBeforePollingCreateStack\":{\"Type\":\"Wait\",\"Seconds\":60,\"Next\":\"PollCreateStack\"},\"PollCreateStackChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.continue_polling_stack\",\"BooleanEquals\":true,\"Next\":\"WaitBeforePollingCreateStack\"}],\"Default\":\"AddModelToLitellm\"},\"CreateFailed\":{\"Type\":\"Fail\"}}}"
             ]
           ]
         },
@@ -2175,17 +2339,20 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Environment": {
           "Variables": {
             "MODEL_TABLE_NAME": {
               "Ref": "ModelsApiModelTable72B9582E"
             },
+            "GUARDRAILS_TABLE_NAME": {
+              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+            },
             "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
             "REST_API_VERSION": "v2",
             "MANAGEMENT_KEY_NAME": {
-              "Ref": "SsmParameterValuedevtestlisalisamanagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev"
           }
@@ -2233,17 +2400,20 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Environment": {
           "Variables": {
             "MODEL_TABLE_NAME": {
               "Ref": "ModelsApiModelTable72B9582E"
             },
+            "GUARDRAILS_TABLE_NAME": {
+              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+            },
             "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
             "REST_API_VERSION": "v2",
             "MANAGEMENT_KEY_NAME": {
-              "Ref": "SsmParameterValuedevtestlisalisamanagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev"
           }
@@ -2291,17 +2461,20 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Environment": {
           "Variables": {
             "MODEL_TABLE_NAME": {
               "Ref": "ModelsApiModelTable72B9582E"
             },
+            "GUARDRAILS_TABLE_NAME": {
+              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+            },
             "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
             "REST_API_VERSION": "v2",
             "MANAGEMENT_KEY_NAME": {
-              "Ref": "SsmParameterValuedevtestlisalisamanagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev"
           }
@@ -2349,17 +2522,20 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Environment": {
           "Variables": {
             "MODEL_TABLE_NAME": {
               "Ref": "ModelsApiModelTable72B9582E"
             },
+            "GUARDRAILS_TABLE_NAME": {
+              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+            },
             "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
             "REST_API_VERSION": "v2",
             "MANAGEMENT_KEY_NAME": {
-              "Ref": "SsmParameterValuedevtestlisalisamanagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev"
           }
@@ -2407,22 +2583,86 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Environment": {
           "Variables": {
             "MODEL_TABLE_NAME": {
               "Ref": "ModelsApiModelTable72B9582E"
             },
+            "GUARDRAILS_TABLE_NAME": {
+              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+            },
             "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
             "REST_API_VERSION": "v2",
             "MANAGEMENT_KEY_NAME": {
-              "Ref": "SsmParameterValuedevtestlisalisamanagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev"
           }
         },
         "Handler": "models.state_machine.delete_model.handle_delete_from_ddb",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiDeleteModelWorkflowDeleteGuardrailsFunc9C6905A9": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "REST_API_VERSION": "v2",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev"
+          }
+        },
+        "Handler": "models.state_machine.delete_model.handle_delete_guardrails",
         "Layers": [
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -2540,6 +2780,32 @@
               "Resource": [
                 {
                   "Fn::GetAtt": [
+                    "ModelsApiDeleteModelWorkflowDeleteGuardrailsFunc9C6905A9",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiDeleteModelWorkflowDeleteGuardrailsFunc9C6905A9",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
                     "ModelsApiDeleteModelWorkflowDeleteFromDdbFuncAB2B6BFB",
                     "Arn"
                   ]
@@ -2641,7 +2907,7 @@
                   "Arn"
                 ]
               },
-              "\",\"Payload.$\":\"$\"}},\"DeleteFromLitellm\":{\"Next\":\"DeleteStackChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              "\",\"Payload.$\":\"$\"}},\"DeleteFromLitellm\":{\"Next\":\"DeleteGuardrails\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
               {
                 "Ref": "AWS::Partition"
               },
@@ -2649,6 +2915,17 @@
               {
                 "Fn::GetAtt": [
                   "ModelsApiDeleteModelWorkflowDeleteFromLitellmFunc75B8FA09",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"DeleteGuardrails\":{\"Next\":\"DeleteStackChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiDeleteModelWorkflowDeleteGuardrailsFunc9C6905A9",
                   "Arn"
                 ]
               },
@@ -2708,17 +2985,20 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Environment": {
           "Variables": {
             "MODEL_TABLE_NAME": {
               "Ref": "ModelsApiModelTable72B9582E"
             },
+            "GUARDRAILS_TABLE_NAME": {
+              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+            },
             "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
             "REST_API_VERSION": "v2",
             "MANAGEMENT_KEY_NAME": {
-              "Ref": "SsmParameterValuedevtestlisalisamanagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}"
@@ -2767,17 +3047,20 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Environment": {
           "Variables": {
             "MODEL_TABLE_NAME": {
               "Ref": "ModelsApiModelTable72B9582E"
             },
+            "GUARDRAILS_TABLE_NAME": {
+              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+            },
             "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
             "REST_API_VERSION": "v2",
             "MANAGEMENT_KEY_NAME": {
-              "Ref": "SsmParameterValuedevtestlisalisamanagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}"
@@ -2826,17 +3109,20 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Environment": {
           "Variables": {
             "MODEL_TABLE_NAME": {
               "Ref": "ModelsApiModelTable72B9582E"
             },
+            "GUARDRAILS_TABLE_NAME": {
+              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+            },
             "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
             "REST_API_VERSION": "v2",
             "MANAGEMENT_KEY_NAME": {
-              "Ref": "SsmParameterValuedevtestlisalisamanagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}"
@@ -2885,17 +3171,20 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Environment": {
           "Variables": {
             "MODEL_TABLE_NAME": {
               "Ref": "ModelsApiModelTable72B9582E"
             },
+            "GUARDRAILS_TABLE_NAME": {
+              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+            },
             "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
             "REST_API_VERSION": "v2",
             "MANAGEMENT_KEY_NAME": {
-              "Ref": "SsmParameterValuedevtestlisalisamanagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}"
@@ -2939,22 +3228,87 @@
         "ModelsApiModelsSfnLambdaRoleF400F0BC"
       ]
     },
-    "ModelsApiUpdateModelWorkflowHandleFinishUpdateFunc92E550FB": {
+    "ModelsApiUpdateModelWorkflowHandleUpdateGuardrailsFuncAA02BA03": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Environment": {
           "Variables": {
             "MODEL_TABLE_NAME": {
               "Ref": "ModelsApiModelTable72B9582E"
             },
+            "GUARDRAILS_TABLE_NAME": {
+              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+            },
             "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
             "REST_API_VERSION": "v2",
             "MANAGEMENT_KEY_NAME": {
-              "Ref": "SsmParameterValuedevtestlisalisamanagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
+            "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}"
+          }
+        },
+        "Handler": "models.state_machine.update_model.handle_update_guardrails",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiUpdateModelWorkflowHandleFinishUpdateFunc92E550FB": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "REST_API_VERSION": "v2",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}"
@@ -3037,6 +3391,32 @@
                       {
                         "Fn::GetAtt": [
                           "ModelsApiUpdateModelWorkflowHandleJobIntakeFuncA1438F67",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiUpdateModelWorkflowHandleUpdateGuardrailsFuncAA02BA03",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiUpdateModelWorkflowHandleUpdateGuardrailsFuncAA02BA03",
                           "Arn"
                         ]
                       },
@@ -3179,7 +3559,18 @@
                   "Arn"
                 ]
               },
-              "\",\"Payload.$\":\"$\"}},\"HasEcsUpdateChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.needs_ecs_update\",\"BooleanEquals\":true,\"Next\":\"HandleEcsUpdate\"}],\"Default\":\"HasCapacityUpdateChoice\"},\"HasCapacityUpdateChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.has_capacity_update\",\"BooleanEquals\":true,\"Next\":\"HandlePollCapacity\"}],\"Default\":\"HandleFinishUpdate\"},\"HandleFinishUpdate\":{\"Next\":\"UpdateSuccess\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              "\",\"Payload.$\":\"$\"}},\"HasEcsUpdateChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.needs_ecs_update\",\"BooleanEquals\":true,\"Next\":\"HandleEcsUpdate\"}],\"Default\":\"HasGuardrailsUpdateChoice\"},\"HasGuardrailsUpdateChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.needs_guardrails_update\",\"BooleanEquals\":true,\"Next\":\"HandleUpdateGuardrails\"}],\"Default\":\"HasCapacityUpdateChoice\"},\"HasCapacityUpdateChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.has_capacity_update\",\"BooleanEquals\":true,\"Next\":\"HandlePollCapacity\"}],\"Default\":\"HandleFinishUpdate\"},\"HandleUpdateGuardrails\":{\"Next\":\"HasCapacityUpdateChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiUpdateModelWorkflowHandleUpdateGuardrailsFuncAA02BA03",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"HandleFinishUpdate\":{\"Next\":\"UpdateSuccess\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
               {
                 "Ref": "AWS::Partition"
               },
@@ -3223,7 +3614,7 @@
                   "Arn"
                 ]
               },
-              "\",\"Payload.$\":\"$\"}},\"WaitBeforePollEcsDeployment\":{\"Type\":\"Wait\",\"Seconds\":60,\"Next\":\"HandlePollEcsDeployment\"},\"PollEcsDeploymentChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.should_continue_ecs_polling\",\"BooleanEquals\":true,\"Next\":\"WaitBeforePollEcsDeployment\"}],\"Default\":\"HasCapacityUpdateChoice\"}}}"
+              "\",\"Payload.$\":\"$\"}},\"WaitBeforePollEcsDeployment\":{\"Type\":\"Wait\",\"Seconds\":60,\"Next\":\"HandlePollEcsDeployment\"},\"PollEcsDeploymentChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.should_continue_ecs_polling\",\"BooleanEquals\":true,\"Next\":\"WaitBeforePollEcsDeployment\"}],\"Default\":\"HasGuardrailsUpdateChoice\"}}}"
             ]
           ]
         },
@@ -3365,7 +3756,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Description": "Manage model",
         "Environment": {
@@ -3384,6 +3775,9 @@
             },
             "MODEL_TABLE_NAME": {
               "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
             }
           }
         },
@@ -3451,7 +3845,7 @@
         ]
       }
     },
-    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler4a9eC2C78690": {
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler006504F92FF4": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",
@@ -3490,7 +3884,7 @@
         }
       }
     },
-    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler8e30CA5B0DC1": {
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler8c94963143BB": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",
@@ -3534,7 +3928,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Description": "Manage model",
         "Environment": {
@@ -3553,6 +3947,9 @@
             },
             "MODEL_TABLE_NAME": {
               "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
             }
           }
         },
@@ -3596,7 +3993,7 @@
         "ModelsApiLisaModelApiLambdaExecutionRole3E663E08"
       ]
     },
-    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler5f34ADCFCD5F": {
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandlerc8ad666086F0": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",
@@ -3685,6 +4082,33 @@
               ]
             },
             {
+              "Action": [
+                "dynamodb:GetItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:Query",
+                "dynamodb:Scan"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::ImportValue": "LisaServe:ExportsOutputFnGetAttGuardrailsTableCEF5B750Arn22DC7C03"
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::ImportValue": "LisaServe:ExportsOutputFnGetAttGuardrailsTableCEF5B750Arn22DC7C03"
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
               "Action": "autoscaling:DescribeAutoScalingGroups",
               "Effect": "Allow",
               "Resource": "*"
@@ -3705,14 +4129,14 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Description": "Remove api_key from existing Bedrock models to fix Invalid API Key format errors",
         "Environment": {
           "Variables": {
             "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
             "MANAGEMENT_KEY_NAME": {
-              "Ref": "SsmParameterValuedevtestlisalisamanagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "REST_API_VERSION": "v2",
             "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
@@ -4053,13 +4477,17 @@
       "Type": "AWS::SSM::Parameter::Value<String>",
       "Default": "/dev/test-lisa/lisa/layerVersion/fastapi"
     },
+    "SsmParameterValuedevtestlisalisalayerVersioncdkC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/layerVersion/cdk"
+    },
     "SsmParameterValuedevtestlisalisabucketbucketaccesslogsC96584B6F00A464EAD1953AFF4B05118Parameter": {
       "Type": "AWS::SSM::Parameter::Value<String>",
       "Default": "/dev/test-lisa/lisa/bucket/bucket-access-logs"
     },
-    "SsmParameterValuedevtestlisalisamanagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter": {
+    "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter": {
       "Type": "AWS::SSM::Parameter::Value<String>",
-      "Default": "/dev/test-lisa/lisa/managementKeySecretName"
+      "Default": "/dev/test-lisa/lisa/appManagementKeySecretName"
     },
     "BootstrapVersion": {
       "Type": "AWS::SSM::Parameter::Value<String>",

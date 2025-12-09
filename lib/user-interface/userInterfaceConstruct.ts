@@ -20,7 +20,7 @@ import * as fs from 'node:fs';
 import { RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { AwsIntegration, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { IRole, ManagedPolicy, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
-import { Architecture, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { Architecture } from 'aws-cdk-lib/aws-lambda';
 import { BlockPublicAccess, Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
 import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -30,6 +30,7 @@ import { createCdkId } from '../core/utils';
 import { BaseProps } from '../schema';
 import { Roles } from '../core/iam/roles';
 import { ROOT_PATH, WEBAPP_DIST_PATH } from '../util';
+import { getNodeRuntime } from '../api-base/utils';
 
 /**
  * Properties for UserInterface Construct.
@@ -214,7 +215,7 @@ export class UserInterfaceConstruct extends Construct {
             console.log('generating web assets...');
             webappAssets = Source.asset(ROOT_PATH, {
                 bundling: {
-                    image: Runtime.NODEJS_18_X.bundlingImage,
+                    image: getNodeRuntime().bundlingImage,
                     platform: architecture.dockerPlatform,
                     command: [
                         'sh',

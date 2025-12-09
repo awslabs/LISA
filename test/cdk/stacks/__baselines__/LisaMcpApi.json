@@ -1,31 +1,4 @@
 {
-  "Parameters": {
-    "McpServerApilisaServeEndpointUrlPsParameter940FD447": {
-      "Type": "AWS::SSM::Parameter::Value<String>",
-      "Default": "/dev/test-lisa/lisa/lisaServeRestApiUri"
-    },
-    "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter": {
-      "Type": "AWS::SSM::Parameter::Value<String>",
-      "Default": "/dev/test-lisa/lisa/layerVersion/common"
-    },
-    "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter": {
-      "Type": "AWS::SSM::Parameter::Value<String>",
-      "Default": "/dev/test-lisa/lisa/layerVersion/fastapi"
-    },
-    "SsmParameterValuedevtestlisalisamanagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter": {
-      "Type": "AWS::SSM::Parameter::Value<String>",
-      "Default": "/dev/test-lisa/lisa/managementKeySecretName"
-    },
-    "SsmParameterValuedevtestlisalisabucketbucketaccesslogsC96584B6F00A464EAD1953AFF4B05118Parameter": {
-      "Type": "AWS::SSM::Parameter::Value<String>",
-      "Default": "/dev/test-lisa/lisa/bucket/bucket-access-logs"
-    },
-    "BootstrapVersion": {
-      "Type": "AWS::SSM::Parameter::Value<String>",
-      "Default": "/cdk-bootstrap/hnb659fds/version",
-      "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
-    }
-  },
   "Resources": {
     "McpServerApiHostMcpServerTable07D6DC20": {
       "Type": "AWS::DynamoDB::Table",
@@ -57,6 +30,46 @@
           "Fn::ImportValue": "LisaApiBase:ExportsOutputFnGetAttLisaApiBaseRestApiBD7EFE41RootResourceId15433D4A"
         },
         "PathPart": "mcp",
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpServerApiRestApimcpOPTIONSB3C52EA6": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "Integration": {
+          "IntegrationResponses": [
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+              },
+              "StatusCode": "204"
+            }
+          ],
+          "RequestTemplates": {
+            "application/json": "{ statusCode: 200 }"
+          },
+          "Type": "MOCK"
+        },
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "StatusCode": "204"
+          }
+        ],
+        "ResourceId": {
+          "Ref": "McpServerApiRestApimcpE1E8E658"
+        },
         "RestApiId": {
           "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
         }
@@ -159,6 +172,446 @@
         }
       }
     },
+    "McpServerApiRestApimcpGETApiPermissionLisaMcpApiMcpServerApiRestApi376BB8D1GETmcp7BDD8DA7": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpServerApiLisaMcpApimcpserverlisthostedmcpservers7803D63C",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/GET/mcp"
+            ]
+          ]
+        }
+      }
+    },
+    "McpServerApiRestApimcpGETApiPermissionTestLisaMcpApiMcpServerApiRestApi376BB8D1GETmcp561F4D7C": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpServerApiLisaMcpApimcpserverlisthostedmcpservers7803D63C",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/GET/mcp"
+            ]
+          ]
+        }
+      }
+    },
+    "McpServerApiRestApimcpGETD62E4ADD": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "GET",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "McpServerApiLisaMcpApimcpserverlisthostedmcpservers7803D63C",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "McpServerApiRestApimcpE1E8E658"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpServerApiRestApimcpserverIdAA75CFD0": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Ref": "McpServerApiRestApimcpE1E8E658"
+        },
+        "PathPart": "{serverId}",
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpServerApiRestApimcpserverIdOPTIONS5952CCA7": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "Integration": {
+          "IntegrationResponses": [
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+              },
+              "StatusCode": "204"
+            }
+          ],
+          "RequestTemplates": {
+            "application/json": "{ statusCode: 200 }"
+          },
+          "Type": "MOCK"
+        },
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "StatusCode": "204"
+          }
+        ],
+        "ResourceId": {
+          "Ref": "McpServerApiRestApimcpserverIdAA75CFD0"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpServerApiRestApimcpserverIdGETApiPermissionLisaMcpApiMcpServerApiRestApi376BB8D1GETmcpserverId22AD68C1": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpServerApiLisaMcpApimcpservergethostedmcpserver9994682E",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/GET/mcp/*"
+            ]
+          ]
+        }
+      }
+    },
+    "McpServerApiRestApimcpserverIdGETApiPermissionTestLisaMcpApiMcpServerApiRestApi376BB8D1GETmcpserverId81288DA0": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpServerApiLisaMcpApimcpservergethostedmcpserver9994682E",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/GET/mcp/*"
+            ]
+          ]
+        }
+      }
+    },
+    "McpServerApiRestApimcpserverIdGET71A1ECC2": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "GET",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "McpServerApiLisaMcpApimcpservergethostedmcpserver9994682E",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "McpServerApiRestApimcpserverIdAA75CFD0"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpServerApiRestApimcpserverIdDELETEApiPermissionLisaMcpApiMcpServerApiRestApi376BB8D1DELETEmcpserverId876E241A": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpServerApiLisaMcpApimcpserverdeletehostedmcpserver5962CC6C",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/DELETE/mcp/*"
+            ]
+          ]
+        }
+      }
+    },
+    "McpServerApiRestApimcpserverIdDELETEApiPermissionTestLisaMcpApiMcpServerApiRestApi376BB8D1DELETEmcpserverId9843035D": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpServerApiLisaMcpApimcpserverdeletehostedmcpserver5962CC6C",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/DELETE/mcp/*"
+            ]
+          ]
+        }
+      }
+    },
+    "McpServerApiRestApimcpserverIdDELETE824B76F6": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "DELETE",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "McpServerApiLisaMcpApimcpserverdeletehostedmcpserver5962CC6C",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "McpServerApiRestApimcpserverIdAA75CFD0"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpServerApiRestApimcpserverIdPUTApiPermissionLisaMcpApiMcpServerApiRestApi376BB8D1PUTmcpserverId8390F282": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpServerApiLisaMcpApimcpserverupdatehostedmcpserver71734A76",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/PUT/mcp/*"
+            ]
+          ]
+        }
+      }
+    },
+    "McpServerApiRestApimcpserverIdPUTApiPermissionTestLisaMcpApiMcpServerApiRestApi376BB8D1PUTmcpserverId5716DE6F": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpServerApiLisaMcpApimcpserverupdatehostedmcpserver71734A76",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/PUT/mcp/*"
+            ]
+          ]
+        }
+      }
+    },
+    "McpServerApiRestApimcpserverIdPUT9F4CD8C5": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "PUT",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "McpServerApiLisaMcpApimcpserverupdatehostedmcpserver71734A76",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "McpServerApiRestApimcpserverIdAA75CFD0"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
     "McpServerApimcpserverdeployerLisaMcpApimcpserverdeployerrole81E2B8BA": {
       "Type": "AWS::IAM::Role",
       "Properties": {
@@ -217,12 +670,12 @@
         ]
       }
     },
-    "McpServerApimcpserverdeployerLisaMcpApimcpserverdeployerFn5553F142": {
+    "McpServerApimcpserverdeployerLisaMcpApimcpserverdeployerFunc9B85D34C": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "2769e6d3c45be8896e137a038ba9b85f3a181e8a49c0666b9d493b718186fd5d.zip"
+          "S3Key": "d70d339eaf082956d012fb019c79dc840b1c98373278e489eb5e227f9339983c.zip"
         },
         "Environment": {
           "Variables": {
@@ -256,8 +709,13 @@
         "EphemeralStorage": {
           "Size": 2048
         },
-        "FunctionName": "LisaMcpApi-mcp_server_deployer-Fn",
+        "FunctionName": "LisaMcpApi-mcp_server_deployer-Func",
         "Handler": "index.handler",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncdkC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
         "MemorySize": 1024,
         "Role": {
           "Fn::GetAtt": [
@@ -356,17 +814,47 @@
                   "Action": [
                     "cloudformation:CreateStack",
                     "cloudformation:DeleteStack",
-                    "cloudformation:DescribeStacks"
+                    "cloudformation:DescribeStacks",
+                    "cloudformation:DescribeStackResources"
                   ],
                   "Effect": "Allow",
-                  "Resource": "arn:*:cloudformation:*:*:stack/*"
+                  "Resource": "arn:aws:cloudformation:us-iso-east-1:012345678901:stack/lisa-test-lisa-dev-mcp-server-*"
+                },
+                {
+                  "Action": [
+                    "ecs:DescribeTaskDefinition",
+                    "ecs:RegisterTaskDefinition",
+                    "ecs:UpdateService",
+                    "ecs:DescribeServices"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": "*"
+                },
+                {
+                  "Action": "iam:PassRole",
+                  "Condition": {
+                    "StringEquals": {
+                      "iam:PassedToService": "ecs-tasks.amazonaws.com"
+                    }
+                  },
+                  "Effect": "Allow",
+                  "Resource": "*"
+                },
+                {
+                  "Action": [
+                    "application-autoscaling:RegisterScalableTarget",
+                    "application-autoscaling:DescribeScalableTargets",
+                    "application-autoscaling:DeregisterScalableTarget"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": "*"
                 },
                 {
                   "Action": "lambda:InvokeFunction",
                   "Effect": "Allow",
                   "Resource": {
                     "Fn::GetAtt": [
-                      "McpServerApimcpserverdeployerLisaMcpApimcpserverdeployerFn5553F142",
+                      "McpServerApimcpserverdeployerLisaMcpApimcpserverdeployerFunc9B85D34C",
                       "Arn"
                     ]
                   }
@@ -387,27 +875,17 @@
                   "Action": "ssm:GetParameter",
                   "Effect": "Allow",
                   "Resource": [
-                    {
-                      "Fn::Join": [
-                        "",
-                        [
-                          "arn:",
-                          {
-                            "Ref": "AWS::Partition"
-                          },
-                          ":ssm:us-iso-east-1:012345678901:parameter/dev/test-lisa/lisa/lisaServeRestApiUri"
-                        ]
-                      ]
-                    },
                     "arn:aws:ssm:us-iso-east-1:012345678901:parameter/dev/test-lisa/lisa/lisaServeRestApiUri",
-                    "arn:aws:ssm:us-iso-east-1:012345678901:parameter/LISA-lisa-management-key"
+                    "arn:aws:ssm:us-iso-east-1:012345678901:parameter/LISA-management-key"
                   ]
                 },
                 {
                   "Action": [
                     "dynamodb:PutItem",
                     "dynamodb:UpdateItem",
-                    "dynamodb:GetItem"
+                    "dynamodb:GetItem",
+                    "dynamodb:DeleteItem",
+                    "dynamodb:Scan"
                   ],
                   "Effect": "Allow",
                   "Resource": "arn:aws:dynamodb:us-iso-east-1:012345678901:table/test-lisa-lisa-chat-dev-*McpServersTable*"
@@ -433,13 +911,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "585036fba900981062f7729a431bb7844bb1c99bbfb6a9d222cfb02077dc5037.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Environment": {
           "Variables": {
             "MCP_SERVER_DEPLOYER_FN_ARN": {
               "Fn::GetAtt": [
-                "McpServerApimcpserverdeployerLisaMcpApimcpserverdeployerFn5553F142",
+                "McpServerApimcpserverdeployerLisaMcpApimcpserverdeployerFunc9B85D34C",
                 "Arn"
               ]
             },
@@ -447,7 +925,7 @@
               "Ref": "McpServerApiHostMcpServerTable07D6DC20"
             },
             "MANAGEMENT_KEY_NAME": {
-              "Ref": "SsmParameterValuedevtestlisalisamanagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
@@ -496,13 +974,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "585036fba900981062f7729a431bb7844bb1c99bbfb6a9d222cfb02077dc5037.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Environment": {
           "Variables": {
             "MCP_SERVER_DEPLOYER_FN_ARN": {
               "Fn::GetAtt": [
-                "McpServerApimcpserverdeployerLisaMcpApimcpserverdeployerFn5553F142",
+                "McpServerApimcpserverdeployerLisaMcpApimcpserverdeployerFunc9B85D34C",
                 "Arn"
               ]
             },
@@ -510,7 +988,7 @@
               "Ref": "McpServerApiHostMcpServerTable07D6DC20"
             },
             "MANAGEMENT_KEY_NAME": {
-              "Ref": "SsmParameterValuedevtestlisalisamanagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
@@ -559,13 +1037,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "585036fba900981062f7729a431bb7844bb1c99bbfb6a9d222cfb02077dc5037.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Environment": {
           "Variables": {
             "MCP_SERVER_DEPLOYER_FN_ARN": {
               "Fn::GetAtt": [
-                "McpServerApimcpserverdeployerLisaMcpApimcpserverdeployerFn5553F142",
+                "McpServerApimcpserverdeployerLisaMcpApimcpserverdeployerFunc9B85D34C",
                 "Arn"
               ]
             },
@@ -573,7 +1051,7 @@
               "Ref": "McpServerApiHostMcpServerTable07D6DC20"
             },
             "MANAGEMENT_KEY_NAME": {
-              "Ref": "SsmParameterValuedevtestlisalisamanagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
@@ -622,13 +1100,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "585036fba900981062f7729a431bb7844bb1c99bbfb6a9d222cfb02077dc5037.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Environment": {
           "Variables": {
             "MCP_SERVER_DEPLOYER_FN_ARN": {
               "Fn::GetAtt": [
-                "McpServerApimcpserverdeployerLisaMcpApimcpserverdeployerFn5553F142",
+                "McpServerApimcpserverdeployerLisaMcpApimcpserverdeployerFunc9B85D34C",
                 "Arn"
               ]
             },
@@ -636,7 +1114,7 @@
               "Ref": "McpServerApiHostMcpServerTable07D6DC20"
             },
             "MANAGEMENT_KEY_NAME": {
-              "Ref": "SsmParameterValuedevtestlisalisamanagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
@@ -685,13 +1163,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "585036fba900981062f7729a431bb7844bb1c99bbfb6a9d222cfb02077dc5037.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Environment": {
           "Variables": {
             "MCP_SERVER_DEPLOYER_FN_ARN": {
               "Fn::GetAtt": [
-                "McpServerApimcpserverdeployerLisaMcpApimcpserverdeployerFn5553F142",
+                "McpServerApimcpserverdeployerLisaMcpApimcpserverdeployerFunc9B85D34C",
                 "Arn"
               ]
             },
@@ -699,7 +1177,7 @@
               "Ref": "McpServerApiHostMcpServerTable07D6DC20"
             },
             "MANAGEMENT_KEY_NAME": {
-              "Ref": "SsmParameterValuedevtestlisalisamanagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
@@ -935,7 +1413,7 @@
                   "Arn"
                 ]
               },
-              "\",\"Payload.$\":\"$\"}},\"PollDeployment\":{\"Next\":\"PollDeploymentChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"MaxPollsExceededException\",\"UnexpectedCloudFormationStateException\"],\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              "\",\"Payload.$\":\"$\"}},\"PollDeployment\":{\"Next\":\"PollDeploymentChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.TaskFailed\"],\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
               {
                 "Ref": "AWS::Partition"
               },
@@ -982,6 +1460,932 @@
       "DependsOn": [
         "McpServerApiCreateMcpServerWorkflowCreateMcpServerSMRoleDefaultPolicyC071ADAF",
         "McpServerApiCreateMcpServerWorkflowCreateMcpServerSMRole11A52F1C"
+      ],
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete"
+    },
+    "McpServerApiDeleteMcpServerWorkflowSetServerToDeletingFuncD507FE41": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "MCP_SERVERS_TABLE_NAME": {
+              "Ref": "McpServerApiHostMcpServerTable07D6DC20"
+            },
+            "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
+          }
+        },
+        "Handler": "mcp_server.state_machine.delete_mcp_server.handle_set_server_to_deleting",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "McpServerApiMcpServerSfnLambdaRole61E31991",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "McpServerApiMcpServerSfnLambdaRole61E31991"
+      ]
+    },
+    "McpServerApiDeleteMcpServerWorkflowDeleteStackFunc2B6B1641": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "MCP_SERVERS_TABLE_NAME": {
+              "Ref": "McpServerApiHostMcpServerTable07D6DC20"
+            },
+            "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
+          }
+        },
+        "Handler": "mcp_server.state_machine.delete_mcp_server.handle_delete_stack",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "McpServerApiMcpServerSfnLambdaRole61E31991",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "McpServerApiMcpServerSfnLambdaRole61E31991"
+      ]
+    },
+    "McpServerApiDeleteMcpServerWorkflowMonitorDeleteStackFunc19B706DA": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "MCP_SERVERS_TABLE_NAME": {
+              "Ref": "McpServerApiHostMcpServerTable07D6DC20"
+            },
+            "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
+          }
+        },
+        "Handler": "mcp_server.state_machine.delete_mcp_server.handle_monitor_delete_stack",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "McpServerApiMcpServerSfnLambdaRole61E31991",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "McpServerApiMcpServerSfnLambdaRole61E31991"
+      ]
+    },
+    "McpServerApiDeleteMcpServerWorkflowDeleteFromDdbFunc663F4F3F": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "MCP_SERVERS_TABLE_NAME": {
+              "Ref": "McpServerApiHostMcpServerTable07D6DC20"
+            },
+            "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
+          }
+        },
+        "Handler": "mcp_server.state_machine.delete_mcp_server.handle_delete_from_ddb",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "McpServerApiMcpServerSfnLambdaRole61E31991",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "McpServerApiMcpServerSfnLambdaRole61E31991"
+      ]
+    },
+    "McpServerApiDeleteMcpServerWorkflowDeleteMcpServerSMRole1B60D2D2": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "states.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        }
+      }
+    },
+    "McpServerApiDeleteMcpServerWorkflowDeleteMcpServerSMRoleDefaultPolicyA88930FB": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "McpServerApiDeleteMcpServerWorkflowSetServerToDeletingFuncD507FE41",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "McpServerApiDeleteMcpServerWorkflowSetServerToDeletingFuncD507FE41",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "McpServerApiDeleteMcpServerWorkflowDeleteFromDdbFunc663F4F3F",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "McpServerApiDeleteMcpServerWorkflowDeleteFromDdbFunc663F4F3F",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "McpServerApiDeleteMcpServerWorkflowDeleteStackFunc2B6B1641",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "McpServerApiDeleteMcpServerWorkflowDeleteStackFunc2B6B1641",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "McpServerApiDeleteMcpServerWorkflowMonitorDeleteStackFunc19B706DA",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "McpServerApiDeleteMcpServerWorkflowMonitorDeleteStackFunc19B706DA",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "McpServerApiDeleteMcpServerWorkflowDeleteMcpServerSMRoleDefaultPolicyA88930FB",
+        "Roles": [
+          {
+            "Ref": "McpServerApiDeleteMcpServerWorkflowDeleteMcpServerSMRole1B60D2D2"
+          }
+        ]
+      }
+    },
+    "McpServerApiDeleteMcpServerWorkflowDeleteMcpServerSM0ADC7704": {
+      "Type": "AWS::StepFunctions::StateMachine",
+      "Properties": {
+        "DefinitionString": {
+          "Fn::Join": [
+            "",
+            [
+              "{\"StartAt\":\"SetServerToDeleting\",\"States\":{\"SetServerToDeleting\":{\"Next\":\"DeleteStackChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "McpServerApiDeleteMcpServerWorkflowSetServerToDeletingFuncD507FE41",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"DeleteStackChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.cloudformation_stack_arn\",\"IsNull\":false,\"Next\":\"DeleteStack\"}],\"Default\":\"DeleteFromDdb\"},\"DeleteFromDdb\":{\"Next\":\"DeleteSuccess\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "McpServerApiDeleteMcpServerWorkflowDeleteFromDdbFunc663F4F3F",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"DeleteSuccess\":{\"Type\":\"Succeed\"},\"DeleteStack\":{\"Next\":\"MonitorDeleteStack\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "McpServerApiDeleteMcpServerWorkflowDeleteStackFunc2B6B1641",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"MonitorDeleteStack\":{\"Next\":\"PollDeleteStackChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "McpServerApiDeleteMcpServerWorkflowMonitorDeleteStackFunc19B706DA",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"WaitBeforePollDeleteStack\":{\"Type\":\"Wait\",\"Seconds\":60,\"Next\":\"MonitorDeleteStack\"},\"PollDeleteStackChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.continue_polling\",\"BooleanEquals\":true,\"Next\":\"WaitBeforePollDeleteStack\"}],\"Default\":\"DeleteFromDdb\"}}}"
+            ]
+          ]
+        },
+        "RoleArn": {
+          "Fn::GetAtt": [
+            "McpServerApiDeleteMcpServerWorkflowDeleteMcpServerSMRole1B60D2D2",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "McpServerApiDeleteMcpServerWorkflowDeleteMcpServerSMRoleDefaultPolicyA88930FB",
+        "McpServerApiDeleteMcpServerWorkflowDeleteMcpServerSMRole1B60D2D2"
+      ],
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete"
+    },
+    "McpServerApiUpdateMcpServerWorkflowHandleJobIntakeFunc5FD74327": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "MCP_SERVERS_TABLE_NAME": {
+              "Ref": "McpServerApiHostMcpServerTable07D6DC20"
+            },
+            "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
+          }
+        },
+        "Handler": "mcp_server.state_machine.update_mcp_server.handle_job_intake",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "McpServerApiMcpServerSfnLambdaRole61E31991",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "McpServerApiMcpServerSfnLambdaRole61E31991"
+      ]
+    },
+    "McpServerApiUpdateMcpServerWorkflowHandlePollCapacityFunc3734A08B": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "MCP_SERVERS_TABLE_NAME": {
+              "Ref": "McpServerApiHostMcpServerTable07D6DC20"
+            },
+            "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
+          }
+        },
+        "Handler": "mcp_server.state_machine.update_mcp_server.handle_poll_capacity",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "McpServerApiMcpServerSfnLambdaRole61E31991",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "McpServerApiMcpServerSfnLambdaRole61E31991"
+      ]
+    },
+    "McpServerApiUpdateMcpServerWorkflowHandleEcsUpdateFuncC3A453C0": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "MCP_SERVERS_TABLE_NAME": {
+              "Ref": "McpServerApiHostMcpServerTable07D6DC20"
+            },
+            "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
+          }
+        },
+        "Handler": "mcp_server.state_machine.update_mcp_server.handle_ecs_update",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "McpServerApiMcpServerSfnLambdaRole61E31991",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "McpServerApiMcpServerSfnLambdaRole61E31991"
+      ]
+    },
+    "McpServerApiUpdateMcpServerWorkflowHandlePollEcsDeploymentFunc60CB7A8D": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "MCP_SERVERS_TABLE_NAME": {
+              "Ref": "McpServerApiHostMcpServerTable07D6DC20"
+            },
+            "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
+          }
+        },
+        "Handler": "mcp_server.state_machine.update_mcp_server.handle_poll_ecs_deployment",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "McpServerApiMcpServerSfnLambdaRole61E31991",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "McpServerApiMcpServerSfnLambdaRole61E31991"
+      ]
+    },
+    "McpServerApiUpdateMcpServerWorkflowHandleFinishUpdateFuncD06E86B1": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "MCP_SERVERS_TABLE_NAME": {
+              "Ref": "McpServerApiHostMcpServerTable07D6DC20"
+            },
+            "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
+          }
+        },
+        "Handler": "mcp_server.state_machine.update_mcp_server.handle_finish_update",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "McpServerApiMcpServerSfnLambdaRole61E31991",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "McpServerApiMcpServerSfnLambdaRole61E31991"
+      ]
+    },
+    "McpServerApiUpdateMcpServerWorkflowUpdateMcpServerSMRoleB1D3D45B": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "states.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        }
+      }
+    },
+    "McpServerApiUpdateMcpServerWorkflowUpdateMcpServerSMRoleDefaultPolicyEC6A89DC": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "McpServerApiUpdateMcpServerWorkflowHandleJobIntakeFunc5FD74327",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "McpServerApiUpdateMcpServerWorkflowHandleJobIntakeFunc5FD74327",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "McpServerApiUpdateMcpServerWorkflowHandleFinishUpdateFuncD06E86B1",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "McpServerApiUpdateMcpServerWorkflowHandleFinishUpdateFuncD06E86B1",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "McpServerApiUpdateMcpServerWorkflowHandlePollCapacityFunc3734A08B",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "McpServerApiUpdateMcpServerWorkflowHandlePollCapacityFunc3734A08B",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "McpServerApiUpdateMcpServerWorkflowHandleEcsUpdateFuncC3A453C0",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "McpServerApiUpdateMcpServerWorkflowHandleEcsUpdateFuncC3A453C0",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "McpServerApiUpdateMcpServerWorkflowHandlePollEcsDeploymentFunc60CB7A8D",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "McpServerApiUpdateMcpServerWorkflowHandlePollEcsDeploymentFunc60CB7A8D",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "McpServerApiUpdateMcpServerWorkflowUpdateMcpServerSMRoleDefaultPolicyEC6A89DC",
+        "Roles": [
+          {
+            "Ref": "McpServerApiUpdateMcpServerWorkflowUpdateMcpServerSMRoleB1D3D45B"
+          }
+        ]
+      }
+    },
+    "McpServerApiUpdateMcpServerWorkflowUpdateMcpServerSMEA2E6D3D": {
+      "Type": "AWS::StepFunctions::StateMachine",
+      "Properties": {
+        "DefinitionString": {
+          "Fn::Join": [
+            "",
+            [
+              "{\"StartAt\":\"HandleJobIntake\",\"States\":{\"HandleJobIntake\":{\"Next\":\"HasEcsUpdateChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "McpServerApiUpdateMcpServerWorkflowHandleJobIntakeFunc5FD74327",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"HasEcsUpdateChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.needs_ecs_update\",\"BooleanEquals\":true,\"Next\":\"HandleEcsUpdate\"}],\"Default\":\"HasCapacityUpdateChoice\"},\"HasCapacityUpdateChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.has_capacity_update\",\"BooleanEquals\":true,\"Next\":\"HandlePollCapacity\"}],\"Default\":\"HandleFinishUpdate\"},\"HandleFinishUpdate\":{\"Next\":\"UpdateSuccess\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "McpServerApiUpdateMcpServerWorkflowHandleFinishUpdateFuncD06E86B1",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"UpdateSuccess\":{\"Type\":\"Succeed\"},\"HandlePollCapacity\":{\"Next\":\"PollAsgChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "McpServerApiUpdateMcpServerWorkflowHandlePollCapacityFunc3734A08B",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"WaitBeforePollAsg\":{\"Type\":\"Wait\",\"Seconds\":60,\"Next\":\"HandlePollCapacity\"},\"PollAsgChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.should_continue_capacity_polling\",\"BooleanEquals\":true,\"Next\":\"WaitBeforePollAsg\"}],\"Default\":\"HandleFinishUpdate\"},\"HandleEcsUpdate\":{\"Next\":\"HandlePollEcsDeployment\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "McpServerApiUpdateMcpServerWorkflowHandleEcsUpdateFuncC3A453C0",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"HandlePollEcsDeployment\":{\"Next\":\"PollEcsDeploymentChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "McpServerApiUpdateMcpServerWorkflowHandlePollEcsDeploymentFunc60CB7A8D",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"WaitBeforePollEcsDeployment\":{\"Type\":\"Wait\",\"Seconds\":60,\"Next\":\"HandlePollEcsDeployment\"},\"PollEcsDeploymentChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.should_continue_ecs_polling\",\"BooleanEquals\":true,\"Next\":\"WaitBeforePollEcsDeployment\"}],\"Default\":\"HasCapacityUpdateChoice\"}}}"
+            ]
+          ]
+        },
+        "RoleArn": {
+          "Fn::GetAtt": [
+            "McpServerApiUpdateMcpServerWorkflowUpdateMcpServerSMRoleB1D3D45B",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "McpServerApiUpdateMcpServerWorkflowUpdateMcpServerSMRoleDefaultPolicyEC6A89DC",
+        "McpServerApiUpdateMcpServerWorkflowUpdateMcpServerSMRoleB1D3D45B"
       ],
       "UpdateReplacePolicy": "Delete",
       "DeletionPolicy": "Delete"
@@ -1068,49 +2472,12 @@
         "RoleName": "test-lisa-LisaMcpServerDynamicApiLambdaExecutionRole"
       }
     },
-    "McpServerApiLisaMcpServerDynamicApiLambdaExecutionRoleDefaultPolicyD1D08D9A": {
-      "Type": "AWS::IAM::Policy",
-      "Properties": {
-        "PolicyDocument": {
-          "Statement": [
-            {
-              "Action": [
-                "ssm:DescribeParameters",
-                "ssm:GetParameters",
-                "ssm:GetParameter",
-                "ssm:GetParameterHistory"
-              ],
-              "Effect": "Allow",
-              "Resource": {
-                "Fn::Join": [
-                  "",
-                  [
-                    "arn:",
-                    {
-                      "Ref": "AWS::Partition"
-                    },
-                    ":ssm:us-iso-east-1:012345678901:parameter/dev/test-lisa/lisa/lisaServeRestApiUri"
-                  ]
-                ]
-              }
-            }
-          ],
-          "Version": "2012-10-17"
-        },
-        "PolicyName": "McpServerApiLisaMcpServerDynamicApiLambdaExecutionRoleDefaultPolicyD1D08D9A",
-        "Roles": [
-          {
-            "Ref": "McpServerApiLisaMcpServerDynamicApiLambdaExecutionRole0253C949"
-          }
-        ]
-      }
-    },
     "McpServerApiLisaMcpApimcpservercreatehostedmcpserverA53DC046": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "585036fba900981062f7729a431bb7844bb1c99bbfb6a9d222cfb02077dc5037.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Description": "Create LISA MCP hosted server",
         "Environment": {
@@ -1120,6 +2487,12 @@
             },
             "CREATE_MCP_SERVER_SFN_ARN": {
               "Ref": "McpServerApiCreateMcpServerWorkflowCreateMcpServerSM51797C27"
+            },
+            "DELETE_MCP_SERVER_SFN_ARN": {
+              "Ref": "McpServerApiDeleteMcpServerWorkflowDeleteMcpServerSM0ADC7704"
+            },
+            "UPDATE_MCP_SERVER_SFN_ARN": {
+              "Ref": "McpServerApiUpdateMcpServerWorkflowUpdateMcpServerSMEA2E6D3D"
             },
             "ADMIN_GROUP": ""
           }
@@ -1160,7 +2533,262 @@
         }
       },
       "DependsOn": [
-        "McpServerApiLisaMcpServerDynamicApiLambdaExecutionRoleDefaultPolicyD1D08D9A",
+        "McpServerApiLisaMcpServerDynamicApiLambdaExecutionRole0253C949"
+      ]
+    },
+    "McpServerApiLisaMcpApimcpserverlisthostedmcpservers7803D63C": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+        },
+        "Description": "List LISA MCP hosted servers",
+        "Environment": {
+          "Variables": {
+            "MCP_SERVERS_TABLE_NAME": {
+              "Ref": "McpServerApiHostMcpServerTable07D6DC20"
+            },
+            "CREATE_MCP_SERVER_SFN_ARN": {
+              "Ref": "McpServerApiCreateMcpServerWorkflowCreateMcpServerSM51797C27"
+            },
+            "DELETE_MCP_SERVER_SFN_ARN": {
+              "Ref": "McpServerApiDeleteMcpServerWorkflowDeleteMcpServerSM0ADC7704"
+            },
+            "UPDATE_MCP_SERVER_SFN_ARN": {
+              "Ref": "McpServerApiUpdateMcpServerWorkflowUpdateMcpServerSMEA2E6D3D"
+            },
+            "ADMIN_GROUP": ""
+          }
+        },
+        "FunctionName": "LisaMcpApi-mcp_server-list_hosted_mcp_servers",
+        "Handler": "mcp_server.lambda_functions.list_hosted_mcp_servers",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "McpServerApiLisaMcpServerDynamicApiLambdaExecutionRole0253C949",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "McpServerApiLisaMcpServerDynamicApiLambdaExecutionRole0253C949"
+      ]
+    },
+    "McpServerApiLisaMcpApimcpservergethostedmcpserver9994682E": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+        },
+        "Description": "Get LISA MCP hosted server by ID",
+        "Environment": {
+          "Variables": {
+            "MCP_SERVERS_TABLE_NAME": {
+              "Ref": "McpServerApiHostMcpServerTable07D6DC20"
+            },
+            "CREATE_MCP_SERVER_SFN_ARN": {
+              "Ref": "McpServerApiCreateMcpServerWorkflowCreateMcpServerSM51797C27"
+            },
+            "DELETE_MCP_SERVER_SFN_ARN": {
+              "Ref": "McpServerApiDeleteMcpServerWorkflowDeleteMcpServerSM0ADC7704"
+            },
+            "UPDATE_MCP_SERVER_SFN_ARN": {
+              "Ref": "McpServerApiUpdateMcpServerWorkflowUpdateMcpServerSMEA2E6D3D"
+            },
+            "ADMIN_GROUP": ""
+          }
+        },
+        "FunctionName": "LisaMcpApi-mcp_server-get_hosted_mcp_server",
+        "Handler": "mcp_server.lambda_functions.get_hosted_mcp_server",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "McpServerApiLisaMcpServerDynamicApiLambdaExecutionRole0253C949",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "McpServerApiLisaMcpServerDynamicApiLambdaExecutionRole0253C949"
+      ]
+    },
+    "McpServerApiLisaMcpApimcpserverdeletehostedmcpserver5962CC6C": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+        },
+        "Description": "Delete LISA MCP hosted server by ID",
+        "Environment": {
+          "Variables": {
+            "MCP_SERVERS_TABLE_NAME": {
+              "Ref": "McpServerApiHostMcpServerTable07D6DC20"
+            },
+            "CREATE_MCP_SERVER_SFN_ARN": {
+              "Ref": "McpServerApiCreateMcpServerWorkflowCreateMcpServerSM51797C27"
+            },
+            "DELETE_MCP_SERVER_SFN_ARN": {
+              "Ref": "McpServerApiDeleteMcpServerWorkflowDeleteMcpServerSM0ADC7704"
+            },
+            "UPDATE_MCP_SERVER_SFN_ARN": {
+              "Ref": "McpServerApiUpdateMcpServerWorkflowUpdateMcpServerSMEA2E6D3D"
+            },
+            "ADMIN_GROUP": ""
+          }
+        },
+        "FunctionName": "LisaMcpApi-mcp_server-delete_hosted_mcp_server",
+        "Handler": "mcp_server.lambda_functions.delete_hosted_mcp_server",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "McpServerApiLisaMcpServerDynamicApiLambdaExecutionRole0253C949",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "McpServerApiLisaMcpServerDynamicApiLambdaExecutionRole0253C949"
+      ]
+    },
+    "McpServerApiLisaMcpApimcpserverupdatehostedmcpserver71734A76": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+        },
+        "Description": "Update LISA MCP hosted server by ID",
+        "Environment": {
+          "Variables": {
+            "MCP_SERVERS_TABLE_NAME": {
+              "Ref": "McpServerApiHostMcpServerTable07D6DC20"
+            },
+            "CREATE_MCP_SERVER_SFN_ARN": {
+              "Ref": "McpServerApiCreateMcpServerWorkflowCreateMcpServerSM51797C27"
+            },
+            "DELETE_MCP_SERVER_SFN_ARN": {
+              "Ref": "McpServerApiDeleteMcpServerWorkflowDeleteMcpServerSM0ADC7704"
+            },
+            "UPDATE_MCP_SERVER_SFN_ARN": {
+              "Ref": "McpServerApiUpdateMcpServerWorkflowUpdateMcpServerSMEA2E6D3D"
+            },
+            "ADMIN_GROUP": ""
+          }
+        },
+        "FunctionName": "LisaMcpApi-mcp_server-update_hosted_mcp_server",
+        "Handler": "mcp_server.lambda_functions.update_hosted_mcp_server",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "McpServerApiLisaMcpServerDynamicApiLambdaExecutionRole0253C949",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.11",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
         "McpServerApiLisaMcpServerDynamicApiLambdaExecutionRole0253C949"
       ]
     },
@@ -1172,16 +2800,25 @@
             {
               "Action": "states:StartExecution",
               "Effect": "Allow",
-              "Resource": {
-                "Ref": "McpServerApiCreateMcpServerWorkflowCreateMcpServerSM51797C27"
-              }
+              "Resource": [
+                {
+                  "Ref": "McpServerApiCreateMcpServerWorkflowCreateMcpServerSM51797C27"
+                },
+                {
+                  "Ref": "McpServerApiDeleteMcpServerWorkflowDeleteMcpServerSM0ADC7704"
+                },
+                {
+                  "Ref": "McpServerApiUpdateMcpServerWorkflowUpdateMcpServerSMEA2E6D3D"
+                }
+              ]
             },
             {
               "Action": [
                 "dynamodb:GetItem",
                 "dynamodb:Scan",
                 "dynamodb:PutItem",
-                "dynamodb:UpdateItem"
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem"
               ],
               "Effect": "Allow",
               "Resource": [
@@ -1436,6 +3073,33 @@
       "DependsOn": [
         "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092"
       ]
+    }
+  },
+  "Parameters": {
+    "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/layerVersion/common"
+    },
+    "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/layerVersion/fastapi"
+    },
+    "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/appManagementKeySecretName"
+    },
+    "SsmParameterValuedevtestlisalisabucketbucketaccesslogsC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/bucket/bucket-access-logs"
+    },
+    "SsmParameterValuedevtestlisalisalayerVersioncdkC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/layerVersion/cdk"
+    },
+    "BootstrapVersion": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/cdk-bootstrap/hnb659fds/version",
+      "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
     }
   },
   "Rules": {

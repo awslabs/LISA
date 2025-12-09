@@ -868,8 +868,8 @@ export const RawConfigObject = z.object({
         indexUrl: '',
         trustedHost: '',
     }).describe('Pypi configuration.'),
-    baseImage: z.string().default('python:3.11').describe('Base image used for LISA serve components'),
-    nodejsImage: z.string().default('public.ecr.aws/lambda/nodejs:18').describe('Base image used for LISA NodeJS lambda deployments'),
+    baseImage: z.string().default('python:3.13-slim').describe('Base image used for LISA serve components'),
+    nodejsImage: z.string().default('public.ecr.aws/lambda/nodejs:24').describe('Base image used for LISA NodeJS lambda deployments'),
     condaUrl: z.string().default('').describe('Conda URL configuration'),
     certificateAuthorityBundle: z.string().default('').describe('Certificate Authority Bundle file'),
     ragRepositories: z.array(RagRepositoryConfigSchema).describe('Rag Repository configuration.'),
@@ -901,6 +901,7 @@ export const RawConfigObject = z.object({
             commonLayerPath: z.string().optional().describe('Lambda common layer code path'),
             fastapiLayerPath: z.string().optional().describe('Lambda API code path'),
             ragLayerPath: z.string().optional().describe('Lambda RAG layer code path'),
+            cdkLayerPath: z.string().optional().describe('Lambda CDK layer code path'),
         })
         .optional()
         .describe('Configuration for local Lambda layer code'),

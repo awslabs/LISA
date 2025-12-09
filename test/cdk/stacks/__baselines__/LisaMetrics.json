@@ -644,7 +644,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Description": "Gets metrics for a specific user",
         "Environment": {
@@ -696,7 +696,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Description": "Gets aggregated metrics across all users",
         "Environment": {
@@ -748,7 +748,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Environment": {
           "Variables": {
@@ -834,7 +834,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d30f155d17212cea93e902d5495d00068001aaa2488e43708bd159abd0871b7a.zip"
+          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
         },
         "Environment": {
           "Variables": {

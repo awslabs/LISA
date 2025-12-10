@@ -11,9 +11,11 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
+import hashlib
 import json
 import logging
 import os
+import secrets
 from functools import wraps
 from typing import Any, Callable, Dict, List, Tuple
 
@@ -95,3 +97,19 @@ def get_management_key() -> str:
     secret_name = secret_name_param["Parameter"]["Value"]
     secret_response = secrets_client.get_secret_value(SecretId=secret_name)
     return secret_response["SecretString"]
+
+
+# API token utility functions
+def generate_token() -> str:
+    """Generate cryptographically secure random token (64 bytes = 128 hex chars)"""
+    return secrets.token_hex(64)
+
+
+def hash_token(token: str) -> str:
+    """Create SHA-256 hash of token"""
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def _is_api_user(user_groups: list[str]) -> bool:
+    """Check if user is in the 'api-user' group."""
+    return "api-user" in user_groups

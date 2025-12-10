@@ -796,6 +796,7 @@ const RoleConfig = z.object({
     UIDeploymentRole: z.string().max(64).optional(),
     VectorStoreCreatorRole: z.string().max(64).optional(),
     McpServerDeployerRole: z.string().max(64),
+    ApiTokensApiRole: z.string().max(64),
 })
     .describe('Role overrides used across stacks.');
 

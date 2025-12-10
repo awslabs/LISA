@@ -89,6 +89,7 @@ export const enabledComponentsSchema = z.object({
     modelLibrary: z.boolean().default(true),
     enableModelComparisonUtility: z.boolean().default(false),
     encryptSession: z.boolean().default(false),
+    enableUserApiTokens: z.boolean().default(false),
 });
 
 export const globalConfigSchema = z.object({

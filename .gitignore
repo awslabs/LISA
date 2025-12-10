@@ -32,10 +32,13 @@ lib/rag/ingestion/ingestion-image/build
 .DS_Store
 *.iml
 *.code-workspace
+
+# AI Tools
 .cursor
-memory-bank/
+.clinerules
 .kiro/
 .amazonq/
+memory-bank/
 
 # Coverage Statistic Folders
 coverage

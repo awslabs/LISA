@@ -87,12 +87,12 @@ const validateTimePair = (startTime: string, endTime: string): string | undefine
 
     // Check if end time is earlier than start time (invalid for same-day scheduling)
     if (endMinutes <= startMinutes) {
-        return 'Stop time must be later than Start time on the same day.';
+        return 'Suspension time must be later than Start time on the same day.';
     }
 
     // Check minimum 2-hour gap
     if (endMinutes - startMinutes < 120) {
-        return 'Stop time must be at least 2 hours after Start time.';
+        return 'Suspension time must be at least 2 hours after Start time.';
     }
 
     return undefined; // Valid
@@ -104,14 +104,14 @@ const validateRecurringSchedule = (recurringSchedule?: IDaySchedule): string | u
     const { startTime, stopTime } = recurringSchedule;
 
     if (!startTime && !stopTime) {
-        return 'Recurring schedule must have both start and stop times.';
+        return 'Recurring schedule must have both start and suspension times.';
     }
 
     if (!startTime) return 'Start time is required for recurring schedule.';
-    if (!stopTime) return 'Stop time is required for recurring schedule.';
+    if (!stopTime) return 'Suspension time is required for recurring schedule.';
 
     if (!isValidTimeFormat(startTime)) return 'Start time must be in HH:MM format (24-hour).';
-    if (!isValidTimeFormat(stopTime)) return 'Stop time must be in HH:MM format (24-hour).';
+    if (!isValidTimeFormat(stopTime)) return 'Suspension time must be in HH:MM format (24-hour).';
 
     // Use enhanced validation for time pair
     const timePairError = validateTimePair(startTime, stopTime);
@@ -144,7 +144,7 @@ const validateDailySchedule = (dailySchedule?: IWeeklySchedule): { [key: string]
             }
 
             if (stopTime && !isValidTimeFormat(stopTime)) {
-                errors[`${day}_stopTime`] = 'Stop time must be in HH:MM format (24-hour).';
+                errors[`${day}_stopTime`] = 'Suspension time must be in HH:MM format (24-hour).';
             }
 
             // Use enhanced validation for time pair with clearer error messages
@@ -157,10 +157,10 @@ const validateDailySchedule = (dailySchedule?: IWeeklySchedule): { [key: string]
         } else if (daySchedule && (daySchedule.startTime || daySchedule.stopTime)) {
             // Partial schedule validation
             if (daySchedule.startTime && !daySchedule.stopTime) {
-                errors[`${day}_stopTime`] = 'Stop time is required when Start time is provided.';
+                errors[`${day}_stopTime`] = 'Suspension time is required when Start time is provided.';
             }
             if (daySchedule.stopTime && !daySchedule.startTime) {
-                errors[`${day}_startTime`] = 'Start time is required when Stop time is provided.';
+                errors[`${day}_startTime`] = 'Start time is required when Suspension time is provided.';
             }
         }
     });
@@ -330,7 +330,7 @@ export function ScheduleConfig (props: ScheduleConfigProps): ReactElement {
 
                     <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }]}>
                         <FormField
-                            label='Start Time'
+                            label='Start'
                             errorText={props.formErrors?.recurringSchedule?.startTime}
                         >
                             <TimeInput
@@ -381,7 +381,7 @@ export function ScheduleConfig (props: ScheduleConfigProps): ReactElement {
                         {/* Table Header */}
                         <Grid gridDefinition={[{ colspan: 4 }, { colspan: 4 }, { colspan: 4 }]}>
                             <Box fontWeight='bold'>Day</Box>
-                            <Box fontWeight='bold'>Start Time</Box>
+                            <Box fontWeight='bold'>Start</Box>
                             <Box fontWeight='bold'>Suspension</Box>
                         </Grid>
 

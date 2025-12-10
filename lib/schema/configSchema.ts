@@ -711,7 +711,7 @@ const FastApiContainerConfigSchema = z.object({
     sslCertIamArn: z.string().nullish().default(null).describe('ARN of the self-signed cert to be used throughout the system'),
     imageConfig: ImageAssetSchema.optional().describe('Override image configuration for ECS FastAPI Containers'),
     buildConfig: z.object({
-        NODEENV_CACHE_DIR: z.string().optional().describe('Override with a path relative to the build directory for a pre-cached nodeenv directory. Defaults to NODEENV_CACHE. For offline environments, populate using: python -m nodeenv PATH')
+        PRISMA_CACHE_DIR: z.string().optional().describe('Override with a path relative to the build directory for a pre-cached prisma directory. Defaults to PRISMA_CACHE.')
     }).default({}),
     rdsConfig: RdsInstanceConfig
         .default({

@@ -81,8 +81,8 @@ export class FastApiContainer extends Construct {
         };
 
         // Add build config overrides if provided
-        if (config.restApiConfig.buildConfig?.NODEENV_CACHE_DIR) {
-            buildArgs.NODEENV_CACHE_DIR = config.restApiConfig.buildConfig.NODEENV_CACHE_DIR;
+        if (config.restApiConfig.buildConfig?.PRISMA_CACHE_DIR) {
+            buildArgs.PRISMA_CACHE_DIR = config.restApiConfig.buildConfig.PRISMA_CACHE_DIR;
         }
 
         // Add MCP Workbench build config overrides if provided

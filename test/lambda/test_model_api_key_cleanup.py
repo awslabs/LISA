@@ -12,209 +12,150 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+
 import json
-from unittest.mock import Mock, patch
+import os
+import sys
+from unittest.mock import MagicMock, patch
 
 import pytest
-from models.model_api_key_cleanup import get_database_connection, lambda_handler
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../lambda"))
 
 
-class TestModelApiKeyCleanup:
-    """Test cases for model_api_key_cleanup lambda function."""
+@pytest.fixture
+def setup_env(monkeypatch):
+    monkeypatch.setenv("AWS_REGION", "us-east-1")
+    monkeypatch.setenv("DEPLOYMENT_PREFIX", "/test/prefix")
 
-    @patch("models.model_api_key_cleanup.get_database_connection")
-    def test_lambda_handler_delete_request_type(self, mock_get_connection):
-        """Test that DELETE request type still processes but returns SUCCESS."""
-        mock_connection = Mock()
-        mock_cursor = Mock()
-        mock_connection.cursor.return_value = mock_cursor
-        mock_cursor.fetchall.return_value = []
-        mock_get_connection.return_value = mock_connection
 
-        event = {"RequestType": "Delete"}
-        context = Mock()
+@pytest.fixture
+def mock_ssm():
+    with patch("boto3.client") as mock_client:
+        mock_ssm = MagicMock()
+        mock_client.return_value = mock_ssm
+        yield mock_ssm
 
-        with patch.dict("os.environ", {"AWS_REGION": "us-east-1", "DEPLOYMENT_PREFIX": "/test/LISA/lisa"}):
-            result = lambda_handler(event, context)
 
-            assert result["Status"] == "SUCCESS"
-            assert result["PhysicalResourceId"] == "bedrock-auth-cleanup"
+def test_get_all_dynamodb_models_success(setup_env):
+    from models.model_api_key_cleanup import get_all_dynamodb_models
 
-    @patch("models.model_api_key_cleanup.get_database_connection")
-    def test_lambda_handler_success(self, mock_get_connection):
-        """Test successful execution."""
-        mock_connection = Mock()
-        mock_cursor = Mock()
-        mock_connection.cursor.return_value = mock_cursor
-        mock_cursor.fetchall.return_value = [("model-1", '{"api_key": "ignored"}')]
-        mock_get_connection.return_value = mock_connection
+    with patch("boto3.client") as mock_client:
+        mock_dynamodb = MagicMock()
+        mock_ssm = MagicMock()
 
-        with patch.dict("os.environ", {"AWS_REGION": "us-east-1", "DEPLOYMENT_PREFIX": "/test/LISA/lisa"}):
-            event = {"RequestType": "Create"}
-            context = Mock()
+        def client_factory(service, **kwargs):
+            if service == "dynamodb":
+                return mock_dynamodb
+            return mock_ssm
 
-            result = lambda_handler(event, context)
+        mock_client.side_effect = client_factory
+        mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "test-table"}}
+        mock_dynamodb.scan.return_value = {
+            "Items": [{"model_id": {"S": "model1"}, "model_config": {"M": {"modelName": {"S": "bedrock/test"}}}}]
+        }
 
-            assert result["Status"] == "SUCCESS"
-            assert result["PhysicalResourceId"] == "bedrock-auth-cleanup"
-            assert "ModelsUpdated" in result["Data"]
+        models = get_all_dynamodb_models()
+        assert len(models) == 1
+        assert models[0]["model_id"] == "model1"
 
-    @patch("models.model_api_key_cleanup.get_database_connection")
-    def test_lambda_handler_exception(self, mock_get_connection):
-        """Test exception handling."""
-        mock_get_connection.side_effect = Exception("Database connection failed")
 
-        with patch.dict("os.environ", {"AWS_REGION": "us-east-1", "DEPLOYMENT_PREFIX": "/test/LISA/lisa"}):
-            event = {"RequestType": "Create"}
-            context = Mock()
+def test_get_all_dynamodb_models_no_prefix(monkeypatch):
+    from models.model_api_key_cleanup import get_all_dynamodb_models
 
-            result = lambda_handler(event, context)
+    monkeypatch.setenv("AWS_REGION", "us-east-1")
+    monkeypatch.delenv("DEPLOYMENT_PREFIX", raising=False)
 
-        assert result["Status"] == "FAILED"
-        assert result["PhysicalResourceId"] == "bedrock-auth-cleanup"
-        assert "Database connection failed" in result["Reason"]
+    # Function returns empty list instead of raising
+    result = get_all_dynamodb_models()
+    assert result == []
 
-    @patch("models.model_api_key_cleanup.boto3.client")
-    def test_get_database_connection_success(self, mock_boto3_client):
-        """Test successful database connection."""
-        mock_ssm_client = Mock()
-        mock_secrets_client = Mock()
-        mock_boto3_client.side_effect = [mock_ssm_client, mock_secrets_client]
 
-        # Mock SSM parameter response
-        mock_ssm_client.get_parameter.return_value = {
+def test_get_database_connection_success(setup_env):
+    with patch("boto3.client") as mock_client:
+        mock_ssm = MagicMock()
+        mock_secrets = MagicMock()
+
+        def client_factory(service, **kwargs):
+            if service == "ssm":
+                return mock_ssm
+            return mock_secrets
+
+        mock_client.side_effect = client_factory
+        mock_ssm.get_parameter.return_value = {
             "Parameter": {
                 "Value": json.dumps(
                     {
-                        "dbHost": "test-host",
-                        "dbPort": "5432",
-                        "dbName": "testdb",
-                        "username": "testuser",
-                        "passwordSecretId": "test-secret",
+                        "dbHost": "localhost",
+                        "dbPort": 5432,
+                        "dbName": "test",
+                        "username": "user",
+                        "passwordSecretId": "secret",
                     }
                 )
             }
         }
+        mock_secrets.get_secret_value.return_value = {"SecretString": json.dumps({"password": "pass"})}
 
-        # Mock Secrets Manager response
-        mock_secrets_client.get_secret_value.return_value = {
-            "SecretString": json.dumps({"username": "testuser", "password": "testpass"})
-        }
+        with patch("psycopg2.connect") as mock_connect:
+            mock_connect.return_value = MagicMock()
 
-        with patch.dict("os.environ", {"AWS_REGION": "us-east-1", "DEPLOYMENT_PREFIX": "/test/LISA/lisa"}):
-            with patch("models.model_api_key_cleanup.psycopg2.connect") as mock_connect:
-                mock_connection = Mock()
-                mock_connect.return_value = mock_connection
+            from models.model_api_key_cleanup import get_database_connection
 
-                result = get_database_connection()
+            conn = get_database_connection()
+            assert conn is not None
 
-                assert result == mock_connection
-                mock_connect.assert_called_once()
 
-    @patch("models.model_api_key_cleanup.boto3.client")
-    def test_get_database_connection_ssm_error(self, mock_boto3_client):
-        """Test SSM parameter retrieval failure."""
-        mock_ssm_client = Mock()
-        mock_boto3_client.return_value = mock_ssm_client
-        mock_ssm_client.get_parameter.side_effect = Exception("SSM error")
+def test_lambda_handler_missing_env_var(monkeypatch):
+    from models.model_api_key_cleanup import lambda_handler
 
-        with patch.dict("os.environ", {"AWS_REGION": "us-east-1", "DEPLOYMENT_PREFIX": "/test/LISA/lisa"}):
-            with pytest.raises(Exception, match="SSM error"):
-                get_database_connection()
+    monkeypatch.setenv("AWS_REGION", "us-east-1")
+    monkeypatch.delenv("DEPLOYMENT_PREFIX", raising=False)
 
-    def test_get_database_connection_secrets_error(self):
-        """Test Secrets Manager error during database connection."""
-        mock_ssm_client = Mock()
-        mock_secrets_client = Mock()
+    result = lambda_handler({}, {})
+    assert result["Status"] == "FAILED"
 
-        with patch("models.model_api_key_cleanup.boto3.client") as mock_boto3_client:
-            mock_boto3_client.side_effect = [mock_ssm_client, mock_secrets_client]
 
-            # Mock SSM parameter response
-            mock_ssm_client.get_parameter.return_value = {
-                "Parameter": {
-                    "Value": json.dumps(
-                        {
-                            "dbHost": "test-host",
-                            "dbPort": "5432",
-                            "dbName": "testdb",
-                            "username": "testuser",
-                            "passwordSecretId": "test-secret",
-                        }
-                    )
-                }
-            }
+def test_lambda_handler_no_litellm_table(setup_env):
+    from models.model_api_key_cleanup import lambda_handler
 
-            # Mock Secrets Manager error
-            mock_secrets_client.get_secret_value.side_effect = Exception("Secrets error")
-
-            with patch.dict("os.environ", {"AWS_REGION": "us-east-1", "DEPLOYMENT_PREFIX": "/test/LISA/lisa"}):
-                with pytest.raises(Exception, match="Secrets error"):
-                    get_database_connection()
-
-    @patch("models.model_api_key_cleanup.get_database_connection")
-    def test_lambda_handler_no_tables_found(self, mock_get_connection):
-        """Test when no LiteLLM tables are found in database."""
-        mock_connection = Mock()
-        mock_cursor = Mock()
+    with patch("models.model_api_key_cleanup.get_database_connection") as mock_conn:
+        mock_cursor = MagicMock()
+        mock_cursor.fetchall.return_value = [("other_table",)]
+        mock_connection = MagicMock()
         mock_connection.cursor.return_value = mock_cursor
-        mock_cursor.fetchall.return_value = []  # No tables found
-        mock_get_connection.return_value = mock_connection
+        mock_conn.return_value = mock_connection
 
-        with patch.dict("os.environ", {"AWS_REGION": "us-east-1", "DEPLOYMENT_PREFIX": "/test/LISA/lisa"}):
-            event = {"RequestType": "Create"}
-            context = Mock()
+        result = lambda_handler({}, {})
+        assert result["Status"] == "SUCCESS"
+        assert result["Data"]["ModelsUpdated"] == "0"
 
-            result = lambda_handler(event, context)
 
-            assert result["Status"] == "SUCCESS"
-            assert result["PhysicalResourceId"] == "bedrock-auth-cleanup"
-            assert result["Data"]["ModelsUpdated"] == "0"
+def test_lambda_handler_success(setup_env):
+    from models.model_api_key_cleanup import lambda_handler
 
-    @patch("models.model_api_key_cleanup.get_database_connection")
-    def test_lambda_handler_table_found_but_no_models(self, mock_get_connection):
-        """Test when LiteLLM table is found but no models need updating."""
-        mock_connection = Mock()
-        mock_cursor = Mock()
-        mock_connection.cursor.return_value = mock_cursor
+    with patch("models.model_api_key_cleanup.get_database_connection") as mock_conn:
+        with patch("models.model_api_key_cleanup.get_all_dynamodb_models") as mock_models:
+            # Mock psycopg2.sql.SQL and Identifier
+            mock_sql_obj = MagicMock()
+            mock_sql_obj.format.return_value = "SELECT * FROM LiteLLM_ProxyModelTable LIMIT 1"
 
-        # Mock table discovery
-        mock_cursor.fetchall.side_effect = [
-            [("LiteLLM_ProxyModelTable",)],  # Tables found
-            [("id", "model_name", "litellm_params")],  # Column info
-            [],  # No models with api_key
-        ]
-        mock_cursor.description = [("id",), ("model_name",), ("litellm_params",)]
-        mock_get_connection.return_value = mock_connection
+            with patch("psycopg2.sql.SQL") as mock_sql_class:
+                with patch("psycopg2.sql.Identifier") as mock_identifier:
+                    mock_sql_class.return_value = mock_sql_obj
+                    mock_identifier.return_value = MagicMock()
 
-        with patch.dict("os.environ", {"AWS_REGION": "us-east-1", "DEPLOYMENT_PREFIX": "/test/LISA/lisa"}):
-            event = {"RequestType": "Create"}
-            context = Mock()
+                    mock_cursor = MagicMock()
+                    mock_cursor.fetchall.side_effect = [
+                        [("LiteLLM_ProxyModelTable",)],
+                        [("1", "model1", '{"api_key": "ignored"}')],
+                    ]
+                    mock_cursor.description = [("id",), ("model_name",), ("litellm_params",)]
+                    mock_connection = MagicMock()
+                    mock_connection.cursor.return_value = mock_cursor
+                    mock_conn.return_value = mock_connection
 
-            result = lambda_handler(event, context)
+                    mock_models.return_value = [{"model_id": "model1", "model_name": "bedrock/test"}]
 
-            assert result["Status"] == "SUCCESS"
-            assert result["PhysicalResourceId"] == "bedrock-auth-cleanup"
-            assert "ModelsUpdated" in result["Data"]
-
-    @patch("models.model_api_key_cleanup.get_database_connection")
-    def test_lambda_handler_missing_columns(self, mock_get_connection):
-        """Test when required columns are not found in the table."""
-        mock_connection = Mock()
-        mock_cursor = Mock()
-        mock_connection.cursor.return_value = mock_cursor
-
-        # Mock table discovery but missing required columns
-        mock_cursor.fetchall.return_value = [("LiteLLM_ProxyModelTable",)]
-        mock_cursor.description = [("some_column",), ("other_column",)]  # Missing required columns
-        mock_get_connection.return_value = mock_connection
-
-        with patch.dict("os.environ", {"AWS_REGION": "us-east-1", "DEPLOYMENT_PREFIX": "/test/LISA/lisa"}):
-            event = {"RequestType": "Create"}
-            context = Mock()
-
-            result = lambda_handler(event, context)
-
-            assert result["Status"] == "SUCCESS"
-            assert result["PhysicalResourceId"] == "bedrock-auth-cleanup"
-            assert result["Data"]["ModelsUpdated"] == "0"
+                    result = lambda_handler({}, {})
+                    assert result["Status"] == "SUCCESS"

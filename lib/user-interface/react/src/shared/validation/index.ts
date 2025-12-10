@@ -24,8 +24,8 @@ import React from 'react';
 export function scrollToInvalid () {
     setTimeout(() => {
         window.requestAnimationFrame(() => {
-            document.querySelector('[aria-invalid=true]:not([disabled]')?.scrollIntoView();
-            const firstFieldInError = document.querySelector('[aria-invalid=true]:not([disabled]');
+            document.querySelector('[aria-invalid=true]:not([disabled])')?.scrollIntoView();
+            const firstFieldInError = document.querySelector('[aria-invalid=true]:not([disabled])');
             if (firstFieldInError) {
                 if (firstFieldInError instanceof HTMLElement) {
                     firstFieldInError.focus();
@@ -65,7 +65,7 @@ export function issuesToErrors (issues: z.ZodIssue[], touched?: any): any {
             } else {
                 return `${previous}[${current}]`;
             }
-        });
+        }, '');
 
         if (touched === undefined || _.get(touched, key) !== undefined) {
             const existing = _.get(formErrors, key);

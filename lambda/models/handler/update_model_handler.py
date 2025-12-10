@@ -20,7 +20,7 @@ import os
 from ..domain_objects import ModelStatus, UpdateModelRequest, UpdateModelResponse
 from ..exception import InvalidStateTransitionError, ModelNotFoundError
 from .base_handler import BaseApiHandler
-from .utils import to_lisa_model
+from .utils import attach_guardrails_to_model, fetch_guardrails_for_model, to_lisa_model
 
 
 class UpdateModelHandler(BaseApiHandler):
@@ -109,4 +109,10 @@ class UpdateModelHandler(BaseApiHandler):
             stateMachineArn=os.environ["UPDATE_SFN_ARN"], input=json.dumps(state_machine_payload)
         )
 
-        return UpdateModelResponse(model=to_lisa_model(ddb_item))
+        model = to_lisa_model(ddb_item)
+
+        # Fetch and attach guardrails for this model
+        guardrail_items = fetch_guardrails_for_model(self._guardrails_table, model_id)
+        attach_guardrails_to_model(model, guardrail_items)
+
+        return UpdateModelResponse(model=model)

@@ -19,5 +19,6 @@ export type IUser = {
     preferred_username: string;
     email: string;
     isAdmin: boolean;
+    isUser: boolean;
     groups?: string[];
 };

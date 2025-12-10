@@ -18,14 +18,14 @@ from typing import Annotated, Union
 
 import boto3
 import botocore.session
-from fastapi import FastAPI, Path, Request
+from fastapi import FastAPI, HTTPException, Path, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from mangum import Mangum
-from utilities.auth import is_admin
-from utilities.common_functions import get_groups, retry_config
+from utilities.auth import get_groups, is_admin
+from utilities.common_functions import retry_config
 from utilities.fastapi_middleware.aws_api_gateway_middleware import AWSAPIGatewayMiddleware
 
 from .domain_objects import (
@@ -57,7 +57,23 @@ autoscaling = boto3.client("autoscaling", region_name=os.environ["AWS_REGION"], 
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 iam_client = boto3.client("iam", region_name=os.environ["AWS_REGION"], config=retry_config)
 model_table = dynamodb.Table(os.environ["MODEL_TABLE_NAME"])
+guardrails_table = dynamodb.Table(os.environ["GUARDRAILS_TABLE_NAME"])
 stepfunctions = boto3.client("stepfunctions", region_name=os.environ["AWS_REGION"], config=retry_config)
+
+
+def get_admin_status_and_groups(request: Request) -> tuple[bool, list[str]]:
+    admin_status = False
+    user_groups = []
+
+    if "aws.event" in request.scope:
+        event = request.scope["aws.event"]
+        try:
+            user_groups = get_groups(event)
+            admin_status = is_admin(event)
+        except Exception:
+            user_groups = []
+            admin_status = False
+    return admin_status, user_groups
 
 
 @app.exception_handler(ModelNotFoundError)
@@ -86,12 +102,16 @@ async def user_error_handler(
 
 @app.post(path="", include_in_schema=False)
 @app.post(path="/")
-async def create_model(create_request: CreateModelRequest) -> CreateModelResponse:
+async def create_model(create_request: CreateModelRequest, request: Request) -> CreateModelResponse:
     """Endpoint to create a model."""
+    admin_status, _ = get_admin_status_and_groups(request)
+    if not admin_status:
+        raise HTTPException(status_code=403, detail="User does not have permission to create models.")
     create_handler = CreateModelHandler(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
     )
     return create_handler(create_request=create_request)
 
@@ -104,20 +124,10 @@ async def list_models(request: Request) -> ListModelsResponse:
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
     )
 
-    user_groups = []
-    admin_status = False
-
-    if "aws.event" in request.scope:
-        event = request.scope["aws.event"]
-        try:
-            user_groups = get_groups(event)
-            admin_status = is_admin(event)
-        except Exception:
-            user_groups = []
-            admin_status = False
-
+    admin_status, user_groups = get_admin_status_and_groups(request)
     return list_handler(user_groups=user_groups, is_admin=admin_status)
 
 
@@ -130,20 +140,10 @@ async def get_model(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
     )
 
-    user_groups = []
-    admin_status = False
-
-    if "aws.event" in request.scope:
-        event = request.scope["aws.event"]
-        try:
-            user_groups = get_groups(event)
-            admin_status = is_admin(event)
-        except Exception:
-            user_groups = []
-            admin_status = False
-
+    admin_status, user_groups = get_admin_status_and_groups(request)
     return get_handler(model_id=model_id, user_groups=user_groups, is_admin=admin_status)
 
 
@@ -151,12 +151,17 @@ async def get_model(
 async def update_model(
     model_id: Annotated[str, Path(title="The unique model ID of the model to update")],
     update_request: UpdateModelRequest,
+    request: Request,
 ) -> UpdateModelResponse:
     """Endpoint to update a model."""
+    admin_status, _ = get_admin_status_and_groups(request)
+    if not admin_status:
+        raise HTTPException(status_code=403, detail="User does not have permission to update models.")
     update_handler = UpdateModelHandler(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
     )
     return update_handler(model_id=model_id, update_request=update_request)
 
@@ -166,10 +171,14 @@ async def delete_model(
     model_id: Annotated[str, Path(title="The unique model ID of the model to delete")], request: Request
 ) -> DeleteModelResponse:
     """Endpoint to delete a model."""
+    admin_status, _ = get_admin_status_and_groups(request)
+    if not admin_status:
+        raise HTTPException(status_code=403, detail="User does not have permission to delete models.")
     delete_handler = DeleteModelHandler(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
     )
     return delete_handler(model_id=model_id)
 

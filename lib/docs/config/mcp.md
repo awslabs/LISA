@@ -1,8 +1,8 @@
 # Model Context Protocol (MCP)
 
 LISA supports Model Context Protocol (MCP), a popular open standard that enables developers to securely connect AI
-assistants to systems where data lives. Customers can connect MCP servers with LISA and use the tools hosted on that
-server. For example, if an MCP server is added to LISA that supports email/calendar actions then LISA customers can
+assistants to systems where data lives. Customers can connect 3rd Party and LISA hosted MCP servers within the chat UI and use the tools hosted on those
+servers. For example, if an MCP server is added to LISA that supports email/calendar actions then LISA customers can
 prompt for supported tasks. In this case, customers could request help sending calendar invites on their behalf to
 specific colleagues based on everyone’s availability. The LLM would automatically engage the appropriate MCP server
 tools and perform the necessary steps to complete the task.

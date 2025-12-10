@@ -23,7 +23,7 @@ export const configurationApi = createApi({
     baseQuery: lisaBaseQuery(),
     tagTypes: ['configuration'],
     refetchOnFocus: true,
-    refetchOnReconnect: true,
+    refetchOnMountOrArgChange: true,
     endpoints: (builder) => ({
         getConfiguration: builder.query<IConfiguration[], string>({
             query: (configScope) => ({

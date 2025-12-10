@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "lib": [
+      "es2020",
+      "dom"
+    ],
+    "types": [
+      "node"
+    ],
+    "moduleResolution": "node",
+    "module": "commonjs",
+    "target": "ES2020",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "declaration": true,
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": false,
+    "inlineSourceMap": true,
+    "skipLibCheck": true,
+    "inlineSources": true,
+    "experimentalDecorators": true,
+    "strictPropertyInitialization": false,
+    "typeRoots": [
+      "../node_modules/@types"
+    ],
+    "outDir": "dist"
+  },
+  "include": ["src/**/*", "test/**/*", "**/*.json", "../lib/core", "../lib/api-base", "../lib/utils", "../lib/schema.ts", "../VERSION"],
+  "exclude": ["node_modules", "dist", ".git"]
+}

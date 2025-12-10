@@ -15,7 +15,7 @@
 */
 import { S3UploadRequest } from '../shared/reducers/rag.reducer';
 import { MessageContent } from '@langchain/core/messages';
-import { LisaChatSession } from './types';
+import { LisaChatSession, LisaChatMessage, MessageTypes } from './types';
 import { truncateText } from '@/shared/util/formats';
 
 const stripTrailingSlash = (str) => {
@@ -69,7 +69,7 @@ export const formatDocumentsAsString = (docs: any, forMetadata = false): string 
 
 export const formatDocumentTitlesAsString = (docs: any): string => {
     const uniqueNames = [...new Set(
-        docs.map((doc) => doc.Document.metadata.name)
+        docs.map((doc) => doc.Document.metadata.name || doc.Document.metadata.source?.split('/').pop()).filter(Boolean)
     )];
     return uniqueNames.length !== 0 ? `\n*Source - ${uniqueNames.join(', ')}*` : undefined;
 };
@@ -148,4 +148,27 @@ export const conditionalDeps = (baseDeps, conditions, conditionalDeps) => {
 
     // Return merged arrays if conditions met, otherwise just base dependencies with null for other conditions so deps array is a constant size
     return allConditionsTrue ? [...baseDeps, ...conditionalDeps] : [...baseDeps, ...conditionalDeps.map(() => null)];
+};
+
+/**
+ * Marks the last user message in the chat history as guardrail triggered.
+ *
+ * This utility function finds the most recent human message in the chat history
+ * and creates a new instance with the guardrailTriggered flag set to true.
+ *
+ * @param {LisaChatMessage[]} history - Array of chat messages
+ * @returns {LisaChatMessage[]} Updated history array with the last user message marked as guardrail triggered
+ */
+export const markLastUserMessageAsGuardrailTriggered = (history: LisaChatMessage[]): LisaChatMessage[] => {
+    const updatedHistory = [...history];
+    const lastHumanIndex = updatedHistory.findLastIndex((message) => message.type === MessageTypes.HUMAN);
+
+    if (lastHumanIndex !== -1) {
+        updatedHistory[lastHumanIndex] = new LisaChatMessage({
+            ...updatedHistory[lastHumanIndex],
+            guardrailTriggered: true
+        });
+    }
+
+    return updatedHistory;
 };

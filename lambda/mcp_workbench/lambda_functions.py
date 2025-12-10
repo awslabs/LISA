@@ -28,6 +28,8 @@ from utilities.auth import is_admin
 from utilities.common_functions import api_wrapper, retry_config
 from utilities.exceptions import HTTPException
 
+from .syntax_validator import PythonSyntaxValidator
+
 logger = logging.getLogger(__name__)
 
 # Initialize the S3 resource using environment variables
@@ -255,3 +257,46 @@ def delete(event: dict, context: dict) -> Dict[str, str]:
     except Exception as e:
         logger.error("Unexpected error deleting tool: %s", e, exc_info=True)
         raise ValueError(f"Failed to delete tool: {e}") from e
+
+
+@api_wrapper
+def validate_syntax(event: dict, context: dict) -> Dict[str, Any]:
+    """Validate Python code syntax without execution."""
+    if not is_admin(event):
+        raise ValueError("Only admin users can validate code syntax.")
+
+    try:
+        body = json.loads(event["body"], parse_float=Decimal)
+
+        # Ensure the required field is present
+        if "code" not in body:
+            raise ValueError("Missing required field: 'code' is required.")
+
+        code = body["code"]
+        if not isinstance(code, str):
+            raise ValueError("Code must be a string.")
+
+        logger.info("Validating Python code syntax")
+
+        # Initialize the validator and validate the code
+        validator = PythonSyntaxValidator()
+        result = validator.validate_code(code)
+
+        # Convert the dataclass to a dictionary for JSON serialization
+        response = {
+            "is_valid": result.is_valid,
+            "syntax_errors": result.syntax_errors,
+            "missing_required_imports": result.missing_required_imports,
+            "validation_timestamp": datetime.now().isoformat(),
+        }
+
+        logger.info(f"Validation completed. Valid: {result.is_valid}, " f"Errors: {len(result.syntax_errors)}")
+
+        return response
+
+    except json.JSONDecodeError as e:
+        logger.error("Invalid JSON in request body: %s", e, exc_info=True)
+        raise ValueError(f"Invalid request body: {e}") from e
+    except Exception as e:
+        logger.error("Unexpected error validating syntax: %s", e, exc_info=True)
+        raise ValueError(f"Failed to validate syntax: {e}") from e

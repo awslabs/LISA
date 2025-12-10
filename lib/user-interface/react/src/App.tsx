@@ -26,16 +26,18 @@ import Chatbot from './pages/Chatbot';
 import Topbar from './components/Topbar';
 import SystemBanner from './components/system-banner/system-banner';
 import { useAppSelector } from './config/store';
-import { selectCurrentUserIsAdmin } from './shared/reducers/user.reducer';
+import { selectCurrentUserIsAdmin, selectCurrentUserIsUser } from './shared/reducers/user.reducer';
 import ModelManagement from './pages/ModelManagement';
+import McpManagement from './pages/McpManagement';
 import ModelLibrary from './pages/ModelLibrary';
+import RepositoryManagement from './pages/RepositoryManagement';
 import NotificationBanner from './shared/notification/notification';
 import ConfirmationModal, { ConfirmationModalProps } from './shared/modal/confirmation-modal';
 import Configuration from './pages/Configuration';
 import { useGetConfigurationQuery } from './shared/reducers/configuration.reducer';
 import { IConfiguration } from './shared/model/configuration.model';
 import DocumentLibrary from './pages/DocumentLibrary';
-import RepositoryLibrary from './pages/RepositoryLibrary';
+import CollectionLibrary from './pages/CollectionLibrary';
 import { Breadcrumbs } from './shared/breadcrumb/breadcrumbs';
 import BreadcrumbsDefaultChangeListener from './shared/breadcrumb/breadcrumbs-change-listener';
 import PromptTemplatesLibrary from './pages/PromptTemplatesLibrary';
@@ -43,6 +45,8 @@ import { ConfigurationContext } from './shared/configuration.provider';
 import McpServers from '@/pages/Mcp';
 import ModelComparisonPage from './pages/ModelComparison';
 import McpWorkbench from './pages/McpWorkbench';
+import ColorSchemeContext from './shared/color-scheme.provider';
+import { applyMode, Mode } from '@cloudscape-design/global-styles';
 
 
 export type RouteProps = {
@@ -51,16 +55,23 @@ export type RouteProps = {
     configs?: IConfiguration
 };
 
-const PrivateRoute = ({ children, showConfig, configs }: RouteProps) => {
+const PrivateRoute = ({ children }: RouteProps) => {
 
     const auth = useAuth();
-    if (auth.isAuthenticated) {
-        if (showConfig && configs?.configuration.enabledComponents[showConfig] === false) {
-            return <Navigate to={import.meta.env.BASE_URL} />;
-        }
+    const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);
+    const isUser = useAppSelector(selectCurrentUserIsUser);
+
+    if (auth.isAuthenticated && (isUserAdmin || isUser)) {
         return children;
     } else if (auth.isLoading) {
         return <Spinner />;
+    } else if (auth.isAuthenticated && !isUserAdmin && !isUser) {
+        return (
+            <div style={{ padding: '20px', textAlign: 'center' }}>
+                <h2>Access Denied</h2>
+                <p>You do not have permission to access this application. Please contact your administrator.</p>
+            </div>
+        );
     } else {
         return <Navigate to={import.meta.env.BASE_URL} />;
     }
@@ -88,6 +99,23 @@ function App () {
     });
     const config = fullConfig?.[0];
 
+    const [colorScheme, setColorScheme] = useState(() => {
+        // Check to see if Media-Queries are supported
+        if (window.matchMedia) {
+            // Check if the dark-mode Media-Query matches
+            if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                // Dark
+                return Mode.Dark;
+            }
+        }
+
+        return Mode.Light;
+    });
+
+    useEffect(() => {
+        applyMode(colorScheme);
+    }, [colorScheme]);
+
     useEffect(() => {
         if (nav) {
             setShowNavigation(true);
@@ -97,71 +125,88 @@ function App () {
     }, [nav]);
 
     return (
-        <ConfigurationContext.Provider value={config}>
-            {config?.configuration.systemBanner.isEnabled && <SystemBanner position='TOP' />}
-            <div
-                id='h'
-                style={{ position: 'sticky', top: 0, paddingTop: config?.configuration.systemBanner.isEnabled ? '1.5em' : 0, zIndex: 1002 }}
-            >
-                <Topbar configs={config} />
-            </div>
-            <BreadcrumbsDefaultChangeListener />
-            <AppLayout
-                headerSelector='#h'
-                footerSelector='#f'
-                navigationHide={!showNavigation}
-                breadcrumbs={<Breadcrumbs />}
-                toolsHide={true}
-                notifications={<NotificationBanner />}
-                stickyNotifications={true}
-                navigation={nav}
-                navigationWidth={450}
-                content={
-                    <Routes>
-                        <Route
-                            path='ai-assistant'
-                            element={
-                                <PrivateRoute>
-                                    <Chatbot setNav={setNav} />
-                                </PrivateRoute>
-                            }
-                        />
-                        <Route
-                            path='ai-assistant/:sessionId'
-                            element={
-                                <PrivateRoute>
-                                    <Chatbot setNav={setNav} />
-                                </PrivateRoute>
-                            }
-                        />
-                        <Route
-                            path='model-management'
-                            element={
-                                <AdminRoute>
-                                    <ModelManagement setNav={setNav} />
-                                </AdminRoute>
-                            }
-                        />
-                        {config?.configuration?.enabledComponents?.modelLibrary && <Route
-                            path='model-library'
-                            element={
-                                <PrivateRoute showConfig='modelLibrary' configs={config}>
-                                    <ModelLibrary setNav={setNav} />
-                                </PrivateRoute>
-                            }
-                        />}
-                        {config?.configuration?.enabledComponents?.showRagLibrary &&
+        <ColorSchemeContext.Provider value={{ colorScheme, setColorScheme }}>
+            <ConfigurationContext.Provider value={config}>
+                {config?.configuration.systemBanner.isEnabled && <SystemBanner position='TOP' />}
+                <div
+                    id='h'
+                    style={{ position: 'sticky', top: 0, paddingTop: config?.configuration.systemBanner.isEnabled ? '1.5em' : 0, zIndex: 1002 }}
+                >
+                    <Topbar configs={config} />
+                </div>
+                <BreadcrumbsDefaultChangeListener />
+                <AppLayout
+                    headerSelector='#h'
+                    footerSelector='#f'
+                    navigationHide={!showNavigation}
+                    breadcrumbs={<Breadcrumbs />}
+                    toolsHide={true}
+                    notifications={<NotificationBanner />}
+                    stickyNotifications={true}
+                    navigation={nav}
+                    navigationWidth={300}
+                    content={
+                        <Routes>
+                            <Route
+                                path='ai-assistant'
+                                element={
+                                    <PrivateRoute>
+                                        <Chatbot setNav={setNav} />
+                                    </PrivateRoute>
+                                }
+                            />
+                            <Route
+                                path='ai-assistant/:sessionId'
+                                element={
+                                    <PrivateRoute>
+                                        <Chatbot setNav={setNav} />
+                                    </PrivateRoute>
+                                }
+                            />
+                            <Route
+                                path='model-management'
+                                element={
+                                    <AdminRoute>
+                                        <ModelManagement setNav={setNav} />
+                                    </AdminRoute>
+                                }
+                            />
+                            {window.env.HOSTED_MCP_ENABLED && <Route
+                                path='mcp-management'
+                                element={
+                                    <AdminRoute>
+                                        <McpManagement setNav={setNav} />
+                                    </AdminRoute>
+                                }
+                            />}
+                            <Route
+                                path='repository-management'
+                                element={
+                                    <AdminRoute>
+                                        <RepositoryManagement setNav={setNav} />
+                                    </AdminRoute>
+                                }
+                            />
+                            {config?.configuration?.enabledComponents?.modelLibrary && <Route
+                                path='model-library'
+                                element={
+                                    <PrivateRoute showConfig='modelLibrary' configs={config}>
+                                        <ModelLibrary setNav={setNav} />
+                                    </PrivateRoute>
+                                }
+                            />}
+                            {config?.configuration?.enabledComponents?.showRagLibrary &&
                                 <>
                                     <Route
                                         path='document-library'
                                         element={
                                             <PrivateRoute showConfig='showRagLibrary' configs={config}>
-                                                <RepositoryLibrary setNav={setNav} />
+                                                <CollectionLibrary setNav={setNav} />
                                             </PrivateRoute>
                                         }
                                     />
                                     <Route
-                                        path='document-library/:repoId'
+                                        path='document-library/:repoId/:collectionId?'
                                         element={
                                             <PrivateRoute showConfig='showRagLibrary' configs={config}>
                                                 <DocumentLibrary setNav={setNav} />
@@ -169,62 +214,63 @@ function App () {
                                         }
                                     />
                                 </>}
-                        {config?.configuration?.enabledComponents?.showPromptTemplateLibrary && <Route
-                            path='prompt-templates/*'
-                            element={
-                                <PrivateRoute showConfig='showPromptTemplates' configs={config}>
-                                    <PromptTemplatesLibrary setNav={setNav} />
-                                </PrivateRoute>
-                            }
-                        />}
-                        <Route
-                            path='configuration'
-                            element={
-                                <AdminRoute>
-                                    <Configuration setNav={setNav} />
-                                </AdminRoute>
-                            }
-                        />
-                        {config?.configuration?.enabledComponents?.mcpConnections && <Route
-                            path='mcp-connections/*'
-                            element={
-                                <PrivateRoute showConfig='showMcpServers' configs={config}>
-                                    <McpServers setNav={setNav} />
-                                </PrivateRoute>
-                            }
-                        />}
-                        {config?.configuration?.enabledComponents?.showMcpWorkbench &&
-                            <Route
-                                path='mcp-workbench/*'
+                            {config?.configuration?.enabledComponents?.showPromptTemplateLibrary && <Route
+                                path='prompt-templates/*'
                                 element={
-                                    <McpWorkbench setNav={setNav} />
+                                    <PrivateRoute showConfig='showPromptTemplates' configs={config}>
+                                        <PromptTemplatesLibrary setNav={setNav} />
+                                    </PrivateRoute>
+                                }
+                            />}
+                            <Route
+                                path='configuration'
+                                element={
+                                    <AdminRoute>
+                                        <Configuration setNav={setNav} />
+                                    </AdminRoute>
                                 }
                             />
-                        }
-                        {config?.configuration?.enabledComponents?.enableModelComparisonUtility && <Route
-                            path='model-comparison'
-                            element={
-                                <PrivateRoute>
-                                    <ModelComparisonPage />
-                                </PrivateRoute>
+                            {config?.configuration?.enabledComponents?.mcpConnections && <Route
+                                path='mcp-connections/*'
+                                element={
+                                    <PrivateRoute showConfig='showMcpServers' configs={config}>
+                                        <McpServers setNav={setNav} />
+                                    </PrivateRoute>
+                                }
+                            />}
+                            {config?.configuration?.enabledComponents?.showMcpWorkbench &&
+                                <Route
+                                    path='mcp-workbench/*'
+                                    element={
+                                        <McpWorkbench setNav={setNav} />
+                                    }
+                                />
                             }
-                        />
-                        }
-                        <Route path='*' element={
-                            configLoading ?
-                                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-                                    <Spinner size='large' />
-                                    <span style={{ marginLeft: '10px' }}>Loading configuration...</span>
-                                </div>
-                                :
-                                <Home setNav={setNav} />
-                        } />
-                    </Routes>
-                }
-            />
-            {confirmationModal && <ConfirmationModal {...confirmationModal} />}
-            {config?.configuration.systemBanner.isEnabled && <SystemBanner position='BOTTOM' />}
-        </ConfigurationContext.Provider>
+                            {config?.configuration?.enabledComponents?.enableModelComparisonUtility && <Route
+                                path='model-comparison'
+                                element={
+                                    <PrivateRoute>
+                                        <ModelComparisonPage />
+                                    </PrivateRoute>
+                                }
+                            />
+                            }
+                            <Route path='*' element={
+                                configLoading ?
+                                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+                                        <Spinner size='large' />
+                                        <span style={{ marginLeft: '10px' }}>Loading configuration...</span>
+                                    </div>
+                                    :
+                                    <Home setNav={setNav} />
+                            } />
+                        </Routes>
+                    }
+                />
+                {confirmationModal && <ConfirmationModal {...confirmationModal} />}
+                {config?.configuration.systemBanner.isEnabled && <SystemBanner position='BOTTOM' />}
+            </ConfigurationContext.Provider>
+        </ColorSchemeContext.Provider>
     );
 }
 

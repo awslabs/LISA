@@ -1,5 +1,6 @@
 default_language_version:
   node: system
+  python: python3.11
 repos:
 - repo: local
   hooks:
@@ -9,21 +10,21 @@ repos:
       entry: scripts/verify-config.sh
       verbose: true
       language: script
-      files: config.yaml
+      files: config-base.yaml
 
 - repo: https://github.com/PyCQA/bandit
   rev: '1.7.10'
   hooks:
     - id: bandit
       args: [--recursive, -c=pyproject.toml]
-      additional_dependencies: ['bandit[toml]', 'pbr']
+      additional_dependencies: ['bandit[toml]', 'pbr', 'PyYAML']
 
 - repo: https://github.com/Yelp/detect-secrets
   rev: v1.5.0
   hooks:
     - id: detect-secrets
       exclude: (?x)^(
-        .*.ipynb|config.yaml|.*.md|.*test.*.py
+        .*.ipynb|config.yaml|.*.md|.*test.*.py|test/cdk/stacks/__baselines__/.*\.json
         )$
 
 - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -49,7 +50,7 @@ repos:
       pass_filenames: false
 
 - repo: https://github.com/pycqa/isort
-  rev: 5.13.2
+  rev: 7.0.0
   hooks:
     - id: isort
       name: isort (python)
@@ -65,7 +66,8 @@ repos:
     - id: ruff
       args:
         - --exit-non-zero-on-fix
-        - --per-file-ignores=test/**/*.py:E402
+        - --per-file-ignores=test/**/*.py:E402,test/**/*.py:PLC0415
+        - --fix
       exclude: \.ipynb$
 
 - repo: https://github.com/pycqa/flake8
@@ -77,11 +79,10 @@ repos:
         - flake8-bugbear
         - flake8-comprehensions
         - flake8-debugger
-        - flake8-string-format
       args:
         - --max-line-length=120
         - --extend-immutable-calls=Query,fastapi.Depends,fastapi.params.Depends
-        - --ignore=B008,E203, W503 # Ignore error for function calls in argument defaults
+        - --ignore=B008,E203,W503 # Ignore error for function calls in argument defaults
       exclude: ^(__init__.py$|.*\/__init__.py$)
 
 

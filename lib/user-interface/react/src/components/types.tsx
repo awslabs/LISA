@@ -80,6 +80,7 @@ export type LisaChatMessageFields = {
     metadata?: LisaChatMessageMetadata;
     toolCalls?: any[];
     usage?: UsageInfo;
+    guardrailTriggered?: boolean;
 } & BaseMessageFields;
 
 /**
@@ -90,6 +91,7 @@ export class LisaChatMessage extends BaseMessage implements LisaChatMessageField
     metadata?: LisaChatMessageMetadata;
     toolCalls?: any[];
     usage?: UsageInfo;
+    guardrailTriggered?: boolean;
 
     constructor (fields: LisaChatMessageFields) {
         super(fields);
@@ -97,6 +99,7 @@ export class LisaChatMessage extends BaseMessage implements LisaChatMessageField
         this.metadata = fields.metadata ?? {};
         this.toolCalls = fields.toolCalls ?? [];
         this.usage = fields.usage;
+        this.guardrailTriggered = fields.guardrailTriggered ?? false;
     }
 
     static lc_name () {

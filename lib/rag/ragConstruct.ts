@@ -28,7 +28,7 @@ import { ARCHITECTURE } from '../core';
 import { Layer } from '../core/layers';
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
-import { BaseProps, Config, RDSConfig } from '../schema';
+import { APP_MANAGEMENT_KEY, BaseProps, Config, RDSConfig } from '../schema';
 import { SecurityGroupEnum } from '../core/iam/SecurityGroups';
 import { SecurityGroupFactory } from '../networking/vpc/security-group-factory';
 import { Roles } from '../core/iam/roles';
@@ -152,6 +152,62 @@ export class LisaRagConstruct extends Construct {
             removalPolicy: config.removalPolicy,
         });
 
+        // Create Collections table
+        const collectionsTableName = createCdkId([config.deploymentName, 'RagCollectionsTable']);
+        const collectionsTable = new Table(scope, collectionsTableName, {
+            partitionKey: {
+                name: 'collectionId',
+                type: AttributeType.STRING,
+            },
+            sortKey: {
+                name: 'repositoryId',
+                type: AttributeType.STRING
+            },
+            billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+            encryption: dynamodb.TableEncryption.AWS_MANAGED,
+            removalPolicy: config.removalPolicy,
+            timeToLiveAttribute: 'ttl',
+        });
+
+        // Add GSI for querying collections by repository
+        collectionsTable.addGlobalSecondaryIndex({
+            indexName: 'RepositoryIndex',
+            partitionKey: {
+                name: 'repositoryId',
+                type: AttributeType.STRING,
+            },
+            sortKey: {
+                name: 'createdAt',
+                type: AttributeType.STRING,
+            }
+        });
+
+        // Add GSI for filtering collections by status
+        collectionsTable.addGlobalSecondaryIndex({
+            indexName: 'StatusIndex',
+            partitionKey: {
+                name: 'repositoryId',
+                type: AttributeType.STRING,
+            },
+            sortKey: {
+                name: 'status',
+                type: AttributeType.STRING,
+            }
+        });
+
+        // Add GSI to document table for querying documents by collection
+        docMetaTable.addGlobalSecondaryIndex({
+            indexName: 'CollectionIndex',
+            partitionKey: {
+                name: 'collectionId',
+                type: AttributeType.STRING,
+            },
+            sortKey: {
+                name: 'createdAt',
+                type: AttributeType.STRING,
+            }
+        });
+
         const modelTableNameStringParameter = StringParameter.fromStringParameterName(this, 'ModelTableNameStringParameter', `${config.deploymentPrefix}/modelTableName`);
 
         const baseEnvironment: Record<string, string> = {
@@ -160,8 +216,9 @@ export class LisaRagConstruct extends Construct {
             CHUNK_OVERLAP: config.ragFileProcessingConfig!.chunkOverlap.toString(),
             CHUNK_SIZE: config.ragFileProcessingConfig!.chunkSize.toString(),
             LISA_API_URL_PS_NAME: endpointUrl.parameterName,
+            LISA_RAG_COLLECTIONS_TABLE: collectionsTable.tableName,
             LOG_LEVEL: config.logLevel,
-            MANAGEMENT_KEY_SECRET_NAME_PS: `${config.deploymentPrefix}/managementKeySecretName`,
+            MANAGEMENT_KEY_SECRET_NAME_PS: `${config.deploymentPrefix}/${APP_MANAGEMENT_KEY}`,
             MODEL_TABLE_NAME: modelTableNameStringParameter.stringValue,
             RAG_DOCUMENT_TABLE: docMetaTable.tableName,
             RAG_SUB_DOCUMENT_TABLE: subDocTable.tableName,
@@ -320,15 +377,6 @@ export class LisaRagConstruct extends Construct {
             layers,
         });
 
-        new VectorStoreCreator(scope, 'VectorStoreCreatorStack', {
-            config,
-            vpc,
-            ragVectorStoreTable,
-            stackName: createCdkId([config.appName, config.deploymentName, config.deploymentStage, 'vectorstore-creator']),
-            baseEnvironment,
-            layers
-        });
-
         this.legacyRepositories(
             config,
             vpc,
@@ -354,10 +402,20 @@ export class LisaRagConstruct extends Construct {
             lambdaExecutionRole: lambdaRole,
         });
 
+        new VectorStoreCreator(scope, 'VectorStoreCreatorStack', {
+            config,
+            vpc,
+            ragVectorStoreTable,
+            stackName: createCdkId([config.appName, config.deploymentName, config.deploymentStage, 'vectorstore-creator']),
+            baseEnvironment,
+            layers
+        });
+
         modelsPs.grantRead(lambdaRole);
         endpointUrl.grantRead(lambdaRole);
         docMetaTable.grantReadWriteData(lambdaRole);
         subDocTable.grantReadWriteData(lambdaRole);
+        collectionsTable.grantReadWriteData(lambdaRole);
     }
 
     legacyRepositories (

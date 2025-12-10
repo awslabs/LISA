@@ -40,7 +40,7 @@ DEFAULT_EMBEDDING_MODEL_ID = "e5-embed"
 RAG_PIPELINE_BUCKET = "lisa-rag-pipeline"
 
 
-def get_management_key(deployment_name: str) -> str:
+def get_management_key(deployment_name: str, deployment_stage: str) -> str:
     """Retrieve management key from AWS Secrets Manager.
 
     Args:
@@ -50,6 +50,7 @@ def get_management_key(deployment_name: str) -> str:
         str: The management API key
     """
     secret_name = f"{deployment_name}-lisa-management-key"
+    print(f"  Looking for secret: {secret_name}")
 
     try:
         secrets_client = boto3.client("secretsmanager")
@@ -93,7 +94,7 @@ def create_api_token(deployment_name: str, api_key: str) -> str:
         raise
 
 
-def setup_authentication(deployment_name: str) -> Dict[str, str]:
+def setup_authentication(deployment_name: str, deployment_stage: str) -> Dict[str, str]:
     """Set up authentication for LISA API calls.
 
     Args:
@@ -105,7 +106,7 @@ def setup_authentication(deployment_name: str) -> Dict[str, str]:
     print(f"🔑 Setting up authentication for deployment: {deployment_name}")
 
     # Get management key from AWS Secrets Manager
-    api_key = get_management_key(deployment_name)
+    api_key = get_management_key(deployment_name, deployment_stage)
 
     # Create API token in DynamoDB (optional - for tracking purposes)
     try:
@@ -190,9 +191,14 @@ def model_exists(lisa_client: LisaApi, model_id: str) -> bool:
 def repository_exists(lisa_client: LisaApi, repository_id: str) -> bool:
     """Check if a repository already exists."""
     try:
-        lisa_client.get_repository(repository_id)
-        return True
-    except Exception:
+        repositories = lisa_client.list_repositories()
+        print(f"  DEBUG: list_repositories() returned {len(repositories)} repositories")
+        for repo in repositories:
+            if repo.get("repositoryId") == repository_id:
+                return True
+        return False
+    except Exception as e:
+        print(f"  DEBUG: list_repositories() raised exception: {type(e).__name__}: {e}")
         return False
 
 
@@ -222,7 +228,7 @@ def create_bedrock_model(
         "modelDescription": "",
         "modelType": model_type,
         "modelUrl": "",
-        "streaming": True,
+        "streaming": True if model_type != "embedding" else False,
         "features": features,
         "allowedGroups": None,
     }
@@ -551,6 +557,8 @@ def main():
     parser.add_argument("--url", required=True, help="LISA ALB URL")
     parser.add_argument("--api", required=True, help="LISA API URL")
     parser.add_argument("--deployment-name", required=True, help="LISA deployment name for authentication")
+    parser.add_argument("--deployment-stage", required=True, help="LISA deployment stage for authentication")
+    parser.add_argument("--deployment-prefix", required=True, help="LISA deployment prefix")
     parser.add_argument("--verify", default="false", help="Verify SSL certificates")
     parser.add_argument("--profile", help="AWS profile to use")
     parser.add_argument("--cleanup", action="store_true", help="Clean up resources after test")
@@ -560,17 +568,19 @@ def main():
 
     # Convert verify to boolean
     verify_ssl = args.verify.lower() not in ["false", "0", "no", "off"]
-
     print("🚀 LISA Integration Setup Test Starting...")
     print(f"ALB URL: {args.url}")
     print(f"API URL: {args.api}")
     print(f"Deployment Name: {args.deployment_name}")
+    print(f"Deployment Stage: {args.deployment_stage}")
+    print(f"Deployment Prefix: {args.deployment_prefix}")
     print(f"Verify SSL: {verify_ssl}")
     print(f"AWS Profile: {args.profile}")
 
     try:
         # Setup authentication
-        auth_headers = setup_authentication(args.deployment_name)
+
+        auth_headers = setup_authentication(args.deployment_name, args.deployment_stage)
 
         # Initialize LISA client with authentication
         lisa_client = LisaApi(url=args.api, verify=verify_ssl, headers=auth_headers)

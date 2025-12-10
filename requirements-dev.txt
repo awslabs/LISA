@@ -1,4 +1,4 @@
-pyarrow==17.0.0
+pyarrow==20.0.0
 datasets==2.20.0
 fastapi==0.111.1
 fastapi_utils==0.8.0
@@ -20,7 +20,6 @@ langchain-openai==0.3.33
 langchain-text-splitters==0.3.11
 cachetools==5.5.0
 --only-binary=pyarrow,lxml,psycopg2-binary
-pyarrow==17.0.0
 
 # Testing
 pytest==8.3.2

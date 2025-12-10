@@ -201,6 +201,7 @@ export class UserInterfaceConstruct extends Construct {
             ).stringValue,
             RESTAPI_VERSION: 'v2',
             RAG_ENABLED: config.deployRag,
+            HOSTED_MCP_ENABLED: config.deployMcp,
             API_BASE_URL: config.apiGatewayConfig?.domainName ? '/' : `/${config.deploymentStage}/`,
         };
 
@@ -226,7 +227,7 @@ export class UserInterfaceConstruct extends Construct {
                         ].join(' && '),
                     ],
                     environment: {
-                        BASE_URL: `${uriPrefix}`
+                        BASE_URL: uriPrefix
                     },
                     local: {
                         tryBundle (outputDir: string) {
@@ -235,7 +236,7 @@ export class UserInterfaceConstruct extends Construct {
                                     stdio: 'inherit',
                                     env: {
                                         ...process.env,
-                                        BASE_URL: `${uriPrefix}`
+                                        BASE_URL: uriPrefix
                                     },
                                 };
                                 execSync(`npm --silent --prefix "${ROOT_PATH}" ci`, options);

@@ -16,6 +16,7 @@ import logging
 import os
 from typing import Any, Dict
 
+from models.domain_objects import IngestionType
 from pydantic import BaseModel
 from repository.rag_document_repo import RagDocumentRepository
 
@@ -25,7 +26,11 @@ doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["R
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any] | Any:
     """
-    Remove documents associated with a repository
+    Remove LISA-managed documents from repository.
+
+    Only deletes documents with ingestion_type of MANUAL or AUTO.
+    Preserves EXISTING documents (user-managed).
+
     Args:
         event: Event data containing bucket and prefix information
         context: Lambda context
@@ -37,14 +42,27 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any] | Any:
     stack_name = event.get("stackName")
     last_evaluated = event.get("lastEvaluated")
 
-    docs, last_evaluated = doc_repo.list_all(repository_id=repository_id, last_evaluated_key=last_evaluated)
-    for doc in docs:
+    # Get all documents
+    docs, last_evaluated, _ = doc_repo.list_all(repository_id=repository_id, last_evaluated_key=last_evaluated)
+
+    # Filter to LISA-managed only (MANUAL or AUTO)
+    lisa_managed = [d for d in docs if d.ingestion_type in [IngestionType.MANUAL, IngestionType.AUTO]]
+
+    logger.info(
+        f"Repository cleanup: total={len(docs)}, "
+        f"lisa_managed={len(lisa_managed)}, "
+        f"preserved={len(docs) - len(lisa_managed)}"
+    )
+
+    # Delete from DynamoDB
+    for doc in lisa_managed:
         doc_repo.delete_by_id(doc.document_id)
 
-    doc_repo.delete_s3_docs(repository_id=repository_id, docs=docs)
+    # Delete from S3 (only LISA-managed)
+    doc_repo.delete_s3_docs(repository_id=repository_id, docs=lisa_managed)
 
     # Ensure JSON-serializable payload for Step Functions when Pydantic models are provided
-    serializable_docs = [doc.model_dump() if isinstance(doc, BaseModel) else doc for doc in docs]
+    serializable_docs = [doc.model_dump() if isinstance(doc, BaseModel) else doc for doc in lisa_managed]
     return {
         "repositoryId": repository_id,
         "stackName": stack_name,

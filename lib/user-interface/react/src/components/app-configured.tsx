@@ -60,6 +60,7 @@ function AppConfigured () {
                     email: oidcUser.profile.email,
                     groups: userGroups,
                     isAdmin: userGroups ? isAdmin(userGroups) : false,
+                    isUser: window.env.USER_GROUP ? userGroups && isUser(userGroups) : true,
                 }),
             );
         }

@@ -9,7 +9,7 @@
     "pack:prod": "cd ./dist && npm i --omit dev",
     "copy-dist": "mkdir -p ../dist/vector_store_deployer && cp -r ./dist/* ../dist/vector_store_deployer/",
     "clean": "rm -rf ./dist ./node_modules",
-    "test": "echo \"Error: no test specified\""
+    "test": "echo \"No tests for vector store deployer package\""
   },
   "author": "",
   "license": "Apache-2.0",

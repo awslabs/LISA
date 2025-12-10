@@ -14,7 +14,7 @@
  limitations under the License.
  */
 import { Construct } from 'constructs';
-import { BaseProps } from '../../../schema';
+import { BaseProps, VectorStoreStatus,  } from '../../../schema';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
@@ -120,21 +120,45 @@ export class DeleteStoreStateMachine extends Construct {
             updateExpression: 'SET #status = :status',
             expressionAttributeNames: { '#status': 'status' },
             expressionAttributeValues: {
-                ':status': tasks.DynamoAttributeValue.fromString('DELETE_IN_PROGRESS'),
+                ':status': tasks.DynamoAttributeValue.fromString(VectorStoreStatus.DELETE_IN_PROGRESS),
             },
             resultPath: '$.updateDynamoDbResult',
         });
 
-        const handleCleanupBedrockKnowledgeBase = new Choice(this, 'BedrockKnowledgeBase')
-            .when(sfn.Condition.and(sfn.Condition.stringEquals('$.ddbResult.Item.config.M.type.S', 'bedrock_knowledge_base'),
-                sfn.Condition.isNull('$.stackName')), deleteDynamoDbEntry)
-            .otherwise(deleteStack);
+        const handleStackDeletion = new Choice(this, 'HasStackName')
+            .when(sfn.Condition.isPresent('$.stackName'), deleteStack)
+            .otherwise(deleteDynamoDbEntry);
+
+        // Check if stackName exists in DDB (for Bedrock KB without pipelines, it may be NULL)
+        const checkStackNameExists = new Choice(this, 'CheckStackNameExists')
+            .when(
+                sfn.Condition.isPresent('$.ddbResult.Item.stackName.S'),
+                new sfn.Pass(this, 'ExtractStackName', {
+                    parameters: {
+                        'repositoryId.$': '$.repositoryId',
+                        'stackName.$': '$.ddbResult.Item.stackName.S',
+                        'documents.$': '$.documents',
+                        'lastEvaluated.$': '$.lastEvaluated',
+                        'ddbResult.$': '$.ddbResult',
+                    },
+                }).next(handleStackDeletion)
+            )
+            .otherwise(
+                new sfn.Pass(this, 'HandleMissingStackName', {
+                    parameters: {
+                        'repositoryId.$': '$.repositoryId',
+                        'documents.$': '$.documents',
+                        'lastEvaluated.$': '$.lastEvaluated',
+                        'ddbResult.$': '$.ddbResult',
+                    },
+                }).next(handleStackDeletion)
+            );
 
         const getRepoFromDdb = new tasks.DynamoGetItem(this, 'GetRepoFromDdb', {
             table: ragVectorStoreTable,
             key: { repositoryId: tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.repositoryId')) },
             resultPath: '$.ddbResult',
-        }).next(handleCleanupBedrockKnowledgeBase);
+        }).next(checkStackNameExists);
 
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
 
@@ -150,9 +174,22 @@ export class DeleteStoreStateMachine extends Construct {
             role: executionRole,
         });
 
-        // Allow the Step Functions role to invoke the cleanup lambda
+        const waitForCollectionDeletionsFunc = new Function(this, 'WaitForCollectionDeletionsFunc', {
+            runtime: getDefaultRuntime(),
+            handler: 'repository.state_machine.wait_for_collection_deletions.lambda_handler',
+            code: Code.fromAsset(lambdaPath),
+            timeout: Duration.seconds(30),
+            memorySize: LAMBDA_MEMORY,
+            vpc: vpc.vpc,
+            environment: environment,
+            layers: lambdaLayers,
+            role: executionRole,
+        });
+
+        // Allow the Step Functions role to invoke the lambdas
         if (role) {
             cleanupDocsFunc.grantInvoke(role);
+            waitForCollectionDeletionsFunc.grantInvoke(role);
         }
 
         const hasMoreDocs = new Choice(this, 'HasMoreDocs')
@@ -176,17 +213,37 @@ export class DeleteStoreStateMachine extends Construct {
             outputPath: OUTPUT_PATH,
         });
 
+        // Wait for collection deletions to complete
+        const waitForCollectionDeletions = new LambdaInvoke(this, 'WaitForCollectionDeletions', {
+            lambdaFunction: waitForCollectionDeletionsFunc,
+            payload: sfn.TaskInput.fromObject({
+                'repositoryId.$': '$.repositoryId',
+                'stackName.$': '$.stackName',
+            }),
+            outputPath: OUTPUT_PATH,
+        });
+
+        const waitForCollectionDeletionsRetry = new sfn.Wait(this, 'WaitForCollectionDeletionsRetry', {
+            time: sfn.WaitTime.duration(Duration.seconds(10)),
+        }).next(waitForCollectionDeletions);
+
+        const checkCollectionDeletionsComplete = new Choice(this, 'CheckCollectionDeletionsComplete')
+            .when(Condition.booleanEquals('$.allCollectionDeletionsComplete', true), cleanupDocs.next(hasMoreDocs))
+            .otherwise(waitForCollectionDeletionsRetry);
+
+        waitForCollectionDeletions.next(checkCollectionDeletionsComplete);
+
         const shouldSkipCleanup = new Choice(this, 'ShouldSkipCleanup')
             .when(Condition.and(Condition.isPresent('$.skipDocumentRemoval'), Condition.booleanEquals('$.skipDocumentRemoval', true)),
-                handleCleanupBedrockKnowledgeBase)
-            .otherwise(cleanupDocs.next(hasMoreDocs));
+                getRepoFromDdb)
+            .otherwise(waitForCollectionDeletions);
 
         deleteStack.next(checkStackStatus.addCatch(deleteDynamoDbEntry, {
             resultPath: '$.error'
         }))
             .next(
                 new sfn.Choice(this, 'DeletionSuccessful?')
-                    .when(sfn.Condition.stringEquals('$.checkResult.status', 'DELETE_FAILED'), updateFailureStatus)
+                    .when(sfn.Condition.stringEquals('$.checkResult.status', VectorStoreStatus.DELETE_FAILED), updateFailureStatus)
                     .otherwise(wait.next(checkStackStatus))
             );
         // Define the sequence of tasks and conditions in the state machine

@@ -20,7 +20,7 @@ import FormField from '@cloudscape-design/components/form-field';
 import Select from '@cloudscape-design/components/select';
 import Toggle from '@cloudscape-design/components/toggle';
 import TimeInput from '@cloudscape-design/components/time-input';
-import { Grid, Header, SpaceBetween, Container, Box, Alert } from '@cloudscape-design/components';
+import { Grid, Header, SpaceBetween, Box, Alert } from '@cloudscape-design/components';
 
 import { IScheduleConfig, ScheduleType, IDaySchedule, IWeeklySchedule } from '../../../shared/model/model-management.model';
 

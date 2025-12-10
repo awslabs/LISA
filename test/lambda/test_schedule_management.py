@@ -866,8 +866,9 @@ class TestMergeScheduleData:
 class TestImmediateScaling:
     """Test immediate scaling functions."""
 
+    @patch("models.scheduling.schedule_monitoring.sync_model_status")
     @patch("models.scheduling.schedule_management.autoscaling_client")
-    def test_scale_immediately_outside_window(self, mock_autoscaling_client):
+    def test_scale_immediately_outside_window(self, mock_autoscaling_client, mock_sync_model_status):
         """Test immediate scaling outside scheduled window."""
         from datetime import datetime, time
         from zoneinfo import ZoneInfo
@@ -883,15 +884,19 @@ class TestImmediateScaling:
             mock_datetime.now.return_value = mock_now
             mock_datetime.min.time.return_value = time.min
 
-            scale_immediately("test-asg", day_schedule, "UTC")
+            scale_immediately("test-asg", day_schedule, "UTC", "test-model")
 
             # Should scale down to 0
             mock_autoscaling_client.update_auto_scaling_group.assert_called_once_with(
                 AutoScalingGroupName="test-asg", MinSize=0, MaxSize=0, DesiredCapacity=0
             )
 
+    @patch("models.scheduling.schedule_monitoring.sync_model_status")
+    @patch("models.scheduling.schedule_management.get_model_baseline_capacity")
     @patch("models.scheduling.schedule_management.autoscaling_client")
-    def test_scale_immediately_inside_window(self, mock_autoscaling_client):
+    def test_scale_immediately_inside_window(
+        self, mock_autoscaling_client, mock_get_baseline_capacity, mock_sync_model_status
+    ):
         """Test immediate scaling inside scheduled window."""
         from datetime import datetime, time
         from zoneinfo import ZoneInfo
@@ -901,16 +906,26 @@ class TestImmediateScaling:
 
         day_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
 
+        # Mock ASG response - current desired capacity is 0
+        mock_autoscaling_client.describe_auto_scaling_groups.return_value = {
+            "AutoScalingGroups": [{"DesiredCapacity": 0, "MinSize": 0, "MaxSize": 0}]
+        }
+
+        # Mock baseline capacity
+        mock_get_baseline_capacity.return_value = {"MinSize": 1, "MaxSize": 5, "DesiredCapacity": 2}
+
         with patch("models.scheduling.schedule_management.datetime") as mock_datetime:
             # Mock current time as 10:00 AM (inside window)
             mock_now = datetime(2024, 1, 15, 10, 0, tzinfo=ZoneInfo("UTC"))
             mock_datetime.now.return_value = mock_now
             mock_datetime.min.time.return_value = time.min
 
-            scale_immediately("test-asg", day_schedule, "UTC")
+            scale_immediately("test-asg", day_schedule, "UTC", "test-model")
 
-            # Should not scale (no ASG calls)
-            mock_autoscaling_client.update_auto_scaling_group.assert_not_called()
+            # Should scale up from 0 to baseline capacity
+            mock_autoscaling_client.update_auto_scaling_group.assert_called_once_with(
+                AutoScalingGroupName="test-asg", MinSize=1, MaxSize=5, DesiredCapacity=2
+            )
 
 
 class TestCleanupScheduledActions:

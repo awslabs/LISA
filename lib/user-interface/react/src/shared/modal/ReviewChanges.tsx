@@ -54,9 +54,104 @@ export function ReviewChanges (props: ReviewChangesProps): ReactElement {
                 continue;
             }
 
-            if (key === 'scheduling' && (value === null || value === undefined)) {
+            if (key === 'scheduling') {
+                // Scheduling is null or undefined
+                if (value === null || value === undefined) {
+                    output.push((
+                        <li key={propIndex.index++}><p><strong>Auto Scaling Schedule</strong>: Deactivated - Model will always be running.</p>
+                        </li>));
+                    continue;
+                }
+
+                // Scheduling is an object - check if it's disabled or valid
+                if (_.isPlainObject(value)) {
+                    // Check if this is explicitly disabled (scheduleEnabled === false or scheduleType === 'NONE')
+                    const isExplicitlyDisabled = value.scheduleEnabled === false || value.scheduleType === 'NONE';
+
+                    if (isExplicitlyDisabled) {
+                        output.push((
+                            <li key={propIndex.index++}><p><strong>Auto Scaling Schedule</strong>: Disabled - Model will always be running.</p>
+                            </li>));
+                        continue;
+                    }
+
+                    // If it's a valid schedule, filter out undefined nested properties
+                    const cleanedScheduling = {};
+                    for (const [schedKey, schedValue] of Object.entries(value)) {
+                        if (schedValue !== undefined && schedValue !== null) {
+                            // Skip schedule-related fields that are undefined or empty when scheduling is disabled
+                            if ((schedKey === 'nextScheduledAction' || schedKey === 'lastScheduleUpdate' ||
+                                schedKey === 'scheduleStatus' || schedKey === 'scheduleConfigured' ||
+                                schedKey === 'lastScheduleFailed' || schedKey === 'scheduledActionArns') &&
+                                (schedValue === undefined || schedValue === null || schedValue === '')) {
+                                continue;
+                            }
+
+                            if (schedKey === 'dailySchedule' && _.isPlainObject(schedValue)) {
+                                // Clean dailySchedule object
+                                const cleanedDailySchedule = {};
+                                for (const [dayKey, dayValue] of Object.entries(schedValue)) {
+                                    if (dayValue !== undefined && dayValue !== null && _.isPlainObject(dayValue)) {
+                                        const cleanedDaySchedule = {};
+                                        for (const [dayPropKey, dayPropValue] of Object.entries(dayValue)) {
+                                            if (dayPropValue !== undefined && dayPropValue !== null && dayPropValue !== '') {
+                                                cleanedDaySchedule[dayPropKey] = dayPropValue;
+                                            }
+                                        }
+                                        if (Object.keys(cleanedDaySchedule).length > 0) {
+                                            cleanedDailySchedule[dayKey] = cleanedDaySchedule;
+                                        }
+                                    } else if (dayValue !== undefined && dayValue !== null && dayValue !== '') {
+                                        cleanedDailySchedule[dayKey] = dayValue;
+                                    }
+                                }
+                                if (Object.keys(cleanedDailySchedule).length > 0) {
+                                    cleanedScheduling[schedKey] = cleanedDailySchedule;
+                                }
+                            } else if (schedKey === 'recurringSchedule' && _.isPlainObject(schedValue)) {
+                                // Clean recurringSchedule object (day schedule for recurring type)
+                                const cleanedRecurringSchedule = {};
+                                for (const [recKey, recValue] of Object.entries(schedValue)) {
+                                    if (recValue !== undefined && recValue !== null && recValue !== '') {
+                                        cleanedRecurringSchedule[recKey] = recValue;
+                                    }
+                                }
+                                if (Object.keys(cleanedRecurringSchedule).length > 0) {
+                                    cleanedScheduling[schedKey] = cleanedRecurringSchedule;
+                                }
+                            } else {
+                                cleanedScheduling[schedKey] = schedValue;
+                            }
+                        }
+                    }
+
+                    // Check if scheduling is effectively disabled (no valid scheduling config or only has basic fields)
+                    const hasValidScheduleConfig = Object.keys(cleanedScheduling).some((key) =>
+                        key === 'dailySchedule' || key === 'recurringSchedule' ||
+                        (key === 'scheduleEnabled' && cleanedScheduling[key] === true &&
+                         cleanedScheduling['scheduleType'] && cleanedScheduling['scheduleType'] !== 'NONE')
+                    );
+
+                    if (!hasValidScheduleConfig || Object.keys(cleanedScheduling).length === 0) {
+                        output.push((
+                            <li key={propIndex.index++}><p><strong>Auto Scaling Schedule</strong>: Deactivated - Model will always be running.</p>
+                            </li>));
+                        continue;
+                    }
+
+                    // Only show scheduling if it has valid content
+                    if (Object.keys(cleanedScheduling).length > 0) {
+                        output.push((
+                            <li key={propIndex.index++}><p><strong>{_.startCase(key)}</strong></p></li>
+                        ));
+                        output.push(jsonToOutline(cleanedScheduling, propIndex));
+                    }
+                    continue;
+                }
+
+                // Fallback for any other scheduling value type
                 output.push((
-                    <li key={propIndex.index++}><p><strong>Auto Scaling Schedule</strong>: Disabled - Model will always be running.</p>
+                    <li key={propIndex.index++}><p><strong>Auto Scaling Schedule</strong>: Deactivated - Model will always be running.</p>
                     </li>));
                 continue;
             }
@@ -67,94 +162,7 @@ export function ReviewChanges (props: ReviewChangesProps): ReactElement {
                 }
             }
 
-            // Hide "Schedule Enabled: true" when scheduling was originally disabled then re-enabled
             if (key === 'scheduleEnabled' && value === true) {
-                continue;
-            }
-
-            // Handle nested scheduling objects that contain undefined values
-            if (key === 'scheduling' && _.isPlainObject(value)) {
-                // Check if this is explicitly disabled (scheduleEnabled === false or scheduleType === 'NONE')
-                const isExplicitlyDisabled = value.scheduleEnabled === false || value.scheduleType === 'NONE';
-
-                if (isExplicitlyDisabled) {
-                    output.push((
-                        <li key={propIndex.index++}><p><strong>Auto Scaling Schedule</strong>: Disabled - Model will always be running.</p>
-                        </li>));
-                    continue;
-                }
-
-                // If it's a valid schedule, filter out undefined nested properties
-                const cleanedScheduling = {};
-                for (const [schedKey, schedValue] of Object.entries(value)) {
-                    if (schedValue !== undefined && schedValue !== null) {
-                        // Skip schedule-related fields that are undefined or empty when scheduling is disabled
-                        if ((schedKey === 'nextScheduledAction' || schedKey === 'lastScheduleUpdate' ||
-                            schedKey === 'scheduleStatus' || schedKey === 'scheduleConfigured' ||
-                            schedKey === 'lastScheduleFailed' || schedKey === 'scheduledActionArns') &&
-                            (schedValue === undefined || schedValue === null || schedValue === '')) {
-                            continue;
-                        }
-
-                        if (schedKey === 'dailySchedule' && _.isPlainObject(schedValue)) {
-                            // Clean dailySchedule object
-                            const cleanedDailySchedule = {};
-                            for (const [dayKey, dayValue] of Object.entries(schedValue)) {
-                                if (dayValue !== undefined && dayValue !== null && _.isPlainObject(dayValue)) {
-                                    const cleanedDaySchedule = {};
-                                    for (const [dayPropKey, dayPropValue] of Object.entries(dayValue)) {
-                                        if (dayPropValue !== undefined && dayPropValue !== null && dayPropValue !== '') {
-                                            cleanedDaySchedule[dayPropKey] = dayPropValue;
-                                        }
-                                    }
-                                    if (Object.keys(cleanedDaySchedule).length > 0) {
-                                        cleanedDailySchedule[dayKey] = cleanedDaySchedule;
-                                    }
-                                } else if (dayValue !== undefined && dayValue !== null && dayValue !== '') {
-                                    cleanedDailySchedule[dayKey] = dayValue;
-                                }
-                            }
-                            if (Object.keys(cleanedDailySchedule).length > 0) {
-                                cleanedScheduling[schedKey] = cleanedDailySchedule;
-                            }
-                        } else if (schedKey === 'recurringSchedule' && _.isPlainObject(schedValue)) {
-                            // Clean recurringSchedule object (day schedule for recurring type)
-                            const cleanedRecurringSchedule = {};
-                            for (const [recKey, recValue] of Object.entries(schedValue)) {
-                                if (recValue !== undefined && recValue !== null && recValue !== '') {
-                                    cleanedRecurringSchedule[recKey] = recValue;
-                                }
-                            }
-                            if (Object.keys(cleanedRecurringSchedule).length > 0) {
-                                cleanedScheduling[schedKey] = cleanedRecurringSchedule;
-                            }
-                        } else {
-                            cleanedScheduling[schedKey] = schedValue;
-                        }
-                    }
-                }
-
-                // Check if scheduling is effectively disabled (no valid scheduling config or only has basic fields)
-                const hasValidScheduleConfig = Object.keys(cleanedScheduling).some((key) =>
-                    key === 'dailySchedule' || key === 'recurringSchedule' ||
-                    (key === 'scheduleEnabled' && cleanedScheduling[key] === true &&
-                     cleanedScheduling['scheduleType'] && cleanedScheduling['scheduleType'] !== 'NONE')
-                );
-
-                if (!hasValidScheduleConfig || Object.keys(cleanedScheduling).length === 0) {
-                    output.push((
-                        <li key={propIndex.index++}><p><strong>Auto Scaling Schedule</strong>: Disabled - Model will always be running.</p>
-                        </li>));
-                    continue;
-                }
-
-                // Only show scheduling if it has valid content
-                if (Object.keys(cleanedScheduling).length > 0) {
-                    output.push((
-                        <li key={propIndex.index++}><p><strong>{_.startCase(key)}</strong></p></li>
-                    ));
-                    output.push(jsonToOutline(cleanedScheduling, propIndex));
-                }
                 continue;
             }
 

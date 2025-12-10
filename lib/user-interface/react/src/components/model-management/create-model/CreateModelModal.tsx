@@ -31,7 +31,6 @@ import { ModifyMethod } from '../../../shared/validation/modify-method';
 import { getJsonDifference, normalizeError } from '../../../shared/util/validationUtils';
 import { setConfirmationModal } from '../../../shared/reducers/modal.reducer';
 import { ReviewChanges } from '../../../shared/modal/ReviewChanges';
-import { getDefaults } from '#root/lib/schema/zodUtil';
 import { EcsRestartWarning } from '../EcsRestartWarning';
 
 export type CreateModelModalProps = {
@@ -60,9 +59,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         updateModelMutation,
         { isSuccess: isUpdateSuccess, isError: isUpdateError, error: updateError, isLoading: isUpdating, reset: resetUpdate },
     ] = useUpdateModelMutation();
-    const initialForm = {
-        ...getDefaults(ModelRequestSchema),
-    };
+    const initialForm = ModelRequestSchema.partial().parse({});
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
 

@@ -28,7 +28,6 @@ import {
     EbsDeviceVolumeType } from '#root/lib/schema';
 import { useGetInstancesQuery } from '../../../shared/reducers/model-management.reducer';
 import SpaceBetween from '@cloudscape-design/components/space-between';
-import { getDefaults } from '#root/lib/schema/zodUtil';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 
 type OpenSearchConfigProps = {
@@ -50,7 +49,7 @@ export function OpenSearchConfigForm (props: FormProps<OpenSearchConfig> & OpenS
         <Container header={<Header variant='h2'>OpenSearch Config</Header>}>
             <Tabs
                 onChange={({ detail }) => {
-                    setFields({ 'opensearchConfig': getDefaults(detail.activeTabId === 'new' ? OpenSearchNewClusterConfig : OpenSearchExistingClusterConfig) });
+                    setFields({ 'opensearchConfig': (detail.activeTabId === 'new' ? OpenSearchNewClusterConfig : OpenSearchExistingClusterConfig).parse({}) });
                     setActiveTabId(detail.activeTabId);
                 }
                 }

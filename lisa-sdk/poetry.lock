@@ -1946,7 +1946,7 @@ files = [
 
 [package.dependencies]
 annotated-types = ">=0.6.0"
-pydantic-core = "2.33.2"
+pydantic-core = "2.41.5"
 typing-extensions = ">=4.12.2"
 typing-inspection = ">=0.4.0"
 
@@ -2755,7 +2755,7 @@ files = [
 
 [package.dependencies]
 regex = ">=2022.1.18"
-requests = ">=2.26.0"
+requests = ">=2.25.1"
 
 [package.extras]
 blobfile = ["blobfile (>=2)"]

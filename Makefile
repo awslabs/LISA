@@ -148,6 +148,7 @@ createTypeScriptEnvironment:
 installTypeScriptRequirements:
 	npm install
 
+install: installPythonRequirements installTypeScriptRequirements
 
 ## Make sure Docker is running
 dockerCheck:

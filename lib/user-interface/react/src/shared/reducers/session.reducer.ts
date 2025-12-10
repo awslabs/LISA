@@ -29,7 +29,7 @@ export const sessionApi = createApi({
     baseQuery: lisaBaseQuery(),
     tagTypes: ['sessions'],
     refetchOnFocus: true,
-    refetchOnReconnect: true,
+    refetchOnMountOrArgChange: true,
     endpoints: (builder) => ({
         getSessionById: builder.query<LisaChatSession, string>({
             query: (sessionId: string) => ({
@@ -58,6 +58,8 @@ export const sessionApi = createApi({
                             type: elem.type,
                             metadata: elem.metadata,
                             toolCalls: elem.toolCalls,
+                            usage: elem.usage,
+                            guardrailTriggered: elem.guardrailTriggered,
                         };
                         return message;
                     }),

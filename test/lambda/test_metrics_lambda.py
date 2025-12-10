@@ -89,7 +89,9 @@ def dynamodb_table(dynamodb):
         AttributeDefinitions=[{"AttributeName": "userId", "AttributeType": "S"}],
         ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
     )
-    return table
+    # Patch the module-level usage_metrics_table with our test fixture
+    with patch("metrics.lambda_functions.usage_metrics_table", table):
+        yield table
 
 
 @pytest.fixture

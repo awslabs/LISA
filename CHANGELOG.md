@@ -1,3 +1,98 @@
+# v6.0.0
+Happy Thanksgiving! We are proud to announce the launch of our next major version, 6.0.0! This launch aligns with AWS re:invent in Las Vegas from Dec 1-5th. LISA 6.0.0 includes major enhancements to LISA's RAG capabilities. It also includes a new standalone solution, LISA MCP.
+
+We hope you enjoy this release as much as we enjoyed building it. Please reach out to our product team via the "Contact us" button in the readme. Our product roadmap is customer driven, and we want to hear your feedback, questions, and needs as we look to 2026.
+
+
+## Breaking Changes
+- **API Token Table Migration**: The API token table has been renamed and moved from the Serve stack to the API Base stack (`LisaServeTokenTable` → `LisaApiBaseTokenTable`). **Export all existing API keys before upgrading** and recreate them in the new table after deployment. This affects admin keys, service accounts, and any programmatic API access.
+- **Management Key Secret Migration**: The LISA management key secret has been moved to the API Base stack with a new name format: `${deploymentName}-management-key` (removed `lisa-` prefix). **Update any scripts or integrations that reference the secret by name.** The secret value will be auto-generated during deployment; export from AWS Secrets Manager before upgrading if you need to preserve the existing value. Code using the SSM parameter `${deploymentPrefix}/appManagementKeySecretName` will continue to work without changes.
+- **Existing Bedrock Knowledge Base Repositories** must be redeployed to support the new collections infrastructure. This is a simple update operation that creates the necessary infrastructure for automatic data source collection creation. Use the repository update API or UI to redeploy existing Bedrock Knowledge Base repositories.
+
+## Key Features
+### LISA MCP
+LISA MCP is a standalone infrastructure-as-code solution that allows administrators to deploy and host any Model Context Protocol (MCP) servers directly within LISA. This enterprise hosting platform provides turn-key infrastructure deployment, automatic scaling, and secure networking, allowing organizations to build and operate custom MCP tools without managing underlying infrastructure.
+#### Enterprise Hosting Capabilities
+- **Turn-key Deployment**: Deploy STDIO, HTTP, or SSE MCP servers through a single API call or intuitive UI workflow, eliminating the need for manual infrastructure configuration
+- **Dynamic Container Management**: Bring your own pre-built container images or point to S3 artifacts that are automatically packaged into containers at deployment time
+- **Automatic Scaling**: Configure auto-scaling policies with customizable min/max capacity, CPU, and memory settings to handle varying workloads efficiently
+- **Secure VPC Networking**: All MCP servers run within your private VPC with Application and Network Load Balancers, ensuring traffic never leaves your secure network boundaries
+- **API Gateway Integration**: Hosted MCP servers are automatically exposed through LISA's existing API Gateway, inheriting the same authentication, authorization, and security controls (API keys, IDP lockdown, JWT group enforcement) used across the platform
+#### Administrative Control
+- **MCP Management UI**: Complete lifecycle management through a dedicated admin interface where administrators create, update, start, stop, and delete hosted MCP servers
+- **Group-Based Access Control**: Restrict server visibility and usage to specific identity provider groups or make them available organization-wide
+- **Lifecycle Automation**: Step Functions orchestrate provisioning, health monitoring, failure handling, and connection publishing with full auditability through DynamoDB status records
+- **Health Monitoring**: Built-in health checks at both the container and load balancer levels ensure reliable service availability
+#### Integration & Extensibility
+- **External Integration Support**: Hosted MCP servers can be accessed by external agents, copilots, RPA bots, or SaaS workloads using the same API Gateway endpoints and authentication mechanisms
+- **mcp-proxy Support**: STDIO servers are automatically wrapped with `mcp-proxy` and exposed over HTTP, simplifying deployment of standard MCP server implementations
+- **UI & API Parity**: Manage servers through either the MCP Management admin page or REST API endpoints (`/mcp`), providing flexibility for automation and programmatic workflows
+### LISA RAG Collections
+LISA's RAG capabilities just got a major upgrade! We've completely reimagined how you organize and manage RAG documents with the introduction of Collections. Collections transform how you structure your RAG content. Think of repositories as filing cabinets and collections as the organized drawers within—each with its own configuration.
+#### Flexible Document Organization
+
+- **Custom Chunking Strategies**: Configure different chunking approaches per collection (fixed-size or no chunking). If using a Bedrock Knowledge Base all service chunking strategies are supported
+- **Flexible Embedding Models**: Each collection can use its own embedding model, optimizing retrieval for specific document types
+- **Access Control**: Set collection-level permissions with group-based access control, making it easy to share some collections organization-wide while keeping others restricted within the same repository
+- **Rich Metadata Support**: Tag documents with custom metadata at the repository, collection, or document level for powerful filtering and organization
+#### Intelligent Document Lifecycle Management
+
+- **Smart Deletion Workflows**: Delete collections asynchronously with optimized cleanup for each supported Repository
+- **Document Preservation**: User-managed documents in Bedrock Knowledge Bases are automatically preserved during collection operations, ensuring you never lose important content
+- **Enhanced UI Experience**: Browse, filter, and sort collections with visual status indicators, intuitive creation wizards, and document library integration with breadcrumb navigation
+- **Admin-Controlled Operations**: Collection creation, updates, and deletion are restricted to administrators while regular users can continue to view and upload documents to collections they have permission to access
+- **Backward Compatibility**: Existing repositories automatically get a virtual "Default" collection using the repository's embedding model with zero downtime and no database migrations required
+#### Bedrock Knowledge Base Updates
+
+- **Automatic Collection Creation**: Each Bedrock Knowledge Base Data Source gets its own collection with LISA's management capabilities
+- **Custom Metadata & Tagging**: Add LISA's metadata to your Bedrock Knowledge Base documents for enhanced organization and filtering
+### Other Enhancements
+- Updated the prompt area to auto-expand from 2 rows to 20 rows when typing a large prompt.
+- Updates for easier prisma client generation
+- Enhanced logging in LISA Rest ECS cluster to include LiteLLM logs
+
+## Acknowledgements
+* @bedanley
+* @dustins
+* @estohlmann
+* @jmharold
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v5.4.0..v6.0.0
+
+# v5.4.0
+
+## Key Features
+
+### Bedrock Guardrails Integration
+LISA Administrators can now Bedrock Guardrails to any models via the Model Management page or API
+- **Comprehensive Protection**: Integrated with Bedrock Guardrails through LiteLLM's proxy support of the ApplyGuardrail API, enabling guardrails during prompt input, response generation, and prompt output.
+- **Advanced Capabilities**: Supports topic denial, word filtering, sensitive information limitation, contextual grounding checks, and automated reasoning for factual accuracy.
+- **Flexible Administration**: Administrators can apply Guardrails to any LISA model (self hosted or 3rd party) via the Model Management UI or API, with customizable permissions for different user groups.
+- **Adaptive Policies**: Guardrails and group permissions can be updated anytime to evolve content moderation alongside organizational needs.
+
+### Offline/Air-gapped Deployment Support
+Enhanced the platform to support offline and air-gapped deployments by enabling pre-caching of external dependencies for the REST API and MCP Workbench.
+- **Nodeenv Pre-caching**: Added support for pre-caching the required nodeenv in the REST API container to enable offline deployments.
+- **Offline Deployment**: Enabled configuration of pre-cached external dependencies for the MCP Workbench via  to support offline and air-gapped deployments.
+
+### MCP Workbench Refactoring
+Migrated the MCP Workbench deployment to use the shared LisaServe ECS cluster, improving modularity and enabling conditional deployment.
+- **MCP Workbench Stack**: Created a dedicated stack that deploys the MCP Workbench as a separate ECS service on the shared cluster.
+- **Conditional Deployment**: Introduced a  configuration flag to control the optional deployment of the MCP Workbench.
+- **Container Overrides**: Added support for overriding the MCP Workbench container image during deployment..
+
+### MCP Workbench UX Improvements
+Enhanced the user experience of the MCP Workbench with tool validation, error display, and theme support.
+- **Validation**: Implemented tool validation to improve the user experience.
+- **Theming**: Introduced theme support for the MCP Workbench UI.
+
+## Acknowledgements
+* @batzela
+* @bedanley
+* @dustins
+* @estohlmann
+* @jmharold
+
 # v5.3.2
 
 ## Key Features
@@ -20,7 +115,7 @@ This release includes updates to our [documentation site](https://awslabs.github
 
 ## Acknowledgements
 * @bedanley
-* @dustinps
+* @dustins
 * @estohlmann
 * @jmharold
 

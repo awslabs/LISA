@@ -97,6 +97,7 @@ mock_common = MagicMock()
 mock_common.get_username.return_value = "test-user"
 mock_common.get_groups.return_value = ["test-group"]
 mock_common.is_admin.return_value = False
+mock_common.get_user_context.return_value = ("test-user", False, ["test-group"])
 mock_common.retry_config = retry_config
 mock_common.api_wrapper = mock_api_wrapper  # Add the mock API wrapper
 
@@ -113,8 +114,9 @@ patch.dict(
 
 # Then patch the specific functions
 patch("utilities.auth.get_username", mock_common.get_username).start()
-patch("utilities.common_functions.get_groups", mock_common.get_groups).start()
+patch("utilities.auth.get_groups", mock_common.get_groups).start()
 patch("utilities.auth.is_admin", mock_common.is_admin).start()
+patch("utilities.auth.get_user_context", mock_common.get_user_context).start()
 patch("utilities.common_functions.retry_config", retry_config).start()
 patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()  # Patch the API wrapper
 
@@ -193,7 +195,9 @@ def prompt_templates_table(dynamodb):
         ],
         ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
     )
-    return table
+    # Patch the module-level table with our test fixture
+    with patch("prompt_templates.lambda_functions.table", table):
+        yield table
 
 
 @pytest.fixture(scope="function")
@@ -481,6 +485,7 @@ def test_update_prompt_template_unauthorized(
     prompt_templates_table.put_item(Item=sample_prompt_template)
 
     mock_common.get_username.return_value = "different-user"
+    mock_common.get_user_context.return_value = ("different-user", False, ["test-group"])
     mock_is_admin.return_value = False
     event = {
         "pathParameters": {"promptTemplateId": "test-template"},
@@ -504,6 +509,7 @@ def test_update_prompt_template_unauthorized(
 
     # Reset mocks
     mock_common.get_username.return_value = "test-user"
+    mock_common.get_user_context.return_value = ("test-user", False, ["test-group"])
 
 
 def test_delete_prompt_template_unauthorized(
@@ -515,6 +521,7 @@ def test_delete_prompt_template_unauthorized(
 
     mock_is_admin.return_value = False
     mock_common.get_username.return_value = "different-user"
+    mock_common.get_user_context.return_value = ("different-user", False, ["test-group"])
     event = {
         "pathParameters": {"promptTemplateId": "test-template"},
         "requestContext": {"authorizer": {"claims": {"username": "different-user"}}},
@@ -527,6 +534,7 @@ def test_delete_prompt_template_unauthorized(
 
     # Reset mocks
     mock_common.get_username.return_value = "test-user"
+    mock_common.get_user_context.return_value = ("test-user", False, ["test-group"])
 
 
 def test_get_prompt_template_unauthorized(
@@ -545,6 +553,7 @@ def test_get_prompt_template_unauthorized(
 
     mock_common.get_username.return_value = "different-user"
     mock_common.get_groups.return_value = []
+    mock_common.get_user_context.return_value = ("different-user", False, [])
     mock_is_admin.return_value = False
 
     response = get(event, lambda_context)
@@ -555,6 +564,7 @@ def test_get_prompt_template_unauthorized(
     # Reset mocks
     mock_common.get_username.return_value = "test-user"
     mock_common.get_groups.return_value = ["test-group"]
+    mock_common.get_user_context.return_value = ("test-user", False, ["test-group"])
 
 
 # Add a new test to test the admin path with increased coverage

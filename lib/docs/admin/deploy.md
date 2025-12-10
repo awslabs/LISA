@@ -283,7 +283,7 @@ Update your `config-custom.yaml` to point to ADC-accessible repositories:
 
 ```yaml
 # Configure pip to use ADC-accessible PyPI mirror
-pipConfig:
+pypiConfig:
   indexUrl: https://your-adc-pypi-mirror.com/simple
   trustedHost: your-adc-pypi-mirror.com
 
@@ -293,8 +293,65 @@ npmConfig:
 
 # Use ADC-accessible base images for LISA-Serve and Batch Ingestion
 baseImage: <adc-registry>/python:3.11
+
+# Configure offline build dependencies for REST API (prisma-client-py dependencies)
+restApiConfig:
+  buildConfig:
+    PRISMA_CACHE_DIR: "./PRISMA_CACHE"  # Path relative to lib/serve/rest-api/
+
+# Configure offline build dependencies for MCP Workbench (S6 Overlay and rclone)
+mcpWorkbenchBuildConfig:
+  S6_OVERLAY_NOARCH_SOURCE: "./s6-overlay-noarch.tar.xz"  # Path relative to lib/serve/mcp-workbench/
+  S6_OVERLAY_ARCH_SOURCE: "./s6-overlay-x86_64.tar.xz"    # Path relative to lib/serve/mcp-workbench/
+  RCLONE_SOURCE: "./rclone-linux-amd64.zip"                # Path relative to lib/serve/mcp-workbench/
 ```
 You'll also want any model hosting base containers available, e.g. vllm/vllm-openai:latest and ghcr.io/huggingface/text-embeddings-inference:latest
+
+#### Preparing Offline Build Dependencies
+
+For environments without internet access during Docker builds, you can pre-cache required dependencies:
+
+**REST API Prisma cache** (required by prisma-client-py):
+
+The `prisma-client-py` package requires platform-specific binaries and a Node.js environment to function. When Prisma runs for the first time, it downloads these dependencies to `~/.cache/prisma/` and `~/.cache/prisma-python/`. For offline deployments, you need to pre-populate this cache.
+
+Below is an example workflow using an Amazon Linux 2023 instance with Python 3.12:
+
+```bash
+# Ensure Pip is up-to-date
+pip3 install --upgrade pip
+
+# Install Prisma Python package
+pip3 install prisma
+
+# Trigger Prisma to download all required binaries and create its Node.js environment
+# This populates ~/.cache/prisma/ and ~/.cache/prisma-python/
+prisma version
+
+# Copy the complete Prisma cache to your build context
+# The wildcard captures both 'prisma' and 'prisma-python' directories
+cp -r ~/.cache/prisma* lib/serve/rest-api/PRISMA_CACHE/
+```
+
+**Important Notes:**
+- The cache is platform-specific. Generate it on a system matching your Docker base image (e.g., for `python:3.13-slim` which is Debian-based, so you may want to use a Debian-based system)
+- The `prisma version` command downloads binaries for your current platform
+- Both `prisma/` and `prisma-python/` directories are required for offline operation
+
+**MCP Workbench dependencies** (S6 Overlay and rclone):
+```bash
+# Download S6 Overlay files
+cd lib/serve/mcp-workbench/
+wget https://github.com/just-containers/s6-overlay/releases/download/v3.1.6.2/s6-overlay-noarch.tar.xz
+wget https://github.com/just-containers/s6-overlay/releases/download/v3.1.6.2/s6-overlay-x86_64.tar.xz
+
+# Download rclone
+wget https://github.com/rclone/rclone/releases/download/v1.71.0/rclone-v1.71.0-linux-amd64.zip
+
+cd ../../..
+```
+
+These cached dependencies will be used during the Docker build process instead of downloading from the internet.
 
 To utilize the prebuilt hosting model containers with self-hosted models, select `type: ecr` in the Model Deployment > Container Configs.
 

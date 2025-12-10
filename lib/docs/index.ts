@@ -17,7 +17,7 @@ import { Construct } from 'constructs';
 import { LisaDocsConstruct, LisaDocsProps } from './docConstruct';
 import { Stack } from 'aws-cdk-lib';
 
-export * from './docConstruct';
+export { LisaDocsConstruct, LisaDocsProps };
 
 /**
  * Lisa Docs Stack

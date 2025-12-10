@@ -36,6 +36,7 @@ declare global {
             RESTAPI_URI: string;
             RESTAPI_VERSION: string;
             RAG_ENABLED: boolean;
+            HOSTED_MCP_ENABLED: boolean;
             API_BASE_URL: string;
         };
         gitInfo?: {

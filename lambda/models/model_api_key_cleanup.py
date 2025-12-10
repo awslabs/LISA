@@ -27,6 +27,7 @@ The cleanup runs automatically during CDK deployment via a CustomResource.
 import json
 import os
 import sys
+import traceback
 from typing import Any, Dict, List
 
 import boto3
@@ -185,7 +186,13 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return {"Status": "SUCCESS", "PhysicalResourceId": "bedrock-auth-cleanup", "Data": {"ModelsUpdated": "0"}}
 
         # Query all models from the LiteLLM database using the found table (use quotes for case-sensitive names)
-        cursor.execute(f'SELECT * FROM "{litellm_table}" LIMIT 1')
+
+        # Use psycopg2's identifier quoting to prevent SQL injection
+        cursor.execute(
+            psycopg2.sql.SQL("SELECT * FROM {} LIMIT 1").format(  # noqa: S608, P103
+                psycopg2.sql.Identifier(litellm_table)
+            )
+        )
         columns = [desc[0] for desc in cursor.description]
         print(f"Table {litellm_table} columns: {columns}")
 
@@ -202,7 +209,14 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return {"Status": "SUCCESS", "PhysicalResourceId": "bedrock-auth-cleanup", "Data": {"ModelsUpdated": "0"}}
 
         # Query all models from the LiteLLM database
-        cursor.execute(f'SELECT "{model_id_col}", "{model_name_col}", "{litellm_params_col}" FROM "{litellm_table}"')
+        cursor.execute(
+            psycopg2.sql.SQL("SELECT {}, {}, {} FROM {}").format(  # noqa: S608, P103
+                psycopg2.sql.Identifier(model_id_col),
+                psycopg2.sql.Identifier(model_name_col),
+                psycopg2.sql.Identifier(litellm_params_col),
+                psycopg2.sql.Identifier(litellm_table),
+            )
+        )
         models = cursor.fetchall()
 
         print(f"Found {len(models)} total models in LiteLLM database")
@@ -262,7 +276,11 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     # Update the model in the database
                     clean_params_json = json.dumps(clean_params)
                     cursor.execute(
-                        f'UPDATE "{litellm_table}" SET "{litellm_params_col}" = %s WHERE "{model_id_col}" = %s',
+                        psycopg2.sql.SQL("UPDATE {} SET {} = %s WHERE {} = %s").format(  # noqa: S608, P103
+                            psycopg2.sql.Identifier(litellm_table),
+                            psycopg2.sql.Identifier(litellm_params_col),
+                            psycopg2.sql.Identifier(model_id_col),
+                        ),
                         (clean_params_json, matching_litellm_model["model_id"]),
                     )
                     print(f"Successfully cleaned model: {matching_litellm_model['model_name']}")
@@ -293,8 +311,6 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     except Exception as e:
         # Handle unexpected errors
         print(f"Cleanup failed: {e}")
-        import traceback
-
         print(f"Traceback: {traceback.format_exc()}")
 
         # Rollback any pending database changes

@@ -17,6 +17,12 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { lisaBaseQuery } from './reducer.utils';
 import { normalizeError } from '../util/validationUtils';
+import {
+    HostedMcpServer,
+    HostedMcpServerListResponse,
+    HostedMcpServerRequest,
+    HostedMcpServerStatus,
+} from '../model/hosted-mcp-server.model';
 
 export enum McpServerStatus {
     Active = 'active',
@@ -62,7 +68,7 @@ export const mcpServerApi = createApi({
     baseQuery: lisaBaseQuery(),
     tagTypes: ['mcpServers'],
     refetchOnFocus: true,
-    refetchOnReconnect: true,
+    refetchOnMountOrArgChange: true,
     endpoints: (builder) => ({
         createMcpServer: builder.mutation<McpServer, NewMcpServer>({
             query: (mcpServer) => ({
@@ -87,7 +93,7 @@ export const mcpServerApi = createApi({
             },
             providesTags: ['mcpServers']
         }),
-        listMcpServers: builder.query<McpServerListResponse, {showPublic: boolean}>({
+        listMcpServers: builder.query<McpServerListResponse, void>({
             query () {
                 return {
                     url: '/mcp-server',
@@ -111,7 +117,43 @@ export const mcpServerApi = createApi({
                 method: 'DELETE',
             }),
             invalidatesTags: ['mcpServers']
-        })
+        }),
+        listHostedMcpServers: builder.query<HostedMcpServer[], void>({
+            query () {
+                return {
+                    url: '/mcp',
+                    method: 'GET'
+                };
+            },
+            transformResponse: (response: HostedMcpServerListResponse) => response?.Items ?? [],
+            providesTags: ['mcpServers']
+        }),
+        createHostedMcpServer: builder.mutation<HostedMcpServer, HostedMcpServerRequest>({
+            query: (payload) => ({
+                url: '/mcp',
+                method: 'POST',
+                data: payload,
+            }),
+            transformErrorResponse: (baseQueryReturnValue) => normalizeError('Create Hosted MCP Server', baseQueryReturnValue),
+            invalidatesTags: ['mcpServers']
+        }),
+        deleteHostedMcpServer: builder.mutation<{ status: string }, string>({
+            query: (serverId) => ({
+                url: `/mcp/${serverId}`,
+                method: 'DELETE',
+            }),
+            transformErrorResponse: (baseQueryReturnValue) => normalizeError('Delete Hosted MCP Server', baseQueryReturnValue),
+            invalidatesTags: ['mcpServers']
+        }),
+        updateHostedMcpServer: builder.mutation<HostedMcpServer, { serverId: string; payload: Partial<HostedMcpServerRequest> & { enabled?: boolean } }>({
+            query: ({ serverId, payload }) => ({
+                url: `/mcp/${serverId}`,
+                method: 'PUT',
+                data: payload,
+            }),
+            transformErrorResponse: (baseQueryReturnValue) => normalizeError('Update Hosted MCP Server', baseQueryReturnValue),
+            invalidatesTags: ['mcpServers']
+        }),
     })
 
 });
@@ -122,4 +164,11 @@ export const {
     useListMcpServersQuery,
     useUpdateMcpServerMutation,
     useDeleteMcpServerMutation,
+    useListHostedMcpServersQuery,
+    useCreateHostedMcpServerMutation,
+    useDeleteHostedMcpServerMutation,
+    useUpdateHostedMcpServerMutation,
 } = mcpServerApi;
+
+export { HostedMcpServerStatus };
+export type { HostedMcpServer, HostedMcpServerRequest };

@@ -1,6 +1,6 @@
 {
   "name": "@awslabs/lisa",
-  "version": "5.3.2",
+  "version": "6.0.1",
   "description": "A scalable infrastructure-as-code solution for self-hosting and orchestrating LLM inference with RAG capabilities, providing low-latency access to generative AI and embedding models across multiple providers.",
   "homepage": "https://awslabs.github.io/LISA/",
   "license": "Apache-2.0",
@@ -30,6 +30,7 @@
     "lib/docs",
     "ecs_model_deployer",
     "vector_store_deployer",
+    "mcp_server_deployer",
     "cypress"
   ],
   "scripts": {
@@ -39,7 +40,7 @@
     "copy-dist": "cp VERSION ./dist/",
     "clean": "npm run clean -ws && rm -rf dist node_modules cdk.out build lib/rag/layer/TIKTOKEN_CACHE lib/serve/rest-api/TIKTOKEN_CACHE",
     "watch": "tsc -w",
-    "test": "jest",
+    "test": "jest && npm run test -ws",
     "cdk": "cdk",
     "prepare": "husky",
     "dev": "cd lib/user-interface/react/ && npm run dev",
@@ -48,6 +49,7 @@
     "generateSchemaDocs": "npx zod2md -c ./lib/zod2md.config.ts && npx zod2md -c ./lib/zod2md.rag.ts"
   },
   "devDependencies": {
+    "@eslint/js": "^9.38.0",
     "@aws-cdk/aws-lambda-python-alpha": "2.125.0-alpha.0",
     "@aws-sdk/client-iam": "^3.738.0",
     "@aws-sdk/client-ssm": "^3.738.0",
@@ -70,6 +72,7 @@
     "globals": "^16.3.0",
     "husky": "^9.1.7",
     "jest": "^29.7.0",
+    "@types/linkify-it": "^5.0.0",
     "lint-staged": "^15.4.3",
     "readline-sync": "^1.4.10",
     "ts-jest": "^29.2.5",
@@ -110,7 +113,8 @@
   },
   "ts-node": {
     "esm": true,
-    "experimentalSpecifierResolution": "node"
+    "experimentalSpecifierResolution": "node",
+    "experimentalSpecifiers": true
   },
   "main": "jest.config.js",
   "directories": {

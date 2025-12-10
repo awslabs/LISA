@@ -1,0 +1,27 @@
+env: dev
+
+dev:
+  lambdaLayerAssets:
+    authorizerLayerPath: ./test/cdk/mocks/layers
+    commonLayerPath: ./test/cdk/mocks/layers
+    fastapiLayerPath: ./test/cdk/mocks/layers
+    ragLayerPath: ./test/cdk/mocks/layers
+  restApiConfig:
+    imageConfig:
+      type: ecr
+      repositoryArn: arn:aws:ecr:us-east-1:123456789012:repository/test-api
+      tag: latest
+  mcpWorkbenchConfig:
+    type: ecr
+    repositoryArn: arn:aws:ecr:us-east-1:123456789012:repository/test-mcp
+    tag: latest
+  batchIngestionConfig:
+    type: ecr
+    repositoryArn: arn:aws:ecr:us-east-1:123456789012:repository/test-batch
+    tag: latest
+  webAppAssetsPath: ./test/cdk/mocks/ui
+  ecsModelDeployerPath: ./ecs_model_deployer
+  mcpServerDeployerPath: ./mcp_server_deployer
+  vectorStoreDeployerPath: ./vector_store_deployer
+  documentsPath: ./test/cdk/mocks/ui
+  lambdaPath: ./lambda

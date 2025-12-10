@@ -27,6 +27,23 @@ if [[ -n "${MAX_TOTAL_TOKENS}" ]]; then
   ADDITIONAL_ARGS+=" --max-model-len ${MAX_TOTAL_TOKENS}"
 fi
 
+# Add vLLM specific arguments from environment variables
+if [[ -n "${VLLM_TENSOR_PARALLEL_SIZE}" ]]; then
+  ADDITIONAL_ARGS+=" --tensor-parallel-size ${VLLM_TENSOR_PARALLEL_SIZE}"
+fi
+
+if [[ -n "${VLLM_ASYNC_SCHEDULING}" ]] && [[ "${VLLM_ASYNC_SCHEDULING}" == "true" ]]; then
+  ADDITIONAL_ARGS+=" --async-scheduling"
+fi
+
+if [[ -n "${VLLM_MAX_PARALLEL_LOADING_WORKERS}" ]]; then
+  ADDITIONAL_ARGS+=" --max-parallel-loading-workers ${VLLM_MAX_PARALLEL_LOADING_WORKERS}"
+fi
+
+if [[ -n "${VLLM_USE_TQDM_ON_LOAD}" ]] && [[ "${VLLM_USE_TQDM_ON_LOAD}" == "true" ]]; then
+  ADDITIONAL_ARGS+=" --use-tqdm-on-load"
+fi
+
 # Start the webserver
 echo "Starting vLLM"
 python3 -m vllm.entrypoints.openai.api_server \

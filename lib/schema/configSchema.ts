@@ -461,7 +461,8 @@ export const ContainerConfigSchema = z.object({
         .describe('Environment variables for the container.'),
     sharedMemorySize: z.number().min(0).default(0).describe('The value for the size of the /dev/shm volume.'),
     healthCheckConfig: ContainerHealthCheckConfigSchema.default({}),
-    privileged: z.boolean().optional()
+    privileged: z.boolean().optional(),
+    memoryReservation: z.number().min(0).optional().describe('Memory reservation in MiB for the container.')
 }).describe('Configuration for the container.');
 
 export type ContainerConfig = z.infer<typeof ContainerConfigSchema>;
@@ -709,6 +710,9 @@ const FastApiContainerConfigSchema = z.object({
     domainName: z.string().nullish().default(null),
     sslCertIamArn: z.string().nullish().default(null).describe('ARN of the self-signed cert to be used throughout the system'),
     imageConfig: ImageAssetSchema.optional().describe('Override image configuration for ECS FastAPI Containers'),
+    buildConfig: z.object({
+        PRISMA_CACHE_DIR: z.string().optional().describe('Override with a path relative to the build directory for a pre-cached prisma directory. Defaults to PRISMA_CACHE.')
+    }).default({}),
     rdsConfig: RdsInstanceConfig
         .default({
             dbName: 'postgres',
@@ -780,6 +784,8 @@ const RoleConfig = z.object({
     ECSRestApiRole: z.string().max(64),
     ECSRestApiExRole: z.string().max(64),
     LambdaExecutionRole: z.string().max(64),
+    ECSMcpWorkbenchApiRole: z.string().max(64),
+    ECSMcpWorkbenchApiExRole: z.string().max(64),
     LambdaConfigurationApiExecutionRole: z.string().max(64),
     ModelApiRole: z.string().max(64),
     ModelsSfnLambdaRole: z.string().max(64),
@@ -789,6 +795,7 @@ const RoleConfig = z.object({
     S3ReaderRole: z.string().max(64).optional(),
     UIDeploymentRole: z.string().max(64).optional(),
     VectorStoreCreatorRole: z.string().max(64).optional(),
+    McpServerDeployerRole: z.string().max(64),
 })
     .describe('Role overrides used across stacks.');
 
@@ -813,6 +820,12 @@ export const RawConfigObject = z.object({
     partition: z.string().default('aws').describe('AWS partition for deployment.'),
     domain: z.string().default('amazonaws.com').describe('AWS domain for deployment'),
     restApiConfig: FastApiContainerConfigSchema.describe('Image override for Rest API'),
+    mcpWorkbenchConfig: ImageAssetSchema.optional().describe('Image override for MCP Workbench'),
+    mcpWorkbenchBuildConfig: z.object({
+        S6_OVERLAY_NOARCH_SOURCE: z.string().optional().describe('Override the URL with a path relative to the build directory for the architecture independent S6 overlay tar.xz.'),
+        S6_OVERLAY_ARCH_SOURCE: z.string().optional().describe('Override the URL with a path relative to the build directory for the architecture specific S6 overlay tar.xz.'),
+        RCLONE_SOURCE: z.string().optional().describe('Override the URL with a path relative to the build directory for an rclone .zip')
+    }).default({}),
     batchIngestionConfig: ImageAssetSchema.optional().describe('Image override for Batch Ingestion'),
     vpcId: z.string().optional().describe('VPC ID for the application. (e.g. vpc-0123456789abcdef)'),
     subnets: z.array(z.object({
@@ -843,6 +856,9 @@ export const RawConfigObject = z.object({
     deployDocs: z.boolean().default(true).describe('Whether to deploy docs stacks.'),
     deployUi: z.boolean().default(true).describe('Whether to deploy UI stacks.'),
     deployMetrics: z.boolean().default(true).describe('Whether to deploy Metrics stack.'),
+    deployMcp: z.boolean().default(true).describe('Whether to deploy LISA MCP stack.'),
+    deployServe: z.boolean().default(true).describe('Whether to deploy LISA Serve stack.'),
+    deployMcpWorkbench: z.boolean().default(true).describe('Whether to deploy MCP Workbench stack.'),
     logLevel: z.union([z.literal('DEBUG'), z.literal('INFO'), z.literal('WARNING'), z.literal('ERROR')])
         .default('DEBUG')
         .describe('Log level for application.'),
@@ -875,6 +891,7 @@ export const RawConfigObject = z.object({
     deploymentPrefix: z.string().optional().describe('Prefix for deployment resources.'),
     webAppAssetsPath: z.string().optional().describe('Optional path to precompiled webapp assets. If not specified the web application will be built at deploy time.'),
     ecsModelDeployerPath: z.string().optional().describe('Optional path to precompiled ecs model deployer. If not specified the ecs model deployer will be built at deploy time.'),
+    mcpServerDeployerPath: z.string().optional().describe('Optional path to precompiled mcp server deployer. If not specified the mcp server deployer will be built at deploy time.'),
     vectorStoreDeployerPath: z.string().optional().describe('Optional path to precompiled vector store deployer. If not specified the vector store deployer will be built at deploy time.'),
     documentsPath: z.string().optional().describe('Optional path to precompiled LISA documents. If not specified the LISA docs will be built at deploy time.'),
     lambdaPath: z.any().optional().describe('Optional path to precompiled LISA lambda. If not specified the LISA lambda will be built at deploy time.'),
@@ -898,7 +915,7 @@ export const RawConfigObject = z.object({
         .describe('Aspect CDK injector for permissions. Ref: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_iam.PermissionsBoundary.html'),
     stackSynthesizer: z.nativeEnum(stackSynthesizerType).optional().describe('Set the stack synthesize type. Ref: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.StackSynthesizer.html'),
     bootstrapQualifier: z.string().optional().describe('CDK bootstrap qualifier to use for stack synthesis. Defaults to CDK default if not specified.'),
-    bootstrapRolePrefix: z.string().optional().describe('Prefix for CDK bootstrap role names. Useful when roles have custom prefixes like LLNL_User_Roles_. Leave empty for standard role names.'),
+    bootstrapRolePrefix: z.string().optional().describe('Prefix for CDK bootstrap role names. Useful when roles have custom prefixes like My_User_Roles_. Leave empty for standard role names.'),
     litellmConfig: LiteLLMConfig,
     convertInlinePoliciesToManaged: z.boolean().optional().default(false).describe('Convert inline policies to managed policies'),
     iamRdsAuth: z.boolean().optional().default(false).describe('Enable IAM authentication for RDS'),

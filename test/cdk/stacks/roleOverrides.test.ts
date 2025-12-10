@@ -21,29 +21,33 @@ import { Roles } from '../../../lib/core/iam/roles';
 import { Stack } from 'aws-cdk-lib';
 
 const stackRolesOverrides: Record<string, number> = {
-    'LisaApiBase': 4,
-    'LisaServe': 5,
+    'LisaApiBase': 2,
+    'LisaServe': 3,
     'LisaUI': 1,
     'LisaDocs': 2,
     'LisaRAG': 4,
     'LisaChat': 1,
     'LisaCore': 1,
     'LisaModels': 1,
+    'LisaMcpWorkbench': 4,
+    'LisaMcpApi': 5,
 };
 
 const stackRoles: Record<string, number> = {
-    'LisaApiBase': 5,
-    'LisaServe': 7,
+    'LisaApiBase': 3,
+    'LisaServe': 3,
     'LisaUI': 3,
     'LisaNetworking': 0,
     'LisaChat': 6,
     'LisaCore': 1,
     'LisaApiDeployment': 0,
-    'LisaIAM': 2,
+    'LisaIAM': 5,
     'LisaDocs': 4,
     'LisaModels': 10,
     'LisaRAG': 4,
     'LisaMetrics': 1,
+    'LisaMcpWorkbench': 4,
+    'LisaMcpApi': 7,
 };
 
 describe('Verify role overrides', () => {

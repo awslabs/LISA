@@ -37,6 +37,7 @@ os.environ["AWS_SESSION_TOKEN"] = "testing"
 os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 os.environ["AWS_REGION"] = "us-east-1"
 os.environ["MODEL_TABLE_NAME"] = "model-table"
+os.environ["GUARDRAILS_TABLE_NAME"] = "guardrails-table"
 os.environ["ECR_REPOSITORY_NAME"] = "test-ecr-repo"
 os.environ["ECR_REPOSITORY_ARN"] = "arn:aws:ecr:us-east-1:123456789012:repository/test-ecr-repo"
 os.environ["DOCKER_IMAGE_BUILDER_FN_ARN"] = "arn:aws:lambda:us-east-1:123456789012:function:docker-image-builder"
@@ -56,6 +57,8 @@ mock_common.retry_config = retry_config
 # Create mock LiteLLMClient
 mock_litellm_client = MagicMock()
 mock_litellm_client.add_model.return_value = {"model_info": {"id": "test-litellm-id"}}
+mock_litellm_client.create_guardrail.return_value = {"guardrail_id": "test-guardrail-id"}
+mock_litellm_client.delete_guardrail.return_value = {"status": "deleted"}
 
 # First, patch sys.modules
 patch.dict(
@@ -155,6 +158,7 @@ from models.domain_objects import InferenceContainer, ModelStatus
 # Now import the state machine functions
 from models.state_machine.create_model import (
     get_container_path,
+    handle_add_guardrails_to_litellm,
     handle_add_model_to_litellm,
     handle_failure,
     handle_poll_create_stack,
@@ -193,6 +197,24 @@ def model_table(dynamodb):
         TableName="model-table",
         KeySchema=[{"AttributeName": "model_id", "KeyType": "HASH"}],
         AttributeDefinitions=[{"AttributeName": "model_id", "AttributeType": "S"}],
+        ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
+    )
+    return table
+
+
+@pytest.fixture(scope="function")
+def guardrails_table(dynamodb):
+    """Create a mock DynamoDB table for guardrails."""
+    table = dynamodb.create_table(
+        TableName="guardrails-table",
+        KeySchema=[
+            {"AttributeName": "guardrailId", "KeyType": "HASH"},
+            {"AttributeName": "modelId", "KeyType": "RANGE"},
+        ],
+        AttributeDefinitions=[
+            {"AttributeName": "guardrailId", "AttributeType": "S"},
+            {"AttributeName": "modelId", "AttributeType": "S"},
+        ],
         ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
     )
     return table
@@ -685,3 +707,42 @@ def test_handle_start_create_stack_camelize_function(sample_event, lambda_contex
     # Check that certain keys are preserved
     assert payload["modelConfig"]["containerConfig"]["environment"] == {"TEST_VAR": "test_value"}
     assert payload["modelConfig"]["containerConfig"]["image"]["type"] == "ecr"
+
+
+def test_handle_add_guardrails_to_litellm_with_guardrails(model_table, guardrails_table, lambda_context):
+    """Test adding guardrails to LiteLLM."""
+    event = {
+        "modelId": "test-model",
+        "guardrailsConfig": {
+            "guardrail1": {
+                "guardrailName": "test-guardrail",
+                "guardrailIdentifier": "test-identifier",
+                "guardrailVersion": "1",
+                "mode": "pre_call",
+                "description": "Test guardrail",
+                "allowedGroups": ["group1"],
+            }
+        },
+    }
+
+    with patch("models.state_machine.create_model.model_table", model_table), patch(
+        "models.state_machine.create_model.guardrails_table", guardrails_table
+    ):
+        result = handle_add_guardrails_to_litellm(event, lambda_context)
+
+        assert len(result["guardrail_ids"]) == 1
+        assert result["guardrail_ids"][0] == "test-guardrail-id"
+        assert len(result["created_guardrails"]) == 1
+
+        # Verify guardrail was stored in DynamoDB
+        item = guardrails_table.get_item(Key={"guardrailId": "test-guardrail-id", "modelId": "test-model"})["Item"]
+        assert item["guardrailName"] == "test-guardrail"
+
+
+def test_handle_add_guardrails_to_litellm_no_guardrails(lambda_context):
+    """Test adding guardrails when none are configured."""
+    event = {"modelId": "test-model"}
+
+    result = handle_add_guardrails_to_litellm(event, lambda_context)
+
+    assert result["guardrail_ids"] == []

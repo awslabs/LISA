@@ -47,9 +47,9 @@ export class LisaApiDeploymentConstruct extends Construct {
         // https://github.com/aws/aws-cdk/issues/25582
         (deployment as any).resource.stageName = config.deploymentStage;
 
-        const api_url = `https://${restApiId}.execute-api.${Aws.REGION}.${Aws.URL_SUFFIX}/${config.deploymentStage}`;
+        const api_url = config.apiGatewayConfig?.domainName ? `https://${config.apiGatewayConfig?.domainName}` : `https://${restApiId}.execute-api.${Aws.REGION}.${Aws.URL_SUFFIX}/${config.deploymentStage}`;
         new StringParameter(scope, 'LisaApiDeploymentStringParameter', {
-            parameterName: `${config.deploymentPrefix}/${config.deploymentName}/${config.appName}/LisaApiUrl`,
+            parameterName: `${config.deploymentPrefix}/LisaApiUrl`,
             stringValue: api_url,
             description: 'API Gateway URL for LISA',
         });

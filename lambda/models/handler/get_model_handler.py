@@ -16,12 +16,12 @@
 
 from typing import List, Optional
 
-from utilities.common_functions import user_has_group_access
+from utilities.auth import user_has_group_access
 
 from ..domain_objects import GetModelResponse
 from ..exception import ModelNotFoundError
 from .base_handler import BaseApiHandler
-from .utils import to_lisa_model
+from .utils import attach_guardrails_to_model, fetch_guardrails_for_model, to_lisa_model
 
 
 class GetModelHandler(BaseApiHandler):
@@ -36,6 +36,10 @@ class GetModelHandler(BaseApiHandler):
             raise ModelNotFoundError(f"Model '{model_id}' was not found.")
 
         model = to_lisa_model(ddb_item)
+
+        # Fetch and attach guardrails for this model
+        guardrail_items = fetch_guardrails_for_model(self._guardrails_table, model_id)
+        attach_guardrails_to_model(model, guardrail_items)
 
         # Check if user has access to this model based on groups
         if not is_admin and user_groups is not None:

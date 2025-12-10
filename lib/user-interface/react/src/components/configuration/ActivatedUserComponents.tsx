@@ -40,8 +40,8 @@ const advancedOptions = {
     viewMetaData: 'View chat meta-data',
     deleteSessionHistory: 'Delete Session History',
     editChatHistoryBuffer: 'Edit chat history buffer',
-    enableModelComparisonUtility: 'Enable Model Comparison Utility',
-    encryptSession: 'Enable Session Encryption',
+    enableModelComparisonUtility: 'Model Comparison Utility',
+    encryptSession: 'Session Encryption',
 };
 
 const mcpOptions = {
@@ -67,27 +67,27 @@ const dependencies: DependencyMap<{
     libraryOptions: typeof libraryOptions;
     advancedOptions: typeof advancedOptions;
 }> = {
-    showMcpWorkbench: {prerequisites: ['mcpConnections'] },
-    mcpConnections: {dependents: ['showMcpWorkbench']}
+    showMcpWorkbench: { prerequisites: ['mcpConnections'] },
+    mcpConnections: { dependents: ['showMcpWorkbench'] }
 };
 
 const configurableOperations = [{
-    header: 'RAG Components',
+    header: 'RAG',
     items: ragOptions
 },
 {
-    header: 'Library Components',
+    header: 'Library',
     items: libraryOptions
 },
 {
-    header: 'In-Context Components',
+    header: 'In-Context',
     items: inContextOptions
 },
 {
-    header: 'Advanced Components',
+    header: 'Advanced',
     items: advancedOptions
 }, {
-    header: 'MCP Components',
+    header: 'MCP',
     items: mcpOptions
 }];
 
@@ -141,7 +141,7 @@ export function ActivatedUserComponents (props: ActivatedComponentConfigurationP
         <Container
             header={
                 <Header variant='h2'>
-                    Activated Chat UI Components
+                    Chat Features
                 </Header>
             }>
             <SpaceBetween direction='vertical' size='m'>

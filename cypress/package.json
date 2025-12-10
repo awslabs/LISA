@@ -3,8 +3,8 @@
     "description": "E2E tests for LISA",
     "version": "1.0.0",
     "devDependencies": {
-        "@types/node": "^24.10.1",
-        "cypress": "^14.3.0",
+        "@types/node": "^24.10.2",
+        "cypress": "^15.7.1",
         "lint-staged": "^16.2.7",
         "lodash": "^4.17.21"
     },

@@ -27,9 +27,11 @@ logger = logging.getLogger(__name__)
 class VectorStoreRepository:
     """Vector Store repository for DynamoDB"""
 
-    def __init__(self) -> None:
+    def __init__(self, table_name: str | None = None) -> None:
         dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
-        self.table = dynamodb.Table(os.environ["LISA_RAG_VECTOR_STORE_TABLE"])
+        if table_name is None:
+            table_name = os.environ["LISA_RAG_VECTOR_STORE_TABLE"]
+        self.table = dynamodb.Table(table_name)
 
     def get_registered_repositories(self) -> List[dict]:
         """Get a list of all registered RAG repositories with default values for new fields."""

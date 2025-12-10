@@ -18,6 +18,8 @@ import json
 import logging
 import os
 
+import boto3
+from botocore.exceptions import ClientError
 from models.exception import ModelInUseError, ModelNotFoundError
 from repository.vector_store_repo import VectorStoreRepository
 
@@ -26,6 +28,7 @@ from .base_handler import BaseApiHandler
 from .utils import to_lisa_model
 
 logger = logging.getLogger(__name__)
+ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"])
 
 
 class DeleteModelHandler(BaseApiHandler):
@@ -54,9 +57,17 @@ class DeleteModelHandler(BaseApiHandler):
             model_id: The model ID to check
 
         Raises:
-            InvalidStateTransitionError: If model is in use by any repository or pipeline
+            ModelInUseError: If model is in use by any repository or pipeline
         """
-        vector_store_repo = VectorStoreRepository()
+        # Try to get vector store table name from SSM parameter (only exists if RAG is deployed)
+        vector_store_table = self._get_vector_store_table_name()
+        if not vector_store_table:
+            logger.info(
+                f"RAG vector store not deployed, skipping model usage check for '{model_id}'"
+            )
+            return
+
+        vector_store_repo = VectorStoreRepository(table_name=vector_store_table)
         usages = vector_store_repo.find_repositories_using_model(model_id)
 
         if usages:
@@ -72,3 +83,26 @@ class DeleteModelHandler(BaseApiHandler):
                 f"Model '{model_id}' is currently in use by repository '{repository_id}' (resource: {usage_type}). "
                 "Please remove the model from the repository before deleting."
             )
+
+    def _get_vector_store_table_name(self) -> str | None:
+        """Get the RAG vector store table name from SSM parameter.
+
+        Returns:
+            Table name if RAG is deployed, None otherwise
+        """
+        parameter_name = os.environ.get("LISA_RAG_VECTOR_STORE_TABLE_PS_NAME")
+        if not parameter_name:
+            logger.debug("LISA_RAG_VECTOR_STORE_TABLE_PS_NAME not configured")
+            return None
+
+        try:
+            response = ssm_client.get_parameter(Name=parameter_name)
+            table_name = response["Parameter"]["Value"]
+            logger.debug(f"Retrieved RAG vector store table name from SSM: {table_name}")
+            return table_name
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "ParameterNotFound":
+                logger.debug(f"SSM parameter {parameter_name} not found - RAG not deployed")
+                return None
+            logger.warning(f"Error retrieving SSM parameter {parameter_name}: {e}")
+            return None

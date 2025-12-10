@@ -273,6 +273,8 @@ export class ModelsApi extends Construct {
             SCHEDULE_MANAGEMENT_FUNCTION_NAME: scheduleManagementLambda.functionName,
             GUARDRAILS_TABLE_NAME: guardrailsTable.tableName,
             ADMIN_GROUP: config.authConfig?.adminGroup || '',
+            // SSM parameter name for RAG vector store table (optional - only exists if RAG is deployed)
+            LISA_RAG_VECTOR_STORE_TABLE_PS_NAME: `${config.deploymentPrefix}/ragVectorStoreTableName`,
         };
 
         const lambdaRole: IRole = createLambdaRole(this, config.deploymentName, 'ModelApi', modelTable.tableArn, config.roles?.ModelApiRole);
@@ -428,6 +430,25 @@ export class ModelsApi extends Construct {
                     ],
                     resources: [
                         scheduleManagementLambda.functionArn,
+                    ],
+                }),
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: [
+                        'ssm:GetParameter',
+                    ],
+                    resources: [
+                        `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/ragVectorStoreTableName`,
+                    ],
+                }),
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: [
+                        'dynamodb:Scan',
+                    ],
+                    resources: [
+                        // Allow scanning any RAG vector store table (table name is dynamic based on deployment)
+                        `arn:${config.partition}:dynamodb:${config.region}:${config.accountNumber}:table/${config.deploymentName}-${config.deploymentStage}-rag-repository-config`,
                     ],
                 }),
             ]

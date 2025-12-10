@@ -197,9 +197,14 @@ def repository_exists(lisa_client: LisaApi, repository_id: str) -> bool:
 
 
 def create_bedrock_model(
-    lisa_client: LisaApi, model_id: str, model_name: str, model_type: str = "textgen", features: any = None
+    lisa_client: LisaApi, model_id: str, model_name: str, model_type: str = "textgen", features: any = None, skip_create: bool = False
 ) -> Dict[str, Any]:
     """Create a Bedrock model configuration."""
+
+    # Skip creation if flag is set
+    if skip_create:
+        print(f"\n⏭️  Skipping creation of Bedrock model '{model_id}' (skip_create=True)")
+        return {"modelId": model_id}
 
     # Check if model already exists
     if model_exists(lisa_client, model_id):
@@ -248,8 +253,14 @@ def create_self_hosted_embedded_model(
     model_id: str,
     model_name: str,
     base_image: str = "ghcr.io/huggingface/text-embeddings-inference:latest",
+    skip_create: bool = False,
 ) -> Dict[str, Any]:
     """Create a self-hosted embedded model configuration."""
+
+    # Skip creation if flag is set
+    if skip_create:
+        print(f"\n⏭️  Skipping creation of self-hosted embedded model '{model_id}' (skip_create=True)")
+        return {"modelId": model_id}
 
     # Check if model already exists
     if model_exists(lisa_client, model_id):
@@ -325,9 +336,14 @@ def create_self_hosted_embedded_model(
 
 
 def create_self_hosted_model(
-    lisa_client: LisaApi, model_id: str, model_name: str, base_image: str = "vllm/vllm-openai:latest"
+    lisa_client: LisaApi, model_id: str, model_name: str, base_image: str = "vllm/vllm-openai:latest", skip_create: bool = False
 ) -> Dict[str, Any]:
     """Create a self-hosted model configuration."""
+
+    # Skip creation if flag is set
+    if skip_create:
+        print(f"\n⏭️  Skipping creation of self-hosted model '{model_id}' (skip_create=True)")
+        return {"modelId": model_id}
 
     # Check if model already exists
     if model_exists(lisa_client, model_id):
@@ -407,9 +423,14 @@ def create_self_hosted_model(
         raise
 
 
-def create_pgvector_repository(lisa_client: LisaApi, embedding_model_id: str = None) -> Dict[str, Any]:
+def create_pgvector_repository(lisa_client: LisaApi, embedding_model_id: str = None, skip_create: bool = False) -> Dict[str, Any]:
     """Create a PGVector repository."""
     repository_id = "test-pgvector-rag"
+
+    # Skip creation if flag is set
+    if skip_create:
+        print(f"\n⏭️  Skipping creation of PGVector repository '{repository_id}' (skip_create=True)")
+        return {"repositoryId": repository_id}
 
     # Check if repository already exists
     if repository_exists(lisa_client, repository_id):
@@ -451,9 +472,14 @@ def create_pgvector_repository(lisa_client: LisaApi, embedding_model_id: str = N
         raise
 
 
-def create_opensearch_repository(lisa_client: LisaApi, embedding_model_id: str = None) -> Dict[str, Any]:
+def create_opensearch_repository(lisa_client: LisaApi, embedding_model_id: str = None, skip_create: bool = False) -> Dict[str, Any]:
     """Create an OpenSearch repository."""
     repository_id = "test-opensearch-rag"
+
+    # Skip creation if flag is set
+    if skip_create:
+        print(f"\n⏭️  Skipping creation of OpenSearch repository '{repository_id}' (skip_create=True)")
+        return {"repositoryId": repository_id}
 
     # Check if repository already exists
     if repository_exists(lisa_client, repository_id):
@@ -526,7 +552,8 @@ def main():
     parser.add_argument("--deployment-prefix", required=True, help="LISA deployment prefix")
     parser.add_argument("--verify", default="false", help="Verify SSL certificates")
     parser.add_argument("--profile", help="AWS profile to use")
-    parser.add_argument("--cleanup", action="store_true", help="Clean up resources after test")
+    parser.add_argument("--cleanup", action="store_true", help="Clean up resources (delete models and repositories)")
+    parser.add_argument("--skip-create", action="store_true", help="Skip resource creation, only collect resource IDs for cleanup")
     parser.add_argument("--wait", action="store_true", help="Wait for resources to be ready")
 
     args = parser.parse_args()
@@ -552,6 +579,40 @@ def main():
 
         created_resources = {"models": [], "repositories": []}
 
+        # If cleanup-only mode, skip all creation and just populate resource IDs
+        if args.cleanup and args.skip_create:
+            print("\n🧹 Cleanup-only mode: Collecting resource IDs for deletion...")
+            
+            # Define all resource IDs that would be created
+            created_resources["models"] = [
+                "nova-lite",
+                "sonnet-4-5",
+                "deepseek-3",
+                "llama-maverick",
+                "sonnet-4",
+                "titan-embed",
+                "titan-image",
+                "mistral-7b-instruct-03",
+                "llama-32-1b-instruct",
+                "gpt-oss-20b",
+                DEFAULT_EMBEDDING_MODEL_ID,
+                "qwen3-embed-06b",
+                "baai-embed-15",
+            ]
+            created_resources["repositories"] = [
+                "test-pgvector-rag",
+                "test-opensearch-rag",
+            ]
+            
+            print(f"  Models to delete: {created_resources['models']}")
+            print(f"  Repositories to delete: {created_resources['repositories']}")
+            
+            # Skip to cleanup
+            cleanup_resources(lisa_client, created_resources)
+            print("\n🧹 Cleanup completed!")
+            print("\n✅ Integration setup test completed successfully!")
+            return 0
+
         # Get an embedding model for repositories
         embedding_models = lisa_client.list_embedding_models()
         embedding_model_id = None
@@ -565,19 +626,18 @@ def main():
         # # 1. Create Bedrock model
         models.extend(
             [
-                create_bedrock_model(lisa_client, "nova-lite", "bedrock/us.amazon.nova-lite-v1:0"),
-                create_bedrock_model(lisa_client, "sonnet-4-5", "bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0"),
-                create_bedrock_model(lisa_client, "deepseek-3", "bedrock/us.deepseek.v3-v1:0"),
+                create_bedrock_model(lisa_client, "nova-lite", "bedrock/us.amazon.nova-lite-v1:0", skip_create=args.skip_create),
+                create_bedrock_model(lisa_client, "sonnet-4-5", "bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0", skip_create=args.skip_create),
+                create_bedrock_model(lisa_client, "deepseek-3", "bedrock/us.deepseek.v3-v1:0", skip_create=args.skip_create),
                 create_bedrock_model(
-                    lisa_client, "llama-maverick", "bedrock/us.meta.llama4-maverick-17b-instruct-v1:0"
+                    lisa_client, "llama-maverick", "bedrock/us.meta.llama4-maverick-17b-instruct-v1:0", skip_create=args.skip_create
                 ),
-                create_bedrock_model(lisa_client, "sonnet-4-5", "bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0"),
-                create_bedrock_model(lisa_client, "sonnet-4", "bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0"),
+                create_bedrock_model(lisa_client, "sonnet-4", "bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0", skip_create=args.skip_create),
                 create_bedrock_model(
-                    lisa_client, "titan-embed", "bedrock/amazon.titan-embed-text-v2:0", "embedding", []
+                    lisa_client, "titan-embed", "bedrock/amazon.titan-embed-text-v2:0", "embedding", [], args.skip_create
                 ),
                 create_bedrock_model(
-                    lisa_client, "titan-image", "bedrock/amazon.titan-image-generator-v2:0", "imagegen", []
+                    lisa_client, "titan-image", "bedrock/amazon.titan-image-generator-v2:0", "imagegen", [], args.skip_create
                 ),
             ]
         )
@@ -585,18 +645,18 @@ def main():
         # # 2. Create self-hosted model
         models.extend(
             [
-                create_self_hosted_model(lisa_client, "mistral-7b-instruct-03", "mistralai/Mistral-7B-Instruct-v0.3"),
-                create_self_hosted_model(lisa_client, "llama-32-1b-instruct", "meta-llama/Llama-3.2-1B-Instruct"),
-                create_self_hosted_model(lisa_client, "gpt-oss-20b", "openai/gpt-oss-20b"),
+                create_self_hosted_model(lisa_client, "mistral-7b-instruct-03", "mistralai/Mistral-7B-Instruct-v0.3", skip_create=args.skip_create),
+                create_self_hosted_model(lisa_client, "llama-32-1b-instruct", "meta-llama/Llama-3.2-1B-Instruct", skip_create=args.skip_create),
+                create_self_hosted_model(lisa_client, "gpt-oss-20b", "openai/gpt-oss-20b", skip_create=args.skip_create),
             ]
         )
 
         # # 3. Create self-hosted embedded model
         models.extend(
             [
-                create_self_hosted_embedded_model(lisa_client, DEFAULT_EMBEDDING_MODEL_ID, "intfloat/e5-large-v2"),
-                create_self_hosted_embedded_model(lisa_client, "qwen3-embed-06b", "Qwen/Qwen3-Embedding-0.6B"),
-                create_self_hosted_embedded_model(lisa_client, "baai-embed-15", "BAAI/bge-large-en-v1.5"),
+                create_self_hosted_embedded_model(lisa_client, DEFAULT_EMBEDDING_MODEL_ID, "intfloat/e5-large-v2", skip_create=args.skip_create),
+                create_self_hosted_embedded_model(lisa_client, "qwen3-embed-06b", "Qwen/Qwen3-Embedding-0.6B", skip_create=args.skip_create),
+                create_self_hosted_embedded_model(lisa_client, "baai-embed-15", "BAAI/bge-large-en-v1.5", skip_create=args.skip_create),
             ]
         )
 
@@ -607,17 +667,20 @@ def main():
         repos.extend(
             [
                 # # 4. Create PGVector repository
-                create_pgvector_repository(lisa_client, embedding_model_id),
+                create_pgvector_repository(lisa_client, embedding_model_id, skip_create=args.skip_create),
                 # # 5. Create OpenSearch repository
-                create_opensearch_repository(lisa_client, embedding_model_id),
+                create_opensearch_repository(lisa_client, embedding_model_id, skip_create=args.skip_create),
             ]
         )
 
         for repo in repos:
             created_resources["repositories"].append(repo["repositoryId"])
 
-        print("\n✅ All resources created successfully!")
-        print("Created resources:")
+        if not args.skip_create:
+            print("\n✅ All resources created successfully!")
+        else:
+            print("\n✅ Resource IDs collected successfully!")
+        print("Resources:")
         print(f"  Models: {created_resources['models']}")
         print(f"  Repositories: {created_resources['repositories']}")
 

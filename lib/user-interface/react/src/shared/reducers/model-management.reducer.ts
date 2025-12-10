@@ -29,7 +29,7 @@ export const modelManagementApi = createApi({
             query: () => ({
                 url: '/models',
             }),
-            transformResponse: (response) => response.models,
+            transformResponse: (response: IModelListResponse) => response.models,
             providesTags:['models'],
         }),
         deleteModel: builder.mutation<IModel, string>({

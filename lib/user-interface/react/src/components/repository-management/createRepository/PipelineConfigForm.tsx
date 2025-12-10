@@ -28,7 +28,6 @@ import {
 import { FormProps } from '../../../shared/form/form-props';
 
 import { PipelineConfig, RagRepositoryPipeline, RagRepositoryType } from '#root/lib/schema';
-import { getDefaults } from '#root/lib/schema/zodUtil';
 import { useListCollectionsQuery } from '@/shared/reducers/rag.reducer';
 import { ChunkingConfigForm } from '@/components/document-library/createCollection/ChunkingConfigForm';
 
@@ -75,7 +74,7 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
     };
 
     const addConfig = () => {
-        setFields({ pipelines: [...(item || []), getDefaults(RagRepositoryPipeline)] });
+        setFields({ pipelines: [...(item || []), RagRepositoryPipeline.parse({})] });
     };
 
     const removeConfig = (index: number) => {

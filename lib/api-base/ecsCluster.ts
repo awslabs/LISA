@@ -170,7 +170,7 @@ export class ECSCluster extends Construct {
         const container = ec2TaskDefinition.addContainer(createCdkId([taskDefinitionName, 'Container']), {
             containerName: createCdkId([config.deploymentName, taskDefinitionName], 32, 2),
             image,
-            environment: {...this.baseEnvironment, ...taskDefinition.environment},
+            environment: {...this.baseEnvironment, ...(taskDefinition.environment as Record<string, string>)},
             logging: LogDriver.awsLogs({
                 logGroup: logGroup,
                 streamPrefix: taskDefinitionName

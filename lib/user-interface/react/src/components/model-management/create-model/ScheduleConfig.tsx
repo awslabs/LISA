@@ -20,7 +20,7 @@ import FormField from '@cloudscape-design/components/form-field';
 import Select from '@cloudscape-design/components/select';
 import Toggle from '@cloudscape-design/components/toggle';
 import TimeInput from '@cloudscape-design/components/time-input';
-import { Grid, Header, SpaceBetween, Container, Box, Alert } from '@cloudscape-design/components';
+import { Grid, Header, SpaceBetween, Box, Alert } from '@cloudscape-design/components';
 
 import { IScheduleConfig, ScheduleType, IDaySchedule, IWeeklySchedule } from '../../../shared/model/model-management.model';
 
@@ -87,12 +87,12 @@ const validateTimePair = (startTime: string, endTime: string): string | undefine
 
     // Check if end time is earlier than start time (invalid for same-day scheduling)
     if (endMinutes <= startMinutes) {
-        return 'Stop time must be later than Start time on the same day.';
+        return 'Suspension time must be later than Start time on the same day.';
     }
 
     // Check minimum 2-hour gap
     if (endMinutes - startMinutes < 120) {
-        return 'Stop time must be at least 2 hours after Start time.';
+        return 'Suspension time must be at least 2 hours after Start time.';
     }
 
     return undefined; // Valid
@@ -104,14 +104,14 @@ const validateRecurringSchedule = (recurringSchedule?: IDaySchedule): string | u
     const { startTime, stopTime } = recurringSchedule;
 
     if (!startTime && !stopTime) {
-        return 'Recurring schedule must have both start and stop times.';
+        return 'Recurring schedule must have both start and suspension times.';
     }
 
     if (!startTime) return 'Start time is required for recurring schedule.';
-    if (!stopTime) return 'Stop time is required for recurring schedule.';
+    if (!stopTime) return 'Suspension time is required for recurring schedule.';
 
     if (!isValidTimeFormat(startTime)) return 'Start time must be in HH:MM format (24-hour).';
-    if (!isValidTimeFormat(stopTime)) return 'Stop time must be in HH:MM format (24-hour).';
+    if (!isValidTimeFormat(stopTime)) return 'Suspension time must be in HH:MM format (24-hour).';
 
     // Use enhanced validation for time pair
     const timePairError = validateTimePair(startTime, stopTime);
@@ -144,7 +144,7 @@ const validateDailySchedule = (dailySchedule?: IWeeklySchedule): { [key: string]
             }
 
             if (stopTime && !isValidTimeFormat(stopTime)) {
-                errors[`${day}_stopTime`] = 'Stop time must be in HH:MM format (24-hour).';
+                errors[`${day}_stopTime`] = 'Suspension time must be in HH:MM format (24-hour).';
             }
 
             // Use enhanced validation for time pair with clearer error messages
@@ -157,10 +157,10 @@ const validateDailySchedule = (dailySchedule?: IWeeklySchedule): { [key: string]
         } else if (daySchedule && (daySchedule.startTime || daySchedule.stopTime)) {
             // Partial schedule validation
             if (daySchedule.startTime && !daySchedule.stopTime) {
-                errors[`${day}_stopTime`] = 'Stop time is required when Start time is provided.';
+                errors[`${day}_stopTime`] = 'Suspension time is required when Start time is provided.';
             }
             if (daySchedule.stopTime && !daySchedule.startTime) {
-                errors[`${day}_startTime`] = 'Start time is required when Stop time is provided.';
+                errors[`${day}_startTime`] = 'Start time is required when Suspension time is provided.';
             }
         }
     });
@@ -244,211 +244,197 @@ export function ScheduleConfig (props: ScheduleConfigProps): ReactElement {
 
     return (
         <SpaceBetween size={'s'}>
-            <Container header={
-                <SpaceBetween size='xs'>
-                    <Header variant='h3'>Resource Scheduling</Header>
-                    <Box>
-                        <p>Manage auto scaling for self-hosted models</p>
-                    </Box>
-                </SpaceBetween>
-            }>
-                <SpaceBetween size={'s'}>
-                    <FormField
-                        label=''
-                        description=''
-                        errorText={props.formErrors?.scheduleEnabled}
-                    >
-                        <Toggle
-                            checked={isScheduleEnabled}
-                            onChange={({ detail }) => {
-                                props.setFields({
-                                    'scheduleEnabled': detail.checked,
-                                    // Keep schedule type as NONE when enabling so user must choose
-                                    'scheduleType': detail.checked ? ScheduleType.NONE : ScheduleType.NONE,
-                                    // Clear schedules when disabling
-                                    'dailySchedule': detail.checked ? props.item.dailySchedule : undefined,
-                                    'recurringSchedule': detail.checked ? props.item.recurringSchedule : undefined
-                                });
-                            }}
-                            onBlur={() => props.touchFields(['scheduleEnabled'])}
-                        >
-                            Auto Scaling
-                        </Toggle>
-                    </FormField>
+            <FormField
+                label=''
+                description=''
+                errorText={props.formErrors?.scheduleEnabled}
+            >
+                <Toggle
+                    checked={isScheduleEnabled}
+                    onChange={({ detail }) => {
+                        props.setFields({
+                            'scheduleEnabled': detail.checked,
+                            // Keep schedule type as NONE when enabling so user must choose
+                            'scheduleType': detail.checked ? ScheduleType.NONE : ScheduleType.NONE,
+                            // Clear schedules when disabling
+                            'dailySchedule': detail.checked ? props.item.dailySchedule : undefined,
+                            'recurringSchedule': detail.checked ? props.item.recurringSchedule : undefined
+                        });
+                    }}
+                    onBlur={() => props.touchFields(['scheduleEnabled'])}
+                >
+                    Auto Scaling
+                </Toggle>
+            </FormField>
 
-                    {!isScheduleEnabled && (
-                        <Alert
-                            statusIconAriaLabel='Warning'
-                            type='warning'
-                        >
-                            When Auto Scaling is deactivated, the model will always be on.
-                        </Alert>
-                    )}
+            {!isScheduleEnabled && (
+                <Alert
+                    statusIconAriaLabel='Warning'
+                    type='warning'
+                >
+                    When Auto Scaling is deactivated, the model will always be running.
+                </Alert>
+            )}
 
-                    {isScheduleEnabled && (
+            {isScheduleEnabled && (
+                <FormField
+                    label=''
+                    description='Choose how the model should be scheduled'
+                    errorText={props.formErrors?.scheduleType}
+                >
+                    <Select
+                        selectedOption={selectedScheduleType}
+                        placeholder='Choose a scheduling method: Daily or Recurring'
+                        onChange={({ detail }) => {
+                            props.setFields({
+                                'scheduleType': detail.selectedOption.value as ScheduleType,
+                                // Clear schedules when changing type
+                                'dailySchedule': undefined,
+                                'recurringSchedule': undefined
+                            });
+                        }}
+                        options={scheduleTypeOptions}
+                        onBlur={() => props.touchFields(['scheduleType'])}
+                    />
+                </FormField>
+            )}
+
+            {showScheduleOptions && (
+                <FormField
+                    label='Timezone'
+                    description='Select the timezone for schedule times (required)'
+                    errorText={props.formErrors?.timezone || validationErrors.timezone}
+                >
+                    <Select
+                        selectedOption={selectedTimezone}
+                        placeholder='Select a timezone'
+                        onChange={({ detail }) => {
+                            props.setFields({ 'timezone': detail.selectedOption.value });
+                        }}
+                        options={timezoneOptions}
+                        onBlur={() => props.touchFields(['timezone'])}
+                        filteringType='auto'
+                        invalid={!!(props.formErrors?.timezone || validationErrors.timezone)}
+                    />
+                </FormField>
+            )}
+
+            {showDailySchedule && (
+                <>
+                    <SpaceBetween size='s'>
+                        <Header variant='h3'>Recurring Schedule</Header>
+                        <Box>
+                            <p>Set a Start and a Suspension time to be applied to every day of the week. Enter times in 24-hour format, leaving 2 hours of buffer between the start and suspension time.</p>
+                        </Box>
+                    </SpaceBetween>
+
+                    <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }]}>
                         <FormField
-                            label=''
-                            description='Choose how the model should be scheduled'
-                            errorText={props.formErrors?.scheduleType}
+                            label='Start'
+                            errorText={props.formErrors?.recurringSchedule?.startTime}
                         >
-                            <Select
-                                selectedOption={selectedScheduleType}
-                                placeholder='Choose a scheduling method: Daily or Recurring'
+                            <TimeInput
+                                value={props.item.recurringSchedule?.startTime || ''}
                                 onChange={({ detail }) => {
-                                    props.setFields({
-                                        'scheduleType': detail.selectedOption.value as ScheduleType,
-                                        // Clear schedules when changing type
-                                        'dailySchedule': undefined,
-                                        'recurringSchedule': undefined
-                                    });
+                                    const updatedRecurringSchedule = {
+                                        ...props.item.recurringSchedule,
+                                        startTime: detail.value,
+                                        stopTime: props.item.recurringSchedule?.stopTime || ''
+                                    };
+                                    props.setFields({ 'recurringSchedule': updatedRecurringSchedule });
                                 }}
-                                options={scheduleTypeOptions}
-                                onBlur={() => props.touchFields(['scheduleType'])}
+                                onBlur={() => props.touchFields(['recurringSchedule.startTime'])}
+                                format='hh:mm'
+                                placeholder='HH:MM'
                             />
                         </FormField>
-                    )}
 
-                    {showScheduleOptions && (
                         <FormField
-                            label='Timezone'
-                            description='Select the timezone for schedule times (required)'
-                            errorText={props.formErrors?.timezone || validationErrors.timezone}
+                            label='Suspension'
+                            errorText={props.formErrors?.recurringSchedule?.stopTime || validationErrors.recurringSchedule}
                         >
-                            <Select
-                                selectedOption={selectedTimezone}
-                                placeholder='Select a timezone'
+                            <TimeInput
+                                value={props.item.recurringSchedule?.stopTime || ''}
                                 onChange={({ detail }) => {
-                                    props.setFields({ 'timezone': detail.selectedOption.value });
+                                    const updatedRecurringSchedule = {
+                                        ...props.item.recurringSchedule,
+                                        startTime: props.item.recurringSchedule?.startTime || '',
+                                        stopTime: detail.value
+                                    };
+                                    props.setFields({ 'recurringSchedule': updatedRecurringSchedule });
                                 }}
-                                options={timezoneOptions}
-                                onBlur={() => props.touchFields(['timezone'])}
-                                filteringType='auto'
-                                invalid={!!(props.formErrors?.timezone || validationErrors.timezone)}
+                                onBlur={() => props.touchFields(['recurringSchedule.stopTime'])}
+                                format='hh:mm'
+                                placeholder='HH:MM'
                             />
                         </FormField>
-                    )}
+                    </Grid>
+                </>
+            )}
 
-                    {showDailySchedule && (
-                        <>
-                            <SpaceBetween size='s'>
-                                <Header variant='h3'>Recurring Schedule</Header>
-                                <Box>
-                                    <p>Set a Start and a Stop time to be applied to every day of the week.</p>
-                                </Box>
-                            </SpaceBetween>
+            {showWeeklySchedule && (
+                <>
+                    <SpaceBetween size='s'>
+                        <Header variant='h3'>Daily Schedule</Header>
+                        <p>Set both a Start and a Suspension time for each day of the week as needed. The model will not be available on days without a defined schedule. Enter times in 24-hour format, leaving 2 hours of buffer between the start and suspension time.</p>
 
-                            <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }]}>
-                                <FormField
-                                    label='Start Time'
-                                    description='Time to scale up the model (24-hour format)'
-                                    errorText={props.formErrors?.recurringSchedule?.startTime}
-                                >
-                                    <TimeInput
-                                        value={props.item.recurringSchedule?.startTime || ''}
-                                        onChange={({ detail }) => {
-                                            const updatedRecurringSchedule = {
-                                                ...props.item.recurringSchedule,
-                                                startTime: detail.value,
-                                                stopTime: props.item.recurringSchedule?.stopTime || ''
-                                            };
-                                            props.setFields({ 'recurringSchedule': updatedRecurringSchedule });
-                                        }}
-                                        onBlur={() => props.touchFields(['recurringSchedule.startTime'])}
-                                        format='hh:mm'
-                                        placeholder='HH:MM'
-                                    />
-                                </FormField>
+                        {/* Table Header */}
+                        <Grid gridDefinition={[{ colspan: 4 }, { colspan: 4 }, { colspan: 4 }]}>
+                            <Box fontWeight='bold'>Day</Box>
+                            <Box fontWeight='bold'>Start</Box>
+                            <Box fontWeight='bold'>Suspension</Box>
+                        </Grid>
 
-                                <FormField
-                                    label='Stop Time'
-                                    description='Time to scale down the model (must be at least 2 hours after start time)'
-                                    errorText={props.formErrors?.recurringSchedule?.stopTime || validationErrors.recurringSchedule}
-                                >
-                                    <TimeInput
-                                        value={props.item.recurringSchedule?.stopTime || ''}
-                                        onChange={({ detail }) => {
-                                            const updatedRecurringSchedule = {
-                                                ...props.item.recurringSchedule,
-                                                startTime: props.item.recurringSchedule?.startTime || '',
-                                                stopTime: detail.value
-                                            };
-                                            props.setFields({ 'recurringSchedule': updatedRecurringSchedule });
-                                        }}
-                                        onBlur={() => props.touchFields(['recurringSchedule.stopTime'])}
-                                        format='hh:mm'
-                                        placeholder='HH:MM'
-                                    />
-                                </FormField>
-                            </Grid>
-                        </>
-                    )}
+                        {/* Table Rows */}
+                        {getDaysOfWeek().map((day) => {
+                            const daySchedule = dailySchedule[day.key];
+                            const startTimeError = validationErrors[`${day.key}_startTime`];
+                            const stopTimeError = validationErrors[`${day.key}_stopTime`];
+                            const timesError = validationErrors[`${day.key}_times`];
 
-                    {showWeeklySchedule && (
-                        <>
-                            <SpaceBetween size='s'>
-                                <Header variant='h3'>Daily Schedule</Header>
-                                <p>Set both a Start and a Stop time for each day of the week as needed. The model will not be available on days without a defined schedule.</p>
-
-                                {/* Table Header */}
-                                <Grid gridDefinition={[{ colspan: 4 }, { colspan: 4 }, { colspan: 4 }]}>
-                                    <Box fontWeight='bold'>Day</Box>
-                                    <Box fontWeight='bold'>Start Time (24-hour)</Box>
-                                    <Box fontWeight='bold'>Stop Time (min 2hrs after start)</Box>
+                            return (
+                                <Grid key={day.key} gridDefinition={[{ colspan: 4 }, { colspan: 4 }, { colspan: 4 }]}>
+                                    <Box padding={{ vertical: 's' }}>
+                                        <strong>{day.label}</strong>
+                                    </Box>
+                                    <FormField
+                                        errorText={startTimeError}
+                                    >
+                                        <TimeInput
+                                            value={daySchedule?.startTime || ''}
+                                            onChange={({ detail }) => {
+                                                const newSchedule = detail.value ? {
+                                                    startTime: detail.value,
+                                                    stopTime: daySchedule?.stopTime || ''
+                                                } : undefined;
+                                                updateDaySchedule(day.key, newSchedule);
+                                            }}
+                                            format='hh:mm'
+                                            placeholder='HH:MM'
+                                        />
+                                    </FormField>
+                                    <FormField
+                                        errorText={stopTimeError || timesError}
+                                    >
+                                        <TimeInput
+                                            value={daySchedule?.stopTime || ''}
+                                            onChange={({ detail }) => {
+                                                const newSchedule = detail.value ? {
+                                                    startTime: daySchedule?.startTime || '',
+                                                    stopTime: detail.value
+                                                } : undefined;
+                                                updateDaySchedule(day.key, newSchedule);
+                                            }}
+                                            format='hh:mm'
+                                            placeholder='HH:MM'
+                                        />
+                                    </FormField>
                                 </Grid>
-
-                                {/* Table Rows */}
-                                {getDaysOfWeek().map((day) => {
-                                    const daySchedule = dailySchedule[day.key];
-                                    const startTimeError = validationErrors[`${day.key}_startTime`];
-                                    const stopTimeError = validationErrors[`${day.key}_stopTime`];
-                                    const timesError = validationErrors[`${day.key}_times`];
-
-                                    return (
-                                        <Grid key={day.key} gridDefinition={[{ colspan: 4 }, { colspan: 4 }, { colspan: 4 }]}>
-                                            <Box padding={{ vertical: 's' }}>
-                                                <strong>{day.label}</strong>
-                                            </Box>
-                                            <FormField
-                                                errorText={startTimeError}
-                                            >
-                                                <TimeInput
-                                                    value={daySchedule?.startTime || ''}
-                                                    onChange={({ detail }) => {
-                                                        const newSchedule = detail.value ? {
-                                                            startTime: detail.value,
-                                                            stopTime: daySchedule?.stopTime || ''
-                                                        } : undefined;
-                                                        updateDaySchedule(day.key, newSchedule);
-                                                    }}
-                                                    format='hh:mm'
-                                                    placeholder='HH:MM'
-                                                />
-                                            </FormField>
-                                            <FormField
-                                                errorText={stopTimeError || timesError}
-                                            >
-                                                <TimeInput
-                                                    value={daySchedule?.stopTime || ''}
-                                                    onChange={({ detail }) => {
-                                                        const newSchedule = detail.value ? {
-                                                            startTime: daySchedule?.startTime || '',
-                                                            stopTime: detail.value
-                                                        } : undefined;
-                                                        updateDaySchedule(day.key, newSchedule);
-                                                    }}
-                                                    format='hh:mm'
-                                                    placeholder='HH:MM'
-                                                />
-                                            </FormField>
-                                        </Grid>
-                                    );
-                                })}
-                            </SpaceBetween>
-                        </>
-                    )}
-                </SpaceBetween>
-            </Container>
-
+                            );
+                        })}
+                    </SpaceBetween>
+                </>
+            )}
         </SpaceBetween>
     );
 }

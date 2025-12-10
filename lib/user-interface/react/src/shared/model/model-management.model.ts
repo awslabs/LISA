@@ -290,7 +290,7 @@ const dayScheduleSchema = z.object({
     if (duration < 120) {
         context.addIssue({
             code: z.ZodIssueCode.custom,
-            message: 'Stop time must be at least 2 hours after start time',
+            message: 'Suspension time must be at least 2 hours after start time',
             path: ['stopTime']
         });
     }

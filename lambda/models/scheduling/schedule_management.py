@@ -270,7 +270,7 @@ def get_model_baseline_capacity(model_id: str) -> Dict[str, int]:
         # Get baseline capacity from model configuration
         min_capacity = int(auto_scaling_config.get("minCapacity", 1))
         max_capacity = int(auto_scaling_config.get("maxCapacity", 1))
-        desired_capacity = auto_scaling_config.get("desiredCapacity")
+        desired_capacity = auto_scaling_config.get("desiredCapacity", 1)
 
         # If desired capacity is not set, use min capacity as default
         if desired_capacity is None:
@@ -290,7 +290,9 @@ def get_model_baseline_capacity(model_id: str) -> Dict[str, int]:
         raise RuntimeError(f"Failed to get baseline capacity: {str(e)}")
 
 
-def check_daily_immediate_scaling(auto_scaling_group: str, daily_schedule: WeeklySchedule, timezone_name: str) -> None:
+def check_daily_immediate_scaling(
+    auto_scaling_group: str, daily_schedule: WeeklySchedule, timezone_name: str, model_id: str
+) -> None:
     """Check current day and time, scale ASG down to 0 if outside scheduled window for daily schedules"""
     try:
         tz = ZoneInfo(timezone_name)
@@ -312,7 +314,7 @@ def check_daily_immediate_scaling(auto_scaling_group: str, daily_schedule: Weekl
 
         if today_schedule:
             # There's a schedule for today, check if we're within the time window
-            scale_immediately(auto_scaling_group, today_schedule, timezone_name)
+            scale_immediately(auto_scaling_group, today_schedule, timezone_name, model_id)
         else:
             # No schedule for today, scale down to 0
             logger.info(f"No schedule defined for today ({now.strftime('%A')}). Scaling down to 0 instances.")
@@ -327,8 +329,8 @@ def check_daily_immediate_scaling(auto_scaling_group: str, daily_schedule: Weekl
         logger.error(f"Failed to check daily immediate scaling for ASG {auto_scaling_group}: {e}")
 
 
-def scale_immediately(auto_scaling_group: str, day_schedule: DaySchedule, timezone_name: str) -> None:
-    """Check current time and immediately scale ASG if outside scheduled window"""
+def scale_immediately(auto_scaling_group: str, day_schedule: DaySchedule, timezone_name: str, model_id: str) -> None:
+    """Check current time and immediately scale ASG up or down based on scheduled window"""
     try:
         tz = ZoneInfo(timezone_name)
         now = datetime.now(tz)
@@ -357,10 +359,32 @@ def scale_immediately(auto_scaling_group: str, day_schedule: DaySchedule, timezo
 
             logger.info(f"Successfully scaled down ASG {auto_scaling_group} to 0 instances")
         else:
-            logger.info(
-                f"Current time {current_time} is within scheduled window "
-                f"({day_schedule.startTime} - {day_schedule.stopTime}). No immediate scaling needed."
-            )
+            # Get current ASG state
+            current_desired = get_existing_asg_capacity(auto_scaling_group)["DesiredCapacity"]
+
+            # Within scheduled window - check if we need to scale up
+            if current_desired == 0:
+                capacity_config = get_model_baseline_capacity(model_id)
+
+                logger.info(
+                    f"Current time {current_time} is within scheduled window "
+                    f"({day_schedule.startTime} - {day_schedule.stopTime}). Scaling up from 0."
+                )
+
+                autoscaling_client.update_auto_scaling_group(
+                    AutoScalingGroupName=auto_scaling_group,
+                    MinSize=int(capacity_config["MinSize"]),
+                    MaxSize=int(capacity_config["MaxSize"]),
+                    DesiredCapacity=int(capacity_config["DesiredCapacity"]),
+                )
+
+                logger.info(f"Successfully scaled up ASG {auto_scaling_group}")
+            else:
+                logger.info(
+                    f"Current time {current_time} is within scheduled window "
+                    f"({day_schedule.startTime} - {day_schedule.stopTime}). "
+                    f"ASG already running (desired={current_desired})."
+                )
 
     except Exception as e:
         logger.error(f"Failed to check/apply immediate scaling for ASG {auto_scaling_group}: {e}")
@@ -374,9 +398,6 @@ def create_recurring_scheduled_actions(
 
     # Get baseline capacity config from model DDB record
     capacity_config = get_model_baseline_capacity(model_id)
-
-    # Check current time and scale immediately if outside scheduled window
-    scale_immediately(auto_scaling_group, day_schedule, timezone_name)
 
     # Create start action
     start_cron = time_to_cron(day_schedule.startTime)
@@ -431,6 +452,9 @@ def create_recurring_scheduled_actions(
             pass  # nosec B110
         raise
 
+    # Check current time and scale immediately if outside scheduled window
+    scale_immediately(auto_scaling_group, day_schedule, timezone_name, model_id)
+
     return scheduled_action_arns
 
 
@@ -442,9 +466,6 @@ def create_daily_scheduled_actions(
 
     # Get baseline capacity config from DDB record
     capacity_config = get_model_baseline_capacity(model_id)
-
-    # Check current time and scale immediately
-    check_daily_immediate_scaling(auto_scaling_group, daily_schedule, timezone_name)
 
     day_mapping = {
         "monday": (1, daily_schedule.monday),
@@ -507,6 +528,9 @@ def create_daily_scheduled_actions(
             logger.error(f"Failed to create {day_name} stop action {stop_action_name}: {e}")
             cleanup_scheduled_actions(scheduled_action_arns)
             raise
+
+    # Check current time and scale immediately
+    check_daily_immediate_scaling(auto_scaling_group, daily_schedule, timezone_name, model_id)
 
     return scheduled_action_arns
 

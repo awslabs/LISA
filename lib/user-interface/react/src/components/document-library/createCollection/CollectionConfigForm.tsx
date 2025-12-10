@@ -125,51 +125,6 @@ export function CollectionConfigForm (
                 showAllowedGroups={false}
                 isEdit={isEdit}
             />
-
-            {/* S3 Bucket - only show if pipeline is enabled */}
-            {item.pipelines && item.pipelines.length > 0 && (
-                <>
-                    <FormField
-                        label='S3 Bucket'
-                        errorText={formErrors?.pipelines?.[0]?.s3Bucket}
-                        description='S3 bucket to monitor for new documents'
-                    >
-                        <Input
-                            value={item.pipelines[0].s3Bucket || ''}
-                            onChange={({ detail }) => {
-                                const updatedPipelines = [...(item.pipelines || [])];
-                                updatedPipelines[0] = {
-                                    ...updatedPipelines[0],
-                                    s3Bucket: detail.value
-                                };
-                                setFields({ pipelines: updatedPipelines });
-                            }}
-                            onBlur={() => touchFields(['pipelines.0.s3Bucket'])}
-                            placeholder='my-documents-bucket'
-                        />
-                    </FormField>
-
-                    <FormField
-                        label='S3 Prefix (optional)'
-                        errorText={formErrors?.pipelines?.[0]?.s3Prefix}
-                        description='Optional: Only monitor objects with this prefix'
-                    >
-                        <Input
-                            value={item.pipelines[0].s3Prefix || ''}
-                            onChange={({ detail }) => {
-                                const updatedPipelines = [...(item.pipelines || [])];
-                                updatedPipelines[0] = {
-                                    ...updatedPipelines[0],
-                                    s3Prefix: detail.value
-                                };
-                                setFields({ pipelines: updatedPipelines });
-                            }}
-                            onBlur={() => touchFields(['pipelines.0.s3Prefix'])}
-                            placeholder='documents/engineering/'
-                        />
-                    </FormField>
-                </>
-            )}
         </SpaceBetween>
     );
 }

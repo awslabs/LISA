@@ -93,7 +93,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
             >
                 <Input value={props.item.apiKey} inputMode='text' onBlur={() => props.touchFields(['apiKey'])} onChange={({ detail }) => {
                     props.setFields({ 'apiKey': detail.value });
-                }} disabled={props.isEdit}/>
+                }} disabled={props.isEdit} placeholder='sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'/>
             </FormField>}
             <FormField
                 label={<span>Model URL <em>- Optional</em></span>}
@@ -102,7 +102,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
             >
                 <Input value={props.item.modelUrl} inputMode='text' onBlur={() => props.touchFields(['modelUrl'])} onChange={({ detail }) => {
                     props.setFields({ 'modelUrl': detail.value });
-                }} disabled={props.isEdit}/>
+                }} disabled={props.isEdit} placeholder="http://internal-lisa-gptoss20b-123456789.us-west-2.elb.amazonaws.com"/>
             </FormField>
             <FormField
                 label='Model Type'

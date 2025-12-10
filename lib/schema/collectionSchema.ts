@@ -94,7 +94,6 @@ export const RagCollectionConfigSchema = z.object({
     createdAt: z.iso.datetime().describe('Creation timestamp (ISO 8601)'),
     updatedAt: z.iso.datetime().describe('Last update timestamp (ISO 8601)'),
     status: z.enum(CollectionStatus).default(CollectionStatus.ACTIVE).describe('Collection status'),
-    pipelines: z.array(PipelineConfigSchema).default([]).describe('Automated ingestion pipelines'),
     default: z.boolean().default(false).optional().describe('Indicates if this is a default collection (virtual, no DB entry)'),
 });
 

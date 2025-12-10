@@ -1183,7 +1183,6 @@ class RagCollectionConfig(BaseModel):
     createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Creation timestamp")
     updatedAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Last update timestamp")
     status: CollectionStatus = Field(default=CollectionStatus.ACTIVE, description="Collection status")
-    pipelines: List[PipelineConfig] = Field(default_factory=list, description="Automated ingestion pipelines")
     default: bool = Field(default=False, description="Indicates if this is a default collection for Bedrock KB")
     dataSourceId: Optional[str] = Field(
         default=None, description="Bedrock KB data source ID for filtering (Bedrock KB only)"

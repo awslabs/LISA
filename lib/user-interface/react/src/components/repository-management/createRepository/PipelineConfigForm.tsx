@@ -185,11 +185,12 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                                     onChange(index, 's3Bucket', detail.value)
                                 }
                                 onBlur={() => touchFields([`pipelines[${index}].s3Bucket`])}
+                                placeholder='my-documents-bucket'
                             />
                         </FormField>
 
                         <FormField
-                            label='S3 Prefix'
+                            label='S3 Prefix (optional)'
                             errorText={formErrors.pipelines?.[index]?.s3Prefix}
                             description={RagRepositoryPipeline.shape.s3Prefix.description}>
                             <Input
@@ -198,6 +199,7 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                                     onChange(index, 's3Prefix', detail.value)
                                 }
                                 onBlur={() => touchFields([`pipelines[${index}].s3Prefix`])}
+                                placeholder='documents/engineering/'
                             />
                         </FormField>
 

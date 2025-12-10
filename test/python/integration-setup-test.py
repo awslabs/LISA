@@ -49,7 +49,7 @@ def get_management_key(deployment_name: str, deployment_stage: str) -> str:
     Returns:
         str: The management API key
     """
-    secret_name = f"{deployment_name}-lisa-management-key"
+    secret_name = f"{deployment_name}-management-key"
     print(f"  Looking for secret: {secret_name}")
 
     try:
@@ -107,12 +107,6 @@ def setup_authentication(deployment_name: str, deployment_stage: str) -> Dict[st
 
     # Get management key from AWS Secrets Manager
     api_key = get_management_key(deployment_name, deployment_stage)
-
-    # Create API token in DynamoDB (optional - for tracking purposes)
-    try:
-        create_api_token(deployment_name, api_key)
-    except Exception as e:
-        print(f"⚠️  Failed to create DynamoDB token (proceeding anyway): {e}")
 
     # Return authentication headers (same as conftest.py)
     headers = {"Api-Key": api_key, "Authorization": api_key}
@@ -427,27 +421,13 @@ def create_pgvector_repository(lisa_client: LisaApi, embedding_model_id: str = N
     try:
         rag_config = {
             "repositoryId": repository_id,
-            "embeddingModelId": DEFAULT_EMBEDDING_MODEL_ID,
+            "embeddingModelId": embedding_model_id or DEFAULT_EMBEDDING_MODEL_ID,
             "type": "pgvector",
-            "rdsConfig": {
-                "username": "postgres",
-                "passwordSecretId": "",
-                "dbHost": "",
-                "dbName": "postgres",
-                "dbPort": 5432,
-            },
-            "bedrockKnowledgeBaseConfig": {
-                "bedrockKnowledgeBaseName": "",
-                "bedrockKnowledgeBaseId": "",
-                "bedrockKnowledgeDatasourceName": "",
-                "bedrockKnowledgeDatasourceId": "",
-                "bedrockKnowledgeDatasourceS3Bucket": "",
-            },
             "pipelines": [
                 {
                     "chunkSize": 512,
                     "chunkOverlap": 51,
-                    "embeddingModel": DEFAULT_EMBEDDING_MODEL_ID,
+                    "embeddingModel": embedding_model_id or DEFAULT_EMBEDDING_MODEL_ID,
                     "s3Bucket": RAG_PIPELINE_BUCKET,
                     "s3Prefix": "",
                     "trigger": "event",
@@ -485,28 +465,13 @@ def create_opensearch_repository(lisa_client: LisaApi, embedding_model_id: str =
     try:
         rag_config = {
             "repositoryId": repository_id,
-            "embeddingModelId": DEFAULT_EMBEDDING_MODEL_ID,
+            "embeddingModelId": embedding_model_id or DEFAULT_EMBEDDING_MODEL_ID,
             "type": "opensearch",
-            "opensearchConfig": {"endpoint": ""},
-            "rdsConfig": {
-                "username": "postgres",
-                "passwordSecretId": "",
-                "dbHost": "",
-                "dbName": "postgres",
-                "dbPort": 5432,
-            },
-            "bedrockKnowledgeBaseConfig": {
-                "bedrockKnowledgeBaseName": "",
-                "bedrockKnowledgeBaseId": "",
-                "bedrockKnowledgeDatasourceName": "",
-                "bedrockKnowledgeDatasourceId": "",
-                "bedrockKnowledgeDatasourceS3Bucket": "",
-            },
             "pipelines": [
                 {
                     "chunkSize": 512,
                     "chunkOverlap": 51,
-                    "embeddingModel": DEFAULT_EMBEDDING_MODEL_ID,
+                    "embeddingModel": embedding_model_id or DEFAULT_EMBEDDING_MODEL_ID,
                     "s3Bucket": RAG_PIPELINE_BUCKET,
                     "s3Prefix": "",
                     "trigger": "event",

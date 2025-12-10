@@ -272,6 +272,7 @@ export class ModelsApi extends Construct {
             MODEL_TABLE_NAME: modelTable.tableName,
             SCHEDULE_MANAGEMENT_FUNCTION_NAME: scheduleManagementLambda.functionName,
             GUARDRAILS_TABLE_NAME: guardrailsTable.tableName,
+            ADMIN_GROUP: config.authConfig?.adminGroup || '',
         };
 
         const lambdaRole: IRole = createLambdaRole(this, config.deploymentName, 'ModelApi', modelTable.tableArn, config.roles?.ModelApiRole);

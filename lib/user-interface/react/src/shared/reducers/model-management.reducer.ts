@@ -23,13 +23,13 @@ export const modelManagementApi = createApi({
     baseQuery: lisaBaseQuery(),
     tagTypes: ['models'],
     refetchOnFocus: true,
-    refetchOnReconnect: true,
+    refetchOnMountOrArgChange: true,
     endpoints: (builder) => ({
         getAllModels: builder.query<IModelListResponse['models'], void>({
             query: () => ({
                 url: '/models',
             }),
-            transformResponse: (response) => response.models,
+            transformResponse: (response: IModelListResponse) => response.models,
             providesTags:['models'],
         }),
         deleteModel: builder.mutation<IModel, string>({

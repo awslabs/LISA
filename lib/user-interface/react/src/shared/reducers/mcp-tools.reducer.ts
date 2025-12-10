@@ -31,7 +31,7 @@ export const mcpToolsApi = createApi({
     baseQuery: lisaBaseQuery(),
     tagTypes: ['mcpTools'],
     refetchOnFocus: true,
-    refetchOnReconnect: true,
+    refetchOnMountOrArgChange: true,
     endpoints: (builder) => ({
         listMcpTools: builder.query<IMcpTool[], void>({
             query: () => ({

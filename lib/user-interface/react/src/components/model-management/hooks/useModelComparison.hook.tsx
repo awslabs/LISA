@@ -77,7 +77,8 @@ export const useModelComparison = (models: IModel[], chatConfig: IChatConfigurat
 
         const modelConfig = {
             modelName: model.modelId,
-            openAIApiKey: auth.user?.id_token,
+            // Use auth token as API key - LangChain will pass it in the Authorization header
+            apiKey: auth.user?.id_token || 'dummy-key',
             maxRetries: 0,
             configuration: {
                 baseURL: `${RESTAPI_URI}/${RESTAPI_VERSION}/serve`,

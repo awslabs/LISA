@@ -31,7 +31,6 @@ import { useNotificationService } from '@/shared/util/hooks';
 import { useValidationReducer } from '@/shared/validation';
 import { ModifyMethod } from '@/shared/validation/modify-method';
 import { getJsonDifference } from '@/shared/util/validationUtils';
-import { getDefaults } from '#root/lib/schema/zodUtil';
 import { ServerDetailsConfig } from './ServerDetailsConfig';
 import { ScalingConfig } from './ScalingConfig';
 import { AdvancedOptionsConfig } from './AdvancedOptionsConfig';
@@ -67,7 +66,7 @@ export function CreateHostedMcpServerModal ({
 
     // Get default form values
     const initialForm: HostedMcpServerRequestForm = useMemo(() => {
-        return getDefaults(HostedMcpServerRequestSchema);
+        return HostedMcpServerRequestSchema.parse({});
     }, []);
 
     const { state, setState, setFields, touchFields, errors, isValid } = useValidationReducer(

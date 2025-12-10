@@ -1,0 +1,5 @@
+# Placeholder to ensure PRISMA_CACHE directory exists in build context
+# For offline builds, populate this directory by copying the complete Prisma cache:
+#   1. Install prisma: pip3 install prisma
+#   2. Generate cache: prisma version
+#   3. Copy cache: cp -r ~/.cache/prisma* lib/serve/rest-api/PRISMA_CACHE/

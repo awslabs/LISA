@@ -1,4 +1,4 @@
-# AWS SDK - Version constrained by litellm[proxy]==1.80.7
+# AWS SDK - Version constrained by litellm[proxy]==1.80.9
 # litellm requires boto3==1.36.0, which requires aioboto3==13.4.0 and aiobotocore==2.18.0
 aioboto3==13.4.0
 aiobotocore==2.18.0
@@ -9,12 +9,12 @@ backoff==2.2.1
 cachetools==6.2.2
 click==8.3.1
 cryptography==46.0.3
-fastapi==0.123.8
+fastapi==0.124.2
 fastapi_utils==0.8.0
 gunicorn==23.0.0
 
 # LiteLLM - Constrains boto3==1.36.0 and uvicorn<0.32.0
-litellm[proxy]==1.80.7
+litellm[proxy]==1.80.9
 
 loguru==0.7.3
 pydantic==2.12.5
@@ -22,8 +22,8 @@ PyJWT==2.10.1
 text-generation==0.7.0
 prisma==0.15.0
 pynacl==1.6.1
-starlette>=0.50.0
+starlette>=0.40.0,<0.51.0
 
-# ASGI Server - Version constrained by litellm[proxy]==1.80.7
-# litellm requires uvicorn>=0.31.1,<0.32.0
-uvicorn>=0.31.1,<0.32.0
+# ASGI Server - Version constrained by litellm[proxy]==1.80.9
+# litellm requires uvicorn>=0.31.1,<0.39.0
+uvicorn>=0.31.1,<0.39.0

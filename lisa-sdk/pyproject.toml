@@ -24,19 +24,19 @@ readme = "README.md"
 python = "^3.13"
 pydantic = "^2.12.5"
 langchain = "0.4.1"
-langchain-core = "1.1.0"
-langchain-community = "0.4.1"
-langchain-openai = "1.1.0"
+langchain-core = "0.3.80"
+langchain-community = "0.3.31"
+langchain-openai = "0.3.35"
 langchain-text-splitters = "1.0.0"
 numpy = ">2.1.0"
 toml = "*"
 
 [tool.poetry.group.dev.dependencies]
 boto3 = "*"
-ipykernel = "^6.25.2"
+ipykernel = "^7.1.0"
 
 [tool.poetry.group.test.dependencies]
-pytest = "^8.3.2"
+pytest = "^9.0.2"
 pytest-asyncio = "*"
 
 [build-system]

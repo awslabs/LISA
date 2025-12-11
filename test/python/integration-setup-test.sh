@@ -35,6 +35,7 @@ fi
 # Default values
 CLEANUP=false
 WAIT=false
+SKIP_CREATE=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -54,6 +55,10 @@ while [[ $# -gt 0 ]]; do
       CLEANUP=true
       shift
       ;;
+    --skip-create|-sc)
+      SKIP_CREATE=true
+      shift
+      ;;
     --wait|-w)
       WAIT=true
       shift
@@ -64,6 +69,7 @@ while [[ $# -gt 0 ]]; do
       echo "  --rest-url, -r         URL to the LISA REST API."
       echo "  --verify, -v           Path to cert, the strings 'false' or 'true'."
       echo "  --cleanup, -c          Clean up resources after creation."
+      echo "  --skip-create, -sc     Skip create of resources."
       echo "  --wait, -w             Wait for resources to be ready."
       echo "  --help, -h             Display this help message."
       exit 0
@@ -174,6 +180,10 @@ fi
 
 if [ "$CLEANUP" = true ]; then
   PYTHON_ARGS="$PYTHON_ARGS --cleanup"
+fi
+
+if [ "$SKIP_CREATE" = true ]; then
+  PYTHON_ARGS="$PYTHON_ARGS --skip-create"
 fi
 
 if [ "$WAIT" = true ]; then

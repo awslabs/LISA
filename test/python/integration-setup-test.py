@@ -586,12 +586,10 @@ def main():
             # Define all resource IDs that would be created
             created_resources["models"] = [
                 "nova-lite",
-                "sonnet-4-5",
-                "deepseek-3",
-                "llama-maverick",
-                "sonnet-4",
+                "nova-canvas",
+                "haiku-45",
+                "sonnet-45",
                 "titan-embed",
-                "titan-image",
                 "mistral-7b-instruct-03",
                 "llama-32-1b-instruct",
                 "gpt-oss-20b",
@@ -627,18 +625,13 @@ def main():
         models.extend(
             [
                 create_bedrock_model(lisa_client, "nova-lite", "bedrock/us.amazon.nova-lite-v1:0", skip_create=args.skip_create),
-                create_bedrock_model(lisa_client, "sonnet-4-5", "bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0", skip_create=args.skip_create),
-                create_bedrock_model(lisa_client, "deepseek-3", "bedrock/us.deepseek.v3-v1:0", skip_create=args.skip_create),
-                create_bedrock_model(
-                    lisa_client, "llama-maverick", "bedrock/us.meta.llama4-maverick-17b-instruct-v1:0", skip_create=args.skip_create
-                ),
-                create_bedrock_model(lisa_client, "sonnet-4", "bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0", skip_create=args.skip_create),
+                create_bedrock_model(lisa_client, "haiku-45", "bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0", skip_create=args.skip_create),
+                create_bedrock_model(lisa_client, "sonnet-45", "bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0", skip_create=args.skip_create),
                 create_bedrock_model(
                     lisa_client, "titan-embed", "bedrock/amazon.titan-embed-text-v2:0", "embedding", [], args.skip_create
                 ),
-                create_bedrock_model(
-                    lisa_client, "titan-image", "bedrock/amazon.titan-image-generator-v2:0", "imagegen", [], args.skip_create
-                ),
+                create_bedrock_model(lisa_client, "nova-canvas", "bedrock/amazon.nova-canvas-v1:0", "imagegen", [], skip_create=args.skip_create),
+
             ]
         )
 

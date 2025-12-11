@@ -178,7 +178,7 @@ export const RagRepositoryConfigSchema = z
         rdsConfig: RdsInstanceConfig.optional(),
         bedrockKnowledgeBaseConfig: BedrockKnowledgeBaseInstanceConfig.optional(),
         pipelines: z.array(RagRepositoryPipeline).optional().default([]).describe('Rag ingestion pipeline for automated inclusion into a vector store from S3'),
-        allowedGroups: z.tuple([z.string()], z.string()).optional().describe('The groups provided by the Identity Provider that have access to this repository. If no groups are specified, access is granted to everyone.'),
+        allowedGroups: z.array(z.string()).optional().default([]).describe('The groups provided by the Identity Provider that have access to this repository. If no groups are specified, access is granted to everyone.'),
         metadata: RagRepositoryMetadata.optional().describe('Metadata for the repository including tags and custom fields.'),
         status: z.enum(VectorStoreStatus).optional().describe('Current deployment status of the repository')
     })

@@ -469,7 +469,7 @@ def create_pgvector_repository(
             "rdsConfig": {"username": "postgres", "dbName": "postgres", "dbPort": 5432},
             "type": "pgvector",
         }
-        
+
         result = lisa_client.create_pgvector_repository(rag_config)
         print(f"✓ PGVector repository created: {result}")
 
@@ -508,16 +508,6 @@ def create_opensearch_repository(
             "repositoryId": repository_id,
             "embeddingModelId": embedding_model_id or DEFAULT_EMBEDDING_MODEL_ID,
             "type": "opensearch",
-            "pipelines": [
-                {
-                    "chunkingStrategy": {"type": "fixed", "size": 1000, "overlap": 51},
-                    "embeddingModel": embedding_model_id or DEFAULT_EMBEDDING_MODEL_ID,
-                    "s3Bucket": RAG_PIPELINE_BUCKET,
-                    "s3Prefix": "",
-                    "trigger": "event",
-                    "autoRemove": True,
-                }
-            ],
             "allowedGroups": [],
             "pipelines": [
                 {
@@ -538,7 +528,7 @@ def create_opensearch_repository(
                 "volumeSize": 20,
                 "volumeType": "gp3",
                 "multiAzWithStandby": False,
-            }
+            },
         }
         result = lisa_client.create_repository(rag_config)
         print(f"✓ OpenSearch repository created: {result}")
@@ -691,7 +681,14 @@ def main():
                     [],
                     skip_create=args.skip_create,
                 ),
-                create_bedrock_model(lisa_client, "nova-canvas", "bedrock/amazon.nova-canvas-v1:0", "imagegen", [], skip_create=args.skip_create),
+                create_bedrock_model(
+                    lisa_client,
+                    "nova-canvas",
+                    "bedrock/amazon.nova-canvas-v1:0",
+                    "imagegen",
+                    [],
+                    skip_create=args.skip_create,
+                ),
             ]
         )
 

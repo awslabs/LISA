@@ -1089,8 +1089,7 @@ class PipelineConfig(BaseModel):
     s3Prefix: str = Field(description="S3 prefix for pipeline source")
     trigger: PipelineTrigger = Field(description="Pipeline trigger type")
     metadata: Optional[CollectionMetadata] = Field(
-        default_factory=lambda: CollectionMetadata(tags=[]), 
-        description="Metadata for the pipeline including tags"
+        default_factory=lambda: CollectionMetadata(tags=[]), description="Metadata for the pipeline including tags"
     )
 
     @model_validator(mode="after")
@@ -1189,6 +1188,9 @@ class RagCollectionConfig(BaseModel):
     default: bool = Field(default=False, description="Indicates if this is a default collection")
     dataSourceId: Optional[str] = Field(
         default=None, description="Bedrock KB data source ID for filtering (Bedrock KB only)"
+    )
+    pipelines: Optional[List[PipelineConfig]] = Field(
+        default=None, description="Pipeline configurations for this collection"
     )
 
     model_config = ConfigDict(use_enum_values=True, validate_default=True)
@@ -1366,7 +1368,7 @@ class VectorStoreConfig(BaseModel):
     )
     # Status and timestamps
     status: Optional[VectorStoreStatus] = Field(default=None, description="Repository Status")
-    createdBy: datetime = Field(default=None, description="Creation user")
+    createdBy: str = Field(description="Creation user")
     createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Creation timestamp")
     updatedAt: Optional[datetime] = Field(default=None, description="Last update timestamp")
 

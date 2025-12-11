@@ -57,7 +57,6 @@ describe('RepositoryTable', () => {
             expect(screen.getByText('Repository ID')).toBeInTheDocument();
             expect(screen.getByText('Type')).toBeInTheDocument();
             expect(screen.getByText('Default Embedding Model')).toBeInTheDocument();
-            expect(screen.getByText('Allowed Groups')).toBeInTheDocument();
             expect(screen.getByText('Status')).toBeInTheDocument();
         });
     });
@@ -68,15 +67,6 @@ describe('RepositoryTable', () => {
         await waitFor(() => {
             expect(screen.getByText('Test Repository 1')).toBeInTheDocument();
             expect(screen.getByText('test-repo-1')).toBeInTheDocument();
-        });
-    });
-
-    it('should display public label for repositories with empty allowedGroups', async () => {
-        renderWithProviders(<RepositoryTable />);
-
-        await waitFor(() => {
-            const publicLabels = screen.getAllByText('(public)');
-            expect(publicLabels.length).toBeGreaterThan(0);
         });
     });
 

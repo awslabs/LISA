@@ -31,6 +31,7 @@
     "ecs_model_deployer",
     "vector_store_deployer",
     "mcp_server_deployer",
+    "lib/core/layers/cdk",
     "cypress"
   ],
   "scripts": {

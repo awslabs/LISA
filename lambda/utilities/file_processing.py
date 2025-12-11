@@ -79,6 +79,7 @@ def _extract_pdf_content(s3_object: dict) -> str:
     """Return text extracted from PDF.
 
     Extracts text content from a PDF file in an S3 object.
+    Cleans up common PDF extraction artifacts to reduce payload size.
 
     Parameters
     ----------
@@ -97,7 +98,48 @@ def _extract_pdf_content(s3_object: dict) -> str:
         logger.error(f"Error reading PDF file: {e}")
         raise
 
-    return "".join(page.extract_text() or "" for page in pdf_reader.pages)
+    # Extract text from all pages
+    extracted_text = "".join(page.extract_text() or "" for page in pdf_reader.pages)
+    
+    # Clean up common PDF extraction artifacts to reduce payload size
+    cleaned_text = _clean_pdf_text(extracted_text)
+    
+    logger.info(f"PDF text extraction: original length={len(extracted_text)}, cleaned length={len(cleaned_text)}")
+    return cleaned_text
+
+
+def _clean_pdf_text(text: str) -> str:
+    """
+    Clean up common PDF extraction artifacts to reduce payload size and improve chunking.
+    
+    Args:
+        text: Raw text extracted from PDF
+        
+    Returns:
+        Cleaned text with reduced artifacts
+    """
+    import re
+    
+    # Remove excessive whitespace and normalize line breaks
+    text = re.sub(r'\s+', ' ', text)  # Replace multiple whitespace with single space
+    text = re.sub(r'\n\s*\n', '\n\n', text)  # Normalize paragraph breaks
+    
+    # Remove common PDF artifacts
+    text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\xff]', '', text)  # Remove control characters
+    text = re.sub(r'[^\x00-\x7F]+', ' ', text)  # Replace non-ASCII with space (optional - be careful with international text)
+    
+    # Remove excessive punctuation that might come from table borders or formatting
+    text = re.sub(r'[_\-=]{3,}', '', text)  # Remove lines of underscores, dashes, equals
+    text = re.sub(r'\.{3,}', '...', text)  # Normalize excessive dots
+    
+    # Clean up spacing around punctuation
+    text = re.sub(r'\s+([,.!?;:])', r'\1', text)  # Remove space before punctuation
+    text = re.sub(r'([,.!?;:])\s+', r'\1 ', text)  # Normalize space after punctuation
+    
+    # Remove empty lines and trim
+    lines = [line.strip() for line in text.split('\n') if line.strip()]
+    
+    return '\n'.join(lines)
 
 
 def _extract_docx_content(s3_object: dict) -> str:
@@ -164,7 +206,7 @@ def generate_chunks(ingestion_job: IngestionJob) -> list[Document]:
     bucket = parsed_uri.netloc
     key = parsed_uri.path.lstrip("/")
 
-    content_type = key.split(".")[-1]
+    content_type = key.split(".")[-1].lower()
     try:
         s3_object = s3.get_object(Bucket=bucket, Key=key)
     except ClientError as e:
@@ -183,13 +225,64 @@ def generate_chunks(ingestion_job: IngestionJob) -> list[Document]:
         )
     ]
 
+    # Optimize chunking strategy for PDFs if using small chunks
+    optimized_strategy = _optimize_chunking_for_file_type(ingestion_job.chunk_strategy, content_type, len(extracted_text))
+
     # Use factory to chunk documents based on strategy
-    logger.info(f"Processing document with chunking strategy: {ingestion_job.chunk_strategy.type}")
-    doc_chunks = ChunkingStrategyFactory.chunk_documents(docs, ingestion_job.chunk_strategy)
+    logger.info(f"Processing document with chunking strategy: {optimized_strategy.type}")
+    doc_chunks = ChunkingStrategyFactory.chunk_documents(docs, optimized_strategy)
 
     # Update part number of doc metadata
     for i, doc in enumerate(doc_chunks):
         doc.metadata["part"] = i + 1
 
-    logger.info(f"Generated {len(doc_chunks)} chunks for document: {basename}")
+    logger.info(f"Generated {len(doc_chunks)} chunks for document: {basename} (text length: {len(extracted_text)})")
     return doc_chunks
+
+
+def _optimize_chunking_for_file_type(strategy, content_type: str, text_length: int):
+    """
+    Optimize chunking strategy based on file type and content length to reduce payload issues.
+    
+    Args:
+        strategy: Original chunking strategy
+        content_type: File extension/type
+        text_length: Length of extracted text
+        
+    Returns:
+        Optimized chunking strategy
+    """
+    from models.domain_objects import FixedChunkingStrategy
+    
+    logger.info(f"Chunk optimization analysis - File type: {content_type}, Text length: {text_length:,} chars, "
+               f"Original strategy: {strategy.type if hasattr(strategy, 'type') else 'unknown'}")
+    
+    if hasattr(strategy, 'size'):
+        logger.info(f"Original chunk config - Size: {strategy.size}, Overlap: {strategy.overlap}")
+        original_estimated_chunks = text_length // (strategy.size - strategy.overlap) if strategy.size > strategy.overlap else text_length // strategy.size
+        logger.info(f"Original estimated chunks: {original_estimated_chunks}")
+    
+    # For PDFs with small chunk sizes, increase chunk size to reduce number of chunks
+    if content_type == "pdf" and hasattr(strategy, 'size') and strategy.size < 800:
+        # Calculate optimal chunk size to keep number of chunks reasonable
+        target_chunks = min(200, max(10, text_length // 2000))  # Target 10-200 chunks
+        optimal_size = max(800, text_length // target_chunks)
+        optimal_size = min(optimal_size, 2000)  # Cap at 2000 chars
+        
+        # Keep overlap proportional but reasonable
+        optimal_overlap = min(strategy.overlap, optimal_size // 10)
+        
+        # Calculate estimated chunks with new strategy
+        estimated_chunks = text_length // (optimal_size - optimal_overlap) if optimal_size > optimal_overlap else text_length // optimal_size
+        
+        logger.info(f"PDF OPTIMIZATION APPLIED:")
+        logger.info(f"  Original: size={strategy.size}, overlap={strategy.overlap}")
+        logger.info(f"  Optimized: size={optimal_size}, overlap={optimal_overlap}")
+        logger.info(f"  Estimated chunks: {original_estimated_chunks} → {estimated_chunks}")
+        logger.info(f"  Chunk reduction: {((original_estimated_chunks - estimated_chunks) / original_estimated_chunks * 100):.1f}%")
+        
+        return FixedChunkingStrategy(size=optimal_size, overlap=optimal_overlap)
+    else:
+        logger.info(f"No optimization applied - File type: {content_type}, Chunk size: {getattr(strategy, 'size', 'N/A')}")
+    
+    return strategy

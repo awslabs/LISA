@@ -89,10 +89,175 @@ class RagEmbeddings(BaseModel):
         if not texts:
             raise ValidationError("No texts provided for embedding")
 
+        # Calculate content statistics for debugging
+        total_chars = sum(len(text) for text in texts)
+        avg_chars = total_chars / len(texts) if texts else 0
+        max_chars = max(len(text) for text in texts) if texts else 0
+        min_chars = min(len(text) for text in texts) if texts else 0
+        
+        # Estimate tokens using more accurate method
+        def estimate_tokens(text: str) -> int:
+            # More accurate token estimation for embedding models
+            # Account for special characters, whitespace, and typical tokenization
+            # PDF text often has more tokens per character due to formatting artifacts
+            base_tokens = len(text) // 4  # Base estimate
+            
+            # Adjust for text characteristics
+            special_char_ratio = sum(1 for c in text if not c.isalnum() and not c.isspace()) / len(text) if text else 0
+            whitespace_ratio = sum(1 for c in text if c.isspace()) / len(text) if text else 0
+            
+            # PDF text typically has more tokens due to formatting
+            if special_char_ratio > 0.1 or whitespace_ratio > 0.3:  # Likely PDF or formatted text
+                adjustment_factor = 1.3  # 30% more tokens
+            else:
+                adjustment_factor = 1.1  # 10% more tokens for safety
+            
+            return int(base_tokens * adjustment_factor)
+        
+        estimated_total_tokens = sum(estimate_tokens(text) for text in texts)
+        estimated_avg_tokens = estimated_total_tokens / len(texts) if texts else 0
+        estimated_max_tokens = max(estimate_tokens(text) for text in texts) if texts else 0
+        
         logger.info(f"Embedding {len(texts)} documents using {self.model_name}")
+        logger.info(f"Content stats - Total chars: {total_chars:,}, Avg: {avg_chars:.0f}, Min: {min_chars}, Max: {max_chars}")
+        logger.info(f"Estimated tokens - Total: {estimated_total_tokens:,}, Avg: {estimated_avg_tokens:.0f}, Max: {estimated_max_tokens}")
+        
+        # Token-aware batching based on LiteLLM limits
+        max_batch_tokens = int(os.getenv('MAX_BATCH_TOKENS', '16384'))
+        max_total_tokens = int(os.getenv('MAX_TOTAL_TOKENS', '4096'))
+        
+        # Check for individual texts that exceed token limits
+        oversized_texts = [i for i, text in enumerate(texts) if len(text) // 4 > max_total_tokens]
+        if oversized_texts:
+            logger.warning(f"Found {len(oversized_texts)} texts exceeding MAX_TOTAL_TOKENS ({max_total_tokens})")
+            for i in oversized_texts[:5]:  # Log first 5
+                logger.warning(f"  Text {i}: {len(texts[i]):,} chars (~{len(texts[i])//4:,} tokens)")
+        
+        # Calculate token-aware batch size
+        if estimated_avg_tokens > 0:
+            token_based_batch_size = min(50, max(1, max_batch_tokens // int(estimated_avg_tokens)))
+            logger.info(f"Token-aware batching - Max batch tokens: {max_batch_tokens:,}, "
+                       f"Avg tokens per text: {estimated_avg_tokens:.0f}, "
+                       f"Calculated batch size: {token_based_batch_size}")
+        else:
+            token_based_batch_size = 25  # Conservative fallback
+        
+        max_batch_size = token_based_batch_size
+        # Use token-aware batching or estimated token limits
+        if len(texts) > max_batch_size or estimated_total_tokens > max_batch_tokens:
+            logger.info(f"Splitting {len(texts)} texts into token-aware batches of ~{max_batch_size}")
+            all_embeddings = []
+            
+            current_batch = []
+            current_batch_tokens = 0
+            batch_num = 1
+            
+            for i, text in enumerate(texts):
+                text_tokens = estimate_tokens(text)
+                
+                # Check if adding this text would exceed limits
+                if (len(current_batch) >= max_batch_size or 
+                    current_batch_tokens + text_tokens > max_batch_tokens) and current_batch:
+                    
+                    # Process current batch
+                    batch_chars = sum(len(t) for t in current_batch)
+                    logger.info(f"Processing token-aware batch {batch_num} - {len(current_batch)} texts, "
+                               f"{batch_chars:,} chars, ~{current_batch_tokens:,} tokens")
+                    
+                    batch_embeddings = self._embed_batch_with_retry(current_batch)
+                    all_embeddings.extend(batch_embeddings)
+                    
+                    # Reset for next batch
+                    current_batch = []
+                    current_batch_tokens = 0
+                    batch_num += 1
+                
+                current_batch.append(text)
+                current_batch_tokens += text_tokens
+            
+            # Process final batch
+            if current_batch:
+                batch_chars = sum(len(t) for t in current_batch)
+                logger.info(f"Processing final token-aware batch {batch_num} - {len(current_batch)} texts, "
+                           f"{batch_chars:,} chars, ~{current_batch_tokens:,} tokens")
+                batch_embeddings = self._embed_batch_with_retry(current_batch)
+                all_embeddings.extend(batch_embeddings)
+            
+            return all_embeddings
+        else:
+            return self._embed_batch_with_retry(texts)
+
+    def _embed_batch_with_retry(self, texts: List[str]) -> List[List[float]]:
+        """
+        Generate embeddings with automatic retry and batch size reduction for 413 errors.
+        
+        Args:
+            texts: List of text strings to embed
+            
+        Returns:
+            List of embedding vectors
+        """
+        max_retries = 3
+        current_batch_size = len(texts)
+        
+        # Log initial batch details
+        total_chars = sum(len(text) for text in texts)
+        logger.info(f"Starting batch retry logic - {len(texts)} texts, {total_chars:,} total chars")
+        
+        for attempt in range(max_retries + 1):
+            try:
+                if attempt > 0 and current_batch_size > 1:
+                    # Reduce batch size on retry for 413 errors
+                    current_batch_size = max(1, current_batch_size // 2)
+                    logger.warning(f"Attempt {attempt + 1}: Retrying with smaller batch size: {current_batch_size}")
+                    
+                    if current_batch_size < len(texts):
+                        # Split into smaller batches recursively
+                        logger.info(f"Splitting {len(texts)} texts into batches of {current_batch_size}")
+                        all_embeddings = []
+                        for i in range(0, len(texts), current_batch_size):
+                            batch_texts = texts[i:i + current_batch_size]
+                            batch_chars = sum(len(text) for text in batch_texts)
+                            logger.info(f"Retry sub-batch {i//current_batch_size + 1}: {len(batch_texts)} texts, {batch_chars:,} chars")
+                            batch_embeddings = self._embed_batch(batch_texts)
+                            all_embeddings.extend(batch_embeddings)
+                        return all_embeddings
+                
+                # Try with current batch size
+                logger.info(f"Attempting embedding request - {len(texts)} texts, {total_chars:,} chars")
+                return self._embed_batch(texts)
+                
+            except Exception as e:
+                if attempt < max_retries and ("413" in str(e) or "Payload Too Large" in str(e)):
+                    logger.warning(f"Attempt {attempt + 1} failed with payload size error (batch: {len(texts)} texts, {total_chars:,} chars): {str(e)}")
+                    continue
+                else:
+                    # Re-raise if not a 413 error or max retries exceeded
+                    raise
+
+    def _embed_batch(self, texts: List[str]) -> List[List[float]]:
+        """
+        Generate embeddings for a single batch of documents.
+        
+        Args:
+            texts: List of text strings to embed (should be <= max_batch_size)
+            
+        Returns:
+            List of embedding vectors
+        """
+        # Calculate payload size for debugging
+        total_chars = sum(len(text) for text in texts)
+        import json
+        request_data = {"input": texts, "model": self.model_name}
+        payload_size = len(json.dumps(request_data).encode('utf-8'))
+        
+        # Log with safety assessment
+        safety_status = "SAFE" if payload_size < 20000 else "RISKY" if payload_size < 30000 else "DANGEROUS"
+        logger.info(f"Embedding batch details - Texts: {len(texts)}, Total chars: {total_chars:,}, "
+                   f"Payload size: {payload_size:,} bytes [{safety_status}]")
+        
         try:
             url = f"{self.base_url}/embeddings"
-            request_data = {"input": texts, "model": self.model_name}
             response = requests.post(
                 url,
                 json=request_data,
@@ -103,6 +268,8 @@ class RagEmbeddings(BaseModel):
 
             if response.status_code != 200:
                 logger.error(f"Embedding request failed with status {response.status_code}")
+                if response.status_code == 413:
+                    logger.error("Request payload too large - consider reducing batch size further")
                 raise Exception(f"Embedding request failed with status {response.status_code}")
 
             result = response.json()

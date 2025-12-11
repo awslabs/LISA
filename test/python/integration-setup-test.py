@@ -587,6 +587,41 @@ def main():
 
         created_resources = {"models": [], "repositories": []}
 
+<<<<<<< Updated upstream
+=======
+        # If cleanup-only mode, skip all creation and just populate resource IDs
+        if args.cleanup and args.skip_create:
+            print("\n🧹 Cleanup-only mode: Collecting resource IDs for deletion...")
+            
+            # Define all resource IDs that would be created
+            created_resources["models"] = [
+                "nova-lite",
+                "nova-canvas",
+                "haiku-45",
+                "sonnet-45",
+                "titan-embed",
+                "mistral-7b-instruct-03",
+                "llama-32-1b-instruct",
+                "gpt-oss-20b",
+                DEFAULT_EMBEDDING_MODEL_ID,
+                "qwen3-embed-06b",
+                "baai-embed-15",
+            ]
+            created_resources["repositories"] = [
+                "test-pgvector-rag",
+                "test-opensearch-rag",
+            ]
+            
+            print(f"  Models to delete: {created_resources['models']}")
+            print(f"  Repositories to delete: {created_resources['repositories']}")
+            
+            # Skip to cleanup
+            cleanup_resources(lisa_client, created_resources)
+            print("\n🧹 Cleanup completed!")
+            print("\n✅ Integration setup test completed successfully!")
+            return 0
+
+>>>>>>> Stashed changes
         # Get an embedding model for repositories
         embedding_models = lisa_client.list_embedding_models()
         embedding_model_id = None
@@ -600,6 +635,7 @@ def main():
         # # 1. Create Bedrock model
         models.extend(
             [
+<<<<<<< Updated upstream
                 create_bedrock_model(lisa_client, "nova-lite", "bedrock/us.amazon.nova-lite-v1:0"),
                 create_bedrock_model(lisa_client, "sonnet-4-5", "bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0"),
                 create_bedrock_model(lisa_client, "deepseek-3", "bedrock/us.deepseek.v3-v1:0"),
@@ -608,12 +644,22 @@ def main():
                 ),
                 create_bedrock_model(lisa_client, "sonnet-4-5", "bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0"),
                 create_bedrock_model(lisa_client, "sonnet-4", "bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0"),
+=======
+                create_bedrock_model(lisa_client, "nova-lite", "bedrock/us.amazon.nova-lite-v1:0", skip_create=args.skip_create),
+                create_bedrock_model(lisa_client, "haiku-45", "bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0", skip_create=args.skip_create),
+                create_bedrock_model(lisa_client, "sonnet-45", "bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0", skip_create=args.skip_create),
+>>>>>>> Stashed changes
                 create_bedrock_model(
                     lisa_client, "titan-embed", "bedrock/amazon.titan-embed-text-v2:0", "embedding", []
                 ),
+<<<<<<< Updated upstream
                 create_bedrock_model(
                     lisa_client, "titan-image", "bedrock/amazon.titan-image-generator-v2:0", "imagegen", []
                 ),
+=======
+                create_bedrock_model(lisa_client, "nova-canvas", "bedrock/amazon.nova-canvas-v1:0", "imagegen", [], skip_create=args.skip_create),
+
+>>>>>>> Stashed changes
             ]
         )
 

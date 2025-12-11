@@ -59,6 +59,11 @@ s3 = boto3.client("s3", region_name=os.environ["AWS_REGION"], config=retry_confi
 bedrock_agent = boto3.client("bedrock-agent", region_name=os.environ["AWS_REGION"], config=retry_config)
 ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
 
+# Payload size limits based on empirical testing
+# 17K chars succeeds, 36K chars fails → use conservative 15K limit
+MAX_SAFE_PAYLOAD_CHARS = int(os.environ.get("MAX_EMBEDDING_PAYLOAD_CHARS", "15000"))
+DEFAULT_BATCH_SIZE = int(os.environ.get("DEFAULT_EMBEDDING_BATCH_SIZE", "50"))
+
 
 def pipeline_ingest(job: IngestionJob) -> None:
     """
@@ -592,22 +597,94 @@ def handle_pipline_ingest_schedule(event: Dict[str, Any], context: Any) -> None:
         raise e
 
 
-def batch_texts(texts: List[str], metadatas: List[Dict], batch_size: int = 500) -> list[tuple[list[str], list[dict]]]:
+def batch_texts(texts: List[str], metadatas: List[Dict], batch_size: int = None) -> list[tuple[list[str], list[dict]]]:
     """
     Split texts and metadata into batches of specified size.
+    Uses intelligent batch sizing based on observed payload limits to avoid 413 errors.
+    
+    Based on empirical data: 17K chars succeeds, 36K chars fails.
 
     Args:
         texts: List of text strings to batch
         metadatas: List of metadata dictionaries
-        batch_size: Maximum size of each batch
+        batch_size: Maximum size of each batch (default from env var, conservative for large texts)
     Returns:
         List of tuples containing (texts_batch, metadatas_batch)
     """
+    if batch_size is None:
+        batch_size = DEFAULT_BATCH_SIZE
+    original_batch_size = batch_size
+    
+    # Calculate content statistics for debugging
+    if texts:
+        total_chars = sum(len(text) for text in texts)
+        avg_text_length = total_chars / len(texts)
+        max_text_length = max(len(text) for text in texts)
+        min_text_length = min(len(text) for text in texts)
+        
+        # Estimate tokens (rough approximation: 4 chars per token)
+        estimated_total_tokens = total_chars // 4
+        estimated_avg_tokens = avg_text_length // 4
+        estimated_max_tokens = max_text_length // 4
+        
+        logger.info(f"Batching {len(texts)} texts - Total chars: {total_chars:,}, "
+                   f"Avg: {avg_text_length:.0f}, Min: {min_text_length}, Max: {max_text_length}")
+        logger.info(f"Estimated tokens - Total: {estimated_total_tokens:,}, "
+                   f"Avg: {estimated_avg_tokens:.0f}, Max: {estimated_max_tokens}")
+        
+        # Token-aware batch sizing based on LiteLLM limits
+        max_batch_tokens = int(os.getenv('MAX_BATCH_TOKENS', '16384'))
+        max_total_tokens = int(os.getenv('MAX_TOTAL_TOKENS', '4096'))
+        
+        # Check for oversized individual texts
+        oversized_count = sum(1 for text in texts if len(text) // 4 > max_total_tokens)
+        if oversized_count > 0:
+            logger.warning(f"Found {oversized_count} texts exceeding MAX_TOTAL_TOKENS ({max_total_tokens})")
+        
+        # Calculate token-aware batch size
+        if estimated_avg_tokens > 0:
+            token_based_batch_size = min(batch_size, max(5, max_batch_tokens // int(estimated_avg_tokens)))
+            if token_based_batch_size != batch_size:
+                logger.info(f"Token-aware batching: original size {original_batch_size} → {token_based_batch_size} "
+                           f"(avg tokens: {estimated_avg_tokens:.0f}, max batch tokens: {max_batch_tokens:,})")
+                batch_size = token_based_batch_size
+        
+        # Use configurable payload size limit as fallback
+        MAX_PAYLOAD_CHARS = MAX_SAFE_PAYLOAD_CHARS
+        
+        # Calculate safe batch size based on average text length
+        if avg_text_length > 0:
+            safe_batch_size = max(1, int(MAX_PAYLOAD_CHARS / avg_text_length))
+            adaptive_batch_size = min(batch_size, safe_batch_size)
+            
+            # Additional safety check for very long individual texts
+            if max_text_length > 2000:  # Very long chunks
+                # Ensure even single text won't exceed limits
+                max_safe_batch = max(1, int(MAX_PAYLOAD_CHARS / max_text_length))
+                adaptive_batch_size = min(adaptive_batch_size, max_safe_batch)
+            
+            if adaptive_batch_size != original_batch_size:
+                estimated_payload = adaptive_batch_size * avg_text_length
+                logger.info(f"Adaptive batching: original size {original_batch_size} → {adaptive_batch_size} "
+                           f"(avg text: {avg_text_length:.0f}, estimated payload: {estimated_payload:,.0f} chars)")
+                batch_size = adaptive_batch_size
+            else:
+                logger.info(f"Using original batch size {batch_size} (estimated payload within limits)")
+    
     batches = []
     for i in range(0, len(texts), batch_size):
         text_batch = texts[i : i + batch_size]
         metadata_batch = metadatas[i : i + batch_size]
+        
+        # Log batch details
+        batch_chars = sum(len(text) for text in text_batch)
+        batch_num = len(batches) + 1
+        total_batches = (len(texts) + batch_size - 1) // batch_size
+        logger.info(f"Created batch {batch_num}/{total_batches}: {len(text_batch)} texts, {batch_chars:,} chars")
+        
         batches.append((text_batch, metadata_batch))
+    
+    logger.info(f"Final batching result: {len(batches)} batches created with batch size {batch_size}")
     return batches
 
 
@@ -684,17 +761,31 @@ def store_chunks_in_vectorstore(
     batches = batch_texts(texts, metadatas)
     total_batches = len(batches)
 
-    logger.info(f"Processing {len(texts)} texts in {total_batches} batches")
+    logger.info(f"Processing {len(texts)} texts in {total_batches} batches (batch size: {len(batches[0][0]) if batches else 0})")
 
     for i, (text_batch, metadata_batch) in enumerate(batches, 1):
         logger.info(f"Processing batch {i}/{total_batches} with {len(text_batch)} texts")
-        batch_ids = vs.add_texts(texts=text_batch, metadatas=metadata_batch)
-        if not batch_ids:
-            raise Exception(f"Failed to store documents in vector store for batch {i}")
-        all_ids.extend(batch_ids)
-        logger.info(f"Successfully processed batch {i}")
+        try:
+            batch_ids = vs.add_texts(texts=text_batch, metadatas=metadata_batch)
+            if not batch_ids:
+                raise Exception(f"Failed to store documents in vector store for batch {i}")
+            all_ids.extend(batch_ids)
+            logger.info(f"Successfully processed batch {i} - added {len(batch_ids)} documents")
+        except Exception as e:
+            logger.error(f"Failed to process batch {i}/{total_batches}: {str(e)}")
+            raise Exception(f"Failed to store documents in vector store for batch {i}: {str(e)}")
 
     if not all_ids:
         raise Exception("Failed to store any documents in vector store")
 
+    # Final summary
+    total_chars = sum(len(text) for text in texts)
+    avg_chars_per_chunk = total_chars / len(texts) if texts else 0
+    logger.info(f"INGESTION SUMMARY:")
+    logger.info(f"  Total chunks stored: {len(all_ids)}")
+    logger.info(f"  Total characters: {total_chars:,}")
+    logger.info(f"  Average chars per chunk: {avg_chars_per_chunk:.0f}")
+    logger.info(f"  Batches processed: {total_batches}")
+    logger.info(f"  Final batch size used: {len(batches[0][0]) if batches else 0}")
+    
     return all_ids

@@ -2,16 +2,6 @@
   "name": "@awslabs/lisa",
   "version": "6.0.1",
   "description": "A scalable infrastructure-as-code solution for self-hosting and orchestrating LLM inference with RAG capabilities, providing low-latency access to generative AI and embedding models across multiple providers.",
-  "homepage": "https://awslabs.github.io/LISA/",
-  "license": "Apache-2.0",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/awslabs/lisa.git"
-  },
-  "bugs": {
-    "url": "https://github.com/awslabs/lisa/issues"
-  },
-  "author": "Amazon Web Services (https://aws.amazon.com)",
   "keywords": [
     "aws",
     "bedrock",
@@ -24,6 +14,33 @@
     "openai",
     "rag",
     "retrieval-augmented-generation"
+  ],
+  "homepage": "https://awslabs.github.io/LISA/",
+  "bugs": {
+    "url": "https://github.com/awslabs/lisa/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/awslabs/lisa.git"
+  },
+  "license": "Apache-2.0",
+  "author": "Amazon Web Services (https://aws.amazon.com)",
+  "type": "commonjs",
+  "main": "jest.config.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "files": [
+    "VERSION",
+    "bin",
+    "lib",
+    "lisa-sdk",
+    "lambda",
+    "scripts",
+    "ecs_model_deployer",
+    "vector_store_deployer",
+    "dist"
   ],
   "workspaces": [
     "lib/user-interface/react",
@@ -120,21 +137,5 @@
     "esm": true,
     "experimentalSpecifierResolution": "node",
     "experimentalSpecifiers": true
-  },
-  "main": "jest.config.js",
-  "directories": {
-    "lib": "lib",
-    "test": "test"
-  },
-  "files": [
-    "VERSION",
-    "bin",
-    "lib",
-    "lisa-sdk",
-    "lambda",
-    "scripts",
-    "ecs_model_deployer",
-    "vector_store_deployer",
-    "dist"
-  ]
+  }
 }

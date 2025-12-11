@@ -19,15 +19,54 @@ import { FormProps} from '../../../shared/form/form-props';
 import FormField from '@cloudscape-design/components/form-field';
 import Input from '@cloudscape-design/components/input';
 
-import { IAutoScalingConfig } from '../../../shared/model/model-management.model';
+import { IAutoScalingConfig, ScheduleType } from '../../../shared/model/model-management.model';
 import { Grid, Header, SpaceBetween } from '@cloudscape-design/components';
 import Container from '@cloudscape-design/components/container';
+import { ScheduleConfig } from './ScheduleConfig';
 
 type AutoScalingConfigProps = FormProps<IAutoScalingConfig> & {
     isEdit: boolean
 };
 
 export function AutoScalingConfig (props: AutoScalingConfigProps) : ReactElement {
+    const currentScheduling = props.item.scheduling || {
+        scheduleEnabled: false,
+        scheduleType: ScheduleType.NONE,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+    };
+
+    // Helper function to validate desired capacity
+    const getDesiredCapacityError = (): string | undefined => {
+        // First check for form validation errors
+        if (props.formErrors?.autoScalingConfig?.desiredCapacity) {
+            return props.formErrors.autoScalingConfig.desiredCapacity;
+        }
+
+        const { desiredCapacity, minCapacity, maxCapacity } = props.item;
+
+        // If no desired capacity is set, no validation needed
+        if (!desiredCapacity) {
+            return undefined;
+        }
+
+        // Check minimum value constraint
+        if (desiredCapacity < 1) {
+            return 'Value must be greater than or equal to 1';
+        }
+
+        // Check minimum capacity constraint
+        if (desiredCapacity < minCapacity) {
+            return `Value must be greater than or equal to Min Capacity (${minCapacity})`;
+        }
+
+        // Check maximum capacity constraint
+        if (desiredCapacity > maxCapacity) {
+            return `Value must be less than or equal to Max Capacity (${maxCapacity})`;
+        }
+
+        return undefined;
+    };
+
     return (
         <SpaceBetween size={'s'}>
             <Container
@@ -47,37 +86,60 @@ export function AutoScalingConfig (props: AutoScalingConfigProps) : ReactElement
                     </FormField>
                     <FormField
                         label='Min Capacity'
-                        description='Minimum number of instances to maintain in the auto scaling group.'
-                        errorText={props.formErrors?.autoScalingConfig?.minCapacity}
+                        description='Minimum number of instances to maintain in the auto scaling group'
+                        errorText={props.formErrors?.autoScalingConfig?.minCapacity || (props.item.minCapacity < 1 ? 'Value must be greater than or equal to 1' : undefined)}
                     >
                         <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
-                            <Input value={props.item.minCapacity.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.minCapacity'])} onChange={({ detail }) => {
-                                props.setFields({ 'autoScalingConfig.minCapacity': Number(detail.value) });
-                            }}/>
+                            <Input
+                                value={props.item.minCapacity.toString()}
+                                type='number'
+                                inputMode='numeric'
+                                onBlur={() => props.touchFields(['autoScalingConfig.minCapacity'])}
+                                onChange={({ detail }) => {
+                                    props.setFields({ 'autoScalingConfig.minCapacity': Number(detail.value) });
+                                }}
+                            />
                             <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>instances</span>
                         </Grid>
                     </FormField>
                     <FormField
                         label='Max Capacity'
                         description='Maximum number of instances allowed in the auto scaling group.'
-                        errorText={props.formErrors?.autoScalingConfig?.maxCapacity}
+                        errorText={props.formErrors?.autoScalingConfig?.maxCapacity || (props.item.maxCapacity < 1 ? 'Value must be greater than or equal to 1' : undefined)}
                     >
                         <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
-                            <Input value={props.item.maxCapacity.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.maxCapacity'])} onChange={({ detail }) => {
-                                props.setFields({ 'autoScalingConfig.maxCapacity': Number(detail.value) });
-                            }}/>
+                            <Input
+                                value={props.item.maxCapacity.toString()}
+                                type='number'
+                                inputMode='numeric'
+                                onBlur={() => props.touchFields(['autoScalingConfig.maxCapacity'])}
+                                onChange={({ detail }) => {
+                                    props.setFields({ 'autoScalingConfig.maxCapacity': Number(detail.value) });
+                                }}
+                            />
                             <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>instances</span>
                         </Grid>
                     </FormField>
                     <FormField
                         label='Desired Capacity'
                         description='Target number of instances to maintain. Must be between min and max capacity.'
-                        errorText={props.formErrors?.autoScalingConfig?.desiredCapacity}
+                        errorText={getDesiredCapacityError()}
                     >
                         <Grid gridDefinition={[{colspan: 10}, {colspan: 2}]} disableGutters={true}>
-                            <Input value={String(props.item.desiredCapacity)} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.desiredCapacity'])} onChange={({ detail }) => {
-                                props.setFields({ 'autoScalingConfig.desiredCapacity': detail.value.trim().length > 0 ? Number(detail.value) : undefined });
-                            }}/>
+                            <Input
+                                value={String(props.item.desiredCapacity)}
+                                type='number'
+                                inputMode='numeric'
+                                placeholder='Optional'
+                                onBlur={() => props.touchFields(['autoScalingConfig.desiredCapacity'])}
+                                onChange={({ detail }) => {
+                                    if (detail.value.trim().length === 0) {
+                                        props.setFields({ 'autoScalingConfig.desiredCapacity': undefined });
+                                    } else {
+                                        props.setFields({ 'autoScalingConfig.desiredCapacity': Number(detail.value) });
+                                    }
+                                }}
+                            />
                             <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>instances</span>
                         </Grid>
                     </FormField>
@@ -105,6 +167,28 @@ export function AutoScalingConfig (props: AutoScalingConfigProps) : ReactElement
                             <span style={{lineHeight: '2.5em', paddingLeft: '0.5em'}}>seconds</span>
                         </Grid>
                     </FormField>
+                    <ScheduleConfig
+                        item={currentScheduling}
+                        setFields={(fields) => {
+                            if (fields.scheduleEnabled === false) {
+                                // When disabling scheduling, remove the entire scheduling config
+                                props.setFields({ 'autoScalingConfig.scheduling': undefined });
+                            } else {
+                                // When enabling or updating scheduling, set the individual fields
+                                const scheduleFields: Record<string, any> = {};
+                                Object.entries(fields).forEach(([key, value]) => {
+                                    scheduleFields[`autoScalingConfig.scheduling.${key}`] = value;
+                                });
+                                props.setFields(scheduleFields);
+                            }
+                        }}
+                        touchFields={(fields) => {
+                            const scheduleFields = fields.map((field) => `autoScalingConfig.scheduling.${field}`);
+                            props.touchFields(scheduleFields);
+                        }}
+                        formErrors={props.formErrors?.autoScalingConfig?.scheduling}
+                        isEdit={props.isEdit}
+                    />
                 </SpaceBetween>
             </Container>
             <Container

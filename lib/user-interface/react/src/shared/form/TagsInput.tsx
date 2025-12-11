@@ -24,7 +24,7 @@ type TagsInputProps = FormFieldProps & {
     placeholder?: string;
 };
 
-export function TagsInput(props: TagsInputProps): ReactElement {
+export function TagsInput (props: TagsInputProps): ReactElement {
     const { onChange, values, placeholder = 'Enter tag', ...formFieldProps } = props;
     const [inputValue, setInputValue] = useState('');
 

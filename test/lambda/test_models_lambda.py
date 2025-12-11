@@ -357,7 +357,7 @@ def test_delete_model_handler(
     # Mock SSM client and VectorStoreRepository
     with patch("models.handler.delete_model_handler.ssm_client") as mock_ssm:
         mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "vector-store-table"}}
-        
+
         with patch("models.handler.delete_model_handler.VectorStoreRepository") as mock_repo_class:
             mock_repo = mock_repo_class.return_value
             mock_repo.find_repositories_using_model.return_value = []
@@ -395,7 +395,7 @@ def test_delete_model_handler_model_in_use_by_repository(
     # Mock SSM client and VectorStoreRepository
     with patch("models.handler.delete_model_handler.ssm_client") as mock_ssm:
         mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "vector-store-table"}}
-        
+
         with patch("models.handler.delete_model_handler.VectorStoreRepository") as mock_repo_class:
             mock_repo = mock_repo_class.return_value
             mock_repo.find_repositories_using_model.return_value = [
@@ -431,7 +431,7 @@ def test_delete_model_handler_model_in_use_by_pipeline(
     # Mock SSM client and VectorStoreRepository
     with patch("models.handler.delete_model_handler.ssm_client") as mock_ssm:
         mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "vector-store-table"}}
-        
+
         with patch("models.handler.delete_model_handler.VectorStoreRepository") as mock_repo_class:
             mock_repo = mock_repo_class.return_value
             mock_repo.find_repositories_using_model.return_value = [
@@ -467,11 +467,11 @@ def test_delete_model_handler_without_vector_store_table(
     # Mock SSM client to raise ParameterNotFound
     with patch("models.handler.delete_model_handler.ssm_client") as mock_ssm:
         from botocore.exceptions import ClientError
+
         mock_ssm.get_parameter.side_effect = ClientError(
-            {"Error": {"Code": "ParameterNotFound", "Message": "Parameter not found"}},
-            "GetParameter"
+            {"Error": {"Code": "ParameterNotFound", "Message": "Parameter not found"}}, "GetParameter"
         )
-        
+
         # Call handler - should succeed without checking vector store
         response = handler("test-model")
 

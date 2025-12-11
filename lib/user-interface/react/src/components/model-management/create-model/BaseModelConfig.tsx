@@ -102,7 +102,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
             >
                 <Input value={props.item.modelUrl} inputMode='text' onBlur={() => props.touchFields(['modelUrl'])} onChange={({ detail }) => {
                     props.setFields({ 'modelUrl': detail.value });
-                }} disabled={props.isEdit} placeholder="http://internal-lisa-gptoss20b-123456789.us-west-2.elb.amazonaws.com"/>
+                }} disabled={props.isEdit} placeholder='http://internal-lisa-gptoss20b-123456789.us-west-2.elb.amazonaws.com'/>
             </FormField>
             <FormField
                 label='Model Type'

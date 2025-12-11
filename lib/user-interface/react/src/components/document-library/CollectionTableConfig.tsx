@@ -22,6 +22,7 @@ import StatusIndicator, { StatusIndicatorProps } from '@cloudscape-design/compon
 import { ReactNode } from 'react';
 import { RagCollectionConfig } from '@/shared/reducers/rag.reducer';
 import { CollectionStatus } from '#root/lib/schema';
+import { formatDate, formatObject } from '@/shared/util/formats';
 
 export const PAGE_SIZE_OPTIONS = DEFAULT_PAGE_SIZE_OPTIONS('Collections');
 
@@ -67,10 +68,25 @@ export const COLLECTION_COLUMN_DEFINITIONS: ReadonlyArray<CollectionTableRow> = 
         visible: true,
     },
     {
+        id: 'description',
+        header: 'Description',
+        cell: (collection) => collection.description || '-',
+        sortingField: 'description',
+        visible: true,
+    },
+    {
         id: 'embeddingModel',
         header: 'Embedding Model',
         cell: (collection) => collection.embeddingModel || '-',
         visible: true,
+        sortingField: 'embeddingModel',
+    },
+    {
+        id: 'status',
+        header: 'Status',
+        cell: (collection) => getStatusIndicator(collection.status),
+        visible: true,
+        sortingField: 'status',
     },
     {
         id: 'allowedGroups',
@@ -81,14 +97,39 @@ export const COLLECTION_COLUMN_DEFINITIONS: ReadonlyArray<CollectionTableRow> = 
             }
             return collection.allowedGroups.join(', ');
         },
-        visible: true,
+        visible: false,
     },
     {
-        id: 'status',
-        header: 'Status',
-        cell: (collection) => getStatusIndicator(collection.status),
+        id: 'createdBy',
+        header: 'Created By',
+        cell: (collection) => collection.createdBy,
         visible: true,
+        sortingField: 'createdBy',
     },
+    {
+        id: 'createdAt',
+        header: 'Created At',
+        cell: (collection) => formatDate(collection.createdAt),
+        visible: false,
+    },
+    {
+        id: 'updatedAt',
+        header: 'Updated At',
+        cell: (collection) => formatDate(collection.updatedAt),
+        visible: false,
+    },
+    {
+        id: 'chunkingStrategy',
+        header: 'Chunking Strategy',
+        cell: (collection) => formatObject(collection.chunkingStrategy),
+        visible: false,
+    },
+    {
+        id: 'metadata',
+        header: 'Metadata',
+        cell: (collection) => formatObject(collection.metadata),
+        visible: false,
+    }
 ];
 
 function getStatusIndicator (status: CollectionStatus): ReactNode {

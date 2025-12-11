@@ -691,6 +691,7 @@ def main():
                     [],
                     skip_create=args.skip_create,
                 ),
+                create_bedrock_model(lisa_client, "nova-canvas", "bedrock/amazon.nova-canvas-v1:0", "imagegen", [], skip_create=args.skip_create),
             ]
         )
 

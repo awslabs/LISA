@@ -46,7 +46,7 @@ export type RepositoryCreateState = {
     activeStepIndex: number;
 };
 
-export function CreateRepositoryModal(props: CreateRepositoryModalProps): ReactElement {
+export function CreateRepositoryModal (props: CreateRepositoryModalProps): ReactElement {
     const { visible, setVisible, selectedItems, isEdit, setIsEdit } = props;
     const [
         createRepositoryMutation,
@@ -106,7 +106,7 @@ export function CreateRepositoryModal(props: CreateRepositoryModalProps): ReactE
     const requiredFields = [['repositoryId', 'type', 'rdsConfig.username', 'rdsConfig.dbName', 'rdsConfig.dbPort', 'opensearchConfig.dataNodes', 'opensearchConfig.dataNodes', 'opensearchConfig.dataNodeInstanceType'], []];
 
 
-    function handleSubmit() {
+    function handleSubmit () {
         // Validate all fields before submission
         if (isValid && !_.isEmpty(changesDiff)) {
             // For Bedrock Knowledge Base repositories, remove pipelines - they're managed by the backend
@@ -228,7 +228,7 @@ export function CreateRepositoryModal(props: CreateRepositoryModalProps): ReactE
         },
     ].filter((step) => isEdit ? step.onEdit : true);
 
-    function resetState() {
+    function resetState () {
         setState({
             validateAll: false as boolean,
             touched: {},

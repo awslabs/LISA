@@ -24,7 +24,7 @@ type UserGroupsInputProps = FormFieldProps & {
     placeholder?: string;
 };
 
-export function UserGroupsInput(props: UserGroupsInputProps): ReactElement {
+export function UserGroupsInput (props: UserGroupsInputProps): ReactElement {
     const { onChange, values, placeholder = 'Enter group name', ...formFieldProps } = props;
     const [inputValue, setInputValue] = useState('');
 

@@ -1271,9 +1271,14 @@ def create(event: dict, context: dict) -> Any:
     parameter_name = os.environ["LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER"]
     state_machine_arn = ssm_client.get_parameter(Name=parameter_name)
 
+    # Get user context
+    username, _, _ = get_user_context(event)
+
     # Deserialize the event body and parse as VectorStoreConfig
     try:
         body = json.loads(event["body"])
+        # Add required fields
+        body["createdBy"] = username
         vector_store_config = VectorStoreConfig(**body)
     except json.JSONDecodeError as e:
         raise ValidationError(f"Invalid JSON in request body: {e}")

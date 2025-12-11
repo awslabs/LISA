@@ -62,9 +62,7 @@ class DeleteModelHandler(BaseApiHandler):
         # Try to get vector store table name from SSM parameter (only exists if RAG is deployed)
         vector_store_table = self._get_vector_store_table_name()
         if not vector_store_table:
-            logger.info(
-                f"RAG vector store not deployed, skipping model usage check for '{model_id}'"
-            )
+            logger.info(f"RAG vector store not deployed, skipping model usage check for '{model_id}'")
             return
 
         vector_store_repo = VectorStoreRepository(table_name=vector_store_table)

@@ -35,7 +35,6 @@ import _ from 'lodash';
 import {
     RagCollectionConfig,
     RagCollectionConfigSchema,
-    ChunkingStrategyType,
     RagRepositoryType,
 } from '#root/lib/schema';
 
@@ -83,21 +82,7 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
         },
     ] = useUpdateCollectionMutation();
 
-    const initialForm: RagCollectionConfig = {
-        repositoryId: '',
-        name: '',
-        description: '',
-        embeddingModel: '',
-        chunkingStrategy: {
-            type: ChunkingStrategyType.FIXED,
-            size: 512,
-            overlap: 50,
-        },
-        allowedGroups: [],
-        metadata: { tags: [], customFields: {} },
-        allowChunkingOverride: true,
-    };
-
+    const initialForm: RagCollectionConfig = RagCollectionConfigSchema.partial().parse({}) as RagCollectionConfig;
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
 

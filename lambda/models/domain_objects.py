@@ -1186,7 +1186,7 @@ class RagCollectionConfig(BaseModel):
     createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Creation timestamp")
     updatedAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Last update timestamp")
     status: CollectionStatus = Field(default=CollectionStatus.ACTIVE, description="Collection status")
-    default: bool = Field(default=False, description="Indicates if this is a default collection for Bedrock KB")
+    default: bool = Field(default=False, description="Indicates if this is a default collection")
     dataSourceId: Optional[str] = Field(
         default=None, description="Bedrock KB data source ID for filtering (Bedrock KB only)"
     )
@@ -1366,7 +1366,8 @@ class VectorStoreConfig(BaseModel):
     )
     # Status and timestamps
     status: Optional[VectorStoreStatus] = Field(default=None, description="Repository Status")
-    createdAt: Optional[datetime] = Field(default=None, description="Creation timestamp")
+    createdBy: datetime = Field(default=None, description="Creation user")
+    createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Creation timestamp")
     updatedAt: Optional[datetime] = Field(default=None, description="Last update timestamp")
 
 
@@ -1391,7 +1392,7 @@ class KnowledgeBaseMetadata(BaseModel):
     name: str = Field(description="Knowledge Base name")
     description: Optional[str] = Field(default="", description="Knowledge Base description")
     status: str = Field(description="Knowledge Base status (ACTIVE, CREATING, DELETING, etc.)")
-    createdAt: Optional[datetime] = Field(default=None, description="Creation timestamp")
+    createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Creation timestamp")
     updatedAt: Optional[datetime] = Field(default=None, description="Last update timestamp")
 
 
@@ -1404,7 +1405,7 @@ class DataSourceMetadata(BaseModel):
     status: str = Field(description="Data Source status (AVAILABLE, CREATING, DELETING, etc.)")
     s3Bucket: str = Field(description="S3 bucket for the data source")
     s3Prefix: str = Field(default="", description="S3 prefix for the data source")
-    createdAt: Optional[datetime] = Field(default=None, description="Creation timestamp")
+    createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Creation timestamp")
     updatedAt: Optional[datetime] = Field(default=None, description="Last update timestamp")
     managed: Optional[bool] = Field(default=False, description="Whether this data source is managed by a collection")
     collectionId: Optional[str] = Field(default=None, description="Collection ID if managed")

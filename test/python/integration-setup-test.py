@@ -197,7 +197,12 @@ def repository_exists(lisa_client: LisaApi, repository_id: str) -> bool:
 
 
 def create_bedrock_model(
-    lisa_client: LisaApi, model_id: str, model_name: str, model_type: str = "textgen", features: any = None, skip_create: bool = False
+    lisa_client: LisaApi,
+    model_id: str,
+    model_name: str,
+    model_type: str = "textgen",
+    features: any = None,
+    skip_create: bool = False,
 ) -> Dict[str, Any]:
     """Create a Bedrock model configuration."""
 
@@ -336,7 +341,11 @@ def create_self_hosted_embedded_model(
 
 
 def create_self_hosted_model(
-    lisa_client: LisaApi, model_id: str, model_name: str, base_image: str = "vllm/vllm-openai:latest", skip_create: bool = False
+    lisa_client: LisaApi,
+    model_id: str,
+    model_name: str,
+    base_image: str = "vllm/vllm-openai:latest",
+    skip_create: bool = False,
 ) -> Dict[str, Any]:
     """Create a self-hosted model configuration."""
 
@@ -423,9 +432,11 @@ def create_self_hosted_model(
         raise
 
 
-def create_pgvector_repository(lisa_client: LisaApi, embedding_model_id: str = None, skip_create: bool = False) -> Dict[str, Any]:
+def create_pgvector_repository(
+    lisa_client: LisaApi, embedding_model_id: str = None, skip_create: bool = False
+) -> Dict[str, Any]:
     """Create a PGVector repository."""
-    repository_id = "test-pgvector-rag"
+    repository_id = "pgv-rag"
 
     # Skip creation if flag is set
     if skip_create:
@@ -441,22 +452,24 @@ def create_pgvector_repository(lisa_client: LisaApi, embedding_model_id: str = N
 
     try:
         rag_config = {
-            "repositoryId": repository_id,
-            "embeddingModelId": embedding_model_id or DEFAULT_EMBEDDING_MODEL_ID,
-            "type": "pgvector",
             "pipelines": [
                 {
-                    "chunkSize": 512,
-                    "chunkOverlap": 51,
-                    "embeddingModel": embedding_model_id or DEFAULT_EMBEDDING_MODEL_ID,
-                    "s3Bucket": RAG_PIPELINE_BUCKET,
                     "s3Prefix": "",
                     "trigger": "event",
                     "autoRemove": True,
+                    "metadata": {"tags": ["test"]},
+                    "chunkingStrategy": {"type": "fixed", "size": 1000, "overlap": 51},
+                    "collectionId": "default",
+                    "s3Bucket": RAG_PIPELINE_BUCKET,
                 }
             ],
             "allowedGroups": [],
+            "repositoryId": repository_id,
+            "embeddingModelId": embedding_model_id or DEFAULT_EMBEDDING_MODEL_ID,
+            "rdsConfig": {"username": "postgres", "dbName": "postgres", "dbPort": 5432},
+            "type": "pgvector",
         }
+        
         result = lisa_client.create_pgvector_repository(rag_config)
         print(f"✓ PGVector repository created: {result}")
 
@@ -472,9 +485,11 @@ def create_pgvector_repository(lisa_client: LisaApi, embedding_model_id: str = N
         raise
 
 
-def create_opensearch_repository(lisa_client: LisaApi, embedding_model_id: str = None, skip_create: bool = False) -> Dict[str, Any]:
+def create_opensearch_repository(
+    lisa_client: LisaApi, embedding_model_id: str = None, skip_create: bool = False
+) -> Dict[str, Any]:
     """Create an OpenSearch repository."""
-    repository_id = "test-opensearch-rag"
+    repository_id = "os-rag"
 
     # Skip creation if flag is set
     if skip_create:
@@ -495,8 +510,7 @@ def create_opensearch_repository(lisa_client: LisaApi, embedding_model_id: str =
             "type": "opensearch",
             "pipelines": [
                 {
-                    "chunkSize": 512,
-                    "chunkOverlap": 51,
+                    "chunkingStrategy": {"type": "fixed", "size": 1000, "overlap": 51},
                     "embeddingModel": embedding_model_id or DEFAULT_EMBEDDING_MODEL_ID,
                     "s3Bucket": RAG_PIPELINE_BUCKET,
                     "s3Prefix": "",
@@ -505,6 +519,26 @@ def create_opensearch_repository(lisa_client: LisaApi, embedding_model_id: str =
                 }
             ],
             "allowedGroups": [],
+            "pipelines": [
+                {
+                    "s3Prefix": "",
+                    "trigger": "event",
+                    "autoRemove": True,
+                    "metadata": {"tags": ["test"]},
+                    "chunkingStrategy": {"type": "fixed", "size": 1000, "overlap": 51},
+                    "collectionId": "default",
+                    "s3Bucket": RAG_PIPELINE_BUCKET,
+                }
+            ],
+            "opensearchConfig": {
+                "dataNodes": 2,
+                "dataNodeInstanceType": "r7g.large.search",
+                "masterNodes": 0,
+                "masterNodeInstanceType": "r7g.large.search",
+                "volumeSize": 20,
+                "volumeType": "gp3",
+                "multiAzWithStandby": False,
+            }
         }
         result = lisa_client.create_repository(rag_config)
         print(f"✓ OpenSearch repository created: {result}")
@@ -553,7 +587,9 @@ def main():
     parser.add_argument("--verify", default="false", help="Verify SSL certificates")
     parser.add_argument("--profile", help="AWS profile to use")
     parser.add_argument("--cleanup", action="store_true", help="Clean up resources (delete models and repositories)")
-    parser.add_argument("--skip-create", action="store_true", help="Skip resource creation, only collect resource IDs for cleanup")
+    parser.add_argument(
+        "--skip-create", action="store_true", help="Skip resource creation, only collect resource IDs for cleanup"
+    )
     parser.add_argument("--wait", action="store_true", help="Wait for resources to be ready")
 
     args = parser.parse_args()
@@ -582,7 +618,7 @@ def main():
         # If cleanup-only mode, skip all creation and just populate resource IDs
         if args.cleanup and args.skip_create:
             print("\n🧹 Cleanup-only mode: Collecting resource IDs for deletion...")
-            
+
             # Define all resource IDs that would be created
             created_resources["models"] = [
                 "nova-lite",
@@ -598,13 +634,13 @@ def main():
                 "baai-embed-15",
             ]
             created_resources["repositories"] = [
-                "test-pgvector-rag",
-                "test-opensearch-rag",
+                "pgv-rag",
+                "os-rag",
             ]
-            
+
             print(f"  Models to delete: {created_resources['models']}")
             print(f"  Repositories to delete: {created_resources['repositories']}")
-            
+
             # Skip to cleanup
             cleanup_resources(lisa_client, created_resources)
             print("\n🧹 Cleanup completed!")
@@ -624,32 +660,73 @@ def main():
         # # 1. Create Bedrock model
         models.extend(
             [
-                create_bedrock_model(lisa_client, "nova-lite", "bedrock/us.amazon.nova-lite-v1:0", skip_create=args.skip_create),
-                create_bedrock_model(lisa_client, "haiku-45", "bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0", skip_create=args.skip_create),
-                create_bedrock_model(lisa_client, "sonnet-45", "bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0", skip_create=args.skip_create),
                 create_bedrock_model(
-                    lisa_client, "titan-embed", "bedrock/amazon.titan-embed-text-v2:0", "embedding", [], args.skip_create
+                    lisa_client, "nova-lite", "bedrock/us.amazon.nova-lite-v1:0", skip_create=args.skip_create
                 ),
-                create_bedrock_model(lisa_client, "nova-canvas", "bedrock/amazon.nova-canvas-v1:0", "imagegen", [], skip_create=args.skip_create),
-
+                create_bedrock_model(
+                    lisa_client,
+                    "haiku-45",
+                    "bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0",
+                    skip_create=args.skip_create,
+                ),
+                create_bedrock_model(
+                    lisa_client,
+                    "sonnet-45",
+                    "bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+                    skip_create=args.skip_create,
+                ),
+                create_bedrock_model(
+                    lisa_client,
+                    "titan-embed",
+                    "bedrock/amazon.titan-embed-text-v2:0",
+                    "embedding",
+                    [],
+                    args.skip_create,
+                ),
+                create_bedrock_model(
+                    lisa_client,
+                    "nova-canvas",
+                    "bedrock/amazon.nova-canvas-v1:0",
+                    "imagegen",
+                    [],
+                    skip_create=args.skip_create,
+                ),
             ]
         )
 
         # # 2. Create self-hosted model
         models.extend(
             [
-                create_self_hosted_model(lisa_client, "mistral-7b-instruct-03", "mistralai/Mistral-7B-Instruct-v0.3", skip_create=args.skip_create),
-                create_self_hosted_model(lisa_client, "llama-32-1b-instruct", "meta-llama/Llama-3.2-1B-Instruct", skip_create=args.skip_create),
-                create_self_hosted_model(lisa_client, "gpt-oss-20b", "openai/gpt-oss-20b", skip_create=args.skip_create),
+                create_self_hosted_model(
+                    lisa_client,
+                    "mistral-7b-instruct-03",
+                    "mistralai/Mistral-7B-Instruct-v0.3",
+                    skip_create=args.skip_create,
+                ),
+                create_self_hosted_model(
+                    lisa_client,
+                    "llama-32-1b-instruct",
+                    "meta-llama/Llama-3.2-1B-Instruct",
+                    skip_create=args.skip_create,
+                ),
+                create_self_hosted_model(
+                    lisa_client, "gpt-oss-20b", "openai/gpt-oss-20b", skip_create=args.skip_create
+                ),
             ]
         )
 
         # # 3. Create self-hosted embedded model
         models.extend(
             [
-                create_self_hosted_embedded_model(lisa_client, DEFAULT_EMBEDDING_MODEL_ID, "intfloat/e5-large-v2", skip_create=args.skip_create),
-                create_self_hosted_embedded_model(lisa_client, "qwen3-embed-06b", "Qwen/Qwen3-Embedding-0.6B", skip_create=args.skip_create),
-                create_self_hosted_embedded_model(lisa_client, "baai-embed-15", "BAAI/bge-large-en-v1.5", skip_create=args.skip_create),
+                create_self_hosted_embedded_model(
+                    lisa_client, DEFAULT_EMBEDDING_MODEL_ID, "intfloat/e5-large-v2", skip_create=args.skip_create
+                ),
+                create_self_hosted_embedded_model(
+                    lisa_client, "qwen3-embed-06b", "Qwen/Qwen3-Embedding-0.6B", skip_create=args.skip_create
+                ),
+                create_self_hosted_embedded_model(
+                    lisa_client, "baai-embed-15", "BAAI/bge-large-en-v1.5", skip_create=args.skip_create
+                ),
             ]
         )
 

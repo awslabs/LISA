@@ -1076,8 +1076,7 @@ class PipelineConfig(BaseModel):
     )
     chunkSize: Optional[int] = Field(
         default=None,
-        ge=100,
-        le=10000,
+        ge=0,
         description="Chunk size for pipeline ingestion (deprecated, use chunkingStrategy)",
     )
     chunkingStrategy: Optional[ChunkingStrategy] = Field(
@@ -1089,6 +1088,10 @@ class PipelineConfig(BaseModel):
     s3Bucket: str = Field(min_length=1, description="S3 bucket for pipeline source")
     s3Prefix: str = Field(description="S3 prefix for pipeline source")
     trigger: PipelineTrigger = Field(description="Pipeline trigger type")
+    metadata: Optional[CollectionMetadata] = Field(
+        default_factory=lambda: CollectionMetadata(tags=[]), 
+        description="Metadata for the pipeline including tags"
+    )
 
     @model_validator(mode="after")
     def validate_chunking_config(self) -> Self:

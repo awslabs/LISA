@@ -25,7 +25,14 @@ type UserGroupsInputProps = FormFieldProps & {
 };
 
 export function UserGroupsInput (props: UserGroupsInputProps): ReactElement {
-    const { onChange, values, placeholder = 'Enter group name', ...formFieldProps } = props;
+    const {
+        onChange,
+        values,
+        placeholder = 'Enter group name',
+        label = 'Allowed Groups',
+        description = 'User groups that can access this resource. Leave empty for public access.',
+        ...formFieldProps
+    } = props;
     const [inputValue, setInputValue] = useState('');
 
     const handleAdd = () => {
@@ -50,7 +57,7 @@ export function UserGroupsInput (props: UserGroupsInputProps): ReactElement {
     };
 
     return (
-        <FormField {...formFieldProps}>
+        <FormField label={label} description={description} {...formFieldProps}>
             <SpaceBetween size='xs'>
                 <TokenGroup
                     items={values.map((group) => ({

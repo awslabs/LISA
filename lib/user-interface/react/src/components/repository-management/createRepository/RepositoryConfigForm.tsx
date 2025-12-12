@@ -31,7 +31,8 @@ import {
 import { RdsConfigForm } from './RdsConfigForm';
 import { OpenSearchConfigForm } from './OpenSearchConfigForm';
 import { BedrockKnowledgeBaseConfigForm } from './BedrockKnowledgeBaseConfigForm';
-import { CommonFieldsForm } from '../../../shared/form/CommonFieldsForm';
+import { EmbeddingModelInput } from '@/shared/form/EmbeddingModelInput';
+import { UserGroupsInput } from '@/shared/form/UserGroupsInput';
 
 export type RepositoryConfigProps = {
     isEdit: boolean
@@ -73,15 +74,15 @@ export function RepositoryConfigForm (props: FormProps<RagRepositoryConfig> & Re
                     }} placeholder='A repository for storing RAG documents' />
             </FormField>
 
-            {/* Common Fields: Embedding Model */}
-            <CommonFieldsForm
-                item={item}
-                setFields={setFields}
-                touchFields={touchFields}
-                formErrors={formErrors}
-                showEmbeddingModel={item.type !== RagRepositoryType.BEDROCK_KNOWLEDGE_BASE}
-                showAllowedGroups={false}
-            />
+            {/* Embedding Model */}
+            {item.type !== RagRepositoryType.BEDROCK_KNOWLEDGE_BASE && (
+                <EmbeddingModelInput
+                    value={item.embeddingModelId || ''}
+                    onChange={(modelId) => setFields({ embeddingModelId: modelId })}
+                    onBlur={() => touchFields(['embeddingModelId'])}
+                    errorText={formErrors?.embeddingModelId}
+                />
+            )}
 
             <FormField label='Repository Type'
                 errorText={formErrors?.type}
@@ -147,14 +148,11 @@ export function RepositoryConfigForm (props: FormProps<RagRepositoryConfig> & Re
                     formErrors={formErrors} isEdit={isEdit}></BedrockKnowledgeBaseConfigForm>
             }
 
-            {/* Common Fields: Allowed Groups */}
-            <CommonFieldsForm
-                item={item}
-                setFields={setFields}
-                touchFields={touchFields}
-                formErrors={formErrors}
-                showEmbeddingModel={false}
-                showAllowedGroups={true}
+            {/* Allowed Groups */}
+            <UserGroupsInput
+                errorText={formErrors?.allowedGroups}
+                values={item.allowedGroups || []}
+                onChange={(groups) => setFields({ allowedGroups: groups })}
             />
 
         </SpaceBetween>

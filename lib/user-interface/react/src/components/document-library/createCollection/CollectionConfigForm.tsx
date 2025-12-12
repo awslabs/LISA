@@ -21,7 +21,7 @@ import Input from '@cloudscape-design/components/input';
 import Select from '@cloudscape-design/components/select';
 import { SpaceBetween, Textarea } from '@cloudscape-design/components';
 import { useListRagRepositoriesQuery } from '../../../shared/reducers/rag.reducer';
-import { CommonFieldsForm } from '../../../shared/form/CommonFieldsForm';
+import { EmbeddingModelInput } from '@/shared/form/EmbeddingModelInput';
 import { RagCollectionConfig, RagRepositoryType, VectorStoreStatus } from '#root/lib/schema';
 
 export type CollectionConfigProps = {
@@ -114,16 +114,13 @@ export function CollectionConfigForm (
                 />
             </FormField>
 
-            {/* Common Fields (Embedding Model) */}
-            <CommonFieldsForm
-                item={item}
-                setFields={setFields}
-                touchFields={touchFields}
-                formErrors={formErrors}
-                repositoryId={item.repositoryId}
-                showEmbeddingModel={true}
-                showAllowedGroups={false}
-                isEdit={isEdit}
+            {/* Embedding Model */}
+            <EmbeddingModelInput
+                value={item.embeddingModel || ''}
+                onChange={(modelId) => setFields({ embeddingModel: modelId })}
+                onBlur={() => touchFields(['embeddingModel'])}
+                errorText={formErrors?.embeddingModel}
+                disabled={isEdit}
             />
         </SpaceBetween>
     );

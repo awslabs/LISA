@@ -20,6 +20,36 @@ import { describe, it, expect, vi } from 'vitest';
 import { UserGroupsInput } from './UserGroupsInput';
 
 describe('UserGroupsInput', () => {
+    it('renders with default label and description', () => {
+        const onChange = vi.fn();
+        render(
+            <UserGroupsInput
+                values={[]}
+                onChange={onChange}
+            />
+        );
+
+        expect(screen.getByText('Allowed Groups')).toBeInTheDocument();
+        expect(screen.getByText('User groups that can access this resource. Leave empty for public access.')).toBeInTheDocument();
+        expect(screen.getByPlaceholderText('Enter group name')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add' })).toBeInTheDocument();
+    });
+
+    it('renders with custom label and description', () => {
+        const onChange = vi.fn();
+        render(
+            <UserGroupsInput
+                label='Custom Groups'
+                description='Custom description for groups'
+                values={[]}
+                onChange={onChange}
+            />
+        );
+
+        expect(screen.getByText('Custom Groups')).toBeInTheDocument();
+        expect(screen.getByText('Custom description for groups')).toBeInTheDocument();
+    });
+
     it('renders with empty values', () => {
         const onChange = vi.fn();
         render(

@@ -2858,6 +2858,7 @@ def test_update_repository_with_pipeline_change():
                         "trigger": "event",
                         "s3Bucket": "test-bucket",
                         "s3Prefix": "test-prefix",
+                        "collectionId": "collection1",
                         "chunkSize": 512,
                         "chunkOverlap": 51,
                     }
@@ -2866,18 +2867,28 @@ def test_update_repository_with_pipeline_change():
         }
         mock_vs.find_repository_by_id.return_value = current_repo
 
-        # Mock updated config
+        # Mock updated config - add a new pipeline instead of modifying immutable fields
         updated_config = {
             "repositoryId": "repo1",
             "repositoryName": "Test Repo",
             "pipelines": [
                 {
-                    "autoRemove": False,
-                    "trigger": "schedule",
+                    "autoRemove": True,
+                    "trigger": "event",
                     "s3Bucket": "test-bucket",
                     "s3Prefix": "test-prefix",
+                    "collectionId": "collection1",
                     "chunkSize": 512,
                     "chunkOverlap": 51,
+                },
+                {
+                    "autoRemove": False,
+                    "trigger": "schedule",
+                    "s3Bucket": "test-bucket-2",
+                    "s3Prefix": "test-prefix-2",
+                    "collectionId": "collection2",
+                    "chunkSize": 1024,
+                    "chunkOverlap": 102,
                 }
             ],
             "status": "UPDATE_IN_PROGRESS",
@@ -2888,7 +2899,7 @@ def test_update_repository_with_pipeline_change():
         mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "arn:test-state-machine"}}
         mock_sf.start_execution.return_value = {"executionArn": "arn:execution:123"}
 
-        # Create event with pipeline change
+        # Create event with pipeline addition (not modification of immutable fields)
         event = {
             "requestContext": {"authorizer": {"claims": {"username": "admin-user"}}},
             "pathParameters": {"repositoryId": "repo1"},
@@ -2896,12 +2907,22 @@ def test_update_repository_with_pipeline_change():
                 {
                     "pipelines": [
                         {
-                            "autoRemove": False,
-                            "trigger": "schedule",
+                            "autoRemove": True,
+                            "trigger": "event",
                             "s3Bucket": "test-bucket",
                             "s3Prefix": "test-prefix",
+                            "collectionId": "collection1",
                             "chunkSize": 512,
                             "chunkOverlap": 51,
+                        },
+                        {
+                            "autoRemove": False,
+                            "trigger": "schedule",
+                            "s3Bucket": "test-bucket-2",
+                            "s3Prefix": "test-prefix-2",
+                            "collectionId": "collection2",
+                            "chunkSize": 1024,
+                            "chunkOverlap": 102,
                         }
                     ]
                 }

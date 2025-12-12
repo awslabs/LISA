@@ -1529,13 +1529,13 @@ def update_repository(event: dict, context: dict) -> Dict[str, Any]:
                     pipeline["metadata"]["tags"] = existing_meta["tags"]
                     logger.info(f"Preserved tags for collection {collection_id}: {existing_meta['tags']}")
 
-    # Validate immutable pipeline fields for existing repositories
-    if new_pipelines is not None and current_pipelines:
-        _validate_immutable_pipeline_fields(current_pipelines, new_pipelines)
-
     # Check if pipeline configuration has changed
     # Use the converted pipelines from updates if available, otherwise use request.pipelines
     new_pipelines = updates.get("pipelines") if "pipelines" in updates else request.pipelines
+
+    # Validate immutable pipeline fields for existing repositories
+    if new_pipelines is not None and current_pipelines:
+        _validate_immutable_pipeline_fields(current_pipelines, new_pipelines)
     require_deployment = False
 
     if new_pipelines is not None:

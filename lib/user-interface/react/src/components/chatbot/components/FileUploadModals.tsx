@@ -39,8 +39,8 @@ import { uploadToS3Request } from '@/components/utils';
 import { ChunkingStrategy, ChunkingStrategyType, RagRepositoryType } from '#root/lib/schema';
 import { IModel } from '@/shared/model/model-management.model';
 import { JobStatusTable } from '@/components/chatbot/components/JobStatusTable';
-import { ChunkingConfigForm } from '@/components/document-library/createCollection/ChunkingConfigForm';
-import { TagsInput } from '@/shared/form/TagsInput';
+import { ChunkingConfigForm } from '@/shared/form/ChunkingConfigForm';
+import { MetadataForm } from '@/shared/form/MetadataForm';
 
 export const renameFile = (originalFile: File) => {
     // Add timestamp to filename for RAG uploads to not conflict with existing S3 files
@@ -374,13 +374,11 @@ export const RagUploadModal = ({
                     />
                 )}
 
-                {/* Tags Input */}
-                <TagsInput
-                    label='Tags (optional)'
-                    description='Add tags to help organize and filter uploaded documents'
-                    values={tags}
-                    onChange={setTags}
-                    placeholder='Add tag'
+                {/* Metadata */}
+                <MetadataForm
+                    tags={tags}
+                    onTagsChange={setTags}
+                    tagsDescription='Add tags to help organize and filter uploaded documents'
                 />
 
                 <FileUpload

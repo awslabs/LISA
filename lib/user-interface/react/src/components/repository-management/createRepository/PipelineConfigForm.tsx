@@ -29,7 +29,8 @@ import { FormProps } from '../../../shared/form/form-props';
 
 import { PipelineConfig, RagRepositoryPipeline, RagRepositoryType } from '#root/lib/schema';
 import { useListCollectionsQuery } from '@/shared/reducers/rag.reducer';
-import { ChunkingConfigForm } from '@/components/document-library/createCollection/ChunkingConfigForm';
+import { ChunkingConfigForm } from '@/shared/form/ChunkingConfigForm';
+import { MetadataForm } from '@/shared/form/MetadataForm';
 
 export type PipelineConfigProps = {
     isEdit: boolean;
@@ -141,9 +142,6 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                                 if (values['chunkingStrategy.overlap'] !== undefined) {
                                     updatedFields[`pipelines[${index}].chunkingStrategy.overlap`] = values['chunkingStrategy.overlap'];
                                 }
-                                if (values['metadata.tags'] !== undefined) {
-                                    updatedFields[`pipelines[${index}].metadata.tags`] = values['metadata.tags'];
-                                }
                                 setFields(updatedFields);
                             }}
                             touchFields={(fields) => {
@@ -151,7 +149,16 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                                 touchFields(updatedFields);
                             }}
                             formErrors={formErrors.pipelines?.[index] || {}}
-                            metadata={pipeline.metadata}
+                        />
+
+                        <MetadataForm
+                            tags={pipeline.metadata?.tags || []}
+                            onTagsChange={(tags) => {
+                                setFields({
+                                    [`pipelines[${index}].metadata.tags`]: tags
+                                });
+                            }}
+                            errorText={formErrors.pipelines?.[index]?.metadata?.tags}
                         />
 
                         <FormField

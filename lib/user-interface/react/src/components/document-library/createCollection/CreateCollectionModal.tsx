@@ -26,7 +26,7 @@ import {
     useListRagRepositoriesQuery,
 } from '@/shared/reducers/rag.reducer';
 import { CollectionConfigForm } from './CollectionConfigForm';
-import { ChunkingConfigForm } from './ChunkingConfigForm';
+import { ChunkingStepForm } from './ChunkingStepForm';
 import { AccessControlForm } from './AccessControlForm';
 import { ReviewChanges } from '@/shared/modal/ReviewChanges';
 import { getJsonDifference, normalizeError } from '@/shared/util/validationUtils';
@@ -82,7 +82,9 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
         },
     ] = useUpdateCollectionMutation();
 
-    const initialForm: RagCollectionConfig = RagCollectionConfigSchema.partial().parse({}) as RagCollectionConfig;
+    const initialForm: RagCollectionConfig = RagCollectionConfigSchema.partial().parse({
+        allowChunkingOverride: true
+    }) as RagCollectionConfig;
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
 
@@ -100,7 +102,7 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
         formSubmitting: false as boolean,
         form: {
             ...initialForm,
-        },
+        } as RagCollectionConfig,
         activeStepIndex: 0,
     } as CollectionCreateState);
 
@@ -125,7 +127,15 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
             };
             return getJsonDifference(originalEditableFields, toSubmit);
         }
-        return getJsonDifference({}, toSubmit);
+
+        // For new collections, exclude status from the change review
+        // Include default values for boolean fields to ensure they show in diff
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { status, ...toSubmitForReview } = toSubmit;
+        const defaultValues = {
+            allowChunkingOverride: true, // Default value to compare against
+        };
+        return getJsonDifference(defaultValues, toSubmitForReview);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [toSubmit, initialForm, isEdit]);
 
@@ -155,7 +165,7 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
                     allowedGroups: toSubmit.allowedGroups,
                     metadata: toSubmit.metadata,
                     allowChunkingOverride: toSubmit.allowChunkingOverride,
-                });
+                } as RagCollectionConfig);
             } else {
                 resetCreate();
                 createCollection({
@@ -167,7 +177,7 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
                     allowedGroups: toSubmit.allowedGroups,
                     metadata: toSubmit.metadata,
                     allowChunkingOverride: toSubmit.allowChunkingOverride,
-                });
+                } as RagCollectionConfig);
             }
         }
     }
@@ -189,7 +199,7 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
                     allowChunkingOverride: selectedCollection.allowChunkingOverride !== undefined
                         ? selectedCollection.allowChunkingOverride
                         : true,
-                },
+                } as RagCollectionConfig,
             });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -230,13 +240,14 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
                 ? 'Chunking is managed by Bedrock Knowledge Base and cannot be modified'
                 : 'Configure how documents are split into chunks and add metadata tags',
             content: (
-                <ChunkingConfigForm
-                    item={state.form.chunkingStrategy}
+                <ChunkingStepForm
+                    chunkingStrategy={state.form.chunkingStrategy}
+                    metadata={state.form.metadata}
+                    allowChunkingOverride={state.form.allowChunkingOverride}
                     setFields={setFields}
                     touchFields={touchFields}
                     formErrors={errors}
                     disabled={disableChunking}
-                    metadata={state.form.metadata}
                 />
             ),
             isOptional: true,
@@ -275,7 +286,7 @@ export function CreateCollectionModal (props: CreateCollectionModalProps): React
             formSubmitting: false as boolean,
             form: {
                 ...initialForm,
-            },
+            } as RagCollectionConfig,
             activeStepIndex: 0,
         }, ModifyMethod.Set);
         resetCreate();

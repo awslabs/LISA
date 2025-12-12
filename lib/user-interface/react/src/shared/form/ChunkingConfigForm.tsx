@@ -20,8 +20,7 @@ import Input from '@cloudscape-design/components/input';
 import Select from '@cloudscape-design/components/select';
 import { SpaceBetween } from '@cloudscape-design/components';
 import { ChunkingStrategy, ChunkingStrategyType } from '#root/lib/schema';
-import { ModifyMethod } from '@/shared/form/form-props';
-import { TagsInput } from '@/shared/form/TagsInput';
+import { ModifyMethod } from './form-props';
 
 // Utility function to create default chunking strategy
 function createDefaultChunkingStrategy () {
@@ -38,11 +37,10 @@ export type ChunkingConfigFormProps = {
     touchFields(fields: string[], method?: ModifyMethod): void;
     formErrors: any;
     disabled?: boolean;
-    metadata?: { tags?: string[] };
 };
 
 export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElement {
-    const { item, touchFields, setFields, formErrors, disabled = false, metadata } = props;
+    const { item, touchFields, setFields, formErrors, disabled = false } = props;
 
     // Chunking type options
     const chunkingTypeOptions = [
@@ -88,7 +86,7 @@ export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElemen
             </FormField>
 
             {/* Fixed Size Configuration */}
-            {item?.type === ChunkingStrategyType.FIXED && (
+            {(item?.type === ChunkingStrategyType.FIXED || !item?.type) && (
                 <>
                     <FormField
                         label='Chunk Size'
@@ -97,11 +95,25 @@ export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElemen
                     >
                         <Input
                             type='number'
-                            value={String(item.size || 512)}
+                            value={String(
+                                (item?.type === ChunkingStrategyType.FIXED ? item.size : undefined) || 512
+                            )}
                             onChange={({ detail }) => {
-                                setFields({
-                                    'chunkingStrategy.size': Number(detail.value)
-                                });
+                                if (!item || item.type !== ChunkingStrategyType.FIXED) {
+                                    // Create full chunking strategy when item is undefined or not FIXED
+                                    setFields({
+                                        chunkingStrategy: {
+                                            type: ChunkingStrategyType.FIXED,
+                                            size: Number(detail.value),
+                                            overlap: 51 // Default overlap
+                                        }
+                                    });
+                                } else {
+                                    // Update existing FIXED strategy
+                                    setFields({
+                                        'chunkingStrategy.size': Number(detail.value)
+                                    });
+                                }
                             }}
                             onBlur={() => touchFields(['chunkingStrategy.size'])}
                             disabled={disabled}
@@ -115,11 +127,25 @@ export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElemen
                     >
                         <Input
                             type='number'
-                            value={String(item.overlap || 51)}
+                            value={String(
+                                (item?.type === ChunkingStrategyType.FIXED ? item.overlap : undefined) || 51
+                            )}
                             onChange={({ detail }) => {
-                                setFields({
-                                    'chunkingStrategy.overlap': Number(detail.value)
-                                });
+                                if (!item || item.type !== ChunkingStrategyType.FIXED) {
+                                    // Create full chunking strategy when item is undefined or not FIXED
+                                    setFields({
+                                        chunkingStrategy: {
+                                            type: ChunkingStrategyType.FIXED,
+                                            size: 512, // Default size
+                                            overlap: Number(detail.value)
+                                        }
+                                    });
+                                } else {
+                                    // Update existing FIXED strategy
+                                    setFields({
+                                        'chunkingStrategy.overlap': Number(detail.value)
+                                    });
+                                }
                             }}
                             onBlur={() => touchFields(['chunkingStrategy.overlap'])}
                             disabled={disabled}
@@ -127,16 +153,6 @@ export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElemen
                     </FormField>
                 </>
             )}
-
-            {/* Metadata Tags */}
-            <TagsInput
-                label='Tags (optional)'
-                errorText={formErrors?.['metadata.tags'] || formErrors?.metadata?.tags}
-                description='Metadata tags for further organizing and filtering information (max 50 tags)'
-                values={metadata?.tags || []}
-                onChange={(tags) => setFields({ 'metadata.tags': tags })}
-                placeholder='Add tag'
-            />
         </SpaceBetween>
     );
 }

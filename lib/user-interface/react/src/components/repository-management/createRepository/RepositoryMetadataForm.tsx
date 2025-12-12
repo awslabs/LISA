@@ -17,7 +17,7 @@
 import { ReactElement } from 'react';
 import { Container, Header, SpaceBetween } from '@cloudscape-design/components';
 import { FormProps } from '@/shared/form/form-props';
-import { TagsInput } from '@/shared/form/TagsInput';
+import { MetadataForm } from '@/shared/form/MetadataForm';
 
 export type RepositoryMetadata = {
     tags?: string[];
@@ -43,13 +43,11 @@ export function RepositoryMetadataForm (props: RepositoryMetadataFormProps): Rea
             }
         >
             <SpaceBetween size='s'>
-                <TagsInput
-                    label='Tags (optional)'
+                <MetadataForm
+                    tags={item?.tags || []}
+                    onTagsChange={(tags) => setFields({ 'metadata.tags': tags })}
                     errorText={formErrors?.tags}
-                    description='Metadata tags for organizing and filtering repositories (max 50 tags)'
-                    values={item?.tags || []}
-                    onChange={(tags) => setFields({ 'metadata.tags': tags })}
-                    placeholder='Add tag'
+                    tagsDescription='Metadata tags for organizing and filtering repositories (max 50 tags)'
                     disabled={disabled}
                 />
             </SpaceBetween>

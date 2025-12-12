@@ -370,5 +370,93 @@ describe('ChunkingConfigForm', () => {
             // Should show "Fixed Size" as selected
             expect(screen.getByText('Fixed Size')).toBeInTheDocument();
         });
+
+        it('shows size and overlap fields with default values when item is undefined', () => {
+            render(
+                <ChunkingConfigForm
+                    item={undefined}
+                    setFields={mockSetFields}
+                    touchFields={mockTouchFields}
+                    formErrors={{}}
+                />
+            );
+
+            // Verify size and overlap fields are visible with default values
+            const sizeInput = screen.getByLabelText(/chunk size/i) as HTMLInputElement;
+            const overlapInput = screen.getByLabelText(/chunk overlap/i) as HTMLInputElement;
+
+            expect(sizeInput).toBeInTheDocument();
+            expect(overlapInput).toBeInTheDocument();
+            expect(sizeInput.value).toBe('512');
+            expect(overlapInput.value).toBe('51');
+        });
+
+        it('creates full chunking strategy when modifying size field with undefined item', async () => {
+            const user = userEvent.setup();
+
+            render(
+                <ChunkingConfigForm
+                    item={undefined}
+                    setFields={mockSetFields}
+                    touchFields={mockTouchFields}
+                    formErrors={{}}
+                />
+            );
+
+            const sizeInput = screen.getByLabelText(/chunk size/i);
+
+            // Change the size value by typing a single character
+            await user.click(sizeInput);
+            await user.keyboard('{Control>}a{/Control}'); // Select all
+            await user.keyboard('8'); // Type single character to avoid concatenation issues
+
+            // Verify setFields was called with full chunking strategy structure
+            expect(mockSetFields).toHaveBeenCalled();
+            const calls = mockSetFields.mock.calls;
+            const hasFullStrategyCall = calls.some((call) => {
+                const arg = call[0];
+                return (
+                    arg.chunkingStrategy &&
+                    arg.chunkingStrategy.type === ChunkingStrategyType.FIXED &&
+                    typeof arg.chunkingStrategy.size === 'number' &&
+                    arg.chunkingStrategy.overlap === 51
+                );
+            });
+            expect(hasFullStrategyCall).toBe(true);
+        });
+
+        it('creates full chunking strategy when modifying overlap field with undefined item', async () => {
+            const user = userEvent.setup();
+
+            render(
+                <ChunkingConfigForm
+                    item={undefined}
+                    setFields={mockSetFields}
+                    touchFields={mockTouchFields}
+                    formErrors={{}}
+                />
+            );
+
+            const overlapInput = screen.getByLabelText(/chunk overlap/i);
+
+            // Change the overlap value by typing a single character
+            await user.click(overlapInput);
+            await user.keyboard('{Control>}a{/Control}'); // Select all
+            await user.keyboard('9'); // Type single character to avoid concatenation issues
+
+            // Verify setFields was called with full chunking strategy structure
+            expect(mockSetFields).toHaveBeenCalled();
+            const calls = mockSetFields.mock.calls;
+            const hasFullStrategyCall = calls.some((call) => {
+                const arg = call[0];
+                return (
+                    arg.chunkingStrategy &&
+                    arg.chunkingStrategy.type === ChunkingStrategyType.FIXED &&
+                    arg.chunkingStrategy.size === 512 &&
+                    typeof arg.chunkingStrategy.overlap === 'number'
+                );
+            });
+            expect(hasFullStrategyCall).toBe(true);
+        });
     });
 });

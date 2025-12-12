@@ -95,6 +95,13 @@ export class LisaApiBaseConstruct extends Construct {
             projectionType: ProjectionType.ALL,
         });
 
+        // Add GSI for querying tokens by tokenUUID
+        tokenTable.addGlobalSecondaryIndex({
+            indexName: 'tokenUUID-index',
+            partitionKey: { name: 'tokenUUID', type: AttributeType.STRING },
+            projectionType: ProjectionType.ALL,
+        });
+
         // Store token table name in SSM for cross-stack reference
         new StringParameter(scope, 'TokenTableNameParameter', {
             parameterName: tokenTableNameParam,

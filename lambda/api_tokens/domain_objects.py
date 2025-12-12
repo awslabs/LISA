@@ -45,7 +45,7 @@ class CreateTokenUserRequest(BaseModel):
 
 class CreateTokenResponse(BaseModel):
     token: str = Field(description="The actual token (only shown once!)")
-    tokenHash: str = Field(description="Masked hash of the token")
+    tokenUUID: str = Field(description="Unique identifier for the token")
     tokenExpiration: int
     createdDate: int
     createdFor: str
@@ -55,9 +55,9 @@ class CreateTokenResponse(BaseModel):
 
 
 class TokenInfo(BaseModel):
-    """Token info for listing (token is masked)"""
+    """Token information (without the actual token value)"""
 
-    tokenHash: str = Field(description="Masked hash")
+    tokenUUID: str
     tokenExpiration: int
     createdDate: int
     createdFor: str
@@ -66,6 +66,7 @@ class TokenInfo(BaseModel):
     groups: list[str]
     isSystemToken: bool
     isExpired: bool
+    isLegacy: bool = False
 
 
 class ListTokensResponse(BaseModel):
@@ -74,4 +75,4 @@ class ListTokensResponse(BaseModel):
 
 class DeleteTokenResponse(BaseModel):
     message: str
-    tokenHash: str
+    tokenUUID: str

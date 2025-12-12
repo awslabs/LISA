@@ -110,6 +110,9 @@ def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-def _is_api_user(user_groups: list[str]) -> bool:
-    """Check if user is in the 'api-user' group."""
-    return "api-user" in user_groups
+def is_api_user(event: dict) -> bool:
+    """Get API user status from event."""
+    api_group = os.environ.get("API_GROUP", "")
+    groups = get_groups(event)
+    logger.info(f"User groups: {groups} and api group: {api_group}")
+    return api_group in groups

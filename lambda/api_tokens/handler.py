@@ -14,6 +14,7 @@
 
 from datetime import datetime, timedelta
 from typing import Optional
+from uuid import uuid4
 
 from boto3.dynamodb.conditions import Key
 from utilities.auth import generate_token, hash_token
@@ -54,17 +55,18 @@ class CreateTokenAdminHandler:
             if existing:
                 raise TokenAlreadyExistsError(f"User {username} already has a token")
 
-        # Generate token and hash
+        # Generate token, hash, and UUID
         token = generate_token()
         token_hash = hash_token(token)
+        token_uuid = str(uuid4())
 
-        # Set defaults
         created_date = int(datetime.now().timestamp())
         expiration = request.tokenExpiration or int((datetime.now() + timedelta(days=90)).timestamp())
 
         # Store in DynamoDB
         item = {
             "token": token_hash,
+            "tokenUUID": token_uuid,
             "tokenExpiration": expiration,
             "createdDate": created_date,
             "createdBy": created_by,
@@ -78,7 +80,7 @@ class CreateTokenAdminHandler:
         # Return response with actual token (only time it's shown)
         return CreateTokenResponse(
             token=token,  # Plain text token - shown ONLY once
-            tokenHash=token_hash,
+            tokenUUID=token_uuid,
             tokenExpiration=expiration,
             createdDate=created_date,
             createdFor=username,
@@ -102,31 +104,34 @@ class CreateTokenUserHandler:
         items = response.get("Items", [])
         return items[0] if items else None
 
-    def __call__(self, request: CreateTokenUserRequest, username: str, user_groups: list[str], is_admin: bool):
-        # Authorization: User must be admin or in api-user group
-        if not is_admin and "api-user" not in user_groups:
-            raise ForbiddenError("User must be in 'api-user' group to create tokens")
+    def __call__(
+        self, request: CreateTokenUserRequest, username: str, user_groups: list[str], is_admin: bool, is_api_user: bool
+    ):
+        # Authorization: User must be admin or in apiGroup
+        if not is_admin and not is_api_user:
+            raise ForbiddenError("User must be in the API group to create tokens")
 
         # Check if user already has a token
         existing = self._get_user_token(username)
         if existing:
-            raise TokenAlreadyExistsError("You already have a token. Delete it first to create a new one.")
+            raise TokenAlreadyExistsError("Token for user already exists. Delete it first to create a new one.")
 
-        # Generate token and hash
+        # Generate token, hash, and UUID
         token = generate_token()
         token_hash = hash_token(token)
+        token_uuid = str(uuid4())
 
-        # Auto-populate everything
         created_date = int(datetime.now().timestamp())
         expiration = int((datetime.now() + timedelta(days=90)).timestamp())
 
         item = {
             "token": token_hash,
+            "tokenUUID": token_uuid,
             "tokenExpiration": expiration,
             "createdDate": created_date,
             "createdBy": username,
             "createdFor": username,  # User creates token for themselves
-            "groups": user_groups,  # Copy from user's actual groups
+            "groups": user_groups,  # Copied from user's actual groups
             "name": request.name,
             "isSystemToken": False,  # Always false for user-created tokens
         }
@@ -134,7 +139,7 @@ class CreateTokenUserHandler:
 
         return CreateTokenResponse(
             token=token,
-            tokenHash=token_hash,
+            tokenUUID=token_uuid,
             tokenExpiration=expiration,
             createdDate=created_date,
             createdFor=username,
@@ -154,10 +159,10 @@ class ListTokensHandler:
         current_time = int(datetime.now().timestamp())
 
         if is_admin:
-            # Admin sees all tokens
+            # Return all tokens for admins
             response = self.token_table.scan()
         else:
-            # User sees only their own tokens
+            # Users only see their own token
             response = self.token_table.query(
                 IndexName="createdFor-index", KeyConditionExpression=Key("createdFor").eq(username)
             )
@@ -166,19 +171,25 @@ class ListTokensHandler:
 
         tokens = []
         for item in items:
-            # Use .get() to safely access tokenExpiration with a default
             token_expiration = item.get("tokenExpiration", int((datetime.now() + timedelta(days=90)).timestamp()))
 
+            # Determine if token is legacy (no tokenUUID)
+            is_legacy = not bool(item.get("tokenUUID"))
+
+            # For legacy tokens, use token attribute; for modern tokens use the name field
+            token_name = item["token"] if is_legacy else item.get("name", "Unnamed Token")
+
             token_info = TokenInfo(
-                tokenHash=item["token"],
+                tokenUUID=item.get("tokenUUID", "—"),
                 tokenExpiration=token_expiration,
                 createdDate=item.get("createdDate", 0),
-                createdFor=item.get("createdFor", "unknown"),
-                createdBy=item.get("createdBy", "unknown"),
-                name=item.get("name", "Unnamed Token"),
+                createdFor=item.get("createdFor", "—"),
+                createdBy=item.get("createdBy", "—"),
+                name=token_name,
                 groups=item.get("groups", []),
                 isSystemToken=item.get("isSystemToken", False),
                 isExpired=token_expiration < current_time,
+                isLegacy=is_legacy,
             )
             tokens.append(token_info)
 
@@ -191,10 +202,26 @@ class GetTokenHandler:
     def __init__(self, token_table):
         self.token_table = token_table
 
-    def __call__(self, token_hash: str, username: str, is_admin: bool) -> TokenInfo:
-        # Get token from DynamoDB
-        response = self.token_table.get_item(Key={"token": token_hash})
-        item = response.get("Item")
+    def __call__(self, token_uuid: str, username: str, is_admin: bool) -> TokenInfo:
+        item = None
+
+        # Try to find by tokenUUID (modern tokens)
+        response = self.token_table.query(
+            IndexName="tokenUUID-index", KeyConditionExpression=Key("tokenUUID").eq(token_uuid)
+        )
+        items = response.get("Items", [])
+        if items:
+            item = items[0]
+
+        # If not found, try direct lookup by token attribute (legacy tokens)
+        if not item:
+            try:
+                response = self.token_table.get_item(Key={"token": token_uuid})
+                if "Item" in response:
+                    item = response["Item"]
+            except Exception:
+                # Legacy token lookup failed
+                item = None
 
         if not item:
             raise TokenNotFoundError("Token not found")
@@ -205,41 +232,73 @@ class GetTokenHandler:
 
         current_time = int(datetime.now().timestamp())
 
-        # Use .get() to safely access tokenExpiration with a default
         token_expiration = item.get("tokenExpiration", int((datetime.now() + timedelta(days=90)).timestamp()))
 
+        # Determine if token is legacy (no tokenUUID)
+        is_legacy = not bool(item.get("tokenUUID"))
+
+        # For legacy tokens, use token attribute as name; for modern tokens use the name field
+        token_name = item["token"] if is_legacy else item.get("name", "Unnamed Token")
+
         return TokenInfo(
-            tokenHash=item["token"],
+            tokenUUID=item.get("tokenUUID", "—"),
             tokenExpiration=token_expiration,
             createdDate=item.get("createdDate", 0),
-            createdFor=item.get("createdFor", "unknown"),
-            createdBy=item.get("createdBy", "unknown"),
-            name=item.get("name", "Unnamed Token"),
+            createdFor=item.get("createdFor", "—"),
+            createdBy=item.get("createdBy", "—"),
+            name=token_name,
             groups=item.get("groups", []),
             isSystemToken=item.get("isSystemToken", False),
             isExpired=token_expiration < current_time,
+            isLegacy=is_legacy,
         )
 
 
 class DeleteTokenHandler:
-    """Delete token"""
+    """Delete token - handles both modern and legacy tokens"""
 
     def __init__(self, token_table):
         self.token_table = token_table
 
-    def __call__(self, token_hash: str, username: str, is_admin: bool) -> DeleteTokenResponse:
-        # Get token first to check ownership
-        response = self.token_table.get_item(Key={"token": token_hash})
-        item = response.get("Item")
+    def __call__(self, token_uuid: str, username: str, is_admin: bool) -> DeleteTokenResponse:
+        item = None
+
+        # Try to find by tokenUUID (modern tokens)
+        response = self.token_table.query(
+            IndexName="tokenUUID-index", KeyConditionExpression=Key("tokenUUID").eq(token_uuid)
+        )
+        items = response.get("Items", [])
+        if items:
+            item = items[0]
+
+        # If not found, try direct lookup by token attribute (legacy tokens)
+        if not item:
+            try:
+                response = self.token_table.get_item(Key={"token": token_uuid})
+                if "Item" in response:
+                    item = response["Item"]
+            except Exception:
+                # Legacy token lookup failed - this is expected if token doesn't exist
+                item = None
 
         if not item:
             raise TokenNotFoundError("Token not found")
 
-        # Authorization: admin can delete any, user can delete only their own
-        if not is_admin and item.get("createdFor") != username:
+        # Determine if token is legacy (no tokenUUID field)
+        is_legacy = not bool(item.get("tokenUUID"))
+
+        # Only admins can delete legacy tokens, since they "belong to nobody"
+        if is_legacy and not is_admin:
+            raise ForbiddenError("Only administrators can delete legacy tokens.")
+
+        # For modern tokens, check ownership
+        if not is_legacy and not is_admin and item.get("createdFor") != username:
             raise TokenNotFoundError("Token not found")
 
-        # Delete from DynamoDB
+        # Delete from DynamoDB using the hash (PK)
+        token_hash = item["token"]
         self.token_table.delete_item(Key={"token": token_hash})
 
-        return DeleteTokenResponse(message="Token deleted successfully", tokenHash=token_hash)
+        # Return identifier - use tokenUUID for modern tokens, token attribute for legacy
+        return_identifier = item.get("tokenUUID") or token_hash[:16]
+        return DeleteTokenResponse(message="Token deleted successfully", tokenUUID=return_identifier)

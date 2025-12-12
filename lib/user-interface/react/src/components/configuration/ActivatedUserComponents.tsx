@@ -50,7 +50,7 @@ const mcpOptions = {
 };
 
 const apiTokenOptions = {
-    userCreatedApiTokens: 'Allow user created API tokens'
+    enableUserApiTokens: 'Allow user managed API tokens'
 };
 
 type AllOptionKeys<G extends Record<string, Record<string, unknown>>> = {

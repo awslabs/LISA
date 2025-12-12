@@ -94,6 +94,7 @@ export class ApiTokensApi extends Construct {
         const environment = {
             TOKEN_TABLE_NAME: tokenTable.tableName,
             ADMIN_GROUP: config.authConfig?.adminGroup || '',
+            API_GROUP: config.authConfig?.apiGroup || '',
         };
 
         // Create Lambda role with DynamoDB permissions

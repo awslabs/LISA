@@ -145,6 +145,11 @@ def is_valid_api_token(token: str) -> dict | None:
     if not token_info:
         return None
 
+    # Reject legacy tokens without tokenUUID
+    if not token_info.get("tokenUUID"):
+        logger.warning("Legacy token detected - missing tokenUUID attribute. Token must be recreated.")
+        return None
+
     # Check expiration
     token_expiration = token_info.get(TOKEN_EXPIRATION_NAME)
     if not token_expiration:

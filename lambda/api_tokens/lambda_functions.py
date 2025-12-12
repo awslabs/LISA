@@ -23,7 +23,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from mangum import Mangum
-from utilities.auth import get_groups, get_username, is_admin
+from utilities.auth import get_groups, get_username, is_admin, is_api_user
 from utilities.common_functions import retry_config
 from utilities.fastapi_middleware.aws_api_gateway_middleware import AWSAPIGatewayMiddleware
 
@@ -116,7 +116,7 @@ async def create_token_for_user(
 @app.post(path="", include_in_schema=False)
 @app.post(path="/")
 async def create_own_token(request: Request, create_request: CreateTokenUserRequest) -> CreateTokenResponse:
-    """User endpoint to create their own token - requires 'api-user' group membership."""
+    """User endpoint to create their own token - requires API group membership."""
     # Get current user from AWS API Gateway context
     if "aws.event" not in request.scope:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -125,9 +125,10 @@ async def create_own_token(request: Request, create_request: CreateTokenUserRequ
     current_user = get_username(event)
     user_groups = get_groups(event)
     is_admin_user = is_admin(event)
+    has_api_access = is_api_user(event)
 
     handler = CreateTokenUserHandler(token_table)
-    return handler(create_request, current_user, user_groups, is_admin_user)
+    return handler(create_request, current_user, user_groups, is_admin_user, has_api_access)
 
 
 @app.get(path="", include_in_schema=False)
@@ -146,9 +147,9 @@ async def list_tokens(request: Request) -> ListTokensResponse:
     return handler(current_user, is_admin_user)
 
 
-@app.get(path="/{token_hash}")
+@app.get(path="/{token_uuid}")
 async def get_token(
-    token_hash: Annotated[str, Path(title="The token hash to get details for")], request: Request
+    token_uuid: Annotated[str, Path(title="The token UUID to get details for")], request: Request
 ) -> TokenInfo:
     """Get specific token details."""
     # Get current user from AWS API Gateway context
@@ -160,12 +161,12 @@ async def get_token(
     is_admin_user = is_admin(event)
 
     handler = GetTokenHandler(token_table)
-    return handler(token_hash, current_user, is_admin_user)
+    return handler(token_uuid, current_user, is_admin_user)
 
 
-@app.delete(path="/{token_hash}")
+@app.delete(path="/{token_uuid}")
 async def delete_token(
-    token_hash: Annotated[str, Path(title="The token hash to delete")], request: Request
+    token_uuid: Annotated[str, Path(title="The token UUID to delete")], request: Request
 ) -> DeleteTokenResponse:
     """Delete a token."""
     # Get current user from AWS API Gateway context
@@ -177,7 +178,7 @@ async def delete_token(
     is_admin_user = is_admin(event)
 
     handler = DeleteTokenHandler(token_table)
-    return handler(token_hash, current_user, is_admin_user)
+    return handler(token_uuid, current_user, is_admin_user)
 
 
 handler = Mangum(app, lifespan="off", api_gateway_base_path="/api-tokens")

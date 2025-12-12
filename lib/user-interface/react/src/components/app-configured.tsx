@@ -61,6 +61,7 @@ function AppConfigured () {
                     groups: userGroups,
                     isAdmin: userGroups ? isAdmin(userGroups) : false,
                     isUser: window.env.USER_GROUP ? userGroups && isUser(userGroups) : true,
+                    isApiUser: window.env.API_GROUP ? userGroups && isApiUser(userGroups) : false,
                 }),
             );
         }
@@ -90,6 +91,10 @@ function AppConfigured () {
 
     const isUser = (userGroups: any): boolean => {
         return window.env.USER_GROUP ? userGroups.includes(window.env.USER_GROUP) : false;
+    };
+
+    const isApiUser = (userGroups: any): boolean => {
+        return window.env.API_GROUP ? userGroups.includes(window.env.API_GROUP) : false;
     };
 
     const baseHref = document?.querySelector('base')?.getAttribute('href')?.replace(/\/$/, '');

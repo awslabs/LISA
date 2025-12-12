@@ -237,20 +237,6 @@ class ApiTokenAuthorizer:
         ddb_response = self._token_table.get_item(Key={"token": token_hash}, ReturnConsumedCapacity="NONE")
         return ddb_response.get("Item", None)
 
-    # async def is_valid_api_token(self, headers: Dict[str, str]) -> bool:
-    #     """Return if API Token from request headers is valid if found."""
-
-    #     for header_name in AuthHeaders.values():
-    #         token = get_authorization_token(headers, header_name)
-
-    #         if token:
-    #             token_info = await asyncio.to_thread(self._get_token_info, token)
-    #             if token_info:
-    #                 token_expiration = int(token_info.get(TOKEN_EXPIRATION_NAME, datetime.max.timestamp()))
-    #                 current_time = int(datetime.now().timestamp())
-    #                 if current_time < token_expiration:  # token has not expired yet
-    #                     return True
-    #     return False
     async def is_valid_api_token(self, headers: Dict[str, str]) -> Optional[Dict[str, Any]]:
         """Return token info if API Token from request headers is valid, else None."""
 
@@ -265,6 +251,11 @@ class ApiTokenAuthorizer:
                 token_info = await asyncio.to_thread(self._get_token_info, token_hash)
 
                 if token_info:
+                    # Reject legacy tokens without tokenUUID
+                    if not token_info.get("tokenUUID"):
+                        logger.warning("Legacy token detected. Token must be recreated.")
+                        continue
+
                     # Check expiration (now mandatory)
                     token_expiration = token_info.get(TOKEN_EXPIRATION_NAME)
                     if not token_expiration:
@@ -350,30 +341,6 @@ class Authorizer:
         jwt_data = await self.authenticate_request(request)
         return jwt_data
 
-    # async def authenticate_request(self, request: Request) -> Optional[Dict[str, Any]]:
-    #     """Authenticate request and return JWT data if valid, else None. Invalid requests throw an exception"""
-
-    #     logger.trace(f"Authenticating request: {request.method} {request.url.path}")
-    #     # First try API tokens
-    #     logger.trace("Try API Auth Token...")
-    #     if await self.token_authorizer.is_valid_api_token(request.headers):
-    #         logger.trace("Valid API token")
-    #         return None
-
-    #     # Then try management tokens
-    #     logger.trace("Try Management Auth Token...")
-    #     if await self.management_token_authorizer.is_valid_api_token(request.headers):
-    #         logger.trace("Valid Management token")
-    #         return None
-
-    #     # Finally try OIDC Bearer tokens
-    #     logger.trace("Try OIDC Auth Token...")
-    #     jwt_data = await self.oidc_authorizer.id_token_is_valid(request)
-    #     if jwt_data:
-    #         logger.trace("Valid OIDC token")
-    #         return jwt_data
-
-    #     raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     async def authenticate_request(self, request: Request) -> Optional[Dict[str, Any]]:
         """Authenticate request and return JWT data if valid, else None. Invalid requests throw an exception"""
 
@@ -416,42 +383,6 @@ class Authorizer:
         else:
             logger.warning(log_msg)
 
-    # async def can_access(
-    #     self, request: Request, require_admin: bool, jwt_data: Optional[Dict[str, Any]] = None
-    # ) -> bool:
-    #     """Return whether the user is authorized to access the endpoint."""
-    #     endpoint = f"{request.method} {request.url.path}"
-
-    #     if jwt_data is None:
-    #         jwt_data = await self.authenticate_request(request)
-
-    #     # Valid API_TOKEN will be treated as admin
-    #     if not jwt_data:
-    #         auth_method = "API_TOKEN"
-    #         user_id = "api_user"
-    #         has_access = True
-    #         reason = "Valid API/Management token"
-    #     else:
-    #         auth_method = "OIDC"
-    #         user_id = jwt_data.get("sub", jwt_data.get("username", "unknown"))
-
-    #         # If user is admin, always allow access
-    #         if is_user_in_group(jwt_data, self.admin_group, self.jwt_groups_property):
-    #             has_access = True
-    #             reason = "Admin user"
-    #         # If admin is required but user is not admin, deny access
-    #         elif require_admin:
-    #             has_access = False
-    #             reason = "Admin required"
-    #         # For non-admin requests, check user group
-    #         else:
-    #             has_access = self.user_group == "" or is_user_in_group(
-    #                 jwt_data=jwt_data, group=self.user_group, jwt_groups_property=self.jwt_groups_property
-    #             )
-    #             reason = "Valid user group" if has_access else "Invalid user group"
-
-    #     self._log_access_attempt(request, auth_method, user_id, endpoint, has_access, reason)
-    #     return has_access
     async def can_access(
         self, request: Request, require_admin: bool, jwt_data: Optional[Dict[str, Any]] = None
     ) -> bool:

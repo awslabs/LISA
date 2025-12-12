@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-import React, { ReactElement, useState } from 'react';
+import React, { ReactElement, useState, useRef } from 'react';
 import { FormProps } from '../../../shared/form/form-props';
 import { IGuardrailsConfig, GuardrailMode } from '../../../shared/model/model-management.model';
 import {
@@ -39,9 +39,11 @@ export function GuardrailsConfig (props: GuardrailsConfigProps): ReactElement {
     const guardrails = props.item || {};
     const guardrailEntries = Object.entries(guardrails);
     const [groupInputValues, setGroupInputValues] = useState<Record<string, string>>({});
+    const guardrailIdCounter = useRef(0);
 
     const addGuardrail = () => {
-        const newKey = `guardrail-${Date.now()}`;
+        guardrailIdCounter.current += 1;
+        const newKey = `guardrail-${guardrailIdCounter.current}`;
         const newGuardrails = {
             ...guardrails,
             [newKey]: {

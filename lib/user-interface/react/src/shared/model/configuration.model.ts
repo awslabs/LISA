@@ -38,6 +38,7 @@ export type IEnabledComponents = {
     showMcpWorkbench: boolean;
     modelLibrary: boolean;
     encryptSession: boolean;
+    enableUserApiTokens: boolean;
 };
 
 export type ISystemBannerConfiguration = {

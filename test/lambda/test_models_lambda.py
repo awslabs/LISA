@@ -29,6 +29,7 @@ os.environ["MODEL_TABLE_NAME"] = "model-table"
 os.environ["LISA_RAG_VECTOR_STORE_TABLE"] = "vector-store-table"
 os.environ["GUARDRAILS_TABLE_NAME"] = "guardrails-table"
 os.environ["LISA_RAG_VECTOR_STORE_TABLE_PS_NAME"] = "/test/ragVectorStoreTableName"
+os.environ["LISA_RAG_COLLECTIONS_TABLE_PS_NAME"] = "/test/ragCollectionsTableName"
 os.environ["CREATE_SFN_ARN"] = "arn:aws:states:us-east-1:123456789012:stateMachine:CreateModelStateMachine"
 os.environ["DELETE_SFN_ARN"] = "arn:aws:states:us-east-1:123456789012:stateMachine:DeleteModelStateMachine"
 os.environ["UPDATE_SFN_ARN"] = "arn:aws:states:us-east-1:123456789012:stateMachine:UpdateModelStateMachine"
@@ -354,23 +355,30 @@ def test_delete_model_handler(
         guardrails_table_resource=guardrails_table,
     )
 
-    # Mock SSM client and VectorStoreRepository
-    with patch("models.handler.delete_model_handler.ssm_client") as mock_ssm:
+    # Mock SSM client, VectorStoreRepository, and CollectionRepository
+    with patch("models.handler.delete_model_handler.ssm_client") as mock_ssm, patch(
+        "models.handler.delete_model_handler.VectorStoreRepository"
+    ) as mock_repo_class, patch(
+        "models.handler.delete_model_handler.CollectionRepository"
+    ) as mock_collection_repo_class:
         mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "vector-store-table"}}
 
-        with patch("models.handler.delete_model_handler.VectorStoreRepository") as mock_repo_class:
-            mock_repo = mock_repo_class.return_value
-            mock_repo.find_repositories_using_model.return_value = []
+        mock_repo = mock_repo_class.return_value
+        mock_repo.find_repositories_using_model.return_value = []
 
-            # Call handler
-            response = handler("test-model")
+        mock_collection_repo = mock_collection_repo_class.return_value
+        mock_collection_repo.find_collections_using_model.return_value = []
 
-            # Verify response
-            assert isinstance(response.model, LISAModel)
-            assert response.model.modelId == "test-model"
+        # Call handler
+        response = handler("test-model")
 
-            # Verify the repository was checked
-            mock_repo.find_repositories_using_model.assert_called_once_with("test-model")
+        # Verify response
+        assert isinstance(response.model, LISAModel)
+        assert response.model.modelId == "test-model"
+
+        # Verify the repositories were checked
+        mock_repo.find_repositories_using_model.assert_called_once_with("test-model")
+        mock_collection_repo.find_collections_using_model.assert_called_once_with("test-model")
 
     # Test with non-existent model
     with pytest.raises(ModelNotFoundError, match="Model 'non-existent-model' was not found"):
@@ -392,25 +400,32 @@ def test_delete_model_handler_model_in_use_by_repository(
         guardrails_table_resource=guardrails_table,
     )
 
-    # Mock SSM client and VectorStoreRepository
-    with patch("models.handler.delete_model_handler.ssm_client") as mock_ssm:
+    # Mock SSM client, VectorStoreRepository, and CollectionRepository
+    with patch("models.handler.delete_model_handler.ssm_client") as mock_ssm, patch(
+        "models.handler.delete_model_handler.VectorStoreRepository"
+    ) as mock_repo_class, patch(
+        "models.handler.delete_model_handler.CollectionRepository"
+    ) as mock_collection_repo_class:
         mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "vector-store-table"}}
 
-        with patch("models.handler.delete_model_handler.VectorStoreRepository") as mock_repo_class:
-            mock_repo = mock_repo_class.return_value
-            mock_repo.find_repositories_using_model.return_value = [
-                {"repository_id": "test-repo", "usage_type": "repository"}
-            ]
+        mock_repo = mock_repo_class.return_value
+        mock_repo.find_repositories_using_model.return_value = [
+            {"repository_id": "test-repo", "usage_type": "repository"}
+        ]
 
-            # Call handler and expect error
-            with pytest.raises(
-                ModelInUseError,
-                match="Model 'test-model' is currently in use by repository 'test-repo'",
-            ):
-                handler("test-model")
+        mock_collection_repo = mock_collection_repo_class.return_value
+        mock_collection_repo.find_collections_using_model.return_value = []
 
-            # Verify the repository was checked
-            mock_repo.find_repositories_using_model.assert_called_once_with("test-model")
+        # Call handler and expect error
+        with pytest.raises(
+            ModelInUseError,
+            match="Model 'test-model' is currently in use by: repository",
+        ):
+            handler("test-model")
+
+        # Verify the repositories were checked
+        mock_repo.find_repositories_using_model.assert_called_once_with("test-model")
+        mock_collection_repo.find_collections_using_model.assert_called_once_with("test-model")
 
 
 def test_delete_model_handler_model_in_use_by_pipeline(
@@ -428,25 +443,32 @@ def test_delete_model_handler_model_in_use_by_pipeline(
         guardrails_table_resource=guardrails_table,
     )
 
-    # Mock SSM client and VectorStoreRepository
-    with patch("models.handler.delete_model_handler.ssm_client") as mock_ssm:
+    # Mock SSM client, VectorStoreRepository, and CollectionRepository
+    with patch("models.handler.delete_model_handler.ssm_client") as mock_ssm, patch(
+        "models.handler.delete_model_handler.VectorStoreRepository"
+    ) as mock_repo_class, patch(
+        "models.handler.delete_model_handler.CollectionRepository"
+    ) as mock_collection_repo_class:
         mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "vector-store-table"}}
 
-        with patch("models.handler.delete_model_handler.VectorStoreRepository") as mock_repo_class:
-            mock_repo = mock_repo_class.return_value
-            mock_repo.find_repositories_using_model.return_value = [
-                {"repository_id": "test-repo", "usage_type": "pipeline"}
-            ]
+        mock_repo = mock_repo_class.return_value
+        mock_repo.find_repositories_using_model.return_value = [
+            {"repository_id": "test-repo", "usage_type": "pipeline"}
+        ]
 
-            # Call handler and expect error
-            with pytest.raises(
-                ModelInUseError,
-                match="Model 'test-model' is currently in use by repository 'test-repo'",
-            ):
-                handler("test-model")
+        mock_collection_repo = mock_collection_repo_class.return_value
+        mock_collection_repo.find_collections_using_model.return_value = []
 
-            # Verify the repository was checked
-            mock_repo.find_repositories_using_model.assert_called_once_with("test-model")
+        # Call handler and expect error
+        with pytest.raises(
+            ModelInUseError,
+            match="Model 'test-model' is currently in use by: repository",
+        ):
+            handler("test-model")
+
+        # Verify the repositories were checked
+        mock_repo.find_repositories_using_model.assert_called_once_with("test-model")
+        mock_collection_repo.find_collections_using_model.assert_called_once_with("test-model")
 
 
 def test_delete_model_handler_without_vector_store_table(
@@ -703,7 +725,7 @@ async def test_exception_handlers():
     exc = ModelNotFoundError("Model not found")
     response = await model_not_found_handler(request, exc)
     assert response.status_code == 404
-    assert json.loads(response.body)["message"] == "Model not found"
+    assert json.loads(response.body)["detail"] == "Model not found"
 
     # Test RequestValidationError handler
     mock_errors = [{"loc": ["body", "modelId"], "msg": "field required", "type": "value_error.missing"}]
@@ -718,13 +740,13 @@ async def test_exception_handlers():
     exc = ModelAlreadyExistsError("Model already exists")
     response = await user_error_handler(request, exc)
     assert response.status_code == 400
-    assert json.loads(response.body)["message"] == "Model already exists"
+    assert json.loads(response.body)["detail"] == "Model already exists"
 
     # Test user error handler with ValueError
     exc = ValueError("Invalid value")
     response = await user_error_handler(request, exc)
     assert response.status_code == 400
-    assert json.loads(response.body)["message"] == "Invalid value"
+    assert json.loads(response.body)["detail"] == "Invalid value"
 
 
 @pytest.mark.asyncio

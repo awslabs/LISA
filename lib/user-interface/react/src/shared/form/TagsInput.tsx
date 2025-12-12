@@ -22,10 +22,11 @@ type TagsInputProps = FormFieldProps & {
     values: string[];
     onChange: (newValues: string[]) => void;
     placeholder?: string;
+    disabled?: boolean;
 };
 
 export function TagsInput (props: TagsInputProps): ReactElement {
-    const { onChange, values, placeholder = 'Enter tag', ...formFieldProps } = props;
+    const { onChange, values, placeholder = 'Enter tag', disabled = false, ...formFieldProps } = props;
     const [inputValue, setInputValue] = useState('');
 
     const handleAdd = () => {
@@ -57,15 +58,16 @@ export function TagsInput (props: TagsInputProps): ReactElement {
                         label: tag,
                         dismissLabel: `Remove ${tag}`
                     }))}
-                    onDismiss={({ detail: { itemIndex } }) => handleRemove(itemIndex)}
+                    onDismiss={disabled ? undefined : ({ detail: { itemIndex } }) => handleRemove(itemIndex)}
                 />
                 <Input
                     value={inputValue}
                     placeholder={placeholder}
                     onChange={({ detail }) => setInputValue(detail.value)}
                     onKeyDown={handleKeyDown}
+                    disabled={disabled}
                 />
-                <Button onClick={handleAdd}>Add</Button>
+                <Button onClick={handleAdd} disabled={disabled}>Add</Button>
             </SpaceBetween>
         </FormField>
     );

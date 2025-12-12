@@ -187,7 +187,8 @@ export const RagRepositoryConfigSchema = z
     })
     .refine((input) => {
         return !((input.type === RagRepositoryType.OPENSEARCH && input.opensearchConfig === undefined) ||
-            (input.type === RagRepositoryType.PGVECTOR && input.rdsConfig === undefined));
+            (input.type === RagRepositoryType.PGVECTOR && input.rdsConfig === undefined) ||
+            (input.type === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE && input.bedrockKnowledgeBaseConfig === undefined));
     })
     .describe('Configuration schema for RAG repository. Defines settings for OpenSearch.');
 

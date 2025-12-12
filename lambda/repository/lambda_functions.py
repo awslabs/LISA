@@ -1354,6 +1354,69 @@ def get_repository_by_id(event: dict, context: dict) -> Dict[str, Any]:
     return repository
 
 
+def _get_pipeline_key(pipeline: dict) -> str:
+    """Generate a unique key for a pipeline based on immutable fields."""
+    collection_id = pipeline.get("collectionId", "")
+    s3_bucket = pipeline.get("s3Bucket", "")
+    s3_prefix = pipeline.get("s3Prefix", "")
+    return f"{collection_id}:{s3_bucket}:{s3_prefix}"
+
+
+def _validate_immutable_pipeline_fields(current_pipelines: list, new_pipelines: list) -> None:
+    """
+    Validate that immutable pipeline fields haven't changed for existing pipelines.
+
+    Immutable fields: autoRemove, collectionId, s3Bucket, s3Prefix, trigger
+
+    Args:
+        current_pipelines: Current pipeline configurations
+        new_pipelines: New pipeline configurations
+
+    Raises:
+        ValidationError: If any immutable field has changed for an existing pipeline
+    """
+    # If we have the same number of pipelines, check for field changes by position
+    # This handles the case where immutable fields are changed (which would change the key)
+    if len(current_pipelines) == len(new_pipelines):
+        for _i, (current_pipeline, new_pipeline) in enumerate(zip(current_pipelines, new_pipelines)):
+            # Define immutable fields
+            immutable_fields = ["autoRemove", "collectionId", "s3Bucket", "s3Prefix", "trigger"]
+
+            for field in immutable_fields:
+                current_value = current_pipeline.get(field)
+                new_value = new_pipeline.get(field)
+
+                if current_value != new_value:
+                    raise ValidationError(
+                        f"Pipeline field '{field}' cannot be modified for existing pipelines. "
+                        f"Current value: '{current_value}', attempted value: '{new_value}'. "
+                        f"This field requires infrastructure redeployment. Please create a new pipeline instead."
+                    )
+
+    # Also check by key for pipelines that haven't changed position
+    current_by_key = {_get_pipeline_key(p): p for p in current_pipelines}
+    new_by_key = {_get_pipeline_key(p): p for p in new_pipelines}
+
+    # Check existing pipelines for immutable field changes (for pipelines that kept the same key)
+    for key, current_pipeline in current_by_key.items():
+        if key in new_by_key:
+            new_pipeline = new_by_key[key]
+
+            # Define immutable fields
+            immutable_fields = ["autoRemove", "collectionId", "s3Bucket", "s3Prefix", "trigger"]
+
+            for field in immutable_fields:
+                current_value = current_pipeline.get(field)
+                new_value = new_pipeline.get(field)
+
+                if current_value != new_value:
+                    raise ValidationError(
+                        f"Pipeline field '{field}' cannot be modified for existing pipelines. "
+                        f"Current value: '{current_value}', attempted value: '{new_value}'. "
+                        f"This field requires infrastructure redeployment. Please create a new pipeline instead."
+                    )
+
+
 @api_wrapper
 @admin_only
 def update_repository(event: dict, context: dict) -> Dict[str, Any]:
@@ -1417,8 +1480,58 @@ def update_repository(event: dict, context: dict) -> Dict[str, Any]:
                 "Please select at least one data source."
             )
         # Convert bedrockKnowledgeBaseConfig to pipelines
-        updates["pipelines"] = build_pipeline_configs_from_kb_config(request.bedrockKnowledgeBaseConfig)
+        new_pipelines = build_pipeline_configs_from_kb_config(request.bedrockKnowledgeBaseConfig)
+
+        # Preserve existing pipeline metadata (tags, etc.) when updating Bedrock KB repositories
+        if current_pipelines:
+            # Create a mapping of existing pipeline metadata by collectionId
+            existing_metadata = {
+                pipeline.get("collectionId"): pipeline.get("metadata", {})
+                for pipeline in current_pipelines
+                if pipeline.get("collectionId")
+            }
+
+            # Merge existing metadata into new pipeline configurations
+            for pipeline in new_pipelines:
+                collection_id = pipeline.get("collectionId")
+                if collection_id and collection_id in existing_metadata:
+                    # Preserve existing metadata for this collection
+                    pipeline["metadata"] = existing_metadata[collection_id]
+                    logger.info(
+                        f"Preserved metadata for collection {collection_id}: {existing_metadata[collection_id]}"
+                    )
+
+        updates["pipelines"] = new_pipelines
         logger.info(f"Converted {len(request.bedrockKnowledgeBaseConfig.dataSources)} data sources to pipeline configs")
+
+    # Handle direct pipeline updates (preserve existing metadata if not provided)
+    elif "pipelines" in updates and updates["pipelines"] is not None and current_pipelines:
+        # Create a mapping of existing pipeline metadata by collectionId
+        existing_metadata = {
+            pipeline.get("collectionId"): pipeline.get("metadata", {})
+            for pipeline in current_pipelines
+            if pipeline.get("collectionId")
+        }
+
+        # For each new pipeline, preserve existing metadata if metadata is not provided or incomplete
+        for pipeline in updates["pipelines"]:
+            collection_id = pipeline.get("collectionId")
+            if collection_id and collection_id in existing_metadata:
+                existing_meta = existing_metadata[collection_id]
+                current_meta = pipeline.get("metadata", {})
+
+                # If no metadata provided, use existing metadata
+                if not current_meta:
+                    pipeline["metadata"] = existing_meta
+                    logger.info(f"Preserved complete metadata for collection {collection_id}: {existing_meta}")
+                # If metadata provided but missing tags, preserve existing tags
+                elif "tags" not in current_meta and "tags" in existing_meta:
+                    pipeline["metadata"]["tags"] = existing_meta["tags"]
+                    logger.info(f"Preserved tags for collection {collection_id}: {existing_meta['tags']}")
+
+    # Validate immutable pipeline fields for existing repositories
+    if new_pipelines is not None and current_pipelines:
+        _validate_immutable_pipeline_fields(current_pipelines, new_pipelines)
 
     # Check if pipeline configuration has changed
     # Use the converted pipelines from updates if available, otherwise use request.pipelines
@@ -1439,8 +1552,20 @@ def update_repository(event: dict, context: dict) -> Dict[str, Any]:
             else:
                 logger.info("Bedrock KB data sources unchanged, no deployment needed")
         else:
-            # For other repository types, compare full pipeline configs
-            require_deployment = new_pipelines != current_pipelines
+            # For other repository types, check if pipelines were added/removed or immutable fields changed
+            current_pipeline_keys = {_get_pipeline_key(p) for p in current_pipelines}
+            new_pipeline_keys = {_get_pipeline_key(p) for p in new_pipelines}
+
+            # Check if pipelines were added or removed
+            if current_pipeline_keys != new_pipeline_keys:
+                added = new_pipeline_keys - current_pipeline_keys
+                removed = current_pipeline_keys - new_pipeline_keys
+                logger.info(f"Pipeline changes detected: added={list(added)}, removed={list(removed)}")
+                require_deployment = True
+            else:
+                # Check if any immutable fields changed (this would have been caught by validation above)
+                # or if any other pipeline configuration changed
+                require_deployment = new_pipelines != current_pipelines
 
     # Set status based on deployment requirement
     status = VectorStoreStatus.UPDATE_IN_PROGRESS if require_deployment else VectorStoreStatus.UPDATE_COMPLETE

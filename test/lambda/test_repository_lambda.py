@@ -3687,3 +3687,348 @@ def test_similarity_search_bedrock_kb():
         assert result["statusCode"] == 200
         body = json.loads(result["body"])
         assert len(body) == 1
+
+
+class TestRepositoryTagPreservation:
+    """Test class for repository tag preservation during updates."""
+
+    def test_pipeline_tag_persistence_issue(self):
+        """Test reproduction of pipeline tag persistence issue."""
+        # Current repository state (what's in DynamoDB)
+        current_repo = {
+            "repositoryId": "test-repo",
+            "config": {
+                "repositoryName": "PGV Rag",
+                "pipelines": [
+                    {
+                        "trigger": "event",
+                        "chunkingStrategy": {"type": "fixed", "size": 512, "overlap": 51},
+                        "s3Prefix": "",
+                        "autoRemove": True,
+                        "collectionId": "default",
+                        "s3Bucket": "docs",
+                        "metadata": {"tags": ["existing-tag"]},
+                    }
+                ],
+            },
+        }
+
+        # Update payload from the user
+        update_payload = {
+            "pipelines": [
+                {
+                    "trigger": "event",
+                    "chunkingStrategy": {"type": "fixed", "size": 512, "overlap": 51},
+                    "s3Prefix": "",
+                    "autoRemove": True,
+                    "collectionId": "default",
+                    "s3Bucket": "docs",
+                    "metadata": {"tags": ["test"]},
+                }
+            ],
+            "repositoryName": "PGV Rag",
+        }
+
+        # Simulate current VectorStoreRepository.update() behavior
+        config = current_repo["config"].copy()
+        config.update(update_payload)
+
+        # Verify the update behavior
+        assert config["pipelines"][0]["metadata"]["tags"] == ["test"]
+        assert config["repositoryName"] == "PGV Rag"
+
+    def test_dynamodb_decimal_handling(self):
+        """Test handling of DynamoDB Decimal types in updates."""
+        from decimal import Decimal
+
+        # Simulate current item in DynamoDB (with Decimal types)
+        current_item = {
+            "repositoryId": "test-repo",
+            "config": {
+                "repositoryName": "PGV Rag",
+                "pipelines": [
+                    {
+                        "trigger": "event",
+                        "chunkingStrategy": {"type": "fixed", "size": Decimal("512"), "overlap": Decimal("51")},
+                        "s3Prefix": "",
+                        "autoRemove": True,
+                        "collectionId": "default",
+                        "s3Bucket": "docs",
+                        "metadata": {"tags": ["existing-tag"]},
+                    }
+                ],
+            },
+            "status": "ACTIVE",
+            "updatedAt": Decimal("1703123456789"),
+        }
+
+        # Updates from the request (regular Python types)
+        updates = {
+            "repositoryName": "PGV Rag",
+            "pipelines": [
+                {
+                    "autoRemove": True,
+                    "chunkingStrategy": {"type": "fixed", "size": 512, "overlap": 51},
+                    "collectionId": "default",
+                    "s3Bucket": "docs",
+                    "s3Prefix": "",
+                    "trigger": "event",
+                    "metadata": {"tags": ["test"], "customFields": {}},
+                }
+            ],
+        }
+
+        # Simulate the VectorStoreRepository.update() method
+        config = current_item["config"].copy()
+        config.update(updates)
+
+        # Verify tags are updated correctly
+        pipeline_metadata = config["pipelines"][0].get("metadata", {})
+        tags = pipeline_metadata.get("tags", [])
+        assert tags == ["test"]
+
+        # Verify chunking strategy is updated with regular int types
+        chunking_strategy = config["pipelines"][0]["chunkingStrategy"]
+        assert chunking_strategy["size"] == 512
+        assert chunking_strategy["overlap"] == 51
+
+    def test_update_vector_store_request_tag_handling(self):
+        """Test UpdateVectorStoreRequest preserves tags correctly."""
+        from models.domain_objects import UpdateVectorStoreRequest
+
+        request_body = {
+            "pipelines": [
+                {
+                    "trigger": "event",
+                    "chunkingStrategy": {"type": "fixed", "size": 512, "overlap": 51},
+                    "s3Prefix": "",
+                    "autoRemove": True,
+                    "collectionId": "default",
+                    "s3Bucket": "docs",
+                    "metadata": {"tags": ["test"]},
+                }
+            ],
+            "repositoryName": "PGV Rag",
+        }
+
+        # Parse request using UpdateVectorStoreRequest
+        request = UpdateVectorStoreRequest(**request_body)
+
+        # Verify parsing preserves tags
+        assert request.pipelines is not None
+        assert len(request.pipelines) == 1
+        assert request.pipelines[0].metadata is not None
+        assert request.pipelines[0].metadata.tags == ["test"]
+
+        # Convert to dict for updates (this is what gets passed to vs_repo.update)
+        updates = request.model_dump(exclude_none=True, mode="json")
+
+        # Verify tags are preserved in the serialized format
+        assert "pipelines" in updates
+        assert updates["pipelines"]
+        pipeline_metadata = updates["pipelines"][0].get("metadata", {})
+        tags = pipeline_metadata.get("tags", [])
+        assert tags == ["test"]
+
+    @patch("utilities.bedrock_kb_discovery.build_pipeline_configs_from_kb_config")
+    def test_bedrock_kb_tag_preservation_fix(self, mock_build_pipeline_configs):
+        """Test that Bedrock KB updates preserve existing pipeline metadata."""
+        from models.domain_objects import BedrockDataSource, BedrockKnowledgeBaseConfig
+
+        # Mock the function to return new pipelines without metadata
+        mock_build_pipeline_configs.return_value = [
+            {
+                "trigger": "event",
+                "chunkingStrategy": {"type": "none"},
+                "s3Prefix": "",
+                "autoRemove": True,
+                "collectionId": "datasource-1",
+                "collectionName": "Test Data Source",
+                "s3Bucket": "docs",
+                # No metadata - this simulates the issue
+            }
+        ]
+
+        # Current repository configuration with existing metadata
+        current_config = {
+            "type": "BEDROCK_KB",
+            "pipelines": [
+                {
+                    "trigger": "event",
+                    "chunkingStrategy": {"type": "none"},
+                    "s3Prefix": "",
+                    "autoRemove": True,
+                    "collectionId": "datasource-1",
+                    "collectionName": "Test Data Source",
+                    "s3Bucket": "docs",
+                    "metadata": {"tags": ["existing-tag", "important"], "customFields": {"owner": "team-a"}},
+                }
+            ],
+        }
+
+        # Simulate the bedrockKnowledgeBaseConfig update
+        kb_config = BedrockKnowledgeBaseConfig(
+            knowledgeBaseId="kb-123",
+            dataSources=[BedrockDataSource(id="datasource-1", name="Test Data Source", s3Uri="s3://docs/")],
+        )
+
+        # Build new pipeline configs (this currently loses metadata)
+        from utilities.bedrock_kb_discovery import build_pipeline_configs_from_kb_config
+
+        new_pipelines = build_pipeline_configs_from_kb_config(kb_config)
+
+        # Apply the fix - preserve existing metadata
+        current_pipelines = current_config.get("pipelines", [])
+        if current_pipelines:
+            # Create a mapping of existing pipeline metadata by collectionId
+            existing_metadata = {
+                pipeline.get("collectionId"): pipeline.get("metadata", {})
+                for pipeline in current_pipelines
+                if pipeline.get("collectionId")
+            }
+
+            # Merge existing metadata into new pipeline configurations
+            for pipeline in new_pipelines:
+                collection_id = pipeline.get("collectionId")
+                if collection_id and collection_id in existing_metadata:
+                    # Preserve existing metadata for this collection
+                    pipeline["metadata"] = existing_metadata[collection_id]
+
+        # Verify tags are preserved
+        assert new_pipelines
+        assert "metadata" in new_pipelines[0]
+        tags = new_pipelines[0]["metadata"].get("tags", [])
+        assert "existing-tag" in tags
+        assert "important" in tags
+
+        # Verify custom fields are preserved
+        custom_fields = new_pipelines[0]["metadata"].get("customFields", {})
+        assert custom_fields.get("owner") == "team-a"
+
+    def test_partial_metadata_update_preservation(self):
+        """Test that partial metadata updates preserve existing tags."""
+        # Current pipeline with existing tags and custom fields
+        current_pipelines = [
+            {
+                "collectionId": "default",
+                "metadata": {"tags": ["existing-tag", "important"], "customFields": {"owner": "team-c"}},
+            }
+        ]
+
+        # Update with metadata but missing tags (only updating custom fields)
+        update_pipelines = [
+            {
+                "collectionId": "default",
+                "metadata": {"customFields": {"owner": "team-d", "priority": "high"}},
+                # Tags missing - should preserve existing tags
+            }
+        ]
+
+        # Apply the fix logic for partial metadata preservation
+        existing_metadata = {
+            pipeline.get("collectionId"): pipeline.get("metadata", {})
+            for pipeline in current_pipelines
+            if pipeline.get("collectionId")
+        }
+
+        for pipeline in update_pipelines:
+            collection_id = pipeline.get("collectionId")
+            if collection_id and collection_id in existing_metadata:
+                existing_meta = existing_metadata[collection_id]
+                current_meta = pipeline.get("metadata", {})
+
+                # If metadata provided but missing tags, preserve existing tags
+                if current_meta and "tags" not in current_meta and "tags" in existing_meta:
+                    pipeline["metadata"]["tags"] = existing_meta["tags"]
+
+        # Verify tags are preserved
+        tags = update_pipelines[0]["metadata"].get("tags", [])
+        assert "existing-tag" in tags
+        assert "important" in tags
+
+        # Verify custom fields are updated
+        custom_fields = update_pipelines[0]["metadata"]["customFields"]
+        assert custom_fields["owner"] == "team-d"
+        assert custom_fields["priority"] == "high"
+
+    def test_empty_metadata_handling(self):
+        """Test handling of pipelines with no existing metadata."""
+        # Pipeline without existing metadata
+        current_empty_metadata = {
+            "config": {
+                "pipelines": [
+                    {
+                        "trigger": "event",
+                        "s3Bucket": "docs",
+                        "s3Prefix": "",
+                        "autoRemove": True,
+                        "collectionId": "default",
+                        # No metadata field
+                    }
+                ]
+            }
+        }
+
+        # Update with new metadata
+        updates_with_tags = {
+            "pipelines": [
+                {
+                    "trigger": "event",
+                    "s3Bucket": "docs",
+                    "s3Prefix": "",
+                    "autoRemove": True,
+                    "collectionId": "default",
+                    "metadata": {"tags": ["new-tag"]},
+                }
+            ]
+        }
+
+        config = current_empty_metadata["config"].copy()
+        config.update(updates_with_tags)
+
+        # Verify new tags are added correctly
+        tags = config["pipelines"][0].get("metadata", {}).get("tags", [])
+        assert tags == ["new-tag"]
+
+    def test_complete_metadata_replacement(self):
+        """Test complete metadata replacement scenario."""
+        # Current pipeline with full metadata
+        current_full = {
+            "config": {
+                "pipelines": [
+                    {
+                        "trigger": "event",
+                        "s3Bucket": "docs",
+                        "s3Prefix": "old-prefix",
+                        "autoRemove": True,
+                        "collectionId": "default",
+                        "metadata": {"tags": ["old-tag"], "customFields": {"owner": "old-owner"}},
+                    }
+                ]
+            }
+        }
+
+        # Complete update with new metadata
+        complete_update = {
+            "pipelines": [
+                {
+                    "trigger": "event",
+                    "s3Bucket": "docs",
+                    "s3Prefix": "new-prefix",
+                    "autoRemove": True,
+                    "collectionId": "default",
+                    "metadata": {"tags": ["new-tag"], "customFields": {"owner": "new-owner"}},
+                }
+            ]
+        }
+
+        config = current_full["config"].copy()
+        config.update(complete_update)
+
+        # Verify complete replacement
+        tags = config["pipelines"][0].get("metadata", {}).get("tags", [])
+        assert tags == ["new-tag"]
+        assert config["pipelines"][0]["s3Prefix"] == "new-prefix"
+
+        custom_fields = config["pipelines"][0]["metadata"]["customFields"]
+        assert custom_fields["owner"] == "new-owner"

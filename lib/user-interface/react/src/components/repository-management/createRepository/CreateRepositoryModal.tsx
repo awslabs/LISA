@@ -22,6 +22,7 @@ import { useNotificationService } from '../../../shared/util/hooks';
 import { setConfirmationModal } from '../../../shared/reducers/modal.reducer';
 import { useCreateRagRepositoryMutation, useUpdateRagRepositoryMutation } from '../../../shared/reducers/rag.reducer';
 import { RepositoryConfigForm } from './RepositoryConfigForm';
+import { RepositoryMetadataForm } from './RepositoryMetadataForm';
 import { ReviewChanges } from '../../../shared/modal/ReviewChanges';
 import { getJsonDifference, normalizeError } from '../../../shared/util/validationUtils';
 import { ModifyMethod } from '../../../shared/validation/modify-method';
@@ -68,7 +69,9 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
         },
     ] = useUpdateRagRepositoryMutation();
 
-    const initialForm: RagRepositoryConfig = RagRepositoryConfigSchema.partial().parse({}) as RagRepositoryConfig;
+    const initialForm: RagRepositoryConfig = RagRepositoryConfigSchema.partial().parse({
+        metadata: { tags: [] }
+    }) as RagRepositoryConfig;
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
 
@@ -103,7 +106,11 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
 
     const reviewError = normalizeError('Repository', isEdit ? updateError : createError);
 
-    const requiredFields = [['repositoryId', 'type', 'rdsConfig.username', 'rdsConfig.dbName', 'rdsConfig.dbPort', 'opensearchConfig.dataNodes', 'opensearchConfig.dataNodes', 'opensearchConfig.dataNodeInstanceType'], []];
+    const requiredFields = [
+        ['repositoryId', 'type', 'rdsConfig.username', 'rdsConfig.dbName', 'rdsConfig.dbPort', 'opensearchConfig.dataNodes', 'opensearchConfig.dataNodes', 'opensearchConfig.dataNodeInstanceType'], // Step 1: Repository Configuration
+        [], // Step 2: Pipeline Configuration (optional)
+        [], // Step 3: Metadata & Tags (optional)
+    ];
 
 
     function handleSubmit () {
@@ -164,6 +171,11 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
             });
         }
 
+        // Ensure metadata is initialized
+        if (!parsedValue.metadata) {
+            parsedValue.metadata = { tags: [] };
+        }
+
         if (props.isEdit) {
             setState({ ...state, form: { ...parsedValue } });
         }
@@ -213,6 +225,20 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
                     isEdit={isEdit}
                     repositoryId={state.form.repositoryId}
                     repositoryType={state.form.type} />
+            ),
+            isOptional: true,
+            onEdit: true,
+        },
+        {
+            title: 'Metadata & Tags',
+            description: 'Add metadata tags to organize and categorize your repository',
+            content: (
+                <RepositoryMetadataForm
+                    item={state.form.metadata}
+                    setFields={setFields}
+                    touchFields={touchFields}
+                    formErrors={errors.metadata}
+                />
             ),
             isOptional: true,
             onEdit: true,

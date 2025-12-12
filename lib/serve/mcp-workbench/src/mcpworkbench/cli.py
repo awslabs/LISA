@@ -166,7 +166,7 @@ def main(
     except Exception as e:
         logger.error(f"Failed to start server: {e}")
         if debug:
-            import traceback
+            import traceback  # noqa: PLC0415
 
             traceback.print_exc()
         sys.exit(1)

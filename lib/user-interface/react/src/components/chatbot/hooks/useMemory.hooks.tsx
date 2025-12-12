@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { ChatMemory } from '@/shared/util/chat-memory';
 import { LisaChatMessageHistory } from '@/components/adapters/lisa-chat-history';
@@ -41,17 +41,19 @@ export const useMemory = (
         }),
     );
 
-    // Update memory when session history or buffer size changes
-    useEffect(() => {
-        setMemory(
-            new ChatMemory({
-                chatHistory: new LisaChatMessageHistory(session),
-                returnMessages: false,
-                memoryKey: 'history',
-                k: chatConfiguration.sessionConfiguration.chatHistoryBufferSize,
-            }),
-        );
+    // Update memory when session history or buffer size changes using useMemo
+    const updatedMemory = useMemo(() => {
+        return new ChatMemory({
+            chatHistory: new LisaChatMessageHistory(session),
+            returnMessages: false,
+            memoryKey: 'history',
+            k: chatConfiguration.sessionConfiguration.chatHistoryBufferSize,
+        });
     }, [session, chatConfiguration.sessionConfiguration.chatHistoryBufferSize]);
+
+    useEffect(() => {
+        setMemory(updatedMemory);
+    }, [updatedMemory]);
 
     // Update metadata when model or configuration changes
     useEffect(() => {

@@ -177,6 +177,7 @@ export function McpServerForm (props: McpServerFormProps) {
     // Reset test connection state when URL changes
     useEffect(() => {
         if (testConnectionUrl !== state.form.url) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setTestConnectionUrl('');
             setIsTestingConnection(false);
         }
@@ -185,6 +186,7 @@ export function McpServerForm (props: McpServerFormProps) {
     // Reset testing state when connection completes
     useEffect(() => {
         if (testConnectionUrl && (connectionState === 'ready' || connectionState === 'failed')) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setIsTestingConnection(false);
         }
     }, [connectionState, testConnectionUrl]);

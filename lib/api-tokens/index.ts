@@ -1,0 +1,40 @@
+/**
+  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License").
+  You may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/
+
+import { Stack, StackProps } from 'aws-cdk-lib';
+import { Construct } from 'constructs';
+
+import { ApiTokensApi, ApiTokensApiProps } from './api-tokens';
+
+export * from './api-tokens';
+
+export type LisaApiTokensStackProps = ApiTokensApiProps & StackProps;
+
+/**
+ * Lisa API Tokens Stack.
+ */
+export class LisaApiTokensStack extends Stack {
+    /**
+     * @param {Construct} scope - The parent or owner of the construct.
+     * @param {string} id - The unique identifier for the construct within its scope.
+     * @param {LisaApiTokensStackProps} props - Properties for the Stack.
+     */
+    constructor (scope: Construct, id: string, props: LisaApiTokensStackProps) {
+        super(scope, id, props);
+
+        new ApiTokensApi(this, id + 'Resources', props);
+    }
+}

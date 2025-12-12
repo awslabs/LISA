@@ -24,7 +24,7 @@ import {
     TextContent, Toggle
 } from '@cloudscape-design/components';
 import 'react';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useCollection } from '@cloudscape-design/collection-hooks';
 import { useLazyGetMcpServerQuery } from '@/shared/reducers/mcp-server.reducer';
@@ -66,19 +66,13 @@ export function McpServerDetails () {
         }
     }, [isUpdatingError, updateError, notificationService]);
 
-    // Use useMemo to derive preferences instead of useEffect with setState
-    const derivedPreferences = useMemo(() => {
+    useEffect(() => {
         if (userPreferences) {
-            return userPreferences;
+            setPreferences(userPreferences);
         } else {
-            return {...DefaultUserPreferences, user: userName};
+            setPreferences({...DefaultUserPreferences, user: userName});
         }
     }, [userPreferences, userName]);
-
-    // Update preferences state only when derivedPreferences changes
-    useEffect(() => {
-        setPreferences(derivedPreferences);
-    }, [derivedPreferences]);
 
     const toggleTool = (toolName: string, enabled: boolean) => {
         const existingMcpPrefs = preferences.preferences.mcp ?? {enabledServers: [], overrideAllApprovals: false};

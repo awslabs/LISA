@@ -62,6 +62,7 @@ export const McpConnection = ({ server, onToolsChange, onConnectionChange }: {
 
 // Custom hook to manage multiple MCP connections dynamically
 export const useMultipleMcp = (servers: McpServer[], mcpPreferences: McpPreferences) => {
+    const [allTools, setAllTools] = useState([]);
     const [serverToolsMap, setServerToolsMap] = useState<Map<string, any[]>>(new Map());
     const [connectionsMap, setConnectionsMap] = useState<Map<string, any>>(new Map());
     const [toolToServerMap, setToolToServerMap] = useState<Map<string, string>>(new Map());
@@ -100,9 +101,10 @@ export const useMultipleMcp = (servers: McpServer[], mcpPreferences: McpPreferen
         });
     }, []);
 
-    // Derive allTools from serverToolsMap using useMemo instead of useEffect
-    const allTools = useMemo(() => {
-        return Array.from(serverToolsMap.values()).flat();
+    useEffect(() => {
+        // Combine all tools from all servers
+        const combinedTools = Array.from(serverToolsMap.values()).flat();
+        setAllTools(combinedTools);
     }, [serverToolsMap]);
 
     const callTool = useCallback(async (toolName: string, args: any) => {

@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import React, { ReactElement, useEffect, useMemo } from 'react';
+import React, { ReactElement, useEffect } from 'react';
 import { FormProps } from '../../../shared/form/form-props';
 import FormField from '@cloudscape-design/components/form-field';
 import Select from '@cloudscape-design/components/select';
@@ -186,7 +186,7 @@ export function ScheduleConfig (props: ScheduleConfigProps): ReactElement {
     const selectedScheduleType = scheduleType !== ScheduleType.NONE ? scheduleTypeOptions.find((option) => option.value === scheduleType) : null;
 
     // Run validation whenever schedule data changes
-    const derivedValidationErrors = useMemo(() => {
+    useEffect(() => {
         const errors: { [key: string]: string } = {};
 
         if (isScheduleEnabled && scheduleType !== ScheduleType.NONE) {
@@ -206,13 +206,8 @@ export function ScheduleConfig (props: ScheduleConfigProps): ReactElement {
             }
         }
 
-        return errors;
+        setValidationErrors(errors);
     }, [isScheduleEnabled, scheduleType, props.item.dailySchedule, props.item.recurringSchedule, props.item.timezone]);
-
-    // Update validation errors state when derived errors change
-    useEffect(() => {
-        setValidationErrors(derivedValidationErrors);
-    }, [derivedValidationErrors]);
 
     // Helper functions for weekly schedule management
     const getDefaultWeeklySchedule = (): IWeeklySchedule => ({

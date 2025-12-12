@@ -28,12 +28,12 @@ export const useSession = (sessionId: string, getSessionById: any) => {
     const dispatch = useAppDispatch();
     const auth = useAuth();
 
-    const [session, setSession] = useState<LisaChatSession>(() => ({
+    const [session, setSession] = useState<LisaChatSession>({
         history: [],
         sessionId: '',
         userId: '',
-        startTime: new Date().toISOString(),
-    }));
+        startTime: new Date(Date.now()).toISOString(),
+    });
     const [internalSessionId, setInternalSessionId] = useState<string | null>(null);
     const [loadingSession, setLoadingSession] = useState(false);
     const [chatConfiguration, setChatConfiguration] = useState<IChatConfiguration>(baseConfig);
@@ -45,7 +45,6 @@ export const useSession = (sessionId: string, getSessionById: any) => {
         dispatch(setBreadcrumbs([]));
 
         if (sessionId) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
             setInternalSessionId(sessionId);
             setLoadingSession(true);
             setSession((prev) => ({ ...prev, history: [] }));
@@ -58,7 +57,7 @@ export const useSession = (sessionId: string, getSessionById: any) => {
                         history: [],
                         sessionId: sessionId,
                         userId: auth.user?.profile.sub,
-                        startTime: new Date().toISOString(),
+                        startTime: new Date(Date.now()).toISOString(),
                     };
                 }
                 setSession(sess);
@@ -75,7 +74,7 @@ export const useSession = (sessionId: string, getSessionById: any) => {
                 history: [],
                 sessionId: newSessionId,
                 userId: auth.user?.profile.sub,
-                startTime: new Date().toISOString(),
+                startTime: new Date(Date.now()).toISOString(),
             };
             setSession(newSession);
         }

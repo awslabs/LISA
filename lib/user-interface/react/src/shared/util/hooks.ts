@@ -43,5 +43,5 @@ export function useDebounce<T extends (...args: any[]) => void> (callback: T, de
     // useMemo is necessary because useCallback doesn't understand the dependencies for the debounced function
     const debounced = useMemo(() => debounce(callback, delay), [callback, delay]);
 
-    return useCallback((...args: Parameters<T>) => debounced(...args), [debounced]);
+    return useCallback(debounced, [debounced]);
 }

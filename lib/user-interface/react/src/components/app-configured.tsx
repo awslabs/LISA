@@ -19,7 +19,7 @@ import { AuthProvider, useAuth } from 'react-oidc-context';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import App from '../App';
 import { onMcpAuthorization } from 'use-mcp';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Spinner from '@cloudscape-design/components/spinner';
 
 import { OidcConfig } from '../config/oidc.config';
@@ -50,8 +50,23 @@ function AppConfigured () {
     const [oidcUser, setOidcUser] = useState<User | void>();
     const auth = useAuth();
 
-    // Define helper functions before they are used
-    const getGroups = useCallback((oidcUserProfile: UserProfile): any => {
+    useEffect(() => {
+        if (oidcUser) {
+            const userGroups = getGroups(oidcUser.profile);
+            dispatch(
+                updateUserState({
+                    name: oidcUser.profile.name,
+                    preferred_username: oidcUser.profile.preferred_username,
+                    email: oidcUser.profile.email,
+                    groups: userGroups,
+                    isAdmin: userGroups ? isAdmin(userGroups) : false,
+                    isUser: window.env.USER_GROUP ? userGroups && isUser(userGroups) : true,
+                }),
+            );
+        }
+    }, [dispatch, oidcUser]);
+
+    const getGroups = (oidcUserProfile: UserProfile): any => {
         if (window.env.JWT_GROUPS_PROP) {
             const props: string[] = window.env.JWT_GROUPS_PROP.split('.');
             let currentNode: any = oidcUserProfile;
@@ -67,31 +82,15 @@ function AppConfigured () {
         } else {
             return undefined;
         }
-    }, []);
+    };
 
-    const isAdmin = useCallback((userGroups: any): boolean => {
+    const isAdmin = (userGroups: any): boolean => {
         return window.env.ADMIN_GROUP ? userGroups.includes(window.env.ADMIN_GROUP) : false;
-    }, []);
+    };
 
-    const isUser = useCallback((userGroups: any): boolean => {
+    const isUser = (userGroups: any): boolean => {
         return window.env.USER_GROUP ? userGroups.includes(window.env.USER_GROUP) : false;
-    }, []);
-
-    useEffect(() => {
-        if (oidcUser) {
-            const userGroups = getGroups(oidcUser.profile);
-            dispatch(
-                updateUserState({
-                    name: oidcUser.profile.name,
-                    preferred_username: oidcUser.profile.preferred_username,
-                    email: oidcUser.profile.email,
-                    groups: userGroups,
-                    isAdmin: userGroups ? isAdmin(userGroups) : false,
-                    isUser: window.env.USER_GROUP ? userGroups && isUser(userGroups) : true,
-                }),
-            );
-        }
-    }, [dispatch, oidcUser, getGroups, isAdmin, isUser]);
+    };
 
     const baseHref = document?.querySelector('base')?.getAttribute('href')?.replace(/\/$/, '');
 

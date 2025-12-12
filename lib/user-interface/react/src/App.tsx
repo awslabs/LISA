@@ -90,6 +90,7 @@ const AdminRoute = ({ children }: RouteProps) => {
 };
 
 function App () {
+    const [showNavigation, setShowNavigation] = useState(false);
     const [nav, setNav] = useState(null);
     const confirmationModal: ConfirmationModalProps = useAppSelector((state) => state.modal.confirmationModal);
     const auth = useAuth();
@@ -115,8 +116,13 @@ function App () {
         applyMode(colorScheme);
     }, [colorScheme]);
 
-    // Derive showNavigation from nav state instead of using useEffect
-    const showNavigation = !!nav;
+    useEffect(() => {
+        if (nav) {
+            setShowNavigation(true);
+        } else {
+            setShowNavigation(false);
+        }
+    }, [nav]);
 
     return (
         <ColorSchemeContext.Provider value={{ colorScheme, setColorScheme }}>

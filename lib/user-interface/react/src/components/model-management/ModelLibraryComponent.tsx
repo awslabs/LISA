@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-import { ReactElement, useEffect, useMemo, useState } from 'react';
+import { ReactElement, useEffect, useState } from 'react';
 import { Box, Cards, CollectionPreferences, Header, Pagination, TextFilter } from '@cloudscape-design/components';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import { useGetAllModelsQuery } from '../../shared/reducers/model-management.reducer';
@@ -43,56 +43,31 @@ export function ModelLibraryComponent () : ReactElement {
     const [preferences, setPreferences] = useLocalStorage('ModelLibraryPreferences', DEFAULT_PREFERENCES);
     const [count, setCount] = useState('');
 
-    // Check if polling should stop and update state accordingly
     useEffect(() => {
         const finalStatePredicate = (model) => [ModelStatus.InService, ModelStatus.Failed, ModelStatus.Stopped].includes(model.status);
         if (allModels?.every(finalStatePredicate)) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
             setShouldPoll(false);
         }
-    }, [allModels]);
+    }, [allModels, setShouldPoll]);
 
-    // Derive filtered models and pagination data using useMemo
-    const { paginatedModels, totalCount, pageCount } = useMemo(() => {
-        if (!allModels) {
-            return {
-                filteredModels: [],
-                paginatedModels: [],
-                totalCount: 0,
-                pageCount: 1
-            };
+    useEffect(() => {
+        let newPageCount = 0;
+        if (searchText){
+            const filteredModels = allModels.filter((model) => JSON.stringify(model).toLowerCase().includes(searchText.toLowerCase()));
+            setMatchedModels(filteredModels.slice(preferences.pageSize * (currentPageIndex - 1), preferences.pageSize * currentPageIndex));
+            newPageCount = Math.ceil(filteredModels.length / preferences.pageSize);
+            setCount(filteredModels.length.toString());
+        } else {
+            setMatchedModels(allModels ? allModels.slice(preferences.pageSize * (currentPageIndex - 1), preferences.pageSize * currentPageIndex) : []);
+            newPageCount = Math.ceil(allModels ? (allModels.length / preferences.pageSize) : 1);
+            setCount(allModels ? allModels.length.toString() : '0');
         }
 
-        const filtered = searchText
-            ? allModels.filter((model) => JSON.stringify(model).toLowerCase().includes(searchText.toLowerCase()))
-            : allModels;
-
-        const startIndex = preferences.pageSize * (currentPageIndex - 1);
-        const endIndex = startIndex + preferences.pageSize;
-        const paginated = filtered.slice(startIndex, endIndex);
-        const calculatedPageCount = Math.ceil(filtered.length / preferences.pageSize) || 1;
-
-        return {
-            paginatedModels: paginated,
-            totalCount: filtered.length,
-            pageCount: calculatedPageCount
-        };
-    }, [allModels, searchText, preferences.pageSize, currentPageIndex]);
-
-    // Update state based on derived values
-    useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setMatchedModels(paginatedModels);
-
-        setCount(totalCount.toString());
-
-        if (pageCount < numberOfPages && currentPageIndex > pageCount) {
-
+        if (newPageCount < numberOfPages){
             setCurrentPageIndex(1);
         }
-
-        setNumberOfPages(pageCount);
-    }, [paginatedModels, totalCount, pageCount, numberOfPages, currentPageIndex]);
+        setNumberOfPages(newPageCount);
+    }, [allModels, searchText, preferences, currentPageIndex, numberOfPages]);
 
     return (
         <Cards

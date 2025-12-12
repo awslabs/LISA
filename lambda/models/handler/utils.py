@@ -14,9 +14,13 @@
 
 """Common utility functions across all API handlers."""
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
+
+from utilities.auth import user_has_group_access
+from utilities.validation import ValidationError
 
 from ..domain_objects import GuardrailConfig, LISAModel
+from ..exception import InvalidStateTransitionError, ModelNotFoundError
 
 
 def to_lisa_model(model_dict: Dict[str, Any]) -> LISAModel:
@@ -26,6 +30,85 @@ def to_lisa_model(model_dict: Dict[str, Any]) -> LISAModel:
         model_dict["model_config"]["modelUrl"] = model_dict["model_url"]
     lisa_model: LISAModel = LISAModel.model_validate(model_dict["model_config"])
     return lisa_model
+
+
+def get_model_and_validate_access(
+    model_table, model_id: str, user_groups: Optional[List[str]] = None, is_admin: bool = False
+) -> Dict[str, Any]:
+    """
+    Get model from DynamoDB and validate user access
+
+    Args:
+        model_table: DynamoDB table resource
+        model_id: ID of the model to retrieve
+        user_groups: User's group memberships
+        is_admin: Whether user is admin
+
+    Returns:
+        Dict: Model item from DynamoDB
+
+    Raises:
+        ModelNotFoundError: If model doesn't exist
+        ValidationError: If user doesn't have access to model
+    """
+    model_response = model_table.get_item(Key={"model_id": model_id})
+    if "Item" not in model_response:
+        raise ModelNotFoundError(f"Model {model_id} not found")
+
+    model_item = model_response["Item"]
+
+    # Check if user has access to this model based on groups
+    if not is_admin:
+        allowed_groups = model_item.get("model_config", {}).get("allowedGroups", [])
+        user_groups = user_groups or []
+
+        # Check if user has access
+        if not user_has_group_access(user_groups, allowed_groups):
+            raise ValidationError(f"Access denied to access model {model_id}")
+
+    return model_item
+
+
+def get_model_and_validate_status(
+    model_table,
+    model_id: str,
+    allowed_statuses: List[str] = None,
+    user_groups: Optional[List[str]] = None,
+    is_admin: bool = False,
+) -> Dict[str, Any]:
+    """
+    Get model from DynamoDB, validate user access, and check model status
+
+    Args:
+        model_table: DynamoDB table resource
+        model_id: ID of the model to retrieve
+        allowed_statuses: List of allowed model statuses for the operation
+                         Defaults to ["InService", "Stopped"] for schedule operations
+        user_groups: User's group memberships
+        is_admin: Whether user is admin
+
+    Returns:
+        Dict: Model item from DynamoDB
+
+    Raises:
+        ModelNotFoundError: If model doesn't exist
+        ValidationError: If user doesn't have access to model
+        InvalidStateTransitionError: If model is not in allowed status
+    """
+    if allowed_statuses is None:
+        allowed_statuses = ["InService", "Stopped"]
+
+    model_item = get_model_and_validate_access(model_table, model_id, user_groups, is_admin)
+
+    model_status = model_item.get("model_status")
+    if model_status not in allowed_statuses:
+        status_list = "', '".join(allowed_statuses)
+        raise InvalidStateTransitionError(
+            f"Cannot perform operation when model is in '{model_status}' state, "
+            f"model must be in one of: '{status_list}'."
+        )
+
+    return model_item
 
 
 def create_guardrail_config(item: Dict[str, Any]) -> GuardrailConfig:

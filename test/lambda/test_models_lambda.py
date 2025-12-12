@@ -20,6 +20,7 @@ from unittest.mock import MagicMock, patch
 
 import boto3
 import pytest
+from fastapi import HTTPException, Request
 from models.domain_objects import (
     AutoScalingConfig,
     AutoScalingInstanceConfig,
@@ -28,6 +29,7 @@ from models.domain_objects import (
     ContainerHealthCheckConfig,
     CreateModelRequest,
     CreateModelResponse,
+    DeleteModelResponse,
     InferenceContainer,
     LISAModel,
     LoadBalancerConfig,
@@ -36,8 +38,14 @@ from models.domain_objects import (
     ModelStatus,
     ModelType,
     UpdateModelRequest,
+    UpdateModelResponse,
 )
-from models.exception import InvalidStateTransitionError, ModelAlreadyExistsError, ModelNotFoundError
+from models.exception import (
+    InvalidStateTransitionError,
+    ModelAlreadyExistsError,
+    ModelInUseError,
+    ModelNotFoundError,
+)
 from models.handler.base_handler import BaseApiHandler
 from models.handler.create_model_handler import CreateModelHandler
 from models.handler.delete_model_handler import DeleteModelHandler
@@ -45,6 +53,17 @@ from models.handler.get_model_handler import GetModelHandler
 from models.handler.list_models_handler import ListModelsHandler
 from models.handler.update_model_handler import UpdateModelHandler
 from models.handler.utils import to_lisa_model
+from models.lambda_functions import (
+    app,
+    create_model,
+    delete_model,
+    get_admin_status_and_groups,
+    get_instances,
+    model_not_found_handler,
+    update_model,
+    user_error_handler,
+    validation_exception_handler,
+)
 from moto import mock_aws
 
 # Set mock AWS credentials
@@ -53,7 +72,9 @@ os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
 os.environ["AWS_SECURITY_TOKEN"] = "testing"
 os.environ["AWS_SESSION_TOKEN"] = "testing"
 os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+os.environ["AWS_REGION"] = "us-east-1"
 os.environ["MODEL_TABLE_NAME"] = "model-table"
+os.environ["LISA_RAG_VECTOR_STORE_TABLE"] = "vector-store-table"
 os.environ["CREATE_SFN_ARN"] = "arn:aws:states:us-east-1:123456789012:stateMachine:CreateModelStateMachine"
 os.environ["DELETE_SFN_ARN"] = "arn:aws:states:us-east-1:123456789012:stateMachine:DeleteModelStateMachine"
 os.environ["UPDATE_SFN_ARN"] = "arn:aws:states:us-east-1:123456789012:stateMachine:UpdateModelStateMachine"
@@ -331,16 +352,90 @@ def test_delete_model_handler(
         guardrails_table_resource=guardrails_table,
     )
 
-    # Call handler
-    response = handler("test-model")
+    # Mock VectorStoreRepository to return no usages
+    with patch("models.handler.delete_model_handler.VectorStoreRepository") as mock_repo_class:
+        mock_repo = mock_repo_class.return_value
+        mock_repo.find_repositories_using_model.return_value = []
 
-    # Verify response
-    assert isinstance(response.model, LISAModel)
-    assert response.model.modelId == "test-model"
+        # Call handler
+        response = handler("test-model")
+
+        # Verify response
+        assert isinstance(response.model, LISAModel)
+        assert response.model.modelId == "test-model"
+
+        # Verify the repository was checked
+        mock_repo.find_repositories_using_model.assert_called_once_with("test-model")
 
     # Test with non-existent model
     with pytest.raises(ModelNotFoundError, match="Model 'non-existent-model' was not found"):
         handler("non-existent-model")
+
+
+def test_delete_model_handler_model_in_use_by_repository(
+    mock_stepfunctions_client, model_table, sample_model, mock_autoscaling_client, guardrails_table
+):
+    """Test DeleteModelHandler raises error when model is in use by repository."""
+    # Add sample model to table
+    model_table.put_item(Item=sample_model)
+
+    # Create handler instance
+    handler = DeleteModelHandler(
+        autoscaling_client=mock_autoscaling_client,
+        stepfunctions_client=mock_stepfunctions_client,
+        model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
+    )
+
+    # Mock VectorStoreRepository to return repository usage
+    with patch("models.handler.delete_model_handler.VectorStoreRepository") as mock_repo_class:
+        mock_repo = mock_repo_class.return_value
+        mock_repo.find_repositories_using_model.return_value = [
+            {"repository_id": "test-repo", "usage_type": "repository"}
+        ]
+
+        # Call handler and expect error
+        with pytest.raises(
+            ModelInUseError,
+            match="Model 'test-model' is currently in use by repository 'test-repo'",
+        ):
+            handler("test-model")
+
+        # Verify the repository was checked
+        mock_repo.find_repositories_using_model.assert_called_once_with("test-model")
+
+
+def test_delete_model_handler_model_in_use_by_pipeline(
+    mock_stepfunctions_client, model_table, sample_model, mock_autoscaling_client, guardrails_table
+):
+    """Test DeleteModelHandler raises error when model is in use by pipeline."""
+    # Add sample model to table
+    model_table.put_item(Item=sample_model)
+
+    # Create handler instance
+    handler = DeleteModelHandler(
+        autoscaling_client=mock_autoscaling_client,
+        stepfunctions_client=mock_stepfunctions_client,
+        model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
+    )
+
+    # Mock VectorStoreRepository to return pipeline usage
+    with patch("models.handler.delete_model_handler.VectorStoreRepository") as mock_repo_class:
+        mock_repo = mock_repo_class.return_value
+        mock_repo.find_repositories_using_model.return_value = [
+            {"repository_id": "test-repo", "usage_type": "pipeline"}
+        ]
+
+        # Call handler and expect error
+        with pytest.raises(
+            ModelInUseError,
+            match="Model 'test-model' is currently in use by repository 'test-repo'",
+        ):
+            handler("test-model")
+
+        # Verify the repository was checked
+        mock_repo.find_repositories_using_model.assert_called_once_with("test-model")
 
 
 def test_get_model_handler(
@@ -555,7 +650,6 @@ async def test_exception_handlers():
     """Test exception handlers."""
     from fastapi.encoders import jsonable_encoder
     from fastapi.exceptions import RequestValidationError
-    from models.lambda_functions import model_not_found_handler, user_error_handler, validation_exception_handler
 
     # Setup mock request
     request = MagicMock()
@@ -592,7 +686,6 @@ async def test_exception_handlers():
 async def test_fastapi_endpoints(sample_model, model_table, mock_autoscaling_client, mock_stepfunctions_client):
     """Test FastAPI endpoints."""
     from fastapi.testclient import TestClient
-    from models.lambda_functions import app
 
     # Create test client
     client = TestClient(app)
@@ -604,7 +697,11 @@ async def test_fastapi_endpoints(sample_model, model_table, mock_autoscaling_cli
         "models.lambda_functions.UpdateModelHandler"
     ) as mock_update_handler, patch(
         "models.lambda_functions.DeleteModelHandler"
-    ) as mock_delete_handler:
+    ) as mock_delete_handler, patch(
+        "models.lambda_functions.get_admin_status_and_groups"
+    ) as mock_get_admin_status:
+        # Mock admin status - return admin=True for all operations in this test
+        mock_get_admin_status.return_value = (True, [])
 
         # Setup handler mocks
         create_handler_instance = MagicMock()
@@ -721,7 +818,6 @@ async def test_fastapi_endpoints(sample_model, model_table, mock_autoscaling_cli
 @pytest.mark.asyncio
 async def test_get_instances():
     """Test get_instances endpoint."""
-    from models.lambda_functions import get_instances
 
     # Mock the shape_for method to return a mock with enum attribute
     mock_shape = MagicMock()
@@ -738,3 +834,242 @@ async def test_get_instances():
         assert "t2.micro" in result
         assert "t3.small" in result
         assert "m5.large" in result
+
+
+@pytest.fixture
+def admin_event():
+    """Create an AWS event with admin user."""
+    return {
+        "requestContext": {
+            "authorizer": {
+                "username": "admin-user",
+                "groups": json.dumps(["admin-group"]),
+            }
+        }
+    }
+
+
+@pytest.fixture
+def non_admin_event():
+    """Create an AWS event with non-admin user."""
+    return {
+        "requestContext": {
+            "authorizer": {
+                "username": "regular-user",
+                "groups": json.dumps(["user-group"]),
+            }
+        }
+    }
+
+
+@pytest.mark.asyncio
+async def test_get_admin_status_and_groups():
+    """Test the get_admin_status_and_groups helper function."""
+
+    # Test with admin event
+    admin_event = {
+        "requestContext": {
+            "authorizer": {
+                "username": "admin-user",
+                "groups": json.dumps(["admin-group"]),
+            }
+        }
+    }
+
+    mock_request = MagicMock(spec=Request)
+    mock_request.scope = {"aws.event": admin_event}
+
+    with patch("models.lambda_functions.is_admin") as mock_is_admin, patch(
+        "models.lambda_functions.get_groups"
+    ) as mock_get_groups:
+        mock_is_admin.return_value = True
+        mock_get_groups.return_value = ["admin-group"]
+
+        admin_status, user_groups = get_admin_status_and_groups(mock_request)
+        assert admin_status is True
+        assert user_groups == ["admin-group"]
+
+    # Test with non-admin event
+    non_admin_event = {
+        "requestContext": {
+            "authorizer": {
+                "username": "regular-user",
+                "groups": json.dumps(["user-group"]),
+            }
+        }
+    }
+
+    mock_request.scope = {"aws.event": non_admin_event}
+
+    with patch("models.lambda_functions.is_admin") as mock_is_admin, patch(
+        "models.lambda_functions.get_groups"
+    ) as mock_get_groups:
+        mock_is_admin.return_value = False
+        mock_get_groups.return_value = ["user-group"]
+
+        admin_status, user_groups = get_admin_status_and_groups(mock_request)
+        assert admin_status is False
+        assert user_groups == ["user-group"]
+
+    # Test with no event in scope
+    mock_request.scope = {}
+    admin_status, user_groups = get_admin_status_and_groups(mock_request)
+    assert admin_status is False
+    assert user_groups == []
+
+
+@pytest.mark.asyncio
+async def test_create_model_admin_required(
+    sample_model, model_table, mock_autoscaling_client, mock_stepfunctions_client, admin_event, non_admin_event
+):
+    """Test that create_model endpoint requires admin access."""
+
+    # Test non-admin cannot create
+    mock_request = MagicMock(spec=Request)
+    mock_request.scope = {"aws.event": non_admin_event}
+
+    create_request = CreateModelRequest(
+        modelId="test-model", modelName="test-model", modelType=ModelType.TEXTGEN, streaming=True
+    )
+
+    with patch("models.lambda_functions.is_admin") as mock_is_admin, patch(
+        "models.lambda_functions.get_groups"
+    ) as mock_get_groups:
+        mock_is_admin.return_value = False
+        mock_get_groups.return_value = []
+
+        with pytest.raises(HTTPException) as exc_info:
+            await create_model(create_request, mock_request)
+        assert exc_info.value.status_code == 403
+        assert "User does not have permission to create models" in str(exc_info.value.detail)
+
+
+@pytest.mark.asyncio
+async def test_update_model_admin_required(
+    sample_model, model_table, mock_autoscaling_client, mock_stepfunctions_client, admin_event, non_admin_event
+):
+    """Test that update_model endpoint requires admin access."""
+
+    # Test non-admin cannot update
+    mock_request = MagicMock(spec=Request)
+    mock_request.scope = {"aws.event": non_admin_event}
+
+    update_request = UpdateModelRequest(streaming=False)
+
+    with patch("models.lambda_functions.is_admin") as mock_is_admin, patch(
+        "models.lambda_functions.get_groups"
+    ) as mock_get_groups:
+        mock_is_admin.return_value = False
+        mock_get_groups.return_value = []
+
+        with pytest.raises(HTTPException) as exc_info:
+            await update_model("test-model", update_request, mock_request)
+        assert exc_info.value.status_code == 403
+        assert "User does not have permission to update models" in str(exc_info.value.detail)
+
+
+@pytest.mark.asyncio
+async def test_delete_model_admin_required(
+    sample_model, model_table, mock_autoscaling_client, mock_stepfunctions_client, admin_event, non_admin_event
+):
+    """Test that delete_model endpoint requires admin access."""
+
+    # Test non-admin cannot delete
+    mock_request = MagicMock(spec=Request)
+    mock_request.scope = {"aws.event": non_admin_event}
+
+    with patch("models.lambda_functions.is_admin") as mock_is_admin, patch(
+        "models.lambda_functions.get_groups"
+    ) as mock_get_groups:
+        mock_is_admin.return_value = False
+        mock_get_groups.return_value = []
+
+        with pytest.raises(HTTPException) as exc_info:
+            await delete_model("test-model", mock_request)
+        assert exc_info.value.status_code == 403
+        assert "User does not have permission to delete models" in str(exc_info.value.detail)
+
+
+@pytest.mark.asyncio
+async def test_create_update_delete_admin_allowed(
+    sample_model, model_table, mock_autoscaling_client, mock_stepfunctions_client, admin_event
+):
+    """Test that admin users can successfully create, update, and delete models."""
+
+    mock_request = MagicMock(spec=Request)
+    mock_request.scope = {"aws.event": admin_event}
+
+    with patch("models.lambda_functions.is_admin") as mock_is_admin, patch(
+        "models.lambda_functions.get_groups"
+    ) as mock_get_groups, patch("models.lambda_functions.CreateModelHandler") as mock_create_handler, patch(
+        "models.lambda_functions.UpdateModelHandler"
+    ) as mock_update_handler, patch(
+        "models.lambda_functions.DeleteModelHandler"
+    ) as mock_delete_handler:
+        mock_is_admin.return_value = True
+        mock_get_groups.return_value = ["admin-group"]
+
+        # Mock create handler
+        create_handler_instance = MagicMock()
+        create_model_response = CreateModelResponse(
+            model=LISAModel(
+                modelId="new-model",
+                modelName="new-model-name",
+                modelType=ModelType.TEXTGEN,
+                status=ModelStatus.CREATING,
+                streaming=True,
+            )
+        )
+        create_handler_instance.return_value = create_model_response
+        mock_create_handler.return_value = create_handler_instance
+
+        # Test admin can create
+        create_request = CreateModelRequest(
+            modelId="test-model", modelName="test-model", modelType=ModelType.TEXTGEN, streaming=True
+        )
+        response = await create_model(create_request, mock_request)
+        assert isinstance(response, CreateModelResponse)
+        assert response.model.modelId == "new-model"
+
+        # Mock update handler
+        model_table.put_item(Item=sample_model)
+        update_handler_instance = MagicMock()
+        update_model_response = UpdateModelResponse(
+            model=LISAModel(
+                modelId="test-model",
+                modelName="gpt-3.5-turbo",
+                modelType=ModelType.TEXTGEN,
+                status=ModelStatus.IN_SERVICE,
+                streaming=False,
+                features=[{"name": "test-feature", "overview": "This is a test feature"}],
+            )
+        )
+        update_handler_instance.return_value = update_model_response
+        mock_update_handler.return_value = update_handler_instance
+
+        # Test admin can update
+        update_request = UpdateModelRequest(streaming=False)
+        response = await update_model("test-model", update_request, mock_request)
+        assert isinstance(response, UpdateModelResponse)
+        assert response.model.modelId == "test-model"
+
+        # Mock delete handler
+        delete_handler_instance = MagicMock()
+        delete_model_response = DeleteModelResponse(
+            model=LISAModel(
+                modelId="test-model",
+                modelName="gpt-3.5-turbo",
+                modelType=ModelType.TEXTGEN,
+                status=ModelStatus.DELETING,
+                streaming=True,
+                features=[{"name": "test-feature", "overview": "This is a test feature"}],
+            )
+        )
+        delete_handler_instance.return_value = delete_model_response
+        mock_delete_handler.return_value = delete_handler_instance
+
+        # Test admin can delete
+        response = await delete_model("test-model", mock_request)
+        assert isinstance(response, DeleteModelResponse)
+        assert response.model.modelId == "test-model"
+        assert response.model.status == ModelStatus.DELETING

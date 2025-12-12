@@ -20,6 +20,7 @@ import os
 from copy import deepcopy
 from datetime import datetime, UTC
 from typing import Any, Dict
+from zoneinfo import ZoneInfo
 
 import boto3
 from botocore.config import Config
@@ -30,6 +31,7 @@ from models.exception import (
     StackFailedToCreateException,
     UnexpectedCloudFormationStateException,
 )
+from models.scheduling import schedule_monitoring
 from utilities.common_functions import (
     get_account_and_partition,
     get_cert_path,
@@ -76,6 +78,98 @@ def get_container_path(inference_container_type: InferenceContainer) -> str:
     }
     # API validation before state machine guarantees the value exists.
     return path_mapping[inference_container_type]
+
+
+def adjust_initial_capacity_for_schedule(prepared_event: Dict[str, Any]) -> None:
+    """Adjust Auto Scaling Group initial capacity based on schedule configuration"""
+    try:
+        # Check if scheduling is configured
+        auto_scaling_config = prepared_event.get("autoScalingConfig", {})
+        scheduling_config = auto_scaling_config.get("scheduling")
+
+        if (
+            not scheduling_config
+            or not isinstance(scheduling_config, dict)
+            or not scheduling_config.get("scheduleEnabled")
+        ):
+            logger.info("No scheduling configured - using original capacity settings")
+            return
+
+        schedule_type = scheduling_config.get("scheduleType")
+        timezone_name = scheduling_config.get("timezone")
+
+        try:
+            tz = ZoneInfo(timezone_name)
+            now = datetime.now(tz)
+            current_time = now.time()
+            current_day = now.strftime("%A").lower()
+            is_within_schedule = False
+
+            if schedule_type == "RECURRING" and scheduling_config.get("recurringSchedule"):
+                # Daily recurring schedule
+                recurring_schedule = scheduling_config["recurringSchedule"]
+                start_time_str = recurring_schedule.get("startTime")
+                stop_time_str = recurring_schedule.get("stopTime")
+
+                if start_time_str and stop_time_str:
+                    # Parse times
+                    start_hour, start_minute = map(int, start_time_str.split(":"))
+                    stop_hour, stop_minute = map(int, stop_time_str.split(":"))
+
+                    start_time_obj = datetime.min.time().replace(hour=start_hour, minute=start_minute)
+                    stop_time_obj = datetime.min.time().replace(hour=stop_hour, minute=stop_minute)
+
+                    # Check if current time is within the schedule
+                    if start_time_obj <= stop_time_obj:
+                        # Normal schedule within same day
+                        is_within_schedule = start_time_obj <= current_time <= stop_time_obj
+                    else:
+                        # Schedule crosses midnight
+                        is_within_schedule = current_time >= start_time_obj or current_time <= stop_time_obj
+
+            elif schedule_type == "DAILY" and scheduling_config.get("dailySchedule"):
+                # Daily schedule
+                daily_schedule = scheduling_config["dailySchedule"]
+                today_schedule = daily_schedule.get(current_day)
+
+                if today_schedule and today_schedule.get("startTime") and today_schedule.get("stopTime"):
+                    start_time_str = today_schedule["startTime"]
+                    stop_time_str = today_schedule["stopTime"]
+
+                    # Parse times
+                    start_hour, start_minute = map(int, start_time_str.split(":"))
+                    stop_hour, stop_minute = map(int, stop_time_str.split(":"))
+
+                    start_time_obj = datetime.min.time().replace(hour=start_hour, minute=start_minute)
+                    stop_time_obj = datetime.min.time().replace(hour=stop_hour, minute=stop_minute)
+
+                    # Check if current time is within the schedule
+                    if start_time_obj <= stop_time_obj:
+                        # Normal schedule within same day
+                        is_within_schedule = start_time_obj <= current_time <= stop_time_obj
+                    else:
+                        # Schedule crosses midnight
+                        is_within_schedule = current_time >= start_time_obj or current_time <= stop_time_obj
+
+            # Adjust capacity based on schedule
+            if is_within_schedule:
+                logger.info(f"Current time {current_time} ({timezone_name}) is within scheduled hours")
+                # Keep original capacity settings
+            else:
+                logger.info(f"Current time {current_time} ({timezone_name}) is outside scheduled hours")
+                # Set desired capacity to 0 for deployment outside scheduled hours
+                auto_scaling_config["minCapacity"] = 0
+                auto_scaling_config["desiredCapacity"] = 0
+
+        except Exception as time_error:
+            logger.error(f"Error processing schedule time logic: {time_error}", exc_info=True)
+            # If we can't determine the schedule, use default capacity to be safe
+            logger.info("Using original capacity settings due to schedule processing error")
+
+    except Exception as e:
+        logger.error(f"Error adjusting initial capacity for schedule: {e}", exc_info=True)
+        # If scheduling logic fails, proceed with original capacity settings
+        logger.info("Using original capacity settings due to scheduling error")
 
 
 def handle_set_model_to_creating(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -244,6 +338,9 @@ def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, 
     prepared_event = camelize_object(event)
     prepared_event["containerConfig"]["environment"] = event["containerConfig"]["environment"]
 
+    # Adjust initial capacity based on schedule if scheduling is configured
+    adjust_initial_capacity_for_schedule(prepared_event)
+
     # Handle ECR images differently - use the existing ECR image instead of the built one
     if event["image_info"].get("image_type") == "ecr":
         # For pre-existing ECR images, construct the ARN using the image repository
@@ -265,27 +362,67 @@ def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, 
             "type": "ecr",
         }
 
-    response = lambdaClient.invoke(
-        FunctionName=os.environ["ECS_MODEL_DEPLOYER_FN_ARN"],
-        Payload=json.dumps({"modelConfig": prepared_event}),
-    )
+    # Remove scheduling configuration from autoScalingConfig before sending to ECS deployer
+    if "autoScalingConfig" in prepared_event and "scheduling" in prepared_event["autoScalingConfig"]:
+        del prepared_event["autoScalingConfig"]["scheduling"]
 
-    payload = response["Payload"].read()
-    payload = json.loads(payload)
+    # Log the complete payload being sent (excluding large environment variables)
+    debug_payload = deepcopy(prepared_event)
+    if "containerConfig" in debug_payload and "environment" in debug_payload["containerConfig"]:
+        debug_payload["containerConfig"][
+            "environment"
+        ] = f"<{len(debug_payload['containerConfig']['environment'])} env vars>"
+
+    try:
+        response = lambdaClient.invoke(
+            FunctionName=os.environ["ECS_MODEL_DEPLOYER_FN_ARN"],
+            Payload=json.dumps({"modelConfig": prepared_event}),
+        )
+
+    except Exception as invoke_error:
+        raise StackFailedToCreateException(
+            json.dumps(
+                {
+                    "error": f"Failed to invoke ECS Model Deployer Lambda: {str(invoke_error)}",
+                    "event": event,
+                    "invoke_error": str(invoke_error),
+                }
+            )
+        )
+
+    try:
+        payload = response["Payload"].read()
+        payload = json.loads(payload)
+    except Exception as parse_error:
+        raise StackFailedToCreateException(
+            json.dumps(
+                {
+                    "error": f"Failed to parse ECS Model Deployer response: {str(parse_error)}",
+                    "event": event,
+                    "raw_response": str(response["Payload"].read()),
+                    "parse_error": str(parse_error),
+                }
+            )
+        )
+
     stack_name = payload.get("stackName", None)
 
     if not stack_name:
-        # Log the full payload for debugging
-        logger.error(f"ECS Model Deployer response: {payload}")
-        error_message = payload.get("errorMessage", "Unknown error")
-        error_type = payload.get("errorType", "Unknown error type")
-
+        error_message = payload.get("errorMessage")
+        error_type = payload.get("errorType")
+        trace = payload.get("trace", [])
         raise StackFailedToCreateException(
             json.dumps(
                 {
                     "error": f"Failed to create Model CloudFormation Stack. {error_type}: {error_message}",
                     "event": event,
                     "deployer_response": payload,
+                    "debug_info": {
+                        "error_type": error_type,
+                        "error_message": error_message,
+                        "stack_trace": trace,
+                        "full_response": payload,
+                    },
                 }
             )
         )
@@ -408,6 +545,19 @@ def handle_add_model_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str
             ":asg": event.get("autoScalingGroup", ""),
         },
     )
+
+    # If scheduling is configured, sync model status to ensure it reflects actual ASG state
+    scheduling_config = event.get("autoScalingConfig", {}).get("scheduling")
+    auto_scaling_group = event.get("autoScalingGroup")
+
+    if scheduling_config and auto_scaling_group:
+        try:
+            schedule_monitoring.sync_model_status(
+                {"operation": "sync_status", "modelId": event["modelId"], "autoScalingGroup": auto_scaling_group}
+            )
+            logger.info(f"Synced model status after creation for {event['modelId']}")
+        except Exception as sync_error:
+            logger.error(f"Failed to sync status after model creation: {sync_error}")
 
     return output_dict
 

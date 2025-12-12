@@ -24,14 +24,13 @@ import { ContainerConfig } from './ContainerConfig';
 import { AutoScalingConfig } from './AutoScalingConfig';
 import { LoadBalancerConfig } from './LoadBalancerConfig';
 import { GuardrailsConfig } from './GuardrailsConfig';
-import { useCreateModelMutation, useUpdateModelMutation } from '../../../shared/reducers/model-management.reducer';
+import { useCreateModelMutation, useUpdateModelMutation, useUpdateScheduleMutation, useDeleteScheduleMutation } from '../../../shared/reducers/model-management.reducer';
 import { useAppDispatch } from '../../../config/store';
 import { useNotificationService } from '../../../shared/util/hooks';
 import { ModifyMethod } from '../../../shared/validation/modify-method';
 import { getJsonDifference, normalizeError } from '../../../shared/util/validationUtils';
 import { setConfirmationModal } from '../../../shared/reducers/modal.reducer';
 import { ReviewChanges } from '../../../shared/modal/ReviewChanges';
-import { getDefaults } from '#root/lib/schema/zodUtil';
 import { EcsRestartWarning } from '../EcsRestartWarning';
 
 export type CreateModelModalProps = {
@@ -60,9 +59,15 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         updateModelMutation,
         { isSuccess: isUpdateSuccess, isError: isUpdateError, error: updateError, isLoading: isUpdating, reset: resetUpdate },
     ] = useUpdateModelMutation();
-    const initialForm = {
-        ...getDefaults(ModelRequestSchema),
-    };
+    const [
+        updateScheduleMutation,
+        { isSuccess: isScheduleUpdateSuccess, isError: isScheduleUpdateError, error: scheduleUpdateError, isLoading: isScheduleUpdating, reset: resetScheduleUpdate },
+    ] = useUpdateScheduleMutation();
+    const [
+        deleteScheduleMutation,
+        { isSuccess: isScheduleDeleteSuccess, isError: isScheduleDeleteError, error: scheduleDeleteError, isLoading: isScheduleDeleting, reset: resetScheduleDelete },
+    ] = useDeleteScheduleMutation();
+    const initialForm = ModelRequestSchema.partial().parse({});
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
 
@@ -252,21 +257,69 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                 updateRequest.containerConfig = containerConfig;
             }
 
-            // Handle autoScalingConfig if present
-            if (updateFields.autoScalingConfig) {
-                updateRequest.autoScalingInstanceConfig = _.pickBy(updateFields.autoScalingConfig,
-                    (value) => value !== undefined
-                );
-            }
+            // Check if this is a scheduling-only update
+            const isSchedulingOnlyUpdate = (() => {
+                // Must have autoScalingConfig with scheduling
+                if (!updateFields.autoScalingConfig?.scheduling) {
+                    return false;
+                }
 
-            // Handle guardrailsConfig if present
-            if (updateFields.guardrailsConfig !== undefined) {
-                // Send the complete current guardrails config from state.form, not just the diff
-                // This ensures all guardrails are preserved unless explicitly marked for deletion
-                updateRequest.guardrailsConfig = state.form.guardrailsConfig;
-            }
+                // autoScalingConfig should only contain scheduling (no other properties)
+                const autoScalingKeys = Object.keys(updateFields.autoScalingConfig);
+                const hasOnlyScheduling = autoScalingKeys.length === 1 && autoScalingKeys.includes('scheduling');
 
-            updateModelMutation(updateRequest);
+                if (!hasOnlyScheduling) {
+                    return false;
+                }
+
+                // updateFields should only contain modelId and autoScalingConfig (no other updates)
+                const updateKeys = Object.keys(updateFields);
+                const expectedKeys = ['modelId', 'autoScalingConfig'];
+                const hasOnlyExpectedKeys = updateKeys.length === expectedKeys.length && expectedKeys.every((key) => updateKeys.includes(key));
+                return hasOnlyExpectedKeys;
+            })();
+
+            if (isSchedulingOnlyUpdate) {
+                // Check if scheduling is being disabled or enabled
+                const schedulingConfig = state.form.autoScalingConfig.scheduling;
+                const isScheduleDisabled = !schedulingConfig ||
+                    schedulingConfig.scheduleEnabled === false ||
+                    !schedulingConfig.scheduleType ||
+                    schedulingConfig.scheduleType === 'NONE';
+
+                if (isScheduleDisabled) {
+                    resetScheduleDelete();
+                    deleteScheduleMutation({
+                        modelId: props.selectedItems[0].modelId
+                    });
+                } else {
+                    resetScheduleUpdate();
+                    updateScheduleMutation({
+                        modelId: props.selectedItems[0].modelId,
+                        scheduleConfig: schedulingConfig
+                    });
+                }
+            } else {
+                // Handle autoScalingConfig if present (non-scheduling changes)
+                if (updateFields.autoScalingConfig) {
+                    // Only pick instance-specific fields for autoScalingInstanceConfig
+                    const instanceConfigFields = ['minCapacity', 'maxCapacity', 'desiredCapacity', 'cooldown', 'defaultInstanceWarmup'];
+                    const autoScalingInstanceConfig = _.pick(updateFields.autoScalingConfig, instanceConfigFields);
+                    const filteredInstanceConfig = _.pickBy(autoScalingInstanceConfig, (value) => value !== undefined);
+
+                    // Only include autoScalingInstanceConfig if it has at least one instance-specific property
+                    if (!_.isEmpty(filteredInstanceConfig)) {
+                        updateRequest.autoScalingInstanceConfig = filteredInstanceConfig;
+                    }
+                }
+
+                // Handle guardrailsConfig if present
+                if (updateFields.guardrailsConfig !== undefined) {
+                    updateRequest.guardrailsConfig = state.form.guardrailsConfig;
+                }
+
+                updateModelMutation(updateRequest);
+            }
         }
     }
 
@@ -329,8 +382,33 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isUpdating, isUpdateSuccess]);
 
+    useEffect(() => {
+        if (!isScheduleUpdating && isScheduleUpdateSuccess) {
+            notificationService.generateNotification(`Successfully updated schedule: ${state.form.modelId}`, 'success');
+            props.setVisible(false);
+            props.setIsEdit(false);
+            props.setSelectedItems([]);
+            resetState();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isScheduleUpdating, isScheduleUpdateSuccess]);
 
-    const reviewError = normalizeError('Model', isCreateError ? createError : isUpdateError ? updateError : undefined);
+    useEffect(() => {
+        if (!isScheduleDeleting && isScheduleDeleteSuccess) {
+            notificationService.generateNotification(`Successfully disabled schedule: ${state.form.modelId}`, 'success');
+            props.setVisible(false);
+            props.setIsEdit(false);
+            props.setSelectedItems([]);
+            resetState();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isScheduleDeleting, isScheduleDeleteSuccess]);
+
+    const reviewError = normalizeError('Model',
+        isCreateError ? createError :
+            isUpdateError ? updateError :
+                isScheduleUpdateError ? scheduleUpdateError :
+                    isScheduleDeleteError ? scheduleDeleteError : undefined);
 
     const allSteps = [
         {
@@ -356,7 +434,6 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
             content: (
                 <AutoScalingConfig item={state.form.autoScalingConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} isEdit={props.isEdit} />
             ),
-            isOptional: true,
             onEdit: state.form.lisaHostedModel,
             forExternalModel: false
         },
@@ -472,7 +549,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                     handleSubmit();
                 }}
                 activeStepIndex={state.activeStepIndex}
-                isLoadingNextStep={isCreating || isUpdating}
+                isLoadingNextStep={isCreating || isUpdating || isScheduleUpdating || isScheduleDeleting}
                 allowSkipTo
                 steps={steps}
             />

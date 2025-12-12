@@ -18,7 +18,6 @@ import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BedrockKnowledgeBaseConfigForm } from './BedrockKnowledgeBaseConfigForm';
 import { BedrockKnowledgeBaseInstanceConfig } from '#root/lib/schema';
-import { getDefaults } from '#root/lib/schema/zodUtil';
 
 // Mock the RTK Query hooks
 vi.mock('@/shared/reducers/rag.reducer', () => ({
@@ -36,7 +35,7 @@ describe('BedrockKnowledgeBaseConfigForm', () => {
     const mockTouchFields = vi.fn();
 
     const defaultProps = {
-        item: getDefaults(BedrockKnowledgeBaseInstanceConfig),
+        item: BedrockKnowledgeBaseInstanceConfig.partial().parse({}),
         setFields: mockSetFields,
         touchFields: mockTouchFields,
         formErrors: {},

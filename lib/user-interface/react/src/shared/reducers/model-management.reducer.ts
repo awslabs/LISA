@@ -23,13 +23,13 @@ export const modelManagementApi = createApi({
     baseQuery: lisaBaseQuery(),
     tagTypes: ['models'],
     refetchOnFocus: true,
-    refetchOnReconnect: true,
+    refetchOnMountOrArgChange: true,
     endpoints: (builder) => ({
         getAllModels: builder.query<IModelListResponse['models'], void>({
             query: () => ({
                 url: '/models',
             }),
-            transformResponse: (response) => response.models,
+            transformResponse: (response: IModelListResponse) => response.models,
             providesTags:['models'],
         }),
         deleteModel: builder.mutation<IModel, string>({
@@ -73,6 +73,37 @@ export const modelManagementApi = createApi({
             query: () => ({
                 url: '/models/metadata/instances'
             })
+        }),
+        updateSchedule: builder.mutation<{message: string, modelId: string, scheduleEnabled: boolean}, {modelId: string, scheduleConfig: any}>({
+            query: ({modelId, scheduleConfig}) => ({
+                url: `/models/${modelId}/schedule`,
+                method: 'PUT',
+                data: scheduleConfig
+            }),
+            transformErrorResponse: (baseQueryReturnValue) => {
+                return {
+                    name: 'Update Schedule Error',
+                    message: baseQueryReturnValue.data?.type === 'RequestValidationError' ?
+                        baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') :
+                        baseQueryReturnValue.data.message
+                };
+            },
+            invalidatesTags: ['models'],
+        }),
+        deleteSchedule: builder.mutation<{message: string, modelId: string, scheduleEnabled: boolean}, {modelId: string}>({
+            query: ({modelId}) => ({
+                url: `/models/${modelId}/schedule`,
+                method: 'DELETE',
+            }),
+            transformErrorResponse: (baseQueryReturnValue) => {
+                return {
+                    name: 'Update Schedule Error',
+                    message: baseQueryReturnValue.data?.type === 'RequestValidationError' ?
+                        baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') :
+                        baseQueryReturnValue.data.message
+                };
+            },
+            invalidatesTags: ['models'],
         })
     }),
 });
@@ -82,5 +113,7 @@ export const {
     useDeleteModelMutation,
     useCreateModelMutation,
     useUpdateModelMutation,
-    useGetInstancesQuery
+    useGetInstancesQuery,
+    useUpdateScheduleMutation,
+    useDeleteScheduleMutation
 } = modelManagementApi;

@@ -15,8 +15,8 @@
  */
 
 // ECS Cluster Construct.
-import { Duration, RemovalPolicy } from 'aws-cdk-lib';
-import { AdjustmentType, AutoScalingGroup, BlockDeviceVolume, GroupMetrics, Monitoring, UpdatePolicy } from 'aws-cdk-lib/aws-autoscaling';
+import { Duration, RemovalPolicy, Tags } from 'aws-cdk-lib';
+import { AdjustmentType, AutoScalingGroup, BlockDeviceVolume, GroupMetrics, Monitoring, UpdatePolicy, CfnScheduledAction } from 'aws-cdk-lib/aws-autoscaling';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { Metric } from 'aws-cdk-lib/aws-cloudwatch';
 import { InstanceType, ISecurityGroup, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
@@ -170,7 +170,7 @@ export class ECSCluster extends Construct {
         const container = ec2TaskDefinition.addContainer(createCdkId([taskDefinitionName, 'Container']), {
             containerName: createCdkId([config.deploymentName, taskDefinitionName], 32, 2),
             image,
-            environment: {...this.baseEnvironment, ...taskDefinition.environment},
+            environment: {...this.baseEnvironment, ...(taskDefinition.environment as Record<string, string>)},
             logging: LogDriver.awsLogs({
                 logGroup: logGroup,
                 streamPrefix: taskDefinitionName
@@ -283,6 +283,11 @@ export class ECSCluster extends Construct {
             adjustmentType: AdjustmentType.CHANGE_IN_CAPACITY,
             cooldown: Duration.seconds(120)
         });
+
+        // Tag Auto Scaling Group for schedule management
+        Tags.of(autoScalingGroup).add('ScheduleManaged', 'true');
+        Tags.of(autoScalingGroup).add('LISACluster', identifier);
+        Tags.of(autoScalingGroup).add('Environment', config.deploymentStage);
 
         const baseEnvironment: {
             [key: string]: string;
@@ -421,6 +426,109 @@ export class ECSCluster extends Construct {
         this.baseEnvironment = baseEnvironment;
         this.autoScalingGroup = autoScalingGroup;
         this.asgCapacityProvider = asgCapacityProvider;
+    }
+
+    /**
+     * Create a scheduled scaling action for the Auto Scaling Group
+     */
+    public createScheduledAction (
+        actionName: string,
+        schedule: string,
+        minSize?: number,
+        maxSize?: number,
+        desiredCapacity?: number,
+        timezone?: string
+    ): CfnScheduledAction {
+        const scheduledAction = new CfnScheduledAction(this, createCdkId([this.identifier, actionName, 'ScheduledAction']), {
+            autoScalingGroupName: this.autoScalingGroup.autoScalingGroupName,
+            recurrence: schedule,
+            ...(minSize !== undefined && { minSize }),
+            ...(maxSize !== undefined && { maxSize }),
+            ...(desiredCapacity !== undefined && { desiredCapacity }),
+            ...(timezone && { timeZone: timezone })
+        });
+
+        // Add tags to track the scheduled action
+        Tags.of(scheduledAction).add('ActionType', 'Schedule');
+        Tags.of(scheduledAction).add('LISACluster', this.identifier);
+        Tags.of(scheduledAction).add('CreatedBy', 'LISA-ScheduleManagement');
+
+        return scheduledAction;
+    }
+
+    /**
+     * Get Auto Scaling Group name for external schedule management
+     */
+    public getAutoScalingGroupName (): string {
+        return this.autoScalingGroup.autoScalingGroupName;
+    }
+
+    /**
+     * Get Auto Scaling Group ARN for external schedule management
+     */
+    public getAutoScalingGroupArn (): string {
+        return this.autoScalingGroup.autoScalingGroupArn;
+    }
+
+    /**
+     * Add schedule-aware service discovery capabilities
+     */
+    public addScheduleAwareService (
+        taskName: ECSTasks,
+        taskDefinition: TaskDefinition,
+        scheduleConfig?: {
+            scheduleEnabled: boolean;
+            scheduleType: string;
+            timezone: string;
+        }
+    ): { service: Ec2Service; targetGroup?: ApplicationTargetGroup } {
+        const result = this.addTask(taskName, taskDefinition);
+        const { service } = result;
+
+        // Add schedule-related tags to the service
+        if (scheduleConfig?.scheduleEnabled) {
+            Tags.of(service).add('ScheduleEnabled', 'true');
+            Tags.of(service).add('ScheduleType', scheduleConfig.scheduleType);
+            Tags.of(service).add('Timezone', scheduleConfig.timezone);
+            Tags.of(service).add('ScheduleManaged', 'true');
+        } else {
+            Tags.of(service).add('ScheduleEnabled', 'false');
+            Tags.of(service).add('RunsAllTime', 'true');
+        }
+
+        // Add schedule-related environment variables
+        if (scheduleConfig?.scheduleEnabled) {
+            const container = service.taskDefinition.findContainer(createCdkId([taskName, 'Container']));
+            if (container) {
+                container.addEnvironment('SCHEDULE_ENABLED', 'true');
+                container.addEnvironment('SCHEDULE_TYPE', scheduleConfig.scheduleType);
+                container.addEnvironment('SCHEDULE_TIMEZONE', scheduleConfig.timezone);
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Get service discovery information for schedule management
+     */
+    public getServiceDiscoveryInfo (taskName: ECSTasks): {
+        serviceName: string;
+        serviceArn: string;
+        clusterName: string;
+        autoScalingGroupName: string;
+    } | null {
+        const service = this.services[taskName];
+        if (!service) {
+            return null;
+        }
+
+        return {
+            serviceName: service.serviceName,
+            serviceArn: service.serviceArn,
+            clusterName: this.cluster.clusterName,
+            autoScalingGroupName: this.autoScalingGroup.autoScalingGroupName
+        };
     }
 
     /**

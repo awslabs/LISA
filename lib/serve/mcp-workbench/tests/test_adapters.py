@@ -14,6 +14,8 @@
 
 """Tests for tool adapters."""
 
+from unittest.mock import Mock
+
 import pytest
 from mcpworkbench.adapters.tool_adapter import BaseToolAdapter, create_adapter, FunctionToolAdapter
 from mcpworkbench.core.annotations import mcp_tool
@@ -276,8 +278,6 @@ class TestCreateAdapter:
 def create_adapter_with_invalid_type():
     """Helper function to test invalid tool type."""
     # Create a mock tool info with invalid type by bypassing validation
-    from unittest.mock import Mock
-
     tool_info = Mock()
     tool_info.tool_type = "unknown_type"
     tool_info.name = "test_tool"

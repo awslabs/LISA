@@ -174,7 +174,7 @@ async def validate_and_prepare_llm_request(
 
 
 def handle_stream_exceptions(
-    func: Callable[..., AsyncGenerator[str, None]]
+    func: Callable[..., AsyncGenerator[str, None]],
 ) -> Callable[..., AsyncGenerator[str, None]]:
     """Decorate a streaming function to handle exceptions gracefully.
 

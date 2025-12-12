@@ -120,8 +120,10 @@ export function PromptTemplateForm (props: PromptTemplateFormProps) {
 
     const [sharePublic, setSharePublic] = useState(false);
 
+    // Check if template is public and update state accordingly
     useEffect(() => {
         if (data?.groups?.findIndex((group) => group === 'lisa:public') > -1) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setSharePublic(true);
         }
     }, [data?.groups]);

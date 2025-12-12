@@ -82,7 +82,7 @@ def check_show_mcp_workbench(body, old_configuration):
 
     # check if the value changed
     if old_show_mcp_value != new_show_mcp_value:
-        from mcp_server.lambda_functions import table as mcp_servers_table
+        from mcp_server.lambda_functions import table as mcp_servers_table  # noqa: PLC0415
 
         if new_show_mcp_value:
             mcp_server_model = McpServerModel(

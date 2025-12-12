@@ -83,7 +83,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
             identity={{
                 href: useHref('/'),
                 logo: {
-                    src: `${getBaseURI()}logo.svg`,
+                    src: `${getBaseURI()}/logo.svg`,
                     alt: 'AWS LISA Sample',
                 },
             }}

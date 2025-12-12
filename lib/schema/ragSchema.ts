@@ -116,13 +116,20 @@ const triggerSchema = z.object({
     event: z.literal(triggerEnum.event).describe('This ingestion pipeline runs whenever changes are detected.'),
 });
 
+/**
+ * Metadata schema for tags - reusable across pipelines, collections, and repositories
+ */
+export const MetadataSchema = z.object({
+    tags: z.array(z.string()).optional().default([]).describe('Tags for categorizing and organizing resources.'),
+});
+
+export type Metadata = z.infer<typeof MetadataSchema>;
+
 export const RagRepositoryPipeline = z.object({
-    chunkSize: z.number().optional().default(512).describe('The size of the chunks used for document segmentation.'),
-    chunkOverlap: z.number().optional().default(51).describe('The size of the overlap between chunks.'),
     chunkingStrategy: ChunkingStrategySchema.optional().describe('Chunking strategy for documents in this pipeline.'),
     embeddingModel: z.string().optional().describe('The embedding model used for document ingestion in this pipeline.'),
     collectionId: z.string().optional().describe('The collection ID to ingest documents into.'),
-    s3Bucket: z.string().describe('The S3 bucket monitored by this pipeline for document processing.'),
+    s3Bucket: z.string().min(1, 'S3 bucket is required').describe('The S3 bucket monitored by this pipeline for document processing.'),
     s3Prefix: z.string()
         .regex(/^(?!.*(?:^|\/)\.\.?(\/|$)).*/, 'Prefix cannot contain relative path components (ie `.` or `..`)')
         .regex(/^([a-zA-Z0-9!_.*'()/=-]+\/)*[a-zA-Z0-9!_.*'()/=-]*$/, 'Prefix must be a valid S3 prefix.')
@@ -131,6 +138,7 @@ export const RagRepositoryPipeline = z.object({
     trigger: z.union([triggerSchema.shape.daily, triggerSchema.shape.event])
         .default('event').describe('The event type that triggers document ingestion.'),
     autoRemove: z.boolean().default(true).describe('Enable removal of document from vector store when deleted from S3. This will also remove the file from S3 if file is deleted from vector store through API/UI.'),
+    metadata: MetadataSchema.optional().default({ tags: [] }).describe('Metadata for the pipeline including tags.'),
 });
 
 export type PipelineConfig = z.infer<typeof RagRepositoryPipeline>;
@@ -151,8 +159,7 @@ export type RdsConfig = z.infer<typeof RdsInstanceConfig>;
 
 export type BedrockKnowledgeBaseConfig = z.infer<typeof BedrockKnowledgeBaseInstanceConfig>;
 
-export const RagRepositoryMetadata = z.object({
-    tags: z.array(z.string()).default([]).describe('Tags for categorizing and organizing the repository.'),
+export const RagRepositoryMetadata = MetadataSchema.extend({
     customFields: z.record(z.string(), z.any()).optional().describe('Custom metadata fields for the repository.'),
 });
 
@@ -171,13 +178,17 @@ export const RagRepositoryConfigSchema = z
         rdsConfig: RdsInstanceConfig.optional(),
         bedrockKnowledgeBaseConfig: BedrockKnowledgeBaseInstanceConfig.optional(),
         pipelines: z.array(RagRepositoryPipeline).optional().default([]).describe('Rag ingestion pipeline for automated inclusion into a vector store from S3'),
-        allowedGroups: z.tuple([z.string()], z.string()).optional().describe('The groups provided by the Identity Provider that have access to this repository. If no groups are specified, access is granted to everyone.'),
+        allowedGroups: z.array(z.string()).optional().describe('The groups provided by the Identity Provider that have access to this repository. If no groups are specified, access is granted to everyone.'),
+        createdBy: z.string().describe('User ID of creator'),
+        createdAt: z.iso.datetime().describe('Creation timestamp (ISO 8601)'),
+        updatedAt: z.iso.datetime().describe('Last update timestamp (ISO 8601)'),
         metadata: RagRepositoryMetadata.optional().describe('Metadata for the repository including tags and custom fields.'),
         status: z.enum(VectorStoreStatus).optional().describe('Current deployment status of the repository')
     })
     .refine((input) => {
         return !((input.type === RagRepositoryType.OPENSEARCH && input.opensearchConfig === undefined) ||
-            (input.type === RagRepositoryType.PGVECTOR && input.rdsConfig === undefined));
+            (input.type === RagRepositoryType.PGVECTOR && input.rdsConfig === undefined) ||
+            (input.type === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE && input.bedrockKnowledgeBaseConfig === undefined));
     })
     .describe('Configuration schema for RAG repository. Defines settings for OpenSearch.');
 

@@ -263,7 +263,7 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     require_admin = api_path not in OPENAI_ROUTES
     jwt_data = await authorizer.authenticate_request(request)
     if not await authorizer.can_access(request, require_admin):
-        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated in litellm_passthrough")
+        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, message="Not authenticated in litellm_passthrough")
 
     # At this point in the request, we have already validated auth with IdP or persistent token. By using LiteLLM for
     # model management, LiteLLM requires an admin key, and that forces all requests to require a key as well. To avoid

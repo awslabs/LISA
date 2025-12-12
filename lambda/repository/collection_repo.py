@@ -401,3 +401,36 @@ class CollectionRepository:
         except Exception as e:
             logger.error(f"Failed to find collection by name '{collection_name}': {e}")
             raise CollectionRepositoryError(f"Failed to find collection by name: {str(e)}")
+
+    def find_collections_using_model(self, model_id: str) -> List[Dict[str, str]]:
+        """
+        Find all collections that use a specific embedding model.
+
+        Args:
+            model_id: The model ID to search for
+
+        Returns:
+            List of dictionaries containing collection_id and repository_id
+        """
+        try:
+            response = self.table.scan()
+            collections = response["Items"]
+            while "LastEvaluatedKey" in response:
+                response = self.table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
+                collections.extend(response["Items"])
+
+            usages = []
+            for collection in collections:
+                if collection.get("embeddingModel") == model_id:
+                    usages.append(
+                        {
+                            "collection_id": collection.get("collectionId", "unknown"),
+                            "repository_id": collection.get("repositoryId", "unknown"),
+                        }
+                    )
+
+            return usages
+
+        except Exception as e:
+            logger.error(f"Failed to find collections using model {model_id}: {e}")
+            raise CollectionRepositoryError(f"Failed to find collections using model: {str(e)}")

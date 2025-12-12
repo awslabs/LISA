@@ -87,6 +87,8 @@ class DocumentIngestionService:
         source = "collection" if collection else "repository"
         logger.info(f"Using embedding model for ingestion: {embedding_model} (from {source})")
 
+        # Update metadata from repo, collection, etc.
+
         job = IngestionJob(
             repository_id=repository.get("repositoryId"),
             collection_id=collection_id,

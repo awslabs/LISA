@@ -363,6 +363,20 @@ export class LisaRagConstruct extends Construct {
             value: ragRepositoryConfigTable.tableArn
         });
 
+        // Create SSM parameter for vector store table name so other stacks can optionally reference it
+        new StringParameter(scope, createCdkId(['RagVectorStoreTableName', 'Parameter']), {
+            parameterName: `${config.deploymentPrefix}/ragVectorStoreTableName`,
+            stringValue: ragRepositoryConfigTable.tableName,
+            description: 'RAG Vector Store (Repository Config) DynamoDB table name',
+        });
+
+        // Create SSM parameter for collections table name so other stacks can optionally reference it
+        new StringParameter(scope, createCdkId(['RagCollectionsTableName', 'Parameter']), {
+            parameterName: `${config.deploymentPrefix}/ragCollectionsTableName`,
+            stringValue: collectionsTable.tableName,
+            description: 'RAG Collections DynamoDB table name',
+        });
+
         baseEnvironment['LISA_RAG_VECTOR_STORE_TABLE'] = ragRepositoryConfigTable.tableName;
         baseEnvironment['LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER'] = `${config.deploymentPrefix}/vectorstorecreator/statemachine/create`;
         baseEnvironment['LISA_RAG_DELETE_STATE_MACHINE_ARN_PARAMETER'] = `${config.deploymentPrefix}/vectorstorecreator/statemachine/delete`;

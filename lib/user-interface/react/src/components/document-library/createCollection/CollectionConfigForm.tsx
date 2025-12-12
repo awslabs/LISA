@@ -21,7 +21,7 @@ import Input from '@cloudscape-design/components/input';
 import Select from '@cloudscape-design/components/select';
 import { SpaceBetween, Textarea } from '@cloudscape-design/components';
 import { useListRagRepositoriesQuery } from '../../../shared/reducers/rag.reducer';
-import { CommonFieldsForm } from '../../../shared/form/CommonFieldsForm';
+import { EmbeddingModelInput } from '@/shared/form/EmbeddingModelInput';
 import { RagCollectionConfig, RagRepositoryType, VectorStoreStatus } from '#root/lib/schema';
 
 export type CollectionConfigProps = {
@@ -114,62 +114,14 @@ export function CollectionConfigForm (
                 />
             </FormField>
 
-            {/* Common Fields (Embedding Model) */}
-            <CommonFieldsForm
-                item={item}
-                setFields={setFields}
-                touchFields={touchFields}
-                formErrors={formErrors}
-                repositoryId={item.repositoryId}
-                showEmbeddingModel={true}
-                showAllowedGroups={false}
-                isEdit={isEdit}
+            {/* Embedding Model */}
+            <EmbeddingModelInput
+                value={item.embeddingModel || ''}
+                onChange={(modelId) => setFields({ embeddingModel: modelId })}
+                onBlur={() => touchFields(['embeddingModel'])}
+                errorText={formErrors?.embeddingModel}
+                disabled={isEdit}
             />
-
-            {/* S3 Bucket - only show if pipeline is enabled */}
-            {item.pipelines && item.pipelines.length > 0 && (
-                <>
-                    <FormField
-                        label='S3 Bucket'
-                        errorText={formErrors?.pipelines?.[0]?.s3Bucket}
-                        description='S3 bucket to monitor for new documents'
-                    >
-                        <Input
-                            value={item.pipelines[0].s3Bucket || ''}
-                            onChange={({ detail }) => {
-                                const updatedPipelines = [...(item.pipelines || [])];
-                                updatedPipelines[0] = {
-                                    ...updatedPipelines[0],
-                                    s3Bucket: detail.value
-                                };
-                                setFields({ pipelines: updatedPipelines });
-                            }}
-                            onBlur={() => touchFields(['pipelines.0.s3Bucket'])}
-                            placeholder='my-documents-bucket'
-                        />
-                    </FormField>
-
-                    <FormField
-                        label='S3 Prefix (optional)'
-                        errorText={formErrors?.pipelines?.[0]?.s3Prefix}
-                        description='Optional: Only monitor objects with this prefix'
-                    >
-                        <Input
-                            value={item.pipelines[0].s3Prefix || ''}
-                            onChange={({ detail }) => {
-                                const updatedPipelines = [...(item.pipelines || [])];
-                                updatedPipelines[0] = {
-                                    ...updatedPipelines[0],
-                                    s3Prefix: detail.value
-                                };
-                                setFields({ pipelines: updatedPipelines });
-                            }}
-                            onBlur={() => touchFields(['pipelines.0.s3Prefix'])}
-                            placeholder='documents/engineering/'
-                        />
-                    </FormField>
-                </>
-            )}
         </SpaceBetween>
     );
 }

@@ -50,24 +50,22 @@ class RepositoryMixin(BaseMixin):
         Raises:
             Exception: If the request fails
         """
-        payload = {"ragConfig": rag_config}
-
-        response = self._session.post(f"{self.url}/repository", json=payload)
+        response = self._session.post(f"{self.url}/repository", json=rag_config)
         if response.status_code in [200, 201]:
             return response.json()
         else:
             raise parse_error(response.status_code, response)
 
-    def create_pgvector_repository(self, payload: Dict) -> Dict:
+    def create_pgvector_repository(self, rag_config: Dict) -> Dict:
         """Create a PGVector repository configuration.
 
         Args:
-            payload: JSON payload for the PGVector repository
+            rag_config: RAG configuration for the PGVector repository (will be wrapped in ragConfig)
 
         Returns:
             Dict: Created repository information
         """
-        return self.create_repository(payload)
+        return self.create_repository(rag_config)
 
     def create_opensearch_repository(
         self,

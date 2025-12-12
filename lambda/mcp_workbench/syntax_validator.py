@@ -176,15 +176,15 @@ class PythonSyntaxValidator:
 
             try:
                 # Try relative import first (when running as part of a package)
-                from .mcp_mocks import BaseTool as base_tool_class
-                from .mcp_mocks import mcp_tool as mcp_tool_func
+                from .mcp_mocks import BaseTool as base_tool_class  # noqa: PLC0415
+                from .mcp_mocks import mcp_tool as mcp_tool_func  # noqa: PLC0415
 
                 logger.info("Successfully imported mocks via relative import")
             except ImportError as e:
                 logger.info(f"Relative import failed: {e}, trying absolute import")
                 try:
                     # Fall back to absolute import (when running standalone)
-                    import mcp_mocks
+                    import mcp_mocks  # noqa: PLC0415
 
                     mcp_tool_func = mcp_mocks.mcp_tool
                     base_tool_class = mcp_mocks.BaseTool

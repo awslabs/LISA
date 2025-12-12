@@ -22,16 +22,16 @@ class RagUploadException(Exception):
 
 class HTTPException(Exception):
     def __init__(self, status_code: int = 400, message: str = "Bad Request") -> None:
+        super().__init__(status_code, message)
         self.http_status_code = status_code
         self.message = message
-        super().__init__(self.message)
 
 
 class NotFoundException(HTTPException):
     def __init__(self, detail: str = "Not Found"):
-        super().__init__(404, detail)
+        super().__init__(404, detail)  # flake8: noqa
 
 
 class UnauthorizedException(HTTPException):
     def __init__(self, detail: str = "Unauthorized"):
-        super().__init__(401, detail)
+        super().__init__(401, detail)  # flake8: noqa

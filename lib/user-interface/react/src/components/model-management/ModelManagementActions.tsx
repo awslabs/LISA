@@ -20,7 +20,7 @@ import { useAppDispatch, useAppSelector } from '@/config/store';
 import { IModel, ModelStatus } from '@/shared/model/model-management.model';
 import { useNotificationService } from '@/shared/util/hooks';
 import { INotificationService } from '@/shared/notification/notification.service';
-import { useDeleteModelMutation, useUpdateModelMutation} from '@/shared/reducers/model-management.reducer';
+import { useDeleteModelMutation, useUpdateModelMutation } from '@/shared/reducers/model-management.reducer';
 import { MutationTrigger } from '@reduxjs/toolkit/dist/query/react/buildHooks';
 import { Action, ThunkDispatch } from '@reduxjs/toolkit';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
@@ -86,7 +86,7 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
             notificationService.generateNotification(`Successfully deleted model: ${selectedModel.modelId}`, 'success');
             props.setSelectedItems([]);
         } else if (!isDeleteLoading && isDeleteError && selectedModel) {
-            const errorMessage = deleteError && 'data' in deleteError ? deleteError.data?.message ?? deleteError.data : 'Unknown error occurred';
+            const errorMessage = deleteError && 'data' in deleteError ? deleteError.data?.message ?? deleteError.data?.detail ?? deleteError.data : 'Unknown error occurred';
             notificationService.generateNotification(`Error deleting model: ${errorMessage}`, 'error');
             props.setSelectedItems([]);
         }
@@ -98,7 +98,7 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
             notificationService.generateNotification(`Successfully updated model: ${selectedModel.modelId}`, 'success');
             props.setSelectedItems([]);
         } else if (!isUpdating && isUpdateError && selectedModel) {
-            const errorMessage = updateError && 'data' in updateError ? updateError.data?.message ?? updateError.data : 'Unknown error occurred';
+            const errorMessage = updateError && 'data' in updateError ? updateError.data?.message ?? updateError.data?.detail ?? updateError.data : 'Unknown error occurred';
             notificationService.generateNotification(`Error updating model: ${errorMessage}`, 'error');
             props.setSelectedItems([]);
         }

@@ -42,7 +42,7 @@ from .domain_objects import (
     UpdateModelResponse,
     UpdateScheduleResponse,
 )
-from .exception import InvalidStateTransitionError, ModelAlreadyExistsError, ModelNotFoundError
+from .exception import InvalidStateTransitionError, ModelAlreadyExistsError, ModelInUseError, ModelNotFoundError
 from .handler import (
     CreateModelHandler,
     DeleteModelHandler,
@@ -121,14 +121,17 @@ async def create_model(create_request: CreateModelRequest, request: Request) -> 
     """Endpoint to create a model."""
     admin_status, _ = get_admin_status_and_groups(request)
     if not admin_status:
-        raise HTTPException(status_code=403, detail="User does not have permission to create models.")
+        raise HTTPException(status_code=403, message="User does not have permission to create models.")
     create_handler = CreateModelHandler(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
         guardrails_table_resource=guardrails_table,
     )
-    return create_handler(create_request=create_request)
+    try:
+        return create_handler(create_request=create_request)
+    except ModelAlreadyExistsError as e:
+        raise HTTPException(status_code=409, message=str(e))
 
 
 @app.get(path="", include_in_schema=False)
@@ -159,7 +162,10 @@ async def get_model(
     )
 
     admin_status, user_groups = get_admin_status_and_groups(request)
-    return get_handler(model_id=model_id, user_groups=user_groups, is_admin=admin_status)
+    try:
+        return get_handler(model_id=model_id, user_groups=user_groups, is_admin=admin_status)
+    except ModelNotFoundError as e:
+        raise HTTPException(status_code=404, message=str(e))
 
 
 @app.put(path="/{model_id}")
@@ -171,14 +177,19 @@ async def update_model(
     """Endpoint to update a model."""
     admin_status, _ = get_admin_status_and_groups(request)
     if not admin_status:
-        raise HTTPException(status_code=403, detail="User does not have permission to update models.")
+        raise HTTPException(status_code=403, message="User does not have permission to update models.")
     update_handler = UpdateModelHandler(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
         guardrails_table_resource=guardrails_table,
     )
-    return update_handler(model_id=model_id, update_request=update_request)
+    try:
+        return update_handler(model_id=model_id, update_request=update_request)
+    except ModelNotFoundError as e:
+        raise HTTPException(status_code=404, message=str(e))
+    except InvalidStateTransitionError as e:
+        raise HTTPException(status_code=400, message=str(e))
 
 
 @app.delete(path="/{model_id}")
@@ -188,14 +199,19 @@ async def delete_model(
     """Endpoint to delete a model."""
     admin_status, _ = get_admin_status_and_groups(request)
     if not admin_status:
-        raise HTTPException(status_code=403, detail="User does not have permission to delete models.")
+        raise HTTPException(status_code=403, message="User does not have permission to delete models.")
     delete_handler = DeleteModelHandler(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
         guardrails_table_resource=guardrails_table,
     )
-    return delete_handler(model_id=model_id)
+    try:
+        return delete_handler(model_id=model_id)
+    except ModelInUseError as e:
+        raise HTTPException(status_code=409, message=str(e))
+    except ModelNotFoundError as e:
+        raise HTTPException(status_code=404, message=str(e))
 
 
 @app.get(path="/metadata/instances")

@@ -2889,7 +2889,7 @@ def test_update_repository_with_pipeline_change():
                     "collectionId": "collection2",
                     "chunkSize": 1024,
                     "chunkOverlap": 102,
-                }
+                },
             ],
             "status": "UPDATE_IN_PROGRESS",
         }
@@ -2923,7 +2923,7 @@ def test_update_repository_with_pipeline_change():
                             "collectionId": "collection2",
                             "chunkSize": 1024,
                             "chunkOverlap": 102,
-                        }
+                        },
                     ]
                 }
             ),

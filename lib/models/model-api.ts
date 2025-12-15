@@ -435,27 +435,31 @@ export class ModelsApi extends Construct {
                         scheduleManagementLambda.functionArn,
                     ],
                 }),
-                new PolicyStatement({
-                    effect: Effect.ALLOW,
-                    actions: [
-                        'ssm:GetParameter',
-                    ],
-                    resources: [
-                        `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/ragVectorStoreTableName`,
-                        `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/ragCollectionsTableName`,
-                    ],
-                }),
-                new PolicyStatement({
-                    effect: Effect.ALLOW,
-                    actions: [
-                        'dynamodb:Scan',
-                    ],
-                    resources: [
-                        // Allow scanning RAG vector store and collections tables (table names are dynamic based on deployment)
-                        `arn:${config.partition}:dynamodb:${config.region}:${config.accountNumber}:table/${config.deploymentName}-${config.deploymentStage}-rag-repository-config`,
-                        `arn:${config.partition}:dynamodb:${config.region}:${config.accountNumber}:table/${config.deploymentName}-${config.deploymentStage}-rag-collections`,
-                    ],
-                }),
+                ...(config.deployRag ? [
+                    new PolicyStatement({
+                        effect: Effect.ALLOW,
+                        actions: [
+                            'ssm:GetParameter',
+                        ],
+                        resources: [
+                            `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/ragVectorStoreTableName`,
+                            `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/ragCollectionsTableName`,
+                        ],
+                    }),
+                    new PolicyStatement({
+                        effect: Effect.ALLOW,
+                        actions: [
+                            'dynamodb:Scan',
+                            'dynamodb:Query',
+                            'dynamodb:GetItem',
+                        ],
+                        resources: [
+                            // Allow access to RAG tables (use wildcards since CDK generates unique suffixes)
+                            `arn:${config.partition}:dynamodb:${config.region}:${config.accountNumber}:table/${config.deploymentName}-${config.deploymentStage}-rag-repository-config*`,
+                            `arn:${config.partition}:dynamodb:${config.region}:${config.accountNumber}:table/*RagCollectionsTable*`,
+                            `arn:${config.partition}:dynamodb:${config.region}:${config.accountNumber}:table/${config.deploymentName}-*-rag-*`,
+                        ],
+                    })] : []),
             ]
         });
         lambdaFunction.role!.attachInlinePolicy(workflowPermissions);

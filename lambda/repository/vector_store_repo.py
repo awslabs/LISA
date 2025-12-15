@@ -17,6 +17,7 @@ import time
 from typing import Any, cast, List
 
 import boto3
+from boto3.dynamodb.conditions import Attr
 from models.domain_objects import VectorStoreStatus
 from utilities.common_functions import retry_config
 from utilities.encoders import convert_decimal
@@ -183,36 +184,55 @@ class VectorStoreRepository:
     def find_repositories_using_model(self, model_id: str) -> List[dict]:
         """
         Find all repositories that use a specific model.
+        Excludes repositories with status indicating they are deleted or archived.
 
         Args:
             model_id: The model ID to search for
 
         Returns:
-            List of dictionaries containing repository_id and usage_type (either 'repository' or 'pipeline')
+            List of dictionaries containing repository_id and usage_type
         """
-        # Scan all repositories
-        response = self.table.scan()
+        # Define statuses that are considered "active" repositories
+        # Based on vector_store_repository_service.py logic
+        active_statuses = {
+            VectorStoreStatus.CREATE_COMPLETE,
+            VectorStoreStatus.UPDATE_COMPLETE,
+            VectorStoreStatus.UPDATE_COMPLETE_CLEANUP_IN_PROGRESS,
+            VectorStoreStatus.UPDATE_IN_PROGRESS,
+        }
+
+        # Filter for repositories that have the model at the repository level
+        # Include status in projection to filter out inactive repositories
+        response = self.table.scan(
+            FilterExpression=Attr("config.embeddingModelId").eq(model_id),
+            ProjectionExpression="repositoryId, config.repositoryId, config.embeddingModelId, #status",
+            ExpressionAttributeNames={"#status": "status"},
+        )
         repositories = response["Items"]
+
+        # Handle pagination
         while "LastEvaluatedKey" in response:
-            response = self.table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
+            response = self.table.scan(
+                FilterExpression=Attr("config.embeddingModelId").eq(model_id),
+                ProjectionExpression="repositoryId, config.repositoryId, config.embeddingModelId, #status",
+                ExpressionAttributeNames={"#status": "status"},
+                ExclusiveStartKey=response["LastEvaluatedKey"],
+            )
             repositories.extend(response["Items"])
 
+        # Process repositories with matching embeddingModelId, excluding inactive ones
         usages = []
-
-        # Check each repository for the model
         for repo in repositories:
             config = repo.get("config", {})
-            repository_id = config.get("repositoryId", "unknown")
+            repository_id = config.get("repositoryId", repo.get("repositoryId", "unknown"))
+            status = repo.get("status", VectorStoreStatus.UNKNOWN)
 
-            # Check repository-level embeddingModelId
-            if config.get("embeddingModelId") == model_id:
-                usages.append({"repository_id": repository_id, "usage_type": "repository"})
+            # Only include repositories with active statuses
+            if status not in active_statuses:
+                logger.debug(f"Skipping repository {repository_id} with inactive status {status}")
+                continue
 
-            # Check pipelines for embeddingModel
-            pipelines = config.get("pipelines", [])
-            for pipeline in pipelines:
-                if pipeline.get("embeddingModel") == model_id:
-                    usages.append({"repository_id": repository_id, "usage_type": "pipeline"})
-                    break  # Only report once per repository for pipeline usage
+            usages.append({"repository_id": repository_id, "usage_type": "repository"})
 
+        logger.info(f"Found {len(usages)} active repositories using model {model_id}")
         return usages

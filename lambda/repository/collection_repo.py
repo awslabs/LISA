@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 import boto3
-from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.conditions import Attr, Key
 from botocore.exceptions import ClientError
 from models.domain_objects import CollectionSortBy, CollectionStatus, RagCollectionConfig, SortOrder
 from utilities.common_functions import retry_config
@@ -405,6 +405,7 @@ class CollectionRepository:
     def find_collections_using_model(self, model_id: str) -> List[Dict[str, str]]:
         """
         Find all collections that use a specific embedding model.
+        Excludes collections with status indicating they are deleted or archived.
 
         Args:
             model_id: The model ID to search for
@@ -413,22 +414,45 @@ class CollectionRepository:
             List of dictionaries containing collection_id and repository_id
         """
         try:
-            response = self.table.scan()
+            # Use FilterExpression to filter at DynamoDB level, reducing data transfer
+            # Include status in projection to filter out inactive collections
+            filter_expression = Attr("embeddingModel").eq(model_id)
+
+            response = self.table.scan(
+                FilterExpression=filter_expression,
+                ProjectionExpression="collectionId, repositoryId, embeddingModel, #status",
+                ExpressionAttributeNames={"#status": "status"},
+            )
             collections = response["Items"]
+
+            # Handle pagination
             while "LastEvaluatedKey" in response:
-                response = self.table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
+                response = self.table.scan(
+                    FilterExpression=filter_expression,
+                    ProjectionExpression="collectionId, repositoryId, embeddingModel, #status",
+                    ExpressionAttributeNames={"#status": "status"},
+                    ExclusiveStartKey=response["LastEvaluatedKey"],
+                )
                 collections.extend(response["Items"])
 
+            # Convert to the expected format, filtering out inactive collections
             usages = []
             for collection in collections:
-                if collection.get("embeddingModel") == model_id:
-                    usages.append(
-                        {
-                            "collection_id": collection.get("collectionId", "unknown"),
-                            "repository_id": collection.get("repositoryId", "unknown"),
-                        }
-                    )
+                status = collection.get("status", CollectionStatus.ACTIVE)
 
+                # Only include active collections (exclude deleted, archived, etc.)
+                if status != CollectionStatus.ACTIVE:
+                    logger.debug(f"Skipping collection {collection.get('collectionId')} with status {status}")
+                    continue
+
+                usages.append(
+                    {
+                        "collection_id": collection.get("collectionId", "unknown"),
+                        "repository_id": collection.get("repositoryId", "unknown"),
+                    }
+                )
+
+            logger.info(f"Found {len(usages)} active collections using model {model_id}")
             return usages
 
         except Exception as e:

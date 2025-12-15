@@ -21,6 +21,9 @@ Run this after installing to verify everything works.
 import subprocess
 import sys
 
+from mcpworkbench.core.annotations import mcp_tool
+from mcpworkbench.core.base_tool import BaseTool
+
 
 def test_cli_available():
     """Test that the CLI command is available."""
@@ -45,9 +48,6 @@ def test_cli_available():
 def test_basic_functionality():
     """Test basic functionality works."""
     try:
-        # Create a simple tool class
-        from mcpworkbench.core.annotations import mcp_tool  # noqa: PLC0415
-        from mcpworkbench.core.base_tool import BaseTool  # noqa: PLC0415
 
         class TestTool(BaseTool):
             def __init__(self):

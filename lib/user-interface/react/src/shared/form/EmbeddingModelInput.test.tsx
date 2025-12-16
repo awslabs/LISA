@@ -53,7 +53,7 @@ describe('EmbeddingModelInput', () => {
     it('renders with default label and description', () => {
         render(<EmbeddingModelInput {...defaultProps} />);
 
-        expect(screen.getByText('Embedding Model')).toBeInTheDocument();
+        expect(screen.getByText('Embedding model')).toBeInTheDocument();
         expect(screen.getByText('The model used to generate vector embeddings for documents')).toBeInTheDocument();
     });
 

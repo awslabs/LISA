@@ -85,7 +85,7 @@ describe('CollectionLibraryComponent', () => {
                 // Check for the count
                 expect(screen.getByText('3')).toBeInTheDocument();
                 // Check for column headers - use getAllByText since modal also has "Collection Name"
-                const collectionNameHeaders = screen.getAllByText('Collection Name');
+                const collectionNameHeaders = screen.getAllByText('Collection name');
                 expect(collectionNameHeaders.length).toBeGreaterThan(0);
             });
         });

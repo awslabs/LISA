@@ -56,7 +56,7 @@ describe('RepositoryTable', () => {
             expect(screen.getByText('Name')).toBeInTheDocument();
             expect(screen.getByText('Repository ID')).toBeInTheDocument();
             expect(screen.getByText('Type')).toBeInTheDocument();
-            expect(screen.getByText('Default Embedding Model')).toBeInTheDocument();
+            expect(screen.getByText('Default embedding model')).toBeInTheDocument();
             expect(screen.getByText('Status')).toBeInTheDocument();
         });
     });

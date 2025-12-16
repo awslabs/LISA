@@ -47,8 +47,8 @@ describe('ChunkingConfigForm', () => {
             await user.click(dropdown);
 
             // Verify both options are present using getAllByText since they appear multiple times
-            const fixedOptions = screen.getAllByText('Fixed Size');
-            const noneOptions = screen.getAllByText('None (No Chunking)');
+            const fixedOptions = screen.getAllByText('Fixed size');
+            const noneOptions = screen.getAllByText('None (no chunking)');
 
             expect(fixedOptions.length).toBeGreaterThan(0);
             expect(noneOptions.length).toBeGreaterThan(0);
@@ -176,7 +176,7 @@ describe('ChunkingConfigForm', () => {
             );
 
             // The selected option should show "None (No Chunking)"
-            expect(screen.getByText('None (No Chunking)')).toBeInTheDocument();
+            expect(screen.getByText('None (no chunking)')).toBeInTheDocument();
         });
 
         it('calls setFields with NONE strategy when NONE is selected', async () => {
@@ -195,7 +195,7 @@ describe('ChunkingConfigForm', () => {
             const dropdown = screen.getByRole('button', { name: /chunking type/i });
             await user.click(dropdown);
 
-            const noneOption = screen.getByText('None (No Chunking)');
+            const noneOption = screen.getByText('None (no chunking)');
             await user.click(noneOption);
 
             expect(mockSetFields).toHaveBeenCalledWith({
@@ -277,7 +277,7 @@ describe('ChunkingConfigForm', () => {
             const dropdown = screen.getByRole('button', { name: /chunking type/i });
             await user.click(dropdown);
 
-            const fixedOption = screen.getByText('Fixed Size');
+            const fixedOption = screen.getByText('Fixed size');
             await user.click(fixedOption);
 
             expect(mockSetFields).toHaveBeenCalledWith({
@@ -368,7 +368,7 @@ describe('ChunkingConfigForm', () => {
             );
 
             // Should show "Fixed Size" as selected
-            expect(screen.getByText('Fixed Size')).toBeInTheDocument();
+            expect(screen.getByText('Fixed size')).toBeInTheDocument();
         });
 
         it('shows size and overlap fields with default values when item is undefined', () => {

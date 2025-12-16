@@ -29,7 +29,7 @@ describe('UserGroupsInput', () => {
             />
         );
 
-        expect(screen.getByText('Allowed Groups')).toBeInTheDocument();
+        expect(screen.getByText('Allowed groups')).toBeInTheDocument();
         expect(screen.getByText('User groups that can access this resource. Leave empty for public access.')).toBeInTheDocument();
         expect(screen.getByPlaceholderText('Enter group name')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Add' })).toBeInTheDocument();

@@ -86,6 +86,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
 
     const toSubmit: IModelRequest = {
         ...state.form,
+        features: state.form.features ?? [],
         containerConfig: (state.form.lisaHostedModel ? ({
             ...state.form.containerConfig,
             environment: (() => {
@@ -134,8 +135,8 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
             touched: {},
             formSubmitting: false as boolean,
             form: {
-                ...initialForm
-            },
+                ...initialForm,
+            } as IModelRequest,
             activeStepIndex: 0,
         }, ModifyMethod.Set);
         resetCreate();
@@ -343,7 +344,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                     ...parsedValue,
                     containerConfig: {
                         ...parsedValue.containerConfig,
-                        environment: props.selectedItems[0].containerConfig?.environment ? Object.entries(props.selectedItems[0].containerConfig?.environment).map(([key, value]) => ({ key, value })) : [],
+                        environment: props.selectedItems[0].containerConfig?.environment ? Object.entries(props.selectedItems[0].containerConfig?.environment).map(([key, value]) => ({ key, value: String(value) })) : [],
                     },
                     lisaHostedModel: Boolean(props.selectedItems[0].containerConfig || props.selectedItems[0].autoScalingConfig || props.selectedItems[0].loadBalancerConfig)
                 }
@@ -354,7 +355,6 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                 ...state,
                 form: {
                     ...state.form,
-                    lisaHostedModel: false
                 }
             });
         }

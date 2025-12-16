@@ -32,7 +32,7 @@ export const CARD_SECTIONS = [
     },
     {
         id: 'allowedGroups',
-        header: 'Allowed Groups',
+        header: 'Allowed groups',
         content: (repo: RagRepositoryConfig) => `[${(repo?.allowedGroups || []).join(', ')}]`,
     },
 ];

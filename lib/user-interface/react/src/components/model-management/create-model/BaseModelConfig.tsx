@@ -24,7 +24,7 @@ import { IModelRequest, InferenceContainer, ModelType } from '../../../shared/mo
 import { Grid, SpaceBetween } from '@cloudscape-design/components';
 import { useGetInstancesQuery } from '../../../shared/reducers/model-management.reducer';
 import { ModelFeatures } from '@/components/types';
-import { ArrayInputField } from '../../../shared/form/array-input';
+import { UserGroupsInput } from '@/shared/form/UserGroupsInput';
 
 export type BaseModelConfigCustomProps = {
     isEdit: boolean
@@ -60,8 +60,8 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     }}
                     onBlur={() => props.touchFields(['lisaHostedModel'])}
                     options={[
-                        { label: 'Third Party', value: 'false' },
-                        { label: 'LISA Hosted', value: 'true' }
+                        { label: 'Third party', value: 'false' },
+                        { label: 'LISA hosted', value: 'true' }
                     ]}
                     disabled={props.isEdit}
                 />
@@ -93,7 +93,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
             >
                 <Input value={props.item.apiKey} inputMode='text' onBlur={() => props.touchFields(['apiKey'])} onChange={({ detail }) => {
                     props.setFields({ 'apiKey': detail.value });
-                }} disabled={props.isEdit}/>
+                }} disabled={props.isEdit} placeholder='sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'/>
             </FormField>}
             <FormField
                 label={<span>Model URL <em>- Optional</em></span>}
@@ -102,7 +102,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
             >
                 <Input value={props.item.modelUrl} inputMode='text' onBlur={() => props.touchFields(['modelUrl'])} onChange={({ detail }) => {
                     props.setFields({ 'modelUrl': detail.value });
-                }} disabled={props.isEdit}/>
+                }} disabled={props.isEdit} placeholder='http://internal-lisa-gptoss20b-123456789.us-west-2.elb.amazonaws.com'/>
             </FormField>
             <FormField
                 label='Model Type'
@@ -261,8 +261,8 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     props.setFields({ 'features': [...props.item.features.filter((feature) => feature.name !== ModelFeatures.SUMMARIZATION), {name: ModelFeatures.SUMMARIZATION, overview: detail.value}] });
                 }} disabled={!props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION)} placeholder='Overview of Summarization for Model'/>
             </FormField>
-            <ArrayInputField
-                label='Allowed Groups'
+            <UserGroupsInput
+                label='Allowed groups'
                 errorText={props.formErrors?.allowedGroups}
                 values={props.item.allowedGroups || []}
                 onChange={(values) => props.setFields({ 'allowedGroups': values })}

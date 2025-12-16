@@ -12,7 +12,10 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 import logging
+import os
 from typing import Dict, List
+
+import requests
 
 from .common import BaseMixin
 from .errors import parse_error
@@ -113,10 +116,6 @@ class RagMixin(BaseMixin):
         Returns:
             True if upload successful
         """
-        import os
-
-        import requests
-
         url = presigned_data.get("url")
         fields = presigned_data.get("fields", {})
 
@@ -136,7 +135,7 @@ class RagMixin(BaseMixin):
             logging.error(f"Response body: {response.text[:500]}")
             # Try to parse XML error from S3
             try:
-                from defusedxml import ElementTree as ET  # nosec B405
+                from defusedxml import ElementTree as ET  # noqa: PLC0415 nosec B405
 
                 root = ET.fromstring(response.text)  # nosec B314
                 error_code = root.find(".//Code")

@@ -16,10 +16,31 @@
 
 /**
  * Format date to a short date time format
- * @param date EPOCH date string | number
+ * @param date EPOCH date string | number | ISO timestamp string
  */
 export function formatDate (date: string | number): string {
-    const dateObj = new Date(typeof date === 'string' ? Number.parseInt(date) : date);
+    if (!date){
+        return '-';
+    }
+
+    let dateObj: Date;
+
+    if (typeof date === 'number') {
+        // Handle epoch milliseconds as number
+        dateObj = new Date(date);
+    } else if (typeof date === 'string') {
+        // Check if string looks like ISO timestamp (contains 'T' or '-')
+        if (date.includes('T') || date.includes('-')) {
+            // Handle ISO timestamp string
+            dateObj = new Date(date);
+        } else {
+            // Handle epoch milliseconds as string
+            dateObj = new Date(Number.parseInt(date));
+        }
+    } else {
+        return '-';
+    }
+
     return dateObj.toLocaleString('en-US', {
         month: 'short',
         day: 'numeric',
@@ -33,6 +54,8 @@ export function formatDate (date: string | number): string {
  * @param data
  */
 export function formatObject (data: object): string {
+    if (!data) return '-';
+
     return JSON.stringify(data)
         .replaceAll(',', ', ')
         .replaceAll('{', '')

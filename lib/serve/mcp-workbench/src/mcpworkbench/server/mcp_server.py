@@ -259,7 +259,7 @@ class MCPWorkbenchServer:
             logger.info(f"  - Exit Server: GET {self.config.exit_route_path}")
 
         # Use uvicorn to serve the Starlette app
-        import uvicorn
+        import uvicorn  # noqa: PLC0415
 
         config = uvicorn.Config(
             starlette_app,

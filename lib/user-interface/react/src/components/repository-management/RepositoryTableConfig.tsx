@@ -19,6 +19,7 @@ import { DEFAULT_PAGE_SIZE_OPTIONS } from '@/shared/preferences/common-preferenc
 import StatusIndicator, { StatusIndicatorProps } from '@cloudscape-design/components/status-indicator';
 import { ReactNode } from 'react';
 import { VectorStoreStatus } from '#root/lib/schema';
+import { formatDate, formatObject } from '@/shared/util/formats';
 
 export const PAGE_SIZE_OPTIONS = DEFAULT_PAGE_SIZE_OPTIONS('Repositories');
 
@@ -54,16 +55,16 @@ export function getTableDefinition (): ReadonlyArray<TableRow> {
             visible: true,
         },
         {
-            id: 'embeddingModelId',
-            header: 'Default Embedding Model',
-            cell: (e) => e.embeddingModelId ?? '-',
-            sortingField: 'type',
+            id: 'description',
+            header: 'Description',
+            cell: (e) => e.description,
             visible: true,
         },
         {
-            id: 'allowedGroups',
-            header: 'Allowed Groups',
-            cell: (e) => e?.allowedGroups?.length > 0 ? `${e.allowedGroups.join(', ')}` : <em>(public)</em>,
+            id: 'embeddingModelId',
+            header: 'Default embedding model',
+            cell: (e) => e.embeddingModelId ?? '-',
+            sortingField: 'type',
             visible: true,
         },
         {
@@ -71,7 +72,45 @@ export function getTableDefinition (): ReadonlyArray<TableRow> {
             header: 'Status',
             cell: (e) => getStatusIcon(e.status),
             visible: true,
+            sortingField: 'status',
         },
+        {
+            id: 'allowedGroups',
+            header: 'Allowed groups',
+            cell: (e) => e?.allowedGroups?.length > 0 ? `${e.allowedGroups.join(', ')}` : <em>(public)</em>,
+            visible: false,
+        },
+        {
+            id: 'pipelines',
+            header: 'Pipeline count',
+            cell: (e) => e.pipelines ? e.pipelines.length : '-',
+            visible: false,
+        },
+        {
+            id: 'createdBy',
+            header: 'Created by',
+            cell: (collection) => collection.createdBy,
+            visible: false,
+            sortingField: 'createdBy',
+        },
+        {
+            id: 'createdAt',
+            header: 'Created',
+            cell: (collection) => formatDate(collection.createdAt),
+            visible: false,
+        },
+        {
+            id: 'updatedAt',
+            header: 'Updated',
+            cell: (collection) => formatDate(collection.updatedAt),
+            visible: false,
+        },
+        {
+            id: 'metadata',
+            header: 'Metadata',
+            cell: (collection) => formatObject(collection.metadata),
+            visible: false,
+        }
     ];
 }
 

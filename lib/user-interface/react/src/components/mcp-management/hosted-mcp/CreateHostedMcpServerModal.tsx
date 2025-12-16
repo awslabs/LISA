@@ -66,7 +66,7 @@ export function CreateHostedMcpServerModal ({
 
     // Get default form values
     const initialForm: HostedMcpServerRequestForm = useMemo(() => {
-        return HostedMcpServerRequestSchema.parse({});
+        return HostedMcpServerRequestSchema.partial().parse({}) as HostedMcpServerRequestForm;
     }, []);
 
     const { state, setState, setFields, touchFields, errors, isValid } = useValidationReducer(

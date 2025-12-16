@@ -272,6 +272,12 @@ export class ModelsApi extends Construct {
             MODEL_TABLE_NAME: modelTable.tableName,
             SCHEDULE_MANAGEMENT_FUNCTION_NAME: scheduleManagementLambda.functionName,
             GUARDRAILS_TABLE_NAME: guardrailsTable.tableName,
+            ADMIN_GROUP: config.authConfig?.adminGroup || '',
+            // SSM parameter names for RAG tables (optional - only exist if RAG is deployed)
+            ...(config.deployRag && {
+                LISA_RAG_VECTOR_STORE_TABLE_PS_NAME: `${config.deploymentPrefix}/ragVectorStoreTableName`,
+                LISA_RAG_COLLECTIONS_TABLE_PS_NAME: `${config.deploymentPrefix}/ragCollectionsTableName`,
+            }),
         };
 
         const lambdaRole: IRole = createLambdaRole(this, config.deploymentName, 'ModelApi', modelTable.tableArn, config.roles?.ModelApiRole);
@@ -429,6 +435,31 @@ export class ModelsApi extends Construct {
                         scheduleManagementLambda.functionArn,
                     ],
                 }),
+                ...(config.deployRag ? [
+                    new PolicyStatement({
+                        effect: Effect.ALLOW,
+                        actions: [
+                            'ssm:GetParameter',
+                        ],
+                        resources: [
+                            `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/ragVectorStoreTableName`,
+                            `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/ragCollectionsTableName`,
+                        ],
+                    }),
+                    new PolicyStatement({
+                        effect: Effect.ALLOW,
+                        actions: [
+                            'dynamodb:Scan',
+                            'dynamodb:Query',
+                            'dynamodb:GetItem',
+                        ],
+                        resources: [
+                            // Allow access to RAG tables (use wildcards since CDK generates unique suffixes)
+                            `arn:${config.partition}:dynamodb:${config.region}:${config.accountNumber}:table/${config.deploymentName}-${config.deploymentStage}-rag-repository-config*`,
+                            `arn:${config.partition}:dynamodb:${config.region}:${config.accountNumber}:table/*RagCollectionsTable*`,
+                            `arn:${config.partition}:dynamodb:${config.region}:${config.accountNumber}:table/${config.deploymentName}-*-rag-*`,
+                        ],
+                    })] : []),
             ]
         });
         lambdaFunction.role!.attachInlinePolicy(workflowPermissions);
@@ -476,7 +507,7 @@ export class ModelsApi extends Construct {
      * @param managementKeyName - Name of the management key secret
      * @returns The created role
      */
-    createStateMachineLambdaRole (modelTableArn: string, guardrailTableArn: string ,dockerImageBuilderFnArn: string, ecsModelDeployerFnArn: string, lisaServeEndpointUrlParamArn: string, managementKeyName: string, config: any): IRole {
+    createStateMachineLambdaRole (modelTableArn: string, guardrailTableArn: string, dockerImageBuilderFnArn: string, ecsModelDeployerFnArn: string, lisaServeEndpointUrlParamArn: string, managementKeyName: string, config: any): IRole {
         return new Role(this, Roles.MODEL_SFN_LAMBDA_ROLE, {
             assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
             managedPolicies: [
@@ -552,7 +583,7 @@ export class ModelsApi extends Construct {
                             ],
                             resources: ['*'],
                             conditions: {
-                                'StringEquals': {'aws:ResourceTag/lisa_temporary_instance': 'true'}
+                                'StringEquals': { 'aws:ResourceTag/lisa_temporary_instance': 'true' }
                             }
                         }),
                         new PolicyStatement({

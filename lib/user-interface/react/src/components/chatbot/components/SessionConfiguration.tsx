@@ -148,7 +148,7 @@ export const SessionConfiguration = ({
                         <SpaceBetween size={'s'} direction={'horizontal'}>
                             <Box float='left' textAlign='center' variant='awsui-key-label'
                                 padding={{ vertical: 'xxs' }}>
-                                <label>RAG references:</label>
+                                <label>Matching RAG Excerpts:</label>
                             </Box>
                             <Select
                                 disabled={isRunning}

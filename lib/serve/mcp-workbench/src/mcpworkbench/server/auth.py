@@ -175,7 +175,6 @@ class OIDCHTTPBearer(BaseHTTPMiddleware):
                     break
 
         if not valid:
-            # raise  HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated")
             return JSONResponse(
                 status_code=401,
                 content={"detail": "Unauthorized"},

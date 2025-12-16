@@ -376,7 +376,7 @@ export const autoScalingConfigSchema = z.object({
         const validator = z.number().min(Number(value.minCapacity)).max(Number(value.maxCapacity));
         const result = validator.safeParse(value.desiredCapacity);
         if (result.success === false) {
-            for (const error of result.error.errors) {
+            for (const error of result.error.issues) {
                 context.addIssue({
                     ...error,
                     path: ['desiredCapacity']
@@ -413,6 +413,7 @@ export const ModelRequestSchema = z.object({
     modelDescription: z.string().default(''),
     modelUrl: z.string().default(''),
     streaming: z.boolean().default(false),
+    multiModal: z.boolean().default(false),
     features: z.array(z.object({
         name: z.string(),
         overview: z.string()
@@ -431,7 +432,7 @@ export const ModelRequestSchema = z.object({
         const instanceTypeValidator = z.string().min(1, {message: 'Required for LISA hosted models.'});
         const instanceTypeResult = instanceTypeValidator.safeParse(value.instanceType);
         if (instanceTypeResult.success === false) {
-            for (const error of instanceTypeResult.error.errors) {
+            for (const error of instanceTypeResult.error.issues) {
                 context.addIssue({
                     ...error,
                     path: ['instanceType']
@@ -439,10 +440,10 @@ export const ModelRequestSchema = z.object({
             }
         }
 
-        const inferenceContainerValidator = z.nativeEnum(InferenceContainer, {required_error: 'Required for LISA hosted models.'});
+        const inferenceContainerValidator = z.nativeEnum(InferenceContainer, {message: 'Required for LISA hosted models.'});
         const inferenceContainerResult = inferenceContainerValidator.safeParse(value.inferenceContainer);
         if (inferenceContainerResult.success === false) {
-            for (const error of inferenceContainerResult.error.errors) {
+            for (const error of inferenceContainerResult.error.issues) {
                 context.addIssue({
                     ...error,
                     path: ['inferenceContainer']
@@ -453,7 +454,7 @@ export const ModelRequestSchema = z.object({
         const baseImageValidator = z.string().min(1, {message: 'Required for LISA hosted models.'});
         const baseImageResult = baseImageValidator.safeParse(value.containerConfig.image.baseImage);
         if (baseImageResult.success === false) {
-            for (const error of baseImageResult.error.errors) {
+            for (const error of baseImageResult.error.issues) {
                 context.addIssue({
                     ...error,
                     path: ['containerConfig', 'image', 'baseImage']

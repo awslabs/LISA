@@ -73,9 +73,8 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
     if os.environ.get("TOKEN_TABLE_NAME", None):
         token_info = is_valid_api_token(id_token)
         if token_info:
-            # Use actual values from token
-            # TODO: Remove default api-token.
-            username = token_info.get("createdFor", "api-token")
+
+            username = token_info.get("username", "api-token")
             groups = json.dumps(token_info.get("groups", []))
 
             allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=username)

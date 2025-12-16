@@ -345,7 +345,7 @@ export function CreateTokenWizard ({ visible, setVisible, onTokenCreated }: Crea
                                     </div>
                                     <div>
                                         <Box variant='awsui-key-label'>Expiration Date</Box>
-                                        <div>{new Date(formData.expirationDate).toLocaleDateString()}</div>
+                                        <div>{formData.expirationDate}</div>
                                     </div>
                                     {isError && error && (
                                         <Box color='text-status-error'>

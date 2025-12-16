@@ -396,7 +396,7 @@ class Authorizer:
         if not jwt_data and hasattr(request.state, "api_token_info"):
             auth_method = "API_TOKEN"
             token_info = request.state.api_token_info
-            user_id = token_info.get("createdFor", "api-token")
+            user_id = token_info.get("username", "api-token")
             groups = token_info.get("groups", [])
 
             # Check if user has admin group
@@ -442,5 +442,5 @@ class Authorizer:
     def _set_token_context(self, request: Request, token_info: Dict[str, Any]) -> None:
         """Store token info in request state for later access."""
         request.state.api_token_info = token_info
-        request.state.username = token_info.get("createdFor", "api-token")
+        request.state.username = token_info.get("username", "api-token")
         request.state.groups = token_info.get("groups", [])

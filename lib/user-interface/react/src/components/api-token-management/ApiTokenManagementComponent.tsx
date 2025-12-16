@@ -28,11 +28,13 @@ import {
 import { useListTokensQuery } from '../../shared/reducers/api-token.reducer';
 import { ITokenInfo, ICreateTokenResponse } from '../../shared/model/api-token.model';
 import { CreateTokenWizard } from './CreateTokenWizard';
+import { CreateUserTokenWizard } from './CreateUserTokenWizard';
 import { TokenDisplayModal } from './TokenDisplayModal';
 import { ApiTokenActions } from './ApiTokenActions';
 import { useLocalStorage } from '../../shared/hooks/use-local-storage';
 import { useAppSelector } from '../../config/store';
 import { selectCurrentUsername } from '../../shared/reducers/user.reducer';
+import { formatDate } from '../../shared/util/formats';
 
 const DEFAULT_PREFERENCES = {
     pageSize: 10,
@@ -94,12 +96,12 @@ export function ApiTokenManagementComponent ({ currentUserOnly = false }: ApiTok
 
     // Check if current user already has a token (for disabling create button)
     const userHasToken = currentUserOnly && allTokens ?
-        allTokens.some((token) => token.createdFor === currentUsername) : false;
+        allTokens.some((token) => token.username === currentUsername) : false;
 
     // Filter tokens: first by current user if needed, then by search text
     const filteredTokens = allTokens?.filter((token) => {
         // Filter to current user only if requested
-        if (currentUserOnly && token.createdFor !== currentUsername) {
+        if (currentUserOnly && token.username !== currentUsername) {
             return false;
         }
 
@@ -108,7 +110,7 @@ export function ApiTokenManagementComponent ({ currentUserOnly = false }: ApiTok
         const searchLower = filterText.toLowerCase();
         return (
             token.name.toLowerCase().includes(searchLower) ||
-            token.createdFor.toLowerCase().includes(searchLower) ||
+            token.username.toLowerCase().includes(searchLower) ||
             token.createdBy.toLowerCase().includes(searchLower) ||
             token.groups.some((g) => g.toLowerCase().includes(searchLower))
         );
@@ -124,17 +126,21 @@ export function ApiTokenManagementComponent ({ currentUserOnly = false }: ApiTok
     const startIndex = (validPageIndex - 1) * preferences.pageSize;
     const paginatedTokens = filteredTokens.slice(startIndex, startIndex + preferences.pageSize);
 
-    const formatDate = (timestamp: number) => {
-        return new Date(timestamp * 1000).toLocaleString();
-    };
-
     return (
         <>
-            <CreateTokenWizard
-                visible={createWizardVisible}
-                setVisible={setCreateWizardVisible}
-                onTokenCreated={handleTokenCreated}
-            />
+            {currentUserOnly ? (
+                <CreateUserTokenWizard
+                    visible={createWizardVisible}
+                    setVisible={setCreateWizardVisible}
+                    onTokenCreated={handleTokenCreated}
+                />
+            ) : (
+                <CreateTokenWizard
+                    visible={createWizardVisible}
+                    setVisible={setCreateWizardVisible}
+                    onTokenCreated={handleTokenCreated}
+                />
+            )}
             <TokenDisplayModal
                 visible={tokenDisplayVisible}
                 token={createdToken}
@@ -156,10 +162,10 @@ export function ApiTokenManagementComponent ({ currentUserOnly = false }: ApiTok
                         sortingField: 'name',
                     },
                     {
-                        id: 'createdFor',
-                        header: 'Created For',
-                        cell: (item) => item.createdFor,
-                        sortingField: 'createdFor',
+                        id: 'username',
+                        header: 'Username',
+                        cell: (item) => item.username,
+                        sortingField: 'username',
                     },
                     {
                         id: 'createdBy',
@@ -170,13 +176,13 @@ export function ApiTokenManagementComponent ({ currentUserOnly = false }: ApiTok
                     {
                         id: 'createdDate',
                         header: 'Created Date',
-                        cell: (item) => formatDate(item.createdDate),
+                        cell: (item) => formatDate(item.createdDate * 1000),
                         sortingField: 'createdDate',
                     },
                     {
                         id: 'expiration',
                         header: 'Expiration',
-                        cell: (item) => formatDate(item.tokenExpiration),
+                        cell: (item) => formatDate(item.tokenExpiration * 1000),
                         sortingField: 'tokenExpiration',
                     },
                     {

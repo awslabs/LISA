@@ -23,7 +23,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from mangum import Mangum
-from utilities.auth import get_groups, get_username, is_admin, is_api_user
+from utilities.auth import get_user_context, is_api_user
 from utilities.common_functions import retry_config
 from utilities.fastapi_middleware.aws_api_gateway_middleware import AWSAPIGatewayMiddleware
 
@@ -106,8 +106,7 @@ async def create_token_for_user(
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     event = request.scope["aws.event"]
-    current_user = get_username(event)
-    is_admin_user = is_admin(event)
+    current_user, is_admin_user, _ = get_user_context(event)
 
     handler = CreateTokenAdminHandler(token_table)
     return handler(username, create_request, current_user, is_admin_user)
@@ -122,9 +121,7 @@ async def create_own_token(request: Request, create_request: CreateTokenUserRequ
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     event = request.scope["aws.event"]
-    current_user = get_username(event)
-    user_groups = get_groups(event)
-    is_admin_user = is_admin(event)
+    current_user, is_admin_user, user_groups = get_user_context(event)
     has_api_access = is_api_user(event)
 
     handler = CreateTokenUserHandler(token_table)
@@ -140,8 +137,7 @@ async def list_tokens(request: Request) -> ListTokensResponse:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     event = request.scope["aws.event"]
-    current_user = get_username(event)
-    is_admin_user = is_admin(event)
+    current_user, is_admin_user, _ = get_user_context(event)
 
     handler = ListTokensHandler(token_table)
     return handler(current_user, is_admin_user)
@@ -157,8 +153,7 @@ async def get_token(
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     event = request.scope["aws.event"]
-    current_user = get_username(event)
-    is_admin_user = is_admin(event)
+    current_user, is_admin_user, _ = get_user_context(event)
 
     handler = GetTokenHandler(token_table)
     return handler(token_uuid, current_user, is_admin_user)
@@ -174,8 +169,7 @@ async def delete_token(
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     event = request.scope["aws.event"]
-    current_user = get_username(event)
-    is_admin_user = is_admin(event)
+    current_user, is_admin_user, _ = get_user_context(event)
 
     handler = DeleteTokenHandler(token_table)
     return handler(token_uuid, current_user, is_admin_user)

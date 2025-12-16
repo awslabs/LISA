@@ -12,28 +12,32 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timedelta
 
 from pydantic import BaseModel, Field, field_validator
+
+
+def default_expiration() -> int:
+    """Calculate default token expiration (90 days from now)"""
+    return int((datetime.now() + timedelta(days=90)).timestamp())
 
 
 class CreateTokenAdminRequest(BaseModel):
     """Admin request to create token for a user or system"""
 
-    tokenExpiration: Optional[int] = Field(
-        default=None, description="Unix timestamp when token expires. Defaults to 90 days"
+    tokenExpiration: int = Field(
+        default_factory=default_expiration, description="Unix timestamp when token expires. Defaults to 90 days"
     )
     groups: list[str] = Field(default_factory=list, description="Groups for the token")
     name: str = Field(description="Human-readable name for the token")
     isSystemToken: bool = Field(default=False, description="Whether this is a system token")
 
     @field_validator("tokenExpiration")
-    def validate_expiration(cls, v):
-        if v is not None:
-            current_time = int(datetime.now().timestamp())
-            if v <= current_time:
-                raise ValueError("tokenExpiration must be in the future")
+    @classmethod
+    def validate_expiration(cls, v: int) -> int:
+        current_time = int(datetime.now().timestamp())
+        if v <= current_time:
+            raise ValueError("tokenExpiration must be in the future")
         return v
 
 
@@ -41,6 +45,17 @@ class CreateTokenUserRequest(BaseModel):
     """User request to create their own token"""
 
     name: str = Field(description="Human-readable name for the token")
+    tokenExpiration: int = Field(
+        default_factory=default_expiration, description="Unix timestamp when token expires. Defaults to 90 days"
+    )
+
+    @field_validator("tokenExpiration")
+    @classmethod
+    def validate_expiration(cls, v: int) -> int:
+        current_time = int(datetime.now().timestamp())
+        if v <= current_time:
+            raise ValueError("tokenExpiration must be in the future")
+        return v
 
 
 class CreateTokenResponse(BaseModel):
@@ -48,7 +63,7 @@ class CreateTokenResponse(BaseModel):
     tokenUUID: str = Field(description="Unique identifier for the token")
     tokenExpiration: int
     createdDate: int
-    createdFor: str
+    username: str
     name: str
     groups: list[str]
     isSystemToken: bool
@@ -60,7 +75,7 @@ class TokenInfo(BaseModel):
     tokenUUID: str
     tokenExpiration: int
     createdDate: int
-    createdFor: str
+    username: str
     createdBy: str
     name: str
     groups: list[str]

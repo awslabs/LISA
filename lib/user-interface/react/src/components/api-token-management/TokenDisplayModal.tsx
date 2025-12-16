@@ -26,6 +26,7 @@ import {
     Checkbox,
 } from '@cloudscape-design/components';
 import { ICreateTokenResponse } from '../../shared/model/api-token.model';
+import { formatDate } from '../../shared/util/formats';
 
 export type TokenDisplayModalProps = {
     visible: boolean;
@@ -60,7 +61,7 @@ export function TokenDisplayModal ({ visible, token, onDismiss }: TokenDisplayMo
         const element = document.createElement('a');
         const file = new Blob([token.token], { type: 'text/plain' });
         element.href = URL.createObjectURL(file);
-        element.download = `lisa-api-token-${token.createdFor}-${Date.now()}.txt`;
+        element.download = `lisa-api-token-${token.username}-${Date.now()}.txt`;
         document.body.appendChild(element);
         element.click();
         document.body.removeChild(element);
@@ -72,8 +73,9 @@ export function TokenDisplayModal ({ visible, token, onDismiss }: TokenDisplayMo
         <Modal
             visible={visible}
             onDismiss={() => {
-                // Prevent closing by clicking outside or pressing ESC
-                // User must acknowledge and click the Close button
+                if (acknowledged) {
+                    handleClose();
+                }
             }}
             size='medium'
             header='API Token Created Successfully'
@@ -95,7 +97,6 @@ export function TokenDisplayModal ({ visible, token, onDismiss }: TokenDisplayMo
                     It cannot be retrieved again. Make sure to copy and save it in a secure location
                     before closing this dialog.
                 </Alert>
-
                 <Container
                     header={
                         <Header
@@ -150,8 +151,8 @@ export function TokenDisplayModal ({ visible, token, onDismiss }: TokenDisplayMo
                             <div>{token.name}</div>
                         </div>
                         <div>
-                            <Box variant='awsui-key-label'>Created For</Box>
-                            <div>{token.createdFor}</div>
+                            <Box variant='awsui-key-label'>Username</Box>
+                            <div>{token.username}</div>
                         </div>
                         <div>
                             <Box variant='awsui-key-label'>Groups</Box>
@@ -159,7 +160,7 @@ export function TokenDisplayModal ({ visible, token, onDismiss }: TokenDisplayMo
                         </div>
                         <div>
                             <Box variant='awsui-key-label'>Expiration</Box>
-                            <div>{new Date(token.tokenExpiration * 1000).toLocaleString()}</div>
+                            <div>{formatDate(token.tokenExpiration * 1000)}</div>
                         </div>
                         <div>
                             <Box variant='awsui-key-label'>System Token</Box>

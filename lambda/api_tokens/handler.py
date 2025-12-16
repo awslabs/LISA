@@ -37,9 +37,9 @@ class CreateTokenAdminHandler:
         self.token_table = token_table
 
     def _get_user_token(self, username: str) -> Optional[dict]:
-        """Query for existing token by createdFor using GSI"""
+        """Query for existing token by username using GSI"""
         response = self.token_table.query(
-            IndexName="createdFor-index", KeyConditionExpression=Key("createdFor").eq(username), Limit=1
+            IndexName="username-index", KeyConditionExpression=Key("username").eq(username), Limit=1
         )
         items = response.get("Items", [])
         return items[0] if items else None
@@ -61,7 +61,7 @@ class CreateTokenAdminHandler:
         token_uuid = str(uuid4())
 
         created_date = int(datetime.now().timestamp())
-        expiration = request.tokenExpiration or int((datetime.now() + timedelta(days=90)).timestamp())
+        expiration = request.tokenExpiration
 
         # Store in DynamoDB
         item = {
@@ -70,7 +70,7 @@ class CreateTokenAdminHandler:
             "tokenExpiration": expiration,
             "createdDate": created_date,
             "createdBy": created_by,
-            "createdFor": username,
+            "username": username,
             "groups": request.groups,
             "name": request.name,
             "isSystemToken": request.isSystemToken,
@@ -83,7 +83,7 @@ class CreateTokenAdminHandler:
             tokenUUID=token_uuid,
             tokenExpiration=expiration,
             createdDate=created_date,
-            createdFor=username,
+            username=username,
             name=request.name,
             groups=request.groups,
             isSystemToken=request.isSystemToken,
@@ -97,9 +97,9 @@ class CreateTokenUserHandler:
         self.token_table = token_table
 
     def _get_user_token(self, username: str) -> Optional[dict]:
-        """Query for existing token by createdFor using GSI"""
+        """Query for existing token by username using GSI"""
         response = self.token_table.query(
-            IndexName="createdFor-index", KeyConditionExpression=Key("createdFor").eq(username), Limit=1
+            IndexName="username-index", KeyConditionExpression=Key("username").eq(username), Limit=1
         )
         items = response.get("Items", [])
         return items[0] if items else None
@@ -122,7 +122,7 @@ class CreateTokenUserHandler:
         token_uuid = str(uuid4())
 
         created_date = int(datetime.now().timestamp())
-        expiration = int((datetime.now() + timedelta(days=90)).timestamp())
+        expiration = request.tokenExpiration
 
         item = {
             "token": token_hash,
@@ -130,7 +130,7 @@ class CreateTokenUserHandler:
             "tokenExpiration": expiration,
             "createdDate": created_date,
             "createdBy": username,
-            "createdFor": username,  # User creates token for themselves
+            "username": username,  # User creates token for themselves
             "groups": user_groups,  # Copied from user's actual groups
             "name": request.name,
             "isSystemToken": False,  # Always false for user-created tokens
@@ -142,7 +142,7 @@ class CreateTokenUserHandler:
             tokenUUID=token_uuid,
             tokenExpiration=expiration,
             createdDate=created_date,
-            createdFor=username,
+            username=username,
             name=request.name,
             groups=user_groups,
             isSystemToken=False,
@@ -164,7 +164,7 @@ class ListTokensHandler:
         else:
             # Users only see their own token
             response = self.token_table.query(
-                IndexName="createdFor-index", KeyConditionExpression=Key("createdFor").eq(username)
+                IndexName="username-index", KeyConditionExpression=Key("username").eq(username)
             )
 
         items = response.get("Items", [])
@@ -183,7 +183,7 @@ class ListTokensHandler:
                 tokenUUID=item.get("tokenUUID", "—"),
                 tokenExpiration=token_expiration,
                 createdDate=item.get("createdDate", 0),
-                createdFor=item.get("createdFor", "—"),
+                username=item.get("username", "—"),
                 createdBy=item.get("createdBy", "—"),
                 name=token_name,
                 groups=item.get("groups", []),
@@ -205,13 +205,18 @@ class GetTokenHandler:
     def __call__(self, token_uuid: str, username: str, is_admin: bool) -> TokenInfo:
         item = None
 
-        # Try to find by tokenUUID (modern tokens)
-        response = self.token_table.query(
-            IndexName="tokenUUID-index", KeyConditionExpression=Key("tokenUUID").eq(token_uuid)
-        )
-        items = response.get("Items", [])
-        if items:
-            item = items[0]
+        # Try to find by tokenUUID (modern tokens) using scan with filter
+        try:
+            response = self.token_table.scan(
+                FilterExpression=Key("tokenUUID").eq(token_uuid),
+                Limit=1
+            )
+            items = response.get("Items", [])
+            if items:
+                item = items[0]
+        except Exception:
+            # Scan failed, continue to fallback
+            pass
 
         # If not found, try direct lookup by token attribute (legacy tokens)
         if not item:
@@ -227,7 +232,7 @@ class GetTokenHandler:
             raise TokenNotFoundError("Token not found")
 
         # Authorization: admin sees all, user sees only their own
-        if not is_admin and item.get("createdFor") != username:
+        if not is_admin and item.get("username") != username:
             raise TokenNotFoundError("Token not found")
 
         current_time = int(datetime.now().timestamp())
@@ -244,7 +249,7 @@ class GetTokenHandler:
             tokenUUID=item.get("tokenUUID", "—"),
             tokenExpiration=token_expiration,
             createdDate=item.get("createdDate", 0),
-            createdFor=item.get("createdFor", "—"),
+            username=item.get("username", "—"),
             createdBy=item.get("createdBy", "—"),
             name=token_name,
             groups=item.get("groups", []),
@@ -263,13 +268,18 @@ class DeleteTokenHandler:
     def __call__(self, token_uuid: str, username: str, is_admin: bool) -> DeleteTokenResponse:
         item = None
 
-        # Try to find by tokenUUID (modern tokens)
-        response = self.token_table.query(
-            IndexName="tokenUUID-index", KeyConditionExpression=Key("tokenUUID").eq(token_uuid)
-        )
-        items = response.get("Items", [])
-        if items:
-            item = items[0]
+        # Try to find by tokenUUID (modern tokens) using scan with filter
+        try:
+            response = self.token_table.scan(
+                FilterExpression=Key("tokenUUID").eq(token_uuid),
+                Limit=1
+            )
+            items = response.get("Items", [])
+            if items:
+                item = items[0]
+        except Exception:
+            # Scan failed, continue to fallback
+            pass
 
         # If not found, try direct lookup by token attribute (legacy tokens)
         if not item:
@@ -292,7 +302,7 @@ class DeleteTokenHandler:
             raise ForbiddenError("Only administrators can delete legacy tokens.")
 
         # For modern tokens, check ownership
-        if not is_legacy and not is_admin and item.get("createdFor") != username:
+        if not is_legacy and not is_admin and item.get("username") != username:
             raise TokenNotFoundError("Token not found")
 
         # Delete from DynamoDB using the hash (PK)

@@ -54,6 +54,22 @@ export const apiTokenApi = createApi({
             },
             invalidatesTags: ['apiTokens'],
         }),
+        createOwnToken: builder.mutation<ICreateTokenResponse, { name: string; tokenExpiration?: number }>({
+            query: (request) => ({
+                url: '/api-tokens/',
+                method: 'POST',
+                data: request,
+            }),
+            transformErrorResponse: (baseQueryReturnValue) => {
+                return {
+                    name: 'Create Token Error',
+                    message: baseQueryReturnValue.data?.type === 'RequestValidationError'
+                        ? baseQueryReturnValue.data.detail.map((error: any) => error.msg).join(', ')
+                        : baseQueryReturnValue.data?.message || 'Failed to create token',
+                };
+            },
+            invalidatesTags: ['apiTokens'],
+        }),
         deleteToken: builder.mutation<IDeleteTokenResponse, string>({
             query: (tokenUUID) => ({
                 url: `/api-tokens/${tokenUUID}`,
@@ -73,5 +89,6 @@ export const apiTokenApi = createApi({
 export const {
     useListTokensQuery,
     useCreateTokenForUserMutation,
+    useCreateOwnTokenMutation,
     useDeleteTokenMutation,
 } = apiTokenApi;

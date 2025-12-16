@@ -88,17 +88,10 @@ export class LisaApiBaseConstruct extends Construct {
             removalPolicy: config.removalPolicy,
         });
 
-        // Add GSI for querying tokens by createdFor
+        // Add GSI for querying tokens by username
         tokenTable.addGlobalSecondaryIndex({
-            indexName: 'createdFor-index',
-            partitionKey: { name: 'createdFor', type: AttributeType.STRING },
-            projectionType: ProjectionType.ALL,
-        });
-
-        // Add GSI for querying tokens by tokenUUID
-        tokenTable.addGlobalSecondaryIndex({
-            indexName: 'tokenUUID-index',
-            partitionKey: { name: 'tokenUUID', type: AttributeType.STRING },
+            indexName: 'username-index',
+            partitionKey: { name: 'username', type: AttributeType.STRING },
             projectionType: ProjectionType.ALL,
         });
 

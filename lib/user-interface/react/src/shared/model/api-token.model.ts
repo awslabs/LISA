@@ -18,7 +18,7 @@ export type ITokenInfo = {
     tokenUUID: string;
     tokenExpiration: number;
     createdDate: number;
-    createdFor: string;
+    username: string;
     createdBy: string;
     name: string;
     groups: string[];
@@ -43,7 +43,7 @@ export type ICreateTokenResponse = {
     tokenUUID: string;
     tokenExpiration: number;
     createdDate: number;
-    createdFor: string;
+    username: string;
     name: string;
     groups: string[];
     isSystemToken: boolean;

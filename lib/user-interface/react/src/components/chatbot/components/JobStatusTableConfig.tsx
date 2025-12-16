@@ -141,7 +141,7 @@ export const TABLE_DEFINITION: {
     },
     {
         id: 'created_date',
-        header: 'Created Date',
+        header: 'Created',
         cell: (item) => {
             if (!item.created_date) {
                 return <span className='text-gray-500'>-</span>;

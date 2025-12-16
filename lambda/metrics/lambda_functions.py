@@ -49,7 +49,7 @@ def get_user_metrics(event: dict, context: dict) -> dict:
                 "ragUsageCount": item.get("ragUsageCount", 0),
                 "mcpToolCallsCount": item.get("mcpToolCallsCount", 0),
                 "mcpToolUsage": item.get("mcpToolUsage", {}),
-                "userGroups": list(item.get("userGroups", [])),
+                "userGroups": list(item.get("userGroups") or []),
                 "sessionMetrics": item.get("sessionMetrics", {}),
                 "firstSeen": item.get("firstSeen"),
                 "lastSeen": item.get("lastSeen"),
@@ -580,7 +580,7 @@ def update_user_metrics_by_session(
                     ":total_mcp": total_mcp_calls,
                     ":mcp_usage": aggregate_mcp_usage,
                     ":session_metrics": all_session_metrics,
-                    ":groups": set(user_groups) if user_groups else existing_item.get("userGroups", set()),
+                    ":groups": set(user_groups) if user_groups else (existing_item.get("userGroups") or set()),
                 },
             )
     except ClientError as e:

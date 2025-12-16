@@ -42,7 +42,7 @@ from .domain_objects import (
     UpdateModelResponse,
     UpdateScheduleResponse,
 )
-from .exception import InvalidStateTransitionError, ModelAlreadyExistsError, ModelNotFoundError
+from .exception import InvalidStateTransitionError, ModelAlreadyExistsError, ModelInUseError, ModelNotFoundError
 from .handler import (
     CreateModelHandler,
     DeleteModelHandler,
@@ -94,7 +94,7 @@ def get_admin_status_and_groups(request: Request) -> tuple[bool, list[str]]:
 @app.exception_handler(ModelNotFoundError)
 async def model_not_found_handler(request: Request, exc: ModelNotFoundError) -> JSONResponse:
     """Handle exception when model cannot be found and translate to a 404 error."""
-    return JSONResponse(status_code=404, content={"message": str(exc)})
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
 
 
 @app.exception_handler(RequestValidationError)
@@ -112,7 +112,7 @@ async def user_error_handler(
     request: Request, exc: Union[InvalidStateTransitionError, ModelAlreadyExistsError, ValueError]
 ) -> JSONResponse:
     """Handle errors when customer requests options that cannot be processed."""
-    return JSONResponse(status_code=400, content={"message": str(exc)})
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
 
 
 @app.post(path="", include_in_schema=False)
@@ -128,7 +128,10 @@ async def create_model(create_request: CreateModelRequest, request: Request) -> 
         model_table_resource=model_table,
         guardrails_table_resource=guardrails_table,
     )
-    return create_handler(create_request=create_request)
+    try:
+        return create_handler(create_request=create_request)
+    except ModelAlreadyExistsError as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 
 @app.get(path="", include_in_schema=False)
@@ -159,7 +162,10 @@ async def get_model(
     )
 
     admin_status, user_groups = get_admin_status_and_groups(request)
-    return get_handler(model_id=model_id, user_groups=user_groups, is_admin=admin_status)
+    try:
+        return get_handler(model_id=model_id, user_groups=user_groups, is_admin=admin_status)
+    except ModelNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.put(path="/{model_id}")
@@ -171,14 +177,19 @@ async def update_model(
     """Endpoint to update a model."""
     admin_status, _ = get_admin_status_and_groups(request)
     if not admin_status:
-        raise HTTPException(status_code=403, detail="User does not have permission to update models.")
+        raise HTTPException(status_code=403, detail="User does not have permission to update models")
     update_handler = UpdateModelHandler(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
         guardrails_table_resource=guardrails_table,
     )
-    return update_handler(model_id=model_id, update_request=update_request)
+    try:
+        return update_handler(model_id=model_id, update_request=update_request)
+    except ModelNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except InvalidStateTransitionError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.delete(path="/{model_id}")
@@ -188,14 +199,19 @@ async def delete_model(
     """Endpoint to delete a model."""
     admin_status, _ = get_admin_status_and_groups(request)
     if not admin_status:
-        raise HTTPException(status_code=403, detail="User does not have permission to delete models.")
+        raise HTTPException(status_code=403, detail="User does not have permission to delete models")
     delete_handler = DeleteModelHandler(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
         guardrails_table_resource=guardrails_table,
     )
-    return delete_handler(model_id=model_id)
+    try:
+        return delete_handler(model_id=model_id)
+    except ModelInUseError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    except ModelNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.get(path="/metadata/instances")

@@ -92,7 +92,7 @@ export const DocumentSummarizationModal = ({
     const promptOptions = [
         { label: 'Concise', value: 'concise', description: 'Short Summary (best for small documents)' },
         { label: 'Overview', value: 'overview', description: 'Key bullet points (best for large documents)' },
-        { label: 'Chain of Density', value: 'cod', description: 'An iterative summarization technique' },
+        { label: 'Chain of density', value: 'cod', description: 'An iterative summarization technique' },
         { label: 'Custom', value: 'custom', description: 'Write your own prompt' },
     ];
 

@@ -45,7 +45,7 @@ const getDefaultExpiration = () => {
     return date.toISOString().split('T')[0];
 };
 
-export function CreateUserTokenWizard({ visible, setVisible, onTokenCreated }: CreateUserTokenWizardProps): ReactElement {
+export function CreateUserTokenWizard ({ visible, setVisible, onTokenCreated }: CreateUserTokenWizardProps): ReactElement {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
     const [createToken, { isLoading }] = useCreateOwnTokenMutation();
@@ -56,11 +56,11 @@ export function CreateUserTokenWizard({ visible, setVisible, onTokenCreated }: C
 
     const validateForm = (): boolean => {
         const newErrors: { tokenName?: string; expirationDate?: string } = {};
-        
+
         if (!tokenName.trim()) {
             newErrors.tokenName = 'Token name is required';
         }
-        
+
         if (!expirationDate) {
             newErrors.expirationDate = 'Expiration date is required';
         } else {
@@ -71,7 +71,7 @@ export function CreateUserTokenWizard({ visible, setVisible, onTokenCreated }: C
                 newErrors.expirationDate = 'Expiration date must be in the future';
             }
         }
-        
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -84,9 +84,9 @@ export function CreateUserTokenWizard({ visible, setVisible, onTokenCreated }: C
         const expirationTimestamp = Math.floor(new Date(expirationDate).getTime() / 1000);
 
         try {
-            const result = await createToken({ 
+            const result = await createToken({
                 name: tokenName,
-                tokenExpiration: expirationTimestamp 
+                tokenExpiration: expirationTimestamp
             }).unwrap();
             notificationService.generateNotification(
                 `Successfully created token "${tokenName}"`,
@@ -103,13 +103,13 @@ export function CreateUserTokenWizard({ visible, setVisible, onTokenCreated }: C
         }
     };
 
-    function resetState() {
+    function resetState () {
         setTokenName('');
         setExpirationDate(getDefaultExpiration());
         setErrors({});
     }
 
-    function handleDismiss() {
+    function handleDismiss () {
         if (tokenName.trim()) {
             // Only confirm if there's unsaved data
             if (window.confirm('Are you sure you want to discard your changes?')) {
@@ -150,11 +150,11 @@ export function CreateUserTokenWizard({ visible, setVisible, onTokenCreated }: C
             }
         >
             <SpaceBetween size='l'>
-                    <Alert type='info' header='Note:'>
-                        <p style={{ paddingTop: '10px' }}>
-                            This token will be created with your current group memberships.
-                        </p>
-                    </Alert>
+                <Alert type='info' header='Note:'>
+                    <p style={{ paddingTop: '10px' }}>
+                        This token will be created with your current group memberships.
+                    </p>
+                </Alert>
                 <Container header={<Header variant='h2'>Token Details</Header>}>
                     <SpaceBetween size='l'>
                         <FormField

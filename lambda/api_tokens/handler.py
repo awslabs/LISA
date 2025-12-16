@@ -12,6 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+import logging
 from datetime import datetime, timedelta
 from typing import Optional
 from uuid import uuid4
@@ -28,6 +29,8 @@ from .domain_objects import (
     TokenInfo,
 )
 from .exception import ForbiddenError, TokenAlreadyExistsError, TokenNotFoundError, UnauthorizedError
+
+logger = logging.getLogger(__name__)
 
 
 class CreateTokenAdminHandler:
@@ -207,16 +210,13 @@ class GetTokenHandler:
 
         # Try to find by tokenUUID (modern tokens) using scan with filter
         try:
-            response = self.token_table.scan(
-                FilterExpression=Key("tokenUUID").eq(token_uuid),
-                Limit=1
-            )
+            response = self.token_table.scan(FilterExpression=Key("tokenUUID").eq(token_uuid), Limit=1)
             items = response.get("Items", [])
             if items:
                 item = items[0]
-        except Exception:
-            # Scan failed, continue to fallback
-            pass
+        except Exception as e:
+            # Scan failed, continue to fallback to legacy token lookup
+            logger.debug(f"Scan by tokenUUID failed, trying legacy lookup: {e}")
 
         # If not found, try direct lookup by token attribute (legacy tokens)
         if not item:
@@ -270,16 +270,13 @@ class DeleteTokenHandler:
 
         # Try to find by tokenUUID (modern tokens) using scan with filter
         try:
-            response = self.token_table.scan(
-                FilterExpression=Key("tokenUUID").eq(token_uuid),
-                Limit=1
-            )
+            response = self.token_table.scan(FilterExpression=Key("tokenUUID").eq(token_uuid), Limit=1)
             items = response.get("Items", [])
             if items:
                 item = items[0]
-        except Exception:
-            # Scan failed, continue to fallback
-            pass
+        except Exception as e:
+            # Scan failed, continue to fallback to legacy token lookup
+            logger.debug(f"Scan by tokenUUID failed, trying legacy lookup: {e}")
 
         # If not found, try direct lookup by token attribute (legacy tokens)
         if not item:
@@ -287,8 +284,9 @@ class DeleteTokenHandler:
                 response = self.token_table.get_item(Key={"token": token_uuid})
                 if "Item" in response:
                     item = response["Item"]
-            except Exception:
+            except Exception as e:
                 # Legacy token lookup failed - this is expected if token doesn't exist
+                logger.debug(f"Legacy token lookup failed for token {token_uuid}: {e}")
                 item = None
 
         if not item:

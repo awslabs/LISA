@@ -14,13 +14,13 @@
  limitations under the License.
  */
 
-import React, { ReactElement } from 'react';
+import { ReactElement } from 'react';
 import FormField from '@cloudscape-design/components/form-field';
 import Input from '@cloudscape-design/components/input';
 import Select from '@cloudscape-design/components/select';
 import { SpaceBetween } from '@cloudscape-design/components';
 import { ChunkingStrategy, ChunkingStrategyType } from '#root/lib/schema';
-import { ModifyMethod } from '../../../shared/form/form-props';
+import { ModifyMethod } from './form-props';
 
 // Utility function to create default chunking strategy
 function createDefaultChunkingStrategy () {
@@ -44,8 +44,8 @@ export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElemen
 
     // Chunking type options
     const chunkingTypeOptions = [
-        { label: 'Fixed Size', value: ChunkingStrategyType.FIXED },
-        { label: 'None (No Chunking)', value: ChunkingStrategyType.NONE },
+        { label: 'Fixed size', value: ChunkingStrategyType.FIXED },
+        { label: 'None (no chunking)', value: ChunkingStrategyType.NONE },
         // Future: { label: 'Semantic', value: ChunkingStrategyType.SEMANTIC },
         // Future: { label: 'Recursive', value: ChunkingStrategyType.RECURSIVE },
     ];
@@ -63,10 +63,10 @@ export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElemen
                 <Select
                     selectedOption={
                         item?.type === ChunkingStrategyType.NONE
-                            ? { label: 'None (No Chunking)', value: ChunkingStrategyType.NONE }
+                            ? { label: 'None (no chunking)', value: ChunkingStrategyType.NONE }
                             : item?.type
-                                ? { label: 'Fixed Size', value: item.type }
-                                : { label: 'Fixed Size', value: ChunkingStrategyType.FIXED }
+                                ? { label: 'Fixed size', value: item.type }
+                                : { label: 'Fixed size', value: ChunkingStrategyType.FIXED }
                     }
                     onChange={({ detail }) => {
                         if (detail.selectedOption.value === ChunkingStrategyType.FIXED) {
@@ -86,7 +86,7 @@ export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElemen
             </FormField>
 
             {/* Fixed Size Configuration */}
-            {item?.type === ChunkingStrategyType.FIXED && (
+            {(item?.type === ChunkingStrategyType.FIXED || !item?.type) && (
                 <>
                     <FormField
                         label='Chunk Size'
@@ -95,11 +95,25 @@ export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElemen
                     >
                         <Input
                             type='number'
-                            value={String(item.size || 512)}
+                            value={String(
+                                (item?.type === ChunkingStrategyType.FIXED ? item.size : undefined) || 512
+                            )}
                             onChange={({ detail }) => {
-                                setFields({
-                                    'chunkingStrategy.size': Number(detail.value)
-                                });
+                                if (!item || item.type !== ChunkingStrategyType.FIXED) {
+                                    // Create full chunking strategy when item is undefined or not FIXED
+                                    setFields({
+                                        chunkingStrategy: {
+                                            type: ChunkingStrategyType.FIXED,
+                                            size: Number(detail.value),
+                                            overlap: 51 // Default overlap
+                                        }
+                                    });
+                                } else {
+                                    // Update existing FIXED strategy
+                                    setFields({
+                                        'chunkingStrategy.size': Number(detail.value)
+                                    });
+                                }
                             }}
                             onBlur={() => touchFields(['chunkingStrategy.size'])}
                             disabled={disabled}
@@ -113,11 +127,25 @@ export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElemen
                     >
                         <Input
                             type='number'
-                            value={String(item.overlap || 51)}
+                            value={String(
+                                (item?.type === ChunkingStrategyType.FIXED ? item.overlap : undefined) || 51
+                            )}
                             onChange={({ detail }) => {
-                                setFields({
-                                    'chunkingStrategy.overlap': Number(detail.value)
-                                });
+                                if (!item || item.type !== ChunkingStrategyType.FIXED) {
+                                    // Create full chunking strategy when item is undefined or not FIXED
+                                    setFields({
+                                        chunkingStrategy: {
+                                            type: ChunkingStrategyType.FIXED,
+                                            size: 512, // Default size
+                                            overlap: Number(detail.value)
+                                        }
+                                    });
+                                } else {
+                                    // Update existing FIXED strategy
+                                    setFields({
+                                        'chunkingStrategy.overlap': Number(detail.value)
+                                    });
+                                }
                             }}
                             onBlur={() => touchFields(['chunkingStrategy.overlap'])}
                             disabled={disabled}

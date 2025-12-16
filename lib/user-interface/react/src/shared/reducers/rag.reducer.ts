@@ -22,6 +22,7 @@ import {
     RagRepositoryConfig,
     ChunkingStrategy,
     RagCollectionConfig as SchemaRagCollectionConfig,
+    CollectionMetadata,
 } from '#root/lib/schema';
 
 export type S3UploadRequest = {
@@ -35,6 +36,7 @@ type IngestDocumentRequest = {
     collectionId?: string,
     repostiroyType: string,
     chunkingStrategy?: ChunkingStrategy;
+    metadata?: CollectionMetadata;
 };
 
 type IngestDocumentJob = {

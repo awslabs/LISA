@@ -67,7 +67,7 @@ class ExitRouteMiddleware(BaseHTTPMiddleware):
             )
 
             # Schedule the exit to happen after response is sent
-            import asyncio
+            import asyncio  # noqa: PLC0415
 
             asyncio.create_task(self._delayed_exit())
 
@@ -78,7 +78,7 @@ class ExitRouteMiddleware(BaseHTTPMiddleware):
 
     async def _delayed_exit(self):
         """Exit the application after a short delay."""
-        import asyncio
+        import asyncio  # noqa: PLC0415
 
         await asyncio.sleep(0.1)  # Short delay to ensure response is sent
         logger.info("Exiting application")

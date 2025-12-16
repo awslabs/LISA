@@ -101,13 +101,14 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
         const currentRepositoryId = ragConfig?.repositoryId;
         const repositoryHasChanged = currentRepositoryId !== lastRepositoryIdRef.current;
 
-        // Update tracking and reset user selection flag when repository changes
+        // Update tracking when repository changes
         if (repositoryHasChanged) {
             lastRepositoryIdRef.current = currentRepositoryId;
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setUserHasSelectedCollection(false);
         }
 
-        if (currentRepositoryId && filteredRepositories && allModels && !userHasSelectedCollection) {
+        if (currentRepositoryId && filteredRepositories && allModels && (!userHasSelectedCollection || repositoryHasChanged)) {
             const repository = filteredRepositories.find((repo) => repo.repositoryId === currentRepositoryId);
             const isNonBedrockRepo = repository?.type !== RagRepositoryType.BEDROCK_KNOWLEDGE_BASE;
 

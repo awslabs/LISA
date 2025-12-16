@@ -49,7 +49,7 @@ export function OpenSearchConfigForm (props: FormProps<OpenSearchConfig> & OpenS
         <Container header={<Header variant='h2'>OpenSearch Config</Header>}>
             <Tabs
                 onChange={({ detail }) => {
-                    setFields({ 'opensearchConfig': (detail.activeTabId === 'new' ? OpenSearchNewClusterConfig : OpenSearchExistingClusterConfig).parse({}) });
+                    setFields({ 'opensearchConfig': (detail.activeTabId === 'new' ? OpenSearchNewClusterConfig : OpenSearchExistingClusterConfig).partial().parse({}) });
                     setActiveTabId(detail.activeTabId);
                 }
                 }

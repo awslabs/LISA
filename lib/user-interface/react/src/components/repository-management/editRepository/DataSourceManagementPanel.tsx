@@ -129,7 +129,7 @@ export function DataSourceManagementPanel ({
                             },
                             {
                                 id: 'id',
-                                header: 'Data Source ID',
+                                header: 'Data source ID',
                                 cell: (item) => (
                                     <Box variant='code' fontSize='body-s'>
                                         {item.dataSourceId}
@@ -138,7 +138,7 @@ export function DataSourceManagementPanel ({
                             },
                             {
                                 id: 's3',
-                                header: 'S3 Location',
+                                header: 'S3 location',
                                 cell: (item) => (
                                     <Box variant='code' fontSize='body-s'>
                                         s3://{item.s3Bucket}/{item.s3Prefix || ''}

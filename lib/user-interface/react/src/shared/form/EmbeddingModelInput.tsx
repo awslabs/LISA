@@ -38,7 +38,7 @@ export function EmbeddingModelInput (props: EmbeddingModelInputProps): ReactElem
         onBlur,
         errorText,
         disabled = false,
-        label = 'Embedding Model',
+        label = 'Embedding model',
         description = 'The model used to generate vector embeddings for documents',
         placeholder = 'Select an embedding model',
     } = props;

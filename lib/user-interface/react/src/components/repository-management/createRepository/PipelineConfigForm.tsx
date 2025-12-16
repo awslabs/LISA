@@ -56,7 +56,7 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
             return [
                 {
                     value: 'default',
-                    label: 'Default Collection',
+                    label: 'Default collection',
                     description: 'Documents will be ingested into the default collection',
                 }
             ];

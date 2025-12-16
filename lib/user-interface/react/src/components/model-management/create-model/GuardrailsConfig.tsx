@@ -89,9 +89,9 @@ export function GuardrailsConfig (props: GuardrailsConfigProps): ReactElement {
     };
 
     const modeOptions = [
-        { label: 'Pre Call', value: GuardrailMode.PRE_CALL, description: 'Execute guardrail before LLM call' },
-        { label: 'During Call', value: GuardrailMode.DURING_CALL, description: 'Execute guardrail during LLM call' },
-        { label: 'Post Call', value: GuardrailMode.POST_CALL, description: 'Execute guardrail after LLM call' }
+        { label: 'Pre call', value: GuardrailMode.PRE_CALL, description: 'Execute guardrail before LLM call' },
+        { label: 'During call', value: GuardrailMode.DURING_CALL, description: 'Execute guardrail during LLM call' },
+        { label: 'Post call', value: GuardrailMode.POST_CALL, description: 'Execute guardrail after LLM call' }
     ];
 
     return (
@@ -212,7 +212,7 @@ export function GuardrailsConfig (props: GuardrailsConfigProps): ReactElement {
                                         </FormField>
 
                                         <UserGroupsInput
-                                            label={<span>Allowed Groups <em>- Optional</em> </span>}
+                                            label={<span>Allowed groups <em>- Optional</em> </span>}
                                             errorText={props.formErrors?.guardrailsConfig?.guardrails?.[key]?.allowedGroups}
                                             description='Groups that will have this guardrail applied to them. Type a group name and click Add.'
                                             values={guardrail.allowedGroups || []}

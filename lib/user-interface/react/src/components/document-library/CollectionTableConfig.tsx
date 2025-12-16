@@ -34,7 +34,7 @@ export type CollectionTableRow = TableProps.ColumnDefinition<RagCollectionConfig
 export const COLLECTION_COLUMN_DEFINITIONS: ReadonlyArray<CollectionTableRow> = [
     {
         id: 'name',
-        header: 'Collection Name',
+        header: 'Collection name',
         cell: (collection) => (
             <>
                 <Link href={`#/document-library/${collection.repositoryId}/${collection.collectionId}`}>
@@ -76,7 +76,7 @@ export const COLLECTION_COLUMN_DEFINITIONS: ReadonlyArray<CollectionTableRow> = 
     },
     {
         id: 'embeddingModel',
-        header: 'Embedding Model',
+        header: 'Embedding model',
         cell: (collection) => collection.embeddingModel || '-',
         visible: true,
         sortingField: 'embeddingModel',
@@ -90,7 +90,7 @@ export const COLLECTION_COLUMN_DEFINITIONS: ReadonlyArray<CollectionTableRow> = 
     },
     {
         id: 'allowedGroups',
-        header: 'Allowed Groups',
+        header: 'Allowed groups',
         cell: (collection) => {
             if (!collection.allowedGroups || collection.allowedGroups.length === 0) {
                 return <em>(public)</em>;
@@ -101,26 +101,26 @@ export const COLLECTION_COLUMN_DEFINITIONS: ReadonlyArray<CollectionTableRow> = 
     },
     {
         id: 'createdBy',
-        header: 'Created By',
+        header: 'Created by',
         cell: (collection) => collection.createdBy,
         visible: true,
         sortingField: 'createdBy',
     },
     {
         id: 'createdAt',
-        header: 'Created At',
+        header: 'Created',
         cell: (collection) => formatDate(collection.createdAt),
         visible: false,
     },
     {
         id: 'updatedAt',
-        header: 'Updated At',
+        header: 'Updated',
         cell: (collection) => formatDate(collection.updatedAt),
         visible: false,
     },
     {
         id: 'chunkingStrategy',
-        header: 'Chunking Strategy',
+        header: 'Chunking strategy',
         cell: (collection) => formatObject(collection.chunkingStrategy),
         visible: false,
     },

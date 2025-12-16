@@ -29,7 +29,7 @@ export function UserGroupsInput (props: UserGroupsInputProps): ReactElement {
         onChange,
         values,
         placeholder = 'Enter group name',
-        label = 'Allowed Groups',
+        label = 'Allowed groups',
         description = 'User groups that can access this resource. Leave empty for public access.',
         ...formFieldProps
     } = props;

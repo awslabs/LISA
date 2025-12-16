@@ -60,8 +60,8 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     }}
                     onBlur={() => props.touchFields(['lisaHostedModel'])}
                     options={[
-                        { label: 'Third Party', value: 'false' },
-                        { label: 'LISA Hosted', value: 'true' }
+                        { label: 'Third party', value: 'false' },
+                        { label: 'LISA hosted', value: 'true' }
                     ]}
                     disabled={props.isEdit}
                 />
@@ -262,7 +262,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                 }} disabled={!props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION)} placeholder='Overview of Summarization for Model'/>
             </FormField>
             <UserGroupsInput
-                label='Allowed Groups'
+                label='Allowed groups'
                 errorText={props.formErrors?.allowedGroups}
                 values={props.item.allowedGroups || []}
                 onChange={(values) => props.setFields({ 'allowedGroups': values })}

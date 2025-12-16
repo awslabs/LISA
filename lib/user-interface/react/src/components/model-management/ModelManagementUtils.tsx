@@ -118,7 +118,7 @@ export const createCardDefinitions = (defaultModelId?: string) => ({
         },
         {
             id: 'modelFeatures',
-            header: 'Model Features',
+            header: 'Model features',
             content: (model: IModel) => model.features ? model.features.map((feat) => feat.name).join(', ') : '-',
         },
         {
@@ -143,17 +143,17 @@ export const createCardDefinitions = (defaultModelId?: string) => ({
         },
         {
             id: 'instanceType',
-            header: 'Instance Type',
+            header: 'Instance type',
             content: (model: IModel) => model.instanceType ?  model.instanceType : '-',
         },
         {
             id: 'scheduleType',
-            header: 'Schedule Type',
+            header: 'Schedule type',
             content: (model: IModel) => formatScheduleType(model),
         },
         {
             id: 'scheduleDetails',
-            header: 'Schedule Details',
+            header: 'Schedule details',
             content: (model: IModel) => formatScheduleDetails(model),
         },
         {
@@ -163,7 +163,7 @@ export const createCardDefinitions = (defaultModelId?: string) => ({
         },
         {
             id: 'allowedGroups',
-            header: 'Allowed Groups',
+            header: 'Allowed groups',
             content: (model: IModel) => model?.allowedGroups?.length > 0 ? `${model.allowedGroups.join(', ')}` : <em>(public)</em>,
         },
         {
@@ -188,19 +188,19 @@ export const DEFAULT_PREFERENCES: CollectionPreferencesProps.Preferences = {
 
 export const VISIBLE_CONTENT_OPTIONS = [
     {
-        label: 'Displayed Properties',
+        label: 'Displayed properties',
         options: [
             { id: 'modelName', label: 'Name' },
             { id: 'modelFeatures', label: 'Features'},
             { id: 'modelType', label: 'Type' },
             { id: 'modelUrl', label: 'URL' },
             { id: 'streaming', label: 'Streaming' },
-            { id: 'hosting', label: 'LISA-Hosted Infrastructure' },
-            { id: 'instanceType', label: 'Instance Type' },
-            { id: 'scheduleType', label: 'Schedule Type' },
-            { id: 'scheduleDetails', label: 'Schedule Details' },
+            { id: 'hosting', label: 'LISA-Hosted infrastructure' },
+            { id: 'instanceType', label: 'Instance type' },
+            { id: 'scheduleType', label: 'Schedule type' },
+            { id: 'scheduleDetails', label: 'Schedule details' },
             { id: 'modelDescription', label: 'Description' },
-            { id: 'allowedGroups', label: 'Allowed Groups' },
+            { id: 'allowedGroups', label: 'Allowed groups' },
             { id: 'modelStatus', label: 'Status' },
         ],
     },

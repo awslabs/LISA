@@ -234,7 +234,7 @@ export function BedrockKnowledgeBaseConfigForm (
                                     },
                                     {
                                         id: 'id',
-                                        header: 'Data Source ID',
+                                        header: 'Data source ID',
                                         cell: (item) => (
                                             <Box variant='code' fontSize='body-s'>
                                                 {item.id}

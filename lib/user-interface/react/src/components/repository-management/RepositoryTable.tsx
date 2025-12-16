@@ -102,8 +102,7 @@ export function RepositoryTable (): ReactElement {
                         <RepositoryActions selectedItems={collectionProps.selectedItems}
                             setSelectedItems={actions.setSelectedItems}
                             setNewRepositoryModalVisible={setNewRepositoryModalVisible}
-                            setEdit={setEdit}
-                            refetchRepositories={refetch}></RepositoryActions>
+                            setEdit={setEdit}></RepositoryActions>
                     </SpaceBetween>}
                 >Repositories
                 </Header>}

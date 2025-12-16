@@ -27,7 +27,7 @@ import {
 } from '@cloudscape-design/components';
 import { FormProps } from '../../../shared/form/form-props';
 
-import { PipelineConfig, RagRepositoryPipeline, RagRepositoryType } from '#root/lib/schema';
+import { PipelineConfig, RagRepositoryPipeline, RagRepositoryType, FixedSizeChunkingStrategySchema } from '#root/lib/schema';
 import { useListCollectionsQuery } from '@/shared/reducers/rag.reducer';
 import { ChunkingConfigForm } from '@/shared/form/ChunkingConfigForm';
 import { MetadataForm } from '@/shared/form/MetadataForm';
@@ -38,7 +38,7 @@ export type PipelineConfigProps = {
     repositoryType?: RagRepositoryType;
 };
 
-export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & PipelineConfigProps): ReactElement {
+export function PipelineConfigForm(props: FormProps<PipelineConfig[]> & PipelineConfigProps): ReactElement {
     const { item, touchFields, setFields, formErrors, isEdit, repositoryId, repositoryType } = props;
 
     // Only query collections if we have a repositoryId (editing existing repository)
@@ -75,7 +75,10 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
     };
 
     const addConfig = () => {
-        setFields({ pipelines: [...(item || []), RagRepositoryPipeline.partial().parse({})] });
+        const newPipeline = RagRepositoryPipeline.partial().parse({
+            chunkingStrategy: FixedSizeChunkingStrategySchema.parse({})
+        });
+        setFields({ pipelines: [...(item || []), newPipeline] });
     };
 
     const removeConfig = (index: number) => {

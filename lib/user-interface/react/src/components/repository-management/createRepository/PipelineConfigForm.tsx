@@ -38,7 +38,7 @@ export type PipelineConfigProps = {
     repositoryType?: RagRepositoryType;
 };
 
-export function PipelineConfigForm(props: FormProps<PipelineConfig[]> & PipelineConfigProps): ReactElement {
+export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & PipelineConfigProps): ReactElement {
     const { item, touchFields, setFields, formErrors, isEdit, repositoryId, repositoryType } = props;
 
     // Only query collections if we have a repositoryId (editing existing repository)

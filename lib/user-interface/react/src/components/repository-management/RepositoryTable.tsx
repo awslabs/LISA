@@ -38,7 +38,7 @@ export function getMatchesCountText (count: number) {
 
 export function RepositoryTable (): ReactElement {
     // Use a separate query instance for polling to avoid affecting other components
-    const { data: allRepos, isLoading, refetch } = useListRagRepositoriesQuery(undefined, {
+    const { data: allRepos, isLoading } = useListRagRepositoriesQuery(undefined, {
         refetchOnMountOrArgChange: 30
     });
     const tableDefinition: ReadonlyArray<TableRow> = getTableDefinition();

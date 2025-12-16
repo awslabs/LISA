@@ -539,8 +539,8 @@ export class EcsMcpServer extends Construct {
             }
             // Use the provided image as base, or default to a suitable base image
             const baseImage = mcpServerConfig.image || (mcpServerConfig.serverType === 'stdio'
-                ? 'python:3.12-slim-bookworm'
-                : 'python:3.12-slim-bookworm');
+                ? 'python:3.13-slim-bookworm'
+                : 'python:3.13-slim-bookworm');
             return ContainerImage.fromRegistry(baseImage);
         }
 

@@ -130,7 +130,7 @@ build_all_images() {
         MCP_DIR="./lib/serve/mcp-workbench"
         build_image "Dockerfile" "lisa-mcp-workbench" "$LISA_VERSION" "$MCP_DIR" \
             "NODE_ENV=production" \
-            "BASE_IMAGE=python:3.13.7-slim"
+            "BASE_IMAGE=python:3.13-slim"
     else
         echo "deployMcpWorkbench is disabled, skipping lisa-mcp-workbench build"
         echo ""

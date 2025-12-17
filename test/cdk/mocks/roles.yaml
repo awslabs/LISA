@@ -43,3 +43,6 @@ dev:
 
     #MCP Server Deployer
     McpServerDeployerRole: TestMcpServerDeployerRole
+
+    #API Tokens
+    ApiTokensApiRole: TestApiTokensApiRole

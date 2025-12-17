@@ -701,6 +701,7 @@ const AuthConfigSchema = z.object({
     clientId: z.string().describe('Client ID for OIDC IDP .'),
     adminGroup: z.string().default('').describe('Name of the admin group.'),
     userGroup: z.string().default('').describe('Name of the user group.'),
+    apiGroup: z.string().default('').describe('Name of the API group for API token access.'),
     jwtGroupsProperty: z.string().default('').describe('Name of the JWT groups property.'),
     additionalScopes: z.array(z.string()).default([]).describe('Additional JWT scopes to request.'),
 }).describe('Configuration schema for authorization.');
@@ -796,6 +797,7 @@ const RoleConfig = z.object({
     UIDeploymentRole: z.string().max(64).optional(),
     VectorStoreCreatorRole: z.string().max(64).optional(),
     McpServerDeployerRole: z.string().max(64),
+    ApiTokensApiRole: z.string().max(64),
 })
     .describe('Role overrides used across stacks.');
 

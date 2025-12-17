@@ -14,12 +14,15 @@
  limitations under the License.
  */
 
-export type IUser = {
-    name: string;
-    preferred_username: string;
-    email: string;
-    isAdmin: boolean;
-    isUser: boolean;
-    isApiUser: boolean;
-    groups?: string[];
-};
+import { ReactElement, useEffect } from 'react';
+import ApiTokenManagementComponent from '../components/api-token-management/ApiTokenManagementComponent';
+
+export function ApiTokenManagement ({ setNav }): ReactElement {
+    useEffect(() => {
+        setNav(null);
+    }, [setNav]);
+
+    return <ApiTokenManagementComponent />;
+}
+
+export default ApiTokenManagement;

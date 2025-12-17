@@ -237,6 +237,9 @@ export class McpWorkbenchConstruct extends Construct {
     private createS3EventHandler (config: any, workbenchService: Ec2Service, vpc: Vpc) {
         const s3EventHandlerRole = new iam.Role(this, 'S3EventHandlerRole', {
             assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+            managedPolicies: [
+                iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaVPCAccessExecutionRole'),
+            ],
             inlinePolicies: {
                 'S3EventHandlerPolicy': new iam.PolicyDocument({
                     statements: [

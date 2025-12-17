@@ -1372,7 +1372,7 @@ class VectorStoreConfig(BaseModel):
     status: Optional[VectorStoreStatus] = Field(default=None, description="Repository Status")
     createdBy: str = Field(description="Creation user")
     createdAt: datetime = Field(default_factory=utc_now, description="Creation timestamp")
-    updatedAt: Optional[datetime] = Field(default=None, description="Last update timestamp")
+    updatedAt: Optional[datetime] = Field(default_factory=utc_now, description="Last update timestamp")
 
 
 class UpdateVectorStoreRequest(BaseModel):

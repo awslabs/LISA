@@ -1,5 +1,4 @@
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 div :first-child {
     margin-top: 0;

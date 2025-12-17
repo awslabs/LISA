@@ -51,15 +51,14 @@ export class LisaChatApplicationConstruct extends Construct {
         const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
 
 
-        const mcpApi = config.deployMcpWorkbench ?
-            new McpApi(scope, 'McpApi', {
-                authorizer,
-                config,
-                restApiId,
-                rootResourceId,
-                securityGroups,
-                vpc,
-            }) : undefined;
+        const mcpApi = new McpApi(scope, 'McpApi', {
+            authorizer,
+            config,
+            restApiId,
+            rootResourceId,
+            securityGroups,
+            vpc,
+        });
 
         // Create Configuration API first to get the configuration table
         const configurationApi = new ConfigurationApi(scope, 'ConfigurationApi', {

@@ -38,7 +38,7 @@ import { formatDate } from '../../shared/util/formats';
 
 const DEFAULT_PREFERENCES = {
     pageSize: 10,
-    visibleContent: ['name', 'createdFor', 'createdBy', 'createdDate', 'expiration', 'status', 'groups', 'systemToken'],
+    visibleContent: ['name', 'username', 'createdBy', 'createdDate', 'expiration', 'status', 'groups', 'systemToken'],
 };
 
 const PAGE_SIZE_OPTIONS = [
@@ -51,14 +51,14 @@ const VISIBLE_CONTENT_OPTIONS = [
     {
         label: 'Token Properties',
         options: [
-            { id: 'name', label: 'Token Name' },
-            { id: 'createdFor', label: 'Created For' },
-            { id: 'createdBy', label: 'Created By' },
-            { id: 'createdDate', label: 'Created Date' },
+            { id: 'name', label: 'Token name' },
+            { id: 'username', label: 'Created for' },
+            { id: 'createdBy', label: 'Username' },
+            { id: 'createdDate', label: 'Created date' },
             { id: 'expiration', label: 'Expiration' },
             { id: 'status', label: 'Status' },
             { id: 'groups', label: 'Groups' },
-            { id: 'systemToken', label: 'System Token' },
+            { id: 'systemToken', label: 'System token' },
             { id: 'tokenUUID', label: 'Token UUID' },
         ],
     },
@@ -157,7 +157,7 @@ export function ApiTokenManagementComponent ({ currentUserOnly = false }: ApiTok
                 columnDefinitions={[
                     {
                         id: 'name',
-                        header: 'Token Name',
+                        header: 'Token name',
                         cell: (item) => item.name,
                         sortingField: 'name',
                     },
@@ -169,13 +169,13 @@ export function ApiTokenManagementComponent ({ currentUserOnly = false }: ApiTok
                     },
                     {
                         id: 'createdBy',
-                        header: 'Created By',
+                        header: 'Created by',
                         cell: (item) => item.createdBy,
                         sortingField: 'createdBy',
                     },
                     {
                         id: 'createdDate',
-                        header: 'Created Date',
+                        header: 'Created date',
                         cell: (item) => formatDate(item.createdDate * 1000),
                         sortingField: 'createdDate',
                     },
@@ -215,7 +215,7 @@ export function ApiTokenManagementComponent ({ currentUserOnly = false }: ApiTok
                     },
                     {
                         id: 'systemToken',
-                        header: 'System Token',
+                        header: 'System token',
                         cell: (item) => (
                             item.isSystemToken ? <Badge>System</Badge> : <span>—</span>
                         ),

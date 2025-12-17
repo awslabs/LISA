@@ -31,6 +31,7 @@ import { ICreateTokenResponse } from '../../shared/model/api-token.model';
 import { useCreateOwnTokenMutation } from '../../shared/reducers/api-token.reducer';
 import { useAppDispatch } from '../../config/store';
 import { useNotificationService } from '../../shared/util/hooks';
+import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
 
 export type CreateUserTokenWizardProps = {
     visible: boolean;
@@ -110,16 +111,17 @@ export function CreateUserTokenWizard ({ visible, setVisible, onTokenCreated }: 
     }
 
     function handleDismiss () {
-        if (tokenName.trim()) {
-            // Only confirm if there's unsaved data
-            if (window.confirm('Are you sure you want to discard your changes?')) {
-                setVisible(false);
-                resetState();
-            }
-        } else {
-            setVisible(false);
-            resetState();
-        }
+        dispatch(
+            setConfirmationModal({
+                action: 'Discard',
+                resourceName: 'Token Creation',
+                onConfirm: () => {
+                    setVisible(false);
+                    resetState();
+                },
+                description: 'Are you sure you want to discard your changes?',
+            })
+        );
     }
 
     return (
@@ -161,7 +163,6 @@ export function CreateUserTokenWizard ({ visible, setVisible, onTokenCreated }: 
                             label='Token Name'
                             description='A descriptive name to identify this token'
                             errorText={errors.tokenName}
-                            constraintText='Enter a meaningful name (e.g., "My Development Token")'
                         >
                             <Input
                                 value={tokenName}
@@ -178,7 +179,6 @@ export function CreateUserTokenWizard ({ visible, setVisible, onTokenCreated }: 
                             label='Expiration Date'
                             description='When this token will expire'
                             errorText={errors.expirationDate}
-                            constraintText='Default is 90 days from today'
                         >
                             <DatePicker
                                 value={expirationDate}

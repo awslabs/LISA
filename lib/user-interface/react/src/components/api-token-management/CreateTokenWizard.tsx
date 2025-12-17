@@ -210,9 +210,8 @@ export function CreateTokenWizard ({ visible, setVisible, onTokenCreated }: Crea
                                 <SpaceBetween size='l'>
                                     <FormField
                                         label='Username'
-                                        description='The username this token will be created for'
+                                        description='User to attach token to. Resources created with this token will belong to the user provided.'
                                         errorText={errors.username}
-                                        constraintText='Enter the username (e.g., jdoe)'
                                     >
                                         <Input
                                             value={formData.username}
@@ -225,7 +224,6 @@ export function CreateTokenWizard ({ visible, setVisible, onTokenCreated }: Crea
                                         label='Token Name'
                                         description='A descriptive name for this token'
                                         errorText={errors.tokenName}
-                                        constraintText='Enter a meaningful name to identify this token'
                                     >
                                         <Input
                                             value={formData.tokenName}
@@ -265,7 +263,6 @@ export function CreateTokenWizard ({ visible, setVisible, onTokenCreated }: Crea
                                         label='Expiration Date'
                                         description='When this token will expire'
                                         errorText={errors.expirationDate}
-                                        constraintText='Default is 90 days from today'
                                     >
                                         <DatePicker
                                             value={formData.expirationDate}

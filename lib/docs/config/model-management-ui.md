@@ -155,14 +155,14 @@ Updates are processed through a multi-step state machine:
 
 ### Overview
 
-LISA's Model Management UI provides comprehensive scheduling capabilities for LISA-hosted models, allowing administrators to automatically start and stop models based on predefined schedules. This feature helps optimize infrastructure costs by ensuring models are only running when needed, while providing the flexibility to configure different schedules for different days of the week.
+LISA provides scheduling options for self-hosted models. Administrators establish automated start and stop times which auto-suspend resources. Model scheduling helps optimize infrastructure costs by ensuring models are only running when needed. Administrators have the flexibility to set daily start and stop times, or establish a recurring schedule.
 
 ### Scheduling Types
 
-LISA supports two scheduling approaches:
+LISA supports two scheduling types. One type may be applied to each self-hosted model. If a schedule is not applied to a model, that model is either suspended or running 24/7 until an Administrator manually changes its state.
 
-- **Daily Scheduling**: Configure different start/stop times for each day of the week. Each day can have its own unique schedule or be left unscheduled.
-- **Recurring Scheduling**: Configure a single start/stop time that applies to every day of the week.
+- **Daily Scheduling**: Configure different start and stop times for each day of the week. Each day can have its own unique schedule or be left unscheduled.
+- **Recurring Scheduling**: Configure a single start and stop time that applies to every day of the week.
 
 ### Schedule Configuration
 
@@ -180,27 +180,26 @@ LISA supports two scheduling approaches:
    - Click the `Actions` button
    - Click `Update`
    - In the modal, click on `Auto Scaling Configuration`
-   - You will see the resource scheduling view where you can configure scheduling
+   - You will see the resource scheduling view where scheduling is configured
 
 2. **Choose Schedule Type**
-   - **Daily Schedule**: Select this to configure different times for each day of the week
-   - **Recurring Schedule**: Select this to configure the same time for every day
+   - **Daily Schedule**: Select this to configure different start and stop times for each day of the week
+   - **Recurring Schedule**: Select this to configure the same start and stop time for every day
 
 3. **Configure Schedule Parameters**
 
    **For Daily Schedules**:
-   - Select the timezone for your schedule (supports all IANA timezone identifiers)
-   - Configure start and stop times for each desired day of the week
-   - Days can be left blank if no scheduling is needed for that day
-   - Each configured day requires both start and stop times in HH:MM format (24-hour)
+   - Select the timezone for your schedule. LISA supports all IANA timezone identifiers
+   - Configure start and stop times for each desired day of the week in HH:MM format (24-hour)
+   - Days can be left blank if no scheduling is needed for that day. The model will remain suspended until it is started again
 
    **For Recurring Schedules**:
    - Select the timezone for your schedule
-   - Configure a single start time and stop time that will apply every day
+   - Configure a single start time and stop time that will apply to every day
    - Times must be in HH:MM format (24-hour notation)
 
 4. **Validate Configuration**
-   - The UI validates that stop times are at least 2 hours after start times
+   - The UI validates that stop times are at least 2 hours after start times in a single day
    - For daily schedules, at least one day must have a schedule configured
    - Timezone selection is validated against IANA timezone database
 
@@ -223,7 +222,7 @@ LISA supports two scheduling approaches:
 
 #### Viewing Schedule Status
 
-The Model Management UI displays comprehensive schedule information:
+Model Management displays schedule information:
 
 - **Schedule Status Badge**: Shows current scheduling state (Active, Disabled, Failed)
 - **Schedule Type**: Indicates whether the model uses Daily or Recurring scheduling
@@ -329,7 +328,7 @@ The UI provides several indicators for schedule health:
 - Document schedule configurations for operational handoff
 
 #### Schedule Design
-- Use meaningful time buffers (minimum 2-hour duration requirement exists for good reason)
+- Use meaningful time buffers like a minimum of 2-hours between starting and stopping within a single day
 - For operations spanning midnight, split schedules across consecutive days (e.g., Monday 21:00-23:59, Tuesday 00:00-03:00)
 - Plan for holiday and special event schedule modifications
 - Implement gradual rollout of new schedules across model fleet

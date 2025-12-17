@@ -173,7 +173,7 @@ POST https://<apigw_endpoint>/models
 ### Explanation of Key Fields for Creation Payload:
 
 - `modelId`: The unique identifier for the model. This is any name you would like it to be.
-- `modelName`: The name of the model as it appears in the system. For LISA-hosted models, this must be the S3 Key to your model artifacts, otherwise
+- `modelName`: The name of the model as it appears in the system. For LISA self-hosted models, this must be the S3 Key to your model artifacts, otherwise
   this is the LiteLLM-compatible reference to a SageMaker Endpoint or Bedrock Foundation Model. Note: Bedrock and SageMaker resources must exist in the
   same region as your LISA deployment. If your LISA installation is in us-east-1, then all SageMaker and Bedrock calls will also happen in us-east-1.
   Configuration examples:
@@ -208,7 +208,7 @@ DELETE https://<apigw_endpoint>/models/{modelId}
 
 ## Updating a Model
 
-LISA offers basic updating functionality for both LISA-hosted and LiteLLM-only models. For both types, the model type and streaming support can be updated
+LISA offers basic updating functionality for both LISA self-hosted and third party LiteLLM-only models. For both types, the model type and streaming support can be updated
 in the cases that the models were originally created with the wrong parameters. For example, if an embedding model was accidentally created as a `textgen`
 model, the UpdateModel API can be used to set it to the intended `embedding` value. Additionally, for LISA-hosted models, users may update the AutoScaling
 configuration to increase or decrease capacity usage for each model. Users may use this API to completely shut down all instances behind a model until
@@ -298,14 +298,14 @@ handled as separate operations.
 
 ## Model Scheduling (Admin API)
 
-LISA provides comprehensive model scheduling capabilities that allow administrators to automatically start and stop LISA-hosted models on predefined schedules. This feature helps optimize infrastructure costs by ensuring models are only running when needed, while maintaining the flexibility to have different schedules for different days of the week.
+LISA provides scheduling options for self-hosted models. Administrators establish automated start and stop times which auto-suspend resources. Model scheduling helps optimize infrastructure costs by ensuring models are only running when needed. Administrators have the flexibility to set daily start and stop times, or establish a recurring schedule.
 
 ### Schedule Types
 
-LISA supports two scheduling types:
+LISA supports two scheduling types. One type may be applied to each self-hosted model. If a schedule is not applied to a model, that model is either suspended or running 24/7 until an Administrator manually changes its state.
 
-- **DAILY**: Configure different start/stop times for each day of the week. Each day can have its own schedule or be left unscheduled.
-- **RECURRING**: Configure a single start/stop time that applies every day.
+- **Daily Scheduling**: Configure different start and stop times for each day of the week. Each day can have its own unique schedule or be left unscheduled.
+- **Recurring Scheduling**: Configure a single start and stop time that applies to every day of the week.
 
 ### Scheduling Endpoints
 
@@ -486,10 +486,10 @@ DELETE https://<apigw_endpoint>/models/{modelId}/schedule
 
 - **Time Format**: All times must be in HH:MM format using 24-hour notation (00:00 to 23:59)
 - **24-Hour Window Constraint**: Start time must be before stop time within the same day
-- **Minimum Duration**: Stop time must be at least 2 hours after start time
+- **Minimum Duration**: Stop time must be at least 2 hours after start time on same day
 - **Daily Schedule**: At least one day must have a schedule configured for DAILY type
 - **Timezone**: Must be a valid IANA timezone identifier
-- **Model Requirements**: Only LISA-hosted models with Auto Scaling Groups can be scheduled
+- **Model Requirements**: Only LISA self-hosted models with Auto Scaling Groups can be scheduled
 - **Model State**: Models must be in "InService" or "Stopped" state to configure scheduling
 
 ### Schedule Behavior
@@ -504,6 +504,6 @@ DELETE https://<apigw_endpoint>/models/{modelId}/schedule
 
 ### Schedule Design Considerations
 
-- **Avoiding Service Gaps**: To minimize service interruptions, avoid scheduling patterns where one day ends at 23:59 and the next day starts at 00:00
+- **Avoiding Service Gaps**: Consider small gaps between consecutive day schedules to avoid brief service interruptions (e.g., Monday ends 23:58, Tuesday starts 00:01)
 - **Recommended Patterns**: For continuous coverage, consider using patterns like Monday 09:00-23:58 and Tuesday 00:01-17:00 to create small buffers
 - **Night Shift Operations**: For operations spanning midnight, split the schedule across two days (e.g., Monday 21:00-23:59, Tuesday 00:00-03:00)

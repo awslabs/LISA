@@ -12,7 +12,6 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-import json
 import os
 import sys
 from datetime import datetime, timedelta
@@ -40,10 +39,10 @@ from api_tokens.domain_objects import (
     CreateTokenAdminRequest,
     CreateTokenResponse,
     CreateTokenUserRequest,
+    default_expiration,
     DeleteTokenResponse,
     ListTokensResponse,
     TokenInfo,
-    default_expiration,
 )
 from api_tokens.exception import ForbiddenError, TokenAlreadyExistsError, TokenNotFoundError, UnauthorizedError
 from api_tokens.handler import (
@@ -53,7 +52,6 @@ from api_tokens.handler import (
     GetTokenHandler,
     ListTokensHandler,
 )
-
 
 # =====================
 # Fixtures

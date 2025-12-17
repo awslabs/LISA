@@ -24,8 +24,6 @@ import {
     SpaceBetween,
     Container,
     Box,
-    TokenGroup,
-    Button,
     Toggle,
 } from '@cloudscape-design/components';
 import { ICreateTokenRequest, ICreateTokenResponse } from '../../shared/model/api-token.model';
@@ -33,6 +31,7 @@ import { useCreateTokenForUserMutation } from '../../shared/reducers/api-token.r
 import { useAppDispatch } from '../../config/store';
 import { useNotificationService } from '../../shared/util/hooks';
 import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
+import { UserGroupsInput } from '../../shared/form/UserGroupsInput';
 
 export type CreateTokenWizardProps = {
     visible: boolean;
@@ -68,7 +67,6 @@ export function CreateTokenWizard ({ visible, setVisible, onTokenCreated }: Crea
         groups: [],
         expirationDate: getDefaultExpiration(),
     }));
-    const [groupInput, setGroupInput] = useState('');
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     const validateStep = (stepIndex: number): boolean => {
@@ -138,7 +136,6 @@ export function CreateTokenWizard ({ visible, setVisible, onTokenCreated }: Crea
             groups: [],
             expirationDate: getDefaultExpiration(),
         });
-        setGroupInput('');
         setErrors({});
         reset();
     }
@@ -170,23 +167,6 @@ export function CreateTokenWizard ({ visible, setVisible, onTokenCreated }: Crea
             })
         );
     }
-
-    const addGroup = () => {
-        if (groupInput.trim() && !formData.groups.includes(groupInput.trim())) {
-            setFormData((prev) => ({
-                ...prev,
-                groups: [...prev.groups, groupInput.trim()]
-            }));
-            setGroupInput('');
-        }
-    };
-
-    const removeGroup = (groupToRemove: string) => {
-        setFormData((prev) => ({
-            ...prev,
-            groups: prev.groups.filter((g) => g !== groupToRemove)
-        }));
-    };
 
     return (
         <Modal
@@ -274,33 +254,12 @@ export function CreateTokenWizard ({ visible, setVisible, onTokenCreated }: Crea
                         content: (
                             <Container>
                                 <SpaceBetween size='l'>
-                                    <FormField
+                                    <UserGroupsInput
+                                        values={formData.groups}
+                                        onChange={(newGroups) => setFormData((prev) => ({ ...prev, groups: newGroups }))}
                                         label='Groups'
                                         description='Assign groups to this token for access control'
-                                    >
-                                        <SpaceBetween size='xs'>
-                                            <SpaceBetween direction='vertical' size='xs'>
-                                                {formData.groups.length > 0 && (
-                                                    <TokenGroup
-                                                        items={formData.groups.map((group) => ({ label: group, dismissLabel: `Remove ${group}` }))}
-                                                        onDismiss={({ detail }) => removeGroup(detail.itemIndex !== undefined ? formData.groups[detail.itemIndex] : '')}
-                                                    />
-                                                )}
-                                                <Input
-                                                    value={groupInput}
-                                                    onChange={({ detail }) => setGroupInput(detail.value)}
-                                                    placeholder='Enter group name'
-                                                    onKeyDown={(e) => {
-                                                        if (e.detail.key === 'Enter') {
-                                                            e.preventDefault();
-                                                            addGroup();
-                                                        }
-                                                    }}
-                                                />
-                                                <Button onClick={addGroup}>Add</Button>
-                                            </SpaceBetween>
-                                        </SpaceBetween>
-                                    </FormField>
+                                    />
 
                                     <FormField
                                         label='Expiration Date'

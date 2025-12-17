@@ -40,7 +40,7 @@ import { LAMBDA_PATH } from '../../util';
 
 type CreateModelStateMachineProps = BaseProps & {
     modelTable: ITable,
-    guardrailsTableName: string,
+    guardrailsTable: ITable,
     lambdaLayers: ILayerVersion[];
     dockerImageBuilderFnArn: string;
     ecsModelDeployerFnArn: string;
@@ -63,7 +63,7 @@ export class CreateModelStateMachine extends Construct {
     constructor (scope: Construct, id: string, props: CreateModelStateMachineProps) {
         super(scope, id);
 
-        const { config, modelTable, guardrailsTableName, lambdaLayers, dockerImageBuilderFnArn, ecsModelDeployerFnArn, ecsModelImageRepository, role, vpc, securityGroups, restApiContainerEndpointPs, managementKeyName, executionRole } = props;
+        const { config, modelTable, guardrailsTable, lambdaLayers, dockerImageBuilderFnArn, ecsModelDeployerFnArn, ecsModelImageRepository, role, vpc, securityGroups, restApiContainerEndpointPs, managementKeyName, executionRole } = props;
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         const environment = {
             DOCKER_IMAGE_BUILDER_FN_ARN: dockerImageBuilderFnArn,
@@ -72,7 +72,7 @@ export class CreateModelStateMachine extends Construct {
             ECS_MODEL_DEPLOYER_FN_ARN: ecsModelDeployerFnArn,
             LISA_API_URL_PS_NAME: restApiContainerEndpointPs.parameterName,
             MODEL_TABLE_NAME: modelTable.tableName,
-            GUARDRAILS_TABLE_NAME: guardrailsTableName,
+            GUARDRAILS_TABLE_NAME: guardrailsTable.tableName,
             REST_API_VERSION: 'v2',
             MANAGEMENT_KEY_NAME: managementKeyName,
             RESTAPI_SSL_CERT_ARN: config.restApiConfig?.sslCertIamArn ?? '',

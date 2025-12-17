@@ -44,7 +44,7 @@ import { Vpc } from '../networking/vpc';
 import { ECSModelDeployer } from './ecs-model-deployer';
 import { DockerImageBuilder } from './docker-image-builder';
 import { DeleteModelStateMachine } from './state-machine/delete-model';
-import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
+import { AttributeType, BillingMode, ITable, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { CreateModelStateMachine } from './state-machine/create-model';
 import { UpdateModelStateMachine } from './state-machine/update-model';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
@@ -62,6 +62,7 @@ import { LAMBDA_PATH } from '../util';
  */
 type ModelsApiProps = BaseProps & {
     authorizer?: IAuthorizer;
+    guardrailsTable?: ITable;
     lisaServeEndpointUrlPs?: StringParameter;
     restApiId: string;
     rootResourceId: string;
@@ -78,16 +79,15 @@ export class ModelsApi extends Construct {
 
         const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
 
-        // Import GuardrailsTable name using SSM parameter (use string value directly to avoid CloudFormation exports)
-        const guardrailsTableNamePs = StringParameter.fromStringParameterName(
-            this,
-            'GuardrailsTableNameParameter',
-            `${config.deploymentPrefix}/guardrailsTableName`
-        );
-        const guardrailsTableName = guardrailsTableNamePs.stringValue;
-        
-        // Import table reference for IAM permissions only
-        const guardrailsTable = Table.fromTableName(this, 'GuardrailsTable', guardrailsTableName);
+        // Use guardrailsTable passed from serve stack, or fall back to SSM parameter lookup for backward compatibility
+        const guardrailsTable = props.guardrailsTable ?? (() => {
+            const guardrailsTableNamePs = StringParameter.fromStringParameterName(
+                this,
+                'GuardrailsTableNameParameter',
+                `${config.deploymentPrefix}/guardrailsTableName`
+            );
+            return Table.fromTableName(this, 'GuardrailsTable', guardrailsTableNamePs.stringValue);
+        })();
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
 
         const lisaServeEndpointUrlPs = props.lisaServeEndpointUrlPs ?? StringParameter.fromStringParameterName(
@@ -162,12 +162,9 @@ export class ModelsApi extends Construct {
             { executionRole: Role.fromRoleName(this, Roles.MODEL_SFN_ROLE, config.roles.ModelSfnRole) } :
             undefined;
 
-        // Construct guardrails table ARN manually to avoid CloudFormation cross-stack references
-        const guardrailsTableArn = `arn:${config.partition}:dynamodb:${config.region}:${config.accountNumber}:table/${guardrailsTableName}`;
-        
         const stateMachinesLambdaRole = config.roles ?
             Role.fromRoleName(this, Roles.MODEL_SFN_LAMBDA_ROLE, config.roles.ModelsSfnLambdaRole) :
-            this.createStateMachineLambdaRole(modelTable.tableArn, guardrailsTableArn, dockerImageBuilder.dockerImageBuilderFn.functionArn,
+            this.createStateMachineLambdaRole(modelTable.tableArn, guardrailsTable.tableArn, dockerImageBuilder.dockerImageBuilderFn.functionArn,
                 ecsModelDeployer.ecsModelDeployerFn.functionArn, lisaServeEndpointUrlPs.parameterArn, managementKeyName, config);
 
         const scheduleManagementLambda = new Function(this, 'ScheduleManagement', {
@@ -237,7 +234,7 @@ export class ModelsApi extends Construct {
         const createModelStateMachine = new CreateModelStateMachine(this, 'CreateModelWorkflow', {
             config: config,
             modelTable: modelTable,
-            guardrailsTableName: guardrailsTableName,
+            guardrailsTable: guardrailsTable,
             lambdaLayers: lambdaLayers,
             role: stateMachinesLambdaRole,
             vpc: vpc,
@@ -254,7 +251,7 @@ export class ModelsApi extends Construct {
         const deleteModelStateMachine = new DeleteModelStateMachine(this, 'DeleteModelWorkflow', {
             config: config,
             modelTable: modelTable,
-            guardrailsTableName: guardrailsTableName,
+            guardrailsTable: guardrailsTable,
             lambdaLayers: lambdaLayers,
             role: stateMachinesLambdaRole,
             vpc: vpc,
@@ -267,7 +264,7 @@ export class ModelsApi extends Construct {
         const updateModelStateMachine = new UpdateModelStateMachine(this, 'UpdateModelWorkflow', {
             config: config,
             modelTable: modelTable,
-            guardrailsTableName: guardrailsTableName,
+            guardrailsTable: guardrailsTable,
             lambdaLayers: lambdaLayers,
             role: stateMachinesLambdaRole,
             vpc: vpc,
@@ -286,7 +283,7 @@ export class ModelsApi extends Construct {
             UPDATE_SFN_ARN: updateModelStateMachine.stateMachineArn,
             MODEL_TABLE_NAME: modelTable.tableName,
             SCHEDULE_MANAGEMENT_FUNCTION_NAME: scheduleManagementLambda.functionName,
-            GUARDRAILS_TABLE_NAME: guardrailsTableName,
+            GUARDRAILS_TABLE_NAME: guardrailsTable.tableName,
             ADMIN_GROUP: config.authConfig?.adminGroup || '',
             // SSM parameter names for RAG tables (optional - only exist if RAG is deployed)
             ...(config.deployRag && {
@@ -426,8 +423,8 @@ export class ModelsApi extends Construct {
                         'dynamodb:Scan',
                     ],
                     resources: [
-                        guardrailsTableArn,
-                        `${guardrailsTableArn}/*`
+                        guardrailsTable.tableArn,
+                        `${guardrailsTable.tableArn}/*`
                     ],
                 }),
                 new PolicyStatement({

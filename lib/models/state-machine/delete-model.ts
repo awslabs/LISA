@@ -38,7 +38,7 @@ import { LAMBDA_PATH } from '../../util';
 
 type DeleteModelStateMachineProps = BaseProps & {
     modelTable: ITable,
-    guardrailsTableName: string,
+    guardrailsTable: ITable,
     lambdaLayers: ILayerVersion[],
     vpc: Vpc,
     securityGroups: ISecurityGroup[];
@@ -58,11 +58,11 @@ export class DeleteModelStateMachine extends Construct {
     constructor (scope: Construct, id: string, props: DeleteModelStateMachineProps) {
         super(scope, id);
 
-        const { config, modelTable, guardrailsTableName, lambdaLayers, role, vpc, securityGroups, restApiContainerEndpointPs, managementKeyName, executionRole } = props;
+        const { config, modelTable, guardrailsTable, lambdaLayers, role, vpc, securityGroups, restApiContainerEndpointPs, managementKeyName, executionRole } = props;
 
         const environment = {  // Environment variables to set in all Lambda functions
             MODEL_TABLE_NAME: modelTable.tableName,
-            GUARDRAILS_TABLE_NAME: guardrailsTableName,
+            GUARDRAILS_TABLE_NAME: guardrailsTable.tableName,
             LISA_API_URL_PS_NAME: restApiContainerEndpointPs.parameterName,
             REST_API_VERSION: 'v2',
             MANAGEMENT_KEY_NAME: managementKeyName,

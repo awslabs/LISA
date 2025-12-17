@@ -317,6 +317,7 @@ export class LisaServeApplicationStage extends Stage {
                 authorizer: apiBaseStack.authorizer,
                 description: `LISA-models: ${config.deploymentName}-${config.deploymentStage}`,
                 lisaServeEndpointUrlPs: config.restApiConfig.internetFacing ? serveStack.endpointUrl : undefined,
+                guardrailsTable: serveStack.guardrailsTable,
                 restApiId: apiBaseStack.restApiId,
                 rootResourceId: apiBaseStack.rootResourceId,
                 stackName: createCdkId([config.deploymentName, config.appName, 'models', config.deploymentStage]),

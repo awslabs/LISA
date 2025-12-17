@@ -65,7 +65,6 @@ def mock_authorization_wrapper(func):
 mock_common = MagicMock()
 mock_common.retry_config = retry_config
 mock_common.authorization_wrapper = mock_authorization_wrapper
-mock_common.get_id_token.return_value = "test-token"
 
 # Create mock create_env_variables
 mock_create_env = MagicMock()
@@ -87,10 +86,9 @@ patch.dict(
     },
 ).start()
 
-# Then patch the specific functions
+# Then patch the specific functions (but NOT get_id_token - that needs to work normally)
 patch("utilities.common_functions.retry_config", retry_config).start()
 patch("utilities.common_functions.authorization_wrapper", mock_authorization_wrapper).start()
-patch("utilities.common_functions.get_id_token", mock_common.get_id_token).start()
 
 # Now import the lambda functions
 from authorizer.lambda_functions import (
@@ -216,28 +214,52 @@ def test_is_admin(sample_jwt_data):
 
 def test_is_valid_api_token(token_table):
     """Test the is_valid_api_token function."""
+    import hashlib
     from datetime import datetime, timedelta
 
     # Patch the module-level token_table with our test fixture
     with patch("authorizer.lambda_functions.token_table", token_table):
         # Test with valid, non-expired token
         future_time = int((datetime.now() + timedelta(hours=1)).timestamp())
-        token_table.put_item(Item={"token": "valid-api-token", "tokenExpiration": future_time})
-        assert is_valid_api_token("valid-api-token") is True
+        valid_token = "valid-api-token"
+        valid_token_hash = hashlib.sha256(valid_token.encode()).hexdigest()
+        token_table.put_item(
+            Item={
+                "token": valid_token_hash,
+                "tokenUUID": "test-uuid-123",
+                "tokenExpiration": future_time,
+                "username": "test-user",
+                "groups": ["test-group"],
+            }
+        )
+        result = is_valid_api_token(valid_token)
+        assert result is not None
+        assert result.get("tokenUUID") == "test-uuid-123"
+        assert result.get("username") == "test-user"
 
         # Test with expired token
         past_time = int((datetime.now() - timedelta(hours=1)).timestamp())
-        token_table.put_item(Item={"token": "expired-api-token", "tokenExpiration": past_time})
-        assert is_valid_api_token("expired-api-token") is False
+        expired_token = "expired-api-token"
+        expired_token_hash = hashlib.sha256(expired_token.encode()).hexdigest()
+        token_table.put_item(
+            Item={"token": expired_token_hash, "tokenUUID": "test-uuid-456", "tokenExpiration": past_time}
+        )
+        assert is_valid_api_token(expired_token) is None
+
+        # Test with legacy token (no tokenUUID)
+        legacy_token = "legacy-api-token"
+        legacy_token_hash = hashlib.sha256(legacy_token.encode()).hexdigest()
+        token_table.put_item(Item={"token": legacy_token_hash, "tokenExpiration": future_time})
+        assert is_valid_api_token(legacy_token) is None
 
         # Test with non-existent token
-        assert is_valid_api_token("non-existent-token") is False
+        assert is_valid_api_token("non-existent-token") is None
 
         # Test with empty token
-        assert is_valid_api_token("") is False
+        assert is_valid_api_token("") is None
 
         # Test with None token
-        assert is_valid_api_token(None) is False
+        assert is_valid_api_token(None) is None
 
 
 def test_get_management_tokens():
@@ -386,16 +408,16 @@ def test_lambda_handler_with_api_token(
     """Test lambda_handler with API token."""
     # Mock to return empty management tokens but valid API token
     mock_get_management_tokens.return_value = []
-    mock_is_valid_api_token.return_value = True
+    mock_is_valid_api_token.return_value = {"username": "api-token-user", "groups": ["api-group"]}
 
     # Test with API token
     response = lambda_handler(sample_event, lambda_context)
 
     # Verify response
     assert response["policyDocument"]["Statement"][0]["Effect"] == "Allow"
-    assert response["principalId"] == "api-token"
-    assert response["context"]["username"] == "api-token"
-    assert json.loads(response["context"]["groups"]) == []
+    assert response["principalId"] == "api-token-user"
+    assert response["context"]["username"] == "api-token-user"
+    assert json.loads(response["context"]["groups"]) == ["api-group"]
 
 
 @patch("authorizer.lambda_functions.get_management_tokens")

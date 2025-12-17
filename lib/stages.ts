@@ -49,6 +49,7 @@ import { UserInterfaceStack } from './user-interface';
 import { LisaDocsStack } from './docs';
 import { LisaMetricsStack } from './metrics';
 import { LisaMcpApiStack } from './mcp';
+import { LisaApiTokensStack } from './api-tokens';
 
 import fs from 'node:fs';
 import { VERSION_PATH } from './util';
@@ -282,6 +283,24 @@ export class LisaServeApplicationStage extends Stage {
             restApiId: apiBaseStack.restApiId,
         });
         apiDeploymentStack.addDependency(apiBaseStack);
+
+        // API Tokens Stack - always deployed when auth is configured
+        if (config.authConfig) {
+            const apiTokensStack = new LisaApiTokensStack(this, 'LisaApiTokens', {
+                ...baseStackProps,
+                authorizer: apiBaseStack.authorizer!,
+                description: `LISA-api-tokens: ${config.deploymentName}-${config.deploymentStage}`,
+                restApiId: apiBaseStack.restApiId,
+                rootResourceId: apiBaseStack.rootResourceId,
+                stackName: createCdkId([config.deploymentName, config.appName, 'api-tokens', config.deploymentStage]),
+                securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
+                vpc: networkingStack.vpc,
+            });
+            apiTokensStack.addDependency(apiBaseStack);
+            apiTokensStack.addDependency(coreStack);
+            apiDeploymentStack.addDependency(apiTokensStack);
+            this.stacks.push(apiTokensStack);
+        }
 
         if (config.deployMcp) {
             const mcpApiStack = new LisaMcpApiStack(this, 'LisaMcpApi', {

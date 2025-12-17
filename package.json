@@ -103,6 +103,7 @@
     "zod2md": "^0.2.4"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.1.18",
     "aws-cdk-lib": "^2.232.1",
     "aws-sdk": "^2.1693.0",
     "cdk-ecr-deployment": "^4.0.5",

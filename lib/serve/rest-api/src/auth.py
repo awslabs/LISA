@@ -14,6 +14,7 @@
 
 """Authentication for FastAPI app."""
 import asyncio
+import hashlib
 import os
 import ssl
 import sys
@@ -231,25 +232,45 @@ class ApiTokenAuthorizer:
         ddb_resource = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"])
         self._token_table = ddb_resource.Table(os.environ[TOKEN_TABLE_NAME])
 
-    def _get_token_info(self, token: str) -> Any:
-        """Return DDB entry for token if it exists."""
-        ddb_response = self._token_table.get_item(Key={"token": token}, ReturnConsumedCapacity="NONE")
+    def _get_token_info(self, token_hash: str) -> Any:
+        """Return DDB entry for hashed token if it exists."""
+        ddb_response = self._token_table.get_item(Key={"token": token_hash}, ReturnConsumedCapacity="NONE")
         return ddb_response.get("Item", None)
 
-    async def is_valid_api_token(self, headers: Dict[str, str]) -> bool:
-        """Return if API Token from request headers is valid if found."""
+    async def is_valid_api_token(self, headers: Dict[str, str]) -> Optional[Dict[str, Any]]:
+        """Return token info if API Token from request headers is valid, else None."""
 
         for header_name in AuthHeaders.values():
             token = get_authorization_token(headers, header_name)
 
             if token:
-                token_info = await asyncio.to_thread(self._get_token_info, token)
+                # Hash the provided token
+                token_hash = hashlib.sha256(token.encode()).hexdigest()
+
+                # Look up hashed token in DynamoDB
+                token_info = await asyncio.to_thread(self._get_token_info, token_hash)
+
                 if token_info:
-                    token_expiration = int(token_info.get(TOKEN_EXPIRATION_NAME, datetime.max.timestamp()))
+                    # Reject legacy tokens without tokenUUID
+                    if not token_info.get("tokenUUID"):
+                        logger.warning("Legacy token detected. Token must be recreated.")
+                        continue
+
+                    # Check expiration (now mandatory)
+                    token_expiration = token_info.get(TOKEN_EXPIRATION_NAME)
+                    if not token_expiration:
+                        logger.warning("Token missing expiration field")
+                        continue
+
                     current_time = int(datetime.now().timestamp())
-                    if current_time < token_expiration:  # token has not expired yet
-                        return True
-        return False
+                    if current_time >= int(token_expiration):
+                        logger.info(f"Token expired at {token_expiration}")
+                        continue
+
+                    # Token is valid - return the token info
+                    return token_info
+
+        return None
 
 
 class ManagementTokenAuthorizer:
@@ -324,11 +345,14 @@ class Authorizer:
         """Authenticate request and return JWT data if valid, else None. Invalid requests throw an exception"""
 
         logger.trace(f"Authenticating request: {request.method} {request.url.path}")
+
         # First try API tokens
         logger.trace("Try API Auth Token...")
-        if await self.token_authorizer.is_valid_api_token(request.headers):
+        token_info = await self.token_authorizer.is_valid_api_token(request.headers)
+        if token_info:
             logger.trace("Valid API token")
-            return None
+            self._set_token_context(request, token_info)
+            return None  # Return None to indicate non-JWT auth
 
         # Then try management tokens
         logger.trace("Try Management Auth Token...")
@@ -368,12 +392,31 @@ class Authorizer:
         if jwt_data is None:
             jwt_data = await self.authenticate_request(request)
 
-        # Valid API_TOKEN will be treated as admin
-        if not jwt_data:
+        # Check if this is API token authentication
+        if not jwt_data and hasattr(request.state, "api_token_info"):
             auth_method = "API_TOKEN"
-            user_id = "api_user"
+            token_info = request.state.api_token_info
+            user_id = token_info.get("username", "api-token")
+            groups = token_info.get("groups", [])
+
+            # Check if user has admin group
+            is_admin_user = self.admin_group in groups
+
+            if require_admin and not is_admin_user:
+                has_access = False
+                reason = "Admin required but API token user is not admin"
+            else:
+                has_access = True
+                reason = "Valid API token"
+
+        # Management token (no token info stored)
+        elif not jwt_data:
+            auth_method = "MANAGEMENT_TOKEN"
+            user_id = "management-token"
             has_access = True
-            reason = "Valid API/Management token"
+            reason = "Valid Management token"
+
+        # OIDC JWT token
         else:
             auth_method = "OIDC"
             user_id = jwt_data.get("sub", jwt_data.get("username", "unknown"))
@@ -395,3 +438,9 @@ class Authorizer:
 
         self._log_access_attempt(request, auth_method, user_id, endpoint, has_access, reason)
         return has_access
+
+    def _set_token_context(self, request: Request, token_info: Dict[str, Any]) -> None:
+        """Store token info in request state for later access."""
+        request.state.api_token_info = token_info
+        request.state.username = token_info.get("username", "api-token")
+        request.state.groups = token_info.get("groups", [])

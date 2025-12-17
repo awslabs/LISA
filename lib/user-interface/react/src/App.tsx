@@ -26,11 +26,13 @@ import Chatbot from './pages/Chatbot';
 import Topbar from './components/Topbar';
 import SystemBanner from './components/system-banner/system-banner';
 import { useAppSelector } from './config/store';
-import { selectCurrentUserIsAdmin, selectCurrentUserIsUser } from './shared/reducers/user.reducer';
+import { selectCurrentUserIsAdmin, selectCurrentUserIsUser, selectCurrentUserIsApiUser } from './shared/reducers/user.reducer';
 import ModelManagement from './pages/ModelManagement';
 import McpManagement from './pages/McpManagement';
 import ModelLibrary from './pages/ModelLibrary';
 import RepositoryManagement from './pages/RepositoryManagement';
+import ApiTokenManagement from './pages/ApiTokenManagement';
+import UserApiToken from './pages/UserApiToken';
 import NotificationBanner from './shared/notification/notification';
 import ConfirmationModal, { ConfirmationModalProps } from './shared/modal/confirmation-modal';
 import Configuration from './pages/Configuration';
@@ -81,6 +83,19 @@ const AdminRoute = ({ children }: RouteProps) => {
     const auth = useAuth();
     const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);
     if (auth.isAuthenticated && isUserAdmin) {
+        return children;
+    } else if (auth.isLoading) {
+        return <Spinner />;
+    } else {
+        return <Navigate to={import.meta.env.BASE_URL} />;
+    }
+};
+
+const ApiUserRoute = ({ children }: RouteProps) => {
+    const auth = useAuth();
+    const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);
+    const isApiUser = useAppSelector(selectCurrentUserIsApiUser);
+    if (auth.isAuthenticated && (isUserAdmin || isApiUser)) {
         return children;
     } else if (auth.isLoading) {
         return <Spinner />;
@@ -187,6 +202,22 @@ function App () {
                                     </AdminRoute>
                                 }
                             />
+                            <Route
+                                path='api-token-management'
+                                element={
+                                    <AdminRoute>
+                                        <ApiTokenManagement setNav={setNav} />
+                                    </AdminRoute>
+                                }
+                            />
+                            {config?.configuration?.enabledComponents?.enableUserApiTokens && <Route
+                                path='user-api-token'
+                                element={
+                                    <ApiUserRoute showConfig='enableUserApiTokens' configs={config}>
+                                        <UserApiToken setNav={setNav} />
+                                    </ApiUserRoute>
+                                }
+                            />}
                             {config?.configuration?.enabledComponents?.modelLibrary && <Route
                                 path='model-library'
                                 element={

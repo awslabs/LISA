@@ -49,6 +49,10 @@ const mcpOptions = {
     showMcpWorkbench: 'Show MCP Workbench'
 };
 
+const apiTokenOptions = {
+    enableUserApiTokens: 'Allow user managed API tokens'
+};
+
 type AllOptionKeys<G extends Record<string, Record<string, unknown>>> = {
     [K in keyof G]: keyof G[K];
 }[keyof G];
@@ -66,6 +70,7 @@ const dependencies: DependencyMap<{
     ragOptions: typeof ragOptions;
     libraryOptions: typeof libraryOptions;
     advancedOptions: typeof advancedOptions;
+    apiTokenOptions: typeof apiTokenOptions;
 }> = {
     showMcpWorkbench: { prerequisites: ['mcpConnections'] },
     mcpConnections: { dependents: ['showMcpWorkbench'] }
@@ -86,9 +91,14 @@ const configurableOperations = [{
 {
     header: 'Advanced',
     items: advancedOptions
-}, {
+},
+{
     header: 'MCP',
     items: mcpOptions
+},
+{
+    header: 'API Tokens',
+    items: apiTokenOptions
 }];
 
 export type ActivatedComponentConfigurationProps = {

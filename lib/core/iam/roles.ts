@@ -41,7 +41,8 @@ export enum Roles {
     REST_API_AUTHORIZER_ROLE = 'RestApiAuthorizerRole',
     S3_READER_ROLE = 'S3ReaderRole',
     UI_DEPLOYMENT_ROLE = 'UIDeploymentRole',
-    VECTOR_STORE_CREATOR_ROLE = 'VectorStoreCreatorRole'
+    VECTOR_STORE_CREATOR_ROLE = 'VectorStoreCreatorRole',
+    API_TOKENS_API_ROLE = 'ApiTokensApiRole'
 }
 
 /**
@@ -70,6 +71,7 @@ export const RoleNames: Record<Roles, string> = {
     [Roles.S3_READER_ROLE]: 'S3ReaderRole',
     [Roles.UI_DEPLOYMENT_ROLE]: 'UIDeploymentRole',
     [Roles.VECTOR_STORE_CREATOR_ROLE]: 'VectorStoreCreatorRole',
+    [Roles.API_TOKENS_API_ROLE]: 'ApiTokensApiRole',
 };
 
 export function getRoleId (key: string): Roles {

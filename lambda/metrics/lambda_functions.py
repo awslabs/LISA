@@ -16,13 +16,13 @@
 import json
 import logging
 import os
-from datetime import datetime
 from typing import Any, Dict, List
 
 import boto3
 import create_env_variables  # noqa: F401
 from botocore.exceptions import ClientError
 from utilities.common_functions import api_wrapper, retry_config
+from utilities.time import iso_string, utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -116,7 +116,7 @@ def count_unique_users_and_publish_metric() -> Any:
         cloudwatch.put_metric_data(
             Namespace="LISA/UsageMetrics",
             MetricData=[
-                {"MetricName": "UniqueUsers", "Value": unique_user_count, "Unit": "Count", "Timestamp": datetime.now()}
+                {"MetricName": "UniqueUsers", "Value": unique_user_count, "Unit": "Count", "Timestamp": utc_now()}
             ],
         )
         logger.info(f"Published unique users metric: {unique_user_count}")
@@ -140,7 +140,7 @@ def count_users_by_group_and_publish_metric() -> Dict[str, int]:
                     group_counts[group] = group_counts.get(group, 0) + 1
 
         # Publish metrics to CloudWatch
-        timestamp = datetime.now()
+        timestamp = utc_now()
         metric_data = []
 
         for group, count in group_counts.items():
@@ -377,7 +377,7 @@ def publish_metric_deltas(
         The groups that the user belongs to
     """
     try:
-        timestamp = datetime.now()
+        timestamp = utc_now()
         metric_data = []
 
         # Only publish metrics that actually changed
@@ -546,8 +546,8 @@ def update_user_metrics_by_session(
                 "mcpToolCallsCount": session_metrics["mcpToolCallsCount"],
                 "mcpToolUsage": session_metrics["mcpToolUsage"],
                 "sessionMetrics": {session_id: session_metrics},
-                "firstSeen": datetime.now().isoformat(),
-                "lastSeen": datetime.now().isoformat(),
+                "firstSeen": iso_string(),
+                "lastSeen": iso_string(),
                 "userGroups": set(user_groups) if user_groups else None,
             }
             usage_metrics_table.put_item(Item=item)
@@ -574,7 +574,7 @@ def update_user_metrics_by_session(
                 "mcpToolCallsCount = :total_mcp, mcpToolUsage = :mcp_usage, "
                 "sessionMetrics = :session_metrics, userGroups = :groups",
                 ExpressionAttributeValues={
-                    ":now": datetime.now().isoformat(),
+                    ":now": iso_string(),
                     ":total_prompts": total_prompts,
                     ":total_rag": total_rag,
                     ":total_mcp": total_mcp_calls,

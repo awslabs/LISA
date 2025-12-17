@@ -15,8 +15,6 @@
 import json
 import logging
 import os
-from datetime import datetime
-from datetime import timezone as dt_timezone
 from typing import Any, Dict, Optional
 
 import boto3
@@ -24,6 +22,7 @@ from botocore.config import Config
 from botocore.exceptions import ClientError
 from models.domain_objects import ModelStatus
 from models.exception import ModelNotFoundError
+from utilities.time import iso_string
 
 logger = logging.getLogger(__name__)
 
@@ -238,7 +237,7 @@ def update_model_status(model_id: str, new_status: ModelStatus, reason: str) -> 
             UpdateExpression="SET model_status = :status, lastStatusUpdate = :timestamp, statusReason = :reason",
             ExpressionAttributeValues={
                 ":status": status_str,
-                ":timestamp": datetime.now(dt_timezone.utc).isoformat(),
+                ":timestamp": iso_string(),
                 ":reason": reason,
             },
         )

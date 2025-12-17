@@ -17,7 +17,6 @@
 import logging
 import os
 from copy import deepcopy
-from datetime import datetime, UTC
 from typing import Any, Dict, Optional
 from uuid import uuid4
 
@@ -26,6 +25,7 @@ from boto3.dynamodb.conditions import Attr
 from botocore.config import Config
 from botocore.exceptions import ClientError
 from mcp_server.models import HostedMcpServerStatus
+from utilities.time import now
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -81,7 +81,7 @@ def handle_set_server_to_deleting(event: Dict[str, Any], context: Any) -> Dict[s
         UpdateExpression="SET last_modified = :lm, #status = :ms",
         ExpressionAttributeNames={"#status": "status"},
         ExpressionAttributeValues={
-            ":lm": int(datetime.now(UTC).timestamp()),
+            ":lm": now(),
             ":ms": HostedMcpServerStatus.DELETING,
         },
     )

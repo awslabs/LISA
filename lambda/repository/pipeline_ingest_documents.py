@@ -16,7 +16,7 @@
 
 import logging
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import Any, Dict, List
 
 import boto3
@@ -44,6 +44,7 @@ from utilities.bedrock_kb import get_datasource_bucket_for_collection, ingest_do
 from utilities.common_functions import retry_config
 from utilities.file_processing import generate_chunks
 from utilities.repository_types import RepositoryType
+from utilities.time import now, utc_now
 
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 ingestion_job_table = dynamodb.Table(os.environ["LISA_INGESTION_JOB_TABLE_NAME"])
@@ -119,7 +120,7 @@ def pipeline_ingest_document(job: IngestionJob) -> None:
             if existing_docs and not needs_copy:
                 # Document already tracked and in KB bucket, update upload_date and return
                 existing_doc = existing_docs[0]
-                existing_doc.upload_date = int(datetime.now(timezone.utc).timestamp() * 1000)
+                existing_doc.upload_date = now()
                 rag_document_repository.save(existing_doc)
 
                 job.status = IngestionStatus.INGESTION_COMPLETED
@@ -539,7 +540,7 @@ def handle_pipline_ingest_schedule(event: Dict[str, Any], context: Any) -> None:
         logger.info(f"Processing request for bucket: {bucket}, prefix: {prefix}")
 
         # Calculate timestamp for 24 hours ago
-        twenty_four_hours_ago = datetime.now(timezone.utc) - timedelta(hours=24)
+        twenty_four_hours_ago = utc_now() - timedelta(hours=24)
 
         # List to store matching objects
         modified_keys = []

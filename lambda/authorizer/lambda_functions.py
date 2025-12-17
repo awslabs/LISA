@@ -27,6 +27,7 @@ import requests
 from botocore.exceptions import ClientError
 from cachetools import cached, TTLCache
 from utilities.common_functions import authorization_wrapper, get_id_token, get_property_path, retry_config
+from utilities.time import now_seconds
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +127,7 @@ def is_valid_api_token(token: str) -> bool:
         token_info = _get_token_info(token)
         if token_info:
             token_expiration = int(token_info.get(TOKEN_EXPIRATION_NAME, datetime.max.timestamp()))
-            current_time = int(datetime.now().timestamp())
+            current_time = now_seconds()
             if current_time < token_expiration:  # token has not expired yet
                 return True
     return False

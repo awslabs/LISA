@@ -18,13 +18,13 @@ import json
 import logging
 import os
 from copy import deepcopy
-from datetime import datetime, UTC
 from typing import Any, Callable, Dict, List, Optional
 
 import boto3
 from models.clients.litellm_client import LiteLLMClient
 from models.domain_objects import GuardrailsTableEntry, ModelStatus
 from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint, retry_config
+from utilities.time import now
 
 ddbResource = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 model_table = ddbResource.Table(os.environ["MODEL_TABLE_NAME"])
@@ -223,7 +223,7 @@ def handle_job_intake(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     ddb_update_expression = "SET model_status = :ms, last_modified_date = :lm"
     ddb_update_values = {
         ":ms": ModelStatus.UPDATING,
-        ":lm": int(datetime.now(UTC).timestamp()),
+        ":lm": now(),
     }
 
     if is_activation_request:
@@ -402,7 +402,7 @@ def handle_finish_update(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
     ddb_update_expression = "SET model_status = :ms, last_modified_date = :lm"
     ddb_update_values: Dict[str, Any] = {
-        ":lm": int(datetime.now(UTC).timestamp()),
+        ":lm": now(),
     }
 
     if polling_error := event.get("polling_error", None):
@@ -573,7 +573,7 @@ def handle_update_guardrails(event: Dict[str, Any], context: Any) -> Dict[str, A
                         ":m": str(guardrail_config.get("mode", "pre_call")),
                         ":d": guardrail_config.get("description"),
                         ":ag": guardrail_config.get("allowedGroups", []),
-                        ":lm": int(datetime.now(UTC).timestamp() * 1000),
+                        ":lm": now(),
                     },
                 )
 

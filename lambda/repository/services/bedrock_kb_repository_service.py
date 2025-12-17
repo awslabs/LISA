@@ -16,7 +16,6 @@
 
 import logging
 import os
-from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import boto3
@@ -34,6 +33,7 @@ from models.domain_objects import (
 from repository.rag_document_repo import RagDocumentRepository
 from utilities.bedrock_kb import bulk_delete_documents_from_kb, delete_document_from_kb
 from utilities.exceptions import HTTPException
+from utilities.time import now, utc_now
 
 from .repository_service import RepositoryService
 
@@ -115,7 +115,7 @@ class BedrockKBRepositoryService(RepositoryService):
         if existing_docs:
             # Update existing document timestamp
             existing_doc = existing_docs[0]
-            existing_doc.upload_date = int(datetime.now(timezone.utc).timestamp() * 1000)
+            existing_doc.upload_date = now()
             rag_document_repository.save(existing_doc)
             logger.info(f"Document {kb_s3_path} already tracked, updated timestamp")
             return existing_doc
@@ -390,8 +390,8 @@ class BedrockKBRepositoryService(RepositoryService):
             pipelines=self.repository.get("pipelines", []),
             default=is_default,
             dataSourceId=data_source_id,
-            createdAt=datetime.now(timezone.utc),
-            updatedAt=datetime.now(timezone.utc),
+            createdAt=utc_now(),
+            updatedAt=utc_now(),
         )
 
         return collection

@@ -15,11 +15,11 @@
 import json
 import logging
 import os
-from datetime import datetime, timezone
 from typing import Any, Dict
 
 import boto3
 from botocore.config import Config
+from utilities.time import iso_string
 
 from ..scheduling import schedule_management
 
@@ -148,7 +148,7 @@ def handle_cleanup_schedule(event: Dict[str, Any], context: Any) -> Dict[str, An
 def update_schedule_failure_status(model_id: str, error_message: str) -> None:
     """Update model with schedule failure status using boolean flags"""
     try:
-        failure_info = {"timestamp": datetime.now(timezone.utc).isoformat(), "error": error_message, "retryCount": 0}
+        failure_info = {"timestamp": iso_string(), "error": error_message, "retryCount": 0}
 
         model_table.update_item(
             Key={"model_id": model_id},

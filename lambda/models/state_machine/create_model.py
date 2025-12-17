@@ -18,7 +18,7 @@ import json
 import logging
 import os
 from copy import deepcopy
-from datetime import datetime, UTC
+from datetime import datetime
 from typing import Any, Dict
 from zoneinfo import ZoneInfo
 
@@ -38,6 +38,7 @@ from utilities.common_functions import (
     get_rest_api_container_endpoint,
     retry_config,
 )
+from utilities.time import now
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -99,8 +100,7 @@ def adjust_initial_capacity_for_schedule(prepared_event: Dict[str, Any]) -> None
         timezone_name = scheduling_config.get("timezone")
 
         try:
-            tz = ZoneInfo(timezone_name)
-            now = datetime.now(tz)
+            now = datetime.now(ZoneInfo(timezone_name))
             current_time = now.time()
             current_day = now.strftime("%A").lower()
             is_within_schedule = False
@@ -206,7 +206,7 @@ def handle_set_model_to_creating(event: Dict[str, Any], context: Any) -> Dict[st
             ":model_status": ModelStatus.CREATING,
             ":model_config": model_config_data,
             ":model_description": request.modelDescription,
-            ":lm": int(datetime.now(UTC).timestamp()),
+            ":lm": now(),
         },
     )
     output_dict["create_infra"] = is_lisa_managed
@@ -439,7 +439,7 @@ def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, 
         ExpressionAttributeValues={
             ":stack_name": stack_name,
             ":stack_arn": stack_arn,
-            ":lm": int(datetime.now(UTC).timestamp()),
+            ":lm": now(),
         },
     )
 
@@ -540,7 +540,7 @@ def handle_add_model_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str
         ExpressionAttributeValues={
             ":ms": ModelStatus.IN_SERVICE,
             ":lid": litellm_id,
-            ":lm": int(datetime.now(UTC).timestamp()),
+            ":lm": now(),
             ":mu": litellm_params.get("api_base", ""),
             ":asg": event.get("autoScalingGroup", ""),
         },
@@ -716,7 +716,7 @@ def handle_failure(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         UpdateExpression="SET model_status = :ms, last_modified_date = :lm, failure_reason = :fr",
         ExpressionAttributeValues={
             ":ms": ModelStatus.FAILED,
-            ":lm": int(datetime.now(UTC).timestamp()),
+            ":lm": now(),
             ":fr": error_reason,
         },
     )

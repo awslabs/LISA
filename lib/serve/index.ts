@@ -33,7 +33,6 @@ export class LisaServeApplicationStack extends Stack {
     public readonly endpointUrl: StringParameter;
     public readonly tokenTable?: ITable;
     public readonly guardrailsTableNamePs: StringParameter;
-    public readonly guardrailsTable: ITable;
     public readonly ecsCluster: any;
 
     /**
@@ -51,7 +50,6 @@ export class LisaServeApplicationStack extends Stack {
         this.restApi = app.restApi;
         this.tokenTable = app.tokenTable;
         this.guardrailsTableNamePs = app.guardrailsTableNamePs;
-        this.guardrailsTable = app.guardrailsTable;
         this.ecsCluster = app.ecsCluster;
     }
 }

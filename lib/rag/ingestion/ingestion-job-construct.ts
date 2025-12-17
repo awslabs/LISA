@@ -207,6 +207,7 @@ export class IngestionJobConstruct extends Construct {
             memorySize: 256,
             vpc: vpc!.vpc,
             environment: baseEnvironment,
+            vpcSubnets: vpc!.subnetSelection,
             layers: layers,
             role: lambdaRole
         });
@@ -235,6 +236,7 @@ export class IngestionJobConstruct extends Construct {
             vpc: vpc!.vpc,
             environment: baseEnvironment,
             layers,
+            vpcSubnets: vpc!.subnetSelection,
             role: lambdaRole
         });
         const eventAlias = new lambda.Alias(this, 'EventLambdaAlias', {
@@ -261,6 +263,7 @@ export class IngestionJobConstruct extends Construct {
             memorySize: 256,
             vpc: vpc!.vpc,
             environment: baseEnvironment,
+            vpcSubnets: vpc!.subnetSelection,
             layers,
             role: lambdaRole
         });

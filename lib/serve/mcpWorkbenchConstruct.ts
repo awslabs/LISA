@@ -71,7 +71,7 @@ export class McpWorkbenchConstruct extends Construct {
 
         const workbenchBucket = this.createWorkbenchBucket(scope, config);
         this.createWorkbenchApi(restApi, config, vpc, securityGroups, workbenchBucket, lambdaLayers, authorizer);
-        this.createWorkbenchService(apiCluster, config);
+        this.createWorkbenchService(apiCluster, config, vpc);
     }
 
     private createWorkbenchApi (restApi: IRestApi, config: Config, vpc: Vpc, securityGroups: ISecurityGroup[], workbenchBucket: s3.Bucket, lambdaLayers: lambda.ILayerVersion[], authorizer?: IAuthorizer) {
@@ -192,7 +192,7 @@ export class McpWorkbenchConstruct extends Construct {
         });
     }
 
-    private createWorkbenchService (apiCluster: ECSCluster, config: Config) {
+    private createWorkbenchService (apiCluster: ECSCluster, config: Config, vpc: Vpc) {
 
         const mcpWorkbenchImage = config.mcpWorkbenchConfig || {
             baseImage: config.baseImage,
@@ -231,10 +231,10 @@ export class McpWorkbenchConstruct extends Construct {
 
         const { service } = apiCluster.addTask(ECSTasks.MCPWORKBENCH, mcpWorkbenchTaskDefinition);
 
-        this.createS3EventHandler(config, service);
+        this.createS3EventHandler(config, service, vpc);
     }
 
-    private createS3EventHandler (config: any, workbenchService: Ec2Service) {
+    private createS3EventHandler (config: any, workbenchService: Ec2Service, vpc: Vpc) {
         const s3EventHandlerRole = new iam.Role(this, 'S3EventHandlerRole', {
             assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
             inlinePolicies: {
@@ -281,6 +281,8 @@ export class McpWorkbenchConstruct extends Construct {
             code: lambda.Code.fromAsset(config.lambdaPath ?? LAMBDA_PATH),
             timeout: Duration.minutes(2),
             role: s3EventHandlerRole,
+            vpc: vpc.vpc,
+            vpcSubnets: vpc.subnetSelection,
             environment: {
                 DEPLOYMENT_PREFIX: config.deploymentPrefix!,
                 API_NAME: 'MCPWorkbench',

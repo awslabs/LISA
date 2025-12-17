@@ -44,7 +44,7 @@ import { Vpc } from '../networking/vpc';
 import { ECSModelDeployer } from './ecs-model-deployer';
 import { DockerImageBuilder } from './docker-image-builder';
 import { DeleteModelStateMachine } from './state-machine/delete-model';
-import { AttributeType, BillingMode, ITable, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
+import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { CreateModelStateMachine } from './state-machine/create-model';
 import { UpdateModelStateMachine } from './state-machine/update-model';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
@@ -62,7 +62,6 @@ import { LAMBDA_PATH } from '../util';
  */
 type ModelsApiProps = BaseProps & {
     authorizer?: IAuthorizer;
-    guardrailsTable: ITable;
     lisaServeEndpointUrlPs?: StringParameter;
     restApiId: string;
     rootResourceId: string;
@@ -77,7 +76,15 @@ export class ModelsApi extends Construct {
     constructor (scope: Construct, id: string, props: ModelsApiProps) {
         super(scope, id);
 
-        const { authorizer, config, guardrailsTable, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
+
+        // Import GuardrailsTable using SSM parameter (same pattern as lisaServeEndpointUrlPs)
+        const guardrailsTableNamePs = StringParameter.fromStringParameterName(
+            this,
+            'GuardrailsTableNameParameter',
+            `${config.deploymentPrefix}/guardrailsTableName`
+        );
+        const guardrailsTable = Table.fromTableName(this, 'GuardrailsTable', guardrailsTableNamePs.stringValue);
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
 
         const lisaServeEndpointUrlPs = props.lisaServeEndpointUrlPs ?? StringParameter.fromStringParameterName(
@@ -167,6 +174,7 @@ export class ModelsApi extends Construct {
             },
             role: stateMachinesLambdaRole,
             vpc: vpc.vpc,
+            vpcSubnets: vpc.subnetSelection,
             securityGroups: securityGroups,
             timeout: Duration.minutes(5),
             description: 'Manages Auto Scaling scheduled actions for LISA model scheduling',
@@ -186,6 +194,7 @@ export class ModelsApi extends Construct {
             },
             role: stateMachinesLambdaRole,
             vpc: vpc.vpc,
+            vpcSubnets: vpc.subnetSelection,
             securityGroups: securityGroups,
             timeout: Duration.minutes(5),
             description: 'Processes Auto Scaling Group CloudWatch events to update model status',
@@ -478,6 +487,7 @@ export class ModelsApi extends Construct {
             },
             role: stateMachinesLambdaRole,
             vpc: vpc.vpc,
+            vpcSubnets: vpc.subnetSelection,
             securityGroups: securityGroups,
             timeout: Duration.minutes(5),
             description: 'Remove api_key from existing Bedrock models to fix Invalid API Key format errors',

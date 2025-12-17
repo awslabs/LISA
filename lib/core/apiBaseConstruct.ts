@@ -196,6 +196,7 @@ export class LisaApiBaseConstruct extends Construct {
             }),
             securityGroups: securityGroups,
             vpc: vpc.vpc,
+            vpcSubnets: vpc.subnetSelection
         });
 
         managementKeySecret.addRotationSchedule('RotationSchedule', {

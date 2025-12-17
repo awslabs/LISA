@@ -15,13 +15,13 @@
 */
 import { StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { RagRepositoryConfig, PartialConfig } from '../../../lib/schema';
+import { RagRepositoryDeploymentConfig, PartialConfig } from '../../../lib/schema';
 import { PipelineStack } from './pipeline-stack';
 
 // Type definition for BedrockKnowledgeBaseStack properties
 type BedrockKnowledgeBaseStackProps = StackProps & {
     config: PartialConfig,
-    ragConfig: RagRepositoryConfig,
+    ragConfig: RagRepositoryDeploymentConfig,
 };
 
 // BedrockKnowledgeBaseStack class, extending PipelineStack

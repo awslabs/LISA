@@ -15,7 +15,7 @@
 */
 import { Duration, RemovalPolicy, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { RagRepositoryConfig, RagRepositoryType, PartialConfig, RDSConfig } from '../../../lib/schema';
+import { RagRepositoryDeploymentConfig, RagRepositoryType, PartialConfig, RDSConfig } from '../../../lib/schema';
 import { createCdkId } from '../../../lib/core/utils';
 import { ISecurityGroup, IVpc, SecurityGroup, Subnet, SubnetSelection, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { Code, Function, IFunction, ILayerVersion, LayerVersion } from 'aws-cdk-lib/aws-lambda';
@@ -34,7 +34,7 @@ import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resour
 // Type definition for PGVectorStoreStack properties
 type PGVectorStoreStackProps = StackProps & {
     config: PartialConfig,
-    ragConfig: RagRepositoryConfig,
+    ragConfig: RagRepositoryDeploymentConfig,
 };
 
 // PGVectorStoreStack class, extending PipelineStack

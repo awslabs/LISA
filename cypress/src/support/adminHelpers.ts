@@ -46,8 +46,8 @@ export function expandAdminMenu () {
                 'Configuration',
                 'Model Management',
                 'RAG Management',
-                'MCP Management',
-                'API Token Management'
+                'API Token Management',
+                'MCP Management'
             ]);
         });
 }

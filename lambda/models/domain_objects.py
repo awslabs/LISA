@@ -28,6 +28,7 @@ from enum import auto, Enum, StrEnum
 from typing import Annotated, Any, Dict, Generator, List, Literal, Optional, TypeAlias, Union
 from uuid import uuid4
 from zoneinfo import ZoneInfo
+from utilities.time import now
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
 from pydantic.functional_validators import AfterValidator, field_validator, model_validator
@@ -124,8 +125,8 @@ class GuardrailsTableEntry(BaseModel):
     mode: str
     description: Optional[str]
     allowedGroups: List[str]
-    createdDate: int = Field(default_factory=lambda: int(time.time() * 1000))
-    lastModifiedDate: int = Field(default_factory=lambda: int(time.time() * 1000))
+    createdDate: int = Field(default_factory=lambda: now())
+    lastModifiedDate: int = Field(default_factory=lambda: now())
 
 
 class MetricConfig(BaseModel):
@@ -738,7 +739,7 @@ class RagDocument(BaseModel):
     subdocs: List[str] = Field(default_factory=lambda: [], exclude=True)
     chunk_strategy: ChunkingStrategy
     ingestion_type: IngestionType = Field(default_factory=lambda: IngestionType.MANUAL)
-    upload_date: int = Field(default_factory=lambda: int(time.time() * 1000))
+    upload_date: int = Field(default_factory=lambda: now())
     chunks: Optional[int] = 0
     model_config = ConfigDict(use_enum_values=True, validate_default=True)
 

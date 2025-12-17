@@ -21,6 +21,7 @@ from boto3.dynamodb.conditions import Attr
 from models.domain_objects import VectorStoreStatus
 from utilities.common_functions import retry_config
 from utilities.encoders import convert_decimal
+from utilities.time import now
 
 logger = logging.getLogger(__name__)
 
@@ -144,7 +145,7 @@ class VectorStoreRepository:
 
             update_expr = "SET #config = :config, #updatedAt = :updatedAt"
             expr_names = {"#config": "config", "#updatedAt": "updatedAt"}
-            expr_values = {":config": config, ":updatedAt": int(time.time() * 1000)}
+            expr_values = {":config": config, ":updatedAt": now()}
 
             if status is not None:
                 update_expr += ", #status = :status"

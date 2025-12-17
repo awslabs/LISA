@@ -1169,7 +1169,7 @@ class RagCollectionConfig(BaseModel):
     """Represents a RAG collection configuration."""
 
     collectionId: str = Field(default_factory=lambda: str(uuid4()), description="Unique collection identifier")
-    repositoryId: str = Field(min_length=1, description="Parent vector store ID")
+    repositoryId: str = Field(min_length=1, description="Parent repository ID this collection belongs to")
     name: Optional[str] = Field(default=None, max_length=100, description="User-friendly collection name")
     description: Optional[str] = Field(default=None, description="Collection description")
     chunkingStrategy: Optional[ChunkingStrategy] = Field(default=None, description="Chunking strategy for documents")

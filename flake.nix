@@ -32,11 +32,11 @@
             awscli2     # AWS command-line interface for deployment and management
             gnumake
             jq          # JSON processor for parsing AWS responses and configuration
-            pre-commit  # Git hook framework for code quality checks
-            python311Full     # Python runtime for LISA backend services
+            python313Full     # Python runtime for LISA backend services
             nodejs      # Node.js runtime for CDK infrastructure and frontend tooling
             nodePackages.aws-cdk # AWS CDK CLI, the command line tool for CDK apps
-            uv          # Fast Python package installer and virtual environment manager
+            python313Packages.pre-commit-hooks  # Git hook framework for code quality checks
+            python313Packages.uv          # Fast Python package installer and virtual environment manager
             yq          # YAML processor for configuration management
           ];
 

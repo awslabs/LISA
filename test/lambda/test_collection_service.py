@@ -416,7 +416,7 @@ def test_create_collection_lambda_without_embedding_model_no_repository_default(
         assert (
             "Either the collection must specify an embeddingModel or "
             "the repository must have a default embeddingModelId"
-        ) in body['error']
+        ) in body["error"]
 
         # Verify collection service was NOT called
         mock_service.create_collection.assert_not_called()

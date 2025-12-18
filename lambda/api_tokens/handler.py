@@ -13,7 +13,6 @@
 #   limitations under the License.
 
 import logging
-from datetime import timedelta
 from typing import Optional
 from uuid import uuid4
 
@@ -25,6 +24,7 @@ from .domain_objects import (
     CreateTokenAdminRequest,
     CreateTokenResponse,
     CreateTokenUserRequest,
+    default_expiration,
     DeleteTokenResponse,
     ListTokensResponse,
     TokenInfo,
@@ -32,10 +32,6 @@ from .domain_objects import (
 from .exception import ForbiddenError, TokenAlreadyExistsError, TokenNotFoundError, UnauthorizedError
 
 logger = logging.getLogger(__name__)
-
-
-def default_expiration() -> int:
-    return now_seconds() + timedelta(days=90)
 
 
 class CreateTokenAdminHandler:

@@ -20,7 +20,7 @@ from utilities.time import now_seconds
 
 def default_expiration() -> int:
     """Calculate default token expiration (90 days from now)"""
-    return now_seconds() + int(timedelta(days=90))
+    return now_seconds() + int(timedelta(days=90).total_seconds())
 
 
 class CreateTokenAdminRequest(BaseModel):

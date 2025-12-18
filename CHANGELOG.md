@@ -1,9 +1,20 @@
 # v6.1.0
 
+## ⚠️ Important: Major Dependency Updates
+
+**This release includes comprehensive dependency updates across the entire platform.** While these updates are not breaking changes, they represent significant infrastructure improvements that enhance security and platform stability:
+
+- **Lambda Runtime Upgrades**: All Lambda functions now use Node.js v24 and Python v3.13 (upgraded from EOL versions)
+- **Security Vulnerability Remediation**: Updated all Python and npm dependencies to address outstanding CVEs
+- **Platform Modernization**: Comprehensive updates to core libraries including React, AWS CDK, LangChain, Boto3, LiteLLM, and more
+
+**Recommendation**: Test thoroughly in non-production environments before deploying to production systems.
+
 ## Key Features
 
 ### API Token Management UI
 This feature adds an Admin UI for managing API tokens. Admins can view, create, and delete API tokens for users and system users. It also adds a configuration option to enable/disable user-managed API tokens.
+
 **User Experience:**
 - **Admin UI**: Admins can view, create, and delete API tokens for users and system users
 - **User UI**: Users can create and delete their own API tokens if enabled by the admin
@@ -12,53 +23,43 @@ This feature adds an Admin UI for managing API tokens. Admins can view, create, 
 This feature delivers automatic resource scheduling through AWS Auto Scaling Groups with Schedule Actions, enabling automated start/stop scheduling that reduces operational costs while maintaining service availability during business hours. The solution supports both UI-driven and API-driven workflows, eliminating manual intervention overhead and providing intelligent resource management.
 **Scheduling Types:**
 - **DAILY**: Configure different start/stop times for each day of the week
-- **CUSTOM**: Define custom schedules based on specific dates and times
+- **RECURRING**: Configure a single start/stop time to be used throughout the week
+- **NONE**: The model will run continuously with no scheduled downtime
 
 ### RAG UI Enhancements
 This set of UI enhancements improves the overall user experience of the Repository, Analysis, and Guardrail (RAG) components:
 - **Consolidated Components**: Streamlined the User Admin Groups, Metadata/Tags, Forms, and other related components
 - **Expanded Tables**: Exposed more fields to the user in the Repository and Collection tables
-- **Model In-Use Handling**: Better handles models that are currently in use by collections or pipelines
+- **Model In-Use Deletion Notification**: Better handles models that are currently in use by collections or pipelines when deleting models
 - **Placeholder Descriptions**: Added placeholder descriptions to improve discoverability
 - **Reorganized Forms**: Reorganized Collection and Repository fields into separate wizard forms
 
 ### Dependency Updates
 This release includes several dependency updates to address security vulnerabilities and keep the project up to date:
-- **npm Dependencies**: Updated  and 
-- **GitHub Actions Dependencies**: Updated various GitHub Actions dependencies, including , , , , and 
-- **Python Dependencies**: Updated Node and Python dependencies to the latest compatible versions, addressing any outstanding CVEs
-
-### Documentation Improvements
-This release includes several updates to the project documentation:
-- **Schedule Management Documentation**: Added detailed documentation for the new Schedule Management feature
-- **Miscellaneous Documentation Updates**: Updated documentation from various sources, including Cindy's feedback
+- **Python and Node Lambda runtimes**: Upgraded Lambda runtimes to Node v24 and Python v3.13 to correct EOL versions
+- **Python Dependencies**: Updated Python dependencies to the latest compatible versions, addressing outstanding CVEs: Boto3, LiteLLM, LangChain, Cryptography, etc. 
+- **npm Dependencies**: Updated npm dependencies to latest compatible versions, addressing outstanding CVEs: React, cdk-lib, LangChain, Tailwind, Vite, etc...
 
 ### Bug Fixes and Other Improvements
 - **Consistent Date Handling**: Applied consistent UTC timezone handling for object creation and UI rendering
 - **VPC/Cert/Guardrail Config Updates**: Ensured consistent VPC and Cert configurations across all Lambdas and updated the Guardrail table config
 - **MCP API Deployment Fix**: Ensured MCP APIs are deployed even when the MCP Workbench is disabled
 - **Document Tagging Improvements**: Improved the logic for applying tags from all levels (repository, collection, document, pipeline) during document ingestion
-- **Zod and LangChain Upgrades**: Updated Node and Python dependencies, addressing issues introduced by the Zod v4 and LangChain v1 upgrades
-- **Mathejax to Katex Migration**: Replaced the MathJax library with the Katex library to improve the rendering of LaTeX math expressions
-- **Model In-Use Deletion Check**: Added a check to prevent the deletion of models that are currently in use by collections or pipelines
 
 ## Key Changes
 - **Feature**: Added API Token Management UI for admins and users
 - **Feature**: Implemented automated resource scheduling through AWS Auto Scaling Groups
 - **Enhancement**: Improved the overall user experience of the RAG components
 - **Dependency Update**: Updated various npm, GitHub Actions, and Python dependencies
-- **Documentation**: Added and updated project documentation, including the Schedule Management feature
-- **Bug Fix**: Applied consistent date handling and fixed various other bugs
+- **Bug Fix**: Applied consistent date handling, VPC configurations, and fixed various other bugs
 
 ## Acknowledgements
-* @121983012+jmharold
-* @49699333+dependabot[bot]
+
 * @batzela
 * @bedanley
 * @dustinps
 * @jmharold
 * @nishrs
-* @srivan
 
 **Full Changelog**: https://github.com/awslabs/LISA/compare/v6.0.1..v6.1.0
 

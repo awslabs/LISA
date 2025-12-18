@@ -12,41 +12,47 @@
 
 ## Key Features
 
-### API Token Management UI
-This feature adds an Admin UI for managing API tokens. Admins can view, create, and delete API tokens for users and system users. It also adds a configuration option to enable/disable user-managed API tokens.
+### API Token Management
+
+To further support multi-tenant environments, LISA Admins can now manage and associate API tokens with specific users or systems. This feature adds an API Management UI where Admins can create, view, and delete API tokens. This feature can be extended to non-admin users by configuring user groups and enabling it in the UI as a configuration option.
 
 **User Experience:**
 - **Admin UI**: Admins can view, create, and delete API tokens for users and system users
 - **User UI**: Users can create and delete their own API tokens if enabled by the admin
 
 ### Schedule Management
-This feature delivers automatic resource scheduling through AWS Auto Scaling Groups with Schedule Actions, enabling automated start/stop scheduling that reduces operational costs while maintaining service availability during business hours. The solution supports both UI-driven and API-driven workflows, eliminating manual intervention overhead and providing intelligent resource management.
+
+This feature delivers automatic resource scheduling with LISA self-hosted models through AWS Auto Scaling Groups and Schedule Actions, enabling automated start/stop scheduling that reduces operational costs while maintaining service availability during business hours. The solution supports both UI-driven and API-driven workflows, eliminating manual intervention overhead and providing intelligent resource management.
 **Scheduling Types:**
 - **DAILY**: Configure different start/stop times for each day of the week
 - **RECURRING**: Configure a single start/stop time to be used throughout the week
 - **NONE**: The model will run continuously with no scheduled downtime
 
 ### RAG UI Enhancements
+
 This set of UI enhancements improves the overall user experience of the Repository, Analysis, and Guardrail (RAG) components:
-- **Consolidated Components**: Streamlined the User Admin Groups, Metadata/Tags, Forms, and other related components
+- **Consolidated Components**: Standardized common features across the UI such as User Admin Groups inputs, Metadata/Tags forms, Chunking Strategies forms, time rendering elements, and solidified sentence casing for element labels
 - **Expanded Tables**: Exposed more fields to the user in the Repository and Collection tables
 - **Model In-Use Deletion Notification**: Better handles models that are currently in use by collections or pipelines when deleting models
 - **Placeholder Descriptions**: Added placeholder descriptions to improve discoverability
 - **Reorganized Forms**: Reorganized Collection and Repository fields into separate wizard forms
 
 ### Dependency Updates
+
 This release includes several dependency updates to address security vulnerabilities and keep the project up to date:
 - **Python and Node Lambda runtimes**: Upgraded Lambda runtimes to Node v24 and Python v3.13 to correct EOL versions
 - **Python Dependencies**: Updated Python dependencies to the latest compatible versions, addressing outstanding CVEs: Boto3, LiteLLM, LangChain, Cryptography, etc.
 - **npm Dependencies**: Updated npm dependencies to latest compatible versions, addressing outstanding CVEs: React, cdk-lib, LangChain, Tailwind, Vite, etc...
 
 ### Bug Fixes and Other Improvements
+
 - **Consistent Date Handling**: Applied consistent UTC timezone handling for object creation and UI rendering
 - **VPC/Cert/Guardrail Config Updates**: Ensured consistent VPC and Cert configurations across all Lambdas and updated the Guardrail table config
 - **MCP API Deployment Fix**: Ensured MCP APIs are deployed even when the MCP Workbench is disabled
 - **Document Tagging Improvements**: Improved the logic for applying tags from all levels (repository, collection, document, pipeline) during document ingestion
 
 ## Key Changes
+
 - **Feature**: Added API Token Management UI for admins and users
 - **Feature**: Implemented automated resource scheduling through AWS Auto Scaling Groups
 - **Enhancement**: Improved the overall user experience of the RAG components
@@ -70,7 +76,8 @@ We hope you enjoy this release as much as we enjoyed building it. Please reach o
 
 
 ## Breaking Changes
-- **API Token Table Migration**: The API token table has been renamed and moved from the Serve stack to the API Base stack (`LisaServeTokenTable` → `LisaApiBaseTokenTable`). **Export all existing API keys before upgrading** and recreate them in the new table after deployment. This affects admin keys, service accounts, and any programmatic API access.
+- **API Token Table Migration**: The API token table has been renamed and moved from the Serve stack to the API Base stack (`LisaServeTokenTable` → `LisaApiBaseTokenTable`).
+**Export all existing API keys before upgrading** and recreate them in the new table after deployment. This affects admin keys, service accounts, and any programmatic API access.
 - **Management Key Secret Migration**: The LISA management key secret has been moved to the API Base stack with a new name format: `${deploymentName}-management-key` (removed `lisa-` prefix). **Update any scripts or integrations that reference the secret by name.** The secret value will be auto-generated during deployment; export from AWS Secrets Manager before upgrading if you need to preserve the existing value. Code using the SSM parameter `${deploymentPrefix}/appManagementKeySecretName` will continue to work without changes.
 - **Existing Bedrock Knowledge Base Repositories** must be redeployed to support the new collections infrastructure. This is a simple update operation that creates the necessary infrastructure for automatic data source collection creation. Use the repository update API or UI to redeploy existing Bedrock Knowledge Base repositories.
 

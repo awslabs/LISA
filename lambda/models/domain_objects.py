@@ -19,7 +19,6 @@ from __future__ import annotations
 import json
 import logging
 import re
-import time
 import urllib.parse
 import uuid
 from dataclasses import dataclass
@@ -28,13 +27,12 @@ from enum import auto, Enum, StrEnum
 from typing import Annotated, Any, Dict, Generator, List, Literal, Optional, TypeAlias, Union
 from uuid import uuid4
 from zoneinfo import ZoneInfo
-from utilities.time import now
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
 from pydantic.functional_validators import AfterValidator, field_validator, model_validator
 from typing_extensions import Self
 from utilities.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, MIN_PAGE_SIZE
-from utilities.time import utc_now
+from utilities.time import now, utc_now
 from utilities.validation import (
     validate_all_fields_defined,
     validate_any_fields_defined,

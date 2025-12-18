@@ -13,7 +13,6 @@
 #   limitations under the License.
 import logging
 import os
-import time
 from typing import Any, cast, List
 
 import boto3

@@ -18,7 +18,6 @@ import json
 import logging
 import os
 import ssl
-from datetime import datetime
 from typing import Any, Dict
 
 import boto3
@@ -126,7 +125,7 @@ def _get_token_info(token: str) -> Any:
     ddb_response = token_table.get_item(Key={"token": token}, ReturnConsumedCapacity="NONE")
     return ddb_response.get("Item", None)
 
-  
+
 def is_valid_api_token(token: str) -> dict | None:
     """
     Validate API token and return token info if valid.

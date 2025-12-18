@@ -47,14 +47,14 @@ dev:
     chunkSize: 512
     chunkOverlap: 51
   ecsModels:
-    - modelName: mistralai/Mistral-7B-Instruct-v0.2
+    - modelName: mistralai/Mistral-7B-Instruct-v0.3
       inferenceContainer: tgi
-      baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1
+      baseImage: ghcr.io/huggingface/text-generation-inference:latest
     - modelName: intfloat/e5-large-v2
       inferenceContainer: tei
-      baseImage: ghcr.io/huggingface/text-embeddings-inference:1.2.3
-    # - modelName: mistralai/Mixtral-8x7B-Instruct-v0.1
-    #   inferenceContainer: tgi
-    #   baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1
+      baseImage: ghcr.io/huggingface/text-embeddings-inference:latest
+    - modelName: openai/gpt-oss-20b
+      inferenceContainer: vllm
+      baseImage: openai/vllm:latest
   litellmConfig:
     db_key: sk-012345 #pragma: allowlist secret

@@ -53,6 +53,7 @@ import { LisaApiTokensStack } from './api-tokens';
 
 import fs from 'node:fs';
 import { VERSION_PATH } from './util';
+import { AdcLambdaCABundleAspect } from './util/adcCertBundleAspect';
 
 
 export const VERSION: string = fs.readFileSync(VERSION_PATH, 'utf8').trim();
@@ -97,7 +98,7 @@ class UpdateLaunchTemplateMetadataOptions implements IAspect {
    * @param {Construct} node - The CDK construct being visited.
    */
     public visit (node: Construct): void {
-    // Check if the node is a CloudFormation resource of type AWS::EC2::LaunchTemplate
+        // Check if the node is a CloudFormation resource of type AWS::EC2::LaunchTemplate
         if (node instanceof CfnResource && node.cfnResourceType === 'AWS::EC2::LaunchTemplate') {
             // Directly modify the CloudFormation properties to include the desired settings
             node.addOverride('Properties.LaunchTemplateData.MetadataOptions.HttpPutResponseHopLimit', 2);
@@ -317,8 +318,6 @@ export class LisaServeApplicationStage extends Stage {
             this.stacks.push(mcpApiStack);
         }
 
-
-
         if (config.deployServe) {
             const serveStack = new LisaServeApplicationStack(this, 'LisaServe', {
                 ...baseStackProps,
@@ -336,8 +335,8 @@ export class LisaServeApplicationStage extends Stage {
                 ...baseStackProps,
                 authorizer: apiBaseStack.authorizer,
                 description: `LISA-models: ${config.deploymentName}-${config.deploymentStage}`,
-                guardrailsTable: serveStack.guardrailsTable,
                 lisaServeEndpointUrlPs: config.restApiConfig.internetFacing ? serveStack.endpointUrl : undefined,
+                guardrailsTable: serveStack.guardrailsTable,
                 restApiId: apiBaseStack.restApiId,
                 rootResourceId: apiBaseStack.rootResourceId,
                 stackName: createCdkId([config.deploymentName, config.appName, 'models', config.deploymentStage]),
@@ -443,7 +442,6 @@ export class LisaServeApplicationStage extends Stage {
 
         }
 
-
         if (config.deployDocs) {
             const docsStack = new LisaDocsStack(this, 'LisaDocs', {
                 ...baseStackProps
@@ -453,7 +451,13 @@ export class LisaServeApplicationStage extends Stage {
 
         this.stacks.push(apiDeploymentStack);
 
-        // Set resource tags
+        // Set CA certs for isolated regions
+        if (config.region.includes('iso')) {
+            const adcCABundleAspect = new AdcLambdaCABundleAspect();
+            this.stacks.forEach((stack) => Aspects.of(stack).add(adcCABundleAspect));
+        }
+
+        // Set resource tags if not isolated region
         if (!config.region.includes('iso')) {
             for (const tag of config.tags ?? []) {
                 Tags.of(this).add(tag['Key'], tag['Value']);
@@ -461,8 +465,7 @@ export class LisaServeApplicationStage extends Stage {
             Tags.of(this).add('VERSION', VERSION);
         }
 
-        // Apply permissions boundary aspect to all stacks if the boundary is defined in
-        // config.yaml
+        // Apply permissions boundary aspect to all stacks if the boundary is defined in config.yaml
         if (config.permissionsBoundaryAspect) {
             this.stacks.forEach((lisaStack) => {
                 Aspects.of(lisaStack).add(new AddPermissionBoundary(config.permissionsBoundaryAspect!));
@@ -470,38 +473,34 @@ export class LisaServeApplicationStage extends Stage {
         }
 
         if (config.convertInlinePoliciesToManaged) {
-            this.stacks.forEach((lisaStack) => {
-                Aspects.of(lisaStack).add(new ConvertInlinePoliciesToManaged());
-            });
+            this.stacks.forEach((stack) => Aspects.of(stack).add(new ConvertInlinePoliciesToManaged()));
         }
+
         // Nag Suppressions
-        this.stacks.forEach((lisaStack) => {
-            NagSuppressions.addStackSuppressions(
-                lisaStack,
-                [
-                    {
-                        id: 'NIST.800.53.R5-LambdaConcurrency',
-                        reason: 'Not applying lambda concurrency limits',
-                    },
-                    {
-                        id: 'NIST.800.53.R5-LambdaDLQ',
-                        reason: 'Not creating lambda DLQs',
-                    },
-                ],
-            );
+        this.stacks.forEach((stack) => {
+            NagSuppressions.addStackSuppressions(stack, [
+                {
+                    id: 'NIST.800.53.R5-LambdaConcurrency',
+                    reason: 'Not applying lambda concurrency limits',
+                },
+                {
+                    id: 'NIST.800.53.R5-LambdaDLQ',
+                    reason: 'Not creating lambda DLQs',
+                },
+            ]);
         });
 
         // Run CDK-nag on app if specified
         if (config.runCdkNag) {
-            this.stacks.forEach((lisaStack) => {
-                Aspects.of(lisaStack).add(new AwsSolutionsChecks({ reports: true, verbose: true }));
-                Aspects.of(lisaStack).add(new NIST80053R5Checks({ reports: true, verbose: true }));
+            this.stacks.forEach((stack) => {
+                Aspects.of(stack).add(new AwsSolutionsChecks({ reports: true, verbose: true }));
+                Aspects.of(stack).add(new NIST80053R5Checks({ reports: true, verbose: true }));
             });
         }
 
         if (config.securityGroupConfig) {
-            this.stacks.forEach((lisaStack) => {
-                Aspects.of(lisaStack).add(new RemoveSecurityGroupAspect(config.securityGroupConfig?.modelSecurityGroupId));
+            this.stacks.forEach((stack) => {
+                Aspects.of(stack).add(new RemoveSecurityGroupAspect(config.securityGroupConfig?.modelSecurityGroupId));
             });
         }
 

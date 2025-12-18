@@ -62,6 +62,7 @@ export class UpdateModelStateMachine extends Construct {
         const {
             config,
             modelTable,
+            guardrailsTable,
             lambdaLayers,
             role,
             vpc,
@@ -73,7 +74,7 @@ export class UpdateModelStateMachine extends Construct {
 
         const environment = {  // Environment variables to set in all Lambda functions
             MODEL_TABLE_NAME: modelTable.tableName,
-            GUARDRAILS_TABLE_NAME: props.guardrailsTable.tableName,
+            GUARDRAILS_TABLE_NAME: guardrailsTable.tableName,
             LISA_API_URL_PS_NAME: restApiContainerEndpointPs.parameterName,
             REST_API_VERSION: 'v2',
             MANAGEMENT_KEY_NAME: managementKeyName,

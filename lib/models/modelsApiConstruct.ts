@@ -17,8 +17,8 @@
 // LisaModelsApi Stack.
 import { Stack, StackProps } from 'aws-cdk-lib';
 import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
-import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Construct } from 'constructs';
 
 import { Vpc } from '../networking/vpc';
@@ -29,7 +29,7 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 export type LisaModelsApiProps = BaseProps &
   StackProps & {
       authorizer?: IAuthorizer;
-      guardrailsTable: ITable;
+      guardrailsTable?: ITable;
       lisaServeEndpointUrlPs?: StringParameter;
       restApiId: string;
       rootResourceId: string;
@@ -49,13 +49,14 @@ export class LisaModelsApiConstruct extends Construct {
     constructor (scope: Stack, id: string, props: LisaModelsApiProps) {
         super(scope, id);
 
-        const { authorizer, config, guardrailsTable, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const { authorizer, config, guardrailsTable, lisaServeEndpointUrlPs, restApiId, rootResourceId, securityGroups, vpc } = props;
 
         // Add REST API Lambdas to APIGW
         new ModelsApi(scope, 'ModelsApi', {
             authorizer,
             config,
             guardrailsTable,
+            lisaServeEndpointUrlPs,
             restApiId,
             rootResourceId,
             securityGroups,

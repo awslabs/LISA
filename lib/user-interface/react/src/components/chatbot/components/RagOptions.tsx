@@ -104,7 +104,7 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
         // Update tracking when repository changes
         if (repositoryHasChanged) {
             lastRepositoryIdRef.current = currentRepositoryId;
-            // eslint-disable-next-line react-hooks/set-state-in-effect
+
             setUserHasSelectedCollection(false);
         }
 

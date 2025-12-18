@@ -17,7 +17,7 @@
 import { Button, Container, Grid, SpaceBetween, List, Header, Box, Input, FormField, TextFilter, Pagination, Link, TextContent, Spinner } from '@cloudscape-design/components';
 import AceEditor from 'react-ace';
 import {Editor} from 'ace-builds';
-import { CancellableEventHandler } from '@cloudscape-design/components/internal/events';
+
 import 'react';
 import { ReactElement, useCallback, useContext, useEffect, useState } from 'react';
 import { useAppDispatch } from '@/config/store';
@@ -48,7 +48,7 @@ export function McpWorkbenchManagementComponent (): ReactElement {
     const notificationService = useNotificationService(dispatch);
 
     // API hooks
-    const { data: tools = [], isFetching: isLoadingTools, refetch } = useListMcpToolsQuery();
+    const { data: tools = [], isFetching: isLoadingTools } = useListMcpToolsQuery();
     const [selectedToolId, setSelectedToolId] = useState<string | null>(null);
     const { data: selectedToolData, isUninitialized } = useGetMcpToolQuery(selectedToolId!, {
         skip: selectedToolId === null,
@@ -234,8 +234,8 @@ export function McpWorkbenchManagementComponent (): ReactElement {
     };
 
     // Handle creating new tool
-    const handleCreateNew = (event: CancellableEventHandler) => {
-        event.preventDefault();
+    const handleCreateNew = (event?: any) => {
+        event?.preventDefault();
 
         const newTool = {
             id: '',
@@ -285,8 +285,6 @@ export function McpWorkbenchManagementComponent (): ReactElement {
             notificationService.generateNotification(`Successfully created tool: ${state.form.id}`, 'success');
             setSelectedToolId(result.id);
             setIsDirty(false);
-            dispatch(mcpToolsApi.util.invalidateTags(['mcpTools']));
-            refetch();
         } catch (error: any) {
             const errorMessage = error?.data?.message || error?.message || 'Unknown error occurred';
             notificationService.generateNotification(`Error creating tool: ${errorMessage}`, 'error');
@@ -305,7 +303,6 @@ export function McpWorkbenchManagementComponent (): ReactElement {
 
             notificationService.generateNotification(`Successfully updated tool: ${selectedToolId}`, 'success');
             setIsDirty(false);
-            dispatch(mcpToolsApi.util.invalidateTags(['mcpTools']));
         } catch (error: any) {
             const errorMessage = error?.data?.message || error?.message || 'Unknown error occurred';
             notificationService.generateNotification(`Error updating tool: ${errorMessage}`, 'error');
@@ -335,7 +332,7 @@ export function McpWorkbenchManagementComponent (): ReactElement {
                             setIsDirty(false);
                         }
 
-                        refetch();
+
                     } catch (error: any) {
                         const errorMessage = error?.data?.message || error?.message || 'Unknown error occurred';
                         notificationService.generateNotification(`Error deleting tool: ${errorMessage}`, 'error');
@@ -364,14 +361,16 @@ export function McpWorkbenchManagementComponent (): ReactElement {
                             variant='h3'
                             actions={
                                 <SpaceBetween direction='horizontal' size='xxs'>
-                                    {/* <Button
-                                iconName='refresh'
-                                variant='normal'
-                                onClick={handleCreateNew}
-                                ariaLabel='Refresh'
-                            ></Button> */}
                                     <Button
-                                    // iconName='file'
+                                        iconName='refresh'
+                                        variant='normal'
+                                        onClick={() => {
+                                            // Invalidate cache - this will automatically trigger refetch of active queries
+                                            dispatch(mcpToolsApi.util.invalidateTags(['mcpTools']));
+                                        }}
+                                        ariaLabel='Refresh tools list'
+                                    />
+                                    <Button
                                         variant='primary'
                                         onClick={handleCreateNew}
                                         ariaLabel='New Tool File'

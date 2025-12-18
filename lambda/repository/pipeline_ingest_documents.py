@@ -493,6 +493,25 @@ def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
 
         logger.info(f"Ingesting object {s3_path} for repository {repository_id}/{embedding_model}")
 
+    # Get collection for metadata merging
+    collection_dict = None
+    if collection_id and collection_id != embedding_model:
+        try:
+            collection_obj = collection_service.get_collection(
+                collection_id=collection_id, repository_id=repository_id, is_admin=True, username="", user_groups=[]
+            )
+            collection_dict = collection_obj.model_dump() if collection_obj else None
+        except Exception as e:
+            logger.warning(f"Could not fetch collection for metadata merging: {e}")
+
+    # Merge metadata from repository, collection, and pipeline sources
+    merged_metadata = MetadataGenerator.merge_metadata(
+        repository=repository,
+        collection=collection_dict,
+        document_metadata=None,
+        for_bedrock_kb=False,  # Keep tags as array for ingestion jobs
+    )
+
     # Create ingestion job and save it to dynamodb
     job = IngestionJob(
         repository_id=repository_id,
@@ -502,7 +521,7 @@ def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
         s3_path=s3_path,
         username=username,
         ingestion_type=ingestion_type,
-        metadata=None,
+        metadata=merged_metadata,
     )
     ingestion_job_repository.save(job)
     ingestion_service.submit_create_job(job)
@@ -534,6 +553,9 @@ def handle_pipline_ingest_schedule(event: Dict[str, Any], context: Any) -> None:
 
     # hard code fixed length chunking until more strategies are implemented
     chunk_strategy = extract_chunk_strategy(pipeline_config)
+
+    # Get repository for metadata merging
+    repository = vs_repo.find_repository_by_id(repository_id)
 
     try:
         # Add debug logging
@@ -573,6 +595,14 @@ def handle_pipline_ingest_schedule(event: Dict[str, Any], context: Any) -> None:
             logger.error(f"Error during S3 list operation: {str(e)}", exc_info=True)
             raise
 
+        # Merge metadata from repository and pipeline sources (no collection for scheduled jobs)
+        merged_metadata = MetadataGenerator.merge_metadata(
+            repository=repository,
+            collection=None,
+            document_metadata=None,
+            for_bedrock_kb=False,  # Keep tags as array for ingestion jobs
+        )
+
         # create an IngestionJob for every object created/modified
         for key in modified_keys:
             job = IngestionJob(
@@ -582,7 +612,7 @@ def handle_pipline_ingest_schedule(event: Dict[str, Any], context: Any) -> None:
                 s3_path=f"s3://{bucket}/{key}",
                 username=username,
                 ingestion_type=IngestionType.AUTO,
-                metadata=None,
+                metadata=merged_metadata,
             )
             ingestion_job_repository.save(job)
             ingestion_service.submit_create_job(job)

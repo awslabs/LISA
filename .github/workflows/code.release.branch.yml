@@ -88,9 +88,11 @@ jobs:
           # Create the draft pull request
           gh pr create -d \
             --title "Release ${{github.event.inputs.release_tag}} into Main" \
-            --body "${{ steps.generate_description.outputs.DESCRIPTION }}" \
+            --body-file - \
             --base main \
-            --head release/${{ github.event.inputs.release_tag }}
+            --head release/${{ github.event.inputs.release_tag }} << 'EOF'
+          ${{ steps.generate_description.outputs.DESCRIPTION }}
+          EOF
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ secrets.LEAD_ACCESS_TOKEN }}

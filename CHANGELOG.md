@@ -37,7 +37,7 @@ This set of UI enhancements improves the overall user experience of the Reposito
 ### Dependency Updates
 This release includes several dependency updates to address security vulnerabilities and keep the project up to date:
 - **Python and Node Lambda runtimes**: Upgraded Lambda runtimes to Node v24 and Python v3.13 to correct EOL versions
-- **Python Dependencies**: Updated Python dependencies to the latest compatible versions, addressing outstanding CVEs: Boto3, LiteLLM, LangChain, Cryptography, etc. 
+- **Python Dependencies**: Updated Python dependencies to the latest compatible versions, addressing outstanding CVEs: Boto3, LiteLLM, LangChain, Cryptography, etc.
 - **npm Dependencies**: Updated npm dependencies to latest compatible versions, addressing outstanding CVEs: React, cdk-lib, LangChain, Tailwind, Vite, etc...
 
 ### Bug Fixes and Other Improvements

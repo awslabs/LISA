@@ -61,7 +61,7 @@ authConfig:
   clientId: your-client-id
   adminGroup: lisa-admins
   userGroup: lisa-users
-  apiGroup: lisa-api-users  # Add this line - users in this group can create tokens programatically
+  apiGroup: lisa-api-users  # Add this line - users in this group can create tokens programmatically
 
 # ... other configuration ...
 ```
@@ -185,7 +185,7 @@ The interface shows:
 
 ## Managing Tokens via API
 
-Token management via API will always be availble to admins. Users need to be members of the API Group in order to utilize the `/api-tokens` endpoint. 
+Token management via API will always be available to admins. Users need to be members of the API Group in order to utilize the `/api-tokens` endpoint.
 
 If no API tokens exist it is required to authenticate via JWT token.
 

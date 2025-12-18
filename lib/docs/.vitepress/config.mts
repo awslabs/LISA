@@ -52,7 +52,7 @@ const navLinks = [
   {
     text: 'Advanced Configuration',
     items: [
-      { text: 'Programmatic API Tokens', link: '/config/api-tokens' },
+      { text: 'API Token Management', link: '/config/api-tokens' },
       { text: 'Model Compatibility', link: '/config/model-compatibility' },
       { text: 'Model Management API', link: '/config/model-management-api' },
       { text: 'Model Management UI', link: '/config/model-management-ui' },

@@ -7,9 +7,27 @@
           {
             "AttributeName": "token",
             "AttributeType": "S"
+          },
+          {
+            "AttributeName": "username",
+            "AttributeType": "S"
           }
         ],
         "BillingMode": "PAY_PER_REQUEST",
+        "GlobalSecondaryIndexes": [
+          {
+            "IndexName": "username-index",
+            "KeySchema": [
+              {
+                "AttributeName": "username",
+                "KeyType": "HASH"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "ALL"
+            }
+          }
+        ],
         "KeySchema": [
           {
             "AttributeName": "token",
@@ -207,7 +225,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Environment": {
           "Variables": {
@@ -223,7 +241,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 300,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -416,8 +434,6 @@
             {
               "Action": [
                 "dynamodb:BatchGetItem",
-                "dynamodb:GetRecords",
-                "dynamodb:GetShardIterator",
                 "dynamodb:Query",
                 "dynamodb:GetItem",
                 "dynamodb:Scan",
@@ -433,7 +449,47 @@
                   ]
                 },
                 {
-                  "Ref": "AWS::NoValue"
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "TokenTable3625D248",
+                          "Arn"
+                        ]
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "TokenTable3625D248",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "TokenTable3625D248",
+                          "Arn"
+                        ]
+                      },
+                      "/index/*"
+                    ]
+                  ]
                 }
               ]
             },
@@ -472,7 +528,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "REST API and UI Authorization Lambda",
         "Environment": {
@@ -505,7 +561,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 30,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -807,6 +863,14 @@
         ]
       }
     },
+    "ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C": {
+      "Value": {
+        "Ref": "LisaApiBaseRestApiBD7EFE41"
+      },
+      "Export": {
+        "Name": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+      }
+    },
     "ExportsOutputFnGetAttLisaApiBaseRestApiBD7EFE41RootResourceId15433D4A": {
       "Value": {
         "Fn::GetAtt": [
@@ -816,14 +880,6 @@
       },
       "Export": {
         "Name": "LisaApiBase:ExportsOutputFnGetAttLisaApiBaseRestApiBD7EFE41RootResourceId15433D4A"
-      }
-    },
-    "ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C": {
-      "Value": {
-        "Ref": "LisaApiBaseRestApiBD7EFE41"
-      },
-      "Export": {
-        "Name": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
       }
     },
     "ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB": {

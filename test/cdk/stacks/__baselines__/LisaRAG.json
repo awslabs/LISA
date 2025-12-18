@@ -116,8 +116,40 @@
             {
               "Action": [
                 "dynamodb:BatchGetItem",
+                "dynamodb:Query",
+                "dynamodb:GetItem",
+                "dynamodb:Scan",
+                "dynamodb:ConditionCheckItem",
+                "dynamodb:BatchWriteItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:DescribeTable"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "RagRepositoryConfigTable6FA366CB",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": [
                 "dynamodb:GetRecords",
-                "dynamodb:GetShardIterator",
+                "dynamodb:GetShardIterator"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "RagRepositoryConfigTable6FA366CB",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": [
+                "dynamodb:BatchGetItem",
                 "dynamodb:Query",
                 "dynamodb:GetItem",
                 "dynamodb:Scan",
@@ -132,29 +164,30 @@
               "Resource": [
                 {
                   "Fn::GetAtt": [
-                    "RagRepositoryConfigTable6FA366CB",
+                    "IngestionStackConstructIngestionJobTable8103D8C1",
                     "Arn"
                   ]
                 },
                 {
-                  "Ref": "AWS::NoValue"
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "IngestionStackConstructIngestionJobTable8103D8C1",
+                          "Arn"
+                        ]
+                      },
+                      "/index/*"
+                    ]
+                  ]
                 }
               ]
             },
             {
               "Action": [
-                "dynamodb:BatchGetItem",
                 "dynamodb:GetRecords",
-                "dynamodb:GetShardIterator",
-                "dynamodb:Query",
-                "dynamodb:GetItem",
-                "dynamodb:Scan",
-                "dynamodb:ConditionCheckItem",
-                "dynamodb:BatchWriteItem",
-                "dynamodb:PutItem",
-                "dynamodb:UpdateItem",
-                "dynamodb:DeleteItem",
-                "dynamodb:DescribeTable"
+                "dynamodb:GetShardIterator"
               ],
               "Effect": "Allow",
               "Resource": [
@@ -245,8 +278,6 @@
             {
               "Action": [
                 "dynamodb:BatchGetItem",
-                "dynamodb:GetRecords",
-                "dynamodb:GetShardIterator",
                 "dynamodb:Query",
                 "dynamodb:GetItem",
                 "dynamodb:Scan",
@@ -283,9 +314,70 @@
             },
             {
               "Action": [
-                "dynamodb:BatchGetItem",
                 "dynamodb:GetRecords",
-                "dynamodb:GetShardIterator",
+                "dynamodb:GetShardIterator"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "testlisaRagDocumentTable5A134785",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "testlisaRagDocumentTable5A134785",
+                          "Arn"
+                        ]
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "dynamodb:BatchGetItem",
+                "dynamodb:Query",
+                "dynamodb:GetItem",
+                "dynamodb:Scan",
+                "dynamodb:ConditionCheckItem",
+                "dynamodb:BatchWriteItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:DescribeTable"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "testlisaRagSubDocumentTable76E4AE52",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": [
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "testlisaRagSubDocumentTable76E4AE52",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": [
+                "dynamodb:BatchGetItem",
                 "dynamodb:Query",
                 "dynamodb:GetItem",
                 "dynamodb:Scan",
@@ -300,29 +392,30 @@
               "Resource": [
                 {
                   "Fn::GetAtt": [
-                    "testlisaRagSubDocumentTable76E4AE52",
+                    "testlisaRagCollectionsTableBAFE8068",
                     "Arn"
                   ]
                 },
                 {
-                  "Ref": "AWS::NoValue"
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "testlisaRagCollectionsTableBAFE8068",
+                          "Arn"
+                        ]
+                      },
+                      "/index/*"
+                    ]
+                  ]
                 }
               ]
             },
             {
               "Action": [
-                "dynamodb:BatchGetItem",
                 "dynamodb:GetRecords",
-                "dynamodb:GetShardIterator",
-                "dynamodb:Query",
-                "dynamodb:GetItem",
-                "dynamodb:Scan",
-                "dynamodb:ConditionCheckItem",
-                "dynamodb:BatchWriteItem",
-                "dynamodb:PutItem",
-                "dynamodb:UpdateItem",
-                "dynamodb:DeleteItem",
-                "dynamodb:DescribeTable"
+                "dynamodb:GetShardIterator"
               ],
               "Effect": "Allow",
               "Resource": [
@@ -764,6 +857,34 @@
             "KeyType": "RANGE"
           }
         ],
+        "ResourcePolicy": {
+          "PolicyDocument": {
+            "Statement": [
+              {
+                "Action": [
+                  "dynamodb:BatchGetItem",
+                  "dynamodb:Query",
+                  "dynamodb:GetItem",
+                  "dynamodb:Scan",
+                  "dynamodb:ConditionCheckItem",
+                  "dynamodb:BatchWriteItem",
+                  "dynamodb:PutItem",
+                  "dynamodb:UpdateItem",
+                  "dynamodb:DeleteItem",
+                  "dynamodb:DescribeTable"
+                ],
+                "Effect": "Allow",
+                "Principal": {
+                  "AWS": {
+                    "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
+                  }
+                },
+                "Resource": "*"
+              }
+            ],
+            "Version": "2012-10-17"
+          }
+        },
         "SSESpecification": {
           "SSEEnabled": true
         }
@@ -795,6 +916,34 @@
             "KeyType": "RANGE"
           }
         ],
+        "ResourcePolicy": {
+          "PolicyDocument": {
+            "Statement": [
+              {
+                "Action": [
+                  "dynamodb:BatchGetItem",
+                  "dynamodb:Query",
+                  "dynamodb:GetItem",
+                  "dynamodb:Scan",
+                  "dynamodb:ConditionCheckItem",
+                  "dynamodb:BatchWriteItem",
+                  "dynamodb:PutItem",
+                  "dynamodb:UpdateItem",
+                  "dynamodb:DeleteItem",
+                  "dynamodb:DescribeTable"
+                ],
+                "Effect": "Allow",
+                "Principal": {
+                  "AWS": {
+                    "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
+                  }
+                },
+                "Resource": "*"
+              }
+            ],
+            "Version": "2012-10-17"
+          }
+        },
         "SSESpecification": {
           "SSEEnabled": true
         }
@@ -868,6 +1017,34 @@
             "KeyType": "RANGE"
           }
         ],
+        "ResourcePolicy": {
+          "PolicyDocument": {
+            "Statement": [
+              {
+                "Action": [
+                  "dynamodb:BatchGetItem",
+                  "dynamodb:Query",
+                  "dynamodb:GetItem",
+                  "dynamodb:Scan",
+                  "dynamodb:ConditionCheckItem",
+                  "dynamodb:BatchWriteItem",
+                  "dynamodb:PutItem",
+                  "dynamodb:UpdateItem",
+                  "dynamodb:DeleteItem",
+                  "dynamodb:DescribeTable"
+                ],
+                "Effect": "Allow",
+                "Principal": {
+                  "AWS": {
+                    "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
+                  }
+                },
+                "Resource": "*"
+              }
+            ],
+            "Version": "2012-10-17"
+          }
+        },
         "SSESpecification": {
           "SSEEnabled": true
         },
@@ -883,11 +1060,11 @@
       "Type": "AWS::Lambda::LayerVersion",
       "Properties": {
         "CompatibleRuntimes": [
-          "python3.11"
+          "python3.13"
         ],
         "Content": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "bdb843ae57a1a6f5714c8910570451c0e9f842588047ce7f612cb88c83ff52ed.zip"
+          "S3Key": "9f5b8019afa466f0e8a9ede616333a9e6e025da899cd078094fed39ea8d31436.zip"
         },
         "Description": "Lambda dependencies for RAG API"
       },
@@ -1073,6 +1250,34 @@
         "PointInTimeRecoverySpecification": {
           "PointInTimeRecoveryEnabled": true
         },
+        "ResourcePolicy": {
+          "PolicyDocument": {
+            "Statement": [
+              {
+                "Action": [
+                  "dynamodb:BatchGetItem",
+                  "dynamodb:Query",
+                  "dynamodb:GetItem",
+                  "dynamodb:Scan",
+                  "dynamodb:ConditionCheckItem",
+                  "dynamodb:BatchWriteItem",
+                  "dynamodb:PutItem",
+                  "dynamodb:UpdateItem",
+                  "dynamodb:DeleteItem",
+                  "dynamodb:DescribeTable"
+                ],
+                "Effect": "Allow",
+                "Principal": {
+                  "AWS": {
+                    "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
+                  }
+                },
+                "Resource": "*"
+              }
+            ],
+            "Version": "2012-10-17"
+          }
+        },
         "SSESpecification": {
           "SSEEnabled": true
         },
@@ -1087,6 +1292,28 @@
       },
       "UpdateReplacePolicy": "Delete",
       "DeletionPolicy": "Delete"
+    },
+    "RagVectorStoreTableNameParameter6E5D3D94": {
+      "Type": "AWS::SSM::Parameter",
+      "Properties": {
+        "Description": "RAG Vector Store (Repository Config) DynamoDB table name",
+        "Name": "/dev/test-lisa/lisa/ragVectorStoreTableName",
+        "Type": "String",
+        "Value": {
+          "Ref": "RagRepositoryConfigTable6FA366CB"
+        }
+      }
+    },
+    "RagCollectionsTableNameParameter3E85B6C3": {
+      "Type": "AWS::SSM::Parameter",
+      "Properties": {
+        "Description": "RAG Collections DynamoDB table name",
+        "Name": "/dev/test-lisa/lisa/ragCollectionsTableName",
+        "Type": "String",
+        "Value": {
+          "Ref": "testlisaRagCollectionsTableBAFE8068"
+        }
+      }
     },
     "IngestionStackConstructIngestionJobTable8103D8C1": {
       "Type": "AWS::DynamoDB::Table",
@@ -1146,6 +1373,34 @@
             "KeyType": "HASH"
           }
         ],
+        "ResourcePolicy": {
+          "PolicyDocument": {
+            "Statement": [
+              {
+                "Action": [
+                  "dynamodb:BatchGetItem",
+                  "dynamodb:Query",
+                  "dynamodb:GetItem",
+                  "dynamodb:Scan",
+                  "dynamodb:ConditionCheckItem",
+                  "dynamodb:BatchWriteItem",
+                  "dynamodb:PutItem",
+                  "dynamodb:UpdateItem",
+                  "dynamodb:DeleteItem",
+                  "dynamodb:DescribeTable"
+                ],
+                "Effect": "Allow",
+                "Principal": {
+                  "AWS": {
+                    "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
+                  }
+                },
+                "Resource": "*"
+              }
+            ],
+            "Version": "2012-10-17"
+          }
+        },
         "TableName": "test-lisa-dev-ingestion-job"
       },
       "UpdateReplacePolicy": "Delete",
@@ -1178,7 +1433,7 @@
     "IngestionStackConstructIngestionJobFargateEnvD92342F8": {
       "Type": "AWS::Batch::ComputeEnvironment",
       "Properties": {
-        "ComputeEnvironmentName": "test-lisa-dev-ingestion-job-4d009dd3190a",
+        "ComputeEnvironmentName": "test-lisa-dev-ingestion-job-5cd3df6e44a1",
         "ComputeResources": {
           "MaxvCpus": 128,
           "SecurityGroupIds": [
@@ -1219,7 +1474,7 @@
             "Order": 1
           }
         ],
-        "JobQueueName": "test-lisa-dev-ingestion-job-4d009dd3190a",
+        "JobQueueName": "test-lisa-dev-ingestion-job-5cd3df6e44a1",
         "Priority": 1,
         "State": "ENABLED"
       }
@@ -1442,7 +1697,7 @@
           },
           "FargatePlatformConfiguration": {},
           "Image": {
-            "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:7406a0cbefcd2fb2fc4bf2d42da602eaf330d9f6089b52fce577a31d0c49eb3e"
+            "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:e58297a4e5d43b74d615c1959f92e6e5ce0b22e5ffab01599357ea6e288329f3"
           },
           "JobRoleArn": {
             "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -1473,7 +1728,7 @@
           ],
           "RuntimePlatform": {}
         },
-        "JobDefinitionName": "test-lisa-dev-ingestion-job-4d009dd3190a",
+        "JobDefinitionName": "test-lisa-dev-ingestion-job-5cd3df6e44a1",
         "PlatformCapabilities": [
           "FARGATE"
         ],
@@ -1507,7 +1762,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Environment": {
           "Variables": {
@@ -1597,7 +1852,7 @@
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE"
           }
         },
-        "FunctionName": "test-lisa-dev-ingestion-ingest-schedule-4d009dd3190a",
+        "FunctionName": "test-lisa-dev-ingestion-ingest-schedule-5cd3df6e44a1",
         "Handler": "repository.pipeline_ingest_documents.handle_pipline_ingest_schedule",
         "Layers": [
           {
@@ -1611,7 +1866,7 @@
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 60,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -1636,7 +1891,7 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E593117059e80a84a5c830e357516aa96f": {
+    "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E5109862842651253f9845ee8cf6594b9d": {
       "Type": "AWS::Lambda::Version",
       "Properties": {
         "FunctionName": {
@@ -1655,7 +1910,7 @@
         },
         "FunctionVersion": {
           "Fn::GetAtt": [
-            "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E593117059e80a84a5c830e357516aa96f",
+            "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E5109862842651253f9845ee8cf6594b9d",
             "Version"
           ]
         },
@@ -1703,7 +1958,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Environment": {
           "Variables": {
@@ -1793,7 +2048,7 @@
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE"
           }
         },
-        "FunctionName": "test-lisa-dev-ingestion-ingest-event-4d009dd3190a",
+        "FunctionName": "test-lisa-dev-ingestion-ingest-event-5cd3df6e44a1",
         "Handler": "repository.pipeline_ingest_documents.handle_pipeline_ingest_event",
         "Layers": [
           {
@@ -1807,7 +2062,7 @@
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 60,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -1832,7 +2087,7 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBCa571c2dbd3f500dd5179048ddc6a9cdc": {
+    "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBC33fcbc1ffc5767b785e81bcfed53a2e4": {
       "Type": "AWS::Lambda::Version",
       "Properties": {
         "FunctionName": {
@@ -1851,7 +2106,7 @@
         },
         "FunctionVersion": {
           "Fn::GetAtt": [
-            "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBCa571c2dbd3f500dd5179048ddc6a9cdc",
+            "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBC33fcbc1ffc5767b785e81bcfed53a2e4",
             "Version"
           ]
         },
@@ -1899,7 +2154,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Environment": {
           "Variables": {
@@ -1989,7 +2244,7 @@
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE"
           }
         },
-        "FunctionName": "test-lisa-dev-ingestion-delete-event-4d009dd3190a",
+        "FunctionName": "test-lisa-dev-ingestion-delete-event-5cd3df6e44a1",
         "Handler": "repository.pipeline_ingest_documents.handle_pipeline_delete_event",
         "Layers": [
           {
@@ -2003,7 +2258,7 @@
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 60,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -2028,7 +2283,7 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E9536dcd57eee910b01fc00576ee53f69d5": {
+    "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E958a95a9daf4eef4b85cc68c1759b5491f": {
       "Type": "AWS::Lambda::Version",
       "Properties": {
         "FunctionName": {
@@ -2047,7 +2302,7 @@
         },
         "FunctionVersion": {
           "Fn::GetAtt": [
-            "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E9536dcd57eee910b01fc00576ee53f69d5",
+            "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E958a95a9daf4eef4b85cc68c1759b5491f",
             "Version"
           ]
         },
@@ -5045,7 +5300,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "List all repositories",
         "Environment": {
@@ -5150,7 +5405,7 @@
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -5177,7 +5432,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "List status for all repositories",
         "Environment": {
@@ -5282,7 +5537,7 @@
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -5309,7 +5564,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Generates a presigned url for uploading files to RAG",
         "Environment": {
@@ -5414,7 +5669,7 @@
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -5441,7 +5696,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Create a new repository",
         "Environment": {
@@ -5546,7 +5801,7 @@
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -5573,7 +5828,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Get a repository by ID",
         "Environment": {
@@ -5678,7 +5933,7 @@
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -5705,7 +5960,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Update a repository",
         "Environment": {
@@ -5810,7 +6065,7 @@
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -5837,7 +6092,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Delete a repository",
         "Environment": {
@@ -5942,7 +6197,7 @@
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -5969,7 +6224,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Run a similarity search against the specified repository using the specified query",
         "Environment": {
@@ -6074,7 +6329,7 @@
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -6101,7 +6356,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Ingest a set of documents based on specified S3 path",
         "Environment": {
@@ -6206,7 +6461,7 @@
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 900,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -6233,7 +6488,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "List all docs for a repository",
         "Environment": {
@@ -6338,7 +6593,7 @@
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -6365,7 +6620,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Get a document by ID",
         "Environment": {
@@ -6470,7 +6725,7 @@
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -6497,7 +6752,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Creates presigned url to download document within repository",
         "Environment": {
@@ -6602,7 +6857,7 @@
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -6629,7 +6884,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Deletes all records associated with documents from the repository",
         "Environment": {
@@ -6734,7 +6989,7 @@
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -6761,7 +7016,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "List all ingestion jobs for a repository",
         "Environment": {
@@ -6866,7 +7121,7 @@
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -6893,7 +7148,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "List all collections within a repository",
         "Environment": {
@@ -6998,7 +7253,7 @@
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -7025,7 +7280,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "List all collections user has access to across all repositories",
         "Environment": {
@@ -7130,7 +7385,7 @@
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -7157,7 +7412,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Create a new collection within a repository",
         "Environment": {
@@ -7262,7 +7517,7 @@
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -7289,7 +7544,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Get a collection by ID within a repository",
         "Environment": {
@@ -7394,7 +7649,7 @@
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -7421,7 +7676,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Update a collection within a repository",
         "Environment": {
@@ -7526,7 +7781,7 @@
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -7553,7 +7808,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Delete a collection within a repository",
         "Environment": {
@@ -7658,7 +7913,7 @@
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -7685,7 +7940,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "List all ACTIVE Bedrock Knowledge Bases",
         "Environment": {
@@ -7790,7 +8045,7 @@
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -7817,7 +8072,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "List data sources for a Bedrock Knowledge Base",
         "Environment": {
@@ -7922,7 +8177,7 @@
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -8078,8 +8333,6 @@
             {
               "Action": [
                 "dynamodb:BatchGetItem",
-                "dynamodb:GetRecords",
-                "dynamodb:GetShardIterator",
                 "dynamodb:Query",
                 "dynamodb:GetItem",
                 "dynamodb:Scan",
@@ -8091,17 +8344,25 @@
                 "dynamodb:DescribeTable"
               ],
               "Effect": "Allow",
-              "Resource": [
-                {
-                  "Fn::GetAtt": [
-                    "RagRepositoryConfigTable6FA366CB",
-                    "Arn"
-                  ]
-                },
-                {
-                  "Ref": "AWS::NoValue"
-                }
-              ]
+              "Resource": {
+                "Fn::GetAtt": [
+                  "RagRepositoryConfigTable6FA366CB",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": [
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "RagRepositoryConfigTable6FA366CB",
+                  "Arn"
+                ]
+              }
             }
           ],
           "Version": "2012-10-17"
@@ -8159,8 +8420,6 @@
             {
               "Action": [
                 "dynamodb:BatchGetItem",
-                "dynamodb:GetRecords",
-                "dynamodb:GetShardIterator",
                 "dynamodb:Query",
                 "dynamodb:GetItem",
                 "dynamodb:Scan",
@@ -8172,17 +8431,25 @@
                 "dynamodb:DescribeTable"
               ],
               "Effect": "Allow",
-              "Resource": [
-                {
-                  "Fn::GetAtt": [
-                    "RagRepositoryConfigTable6FA366CB",
-                    "Arn"
-                  ]
-                },
-                {
-                  "Ref": "AWS::NoValue"
-                }
-              ]
+              "Resource": {
+                "Fn::GetAtt": [
+                  "RagRepositoryConfigTable6FA366CB",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": [
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "RagRepositoryConfigTable6FA366CB",
+                  "Arn"
+                ]
+              }
             },
             {
               "Action": "lambda:InvokeFunction",
@@ -8523,7 +8790,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f062abf5d42f4b2ffc1dee2b67cc9431183fa887e6abd87384d49d572a37e6e2.zip"
+          "S3Key": "1ebc9d3ac2033816c4abb63e4afd69d350b4aba8704cc9236b82ea520b74f4b0.zip"
         },
         "Environment": {
           "Variables": {
@@ -8584,7 +8851,7 @@
             "Arn"
           ]
         },
-        "Runtime": "nodejs18.x",
+        "Runtime": "nodejs24.x",
         "Timeout": 900,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -8612,7 +8879,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Environment": {
           "Variables": {
@@ -8716,7 +8983,7 @@
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 300,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -8957,7 +9224,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Environment": {
           "Variables": {
@@ -9060,7 +9327,7 @@
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 900,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -9106,7 +9373,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Environment": {
           "Variables": {
@@ -9209,7 +9476,7 @@
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 30,
         "VpcConfig": {
           "SecurityGroupIds": [

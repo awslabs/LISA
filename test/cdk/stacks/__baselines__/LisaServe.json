@@ -198,8 +198,20 @@
         ],
         "Tags": [
           {
+            "Key": "Environment",
+            "Value": "dev"
+          },
+          {
+            "Key": "LISACluster",
+            "Value": "REST"
+          },
+          {
             "Key": "Name",
             "Value": "LisaServe/RestApi-ECSCluster/test-lisa-dev-ASG"
+          },
+          {
+            "Key": "ScheduleManaged",
+            "Value": "true"
           }
         ]
       }
@@ -338,9 +350,24 @@
         "MinSize": "1",
         "Tags": [
           {
+            "Key": "Environment",
+            "PropagateAtLaunch": true,
+            "Value": "dev"
+          },
+          {
+            "Key": "LISACluster",
+            "PropagateAtLaunch": true,
+            "Value": "REST"
+          },
+          {
             "Key": "Name",
             "PropagateAtLaunch": true,
             "Value": "LisaServe/RestApi-ECSCluster/test-lisa-dev-ASG"
+          },
+          {
+            "Key": "ScheduleManaged",
+            "PropagateAtLaunch": true,
+            "Value": "true"
           }
         ],
         "VPCZoneIdentifier": [
@@ -399,8 +426,20 @@
         ],
         "Tags": [
           {
+            "Key": "Environment",
+            "Value": "dev"
+          },
+          {
+            "Key": "LISACluster",
+            "Value": "REST"
+          },
+          {
             "Key": "Name",
             "Value": "LisaServe/RestApi-ECSCluster/test-lisa-dev-ASG"
+          },
+          {
+            "Key": "ScheduleManaged",
+            "Value": "true"
           }
         ]
       }
@@ -523,8 +562,20 @@
         "Runtime": "python3.13",
         "Tags": [
           {
+            "Key": "Environment",
+            "Value": "dev"
+          },
+          {
+            "Key": "LISACluster",
+            "Value": "REST"
+          },
+          {
             "Key": "Name",
             "Value": "LisaServe/RestApi-ECSCluster/test-lisa-dev-ASG"
+          },
+          {
+            "Key": "ScheduleManaged",
+            "Value": "true"
           }
         ],
         "Timeout": 310
@@ -570,8 +621,20 @@
       "Properties": {
         "Tags": [
           {
+            "Key": "Environment",
+            "Value": "dev"
+          },
+          {
+            "Key": "LISACluster",
+            "Value": "REST"
+          },
+          {
             "Key": "Name",
             "Value": "LisaServe/RestApi-ECSCluster/test-lisa-dev-ASG"
+          },
+          {
+            "Key": "ScheduleManaged",
+            "Value": "true"
           }
         ]
       }
@@ -593,8 +656,20 @@
         },
         "Tags": [
           {
+            "Key": "Environment",
+            "Value": "dev"
+          },
+          {
+            "Key": "LISACluster",
+            "Value": "REST"
+          },
+          {
             "Key": "Name",
             "Value": "LisaServe/RestApi-ECSCluster/test-lisa-dev-ASG"
+          },
+          {
+            "Key": "ScheduleManaged",
+            "Value": "true"
           }
         ]
       }
@@ -699,8 +774,20 @@
         "Statistic": "Average",
         "Tags": [
           {
+            "Key": "Environment",
+            "Value": "dev"
+          },
+          {
+            "Key": "LISACluster",
+            "Value": "REST"
+          },
+          {
             "Key": "Name",
             "Value": "LisaServe/RestApi-ECSCluster/test-lisa-dev-ASG"
+          },
+          {
+            "Key": "ScheduleManaged",
+            "Value": "true"
           }
         ],
         "Threshold": 40
@@ -759,8 +846,20 @@
         "Statistic": "Average",
         "Tags": [
           {
+            "Key": "Environment",
+            "Value": "dev"
+          },
+          {
+            "Key": "LISACluster",
+            "Value": "REST"
+          },
+          {
             "Key": "Name",
             "Value": "LisaServe/RestApi-ECSCluster/test-lisa-dev-ASG"
+          },
+          {
+            "Key": "ScheduleManaged",
+            "Value": "true"
           }
         ],
         "Threshold": 90
@@ -1037,8 +1136,6 @@
             {
               "Action": [
                 "dynamodb:BatchGetItem",
-                "dynamodb:GetRecords",
-                "dynamodb:GetShardIterator",
                 "dynamodb:Query",
                 "dynamodb:GetItem",
                 "dynamodb:Scan",
@@ -1046,26 +1143,43 @@
                 "dynamodb:DescribeTable"
               ],
               "Effect": "Allow",
-              "Resource": [
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:",
-                      {
-                        "Ref": "AWS::Partition"
-                      },
-                      ":dynamodb:us-iso-east-1:012345678901:table/",
-                      {
-                        "Ref": "TokenTableNameParameterParameter"
-                      }
-                    ]
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":dynamodb:us-iso-east-1:012345678901:table/",
+                    {
+                      "Ref": "TokenTableNameParameterParameter"
+                    }
                   ]
-                },
-                {
-                  "Ref": "AWS::NoValue"
-                }
-              ]
+                ]
+              }
+            },
+            {
+              "Action": [
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":dynamodb:us-iso-east-1:012345678901:table/",
+                    {
+                      "Ref": "TokenTableNameParameterParameter"
+                    }
+                  ]
+                ]
+              }
             },
             {
               "Action": [
@@ -1396,7 +1510,7 @@
               "Timeout": 5
             },
             "Image": {
-              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:25829b191a333ff5743c12473f9e4315e8c5dff9f3a9489636d5e536f898113d"
+              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:25a2e583550aca5cfe0f79b1e9942e49aada9aa85ca465ad4630b2e08a765c66"
             },
             "LogConfiguration": {
               "LogDriver": "awslogs",
@@ -1750,7 +1864,7 @@
               "Timeout": 5
             },
             "Image": {
-              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:126c5e7a3d55eb8956aa9a0ab15d3c540075161653874b1152224e6eb27b9305"
+              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:9a0c236b30347c7353536dbc78fe25548def6ced031c13d920ffc592acdaf0d8"
             },
             "LogConfiguration": {
               "LogDriver": "awslogs",
@@ -2344,25 +2458,6 @@
             }
           ]
         ]
-      }
-    },
-    "ExportsOutputFnGetAttGuardrailsTableCEF5B750Arn22DC7C03": {
-      "Value": {
-        "Fn::GetAtt": [
-          "GuardrailsTableCEF5B750",
-          "Arn"
-        ]
-      },
-      "Export": {
-        "Name": "LisaServe:ExportsOutputFnGetAttGuardrailsTableCEF5B750Arn22DC7C03"
-      }
-    },
-    "ExportsOutputRefGuardrailsTableCEF5B750E67E057A": {
-      "Value": {
-        "Ref": "GuardrailsTableCEF5B750"
-      },
-      "Export": {
-        "Name": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
       }
     },
     "ExportsOutputRefRestApiECSClustertestlisadevClC04148B6699D280E": {

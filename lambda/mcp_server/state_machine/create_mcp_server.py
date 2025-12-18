@@ -19,12 +19,12 @@ import logging
 import os
 import re
 from copy import deepcopy
-from datetime import datetime, UTC
 from typing import Any, Dict, Optional
 
 import boto3
 from botocore.config import Config
 from mcp_server.models import HostedMcpServerModel, HostedMcpServerStatus, McpServerStatus
+from utilities.time import now
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -55,7 +55,7 @@ def handle_set_server_to_creating(event: Dict[str, Any], context: Any) -> Dict[s
         ExpressionAttributeNames={"#status": "status"},
         ExpressionAttributeValues={
             ":status": HostedMcpServerStatus.CREATING,
-            ":lm": int(datetime.now(UTC).timestamp()),
+            ":lm": now(),
         },
     )
 
@@ -104,7 +104,7 @@ def handle_deploy_server(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 ":status": HostedMcpServerStatus.CREATING,
                 ":stack_name": stack_name,
                 ":stack_arn": stack_arn,
-                ":lm": int(datetime.now(UTC).timestamp()),
+                ":lm": now(),
             },
         )
     except Exception as e:
@@ -222,7 +222,7 @@ def handle_add_server_to_active(event: Dict[str, Any], context: Any) -> Dict[str
         ExpressionAttributeValues={
             ":status": HostedMcpServerStatus.IN_SERVICE,
             ":stack_name": stack_name,
-            ":lm": int(datetime.now(UTC).timestamp()),
+            ":lm": now(),
         },
     )
 
@@ -254,7 +254,7 @@ def handle_add_server_to_active(event: Dict[str, Any], context: Any) -> Dict[str
                         "owner": owner,
                         "url": server_url,
                         "name": name,
-                        "created": datetime.now().isoformat(),
+                        "created": now(),
                         "customHeaders": {"Authorization": "Bearer {LISA_BEARER_TOKEN}"},
                         "status": McpServerStatus.ACTIVE,
                     }
@@ -320,7 +320,7 @@ def handle_failure(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         ExpressionAttributeValues={
             ":status": HostedMcpServerStatus.FAILED,
             ":error": event.get("error", "Unknown error"),
-            ":lm": int(datetime.now(UTC).timestamp()),
+            ":lm": now(),
         },
     )
 

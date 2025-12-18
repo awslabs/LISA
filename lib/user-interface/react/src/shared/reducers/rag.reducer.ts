@@ -208,7 +208,7 @@ export const ragApi = createApi({
                 url: `/repository/${repositoryId}`,
                 method: 'DELETE',
             }),
-            invalidatesTags: ['repositories'],
+            invalidatesTags: ['repositories', 'collections', 'docs', 'jobs'],
         }),
         getPresignedUrl: builder.query<any, string>({
             query: (body) => ({

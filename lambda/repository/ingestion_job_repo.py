@@ -16,12 +16,13 @@
 
 import logging
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import Dict, Optional
 
 import boto3
 from models.domain_objects import IngestionJob, IngestionStatus
 from utilities.common_functions import retry_config
+from utilities.time import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +144,7 @@ class IngestionJobRepository:
         Returns:
             Tuple of (list of job dictionaries, last_evaluated_key for next page)
         """
-        time_threshold = datetime.now(timezone.utc) - timedelta(hours=time_limit_hours)
+        time_threshold = utc_now() - timedelta(hours=time_limit_hours)
         time_threshold_str = time_threshold.isoformat()
 
         # Use Query operation with GSI for better performance

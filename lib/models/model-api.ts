@@ -62,7 +62,7 @@ import { LAMBDA_PATH } from '../util';
  */
 type ModelsApiProps = BaseProps & {
     authorizer?: IAuthorizer;
-    guardrailsTable: ITable;
+    guardrailsTable?: ITable;
     lisaServeEndpointUrlPs?: StringParameter;
     restApiId: string;
     rootResourceId: string;
@@ -77,7 +77,17 @@ export class ModelsApi extends Construct {
     constructor (scope: Construct, id: string, props: ModelsApiProps) {
         super(scope, id);
 
-        const { authorizer, config, guardrailsTable, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
+
+        // Use guardrailsTable passed from serve stack, or fall back to SSM parameter lookup for backward compatibility
+        const guardrailsTable = props.guardrailsTable ?? (() => {
+            const guardrailsTableNamePs = StringParameter.fromStringParameterName(
+                this,
+                'GuardrailsTableNameParameter',
+                `${config.deploymentPrefix}/guardrailsTableName`
+            );
+            return Table.fromTableName(this, 'GuardrailsTable', guardrailsTableNamePs.stringValue);
+        })();
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
 
         const lisaServeEndpointUrlPs = props.lisaServeEndpointUrlPs ?? StringParameter.fromStringParameterName(
@@ -167,6 +177,7 @@ export class ModelsApi extends Construct {
             },
             role: stateMachinesLambdaRole,
             vpc: vpc.vpc,
+            vpcSubnets: vpc.subnetSelection,
             securityGroups: securityGroups,
             timeout: Duration.minutes(5),
             description: 'Manages Auto Scaling scheduled actions for LISA model scheduling',
@@ -186,6 +197,7 @@ export class ModelsApi extends Construct {
             },
             role: stateMachinesLambdaRole,
             vpc: vpc.vpc,
+            vpcSubnets: vpc.subnetSelection,
             securityGroups: securityGroups,
             timeout: Duration.minutes(5),
             description: 'Processes Auto Scaling Group CloudWatch events to update model status',
@@ -478,6 +490,7 @@ export class ModelsApi extends Construct {
             },
             role: stateMachinesLambdaRole,
             vpc: vpc.vpc,
+            vpcSubnets: vpc.subnetSelection,
             securityGroups: securityGroups,
             timeout: Duration.minutes(5),
             description: 'Remove api_key from existing Bedrock models to fix Invalid API Key format errors',

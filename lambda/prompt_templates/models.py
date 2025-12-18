@@ -13,11 +13,11 @@
 #   limitations under the License.
 
 import uuid
-from datetime import datetime
 from enum import StrEnum
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
+from utilities.time import iso_string
 
 
 class PromptTemplateType(StrEnum):
@@ -37,7 +37,7 @@ class PromptTemplateModel(BaseModel):
     id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()))
 
     # Timestamp of when the prompt template was created
-    created: Optional[str] = Field(default_factory=lambda: datetime.now().isoformat())
+    created: Optional[str] = Field(default_factory=iso_string)
 
     # Owner of the prompt template
     owner: str
@@ -70,5 +70,5 @@ class PromptTemplateModel(BaseModel):
             PromptTemplateModel: A new instance of PromptTemplateModel with updated attributes.
         """
         return self.model_copy(  # type: ignore
-            update=update | {"created": datetime.now().isoformat(), "revision": (self.revision or 0) + 1}
+            update=update | {"created": iso_string(), "revision": (self.revision or 0) + 1}
         )

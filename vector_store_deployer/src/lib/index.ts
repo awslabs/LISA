@@ -17,13 +17,13 @@ import { App, Aspects, ValidationError } from 'aws-cdk-lib/core';
 import { AddPermissionBoundary } from '@cdklabs/cdk-enterprise-iac';
 import { OpenSearchVectorStoreStack } from './opensearch';
 import { PGVectorStoreStack } from './pgvector';
-import { RagRepositoryConfigSchema, RagRepositoryType, PartialConfigSchema } from '../../../lib/schema';
+import { RagRepositoryDeploymentConfigSchema, RagRepositoryType, PartialConfigSchema } from '../../../lib/schema';
 import { BedrockKnowledgeBaseStack } from './bedrock_knowledge_base';
 
 const app = new App();
 
 console.log(`LISA_RAG_CONFIG = ${process.env['LISA_RAG_CONFIG']}`);
-const ragConfig = RagRepositoryConfigSchema.parse(JSON.parse(process.env['LISA_RAG_CONFIG']!));
+const ragConfig = RagRepositoryDeploymentConfigSchema.parse(JSON.parse(process.env['LISA_RAG_CONFIG']!));
 console.log(`LISA_CONFIG = ${process.env['LISA_CONFIG']}`);
 const config = PartialConfigSchema.parse(JSON.parse(process.env['LISA_CONFIG']!));
 const stackName = process.env['LISA_STACK_NAME'];

@@ -18,7 +18,6 @@ import json
 import logging
 import os
 import ssl
-from datetime import datetime
 from typing import Any, Dict
 
 import boto3
@@ -28,6 +27,7 @@ import requests
 from botocore.exceptions import ClientError
 from cachetools import cached, TTLCache
 from utilities.common_functions import authorization_wrapper, get_id_token, get_property_path, retry_config
+from utilities.time import now_seconds
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +126,6 @@ def _get_token_info(token: str) -> Any:
     return ddb_response.get("Item", None)
 
 
-# TODO: Check username of user providing token is user token was createdFor
 def is_valid_api_token(token: str) -> dict | None:
     """
     Validate API token and return token info if valid.
@@ -155,7 +154,7 @@ def is_valid_api_token(token: str) -> dict | None:
         logger.warning("Token missing expiration field")
         return None
 
-    current_time = int(datetime.now().timestamp())
+    current_time = now_seconds()
     if current_time >= int(token_expiration):
         logger.info(f"Token expired at {token_expiration}")
         return None

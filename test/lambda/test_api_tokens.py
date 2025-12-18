@@ -14,7 +14,7 @@
 
 import os
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import boto3
@@ -91,13 +91,13 @@ def token_table(dynamodb):
 @pytest.fixture
 def future_timestamp():
     """Get a timestamp 90 days in the future."""
-    return int((datetime.now() + timedelta(days=90)).timestamp())
+    return int((datetime.now(timezone.utc) + timedelta(days=90)).timestamp())
 
 
 @pytest.fixture
 def past_timestamp():
     """Get a timestamp 1 day in the past."""
-    return int((datetime.now() - timedelta(days=1)).timestamp())
+    return int((datetime.now(timezone.utc) - timedelta(days=1)).timestamp())
 
 
 # =====================
@@ -108,10 +108,10 @@ def past_timestamp():
 def test_default_expiration():
     """Test default_expiration function returns future timestamp."""
     expiration = default_expiration()
-    current_time = int(datetime.now().timestamp())
+    current_time = int(datetime.now(timezone.utc).timestamp())
     assert expiration > current_time
     # Should be approximately 90 days in the future
-    expected_time = int((datetime.now() + timedelta(days=90)).timestamp())
+    expected_time = int((datetime.now(timezone.utc) + timedelta(days=90)).timestamp())
     assert abs(expiration - expected_time) < 10  # Within 10 seconds tolerance
 
 
@@ -129,7 +129,7 @@ def test_create_token_admin_request_valid(future_timestamp):
 def test_create_token_admin_request_defaults():
     """Test CreateTokenAdminRequest with default values."""
     request = CreateTokenAdminRequest(name="Test Token")
-    assert request.tokenExpiration > int(datetime.now().timestamp())
+    assert request.tokenExpiration > int(datetime.now(timezone.utc).timestamp())
     assert request.groups == []
     assert request.isSystemToken is False
 
@@ -151,7 +151,7 @@ def test_create_token_user_request_valid(future_timestamp):
 def test_create_token_user_request_defaults():
     """Test CreateTokenUserRequest with default values."""
     request = CreateTokenUserRequest(name="My Token")
-    assert request.tokenExpiration > int(datetime.now().timestamp())
+    assert request.tokenExpiration > int(datetime.now(timezone.utc).timestamp())
 
 
 def test_create_token_user_request_invalid_expiration(past_timestamp):

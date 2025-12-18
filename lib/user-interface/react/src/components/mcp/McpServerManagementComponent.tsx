@@ -42,6 +42,7 @@ import {
 } from '@/shared/reducers/user-preferences.reducer';
 import { useNotificationService } from '@/shared/util/hooks';
 import { setBreadcrumbs } from '@/shared/reducers/breadcrumbs.reducer';
+import { formatDate } from '@/shared/util/formats';
 
 export function McpServerManagementComponent () {
     const navigate = useNavigate();
@@ -180,7 +181,7 @@ export function McpServerManagementComponent () {
                 { header: 'Groups', cell: (item) => {
                     return item.groups?.length ? item.groups?.map((group) => group.replace(/^\w+?:/, '')).join(', ') : '-';
                 }},
-                { header: 'Updated', cell: (item) => item.created, id: 'created', sortingField: 'created'},
+                { header: 'Created', cell: (item) => formatDate(item.created), id: 'created', sortingField: 'created'},
                 ...(isUserAdmin ? [{ header: 'Status', cell: (item) => item.status ?? McpServerStatus.Inactive}] : [])
             ]}
         />

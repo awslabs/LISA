@@ -17,10 +17,11 @@
 import react from '@vitejs/plugin-react-swc';
 import { defineConfig } from 'vite';
 import { resolve } from 'node:path';
+import tailwindcss from '@tailwindcss/vite';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-    plugins: [react()],
+    plugins: [react(), tailwindcss()] as any,
     server: {
         port: 3000,
     },
@@ -29,6 +30,10 @@ export default defineConfig({
             '@': resolve(__dirname, 'src'),
             '#root': resolve(__dirname, '..', '..', '..'),
         },
+        dedupe: ['react', 'react-dom'],
+    },
+    optimizeDeps: {
+        include: ['react', 'react-dom'],
     },
     base: process.env.BASE_URL || '/',
 });

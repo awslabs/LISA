@@ -16,7 +16,6 @@
 
 import logging
 import os
-from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 import boto3
@@ -25,6 +24,7 @@ from botocore.exceptions import ClientError
 from models.domain_objects import CollectionSortBy, CollectionStatus, RagCollectionConfig, SortOrder
 from utilities.common_functions import retry_config
 from utilities.encoders import convert_decimal
+from utilities.time import iso_string, utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,7 @@ class CollectionRepository:
         """
         try:
             # Ensure timestamps are set
-            now = datetime.now(timezone.utc)
+            now = utc_now()
             if not collection.createdAt:
                 collection.createdAt = now
             if not collection.updatedAt:
@@ -158,7 +158,7 @@ class CollectionRepository:
             expr_attr_values = {}
 
             # Always update the updatedAt timestamp
-            updates["updatedAt"] = datetime.now(timezone.utc).isoformat()
+            updates["updatedAt"] = iso_string()
 
             for key, value in updates.items():
                 # Skip immutable fields

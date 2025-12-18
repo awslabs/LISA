@@ -13,17 +13,18 @@
 #   limitations under the License.
 
 import logging
-from datetime import datetime, timedelta
 from typing import Optional
 from uuid import uuid4
 
 from boto3.dynamodb.conditions import Key
 from utilities.auth import generate_token, hash_token
+from utilities.time import now_seconds
 
 from .domain_objects import (
     CreateTokenAdminRequest,
     CreateTokenResponse,
     CreateTokenUserRequest,
+    default_expiration,
     DeleteTokenResponse,
     ListTokensResponse,
     TokenInfo,
@@ -63,7 +64,7 @@ class CreateTokenAdminHandler:
         token_hash = hash_token(token)
         token_uuid = str(uuid4())
 
-        created_date = int(datetime.now().timestamp())
+        created_date = now_seconds()
         expiration = request.tokenExpiration
 
         # Store in DynamoDB
@@ -124,7 +125,7 @@ class CreateTokenUserHandler:
         token_hash = hash_token(token)
         token_uuid = str(uuid4())
 
-        created_date = int(datetime.now().timestamp())
+        created_date = now_seconds()
         expiration = request.tokenExpiration
 
         item = {
@@ -159,7 +160,7 @@ class ListTokensHandler:
         self.token_table = token_table
 
     def __call__(self, username: str, is_admin: bool) -> ListTokensResponse:
-        current_time = int(datetime.now().timestamp())
+        current_time = now_seconds()
 
         if is_admin:
             # Return all tokens for admins
@@ -174,7 +175,7 @@ class ListTokensHandler:
 
         tokens = []
         for item in items:
-            token_expiration = item.get("tokenExpiration", int((datetime.now() + timedelta(days=90)).timestamp()))
+            token_expiration = item.get("tokenExpiration", default_expiration())
 
             # Determine if token is legacy (no tokenUUID)
             is_legacy = not bool(item.get("tokenUUID"))
@@ -235,9 +236,9 @@ class GetTokenHandler:
         if not is_admin and item.get("username") != username:
             raise TokenNotFoundError("Token not found")
 
-        current_time = int(datetime.now().timestamp())
+        current_time = now_seconds()
 
-        token_expiration = item.get("tokenExpiration", int((datetime.now() + timedelta(days=90)).timestamp()))
+        token_expiration = item.get("tokenExpiration", default_expiration())
 
         # Determine if token is legacy (no tokenUUID)
         is_legacy = not bool(item.get("tokenUUID"))

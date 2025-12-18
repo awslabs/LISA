@@ -77,9 +77,38 @@ export default class MockApp {
             fs.mkdirSync(distFolder, { recursive: true })
         );
 
+        const iamStack = new LisaServeIAMStack(app, 'LisaIAM', {
+            ...baseStackProps,
+            stackName: 'LisaIAM',
+            config: config,
+        });
         const networkingStack = new LisaNetworkingStack(app, 'LisaNetworking', {
             ...baseStackProps,
             stackName: 'LisaNetworking'
+        });
+        const coreStack = new CoreStack(app, 'LisaCore', {
+            ...baseStackProps,
+            stackName: 'LisaCore'
+        });
+        const apiBaseStack = new LisaApiBaseStack(app, 'LisaApiBase', {
+            ...baseStackProps,
+            stackName: 'LisaApiBase',
+            vpc: networkingStack.vpc,
+            securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
+        });
+        const apiDeploymentStack = new LisaApiDeploymentStack(app, 'LisaApiDeployment', {
+            ...baseStackProps,
+            stackName: 'LisaApiDeployment',
+            restApiId: apiBaseStack.restApiId,
+        });
+        const mcpApiStack = new LisaMcpApiStack(app, 'LisaMcpApi', {
+            ...baseStackProps,
+            stackName: 'LisaMcpApi',
+            authorizer: apiBaseStack.authorizer!,
+            restApiId: apiBaseStack.restApiId,
+            rootResourceId: apiBaseStack.rootResourceId,
+            securityGroups: [networkingStack.vpc.securityGroups.ecsModelAlbSg],
+            vpc: networkingStack.vpc,
         });
         const serveStack = new LisaServeApplicationStack(app, 'LisaServe', {
             ...baseStackProps,
@@ -87,11 +116,32 @@ export default class MockApp {
             vpc: networkingStack.vpc,
             securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
         });
-        const apiBaseStack = new LisaApiBaseStack(app, 'LisaApiBase', {
+        const modelsStack = new LisaModelsApiStack(app, 'LisaModels', {
             ...baseStackProps,
-            stackName: 'LisaApiBase',
+            stackName: 'LisaModels',
+            authorizer: apiBaseStack.authorizer,
+            restApiId: apiBaseStack.restApiId,
+            rootResourceId: apiBaseStack.rootResourceId,
+            securityGroups: [networkingStack.vpc.securityGroups.ecsModelAlbSg],
             vpc: networkingStack.vpc,
+        });
+        const mcpWorkbenchStack = new McpWorkbenchStack(app, 'LisaMcpWorkbench', {
+            ...baseStackProps,
+            stackName: 'LisaMcpWorkbench',
+            vpc: networkingStack.vpc,
+            restApiId: apiBaseStack.restApiId,
+            rootResourceId: apiBaseStack.rootResourceId,
+            apiCluster: serveStack.restApi.apiCluster,
+            authorizer: apiBaseStack.authorizer
+        });
+        const ragStack = new LisaRagStack(app, 'LisaRAG', {
+            ...baseStackProps,
+            stackName: 'LisaRAG',
+            authorizer: apiBaseStack.authorizer!,
+            restApiId: apiBaseStack.restApiId,
+            rootResourceId: apiBaseStack.rootResourceId,
             securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
+            vpc: networkingStack.vpc,
         });
         const metricsStack = new LisaMetricsStack(app, 'LisaMetrics', {
             ...baseStackProps,
@@ -112,17 +162,6 @@ export default class MockApp {
             securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
             vpc: networkingStack.vpc,
         });
-        const apiDeploymentStack = new LisaApiDeploymentStack(app, 'LisaApiDeployment', {
-            ...baseStackProps,
-            stackName: 'LisaApiDeployment',
-            restApiId: apiBaseStack.restApiId,
-        });
-        const iamStack = new LisaServeIAMStack(app, 'LisaIAM', {
-            ...baseStackProps,
-            stackName: 'LisaIAM',
-            config: config,
-        });
-
         const uiStack = new UserInterfaceStack(app, 'LisaUI', {
             ...baseStackProps,
             architecture: ARCHITECTURE,
@@ -130,73 +169,26 @@ export default class MockApp {
             restApiId: apiBaseStack.restApiId,
             rootResourceId: apiBaseStack.rootResourceId,
         });
-
         const docStack = new LisaDocsStack(app, 'LisaDocs', {
             ...baseStackProps,
             stackName: 'LisaDocs'
         });
 
-        const coreStack = new CoreStack(app, 'LisaCore', {
-            ...baseStackProps,
-            stackName: 'LisaCore'
-        });
-
-        const ragStack = new LisaRagStack(app, 'LisaRAG', {
-            ...baseStackProps,
-            stackName: 'LisaRAG',
-            authorizer: apiBaseStack.authorizer!,
-            restApiId: apiBaseStack.restApiId,
-            rootResourceId: apiBaseStack.rootResourceId,
-            securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
-            vpc: networkingStack.vpc,
-        });
-
-        const modelsStack = new LisaModelsApiStack(app, 'LisaModels', {
-            ...baseStackProps,
-            stackName: 'LisaModels',
-            authorizer: apiBaseStack.authorizer,
-            guardrailsTable: serveStack.guardrailsTable,
-            restApiId: apiBaseStack.restApiId,
-            rootResourceId: apiBaseStack.rootResourceId,
-            securityGroups: [networkingStack.vpc.securityGroups.ecsModelAlbSg],
-            vpc: networkingStack.vpc,
-        });
-
-        const mcpWorkbenchStack = new McpWorkbenchStack(app, 'LisaMcpWorkbench', {
-            ...baseStackProps,
-            stackName: 'LisaMcpWorkbench',
-            vpc: networkingStack.vpc,
-            restApiId: apiBaseStack.restApiId,
-            rootResourceId: apiBaseStack.rootResourceId,
-            apiCluster: serveStack.restApi.apiCluster,
-            authorizer: apiBaseStack.authorizer
-        });
-
-        const mcpApiStack = new LisaMcpApiStack(app, 'LisaMcpApi', {
-            ...baseStackProps,
-            stackName: 'LisaMcpApi',
-            authorizer: apiBaseStack.authorizer!,
-            restApiId: apiBaseStack.restApiId,
-            rootResourceId: apiBaseStack.rootResourceId,
-            securityGroups: [networkingStack.vpc.securityGroups.ecsModelAlbSg],
-            vpc: networkingStack.vpc,
-        });
-
         const stacks: cdk.Stack[] = [
-            networkingStack,
             iamStack,
+            networkingStack,
+            coreStack,
             apiBaseStack,
             apiDeploymentStack,
-            metricsStack,
-            chatStack,
+            mcpApiStack,
             serveStack,
+            modelsStack,
+            mcpWorkbenchStack,
+            metricsStack,
+            ragStack,
+            chatStack,
             uiStack,
             docStack,
-            coreStack,
-            modelsStack,
-            ragStack,
-            mcpWorkbenchStack,
-            mcpApiStack
         ];
 
         return { app, stacks };

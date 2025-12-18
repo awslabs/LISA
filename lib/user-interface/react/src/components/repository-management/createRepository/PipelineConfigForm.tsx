@@ -27,7 +27,7 @@ import {
 } from '@cloudscape-design/components';
 import { FormProps } from '../../../shared/form/form-props';
 
-import { PipelineConfig, RagRepositoryPipeline, RagRepositoryType } from '#root/lib/schema';
+import { PipelineConfig, RagRepositoryPipeline, RagRepositoryType, FixedSizeChunkingStrategySchema } from '#root/lib/schema';
 import { useListCollectionsQuery } from '@/shared/reducers/rag.reducer';
 import { ChunkingConfigForm } from '@/shared/form/ChunkingConfigForm';
 import { MetadataForm } from '@/shared/form/MetadataForm';
@@ -75,7 +75,10 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
     };
 
     const addConfig = () => {
-        setFields({ pipelines: [...(item || []), RagRepositoryPipeline.partial().parse({})] });
+        const newPipeline = RagRepositoryPipeline.partial().parse({
+            chunkingStrategy: FixedSizeChunkingStrategySchema.parse({})
+        });
+        setFields({ pipelines: [...(item || []), newPipeline] });
     };
 
     const removeConfig = (index: number) => {

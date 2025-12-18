@@ -16,7 +16,6 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta
-from datetime import timezone as dt_timezone
 from typing import Any, Dict, List, Optional
 from zoneinfo import ZoneInfo
 
@@ -32,6 +31,7 @@ from models.domain_objects import (
     WeeklySchedule,
 )
 from models.exception import ModelNotFoundError
+from utilities.time import iso_string
 
 logger = logging.getLogger(__name__)
 
@@ -843,7 +843,7 @@ def update_model_schedule_record(
             schedule_data = scheduling_config.model_dump()
             schedule_data["scheduledActionArns"] = scheduled_action_arns
             schedule_data["scheduleEnabled"] = enabled
-            schedule_data["lastScheduleUpdate"] = datetime.now(dt_timezone.utc).isoformat()
+            schedule_data["lastScheduleUpdate"] = iso_string()
             schedule_data["scheduleConfigured"] = enabled
             schedule_data["lastScheduleFailed"] = False
             schedule_data["lastScheduleFailure"] = None

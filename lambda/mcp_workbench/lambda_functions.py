@@ -17,7 +17,6 @@ import json
 import logging
 import os
 import uuid
-from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, Optional
 
@@ -27,6 +26,7 @@ from pydantic import BaseModel, Field
 from utilities.auth import is_admin
 from utilities.common_functions import api_wrapper, retry_config
 from utilities.exceptions import HTTPException
+from utilities.time import iso_string
 
 from .syntax_validator import PythonSyntaxValidator
 
@@ -49,7 +49,7 @@ class MCPToolModel(BaseModel):
     contents: str
 
     # Timestamp of when the tool was created/updated
-    updated_at: Optional[str] = Field(default_factory=lambda: datetime.now().isoformat())
+    updated_at: Optional[str] = Field(default_factory=iso_string)
 
     @property
     def s3_key(self) -> str:
@@ -72,7 +72,7 @@ def _get_tool_from_s3(tool_id: str) -> MCPToolModel:
         return MCPToolModel(
             id=tool_id,
             contents=contents,
-            updated_at=response.get("LastModified", datetime.now()).isoformat(),
+            updated_at=response.get("LastModified").isoformat() if response.get("LastModified") else iso_string(),
         )
     except botocore.exceptions.ClientError as e:
         code = e.response.get("Error", {}).get("Code")
@@ -130,7 +130,7 @@ def list(event: dict, context: dict) -> Dict[str, Any]:
                 tools.append(
                     {
                         "id": key,
-                        "updated_at": obj.get("LastModified", datetime.now()).isoformat(),
+                        "updated_at": obj.get("LastModified").isoformat() if obj.get("LastModified") else iso_string(),
                         "size": obj.get("Size", 0),
                     }
                 )
@@ -287,7 +287,7 @@ def validate_syntax(event: dict, context: dict) -> Dict[str, Any]:
             "is_valid": result.is_valid,
             "syntax_errors": result.syntax_errors,
             "missing_required_imports": result.missing_required_imports,
-            "validation_timestamp": datetime.now().isoformat(),
+            "validation_timestamp": iso_string(),
         }
 
         logger.info(f"Validation completed. Valid: {result.is_valid}, " f"Errors: {len(result.syntax_errors)}")

@@ -1180,7 +1180,9 @@ class RagCollectionConfig(BaseModel):
         default=None, description="Collection-specific metadata (merged with parent)"
     )
     allowedGroups: Optional[List[str]] = Field(default=None, description="User groups with access to collection")
-    embeddingModel: Optional[str] = Field(description="Embedding model ID (can be set at creation, immutable after)")
+    embeddingModel: Optional[str] = Field(
+        default=None, description="Embedding model ID (can be set at creation, immutable after)"
+    )
     createdBy: str = Field(min_length=1, description="User ID of creator")
     createdAt: datetime = Field(default_factory=utc_now, description="Creation timestamp")
     updatedAt: datetime = Field(default_factory=utc_now, description="Last update timestamp")

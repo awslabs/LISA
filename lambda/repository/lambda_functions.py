@@ -415,6 +415,13 @@ def create_collection(event: dict, context: dict) -> Dict[str, Any]:
     except Exception as e:
         raise ValidationError(f"Invalid request: {e}")
 
+    # Validate embedding model - either collection must have one or repository must have a default
+    if not collection.embeddingModel and not repository.get("embeddingModelId"):
+        raise ValidationError(
+            "Either the collection must specify an embeddingModel or "
+            "the repository must have a default embeddingModelId"
+        )
+
     # Create collection via service
     created_collection = collection_service.create_collection(
         collection=collection,

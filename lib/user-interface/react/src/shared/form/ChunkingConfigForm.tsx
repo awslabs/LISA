@@ -19,17 +19,9 @@ import FormField from '@cloudscape-design/components/form-field';
 import Input from '@cloudscape-design/components/input';
 import Select from '@cloudscape-design/components/select';
 import { SpaceBetween } from '@cloudscape-design/components';
-import { ChunkingStrategy, ChunkingStrategyType } from '#root/lib/schema';
+import { ChunkingStrategy, ChunkingStrategyType, FixedSizeChunkingStrategySchema } from '#root/lib/schema';
 import { ModifyMethod } from './form-props';
 
-// Utility function to create default chunking strategy
-function createDefaultChunkingStrategy () {
-    return {
-        type: ChunkingStrategyType.FIXED,
-        size: 512,
-        overlap: 51,
-    };
-}
 
 export type ChunkingConfigFormProps = {
     item: ChunkingStrategy | undefined;
@@ -71,7 +63,7 @@ export function ChunkingConfigForm (props: ChunkingConfigFormProps): ReactElemen
                     onChange={({ detail }) => {
                         if (detail.selectedOption.value === ChunkingStrategyType.FIXED) {
                             setFields({
-                                chunkingStrategy: createDefaultChunkingStrategy()
+                                chunkingStrategy: FixedSizeChunkingStrategySchema.parse({})
                             });
                         } else if (detail.selectedOption.value === ChunkingStrategyType.NONE) {
                             setFields({

@@ -89,7 +89,7 @@ export const RagCollectionConfigSchema = z.object({
     allowChunkingOverride: z.boolean().default(true).describe('Allow users to override chunking strategy during ingestion'),
     metadata: CollectionMetadataSchema.optional().describe('Collection-specific metadata (merged with parent metadata)'),
     allowedGroups: z.array(z.string()).optional().describe('User groups with access to collection (inherits from parent if omitted)'),
-    embeddingModel: z.string().min(1).describe('Embedding model ID (can be set at creation, inherits from parent if omitted, immutable after creation)'),
+    embeddingModel: z.string().optional().describe('Embedding model ID (can be set at creation, inherits from parent if omitted, immutable after creation)'),
     createdBy: z.string().min(1).describe('User ID of creator'),
     createdAt: z.iso.datetime().describe('Creation timestamp (ISO 8601)'),
     updatedAt: z.iso.datetime().describe('Last update timestamp (ISO 8601)'),

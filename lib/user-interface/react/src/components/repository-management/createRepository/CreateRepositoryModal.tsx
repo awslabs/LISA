@@ -28,7 +28,7 @@ import { getJsonDifference, normalizeError } from '../../../shared/util/validati
 import { ModifyMethod } from '../../../shared/validation/modify-method';
 import { PipelineConfigForm } from './PipelineConfigForm';
 import _ from 'lodash';
-import { RagRepositoryConfig, RagRepositoryConfigSchema, RagRepositoryType } from '#root/lib/schema';
+import { RagRepositoryConfig, RagRepositoryConfigSchema, RagRepositoryType, ChunkingStrategyType } from '#root/lib/schema';
 
 export type CreateRepositoryModalProps = {
     visible: boolean;
@@ -161,7 +161,7 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
                     return {
                         ...pipeline,
                         chunkingStrategy: {
-                            type: 'fixed' as const,
+                            type: ChunkingStrategyType.FIXED,
                             size: pipeline.chunkSize || 512,
                             overlap: pipeline.chunkOverlap || 51,
                         },

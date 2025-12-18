@@ -28,7 +28,7 @@ export enum ChunkingStrategyType {
  * Fixed size chunking strategy schema
  */
 export const FixedSizeChunkingStrategySchema = z.object({
-    type: z.literal(ChunkingStrategyType.FIXED).describe('Fixed size chunking strategy type'),
+    type: z.literal(ChunkingStrategyType.FIXED).default(ChunkingStrategyType.FIXED).describe('Fixed size chunking strategy type'),
     size: z.number().min(100).max(10000).default(512).describe('Size of each chunk in characters'),
     overlap: z.number().min(0).default(51).describe('Overlap between chunks in characters'),
 }).refine(
@@ -42,7 +42,7 @@ export const FixedSizeChunkingStrategySchema = z.object({
  * None chunking strategy schema - documents ingested as-is without chunking
  */
 export const NoneChunkingStrategySchema = z.object({
-    type: z.literal(ChunkingStrategyType.NONE).describe('No chunking - documents ingested as-is'),
+    type: z.literal(ChunkingStrategyType.NONE).default(ChunkingStrategyType.NONE).describe('No chunking - documents ingested as-is'),
 });
 
 /**

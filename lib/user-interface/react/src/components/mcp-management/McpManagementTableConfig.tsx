@@ -17,6 +17,7 @@
 import { CollectionPreferencesProps, StatusIndicator, TableProps } from '@cloudscape-design/components';
 import { DEFAULT_PAGE_SIZE_OPTIONS } from '../../shared/preferences/common-preferences';
 import { HostedMcpServer, HostedMcpServerStatus } from '@/shared/reducers/mcp-server.reducer';
+import { formatDate } from '@/shared/util/formats';
 
 export type TableRow = TableProps.ColumnDefinition<HostedMcpServer> & {
     visible: boolean;
@@ -100,7 +101,7 @@ export function getTableDefinition (): ReadonlyArray<TableRow> {
         {
             id: 'created',
             header: 'Created',
-            cell: (item) => new Date(item.created).toLocaleString() ?? '-',
+            cell: (item) => formatDate(item.created),
             sortingField: 'created',
             visible: true,
         },

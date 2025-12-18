@@ -22,6 +22,7 @@ import { useCollection } from '@cloudscape-design/collection-hooks';
 import { PromptTemplateType, useListPromptTemplatesQuery } from '../../shared/reducers/prompt-templates.reducer';
 import {PromptTemplatesActions} from './PromptTemplatesActions';
 import { findKey } from 'lodash';
+import { formatDate } from '@/shared/util/formats';
 
 export function PromptTemplatesLibraryComponent () {
     const navigate = useNavigate();
@@ -97,7 +98,7 @@ export function PromptTemplatesLibraryComponent () {
                     return item.groups.length ? item.groups.map((group) => group.replace(/^\w+?:/, '')).join(', ') : '-';
                 }},
                 { header: 'Type', cell: (item) => findKey(PromptTemplateType, (type) => type === item.type), id: 'type', sortingField: 'type'},
-                { header: 'Updated', cell: (item) => item.created, id: 'created', sortingField: 'created'},
+                { header: 'Created', cell: (item) => formatDate(item.created), id: 'created', sortingField: 'created'},
                 { header: 'Revision', cell: (item) => (item.revision || 1)}
             ]}
         />

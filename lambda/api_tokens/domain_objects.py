@@ -12,14 +12,15 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from pydantic import BaseModel, Field, field_validator
+from utilities.time import now_seconds
 
 
 def default_expiration() -> int:
     """Calculate default token expiration (90 days from now)"""
-    return int((datetime.now() + timedelta(days=90)).timestamp())
+    return now_seconds() + int(timedelta(days=90).total_seconds())
 
 
 class CreateTokenAdminRequest(BaseModel):
@@ -35,7 +36,7 @@ class CreateTokenAdminRequest(BaseModel):
     @field_validator("tokenExpiration")
     @classmethod
     def validate_expiration(cls, v: int) -> int:
-        current_time = int(datetime.now().timestamp())
+        current_time = now_seconds()
         if v <= current_time:
             raise ValueError("tokenExpiration must be in the future")
         return v
@@ -52,7 +53,7 @@ class CreateTokenUserRequest(BaseModel):
     @field_validator("tokenExpiration")
     @classmethod
     def validate_expiration(cls, v: int) -> int:
-        current_time = int(datetime.now().timestamp())
+        current_time = now_seconds()
         if v <= current_time:
             raise ValueError("tokenExpiration must be in the future")
         return v

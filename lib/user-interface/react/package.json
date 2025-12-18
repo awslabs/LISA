@@ -30,7 +30,6 @@
     "@langchain/openai": "^1.1.3",
     "@microsoft/fetch-event-source": "^2.0.1",
     "@reduxjs/toolkit": "^2.11.1",
-    "@rolldown/pluginutils": "^1.0.0-beta.53",
     "@swc/core": "^1.15.3",
     "ace-builds": "^1.43.5",
     "axios": "^1.13.2",
@@ -58,6 +57,7 @@
     "rehype-katex": "^7.0.1",
     "remark-breaks": "^4.0.0",
     "remark-math": "^6.0.0",
+    "tailwindcss": "^4.1.18",
     "tinyglobby": "^0.2.15",
     "typescript": "~5.9.3",
     "unraw": "^3.0.0",
@@ -67,7 +67,7 @@
     "zod": "^4.1.13"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.18",
+    "@tailwindcss/vite": "^4.1.18",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
@@ -96,7 +96,6 @@
     "markdown-it": "^14.1.0",
     "prettier": "^3.7.4",
     "redux-mock-store": "^1.5.5",
-    "tailwindcss": "^4.1.18",
     "uuid": "^13.0.0",
     "vite": "^7.2.7",
     "vitest": "^4.0.15"

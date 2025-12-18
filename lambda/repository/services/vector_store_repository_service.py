@@ -21,7 +21,6 @@ vector stores with chunking and embedding pipelines.
 import logging
 import os
 from abc import abstractmethod
-from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import boto3
@@ -38,6 +37,7 @@ from models.domain_objects import (
 from repository.embeddings import RagEmbeddings
 from repository.rag_document_repo import RagDocumentRepository
 from utilities.common_functions import retry_config
+from utilities.time import utc_now
 
 from .repository_service import RepositoryService
 
@@ -275,8 +275,8 @@ class VectorStoreRepositoryService(RepositoryService):
                 allowChunkingOverride=True,
                 pipelines=self.repository.get("pipelines", []),
                 default=True,
-                createdAt=datetime.now(timezone.utc),
-                updatedAt=datetime.now(timezone.utc),
+                createdAt=utc_now(),
+                updatedAt=utc_now(),
             )
 
             logger.info(f"Created virtual default collection for repository {self.repository_id}")

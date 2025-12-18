@@ -15,7 +15,7 @@
 */
 import { Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { PipelineConfig, RagRepositoryConfig, PartialConfig } from '../../../lib/schema';
+import { PipelineConfig, RagRepositoryDeploymentConfig, PartialConfig, } from '../../../lib/schema';
 import { EventField, EventPattern, Rule, RuleTargetInput, Schedule } from 'aws-cdk-lib/aws-events';
 import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -39,7 +39,7 @@ export abstract class PipelineStack extends Stack {
      * Creates EventBridge rules for pipeline triggers based on configuration
      * Supports both event-based (S3 events) and scheduled (daily) triggers
      */
-    createPipelineRules (config: PartialConfig, ragConfig: RagRepositoryConfig) {
+    createPipelineRules (config: PartialConfig, ragConfig: RagRepositoryDeploymentConfig) {
         // Get the Lambda execution role from SSM parameter
         const lambdaExecutionRole = Role.fromRoleArn(
             this,
@@ -162,7 +162,7 @@ export abstract class PipelineStack extends Stack {
         const collectionName = `${repositoryId}-${collectionId}`;
         // Create a new EventBridge rule for the S3 event pattern
         return new Rule(this, `${repositoryId}-S3Event${eventName}Rule-${disambiguator}`, {
-            ruleName: `${config.deploymentName}-${config.deploymentStage}-${config.appName}-${collectionName}-S3${eventName}Rule-${disambiguator}`.substring(0,127),
+            ruleName: `${config.deploymentName}-${config.deploymentStage}-${config.appName}-${collectionName}-S3${eventName}Rule-${disambiguator}`.substring(0, 127),
             eventPattern,
             // Define the state machine target with input transformation
             targets: [new LambdaFunction(ingestionLambda, {
@@ -190,7 +190,7 @@ export abstract class PipelineStack extends Stack {
     /**
      * Creates an EventBridge rule for daily scheduled triggers
      */
-    private createDailyLambdaRule (config: PartialConfig, ingestionLambda: IFunction, ragConfig: RagRepositoryConfig, pipelineConfig: PipelineConfig, disambiguator: string): Rule {
+    private createDailyLambdaRule (config: PartialConfig, ingestionLambda: IFunction, ragConfig: RagRepositoryDeploymentConfig, pipelineConfig: PipelineConfig, disambiguator: string): Rule {
         return new Rule(this, `${ragConfig.repositoryId}-S3DailyIngestRule-${disambiguator}`, {
             ruleName: `${config.deploymentName}-${config.deploymentStage}-DailyIngestRule-${disambiguator}`,
             // Schedule the rule to run daily at midnight

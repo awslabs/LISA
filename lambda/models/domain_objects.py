@@ -19,11 +19,10 @@ from __future__ import annotations
 import json
 import logging
 import re
-import time
 import urllib.parse
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from enum import auto, Enum, StrEnum
 from typing import Annotated, Any, Dict, Generator, List, Literal, Optional, TypeAlias, Union
 from uuid import uuid4
@@ -33,6 +32,7 @@ from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
 from pydantic.functional_validators import AfterValidator, field_validator, model_validator
 from typing_extensions import Self
 from utilities.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, MIN_PAGE_SIZE
+from utilities.time import now, utc_now
 from utilities.validation import (
     validate_all_fields_defined,
     validate_any_fields_defined,
@@ -123,8 +123,8 @@ class GuardrailsTableEntry(BaseModel):
     mode: str
     description: Optional[str]
     allowedGroups: List[str]
-    createdDate: int = Field(default_factory=lambda: int(time.time() * 1000))
-    lastModifiedDate: int = Field(default_factory=lambda: int(time.time() * 1000))
+    createdDate: int = Field(default_factory=lambda: now())
+    lastModifiedDate: int = Field(default_factory=lambda: now())
 
 
 class MetricConfig(BaseModel):
@@ -737,7 +737,7 @@ class RagDocument(BaseModel):
     subdocs: List[str] = Field(default_factory=lambda: [], exclude=True)
     chunk_strategy: ChunkingStrategy
     ingestion_type: IngestionType = Field(default_factory=lambda: IngestionType.MANUAL)
-    upload_date: int = Field(default_factory=lambda: int(time.time() * 1000))
+    upload_date: int = Field(default_factory=lambda: now())
     chunks: Optional[int] = 0
     model_config = ConfigDict(use_enum_values=True, validate_default=True)
 
@@ -800,7 +800,7 @@ class IngestionJob(BaseModel):
         default=IngestionType.MANUAL, description="How the document was ingested (MANUAL, AUTO, or EXISTING)"
     )
     status: IngestionStatus = IngestionStatus.INGESTION_PENDING
-    created_date: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_date: str = Field(default_factory=lambda: utc_now().isoformat())
     error_message: Optional[str] = Field(default=None)
     document_name: Optional[str] = Field(default=None)
     auto: Optional[bool] = Field(default=None)
@@ -1182,8 +1182,8 @@ class RagCollectionConfig(BaseModel):
     allowedGroups: Optional[List[str]] = Field(default=None, description="User groups with access to collection")
     embeddingModel: Optional[str] = Field(description="Embedding model ID (can be set at creation, immutable after)")
     createdBy: str = Field(min_length=1, description="User ID of creator")
-    createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Creation timestamp")
-    updatedAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Last update timestamp")
+    createdAt: datetime = Field(default_factory=utc_now, description="Creation timestamp")
+    updatedAt: datetime = Field(default_factory=utc_now, description="Last update timestamp")
     status: CollectionStatus = Field(default=CollectionStatus.ACTIVE, description="Collection status")
     default: bool = Field(default=False, description="Indicates if this is a default collection")
     dataSourceId: Optional[str] = Field(
@@ -1369,8 +1369,8 @@ class VectorStoreConfig(BaseModel):
     # Status and timestamps
     status: Optional[VectorStoreStatus] = Field(default=None, description="Repository Status")
     createdBy: str = Field(description="Creation user")
-    createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Creation timestamp")
-    updatedAt: Optional[datetime] = Field(default=None, description="Last update timestamp")
+    createdAt: datetime = Field(default_factory=utc_now, description="Creation timestamp")
+    updatedAt: Optional[datetime] = Field(default_factory=utc_now, description="Last update timestamp")
 
 
 class UpdateVectorStoreRequest(BaseModel):
@@ -1394,7 +1394,7 @@ class KnowledgeBaseMetadata(BaseModel):
     name: str = Field(description="Knowledge Base name")
     description: Optional[str] = Field(default="", description="Knowledge Base description")
     status: str = Field(description="Knowledge Base status (ACTIVE, CREATING, DELETING, etc.)")
-    createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Creation timestamp")
+    createdAt: datetime = Field(default_factory=utc_now, description="Creation timestamp")
     updatedAt: Optional[datetime] = Field(default=None, description="Last update timestamp")
 
 
@@ -1407,7 +1407,7 @@ class DataSourceMetadata(BaseModel):
     status: str = Field(description="Data Source status (AVAILABLE, CREATING, DELETING, etc.)")
     s3Bucket: str = Field(description="S3 bucket for the data source")
     s3Prefix: str = Field(default="", description="S3 prefix for the data source")
-    createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Creation timestamp")
+    createdAt: datetime = Field(default_factory=utc_now, description="Creation timestamp")
     updatedAt: Optional[datetime] = Field(default=None, description="Last update timestamp")
     managed: Optional[bool] = Field(default=False, description="Whether this data source is managed by a collection")
     collectionId: Optional[str] = Field(default=None, description="Collection ID if managed")

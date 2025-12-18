@@ -19,7 +19,6 @@ import logging
 import os
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -31,6 +30,7 @@ from utilities.auth import get_user_context, get_username
 from utilities.common_functions import api_wrapper, get_session_id, retry_config
 from utilities.encoders import convert_decimal
 from utilities.session_encryption import decrypt_session_fields, migrate_session_to_encrypted, SessionEncryptionError
+from utilities.time import iso_string
 
 logger = logging.getLogger(__name__)
 
@@ -458,7 +458,7 @@ def rename_session(event: dict, context: dict) -> dict:
             Key={"sessionId": session_id, "userId": user_id},
             UpdateExpression="SET #name = :name, #lastUpdated = :lastUpdated",
             ExpressionAttributeNames={"#name": "name", "#lastUpdated": "lastUpdated"},
-            ExpressionAttributeValues={":name": body.get("name"), ":lastUpdated": datetime.now().isoformat()},
+            ExpressionAttributeValues={":name": body.get("name"), ":lastUpdated": iso_string()},
         )
         return {"statusCode": 200, "body": json.dumps({"message": "Session name updated successfully"})}
     except ValueError as e:
@@ -499,9 +499,9 @@ def put_session(event: dict, context: dict) -> dict:
             "history": messages,
             "name": body.get("name", None),
             "configuration": configuration,
-            "startTime": datetime.now().isoformat(),
-            "createTime": datetime.now().isoformat(),
-            "lastUpdated": datetime.now().isoformat(),
+            "startTime": iso_string(),
+            "createTime": iso_string(),
+            "lastUpdated": iso_string(),
         }
 
         # Encrypt sensitive data if encryption is enabled
@@ -562,9 +562,9 @@ def put_session(event: dict, context: dict) -> dict:
                     ":history": messages,
                     ":name": body.get("name", None),
                     ":configuration": configuration,
-                    ":startTime": datetime.now().isoformat(),
-                    ":createTime": datetime.now().isoformat(),
-                    ":lastUpdated": datetime.now().isoformat(),
+                    ":startTime": iso_string(),
+                    ":createTime": iso_string(),
+                    ":lastUpdated": iso_string(),
                     ":is_encrypted": False,
                 },
                 ReturnValues="UPDATED_NEW",
@@ -579,7 +579,7 @@ def put_session(event: dict, context: dict) -> dict:
                     "sessionId": session_id,
                     "messages": messages,
                     "userGroups": groups,
-                    "timestamp": datetime.now().isoformat(),
+                    "timestamp": iso_string(),
                 }
                 sqs_client.send_message(
                     QueueUrl=os.environ["USAGE_METRICS_QUEUE_NAME"],

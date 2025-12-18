@@ -18,13 +18,13 @@ import logging
 import os
 import re
 from copy import deepcopy
-from datetime import datetime, UTC
 from typing import Any, Callable, Dict, List, Optional
 
 import boto3
 from boto3.dynamodb.conditions import Attr
 from botocore.config import Config
 from mcp_server.models import HostedMcpServerStatus, McpServerStatus
+from utilities.time import now
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -346,7 +346,7 @@ def handle_job_intake(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     ddb_update_expression = "SET #status = :ms, last_modified = :lm"
     ddb_update_values = {
         ":ms": HostedMcpServerStatus.UPDATING,
-        ":lm": int(datetime.now(UTC).timestamp()),
+        ":lm": now(),
     }
     ExpressionAttributeNames = {"#status": "status"}
 
@@ -965,7 +965,7 @@ def handle_finish_update(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
     ddb_update_expression = "SET #status = :ms, last_modified = :lm"
     ddb_update_values: Dict[str, Any] = {
-        ":lm": int(datetime.now(UTC).timestamp()),
+        ":lm": now(),
     }
     ExpressionAttributeNames = {"#status": "status"}
 

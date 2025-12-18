@@ -90,6 +90,7 @@ export function AdvancedOptionsConfig ({
                     value={item.taskExecutionRoleArn || ''}
                     onChange={({ detail }) => setFields({ taskExecutionRoleArn: detail.value })}
                     disabled={isEdit}
+                    placeholder='arn:aws:iam::1234567890:role/task-executor-role'
                 />
             </FormField>
             <FormField
@@ -100,6 +101,7 @@ export function AdvancedOptionsConfig ({
                     value={item.taskRoleArn || ''}
                     onChange={({ detail }) => setFields({ taskRoleArn: detail.value })}
                     disabled={isEdit}
+                    placeholder='arn:aws:iam::1234567890:role/task-role'
                 />
             </FormField>
             <EnvironmentVariables

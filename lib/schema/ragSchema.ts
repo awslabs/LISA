@@ -194,3 +194,14 @@ export const RagRepositoryConfigSchema = z
 
 export type RagRepositoryConfig = z.infer<typeof RagRepositoryConfigSchema>;
 export type RDSConfig = RagRepositoryConfig['rdsConfig'];
+
+/**
+ * Schema for RAG repository configuration used during deployment.
+ * Omits database-managed fields like updatedAt that are set during DB operations.
+ */
+export const RagRepositoryDeploymentConfigSchema = RagRepositoryConfigSchema.omit({
+    updatedAt: true,
+    status: true,
+});
+
+export type RagRepositoryDeploymentConfig = z.infer<typeof RagRepositoryDeploymentConfigSchema>;

@@ -16,10 +16,11 @@
 
 import logging
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import Any, Dict
 
 import boto3
+from utilities.time import utc_now
 from utilities.validation import safe_error_response, ValidationError
 
 logger = logging.getLogger(__name__)
@@ -116,7 +117,7 @@ def handle_list_modified_objects(event: Dict[str, Any], context: Any) -> Dict[st
         s3_client = boto3.client("s3", region_name=os.environ["AWS_REGION"])
 
         # Calculate timestamp for 24 hours ago
-        twenty_four_hours_ago = datetime.now(timezone.utc) - timedelta(hours=24)
+        twenty_four_hours_ago = utc_now() - timedelta(hours=24)
 
         # List to store matching objects
         modified_files = []

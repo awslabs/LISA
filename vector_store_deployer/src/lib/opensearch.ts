@@ -16,7 +16,7 @@
 import { CustomResource, Duration, RemovalPolicy, StackProps } from 'aws-cdk-lib';
 import { Domain, EngineVersion, IDomain } from 'aws-cdk-lib/aws-opensearchservice';
 import { Construct } from 'constructs';
-import { RagRepositoryConfig, RagRepositoryType,PartialConfig } from '../../../lib/schema';
+import { RagRepositoryDeploymentConfig, RagRepositoryType,PartialConfig } from '../../../lib/schema';
 import { SecurityGroup, Subnet, SubnetSelection, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { AnyPrincipal, Effect, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -29,7 +29,7 @@ import { getPythonRuntime } from '../../../lib/api-base/utils';
 
 type OpenSearchVectorStoreStackProps = StackProps & {
     config: PartialConfig
-    ragConfig: RagRepositoryConfig,
+    ragConfig: RagRepositoryDeploymentConfig,
 };
 
 export class OpenSearchVectorStoreStack extends PipelineStack {

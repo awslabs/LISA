@@ -690,8 +690,6 @@ def prepare_chunks(docs: List, repository_id: str, collection_id: str) -> tuple[
 
     for doc in docs:
         texts.append(doc.page_content)
-        doc.metadata["repository_id"] = repository_id
-        doc.metadata["collection_id"] = collection_id
         metadatas.append(doc.metadata)
 
     return texts, metadatas

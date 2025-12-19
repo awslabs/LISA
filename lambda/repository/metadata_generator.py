@@ -41,6 +41,22 @@ class MetadataGenerator:
     """Static utility class for metadata generation and merging."""
 
     @staticmethod
+    def _extract_tags_from_metadata(metadata: Any) -> set:
+        """Extract tags from metadata object or dictionary.
+
+        Args:
+            metadata: Metadata object (dict or object with tags attribute)
+
+        Returns:
+            Set of tag strings
+        """
+        if isinstance(metadata, dict):
+            return set(metadata.get("tags", []))
+        elif hasattr(metadata, "tags") and metadata.tags:
+            return set(metadata.tags)
+        return set()
+
+    @staticmethod
     def merge_metadata(
         repository: Dict[str, Any],
         collection: Optional[Dict[str, Any]],
@@ -64,90 +80,48 @@ class MetadataGenerator:
             Merged metadata dictionary
         """
         merged_metadata: Dict[str, Any] = {}
+        all_tags: set = set()
+
+        # Helper function to merge non-tag metadata
+        def merge_non_tag_metadata(metadata_source: Dict[str, Any]) -> None:
+            for key, value in metadata_source.items():
+                if key != "tags" and not isinstance(value, dict):
+                    merged_metadata[key] = value
 
         # 1. Merge repository metadata (lowest precedence)
         repo_metadata = repository.get("metadata")
         if repo_metadata:
+            all_tags.update(MetadataGenerator._extract_tags_from_metadata(repo_metadata))
             if isinstance(repo_metadata, dict):
-                # Add repository tags
-                repo_tags = repo_metadata.get("tags", [])
-                if repo_tags:
-                    if for_bedrock_kb:
-                        # Add tags as individual fields for Bedrock KB
-                        for tag in repo_tags:
-                            merged_metadata[f"tag_{tag}"] = True
-                    else:
-                        # Keep tags as array for ingestion jobs
-                        merged_metadata["tags"] = repo_tags.copy()
-                # Add other repository metadata (skip dict fields that can't be validated)
-                for key, value in repo_metadata.items():
-                    if key != "tags" and not isinstance(value, dict):
-                        merged_metadata[key] = value
-            elif hasattr(repo_metadata, "tags"):
-                # Handle metadata objects with tags attribute
-                if repo_metadata.tags:
-                    if for_bedrock_kb:
-                        for tag in repo_metadata.tags:
-                            merged_metadata[f"tag_{tag}"] = True
-                    else:
-                        merged_metadata["tags"] = list(repo_metadata.tags)
+                merge_non_tag_metadata(repo_metadata)
 
         # 2. Merge collection metadata (medium precedence)
         if collection and collection.get("metadata"):
             coll_metadata = collection["metadata"]
+            all_tags.update(MetadataGenerator._extract_tags_from_metadata(coll_metadata))
             if isinstance(coll_metadata, dict):
-                # Merge collection tags
-                coll_tags = coll_metadata.get("tags", [])
-                if coll_tags:
-                    if for_bedrock_kb:
-                        # Add tags as individual fields for Bedrock KB
-                        for tag in coll_tags:
-                            merged_metadata[f"tag_{tag}"] = True
-                    else:
-                        # Merge tags with repository tags for ingestion jobs
-                        existing_tags = merged_metadata.get("tags", [])
-                        all_tags = existing_tags + [tag for tag in coll_tags if tag not in existing_tags]
-                        merged_metadata["tags"] = all_tags
-                # Add other collection metadata (skip dict fields that can't be validated)
-                for key, value in coll_metadata.items():
-                    if key != "tags" and not isinstance(value, dict):
-                        merged_metadata[key] = value
-            elif hasattr(coll_metadata, "tags"):
-                # Handle metadata objects with tags attribute
-                if coll_metadata.tags:
-                    if for_bedrock_kb:
-                        for tag in coll_metadata.tags:
-                            merged_metadata[f"tag_{tag}"] = True
-                    else:
-                        existing_tags = merged_metadata.get("tags", [])
-                        all_tags = existing_tags + [tag for tag in coll_metadata.tags if tag not in existing_tags]
-                        merged_metadata["tags"] = all_tags
+                merge_non_tag_metadata(coll_metadata)
+
+        # 3. Merge document-specific metadata (highest precedence)
+        if document_metadata:
+            all_tags.update(MetadataGenerator._extract_tags_from_metadata(document_metadata))
+            merge_non_tag_metadata(document_metadata)
 
         # Add repository identifier
         merged_metadata["repositoryId"] = repository.get("repositoryId", "")
         merged_metadata["collectionId"] = collection.get("collectionId", "") if collection else "default"
 
-        # 3. Merge document-specific metadata (highest precedence)
-        if document_metadata:
-            for key, value in document_metadata.items():
-                if key == "tags" and isinstance(value, list):
-                    if for_bedrock_kb:
-                        # Add document tags as individual fields for Bedrock KB
-                        for tag in value:
-                            merged_metadata[f"tag_{tag}"] = True
-                    else:
-                        # Merge document tags for ingestion jobs
-                        existing_tags = merged_metadata.get("tags", [])
-                        all_tags = existing_tags + [tag for tag in value if tag not in existing_tags]
-                        merged_metadata["tags"] = all_tags
-                else:
-                    merged_metadata[key] = value
-
-        # For Bedrock KB: Create comma-separated tags from all tag_ fields
-        if for_bedrock_kb:
-            tag_keys = [key[4:] for key in merged_metadata.keys() if key.startswith("tag_")]
-            if tag_keys:
-                merged_metadata["tags"] = ",".join(sorted(tag_keys))
+        # Apply tag formatting based on target system
+        if all_tags:
+            if for_bedrock_kb:
+                # Add tags as individual tag_ fields for Bedrock KB
+                for tag in all_tags:
+                    merged_metadata[f"tag_{tag}"] = True
+                # Create comma-separated tags field
+                merged_metadata["tags"] = ",".join(sorted(all_tags))
+            else:
+                # Keep tags as array for ingestion jobs
+                merged_metadata["tags"] = list(all_tags)
 
         return merged_metadata
 

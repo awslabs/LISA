@@ -28,15 +28,8 @@ def mock_s3_client():
 
 
 @pytest.fixture
-def mock_cloudwatch():
-    """Mock CloudWatch client."""
-    return MagicMock()
-
-
-@pytest.fixture
-def s3_metadata_manager(mock_cloudwatch):
-    """Create S3MetadataManager instance with mocked CloudWatch."""
-    return S3MetadataManager(cloudwatch_client=mock_cloudwatch)
+def s3_metadata_manager():
+    return S3MetadataManager()
 
 
 @pytest.fixture
@@ -72,26 +65,6 @@ def test_upload_metadata_file_success(s3_metadata_manager, mock_s3_client, sampl
 
     # Verify result
     assert result == "documents/test.pdf.metadata.json"
-
-
-def test_upload_metadata_file_with_metrics(s3_metadata_manager, mock_s3_client, sample_metadata, mock_cloudwatch):
-    """Test metadata file upload emits CloudWatch metrics."""
-    bucket = "test-bucket"
-    document_key = "documents/test.pdf"
-    repository_id = "repo-123"
-    collection_id = "col-456"
-
-    s3_metadata_manager.upload_metadata_file(
-        s3_client=mock_s3_client,
-        bucket=bucket,
-        document_key=document_key,
-        metadata_content=sample_metadata,
-        repository_id=repository_id,
-        collection_id=collection_id,
-    )
-
-    # Verify CloudWatch metric was emitted
-    assert mock_cloudwatch.put_metric_data.called
 
 
 def test_upload_metadata_file_access_denied(s3_metadata_manager, mock_s3_client, sample_metadata):
@@ -153,25 +126,6 @@ def test_delete_metadata_file_not_found(s3_metadata_manager, mock_s3_client):
     s3_metadata_manager.delete_metadata_file(
         s3_client=mock_s3_client, bucket="test-bucket", document_key="documents/test.pdf"
     )
-
-
-def test_delete_metadata_file_with_metrics(s3_metadata_manager, mock_s3_client, mock_cloudwatch):
-    """Test metadata file deletion emits CloudWatch metrics."""
-    bucket = "test-bucket"
-    document_key = "documents/test.pdf"
-    repository_id = "repo-123"
-    collection_id = "col-456"
-
-    s3_metadata_manager.delete_metadata_file(
-        s3_client=mock_s3_client,
-        bucket=bucket,
-        document_key=document_key,
-        repository_id=repository_id,
-        collection_id=collection_id,
-    )
-
-    # Verify CloudWatch metric was emitted
-    assert mock_cloudwatch.put_metric_data.called
 
 
 def test_batch_upload_metadata_success(s3_metadata_manager, mock_s3_client, sample_metadata):

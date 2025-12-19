@@ -129,7 +129,7 @@ endif
 
 ## Set up Python interpreter environment to match LISA deployed version
 createPythonEnvironment:
-	python3.11 -m venv .venv
+	python3.13 -m venv .venv
 	@printf ">>> New virtual environment created. To activate run: 'source .venv/bin/activate'"
 
 
@@ -148,6 +148,7 @@ createTypeScriptEnvironment:
 installTypeScriptRequirements:
 	npm install
 
+install: installPythonRequirements installTypeScriptRequirements
 
 ## Make sure Docker is running
 dockerCheck:
@@ -373,3 +374,16 @@ test-coverage:
           --cov-report html:build/coverage \
           --cov-report xml:build/coverage/coverage.xml \
           --cov-fail-under 83
+
+## Regenerate all Poetry lock files
+lock-poetry:
+	@echo "Regenerating Poetry lock files..."
+	@cd lisa-sdk && poetry lock && echo "✓ lisa-sdk/poetry.lock updated"
+
+## Validate all requirements files can be installed
+validate-deps:
+	@echo "Validating requirements files..."
+	@for req in $$(find . -name "requirements*.txt" -not -path "./node_modules/*" -not -path "./.venv/*"); do \
+		echo "Checking $$req..."; \
+		pip-compile --dry-run --quiet $$req 2>&1 | grep -i "error\|conflict" && echo "✗ $$req has conflicts" || echo "✓ $$req is valid"; \
+	done

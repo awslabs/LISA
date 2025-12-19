@@ -32,13 +32,28 @@ from .domain_objects import (
     CreateModelRequest,
     CreateModelResponse,
     DeleteModelResponse,
+    DeleteScheduleResponse,
     GetModelResponse,
+    GetScheduleResponse,
+    GetScheduleStatusResponse,
     ListModelsResponse,
+    SchedulingConfig,
     UpdateModelRequest,
     UpdateModelResponse,
+    UpdateScheduleResponse,
 )
-from .exception import InvalidStateTransitionError, ModelAlreadyExistsError, ModelNotFoundError
-from .handler import CreateModelHandler, DeleteModelHandler, GetModelHandler, ListModelsHandler, UpdateModelHandler
+from .exception import InvalidStateTransitionError, ModelAlreadyExistsError, ModelInUseError, ModelNotFoundError
+from .handler import (
+    CreateModelHandler,
+    DeleteModelHandler,
+    DeleteScheduleHandler,
+    GetModelHandler,
+    GetScheduleHandler,
+    GetScheduleStatusHandler,
+    ListModelsHandler,
+    UpdateModelHandler,
+    UpdateScheduleHandler,
+)
 
 sess = botocore.session.Session()
 app = FastAPI(redirect_slashes=False, lifespan="off", docs_url="/docs", openapi_url="/openapi.json")
@@ -79,7 +94,7 @@ def get_admin_status_and_groups(request: Request) -> tuple[bool, list[str]]:
 @app.exception_handler(ModelNotFoundError)
 async def model_not_found_handler(request: Request, exc: ModelNotFoundError) -> JSONResponse:
     """Handle exception when model cannot be found and translate to a 404 error."""
-    return JSONResponse(status_code=404, content={"message": str(exc)})
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
 
 
 @app.exception_handler(RequestValidationError)
@@ -97,7 +112,7 @@ async def user_error_handler(
     request: Request, exc: Union[InvalidStateTransitionError, ModelAlreadyExistsError, ValueError]
 ) -> JSONResponse:
     """Handle errors when customer requests options that cannot be processed."""
-    return JSONResponse(status_code=400, content={"message": str(exc)})
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
 
 
 @app.post(path="", include_in_schema=False)
@@ -113,7 +128,10 @@ async def create_model(create_request: CreateModelRequest, request: Request) -> 
         model_table_resource=model_table,
         guardrails_table_resource=guardrails_table,
     )
-    return create_handler(create_request=create_request)
+    try:
+        return create_handler(create_request=create_request)
+    except ModelAlreadyExistsError as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 
 @app.get(path="", include_in_schema=False)
@@ -144,7 +162,10 @@ async def get_model(
     )
 
     admin_status, user_groups = get_admin_status_and_groups(request)
-    return get_handler(model_id=model_id, user_groups=user_groups, is_admin=admin_status)
+    try:
+        return get_handler(model_id=model_id, user_groups=user_groups, is_admin=admin_status)
+    except ModelNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.put(path="/{model_id}")
@@ -156,14 +177,19 @@ async def update_model(
     """Endpoint to update a model."""
     admin_status, _ = get_admin_status_and_groups(request)
     if not admin_status:
-        raise HTTPException(status_code=403, detail="User does not have permission to update models.")
+        raise HTTPException(status_code=403, detail="User does not have permission to update models")
     update_handler = UpdateModelHandler(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
         guardrails_table_resource=guardrails_table,
     )
-    return update_handler(model_id=model_id, update_request=update_request)
+    try:
+        return update_handler(model_id=model_id, update_request=update_request)
+    except ModelNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except InvalidStateTransitionError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.delete(path="/{model_id}")
@@ -173,20 +199,139 @@ async def delete_model(
     """Endpoint to delete a model."""
     admin_status, _ = get_admin_status_and_groups(request)
     if not admin_status:
-        raise HTTPException(status_code=403, detail="User does not have permission to delete models.")
+        raise HTTPException(status_code=403, detail="User does not have permission to delete models")
     delete_handler = DeleteModelHandler(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
         guardrails_table_resource=guardrails_table,
     )
-    return delete_handler(model_id=model_id)
+    try:
+        return delete_handler(model_id=model_id)
+    except ModelInUseError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    except ModelNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.get(path="/metadata/instances")
 async def get_instances() -> list[str]:
     """Endpoint to list available instances in this region."""
     return list(sess.get_service_model("ec2").shape_for("InstanceType").enum)
+
+
+@app.post(path="/{model_id}/schedule")
+@app.put(path="/{model_id}/schedule")
+async def update_schedule(
+    model_id: Annotated[str, Path(title="The unique model ID of the model to schedule")],
+    schedule_config: SchedulingConfig,
+    request: Request,
+) -> UpdateScheduleResponse:
+    """Endpoint to create or update a schedule for a model"""
+    update_schedule_handler = UpdateScheduleHandler(
+        autoscaling_client=autoscaling,
+        stepfunctions_client=stepfunctions,
+        model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
+    )
+
+    user_groups = []
+    admin_status = False
+
+    if "aws.event" in request.scope:
+        event = request.scope["aws.event"]
+        try:
+            user_groups = get_groups(event)
+            admin_status = is_admin(event)
+        except Exception:
+            user_groups = []
+            admin_status = False
+
+    return update_schedule_handler(
+        model_id=model_id, schedule_config=schedule_config, user_groups=user_groups, is_admin=admin_status
+    )
+
+
+@app.get(path="/{model_id}/schedule")
+async def get_schedule(
+    model_id: Annotated[str, Path(title="The unique model ID of the model to get schedule for")], request: Request
+) -> GetScheduleResponse:
+    """Endpoint to get current schedule configuration for a model"""
+    get_schedule_handler = GetScheduleHandler(
+        autoscaling_client=autoscaling,
+        stepfunctions_client=stepfunctions,
+        model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
+    )
+
+    user_groups = []
+    admin_status = False
+
+    if "aws.event" in request.scope:
+        event = request.scope["aws.event"]
+        try:
+            user_groups = get_groups(event)
+            admin_status = is_admin(event)
+        except Exception:
+            user_groups = []
+            admin_status = False
+
+    return get_schedule_handler(model_id=model_id, user_groups=user_groups, is_admin=admin_status)
+
+
+@app.delete(path="/{model_id}/schedule")
+async def delete_schedule(
+    model_id: Annotated[str, Path(title="The unique model ID of the model to delete schedule for")], request: Request
+) -> DeleteScheduleResponse:
+    """Endpoint to delete a schedule for a model"""
+    delete_schedule_handler = DeleteScheduleHandler(
+        autoscaling_client=autoscaling,
+        stepfunctions_client=stepfunctions,
+        model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
+    )
+
+    user_groups = []
+    admin_status = False
+
+    if "aws.event" in request.scope:
+        event = request.scope["aws.event"]
+        try:
+            user_groups = get_groups(event)
+            admin_status = is_admin(event)
+        except Exception:
+            user_groups = []
+            admin_status = False
+
+    return delete_schedule_handler(model_id=model_id, user_groups=user_groups, is_admin=admin_status)
+
+
+@app.get(path="/{model_id}/schedule/status")
+async def get_schedule_status(
+    model_id: Annotated[str, Path(title="The unique model ID of the model to get schedule status for")],
+    request: Request,
+) -> GetScheduleStatusResponse:
+    """Endpoint to get current schedule status and next scheduled action for a model"""
+    get_schedule_status_handler = GetScheduleStatusHandler(
+        autoscaling_client=autoscaling,
+        stepfunctions_client=stepfunctions,
+        model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
+    )
+
+    user_groups = []
+    admin_status = False
+
+    if "aws.event" in request.scope:
+        event = request.scope["aws.event"]
+        try:
+            user_groups = get_groups(event)
+            admin_status = is_admin(event)
+        except Exception:
+            user_groups = []
+            admin_status = False
+
+    return get_schedule_status_handler(model_id=model_id, user_groups=user_groups, is_admin=admin_status)
 
 
 handler = Mangum(app, lifespan="off", api_gateway_base_path="/models")

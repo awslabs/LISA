@@ -14,23 +14,82 @@
  limitations under the License.
  */
 
-import { BufferWindowMemory, getBufferString } from 'langchain/memory';
-import { LisaChatMessage } from '../../components/types';
-import { BaseMessage } from '@langchain/core/messages';
-import { MemoryVariables } from '@langchain/core/memory';
+import { BaseMemory, InputValues, MemoryVariables, OutputValues } from '@langchain/core/memory';
+import { BaseChatMessageHistory } from '@langchain/core/chat_history';
+import { BaseMessage, HumanMessage, AIMessage } from '@langchain/core/messages';
+import { LisaChatMessage } from '@/components/types';
+
+export type ChatMemoryInput = {
+    chatHistory: BaseChatMessageHistory;
+    returnMessages: boolean;
+    memoryKey: string;
+    k: number;
+    humanPrefix?: string;
+    aiPrefix?: string;
+};
 
 /**
- * Class for managing and storing previous chat messages. This extends BufferWindowMemory to add a transform to ensure
- * json messages are converted into LISA Chat messages.
+ * Converts a list of messages into a buffer string format.
  */
-export class ChatMemory extends BufferWindowMemory {
+export function getBufferString (
+    messages: BaseMessage[],
+    humanPrefix = 'Human',
+    aiPrefix = 'AI'
+): string {
+    const stringMessages: string[] = [];
+    for (const m of messages) {
+        let role: string;
+        if (m._getType() === 'human') {
+            role = humanPrefix;
+        } else if (m._getType() === 'ai') {
+            role = aiPrefix;
+        } else if (m._getType() === 'system') {
+            role = 'System';
+        } else if (m._getType() === 'function') {
+            role = 'Function';
+        } else if (m._getType() === 'tool') {
+            role = 'Tool';
+        } else {
+            role = m._getType();
+        }
+        stringMessages.push(`${role}: ${m.content}`);
+    }
+    return stringMessages.join('\n');
+}
+
+/**
+ * Class for managing and storing previous chat messages. This implements a buffer window memory
+ * to maintain a sliding window of recent messages.
+ */
+export class ChatMemory extends BaseMemory {
+    chatHistory: BaseChatMessageHistory;
+    returnMessages: boolean;
+    memoryKey: string;
+    k: number;
+    humanPrefix: string;
+    aiPrefix: string;
+
+    constructor (fields: ChatMemoryInput) {
+        super();
+        this.chatHistory = fields.chatHistory;
+        this.returnMessages = fields.returnMessages;
+        this.memoryKey = fields.memoryKey;
+        this.k = fields.k;
+        this.humanPrefix = fields.humanPrefix ?? 'Human';
+        this.aiPrefix = fields.aiPrefix ?? 'AI';
+    }
+
+    get memoryKeys (): string[] {
+        return [this.memoryKey];
+    }
 
     /**
-     * Override loadMemoryVariables to add type conversion of LisaChatMessage
+     * Load memory variables with type conversion of LisaChatMessage
      */
     async loadMemoryVariables (): Promise<MemoryVariables> {
         const messages: BaseMessage[] = await this.chatHistory.getMessages();
-        const lisaMessages = messages.map((message) => new LisaChatMessage({ ...message, type: message['type'] }));
+        const lisaMessages = messages.map((message) => new LisaChatMessage({ ...message, type: message._getType() }));
+
         if (this.returnMessages) {
             return {
                 [this.memoryKey]: lisaMessages.slice(-this.k * 2),
@@ -40,5 +99,39 @@ export class ChatMemory extends BufferWindowMemory {
         return {
             [this.memoryKey]: getBufferString(lisaMessages.slice(-this.k * 2), this.humanPrefix, this.aiPrefix),
         };
+    }
+
+    /**
+     * Save context from this conversation to buffer
+     */
+    async saveContext (inputValues: InputValues, outputValues: OutputValues): Promise<void> {
+        const input = this.getInputValue(inputValues);
+        const output = this.getOutputValue(outputValues);
+
+        await this.chatHistory.addMessage(new HumanMessage(input));
+        await this.chatHistory.addMessage(new AIMessage(output));
+    }
+
+    /**
+     * Clear memory contents
+     */
+    async clear (): Promise<void> {
+        await this.chatHistory.clear();
+    }
+
+    private getInputValue (inputValues: InputValues): string {
+        const keys = Object.keys(inputValues);
+        if (keys.length === 1) {
+            return inputValues[keys[0]];
+        }
+        throw new Error('Multiple input keys found. Please specify inputKey.');
+    }
+
+    private getOutputValue (outputValues: OutputValues): string {
+        const keys = Object.keys(outputValues);
+        if (keys.length === 1) {
+            return outputValues[keys[0]];
+        }
+        throw new Error('Multiple output keys found. Please specify outputKey.');
     }
 }

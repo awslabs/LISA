@@ -323,6 +323,15 @@ def create_bedrock_collection(event: dict, context: dict) -> Dict[str, Any]:
             # Create S3 scan job to ingest existing documents
             if s3_bucket:
                 logger.info(f"Creating S3 scan job for bucket {s3_bucket} with prefix '{s3_prefix}'")
+
+                # Merge metadata from repository and collection for the scan job
+                merged_metadata = MetadataGenerator.merge_metadata(
+                    repository=repository,
+                    collection=collection.model_dump(),
+                    document_metadata=None,
+                    for_bedrock_kb=False,  # Keep tags as array for ingestion jobs
+                )
+
                 job_id = create_s3_scan_job(
                     ingestion_job_repository=ingestion_job_repository,
                     ingestion_service=ingestion_service,
@@ -331,6 +340,7 @@ def create_bedrock_collection(event: dict, context: dict) -> Dict[str, Any]:
                     embedding_model=collection.embeddingModel,
                     s3_bucket=s3_bucket,
                     s3_prefix=s3_prefix,
+                    metadata=merged_metadata,
                 )
                 logger.info(f"Created S3 scan job {job_id} for collection {collection_id}")
 
@@ -404,6 +414,13 @@ def create_collection(event: dict, context: dict) -> Dict[str, Any]:
         raise ValidationError(f"Invalid JSON in request body: {e}")
     except Exception as e:
         raise ValidationError(f"Invalid request: {e}")
+
+    # Validate embedding model - either collection must have one or repository must have a default
+    if not collection.embeddingModel and not repository.get("embeddingModelId"):
+        raise ValidationError(
+            "Either the collection must specify an embeddingModel or "
+            "the repository must have a default embeddingModelId"
+        )
 
     # Create collection via service
     created_collection = collection_service.create_collection(
@@ -950,7 +967,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
 
     # Get collection if specified
     collection: Optional[dict[str, Any]] = None
-    if request.collectionId:
+    if request.collectionId and request.collectionId != repository.get("embeddingModelId"):
         collection = collection_service.get_collection(
             collection_id=request.collectionId,
             repository_id=repository_id,
@@ -961,41 +978,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
 
     # For Bedrock KB repositories, upload metadata files BEFORE documents
     is_bedrock_kb = RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB)
-    if is_bedrock_kb:
-
-        metadata_generator = MetadataGenerator()
-        s3_metadata_manager = S3MetadataManager()
-
-        # Get collection object for metadata generation
-        collection_obj = None
-        if request.collectionId:
-            try:
-                collection_obj = collection_service.get_collection(
-                    collection_id=request.collectionId,
-                    repository_id=repository_id,
-                    username=username,
-                    user_groups=groups,
-                    is_admin=is_admin,
-                )
-            except Exception as e:
-                logger.warning(f"Could not fetch collection for metadata: {e}")
-
-        # Upload metadata files first
-        for key in request.keys:
-            try:
-                # Generate metadata content
-                metadata_content = metadata_generator.generate_metadata_json(
-                    repository=repository, collection=collection_obj, document_metadata=None
-                )
-
-                # Upload metadata file
-                s3_metadata_manager.upload_metadata_file(
-                    s3_client=s3, bucket=bucket, document_key=key, metadata_content=metadata_content
-                )
-                logger.info(f"Uploaded metadata file for {key}")
-            except Exception as e:
-                logger.error(f"Failed to upload metadata file for {key}: {e}")
-                # Continue with document upload even if metadata fails
+    s3_metadata_manager = S3MetadataManager()
 
     # Create jobs
     jobs = []
@@ -1007,10 +990,19 @@ def ingest_documents(event: dict, context: dict) -> dict:
             query_params=query_params,
             s3_path=f"s3://{bucket}/{key}",
             username=username,
-            metadata=None,
+            metadata=request.metadata,
             ingestion_type=IngestionType.MANUAL,
         )
         ingestion_job_repository.save(job)
+        if is_bedrock_kb:
+            # Upload metadata file
+            try:
+                s3_metadata_manager.upload_metadata_file(
+                    s3_client=s3, bucket=bucket, document_key=key, metadata_content=job.metadata
+                )
+                logger.info(f"Uploaded metadata file for {key}")
+            except Exception as e:
+                logger.error(f"Failed to upload metadata file for {key}: {e}")
         ingestion_service.submit_create_job(job)
         jobs.append({"jobId": job.id, "documentId": job.document_id, "status": job.status, "s3Path": job.s3_path})
 
@@ -1271,9 +1263,14 @@ def create(event: dict, context: dict) -> Any:
     parameter_name = os.environ["LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER"]
     state_machine_arn = ssm_client.get_parameter(Name=parameter_name)
 
+    # Get user context
+    username, _, _ = get_user_context(event)
+
     # Deserialize the event body and parse as VectorStoreConfig
     try:
         body = json.loads(event["body"])
+        # Add required fields
+        body["createdBy"] = username
         vector_store_config = VectorStoreConfig(**body)
     except json.JSONDecodeError as e:
         raise ValidationError(f"Invalid JSON in request body: {e}")
@@ -1349,6 +1346,69 @@ def get_repository_by_id(event: dict, context: dict) -> Dict[str, Any]:
     return repository
 
 
+def _get_pipeline_key(pipeline: dict) -> str:
+    """Generate a unique key for a pipeline based on immutable fields."""
+    collection_id = pipeline.get("collectionId", "")
+    s3_bucket = pipeline.get("s3Bucket", "")
+    s3_prefix = pipeline.get("s3Prefix", "")
+    return f"{collection_id}:{s3_bucket}:{s3_prefix}"
+
+
+def _validate_immutable_pipeline_fields(current_pipelines: list, new_pipelines: list) -> None:
+    """
+    Validate that immutable pipeline fields haven't changed for existing pipelines.
+
+    Immutable fields: autoRemove, collectionId, s3Bucket, s3Prefix, trigger
+
+    Args:
+        current_pipelines: Current pipeline configurations
+        new_pipelines: New pipeline configurations
+
+    Raises:
+        ValidationError: If any immutable field has changed for an existing pipeline
+    """
+    # If we have the same number of pipelines, check for field changes by position
+    # This handles the case where immutable fields are changed (which would change the key)
+    if len(current_pipelines) == len(new_pipelines):
+        for _i, (current_pipeline, new_pipeline) in enumerate(zip(current_pipelines, new_pipelines)):
+            # Define immutable fields
+            immutable_fields = ["autoRemove", "collectionId", "s3Bucket", "s3Prefix", "trigger"]
+
+            for field in immutable_fields:
+                current_value = current_pipeline.get(field)
+                new_value = new_pipeline.get(field)
+
+                if current_value != new_value:
+                    raise ValidationError(
+                        f"Pipeline field '{field}' cannot be modified for existing pipelines. "
+                        f"Current value: '{current_value}', attempted value: '{new_value}'. "
+                        f"This field requires infrastructure redeployment. Please create a new pipeline instead."
+                    )
+
+    # Also check by key for pipelines that haven't changed position
+    current_by_key = {_get_pipeline_key(p): p for p in current_pipelines}
+    new_by_key = {_get_pipeline_key(p): p for p in new_pipelines}
+
+    # Check existing pipelines for immutable field changes (for pipelines that kept the same key)
+    for key, current_pipeline in current_by_key.items():
+        if key in new_by_key:
+            new_pipeline = new_by_key[key]
+
+            # Define immutable fields
+            immutable_fields = ["autoRemove", "collectionId", "s3Bucket", "s3Prefix", "trigger"]
+
+            for field in immutable_fields:
+                current_value = current_pipeline.get(field)
+                new_value = new_pipeline.get(field)
+
+                if current_value != new_value:
+                    raise ValidationError(
+                        f"Pipeline field '{field}' cannot be modified for existing pipelines. "
+                        f"Current value: '{current_value}', attempted value: '{new_value}'. "
+                        f"This field requires infrastructure redeployment. Please create a new pipeline instead."
+                    )
+
+
 @api_wrapper
 @admin_only
 def update_repository(event: dict, context: dict) -> Dict[str, Any]:
@@ -1412,12 +1472,62 @@ def update_repository(event: dict, context: dict) -> Dict[str, Any]:
                 "Please select at least one data source."
             )
         # Convert bedrockKnowledgeBaseConfig to pipelines
-        updates["pipelines"] = build_pipeline_configs_from_kb_config(request.bedrockKnowledgeBaseConfig)
+        new_pipelines = build_pipeline_configs_from_kb_config(request.bedrockKnowledgeBaseConfig)
+
+        # Preserve existing pipeline metadata (tags, etc.) when updating Bedrock KB repositories
+        if current_pipelines:
+            # Create a mapping of existing pipeline metadata by collectionId
+            existing_metadata = {
+                pipeline.get("collectionId"): pipeline.get("metadata", {})
+                for pipeline in current_pipelines
+                if pipeline.get("collectionId")
+            }
+
+            # Merge existing metadata into new pipeline configurations
+            for pipeline in new_pipelines:
+                collection_id = pipeline.get("collectionId")
+                if collection_id and collection_id in existing_metadata:
+                    # Preserve existing metadata for this collection
+                    pipeline["metadata"] = existing_metadata[collection_id]
+                    logger.info(
+                        f"Preserved metadata for collection {collection_id}: {existing_metadata[collection_id]}"
+                    )
+
+        updates["pipelines"] = new_pipelines
         logger.info(f"Converted {len(request.bedrockKnowledgeBaseConfig.dataSources)} data sources to pipeline configs")
+
+    # Handle direct pipeline updates (preserve existing metadata if not provided)
+    elif "pipelines" in updates and updates["pipelines"] is not None and current_pipelines:
+        # Create a mapping of existing pipeline metadata by collectionId
+        existing_metadata = {
+            pipeline.get("collectionId"): pipeline.get("metadata", {})
+            for pipeline in current_pipelines
+            if pipeline.get("collectionId")
+        }
+
+        # For each new pipeline, preserve existing metadata if metadata is not provided or incomplete
+        for pipeline in updates["pipelines"]:
+            collection_id = pipeline.get("collectionId")
+            if collection_id and collection_id in existing_metadata:
+                existing_meta = existing_metadata[collection_id]
+                current_meta = pipeline.get("metadata", {})
+
+                # If no metadata provided, use existing metadata
+                if not current_meta:
+                    pipeline["metadata"] = existing_meta
+                    logger.info(f"Preserved complete metadata for collection {collection_id}: {existing_meta}")
+                # If metadata provided but missing tags, preserve existing tags
+                elif "tags" not in current_meta and "tags" in existing_meta:
+                    pipeline["metadata"]["tags"] = existing_meta["tags"]
+                    logger.info(f"Preserved tags for collection {collection_id}: {existing_meta['tags']}")
 
     # Check if pipeline configuration has changed
     # Use the converted pipelines from updates if available, otherwise use request.pipelines
     new_pipelines = updates.get("pipelines") if "pipelines" in updates else request.pipelines
+
+    # Validate immutable pipeline fields for existing repositories
+    if new_pipelines is not None and current_pipelines:
+        _validate_immutable_pipeline_fields(current_pipelines, new_pipelines)
     require_deployment = False
 
     if new_pipelines is not None:
@@ -1434,8 +1544,20 @@ def update_repository(event: dict, context: dict) -> Dict[str, Any]:
             else:
                 logger.info("Bedrock KB data sources unchanged, no deployment needed")
         else:
-            # For other repository types, compare full pipeline configs
-            require_deployment = new_pipelines != current_pipelines
+            # For other repository types, check if pipelines were added/removed or immutable fields changed
+            current_pipeline_keys = {_get_pipeline_key(p) for p in current_pipelines}
+            new_pipeline_keys = {_get_pipeline_key(p) for p in new_pipelines}
+
+            # Check if pipelines were added or removed
+            if current_pipeline_keys != new_pipeline_keys:
+                added = new_pipeline_keys - current_pipeline_keys
+                removed = current_pipeline_keys - new_pipeline_keys
+                logger.info(f"Pipeline changes detected: added={list(added)}, removed={list(removed)}")
+                require_deployment = True
+            else:
+                # Check if any immutable fields changed (this would have been caught by validation above)
+                # or if any other pipeline configuration changed
+                require_deployment = new_pipelines != current_pipelines
 
     # Set status based on deployment requirement
     status = VectorStoreStatus.UPDATE_IN_PROGRESS if require_deployment else VectorStoreStatus.UPDATE_COMPLETE

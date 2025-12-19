@@ -13,9 +13,9 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
-import { IModel, ModelStatus } from '../../shared/model/model-management.model';
+import { IModel, ModelStatus, ScheduleType } from '../../shared/model/model-management.model';
 import { StatusIndicatorProps } from '@cloudscape-design/components/status-indicator';
-import { CollectionPreferencesProps, StatusIndicator } from '@cloudscape-design/components';
+import { CollectionPreferencesProps, StatusIndicator, Box } from '@cloudscape-design/components';
 import { DEFAULT_PAGE_SIZE_OPTIONS } from '../../shared/preferences/common-preferences';
 import Badge from '@cloudscape-design/components/badge';
 
@@ -34,6 +34,80 @@ export const MODEL_STATUS_LOOKUP: EnumDictionary<ModelStatus, StatusIndicatorPro
     [ModelStatus.Failed]: 'error',
 };
 
+// Utility functions for schedule display
+const formatScheduleType = (model: IModel): string => {
+    const scheduling = model.autoScalingConfig?.scheduling;
+
+    if (!scheduling?.scheduleEnabled || !scheduling?.scheduleType || scheduling.scheduleType === ScheduleType.NONE) {
+        return 'Always on';
+    }
+
+    switch (scheduling.scheduleType) {
+        case ScheduleType.DAILY:
+            return 'Daily Schedule';
+        case ScheduleType.RECURRING:
+            return 'Recurring Schedule';
+        default:
+            return 'Always on';
+    }
+};
+
+const formatScheduleDetails = (model: IModel) => {
+    const scheduling = model.autoScalingConfig?.scheduling;
+
+    if (!scheduling?.scheduleEnabled || !scheduling?.scheduleType || scheduling.scheduleType === ScheduleType.NONE) {
+        return (
+            <Box color='text-status-inactive'>
+                <em>Model runs continuously without scheduled downtime</em>
+            </Box>
+        );
+    }
+
+    const timezone = scheduling.timezone || 'UTC';
+
+    if (scheduling.scheduleType === ScheduleType.RECURRING && scheduling.recurringSchedule) {
+        const { startTime, stopTime } = scheduling.recurringSchedule;
+        return (
+            <Box>
+                <div>Timezone: {timezone}</div>
+                <div>{startTime} - {stopTime}</div>
+            </Box>
+        );
+    }
+
+    if (scheduling.scheduleType === ScheduleType.DAILY && scheduling.dailySchedule) {
+        const daysWithSchedule = Object.entries(scheduling.dailySchedule)
+            .filter(([, daySchedule]) => daySchedule && daySchedule.startTime && daySchedule.stopTime)
+            .map(([day, daySchedule]) => {
+                const dayName = day.charAt(0).toUpperCase() + day.slice(1);
+                return `${dayName}: ${daySchedule!.startTime} - ${daySchedule!.stopTime}`;
+            });
+
+        if (daysWithSchedule.length === 0) {
+            return (
+                <Box color='text-status-inactive'>
+                    <em>No days configured - Model is always on.</em>
+                </Box>
+            );
+        }
+
+        return (
+            <Box>
+                <div>Timezone: {timezone}</div>
+                {daysWithSchedule.map((daySchedule, index) => (
+                    <div key={index}>{daySchedule}</div>
+                ))}
+            </Box>
+        );
+    }
+
+    return (
+        <Box color='text-status-inactive'>
+            <em>Schedule configured but details unavailable</em>
+        </Box>
+    );
+};
+
 export const createCardDefinitions = (defaultModelId?: string) => ({
     header: (model: IModel) => <div>{model.modelId} {model.modelId === defaultModelId && <Badge>DEFAULT</Badge>}</div>,
     sections: [
@@ -44,7 +118,7 @@ export const createCardDefinitions = (defaultModelId?: string) => ({
         },
         {
             id: 'modelFeatures',
-            header: 'Model Features',
+            header: 'Model features',
             content: (model: IModel) => model.features ? model.features.map((feat) => feat.name).join(', ') : '-',
         },
         {
@@ -69,8 +143,18 @@ export const createCardDefinitions = (defaultModelId?: string) => ({
         },
         {
             id: 'instanceType',
-            header: 'Instance Type',
+            header: 'Instance type',
             content: (model: IModel) => model.instanceType ?  model.instanceType : '-',
+        },
+        {
+            id: 'scheduleType',
+            header: 'Schedule type',
+            content: (model: IModel) => formatScheduleType(model),
+        },
+        {
+            id: 'scheduleDetails',
+            header: 'Schedule details',
+            content: (model: IModel) => formatScheduleDetails(model),
         },
         {
             id: 'modelDescription',
@@ -79,7 +163,7 @@ export const createCardDefinitions = (defaultModelId?: string) => ({
         },
         {
             id: 'allowedGroups',
-            header: 'Allowed Groups',
+            header: 'Allowed groups',
             content: (model: IModel) => model?.allowedGroups?.length > 0 ? `${model.allowedGroups.join(', ')}` : <em>(public)</em>,
         },
         {
@@ -99,22 +183,24 @@ export const PAGE_SIZE_OPTIONS = DEFAULT_PAGE_SIZE_OPTIONS('Models');
 
 export const DEFAULT_PREFERENCES: CollectionPreferencesProps.Preferences = {
     pageSize: 12,
-    visibleContent: ['modelName', 'modelFeatures', 'modelType', 'modelUrl', 'streaming', 'hosting', 'instanceType', 'modelDescription', 'allowedGroups', 'modelStatus'],
+    visibleContent: ['modelName', 'modelFeatures', 'modelType', 'modelUrl', 'streaming', 'hosting', 'instanceType', 'scheduleType', 'scheduleDetails', 'modelDescription', 'allowedGroups', 'modelStatus'],
 };
 
 export const VISIBLE_CONTENT_OPTIONS = [
     {
-        label: 'Displayed Properties',
+        label: 'Displayed properties',
         options: [
             { id: 'modelName', label: 'Name' },
             { id: 'modelFeatures', label: 'Features'},
             { id: 'modelType', label: 'Type' },
             { id: 'modelUrl', label: 'URL' },
             { id: 'streaming', label: 'Streaming' },
-            { id: 'hosting', label: 'LISA-Hosted Infrastructure' },
-            { id: 'instanceType', label: 'Instance Type' },
+            { id: 'hosting', label: 'LISA-Hosted infrastructure' },
+            { id: 'instanceType', label: 'Instance type' },
+            { id: 'scheduleType', label: 'Schedule type' },
+            { id: 'scheduleDetails', label: 'Schedule details' },
             { id: 'modelDescription', label: 'Description' },
-            { id: 'allowedGroups', label: 'Allowed Groups' },
+            { id: 'allowedGroups', label: 'Allowed groups' },
             { id: 'modelStatus', label: 'Status' },
         ],
     },

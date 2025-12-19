@@ -42,6 +42,7 @@ import {
 } from '@/shared/reducers/user-preferences.reducer';
 import { useNotificationService } from '@/shared/util/hooks';
 import { setBreadcrumbs } from '@/shared/reducers/breadcrumbs.reducer';
+import { formatDate } from '@/shared/util/formats';
 
 export function McpServerManagementComponent () {
     const navigate = useNavigate();
@@ -172,7 +173,7 @@ export function McpServerManagementComponent () {
             pagination={<Pagination {...paginationProps} />}
             items={items}
             columnDefinitions={[
-                { header: 'Use Server', cell: (item) => item.canUse ? <Toggle checked={preferences?.preferences?.mcp?.enabledServers.find((server) => server.id === item.id)?.enabled ?? false} onChange={({detail}) => toggleServer(item.id, item.name, detail.checked)}/> : <></>},
+                { header: 'Use server', cell: (item) => item.canUse ? <Toggle checked={preferences?.preferences?.mcp?.enabledServers.find((server) => server.id === item.id)?.enabled ?? false} onChange={({detail}) => toggleServer(item.id, item.name, detail.checked)}/> : <></>},
                 { header: 'Name', cell: (item) => <Link onClick={() => navigate(`./${item.id}`)}>{item.name}</Link>},
                 { header: 'Description', cell: (item) => item.description, id: 'description', sortingField: 'description'},
                 { header: 'URL', cell: (item) => item.url, id: 'url', sortingField: 'url'},
@@ -180,7 +181,7 @@ export function McpServerManagementComponent () {
                 { header: 'Groups', cell: (item) => {
                     return item.groups?.length ? item.groups?.map((group) => group.replace(/^\w+?:/, '')).join(', ') : '-';
                 }},
-                { header: 'Updated', cell: (item) => item.created, id: 'created', sortingField: 'created'},
+                { header: 'Created', cell: (item) => formatDate(item.created), id: 'created', sortingField: 'created'},
                 ...(isUserAdmin ? [{ header: 'Status', cell: (item) => item.status ?? McpServerStatus.Inactive}] : [])
             ]}
         />

@@ -19,19 +19,20 @@ from __future__ import annotations
 import json
 import logging
 import re
-import time
 import urllib.parse
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta
 from enum import auto, Enum, StrEnum
-from typing import Annotated, Any, Dict, Generator, List, Optional, TypeAlias, Union
+from typing import Annotated, Any, Dict, Generator, List, Literal, Optional, TypeAlias, Union
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
 from pydantic.functional_validators import AfterValidator, field_validator, model_validator
 from typing_extensions import Self
 from utilities.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, MIN_PAGE_SIZE
+from utilities.time import now, utc_now
 from utilities.validation import (
     validate_all_fields_defined,
     validate_any_fields_defined,
@@ -122,8 +123,8 @@ class GuardrailsTableEntry(BaseModel):
     mode: str
     description: Optional[str]
     allowedGroups: List[str]
-    createdDate: int = Field(default_factory=lambda: int(time.time() * 1000))
-    lastModifiedDate: int = Field(default_factory=lambda: int(time.time() * 1000))
+    createdDate: int = Field(default_factory=lambda: now())
+    lastModifiedDate: int = Field(default_factory=lambda: now())
 
 
 class MetricConfig(BaseModel):
@@ -151,15 +152,179 @@ class LoadBalancerConfig(BaseModel):
     healthCheckConfig: LoadBalancerHealthCheckConfig
 
 
+class ScheduleType(str, Enum):
+    """Defines supported schedule types for resource scheduling"""
+
+    def __str__(self) -> str:
+        """Returns string representation of the enum value"""
+        return str(self.value)
+
+    DAILY = "DAILY"
+    RECURRING = "RECURRING"
+
+
+class DaySchedule(BaseModel):
+    """Defines start and stop times for a single day"""
+
+    startTime: str = Field(pattern=r"^([01]?[0-9]|2[0-3]):[0-5][0-9]$")
+    stopTime: str = Field(pattern=r"^([01]?[0-9]|2[0-3]):[0-5][0-9]$")
+
+    @field_validator("startTime", "stopTime")
+    @classmethod
+    def validate_time_format(cls, v: str) -> str:
+        """Validates time format is HH:MM"""
+        try:
+
+            datetime.strptime(v, "%H:%M")
+        except ValueError:
+            raise ValueError("Time must be in HH:MM format")
+        return v
+
+    @model_validator(mode="after")
+    def validate_stop_after_start(self) -> Self:
+        """Validates that stop time is after start time and at least 2 hours later"""
+
+        start_time = datetime.strptime(self.startTime, "%H:%M").time()
+        stop_time = datetime.strptime(self.stopTime, "%H:%M").time()
+
+        # Reject if start and stop times are exactly equal
+        if start_time == stop_time:
+            raise ValueError("Stop time must be at least 2 hours after start time")
+
+        # Convert to datetime objects for easier calculation
+        start_dt = datetime.combine(datetime.today(), start_time)
+        stop_dt = datetime.combine(datetime.today(), stop_time)
+
+        # Handle case where stop time is next day (e.g., start at 23:00, stop at 01:00)
+        if stop_time < start_time:
+            stop_dt += timedelta(days=1)
+
+        # Calculate the time difference
+        time_diff = stop_dt - start_dt
+
+        # Ensure stop time is at least 2 hours after start time
+        min_duration = timedelta(hours=2)
+        if time_diff < min_duration:
+            raise ValueError("Stop time must be at least 2 hours after start time")
+
+        return self
+
+
+class WeeklySchedule(BaseModel):
+    """Defines schedule for each day of the week with one start/stop time per day"""
+
+    monday: Optional[DaySchedule] = None
+    tuesday: Optional[DaySchedule] = None
+    wednesday: Optional[DaySchedule] = None
+    thursday: Optional[DaySchedule] = None
+    friday: Optional[DaySchedule] = None
+    saturday: Optional[DaySchedule] = None
+    sunday: Optional[DaySchedule] = None
+
+    @model_validator(mode="after")
+    def validate_daily_schedules(self) -> Self:
+        """Validates that at least one day has a schedule configured"""
+        days = [self.monday, self.tuesday, self.wednesday, self.thursday, self.friday, self.saturday, self.sunday]
+
+        if not any(days):
+            raise ValueError("At least one day must have a schedule configured")
+
+        return self
+
+
+class NextScheduledAction(BaseModel):
+    """Defines the next scheduled action for a model"""
+
+    action: str = Field(pattern=r"^(START|STOP)$")
+    scheduledTime: str
+
+
+class ScheduleFailure(BaseModel):
+    """Defines schedule failure information"""
+
+    timestamp: str
+    error: str
+    retryCount: int
+
+
+class BaseSchedulingConfig(BaseModel):
+    """Base configuration shared by all scheduling types"""
+
+    timezone: str = Field(default="UTC")
+
+    # Schedule metadata and tracking
+    scheduleEnabled: bool = False
+    lastScheduleUpdate: Optional[str] = None
+    scheduledActionArns: Optional[List[str]] = None
+
+    # Status tracking
+    scheduleConfigured: bool = False
+    lastScheduleFailed: bool = False
+
+    # Next scheduled action info (computed field)
+    nextScheduledAction: Optional[NextScheduledAction] = None
+
+    # Failure tracking
+    lastScheduleFailure: Optional[ScheduleFailure] = None
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, v: str) -> str:
+        """Validates timezone is a valid IANA timezone identifier"""
+        try:
+            ZoneInfo(v)
+        except Exception:
+            raise ValueError(f"Invalid timezone: {v}, timezone must be a valid IANA timezone identifier")
+        return v
+
+
+class DailySchedulingConfig(BaseSchedulingConfig):
+    """Configuration for daily schedules with different times per day"""
+
+    scheduleType: Literal["DAILY"] = "DAILY"
+    dailySchedule: WeeklySchedule
+
+    @model_validator(mode="after")
+    def validate_daily_schedule_exclusivity(self) -> Self:
+        """Validates that only dailySchedule is present for DAILY type"""
+        # Check if any recurring schedule data was included
+        if hasattr(self, "recurringSchedule"):
+            raise ValueError("recurringSchedule not allowed for DAILY schedule type")
+        return self
+
+
+class RecurringSchedulingConfig(BaseSchedulingConfig):
+    """Configuration for recurring schedules with same time every day"""
+
+    scheduleType: Literal["RECURRING"] = "RECURRING"
+    recurringSchedule: DaySchedule
+
+    @model_validator(mode="after")
+    def validate_recurring_schedule_exclusivity(self) -> Self:
+        """Validates that only recurringSchedule is present for RECURRING type"""
+        # Check if any daily schedule data was included
+        if hasattr(self, "dailySchedule"):
+            raise ValueError("dailySchedule not allowed for RECURRING schedule type")
+        return self
+
+
+# Discriminated union type for scheduling configurations
+SchedulingConfig = Annotated[
+    Union[DailySchedulingConfig, RecurringSchedulingConfig], Field(discriminator="scheduleType")
+]
+
+
 class AutoScalingConfig(BaseModel):
     """Specifies auto-scaling parameters for model deployment."""
 
     blockDeviceVolumeSize: Optional[NonNegativeInt] = 50
-    minCapacity: NonNegativeInt
-    maxCapacity: NonNegativeInt
+    minCapacity: PositiveInt
+    maxCapacity: PositiveInt
+    desiredCapacity: Optional[PositiveInt] = None
     cooldown: PositiveInt
     defaultInstanceWarmup: PositiveInt
     metricConfig: MetricConfig
+    scheduling: Optional[SchedulingConfig] = None
 
     @model_validator(mode="after")
     def validate_auto_scaling_config(self) -> Self:
@@ -168,6 +333,10 @@ class AutoScalingConfig(BaseModel):
             raise ValueError("minCapacity must be less than or equal to the maxCapacity.")
         if self.blockDeviceVolumeSize is not None and self.blockDeviceVolumeSize < 30:
             raise ValueError("blockDeviceVolumeSize must be greater than or equal to 30.")
+        if self.desiredCapacity and self.desiredCapacity > self.maxCapacity:
+            raise ValueError("Desired capacity must be less than or equal to max capacity.")
+        if self.desiredCapacity and self.desiredCapacity < self.minCapacity:
+            raise ValueError("Desired capacity must be greater than or equal to minimum capacity.")
         return self
 
 
@@ -419,8 +588,47 @@ class DeleteModelResponse(ApiResponseBase):
     pass
 
 
+class UpdateScheduleResponse(BaseModel):
+    """Response object for schedule create/update operations."""
+
+    message: str
+    modelId: str
+    scheduleEnabled: bool
+
+
+class GetScheduleResponse(BaseModel):
+    """Response object for getting schedule configuration."""
+
+    modelId: str
+    scheduling: Dict[str, Any]
+    nextScheduledAction: Optional[Dict[str, str]] = None
+
+
+class DeleteScheduleResponse(BaseModel):
+    """Response object for schedule deletion."""
+
+    message: str
+    modelId: str
+    scheduleEnabled: bool
+
+
+class GetScheduleStatusResponse(BaseModel):
+    """Response object for getting schedule status."""
+
+    modelId: str
+    scheduleEnabled: bool
+    scheduleConfigured: bool
+    lastScheduleFailed: bool
+    scheduleStatus: str
+    scheduleType: Optional[str] = None
+    timezone: str
+    nextScheduledAction: Optional[Dict[str, str]] = None
+    lastScheduleUpdate: Optional[str] = None
+    lastScheduleFailure: Optional[Dict[str, Any]] = None
+
+
 class IngestionType(StrEnum):
-    """Specifies how document was ingested into the system."""
+    """Specifies whether ingestion was automatic or manual."""
 
     AUTO = auto()  # Automatic ingestion via pipeline (event-driven)
     MANUAL = auto()  # Manual ingestion via API (user-initiated)
@@ -447,7 +655,7 @@ class ChunkingStrategyType(StrEnum):
     NONE = auto()
 
 
-class IngestionStatus(str, Enum):
+class IngestionStatus(StrEnum):
     """Defines possible states for document ingestion process."""
 
     INGESTION_PENDING = "INGESTION_PENDING"
@@ -529,7 +737,7 @@ class RagDocument(BaseModel):
     subdocs: List[str] = Field(default_factory=lambda: [], exclude=True)
     chunk_strategy: ChunkingStrategy
     ingestion_type: IngestionType = Field(default_factory=lambda: IngestionType.MANUAL)
-    upload_date: int = Field(default_factory=lambda: int(time.time() * 1000))
+    upload_date: int = Field(default_factory=lambda: now())
     chunks: Optional[int] = 0
     model_config = ConfigDict(use_enum_values=True, validate_default=True)
 
@@ -592,7 +800,7 @@ class IngestionJob(BaseModel):
         default=IngestionType.MANUAL, description="How the document was ingested (MANUAL, AUTO, or EXISTING)"
     )
     status: IngestionStatus = IngestionStatus.INGESTION_PENDING
-    created_date: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_date: str = Field(default_factory=lambda: utc_now().isoformat())
     error_message: Optional[str] = Field(default=None)
     document_name: Optional[str] = Field(default=None)
     auto: Optional[bool] = Field(default=None)
@@ -868,8 +1076,7 @@ class PipelineConfig(BaseModel):
     )
     chunkSize: Optional[int] = Field(
         default=None,
-        ge=100,
-        le=10000,
+        ge=0,
         description="Chunk size for pipeline ingestion (deprecated, use chunkingStrategy)",
     )
     chunkingStrategy: Optional[ChunkingStrategy] = Field(
@@ -881,6 +1088,9 @@ class PipelineConfig(BaseModel):
     s3Bucket: str = Field(min_length=1, description="S3 bucket for pipeline source")
     s3Prefix: str = Field(description="S3 prefix for pipeline source")
     trigger: PipelineTrigger = Field(description="Pipeline trigger type")
+    metadata: Optional[CollectionMetadata] = Field(
+        default_factory=lambda: CollectionMetadata(tags=[]), description="Metadata for the pipeline including tags"
+    )
 
     @model_validator(mode="after")
     def validate_chunking_config(self) -> Self:
@@ -959,7 +1169,7 @@ class RagCollectionConfig(BaseModel):
     """Represents a RAG collection configuration."""
 
     collectionId: str = Field(default_factory=lambda: str(uuid4()), description="Unique collection identifier")
-    repositoryId: str = Field(min_length=1, description="Parent vector store ID")
+    repositoryId: str = Field(min_length=1, description="Parent repository ID this collection belongs to")
     name: Optional[str] = Field(default=None, max_length=100, description="User-friendly collection name")
     description: Optional[str] = Field(default=None, description="Collection description")
     chunkingStrategy: Optional[ChunkingStrategy] = Field(default=None, description="Chunking strategy for documents")
@@ -970,15 +1180,19 @@ class RagCollectionConfig(BaseModel):
         default=None, description="Collection-specific metadata (merged with parent)"
     )
     allowedGroups: Optional[List[str]] = Field(default=None, description="User groups with access to collection")
-    embeddingModel: Optional[str] = Field(description="Embedding model ID (can be set at creation, immutable after)")
+    embeddingModel: Optional[str] = Field(
+        default=None, description="Embedding model ID (can be set at creation, immutable after)"
+    )
     createdBy: str = Field(min_length=1, description="User ID of creator")
-    createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Creation timestamp")
-    updatedAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Last update timestamp")
+    createdAt: datetime = Field(default_factory=utc_now, description="Creation timestamp")
+    updatedAt: datetime = Field(default_factory=utc_now, description="Last update timestamp")
     status: CollectionStatus = Field(default=CollectionStatus.ACTIVE, description="Collection status")
-    pipelines: List[PipelineConfig] = Field(default_factory=list, description="Automated ingestion pipelines")
-    default: bool = Field(default=False, description="Indicates if this is a default collection for Bedrock KB")
+    default: bool = Field(default=False, description="Indicates if this is a default collection")
     dataSourceId: Optional[str] = Field(
         default=None, description="Bedrock KB data source ID for filtering (Bedrock KB only)"
+    )
+    pipelines: Optional[List[PipelineConfig]] = Field(
+        default=None, description="Pipeline configurations for this collection"
     )
 
     model_config = ConfigDict(use_enum_values=True, validate_default=True)
@@ -1156,8 +1370,9 @@ class VectorStoreConfig(BaseModel):
     )
     # Status and timestamps
     status: Optional[VectorStoreStatus] = Field(default=None, description="Repository Status")
-    createdAt: Optional[datetime] = Field(default=None, description="Creation timestamp")
-    updatedAt: Optional[datetime] = Field(default=None, description="Last update timestamp")
+    createdBy: str = Field(description="Creation user")
+    createdAt: datetime = Field(default_factory=utc_now, description="Creation timestamp")
+    updatedAt: Optional[datetime] = Field(default_factory=utc_now, description="Last update timestamp")
 
 
 class UpdateVectorStoreRequest(BaseModel):
@@ -1181,7 +1396,7 @@ class KnowledgeBaseMetadata(BaseModel):
     name: str = Field(description="Knowledge Base name")
     description: Optional[str] = Field(default="", description="Knowledge Base description")
     status: str = Field(description="Knowledge Base status (ACTIVE, CREATING, DELETING, etc.)")
-    createdAt: Optional[datetime] = Field(default=None, description="Creation timestamp")
+    createdAt: datetime = Field(default_factory=utc_now, description="Creation timestamp")
     updatedAt: Optional[datetime] = Field(default=None, description="Last update timestamp")
 
 
@@ -1194,7 +1409,7 @@ class DataSourceMetadata(BaseModel):
     status: str = Field(description="Data Source status (AVAILABLE, CREATING, DELETING, etc.)")
     s3Bucket: str = Field(description="S3 bucket for the data source")
     s3Prefix: str = Field(default="", description="S3 prefix for the data source")
-    createdAt: Optional[datetime] = Field(default=None, description="Creation timestamp")
+    createdAt: datetime = Field(default_factory=utc_now, description="Creation timestamp")
     updatedAt: Optional[datetime] = Field(default=None, description="Last update timestamp")
     managed: Optional[bool] = Field(default=False, description="Whether this data source is managed by a collection")
     collectionId: Optional[str] = Field(default=None, description="Collection ID if managed")

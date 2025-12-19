@@ -28,19 +28,21 @@ export enum ChunkingStrategyType {
  * Fixed size chunking strategy schema
  */
 export const FixedSizeChunkingStrategySchema = z.object({
-    type: z.literal(ChunkingStrategyType.FIXED).describe('Fixed size chunking strategy type'),
+    type: z.literal(ChunkingStrategyType.FIXED).default(ChunkingStrategyType.FIXED).describe('Fixed size chunking strategy type'),
     size: z.number().min(100).max(10000).default(512).describe('Size of each chunk in characters'),
     overlap: z.number().min(0).default(51).describe('Overlap between chunks in characters'),
 }).refine(
     (data) => data.overlap <= data.size / 2,
-    { message: 'overlap must be less than or equal to half of size' }
+    {
+        error: 'overlap must be less than or equal to half of size'
+    }
 );
 
 /**
  * None chunking strategy schema - documents ingested as-is without chunking
  */
 export const NoneChunkingStrategySchema = z.object({
-    type: z.literal(ChunkingStrategyType.NONE).describe('No chunking - documents ingested as-is'),
+    type: z.literal(ChunkingStrategyType.NONE).default(ChunkingStrategyType.NONE).describe('No chunking - documents ingested as-is'),
 });
 
 /**
@@ -97,7 +99,7 @@ export const OpenSearchNewClusterConfig = z.object({
     masterNodes: z.number().min(0).default(0).describe('The number of instances to use for the master node'),
     masterNodeInstanceType: z.string().default('r7g.large.search').describe('The hardware configuration of the computer that hosts the dedicated master node'),
     volumeSize: z.number().min(20).default(20).describe('The size (in GiB) of the EBS volume for each data node. The minimum and maximum size of an EBS volume depends on the EBS volume type and the instance type to which it is attached.'),
-    volumeType: z.nativeEnum(EbsDeviceVolumeType).default(EbsDeviceVolumeType.GP3).describe('The EBS volume type to use with the Amazon OpenSearch Service domain'),
+    volumeType: z.enum(EbsDeviceVolumeType).default(EbsDeviceVolumeType.GP3).describe('The EBS volume type to use with the Amazon OpenSearch Service domain'),
     multiAzWithStandby: z.boolean().default(false).describe('Indicates whether Multi-AZ with Standby deployment option is enabled.'),
 });
 
@@ -114,13 +116,20 @@ const triggerSchema = z.object({
     event: z.literal(triggerEnum.event).describe('This ingestion pipeline runs whenever changes are detected.'),
 });
 
+/**
+ * Metadata schema for tags - reusable across pipelines, collections, and repositories
+ */
+export const MetadataSchema = z.object({
+    tags: z.array(z.string()).optional().default([]).describe('Tags for categorizing and organizing resources.'),
+});
+
+export type Metadata = z.infer<typeof MetadataSchema>;
+
 export const RagRepositoryPipeline = z.object({
-    chunkSize: z.number().optional().default(512).describe('The size of the chunks used for document segmentation.'),
-    chunkOverlap: z.number().optional().default(51).describe('The size of the overlap between chunks.'),
     chunkingStrategy: ChunkingStrategySchema.optional().describe('Chunking strategy for documents in this pipeline.'),
     embeddingModel: z.string().optional().describe('The embedding model used for document ingestion in this pipeline.'),
     collectionId: z.string().optional().describe('The collection ID to ingest documents into.'),
-    s3Bucket: z.string().describe('The S3 bucket monitored by this pipeline for document processing.'),
+    s3Bucket: z.string().min(1, 'S3 bucket is required').describe('The S3 bucket monitored by this pipeline for document processing.'),
     s3Prefix: z.string()
         .regex(/^(?!.*(?:^|\/)\.\.?(\/|$)).*/, 'Prefix cannot contain relative path components (ie `.` or `..`)')
         .regex(/^([a-zA-Z0-9!_.*'()/=-]+\/)*[a-zA-Z0-9!_.*'()/=-]*$/, 'Prefix must be a valid S3 prefix.')
@@ -129,6 +138,7 @@ export const RagRepositoryPipeline = z.object({
     trigger: z.union([triggerSchema.shape.daily, triggerSchema.shape.event])
         .default('event').describe('The event type that triggers document ingestion.'),
     autoRemove: z.boolean().default(true).describe('Enable removal of document from vector store when deleted from S3. This will also remove the file from S3 if file is deleted from vector store through API/UI.'),
+    metadata: MetadataSchema.optional().default({ tags: [] }).describe('Metadata for the pipeline including tags.'),
 });
 
 export type PipelineConfig = z.infer<typeof RagRepositoryPipeline>;
@@ -149,9 +159,8 @@ export type RdsConfig = z.infer<typeof RdsInstanceConfig>;
 
 export type BedrockKnowledgeBaseConfig = z.infer<typeof BedrockKnowledgeBaseInstanceConfig>;
 
-export const RagRepositoryMetadata = z.object({
-    tags: z.array(z.string()).default([]).describe('Tags for categorizing and organizing the repository.'),
-    customFields: z.record(z.any()).optional().describe('Custom metadata fields for the repository.'),
+export const RagRepositoryMetadata = MetadataSchema.extend({
+    customFields: z.record(z.string(), z.any()).optional().describe('Custom metadata fields for the repository.'),
 });
 
 export const RagRepositoryConfigSchema = z
@@ -164,20 +173,35 @@ export const RagRepositoryConfigSchema = z
         repositoryName: z.string().optional().describe('The user-friendly name displayed in the UI.'),
         description: z.string().optional().describe('Description of the repository.'),
         embeddingModelId: z.string().optional().describe('The default embedding model to be used when selecting repository.'),
-        type: z.nativeEnum(RagRepositoryType).describe('The vector store designated for this repository.'),
+        type: z.enum(RagRepositoryType).describe('The vector store designated for this repository.'),
         opensearchConfig: z.union([OpenSearchExistingClusterConfig, OpenSearchNewClusterConfig]).optional(),
         rdsConfig: RdsInstanceConfig.optional(),
         bedrockKnowledgeBaseConfig: BedrockKnowledgeBaseInstanceConfig.optional(),
         pipelines: z.array(RagRepositoryPipeline).optional().default([]).describe('Rag ingestion pipeline for automated inclusion into a vector store from S3'),
-        allowedGroups: z.array(z.string().nonempty()).optional().default([]).describe('The groups provided by the Identity Provider that have access to this repository. If no groups are specified, access is granted to everyone.'),
+        allowedGroups: z.array(z.string()).optional().describe('The groups provided by the Identity Provider that have access to this repository. If no groups are specified, access is granted to everyone.'),
+        createdBy: z.string().describe('User ID of creator'),
+        createdAt: z.iso.datetime().describe('Creation timestamp (ISO 8601)'),
+        updatedAt: z.iso.datetime().describe('Last update timestamp (ISO 8601)'),
         metadata: RagRepositoryMetadata.optional().describe('Metadata for the repository including tags and custom fields.'),
-        status: z.nativeEnum(VectorStoreStatus).optional().describe('Current deployment status of the repository')
+        status: z.enum(VectorStoreStatus).optional().describe('Current deployment status of the repository')
     })
     .refine((input) => {
         return !((input.type === RagRepositoryType.OPENSEARCH && input.opensearchConfig === undefined) ||
-            (input.type === RagRepositoryType.PGVECTOR && input.rdsConfig === undefined));
+            (input.type === RagRepositoryType.PGVECTOR && input.rdsConfig === undefined) ||
+            (input.type === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE && input.bedrockKnowledgeBaseConfig === undefined));
     })
     .describe('Configuration schema for RAG repository. Defines settings for OpenSearch.');
 
 export type RagRepositoryConfig = z.infer<typeof RagRepositoryConfigSchema>;
 export type RDSConfig = RagRepositoryConfig['rdsConfig'];
+
+/**
+ * Schema for RAG repository configuration used during deployment.
+ * Omits database-managed fields like updatedAt that are set during DB operations.
+ */
+export const RagRepositoryDeploymentConfigSchema = RagRepositoryConfigSchema.omit({
+    updatedAt: true,
+    status: true,
+});
+
+export type RagRepositoryDeploymentConfig = z.infer<typeof RagRepositoryDeploymentConfigSchema>;

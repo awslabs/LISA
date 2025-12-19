@@ -13,11 +13,11 @@
 #   limitations under the License.
 
 """Authorize for REST API."""
+import hashlib
 import json
 import logging
 import os
 import ssl
-from datetime import datetime
 from typing import Any, Dict
 
 import boto3
@@ -27,6 +27,7 @@ import requests
 from botocore.exceptions import ClientError
 from cachetools import cached, TTLCache
 from utilities.common_functions import authorization_wrapper, get_id_token, get_property_path, retry_config
+from utilities.time import now_seconds
 
 logger = logging.getLogger(__name__)
 
@@ -69,13 +70,17 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
         logger.debug(f"Generated policy: {allow_policy}")
         return allow_policy
 
-    if os.environ.get("TOKEN_TABLE_NAME", None) and is_valid_api_token(id_token):
-        username = "api-token"
-        groups = json.dumps([])
-        allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=username)
-        allow_policy["context"] = {"username": username, "groups": groups}
-        logger.debug(f"Generated policy: {allow_policy}")
-        return allow_policy
+    if os.environ.get("TOKEN_TABLE_NAME", None):
+        token_info = is_valid_api_token(id_token)
+        if token_info:
+
+            username = token_info.get("username", "api-token")
+            groups = json.dumps(token_info.get("groups", []))
+
+            allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=username)
+            allow_policy["context"] = {"username": username, "groups": groups}
+            logger.debug(f"Generated policy: {allow_policy}")
+            return allow_policy
 
     if jwt_data := id_token_is_valid(id_token=id_token, client_id=client_id, authority=authority):
         is_admin_user = is_admin(jwt_data, admin_group, jwt_groups_property)
@@ -121,15 +126,40 @@ def _get_token_info(token: str) -> Any:
     return ddb_response.get("Item", None)
 
 
-def is_valid_api_token(token: str) -> bool:
-    if token:
-        token_info = _get_token_info(token)
-        if token_info:
-            token_expiration = int(token_info.get(TOKEN_EXPIRATION_NAME, datetime.max.timestamp()))
-            current_time = int(datetime.now().timestamp())
-            if current_time < token_expiration:  # token has not expired yet
-                return True
-    return False
+def is_valid_api_token(token: str) -> dict | None:
+    """
+    Validate API token and return token info if valid.
+    Returns: token_info
+    """
+    if not token:
+        return None
+
+    # Hash the provided token
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+
+    # Look up hashed token in DynamoDB
+    token_info = _get_token_info(token_hash)
+
+    if not token_info:
+        return None
+
+    # Reject legacy tokens without tokenUUID
+    if not token_info.get("tokenUUID"):
+        logger.warning("Legacy token detected - missing tokenUUID attribute. Token must be recreated.")
+        return None
+
+    # Check expiration
+    token_expiration = token_info.get(TOKEN_EXPIRATION_NAME)
+    if not token_expiration:
+        logger.warning("Token missing expiration field")
+        return None
+
+    current_time = now_seconds()
+    if current_time >= int(token_expiration):
+        logger.info(f"Token expired at {token_expiration}")
+        return None
+
+    return token_info
 
 
 def id_token_is_valid(*, id_token: str, client_id: str, authority: str) -> Dict[str, Any] | None:

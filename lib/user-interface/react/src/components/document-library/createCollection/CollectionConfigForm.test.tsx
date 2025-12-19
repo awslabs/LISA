@@ -91,7 +91,7 @@ describe('CollectionConfigForm', () => {
             expect(screen.getByText('Collection Name')).toBeInTheDocument();
             expect(screen.getByText('Description (optional)')).toBeInTheDocument();
             expect(screen.getByText('Repository')).toBeInTheDocument();
-            expect(screen.getByText('Embedding Model')).toBeInTheDocument();
+            expect(screen.getByText('Embedding model')).toBeInTheDocument();
         });
 
         it('should render collection name input', () => {

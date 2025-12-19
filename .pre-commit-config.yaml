@@ -1,6 +1,6 @@
 default_language_version:
   node: system
-  python: python3.11
+  python: python3.13
 repos:
 - repo: local
   hooks:
@@ -13,11 +13,12 @@ repos:
       files: config-base.yaml
 
 - repo: https://github.com/PyCQA/bandit
-  rev: '1.7.10'
+  rev: '1.9.2'
   hooks:
     - id: bandit
       args: [--recursive, -c=pyproject.toml]
       additional_dependencies: ['bandit[toml]', 'pbr', 'PyYAML']
+      exclude: ^test/cdk/stacks/__baselines__/
 
 - repo: https://github.com/Yelp/detect-secrets
   rev: v1.5.0
@@ -28,25 +29,30 @@ repos:
         )$
 
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v5.0.0
+  rev: v6.0.0
   hooks:
     - id: check-json
+      exclude: ^test/cdk/stacks/__baselines__/
     - id: check-yaml
     - id: check-case-conflict
     - id: mixed-line-ending
       args: ['--fix=lf']
+      exclude: ^test/cdk/stacks/__baselines__/
     - id: fix-byte-order-marker
+      exclude: ^test/cdk/stacks/__baselines__/
     - id: check-merge-conflict
     - id: detect-private-key
     - id: end-of-file-fixer
+      exclude: ^test/cdk/stacks/__baselines__/
     - id: trailing-whitespace
+      exclude: ^test/cdk/stacks/__baselines__/
 
 - repo: https://github.com/codespell-project/codespell
-  rev: v2.3.0
+  rev: v2.4.1
   hooks:
     - id: codespell
       entry: codespell
-      args: ['--skip=*.git*,*cdk.out*,*venv*,*mypy_cache*,*package-lock*,*node_modules*,*dist/*,*poetry.lock*,*coverage*,*models/*,*htmlcov*,*TIKTOKEN_CACHE/*', "-L=xdescribe,assertIn,afterAll"]
+      args: ['--skip=*.git*,*cdk.out*,*venv*,*mypy_cache*,*package-lock*,*node_modules*,*dist/*,*poetry.lock*,*coverage*,*models/*,*htmlcov*,*TIKTOKEN_CACHE/*,*test/cdk/stacks/__baselines__/*', "-L=xdescribe,assertIn,afterAll"]
       pass_filenames: false
 
 - repo: https://github.com/pycqa/isort
@@ -54,24 +60,26 @@ repos:
   hooks:
     - id: isort
       name: isort (python)
+      exclude: ^test/cdk/stacks/__baselines__/
 
-- repo: https://github.com/ambv/black
-  rev: '24.10.0'
+- repo: https://github.com/psf/black
+  rev: '25.12.0'
   hooks:
     - id: black
+      exclude: ^test/cdk/stacks/__baselines__/
 
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: 'v0.8.4'
+  rev: 'v0.14.9'
   hooks:
-    - id: ruff
+    - id: ruff-check
       args:
         - --exit-non-zero-on-fix
         - --per-file-ignores=test/**/*.py:E402,test/**/*.py:PLC0415
         - --fix
-      exclude: \.ipynb$
+      exclude: (\.ipynb$|^test/cdk/stacks/__baselines__/)
 
 - repo: https://github.com/pycqa/flake8
-  rev: '7.1.1'
+  rev: '7.3.0'
   hooks:
     - id: flake8
       additional_dependencies:
@@ -82,12 +90,12 @@ repos:
       args:
         - --max-line-length=120
         - --extend-immutable-calls=Query,fastapi.Depends,fastapi.params.Depends
-        - --ignore=B008,E203,W503 # Ignore error for function calls in argument defaults
-      exclude: ^(__init__.py$|.*\/__init__.py$)
+        - --ignore=B008,B042,E203,W503 # Ignore error for function calls in argument defaults and exception __init__ args
+      exclude: ^(__init__.py$|.*\/__init__.py$|test/cdk/stacks/__baselines__/)
 
 
 - repo: https://github.com/pre-commit/mirrors-mypy
-  rev: 'v1.13.0'
+  rev: 'v1.19.0'
   hooks:
     - id: mypy
       verbose: true
@@ -102,7 +110,7 @@ repos:
       exclude: ^test
 
 - repo: https://github.com/pre-commit/mirrors-eslint
-  rev: 'v9.36.0'
+  rev: 'v9.39.1'
   hooks:
     - id: eslint
       files: \.[jt]sx?$
@@ -110,6 +118,24 @@ repos:
       args:
         - --max-warnings=10
         - --fix
+
+# - repo: https://github.com/Lucas-C/pre-commit-hooks-safety
+#   rev: v1.3.2
+#   hooks:
+#     - id: python-safety-dependencies-check
+
+# - repo: https://github.com/asottile/pyupgrade
+#   rev: v3.19.0
+#   hooks:
+#     - id: pyupgrade
+#       args: [--py313-plus]
+
+# - repo: https://github.com/bridgecrewio/checkov
+#   rev: '3.2.327'
+#   hooks:
+#     - id: checkov
+#       args: [--framework, cloudformation, --framework, arm, --quiet, --compact]
+#       files: \.(json|yaml|yml|template)$
 
 - repo: https://github.com/Lucas-C/pre-commit-hooks
   rev: v1.5.5

@@ -1,0 +1,11 @@
+vpcId: vpc-1234567890
+subnets:
+  - subnetId: subnet-001
+    ipv4CidrBlock: 10.0.1.0/24
+    availabilityZone: us-east-1a
+  - subnetId: subnet-002
+    ipv4CidrBlock: 10.0.2.0/24
+    availabilityZone: us-east-1b
+  - subnetId: subnet-003
+    ipv4CidrBlock: 10.0.3.0/24
+    availabilityZone: us-east-1c

@@ -108,30 +108,6 @@ class TestBedrockKBDefaultCollection:
         assert "bedrock-kb" in collection.metadata.tags
         assert "default" in collection.metadata.tags
 
-    def test_default_collection_includes_pipelines(
-        self, collection_service, mock_vector_store_repo, bedrock_kb_repository
-    ):
-        """Test that default collection includes repository pipelines."""
-        # Arrange
-        from repository.services import RepositoryServiceFactory
-
-        mock_vector_store_repo.find_repository_by_id.return_value = bedrock_kb_repository
-
-        # Act
-        service = RepositoryServiceFactory.create_service(bedrock_kb_repository)
-        collection = service.create_default_collection()
-
-        # Assert
-        assert len(collection.pipelines) == 1
-        pipeline = collection.pipelines[0]
-        # Pipeline can be either a dict or PipelineConfig object
-        if isinstance(pipeline, dict):
-            assert pipeline["s3Bucket"] == "test-kb-bucket"
-            assert pipeline["trigger"] == "event"
-        else:
-            assert pipeline.s3Bucket == "test-kb-bucket"
-            assert pipeline.trigger == "event"
-
 
 class TestBedrockKBCollectionRestrictions:
     """Test that Bedrock KB repositories have appropriate collection restrictions."""

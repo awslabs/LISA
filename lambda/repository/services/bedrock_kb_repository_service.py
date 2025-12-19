@@ -16,11 +16,11 @@
 
 import logging
 import os
-from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import boto3
 from boto3.dynamodb.conditions import Key
+from botocore.exceptions import ClientError
 from models.domain_objects import (
     CollectionMetadata,
     CollectionStatus,
@@ -32,6 +32,8 @@ from models.domain_objects import (
 )
 from repository.rag_document_repo import RagDocumentRepository
 from utilities.bedrock_kb import bulk_delete_documents_from_kb, delete_document_from_kb
+from utilities.exceptions import HTTPException
+from utilities.time import now, utc_now
 
 from .repository_service import RepositoryService
 
@@ -113,7 +115,7 @@ class BedrockKBRepositoryService(RepositoryService):
         if existing_docs:
             # Update existing document timestamp
             existing_doc = existing_docs[0]
-            existing_doc.upload_date = int(datetime.now(timezone.utc).timestamp() * 1000)
+            existing_doc.upload_date = now()
             rag_document_repository.save(existing_doc)
             logger.info(f"Document {kb_s3_path} already tracked, updated timestamp")
             return existing_doc
@@ -284,13 +286,30 @@ class BedrockKBRepositoryService(RepositoryService):
 
         try:
             response = bedrock_agent_client.retrieve(**retrieve_params)
-        except Exception as e:
-            logger.error(f"Bedrock retrieve failed for KB {kb_id}: {str(e)}")
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code", "")
+            error_message = str(e)
+
+            # Check for Aurora DB auto-pause error
+            if error_code == "ValidationException" and "auto-paused" in error_message.lower():
+                logger.warning(f"Aurora DB is resuming from auto-pause for KB {kb_id}")
+                raise HTTPException(
+                    status_code=503,
+                    message=(
+                        "The knowledge base database is currently starting up. "
+                        "Please retry your request in a few moments."
+                    ),
+                )
+
+            logger.error(f"Bedrock retrieve failed for KB {kb_id}: {error_message}")
             if "filter" in retrieve_params.get("retrievalConfiguration", {}).get("vectorSearchConfiguration", {}):
                 logger.error(
                     "Filter may not be supported. Ensure metadata field 'x-amz-bedrock-kb-data-source-id' "
                     "is configured in the Knowledge Base."
                 )
+            raise
+        except Exception as e:
+            logger.error(f"Bedrock retrieve failed for KB {kb_id}: {str(e)}")
             raise
 
         # Transform Bedrock results to standard format
@@ -371,8 +390,8 @@ class BedrockKBRepositoryService(RepositoryService):
             pipelines=self.repository.get("pipelines", []),
             default=is_default,
             dataSourceId=data_source_id,
-            createdAt=datetime.now(timezone.utc),
-            updatedAt=datetime.now(timezone.utc),
+            createdAt=utc_now(),
+            updatedAt=utc_now(),
         )
 
         return collection

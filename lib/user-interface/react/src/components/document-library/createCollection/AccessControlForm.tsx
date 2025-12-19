@@ -14,13 +14,11 @@
  limitations under the License.
  */
 
-import React, { ReactElement } from 'react';
-import FormField from '@cloudscape-design/components/form-field';
+import { ReactElement } from 'react';
 import { Alert, SpaceBetween } from '@cloudscape-design/components';
-import { ArrayInputField } from '../../../shared/form/array-input';
-import { CommonFieldsForm } from '../../../shared/form/CommonFieldsForm';
+import { UserGroupsInput } from '@/shared/form/UserGroupsInput';
 import { RagCollectionConfig } from '#root/lib/schema';
-import { ModifyMethod } from '../../../shared/form/form-props';
+import { ModifyMethod } from '@/shared/form/form-props';
 
 export type AccessControlFormProps = {
     item: RagCollectionConfig;
@@ -30,7 +28,7 @@ export type AccessControlFormProps = {
 };
 
 export function AccessControlForm (props: AccessControlFormProps): ReactElement {
-    const { item, touchFields, setFields, formErrors } = props;
+    const { item, setFields, formErrors } = props;
 
     return (
         <SpaceBetween size='s'>
@@ -39,29 +37,13 @@ export function AccessControlForm (props: AccessControlFormProps): ReactElement 
                 accessible to all users. You can also inherit access controls from the parent repository.
             </Alert>
 
-            {/* Common Fields (Allowed Groups) */}
-            <CommonFieldsForm
-                item={item}
-                setFields={setFields}
-                touchFields={touchFields}
-                formErrors={formErrors}
-                repositoryId={item.repositoryId}
-                showEmbeddingModel={false}
-                showAllowedGroups={true}
+            {/* Allowed Groups */}
+            <UserGroupsInput
+                errorText={formErrors?.allowedGroups}
+                values={item.allowedGroups || []}
+                onChange={(groups) => setFields({ allowedGroups: groups })}
+                description='User groups that can access this collection. Leave empty to inherit from parent repository.'
             />
-
-            {/* Metadata Tags */}
-            <FormField
-                label='Tags (optional)'
-                errorText={formErrors?.['metadata.tags'] || formErrors?.metadata?.tags}
-                description='Metadata tags for further organizing and filtering information (max 50 tags)'
-            >
-                <ArrayInputField
-                    values={item.metadata?.tags || []}
-                    onChange={(tags) => setFields({ 'metadata.tags': tags })}
-                    placeholder='Add tag'
-                />
-            </FormField>
         </SpaceBetween>
     );
 }

@@ -92,7 +92,7 @@ export const DocumentSummarizationModal = ({
     const promptOptions = [
         { label: 'Concise', value: 'concise', description: 'Short Summary (best for small documents)' },
         { label: 'Overview', value: 'overview', description: 'Key bullet points (best for large documents)' },
-        { label: 'Chain of Density', value: 'cod', description: 'An iterative summarization technique' },
+        { label: 'Chain of density', value: 'cod', description: 'An iterative summarization technique' },
         { label: 'Custom', value: 'custom', description: 'Write your own prompt' },
     ];
 
@@ -220,7 +220,7 @@ export const DocumentSummarizationModal = ({
                         statusType={isFetchingModels ? 'loading' : 'finished'}
                         loadingText='Loading models (might take few seconds)...'
                         placeholder='Select a model'
-                        empty={<div className='text-gray-500'>No models available.</div>}
+                        empty={<div className='text-zinc-500'>No models available.</div>}
                         filteringType='auto'
                         value={selectedModel?.modelId ?? ''}
                         enteredTextLabel={(text) => `Use: "${text}"`}

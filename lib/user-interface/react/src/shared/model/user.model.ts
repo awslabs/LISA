@@ -20,5 +20,6 @@ export type IUser = {
     email: string;
     isAdmin: boolean;
     isUser: boolean;
+    isApiUser: boolean;
     groups?: string[];
 };

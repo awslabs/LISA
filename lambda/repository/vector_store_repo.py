@@ -13,13 +13,14 @@
 #   limitations under the License.
 import logging
 import os
-import time
 from typing import Any, cast, List
 
 import boto3
+from boto3.dynamodb.conditions import Attr
 from models.domain_objects import VectorStoreStatus
 from utilities.common_functions import retry_config
 from utilities.encoders import convert_decimal
+from utilities.time import now
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +28,11 @@ logger = logging.getLogger(__name__)
 class VectorStoreRepository:
     """Vector Store repository for DynamoDB"""
 
-    def __init__(self) -> None:
+    def __init__(self, table_name: str | None = None) -> None:
         dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
-        self.table = dynamodb.Table(os.environ["LISA_RAG_VECTOR_STORE_TABLE"])
+        if table_name is None:
+            table_name = os.environ["LISA_RAG_VECTOR_STORE_TABLE"]
+        self.table = dynamodb.Table(table_name)
 
     def get_registered_repositories(self) -> List[dict]:
         """Get a list of all registered RAG repositories with default values for new fields."""
@@ -141,7 +144,7 @@ class VectorStoreRepository:
 
             update_expr = "SET #config = :config, #updatedAt = :updatedAt"
             expr_names = {"#config": "config", "#updatedAt": "updatedAt"}
-            expr_values = {":config": config, ":updatedAt": int(time.time() * 1000)}
+            expr_values = {":config": config, ":updatedAt": now()}
 
             if status is not None:
                 update_expr += ", #status = :status"
@@ -177,3 +180,59 @@ class VectorStoreRepository:
             return True
         except Exception as e:
             raise ValueError(f"Failed to delete repository: {repository_id}", e)
+
+    def find_repositories_using_model(self, model_id: str) -> List[dict]:
+        """
+        Find all repositories that use a specific model.
+        Excludes repositories with status indicating they are deleted or archived.
+
+        Args:
+            model_id: The model ID to search for
+
+        Returns:
+            List of dictionaries containing repository_id and usage_type
+        """
+        # Define statuses that are considered "active" repositories
+        # Based on vector_store_repository_service.py logic
+        active_statuses = {
+            VectorStoreStatus.CREATE_COMPLETE,
+            VectorStoreStatus.UPDATE_COMPLETE,
+            VectorStoreStatus.UPDATE_COMPLETE_CLEANUP_IN_PROGRESS,
+            VectorStoreStatus.UPDATE_IN_PROGRESS,
+        }
+
+        # Filter for repositories that have the model at the repository level
+        # Include status in projection to filter out inactive repositories
+        response = self.table.scan(
+            FilterExpression=Attr("config.embeddingModelId").eq(model_id),
+            ProjectionExpression="repositoryId, config.repositoryId, config.embeddingModelId, #status",
+            ExpressionAttributeNames={"#status": "status"},
+        )
+        repositories = response["Items"]
+
+        # Handle pagination
+        while "LastEvaluatedKey" in response:
+            response = self.table.scan(
+                FilterExpression=Attr("config.embeddingModelId").eq(model_id),
+                ProjectionExpression="repositoryId, config.repositoryId, config.embeddingModelId, #status",
+                ExpressionAttributeNames={"#status": "status"},
+                ExclusiveStartKey=response["LastEvaluatedKey"],
+            )
+            repositories.extend(response["Items"])
+
+        # Process repositories with matching embeddingModelId, excluding inactive ones
+        usages = []
+        for repo in repositories:
+            config = repo.get("config", {})
+            repository_id = config.get("repositoryId", repo.get("repositoryId", "unknown"))
+            status = repo.get("status", VectorStoreStatus.UNKNOWN)
+
+            # Only include repositories with active statuses
+            if status not in active_statuses:
+                logger.debug(f"Skipping repository {repository_id} with inactive status {status}")
+                continue
+
+            usages.append({"repository_id": repository_id, "usage_type": "repository"})
+
+        logger.info(f"Found {len(usages)} active repositories using model {model_id}")
+        return usages

@@ -173,7 +173,7 @@ POST https://<apigw_endpoint>/models
 ### Explanation of Key Fields for Creation Payload:
 
 - `modelId`: The unique identifier for the model. This is any name you would like it to be.
-- `modelName`: The name of the model as it appears in the system. For LISA-hosted models, this must be the S3 Key to your model artifacts, otherwise
+- `modelName`: The name of the model as it appears in the system. For LISA self-hosted models, this must be the S3 Key to your model artifacts, otherwise
   this is the LiteLLM-compatible reference to a SageMaker Endpoint or Bedrock Foundation Model. Note: Bedrock and SageMaker resources must exist in the
   same region as your LISA deployment. If your LISA installation is in us-east-1, then all SageMaker and Bedrock calls will also happen in us-east-1.
   Configuration examples:
@@ -208,7 +208,7 @@ DELETE https://<apigw_endpoint>/models/{modelId}
 
 ## Updating a Model
 
-LISA offers basic updating functionality for both LISA-hosted and LiteLLM-only models. For both types, the model type and streaming support can be updated
+LISA offers basic updating functionality for both LISA self-hosted and third party LiteLLM-only models. For both types, the model type and streaming support can be updated
 in the cases that the models were originally created with the wrong parameters. For example, if an embedding model was accidentally created as a `textgen`
 model, the UpdateModel API can be used to set it to the intended `embedding` value. Additionally, for LISA-hosted models, users may update the AutoScaling
 configuration to increase or decrease capacity usage for each model. Users may use this API to completely shut down all instances behind a model until
@@ -295,3 +295,215 @@ handled as separate operations.
   "enabled": true
 }
 ```
+
+## Model Scheduling (Admin API)
+
+LISA provides scheduling options for self-hosted models. Administrators establish automated start and stop times which auto-suspend resources. Model scheduling helps optimize infrastructure costs by ensuring models are only running when needed. Administrators have the flexibility to set daily start and stop times, or establish a recurring schedule.
+
+### Schedule Types
+
+LISA supports two scheduling types. One type may be applied to each self-hosted model. If a schedule is not applied to a model, that model is either suspended or running 24/7 until an Administrator manually changes its state.
+
+- **Daily Scheduling**: Configure different start and stop times for each day of the week. Each day can have its own unique schedule or be left unscheduled.
+- **Recurring Scheduling**: Configure a single start and stop time that applies to every day of the week.
+
+### Scheduling Endpoints
+
+#### Creating/Updating a Schedule
+
+Create or update a schedule for a specific model. This endpoint accepts the same payload for both creating new schedules and updating existing ones.
+
+##### Request Example:
+
+```
+PUT https://<apigw_endpoint>/models/{modelId}/schedule
+```
+
+##### Example Payload for Daily Schedule:
+
+```json
+{
+  "scheduleType": "DAILY",
+  "timezone": "America/New_York",
+  "dailySchedule": {
+    "monday": {
+      "startTime": "09:00",
+      "stopTime": "17:00"
+    },
+    "tuesday": {
+      "startTime": "09:00",
+      "stopTime": "17:00"
+    },
+    "wednesday": {
+      "startTime": "08:00",
+      "stopTime": "18:00"
+    },
+    "friday": {
+      "startTime": "09:00",
+      "stopTime": "15:00"
+    }
+  }
+}
+```
+
+##### Example Payload for Recurring Schedule:
+
+```json
+{
+  "scheduleType": "RECURRING",
+  "timezone": "America/New_York",
+  "recurringSchedule": {
+    "startTime": "08:00",
+    "stopTime": "20:00"
+  }
+}
+```
+
+##### Response Example:
+
+```json
+{
+  "message": "Schedule updated successfully",
+  "modelId": "mistral-vllm",
+  "scheduleEnabled": true
+}
+```
+
+##### Key Fields for Schedule Configuration:
+
+- `scheduleType`: Either "DAILY" or "RECURRING"
+- `timezone`: IANA timezone identifier (e.g., "UTC", "America/New_York", "Europe/London")
+- `dailySchedule`: For DAILY type - defines start/stop times for each day of the week
+  - Days can be omitted if no schedule is needed for that day
+  - Each day requires both `startTime` and `stopTime` in HH:MM format (24-hour)
+  - Stop time must be at least 2 hours after start time
+- `recurringSchedule`: For RECURRING type - defines single start/stop time applied daily
+  - Requires both `startTime` and `stopTime` in HH:MM format (24-hour)
+  - Stop time must be at least 2 hours after start time
+
+#### Getting Schedule Configuration
+
+Retrieve the current schedule configuration for a model.
+
+##### Request Example:
+
+```
+GET https://<apigw_endpoint>/models/{modelId}/schedule
+```
+
+##### Response Example:
+
+```json
+{
+  "modelId": "mistral-vllm",
+  "scheduling": {
+    "scheduleType": "DAILY",
+    "timezone": "America/New_York",
+    "dailySchedule": {
+      "monday": {
+        "startTime": "09:00",
+        "stopTime": "17:00"
+      },
+      "tuesday": {
+        "startTime": "09:00",
+        "stopTime": "17:00"
+      }
+    },
+    "scheduleEnabled": true,
+    "scheduleConfigured": true,
+    "lastScheduleUpdate": "2024-01-15T10:30:00Z"
+  },
+  "nextScheduledAction": {
+    "action": "START",
+    "scheduledTime": "2024-01-16T14:00:00Z"
+  }
+}
+```
+
+#### Getting Schedule Status
+
+Get detailed status information about a model's scheduling configuration and current state.
+
+##### Request Example:
+
+```
+GET https://<apigw_endpoint>/models/{modelId}/schedule/status
+```
+
+##### Response Example:
+
+```json
+{
+  "modelId": "mistral-vllm",
+  "scheduleEnabled": true,
+  "scheduleConfigured": true,
+  "lastScheduleFailed": false,
+  "scheduleStatus": "ACTIVE",
+  "scheduleType": "DAILY",
+  "timezone": "America/New_York",
+  "nextScheduledAction": {
+    "action": "STOP",
+    "scheduledTime": "2024-01-15T22:00:00Z"
+  },
+  "lastScheduleUpdate": "2024-01-15T10:30:00Z",
+  "lastScheduleFailure": null
+}
+```
+
+##### Schedule Status Fields:
+
+- `scheduleEnabled`: Whether scheduling is currently active for the model
+- `scheduleConfigured`: Whether a schedule has been configured for the model
+- `lastScheduleFailed`: Whether the last scheduled action failed
+- `scheduleStatus`: Overall status - "ACTIVE", "DISABLED", or "FAILED"
+- `scheduleType`: The configured schedule type ("DAILY" or "RECURRING")
+- `timezone`: Configured timezone for the schedule
+- `nextScheduledAction`: Details about the next scheduled start/stop action
+- `lastScheduleUpdate`: Timestamp of when the schedule was last modified
+- `lastScheduleFailure`: Details about the most recent scheduling failure (if any)
+
+#### Deleting a Schedule
+
+Remove the schedule configuration for a model, disabling automatic start/stop functionality.
+
+##### Request Example:
+
+```
+DELETE https://<apigw_endpoint>/models/{modelId}/schedule
+```
+
+##### Response Example:
+
+```json
+{
+  "message": "Schedule deleted successfully",
+  "modelId": "mistral-vllm",
+  "scheduleEnabled": false
+}
+```
+
+### Schedule Validation Rules
+
+- **Time Format**: All times must be in HH:MM format using 24-hour notation (00:00 to 23:59)
+- **24-Hour Window Constraint**: Start time must be before stop time within the same day
+- **Minimum Duration**: Stop time must be at least 2 hours after start time on same day
+- **Daily Schedule**: At least one day must have a schedule configured for DAILY type
+- **Timezone**: Must be a valid IANA timezone identifier
+- **Model Requirements**: Only LISA self-hosted models with Auto Scaling Groups can be scheduled
+- **Model State**: Models must be in "InService" or "Stopped" state to configure scheduling
+
+### Schedule Behavior
+
+- **Automatic Actions**: Models are automatically started and stopped according to their configured schedules
+- **24-Hour Constraint**: Each day's schedule operates within a single 24-hour period
+- **Consecutive Schedule Gaps**: For schedules ending at 23:59 and starting at 00:00 the next day, there may be a brief 1-minute service gap
+- **Weekend Handling**: Days without configured schedules remain unaffected by scheduling
+- **Failure Handling**: Failed schedule actions are logged and can be monitored via the status endpoint (AWS ASG handles automatic retries for internal failures; however, some failures like EBS volume must be addressed directly by administrators)
+- **Manual Override**: Manual start/stop operations work independently of scheduling
+- **Update Handling**: Schedule updates take effect immediately and recalculate next actions
+
+### Schedule Design Considerations
+
+- **Avoiding Service Gaps**: Consider small gaps between consecutive day schedules to avoid brief service interruptions (e.g., Monday ends 23:58, Tuesday starts 00:01)
+- **Recommended Patterns**: For continuous coverage, consider using patterns like Monday 09:00-23:58 and Tuesday 00:01-17:00 to create small buffers
+- **Night Shift Operations**: For operations spanning midnight, split the schedule across two days (e.g., Monday 21:00-23:59, Tuesday 00:00-03:00)

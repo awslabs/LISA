@@ -34,7 +34,7 @@ import {
     WaitTime,
 } from 'aws-cdk-lib/aws-stepfunctions';
 import { Vpc } from '../../networking/vpc';
-import { getDefaultRuntime } from '../../api-base/utils';
+import { getPythonRuntime } from '../../api-base/utils';
 import { LAMBDA_PATH } from '../../util';
 
 type UpdateModelStateMachineProps = BaseProps & {
@@ -62,6 +62,7 @@ export class UpdateModelStateMachine extends Construct {
         const {
             config,
             modelTable,
+            guardrailsTable,
             lambdaLayers,
             role,
             vpc,
@@ -73,7 +74,7 @@ export class UpdateModelStateMachine extends Construct {
 
         const environment = {  // Environment variables to set in all Lambda functions
             MODEL_TABLE_NAME: modelTable.tableName,
-            GUARDRAILS_TABLE_NAME: props.guardrailsTable.tableName,
+            GUARDRAILS_TABLE_NAME: guardrailsTable.tableName,
             LISA_API_URL_PS_NAME: restApiContainerEndpointPs.parameterName,
             REST_API_VERSION: 'v2',
             MANAGEMENT_KEY_NAME: managementKeyName,
@@ -83,7 +84,7 @@ export class UpdateModelStateMachine extends Construct {
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         const handleJobIntake = new LambdaInvoke(this, 'HandleJobIntake', {
             lambdaFunction: new Function(this, 'HandleJobIntakeFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'models.state_machine.update_model.handle_job_intake',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
@@ -100,7 +101,7 @@ export class UpdateModelStateMachine extends Construct {
 
         const handlePollCapacity = new LambdaInvoke(this, 'HandlePollCapacity', {
             lambdaFunction: new Function(this, 'HandlePollCapacityFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'models.state_machine.update_model.handle_poll_capacity',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
@@ -117,7 +118,7 @@ export class UpdateModelStateMachine extends Construct {
 
         const handleEcsUpdate = new LambdaInvoke(this, 'HandleEcsUpdate', {
             lambdaFunction: new Function(this, 'HandleEcsUpdateFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'models.state_machine.update_model.handle_ecs_update',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
@@ -134,7 +135,7 @@ export class UpdateModelStateMachine extends Construct {
 
         const handlePollEcsDeployment = new LambdaInvoke(this, 'HandlePollEcsDeployment', {
             lambdaFunction: new Function(this, 'HandlePollEcsDeploymentFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'models.state_machine.update_model.handle_poll_ecs_deployment',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
@@ -151,7 +152,7 @@ export class UpdateModelStateMachine extends Construct {
 
         const handleUpdateGuardrails = new LambdaInvoke(this, 'HandleUpdateGuardrails', {
             lambdaFunction: new Function(this, 'HandleUpdateGuardrailsFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'models.state_machine.update_model.handle_update_guardrails',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
@@ -168,7 +169,7 @@ export class UpdateModelStateMachine extends Construct {
 
         const handleFinishUpdate = new LambdaInvoke(this, 'HandleFinishUpdate', {
             lambdaFunction: new Function(this, 'HandleFinishUpdateFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'models.state_machine.update_model.handle_finish_update',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,

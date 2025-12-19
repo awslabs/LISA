@@ -32,7 +32,7 @@ import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH, POLLING_TIMEOUT } from '../../models/state-machine/constants';
 import { Vpc } from '../../networking/vpc';
-import { getDefaultRuntime } from '../../api-base/utils';
+import { getPythonRuntime } from '../../api-base/utils';
 import { LAMBDA_PATH } from '../../util';
 
 type DeleteMcpServerStateMachineProps = BaseProps & {
@@ -66,7 +66,7 @@ export class DeleteMcpServerStateMachine extends Construct {
         // Input payload to state machine contains the server ID that we want to delete.
         const setServerToDeleting = new LambdaInvoke(this, 'SetServerToDeleting', {
             lambdaFunction: new Function(this, 'SetServerToDeletingFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'mcp_server.state_machine.delete_mcp_server.handle_set_server_to_deleting',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
@@ -83,7 +83,7 @@ export class DeleteMcpServerStateMachine extends Construct {
 
         const deleteStack = new LambdaInvoke(this, 'DeleteStack', {
             lambdaFunction: new Function(this, 'DeleteStackFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'mcp_server.state_machine.delete_mcp_server.handle_delete_stack',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
@@ -100,7 +100,7 @@ export class DeleteMcpServerStateMachine extends Construct {
 
         const monitorDeleteStack = new LambdaInvoke(this, 'MonitorDeleteStack', {
             lambdaFunction: new Function(this, 'MonitorDeleteStackFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'mcp_server.state_machine.delete_mcp_server.handle_monitor_delete_stack',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
@@ -117,7 +117,7 @@ export class DeleteMcpServerStateMachine extends Construct {
 
         const deleteFromDdb = new LambdaInvoke(this, 'DeleteFromDdb', {
             lambdaFunction: new Function(this, 'DeleteFromDdbFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'mcp_server.state_machine.delete_mcp_server.handle_delete_from_ddb',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,

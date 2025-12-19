@@ -30,6 +30,11 @@ def setup_env(monkeypatch):
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
     monkeypatch.setenv("AWS_REGION", "us-east-1")
+    monkeypatch.setenv("RAG_DOCUMENT_TABLE", "test-document-table")
+    monkeypatch.setenv("RAG_SUB_DOCUMENT_TABLE", "test-sub-document-table")
+    monkeypatch.setenv("LISA_RAG_VECTOR_STORE_TABLE", "test-vector-store-table")
+    monkeypatch.setenv("LISA_RAG_COLLECTIONS_TABLE", "test-collections-table")
+    monkeypatch.setenv("ADMIN_GROUP", "admin")  # Set admin group for authorization
 
 
 def test_create_collection():
@@ -50,7 +55,6 @@ def test_create_collection():
         allowedGroups=["group1"],
         createdBy="user",
         status=CollectionStatus.ACTIVE,
-        private=False,
     )
 
     mock_repo.find_by_name.return_value = None  # No existing collection
@@ -230,3 +234,249 @@ def test_delete_default_collection():
     assert saved_job.collection_id is None
     assert saved_job.embedding_model == "test-embedding-model"
     assert saved_job.collection_deletion is True
+
+
+def test_create_collection_lambda_with_embedding_model():
+    """Test create_collection lambda with embedding model specified"""
+    import json
+    from unittest.mock import Mock, patch
+
+    from repository.lambda_functions import create_collection
+
+    event = {
+        "requestContext": {
+            "authorizer": {
+                "username": "testuser",
+                "groups": ["admin"],
+            }
+        },
+        "pathParameters": {"repositoryId": "test-repo"},
+        "body": json.dumps(
+            {
+                "name": "test-collection",
+                "embeddingModel": "test-model",  # Collection has embedding model
+                "chunkingStrategy": {"type": "fixed", "size": 1000, "overlap": 100},
+                "metadata": {"tags": ["test"]},
+            }
+        ),
+    }
+
+    # Create mock context with required attributes
+    mock_context = Mock()
+    mock_context.function_name = "test-create-collection"
+
+    mock_repository = {
+        "repositoryId": "test-repo",
+        "type": "opensearch",
+        "allowedGroups": ["admin"],
+        "embeddingModelId": None,  # No default embedding model
+    }
+
+    mock_collection = RagCollectionConfig(
+        collectionId="test-coll",
+        repositoryId="test-repo",
+        name="test-collection",
+        embeddingModel="test-model",
+        createdBy="testuser",
+        status=CollectionStatus.ACTIVE,
+    )
+
+    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
+        "repository.lambda_functions.collection_service"
+    ) as mock_service, patch("utilities.auth.is_admin") as mock_is_admin:
+
+        mock_get_repo.return_value = mock_repository
+        mock_service.create_collection.return_value = mock_collection
+        mock_is_admin.return_value = True  # Mock admin check to pass
+
+        result = create_collection(event, mock_context)
+
+        # Should succeed - collection has embedding model
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        assert body["collectionId"] == "test-coll"
+        assert body["embeddingModel"] == "test-model"
+
+        # Verify collection service was called
+        mock_service.create_collection.assert_called_once()
+
+
+def test_create_collection_lambda_without_embedding_model_with_repository_default():
+    """Test create_collection lambda without embedding model but repository has default"""
+    import json
+    from unittest.mock import Mock, patch
+
+    from repository.lambda_functions import create_collection
+
+    event = {
+        "requestContext": {
+            "authorizer": {
+                "username": "testuser",
+                "groups": ["admin"],
+            }
+        },
+        "pathParameters": {"repositoryId": "test-repo"},
+        "body": json.dumps(
+            {
+                "name": "test-collection",
+                # No embeddingModel specified
+                "chunkingStrategy": {"type": "fixed", "size": 1000, "overlap": 100},
+                "metadata": {"tags": ["test"]},
+            }
+        ),
+    }
+
+    # Create mock context with required attributes
+    mock_context = Mock()
+    mock_context.function_name = "test-create-collection"
+
+    mock_repository = {
+        "repositoryId": "test-repo",
+        "type": "opensearch",
+        "allowedGroups": ["admin"],
+        "embeddingModelId": "default-model",  # Repository has default embedding model
+    }
+
+    mock_collection = RagCollectionConfig(
+        collectionId="test-coll",
+        repositoryId="test-repo",
+        name="test-collection",
+        embeddingModel=None,
+        createdBy="testuser",
+        status=CollectionStatus.ACTIVE,
+    )
+
+    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
+        "repository.lambda_functions.collection_service"
+    ) as mock_service, patch("utilities.auth.is_admin") as mock_is_admin:
+
+        mock_get_repo.return_value = mock_repository
+        mock_service.create_collection.return_value = mock_collection
+        mock_is_admin.return_value = True  # Mock admin check to pass
+
+        result = create_collection(event, mock_context)
+
+        # Should succeed - repository has default embedding model
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        assert body["collectionId"] == "test-coll"
+
+        # Verify collection service was called
+        mock_service.create_collection.assert_called_once()
+
+
+def test_create_collection_lambda_without_embedding_model_no_repository_default():
+    """Test create_collection lambda fails when no embedding model and no repository default"""
+    import json
+    from unittest.mock import Mock, patch
+
+    from repository.lambda_functions import create_collection
+
+    event = {
+        "requestContext": {
+            "authorizer": {
+                "username": "testuser",
+                "groups": ["admin"],
+            }
+        },
+        "pathParameters": {"repositoryId": "test-repo"},
+        "body": json.dumps(
+            {
+                "name": "test-collection",
+                # No embeddingModel specified
+                "chunkingStrategy": {"type": "fixed", "size": 1000, "overlap": 100},
+                "metadata": {"tags": ["test"]},
+            }
+        ),
+    }
+
+    # Create mock context with required attributes
+    mock_context = Mock()
+    mock_context.function_name = "test-create-collection"
+
+    mock_repository = {
+        "repositoryId": "test-repo",
+        "type": "opensearch",
+        "allowedGroups": ["admin"],
+        "embeddingModelId": None,  # No default embedding model
+    }
+
+    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
+        "repository.lambda_functions.collection_service"
+    ) as mock_service, patch("utilities.auth.is_admin") as mock_is_admin:
+
+        mock_get_repo.return_value = mock_repository
+        mock_is_admin.return_value = True  # Mock admin check to pass
+
+        result = create_collection(event, mock_context)
+
+        # Should fail - no embedding model anywhere
+        assert result["statusCode"] == 400
+        body = json.loads(result["body"])
+        assert (
+            "Either the collection must specify an embeddingModel or "
+            "the repository must have a default embeddingModelId"
+        ) in body["error"]
+
+        # Verify collection service was NOT called
+        mock_service.create_collection.assert_not_called()
+
+
+def test_create_collection_lambda_original_payload():
+    """Test create_collection lambda with the original failing payload"""
+    import json
+    from unittest.mock import Mock, patch
+
+    from repository.lambda_functions import create_collection
+
+    # Original payload that was failing
+    event = {
+        "requestContext": {
+            "authorizer": {
+                "username": "bedanley",
+                "groups": ["admin"],
+            }
+        },
+        "pathParameters": {"repositoryId": "test-repo"},
+        "body": json.dumps(
+            {"name": "rag-pv2-docs", "chunkingStrategy": {"type": "none"}, "metadata": {"tags": ["collection-tag"]}}
+        ),
+    }
+
+    # Create mock context with required attributes
+    mock_context = Mock()
+    mock_context.function_name = "test-create-collection"
+
+    mock_repository = {
+        "repositoryId": "test-repo",
+        "type": "opensearch",
+        "allowedGroups": ["admin"],
+        "embeddingModelId": "default-model",  # Repository has default embedding model
+    }
+
+    mock_collection = RagCollectionConfig(
+        collectionId="test-coll",
+        repositoryId="test-repo",
+        name="rag-pv2-docs",
+        embeddingModel=None,
+        createdBy="bedanley",
+        status=CollectionStatus.ACTIVE,
+    )
+
+    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
+        "repository.lambda_functions.collection_service"
+    ) as mock_service, patch("utilities.auth.is_admin") as mock_is_admin:
+
+        mock_get_repo.return_value = mock_repository
+        mock_service.create_collection.return_value = mock_collection
+        mock_is_admin.return_value = True  # Mock admin check to pass
+
+        result = create_collection(event, mock_context)
+
+        # Should succeed with repository default embedding model
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        assert body["name"] == "rag-pv2-docs"
+
+        # Verify collection service was called
+        mock_service.create_collection.assert_called_once()

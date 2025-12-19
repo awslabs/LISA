@@ -13,12 +13,13 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
-import { CollectionPreferencesProps, TableProps } from '@cloudscape-design/components';
+import { TableProps } from '@cloudscape-design/components';
+import { CollectionPreferencesProps } from '@cloudscape-design/components/collection-preferences';
 import { DEFAULT_PAGE_SIZE_OPTIONS } from '@/shared/preferences/common-preferences';
 import StatusIndicator, { StatusIndicatorProps } from '@cloudscape-design/components/status-indicator';
 import { ReactNode } from 'react';
-import ContentDisplayOption = CollectionPreferencesProps.ContentDisplayOption;
 import { VectorStoreStatus } from '#root/lib/schema';
+import { formatDate, formatObject } from '@/shared/util/formats';
 
 export const PAGE_SIZE_OPTIONS = DEFAULT_PAGE_SIZE_OPTIONS('Repositories');
 
@@ -54,16 +55,16 @@ export function getTableDefinition (): ReadonlyArray<TableRow> {
             visible: true,
         },
         {
-            id: 'embeddingModelId',
-            header: 'Default Embedding Model',
-            cell: (e) => e.embeddingModelId ?? '-',
-            sortingField: 'type',
+            id: 'description',
+            header: 'Description',
+            cell: (e) => e.description,
             visible: true,
         },
         {
-            id: 'allowedGroups',
-            header: 'Allowed Groups',
-            cell: (e) => e?.allowedGroups?.length > 0 ? `${e.allowedGroups.join(', ')}` : <em>(public)</em>,
+            id: 'embeddingModelId',
+            header: 'Default embedding model',
+            cell: (e) => e.embeddingModelId ?? '-',
+            sortingField: 'type',
             visible: true,
         },
         {
@@ -71,7 +72,45 @@ export function getTableDefinition (): ReadonlyArray<TableRow> {
             header: 'Status',
             cell: (e) => getStatusIcon(e.status),
             visible: true,
+            sortingField: 'status',
         },
+        {
+            id: 'allowedGroups',
+            header: 'Allowed groups',
+            cell: (e) => e?.allowedGroups?.length > 0 ? `${e.allowedGroups.join(', ')}` : <em>(public)</em>,
+            visible: false,
+        },
+        {
+            id: 'pipelines',
+            header: 'Pipeline count',
+            cell: (e) => e.pipelines ? e.pipelines.length : '-',
+            visible: false,
+        },
+        {
+            id: 'createdBy',
+            header: 'Created by',
+            cell: (collection) => collection.createdBy,
+            visible: false,
+            sortingField: 'createdBy',
+        },
+        {
+            id: 'createdAt',
+            header: 'Created',
+            cell: (collection) => formatDate(collection.createdAt),
+            visible: false,
+        },
+        {
+            id: 'updatedAt',
+            header: 'Updated',
+            cell: (collection) => formatDate(collection.updatedAt),
+            visible: false,
+        },
+        {
+            id: 'metadata',
+            header: 'Metadata',
+            cell: (collection) => formatObject(collection.metadata),
+            visible: false,
+        }
     ];
 }
 
@@ -97,7 +136,7 @@ function getStatusIcon (status: VectorStoreStatus): ReactNode {
     return <StatusIndicator type={type}>{status}</StatusIndicator>;
 }
 
-export function getTablePreference (tableDefinition: ReadonlyArray<TableRow>): ReadonlyArray<ContentDisplayOption> {
+export function getTablePreference (tableDefinition: ReadonlyArray<TableRow>): ReadonlyArray<CollectionPreferencesProps.ContentDisplayOption> {
     return tableDefinition.map((c) => ({
         id: c.id,
         label: c.header,

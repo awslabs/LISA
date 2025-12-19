@@ -94,13 +94,17 @@ export default function Chat ({ sessionId }) {
     const [getSessionById] = useLazyGetSessionByIdQuery();
     const [updateSession] = useUpdateSessionMutation();
     const [attachImageToSession] = useAttachImageToSessionMutation();
-    const { data: allModels, isFetching: isFetchingModels } = useGetAllModelsQuery(undefined, {
+    const { data: allModelsRaw, isFetching: isFetchingModels } = useGetAllModelsQuery(undefined, {
         refetchOnMountOrArgChange: 5,
-        selectFromResult: (state) => ({
-            isFetching: state.isFetching,
-            data: (state.data || []).filter((model) => (model.modelType === ModelType.textgen || model.modelType === ModelType.imagegen) && model.status === ModelStatus.InService),
-        })
     });
+
+    const allModels = useMemo(() =>
+        (allModelsRaw || []).filter((model) =>
+            (model.modelType === ModelType.textgen || model.modelType === ModelType.imagegen) &&
+            model.status === ModelStatus.InService
+        ),
+    [allModelsRaw]
+    );
     const { data: userPreferences } = useGetUserPreferencesQuery();
     const { data: mcpServers } = useListMcpServersQuery(undefined, {
         refetchOnMountOrArgChange: true,
@@ -774,7 +778,7 @@ export default function Chat ({ sessionId }) {
                                         statusType={isFetchingModels ? 'loading' : 'finished'}
                                         loadingText='Loading models (might take few seconds)...'
                                         placeholder='Select a model'
-                                        empty={<div className='text-gray-500'>No models available.</div>}
+                                        empty={<div className='text-zinc-500'>No models available.</div>}
                                         filteringType='auto'
                                         value={modelFilterValue}
                                         enteredTextLabel={(text) => `Use: "${text}"`}

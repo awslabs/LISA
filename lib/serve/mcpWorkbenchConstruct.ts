@@ -23,7 +23,7 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import { Duration, RemovalPolicy, StackProps } from 'aws-cdk-lib';
 import { createCdkId } from '../core/utils';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
-import { getDefaultRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
+import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { LAMBDA_PATH, MCP_WORKBENCH_PATH } from '../util';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
@@ -71,7 +71,7 @@ export class McpWorkbenchConstruct extends Construct {
 
         const workbenchBucket = this.createWorkbenchBucket(scope, config);
         this.createWorkbenchApi(restApi, config, vpc, securityGroups, workbenchBucket, lambdaLayers, authorizer);
-        this.createWorkbenchService(apiCluster, config);
+        this.createWorkbenchService(apiCluster, config, vpc);
     }
 
     private createWorkbenchApi (restApi: IRestApi, config: Config, vpc: Vpc, securityGroups: ISecurityGroup[], workbenchBucket: s3.Bucket, lambdaLayers: lambda.ILayerVersion[], authorizer?: IAuthorizer) {
@@ -156,7 +156,7 @@ export class McpWorkbenchConstruct extends Construct {
                 lambdaPath,
                 lambdaLayers,
                 f,
-                getDefaultRuntime(),
+                getPythonRuntime(),
                 vpc,
                 securityGroups,
                 authorizer,
@@ -192,7 +192,7 @@ export class McpWorkbenchConstruct extends Construct {
         });
     }
 
-    private createWorkbenchService (apiCluster: ECSCluster, config: Config) {
+    private createWorkbenchService (apiCluster: ECSCluster, config: Config, vpc: Vpc) {
 
         const mcpWorkbenchImage = config.mcpWorkbenchConfig || {
             baseImage: config.baseImage,
@@ -231,12 +231,15 @@ export class McpWorkbenchConstruct extends Construct {
 
         const { service } = apiCluster.addTask(ECSTasks.MCPWORKBENCH, mcpWorkbenchTaskDefinition);
 
-        this.createS3EventHandler(config, service);
+        this.createS3EventHandler(config, service, vpc);
     }
 
-    private createS3EventHandler (config: any, workbenchService: Ec2Service) {
+    private createS3EventHandler (config: any, workbenchService: Ec2Service, vpc: Vpc) {
         const s3EventHandlerRole = new iam.Role(this, 'S3EventHandlerRole', {
             assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+            managedPolicies: [
+                iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaVPCAccessExecutionRole'),
+            ],
             inlinePolicies: {
                 'S3EventHandlerPolicy': new iam.PolicyDocument({
                     statements: [
@@ -276,11 +279,13 @@ export class McpWorkbenchConstruct extends Construct {
         });
 
         const s3EventHandlerLambda = new lambda.Function(this, 'S3EventHandlerLambda', {
-            runtime: getDefaultRuntime(),
+            runtime: getPythonRuntime(),
             handler: 'mcp_workbench.s3_event_handler.handler',
             code: lambda.Code.fromAsset(config.lambdaPath ?? LAMBDA_PATH),
             timeout: Duration.minutes(2),
             role: s3EventHandlerRole,
+            vpc: vpc.vpc,
+            vpcSubnets: vpc.subnetSelection,
             environment: {
                 DEPLOYMENT_PREFIX: config.deploymentPrefix!,
                 API_NAME: 'MCPWorkbench',

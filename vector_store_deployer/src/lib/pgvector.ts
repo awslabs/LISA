@@ -15,7 +15,7 @@
 */
 import { Duration, RemovalPolicy, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { RagRepositoryConfig, RagRepositoryType, PartialConfig, RDSConfig } from '../../../lib/schema';
+import { RagRepositoryDeploymentConfig, RagRepositoryType, PartialConfig, RDSConfig } from '../../../lib/schema';
 import { createCdkId } from '../../../lib/core/utils';
 import { ISecurityGroup, IVpc, SecurityGroup, Subnet, SubnetSelection, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { Code, Function, IFunction, ILayerVersion, LayerVersion } from 'aws-cdk-lib/aws-lambda';
@@ -27,14 +27,14 @@ import { Roles } from '../../../lib/core/iam/roles';
 import { PipelineStack } from './pipeline-stack';
 import { SecurityGroupFactory } from '../../../lib/networking/vpc/security-group-factory';
 import { SecurityGroupEnum } from '../../../lib/core/iam/SecurityGroups';
-import { getDefaultRuntime } from '../../../lib/api-base/utils';
+import { getPythonRuntime } from '../../../lib/api-base/utils';
 import { LAMBDA_PATH } from '../../../lib/util';
 import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
 
 // Type definition for PGVectorStoreStack properties
 type PGVectorStoreStackProps = StackProps & {
     config: PartialConfig,
-    ragConfig: RagRepositoryConfig,
+    ragConfig: RagRepositoryDeploymentConfig,
 };
 
 // PGVectorStoreStack class, extending PipelineStack
@@ -209,7 +209,7 @@ export class PGVectorStoreStack extends PipelineStack {
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
 
         return new Function(this, createCdkId([repositoryId, 'CreateDbUserLambda']), {
-            runtime: getDefaultRuntime(),
+            runtime: getPythonRuntime(),
             handler: 'utilities.db_setup_iam_auth.handler',
             code: Code.fromAsset(lambdaPath),
             timeout: Duration.minutes(2),

@@ -213,6 +213,7 @@ export function JobStatusTable ({
 
             <Table
                 {...collectionProps}
+                variant='embedded'
                 columnDefinitions={TABLE_DEFINITION}
                 columnDisplay={preferences.contentDisplay}
                 stickyColumns={{ first: 1, last: 0 }}

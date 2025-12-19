@@ -113,8 +113,6 @@ def test_prepare_chunks(setup_env):
 
     assert texts == ["content1", "content2"]
     assert len(metadatas) == 2
-    assert metadatas[0]["repository_id"] == "repo1"
-    assert metadatas[0]["collection_id"] == "col1"
 
 
 def test_store_chunks_in_vectorstore(setup_env):

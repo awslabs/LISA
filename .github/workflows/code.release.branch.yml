@@ -19,13 +19,13 @@ jobs:
       pull-requests: write  # Required for creating PRs
     steps:
       - name: Checkout Develop Branch
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v4
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v4
         with:
           ref: develop
           fetch-depth: 0  # Fetch full history for proper branch comparison
           ssh-key: ${{ secrets.DEPLOYMENT_SSH_KEY }}
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@3d21ddcb5087c3d29b7e19fe293e3455fabe32af # v4
+        uses: aws-actions/configure-aws-credentials@cf459bd40262a8603163308e488de922e4eb5a95 # v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT }}:role/${{ vars.ROLE_NAME_TO_ASSUME }}
@@ -62,7 +62,7 @@ jobs:
           echo "📝 Regenerating CDK baselines..."
           rm -rf test/cdk/stacks/__baselines__
           mkdir -p test/cdk/stacks/__baselines__
-          npm test -- test/cdk/stacks/snapshot.test.ts --testNamePattern="is compatible with baseline"
+          npx jest test/cdk/stacks/snapshot.test.ts
           echo "✅ CDK baselines regenerated"
           # Add the generated PR description to the top of CHANGELOG.md
           echo "📝 Adding release notes to CHANGELOG.md..."
@@ -88,9 +88,11 @@ jobs:
           # Create the draft pull request
           gh pr create -d \
             --title "Release ${{github.event.inputs.release_tag}} into Main" \
-            --body "${{ steps.generate_description.outputs.DESCRIPTION }}" \
+            --body-file - \
             --base main \
-            --head release/${{ github.event.inputs.release_tag }}
+            --head release/${{ github.event.inputs.release_tag }} << 'EOF'
+          ${{ steps.generate_description.outputs.DESCRIPTION }}
+          EOF
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ secrets.LEAD_ACCESS_TOKEN }}

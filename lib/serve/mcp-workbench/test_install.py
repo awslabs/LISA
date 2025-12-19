@@ -18,11 +18,15 @@ Simple test to verify MCP Workbench installation.
 Run this after installing to verify everything works.
 """
 
+import subprocess
+import sys
+
+from mcpworkbench.core.annotations import mcp_tool
+from mcpworkbench.core.base_tool import BaseTool
+
 
 def test_cli_available():
     """Test that the CLI command is available."""
-    import subprocess
-    import sys
 
     try:
         result = subprocess.run(
@@ -44,8 +48,6 @@ def test_cli_available():
 def test_basic_functionality():
     """Test basic functionality works."""
     try:
-        # Create a simple tool class
-        from mcpworkbench.core.base_tool import BaseTool
 
         class TestTool(BaseTool):
             def __init__(self):
@@ -60,7 +62,6 @@ def test_basic_functionality():
         assert tool.description == "A test tool"
 
         # Test annotation
-        from mcpworkbench.core.annotations import mcp_tool
 
         @mcp_tool(name="test_func", description="Test function")
         def test_func():
@@ -115,6 +116,4 @@ def main():
 
 
 if __name__ == "__main__":
-    import sys
-
     sys.exit(0 if main() else 1)

@@ -13,12 +13,12 @@
 #   limitations under the License.
 
 import uuid
-from datetime import datetime
 from enum import StrEnum
 from typing import Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 from typing_extensions import Self
+from utilities.time import iso_string
 from utilities.validation import validate_any_fields_defined
 
 
@@ -52,7 +52,7 @@ class McpServerModel(BaseModel):
     id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()))
 
     # Timestamp of when the mcp server was created
-    created: Optional[str] = Field(default_factory=lambda: datetime.now().isoformat())
+    created: Optional[str] = Field(default_factory=iso_string)
 
     # Owner of the MCP user
     owner: str
@@ -137,7 +137,7 @@ class HostedMcpServerModel(BaseModel):
     id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()))
 
     # Timestamp of when the mcp server was created
-    created: Optional[str] = Field(default_factory=lambda: datetime.now().isoformat())
+    created: Optional[str] = Field(default_factory=iso_string)
 
     # Owner of the MCP server
     owner: str

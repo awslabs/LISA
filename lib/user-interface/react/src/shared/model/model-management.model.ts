@@ -41,6 +41,12 @@ export enum InferenceContainer {
     INSTRUCTOR = 'instructor',
 }
 
+export enum ScheduleType {
+    NONE = 'NONE',
+    DAILY = 'DAILY',
+    RECURRING = 'RECURRING'
+}
+
 export enum GuardrailMode {
     PRE_CALL = 'pre_call',
     DURING_CALL = 'during_call',
@@ -103,6 +109,51 @@ export type ILoadBalancerConfig = {
     healthCheckConfig: ILoadBalancerHealthCheckConfig
 };
 
+export type IDaySchedule = {
+    startTime: string;
+    stopTime: string;
+};
+
+export type IWeeklySchedule = {
+    monday?: IDaySchedule;
+    tuesday?: IDaySchedule;
+    wednesday?: IDaySchedule;
+    thursday?: IDaySchedule;
+    friday?: IDaySchedule;
+    saturday?: IDaySchedule;
+    sunday?: IDaySchedule;
+};
+
+// Base interface for common schedule fields
+type IBaseScheduleConfig = {
+    scheduleEnabled: boolean;
+    timezone: string;
+    nextScheduledAction?: string;
+    lastScheduleUpdate?: string;
+    scheduleStatus?: string;
+    scheduleConfigured?: boolean;
+    lastScheduleFailed?: boolean;
+    scheduledActionArns?: string[];
+};
+
+// Discriminated union for schedule configurations
+export type IScheduleConfig =
+    | (IBaseScheduleConfig & {
+        scheduleType: ScheduleType.DAILY;
+        dailySchedule: IWeeklySchedule;
+        recurringSchedule?: never;
+    })
+    | (IBaseScheduleConfig & {
+        scheduleType: ScheduleType.RECURRING;
+        recurringSchedule: IDaySchedule;
+        dailySchedule?: never;
+    })
+    | (IBaseScheduleConfig & {
+        scheduleType: ScheduleType.NONE;
+        dailySchedule?: never;
+        recurringSchedule?: never;
+    });
+
 export type IAutoScalingConfig = {
     blockDeviceVolumeSize: number;
     minCapacity: number;
@@ -111,6 +162,7 @@ export type IAutoScalingConfig = {
     cooldown: number;
     defaultInstanceWarmup: number;
     metricConfig: IMetricConfig;
+    scheduling?: IScheduleConfig;
 };
 
 export type IContainerConfig = {
@@ -221,6 +273,94 @@ export const loadBalancerConfigSchema = z.object({
     healthCheckConfig: loadBalancerHealthCheckConfigSchema.default(loadBalancerHealthCheckConfigSchema.parse({})),
 });
 
+const dayScheduleSchema = z.object({
+    startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Must be in HH:MM format'),
+    stopTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Must be in HH:MM format'),
+}).superRefine((value, context) => {
+    // Validate that start time is before stop time and at least 2 hours apart
+    const [startHour, startMin] = value.startTime.split(':').map(Number);
+    const [stopHour, stopMin] = value.stopTime.split(':').map(Number);
+    const startMinutes = startHour * 60 + startMin;
+    const stopMinutes = stopHour * 60 + stopMin;
+
+    // Handle next day scenarios
+    const actualStopMinutes = stopMinutes <= startMinutes ? stopMinutes + 24 * 60 : stopMinutes;
+    const duration = actualStopMinutes - startMinutes;
+
+    if (duration < 120) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Suspension time must be at least 2 hours after start time',
+            path: ['stopTime']
+        });
+    }
+});
+
+const weeklyScheduleSchema = z.object({
+    monday: dayScheduleSchema.optional(),
+    tuesday: dayScheduleSchema.optional(),
+    wednesday: dayScheduleSchema.optional(),
+    thursday: dayScheduleSchema.optional(),
+    friday: dayScheduleSchema.optional(),
+    saturday: dayScheduleSchema.optional(),
+    sunday: dayScheduleSchema.optional(),
+});
+
+// Base schema for common schedule fields
+const baseScheduleConfigSchema = z.object({
+    scheduleEnabled: z.boolean().default(false),
+    timezone: z.string().default('UTC'),
+    nextScheduledAction: z.string().optional(),
+    lastScheduleUpdate: z.string().optional(),
+    scheduleStatus: z.string().optional(),
+    scheduleConfigured: z.boolean().optional(),
+    lastScheduleFailed: z.boolean().optional(),
+    scheduledActionArns: z.array(z.string()).optional(),
+});
+
+// Discriminated union schema for schedule configurations
+export const scheduleConfigSchema = z.discriminatedUnion('scheduleType', [
+    // DAILY schedule type
+    baseScheduleConfigSchema.extend({
+        scheduleType: z.literal(ScheduleType.DAILY),
+        dailySchedule: weeklyScheduleSchema.superRefine((value, context) => {
+            // Check that at least one day has schedules
+            const hasAnySchedule = Object.values(value).some(
+                (daySchedule) => daySchedule && daySchedule.startTime && daySchedule.stopTime
+            );
+            if (!hasAnySchedule) {
+                context.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: 'At least one day must have a schedule configured',
+                    path: []
+                });
+            }
+        }),
+    }),
+
+    // RECURRING schedule type
+    baseScheduleConfigSchema.extend({
+        scheduleType: z.literal(ScheduleType.RECURRING),
+        recurringSchedule: dayScheduleSchema,
+    }),
+
+    // NONE schedule type
+    baseScheduleConfigSchema.extend({
+        scheduleType: z.literal(ScheduleType.NONE),
+    })
+]).superRefine((value, context) => {
+    // Validate timezone when scheduling is enabled
+    if (value.scheduleEnabled && value.scheduleType !== ScheduleType.NONE) {
+        if (!value.timezone || value.timezone === '') {
+            context.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'Timezone is required when auto scaling is enabled',
+                path: ['timezone']
+            });
+        }
+    }
+});
+
 export const autoScalingConfigSchema = z.object({
     blockDeviceVolumeSize: z.number().min(30).default(50),
     minCapacity: z.number().min(1).default(1),
@@ -229,13 +369,14 @@ export const autoScalingConfigSchema = z.object({
     cooldown: z.number().min(1).default(420),
     defaultInstanceWarmup: z.number().default(180),
     metricConfig: metricConfigSchema.default(metricConfigSchema.parse({})),
+    scheduling: scheduleConfigSchema.optional(),
 }).superRefine((value, context) => {
     // ensure the desired capacity stays between minCapacity/maxCapacity if not empty
     if (value.desiredCapacity !== undefined && String(value.desiredCapacity).trim().length) {
         const validator = z.number().min(Number(value.minCapacity)).max(Number(value.maxCapacity));
         const result = validator.safeParse(value.desiredCapacity);
         if (result.success === false) {
-            for (const error of result.error.errors) {
+            for (const error of result.error.issues) {
                 context.addIssue({
                     ...error,
                     path: ['desiredCapacity']
@@ -272,6 +413,7 @@ export const ModelRequestSchema = z.object({
     modelDescription: z.string().default(''),
     modelUrl: z.string().default(''),
     streaming: z.boolean().default(false),
+    multiModal: z.boolean().default(false),
     features: z.array(z.object({
         name: z.string(),
         overview: z.string()
@@ -290,7 +432,7 @@ export const ModelRequestSchema = z.object({
         const instanceTypeValidator = z.string().min(1, {message: 'Required for LISA hosted models.'});
         const instanceTypeResult = instanceTypeValidator.safeParse(value.instanceType);
         if (instanceTypeResult.success === false) {
-            for (const error of instanceTypeResult.error.errors) {
+            for (const error of instanceTypeResult.error.issues) {
                 context.addIssue({
                     ...error,
                     path: ['instanceType']
@@ -298,10 +440,10 @@ export const ModelRequestSchema = z.object({
             }
         }
 
-        const inferenceContainerValidator = z.nativeEnum(InferenceContainer, {required_error: 'Required for LISA hosted models.'});
+        const inferenceContainerValidator = z.nativeEnum(InferenceContainer, {message: 'Required for LISA hosted models.'});
         const inferenceContainerResult = inferenceContainerValidator.safeParse(value.inferenceContainer);
         if (inferenceContainerResult.success === false) {
-            for (const error of inferenceContainerResult.error.errors) {
+            for (const error of inferenceContainerResult.error.issues) {
                 context.addIssue({
                     ...error,
                     path: ['inferenceContainer']
@@ -312,7 +454,7 @@ export const ModelRequestSchema = z.object({
         const baseImageValidator = z.string().min(1, {message: 'Required for LISA hosted models.'});
         const baseImageResult = baseImageValidator.safeParse(value.containerConfig.image.baseImage);
         if (baseImageResult.success === false) {
-            for (const error of baseImageResult.error.errors) {
+            for (const error of baseImageResult.error.issues) {
                 context.addIssue({
                     ...error,
                     path: ['containerConfig', 'image', 'baseImage']

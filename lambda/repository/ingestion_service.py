@@ -17,6 +17,7 @@ from typing import Any, Dict, Optional
 
 import boto3
 from models.domain_objects import Enum, FixedChunkingStrategy, IngestDocumentRequest, IngestionJob, IngestionType
+from repository.metadata_generator import MetadataGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +88,14 @@ class DocumentIngestionService:
         source = "collection" if collection else "repository"
         logger.info(f"Using embedding model for ingestion: {embedding_model} (from {source})")
 
+        # Merge metadata from repository, collection, and document sources
+        merged_metadata = MetadataGenerator.merge_metadata(
+            repository=repository,
+            collection=collection,
+            document_metadata=metadata,
+            for_bedrock_kb=False,  # Keep tags as array for ingestion jobs
+        )
+
         job = IngestionJob(
             repository_id=repository.get("repositoryId"),
             collection_id=collection_id,
@@ -94,9 +103,93 @@ class DocumentIngestionService:
             embedding_model=embedding_model,
             s3_path=s3_path,
             username=username,
-            metadata=metadata,
+            metadata=merged_metadata,
             ingestion_type=ingestion_type,
         )
         logger.info(f"Created ingestion job with embedding_model: {embedding_model}")
 
         return job
+
+    def _merge_metadata_for_ingestion(
+        self,
+        repository: dict,
+        collection: Optional[dict],
+        document_metadata: Optional[Dict[str, Any]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Merge metadata from repository, collection, and document sources for ingestion jobs.
+
+        This ensures the ingestion job contains the complete merged metadata that will be
+        applied to documents during ingestion, following the hierarchy:
+        1. Repository metadata (lowest precedence)
+        2. Collection metadata (medium precedence)
+        3. Document metadata (highest precedence)
+
+        Args:
+            repository: Repository configuration dictionary
+            collection: Collection configuration dictionary (optional)
+            document_metadata: Document-specific metadata (optional)
+
+        Returns:
+            Merged metadata dictionary or None if no metadata sources exist
+        """
+        merged_metadata: Dict[str, Any] = {}
+
+        # 1. Merge repository metadata (lowest precedence)
+        repo_metadata = repository.get("metadata")
+        if repo_metadata:
+            if isinstance(repo_metadata, dict):
+                # Add repository tags
+                repo_tags = repo_metadata.get("tags", [])
+                if repo_tags:
+                    merged_metadata["tags"] = repo_tags.copy()
+                # Add other repository metadata
+                for key, value in repo_metadata.items():
+                    if key != "tags":
+                        merged_metadata[key] = value
+            elif hasattr(repo_metadata, "tags"):
+                # Handle metadata objects with tags attribute
+                if repo_metadata.tags:
+                    merged_metadata["tags"] = list(repo_metadata.tags)
+
+        # 2. Merge collection metadata (medium precedence)
+        if collection and collection.get("metadata"):
+            coll_metadata = collection["metadata"]
+            if isinstance(coll_metadata, dict):
+                # Merge collection tags with repository tags
+                coll_tags = coll_metadata.get("tags", [])
+                if coll_tags:
+                    existing_tags = merged_metadata.get("tags", [])
+                    # Combine tags, with collection tags taking precedence for duplicates
+                    all_tags = existing_tags + [tag for tag in coll_tags if tag not in existing_tags]
+                    merged_metadata["tags"] = all_tags
+                # Add other collection metadata
+                for key, value in coll_metadata.items():
+                    if key != "tags":
+                        merged_metadata[key] = value
+            elif hasattr(coll_metadata, "tags"):
+                # Handle metadata objects with tags attribute
+                if coll_metadata.tags:
+                    existing_tags = merged_metadata.get("tags", [])
+                    all_tags = existing_tags + [tag for tag in coll_metadata.tags if tag not in existing_tags]
+                    merged_metadata["tags"] = all_tags
+
+        # 3. Merge document metadata (highest precedence)
+        if document_metadata:
+            # Document metadata completely overrides any conflicting keys
+            for key, value in document_metadata.items():
+                if key == "tags" and isinstance(value, list):
+                    # For tags, merge with existing tags, document tags take precedence
+                    existing_tags = merged_metadata.get("tags", [])
+                    all_tags = existing_tags + [tag for tag in value if tag not in existing_tags]
+                    merged_metadata["tags"] = all_tags
+                else:
+                    merged_metadata[key] = value
+
+        # Add repository and collection identifiers for traceability
+        merged_metadata["repositoryId"] = repository.get("repositoryId", "")
+        merged_metadata["collectionId"] = collection.get("collectionId", "") if collection else "default"
+
+        logger.info(f"Merged metadata for ingestion job: {merged_metadata}")
+
+        return merged_metadata if merged_metadata else None

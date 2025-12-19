@@ -185,7 +185,7 @@ export function McpServerDetails () {
             pagination={<Pagination {...paginationProps} />}
             items={items}
             columnDefinitions={[
-                { header: 'Use Tool', cell: (item) => <Toggle checked={!preferences?.preferences?.mcp?.enabledServers.find((server) => server.id === mcpServerId)?.disabledTools.includes(item.name)} onChange={({detail}) => toggleTool(item.name, detail.checked)}/>},
+                { header: 'Use tool', cell: (item) => <Toggle checked={!preferences?.preferences?.mcp?.enabledServers.find((server) => server.id === mcpServerId)?.disabledTools.includes(item.name)} onChange={({detail}) => toggleTool(item.name, detail.checked)}/>},
                 { header: 'Name', cell: (item) => item.name},
                 { header: 'Description', cell: (item) => item.description},
             ]}

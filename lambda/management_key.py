@@ -18,12 +18,12 @@ import json
 import logging
 import os
 import string
-from datetime import datetime
 from typing import Any, Dict
 
 import boto3
 from botocore.exceptions import ClientError
 from utilities.common_functions import retry_config
+from utilities.time import iso_string, utc_now
 
 # Configure logging
 logger = logging.getLogger()
@@ -198,7 +198,7 @@ def publish_rotation_event(secret_arn: str, new_version: str, old_version: str) 
             "secretName": secret_name,
             "newVersionId": new_version,
             "oldVersionId": old_version,
-            "rotationTimestamp": datetime.utcnow().isoformat() + "Z",
+            "rotationTimestamp": iso_string(),
             "rotationType": "management-key",
         }
 
@@ -210,7 +210,7 @@ def publish_rotation_event(secret_arn: str, new_version: str, old_version: str) 
                     "DetailType": "Management Key Rotated",
                     "Detail": json.dumps(event_detail),
                     "EventBusName": event_bus_name,
-                    "Time": datetime.utcnow(),
+                    "Time": utc_now(),
                 }
             ]
         )

@@ -41,21 +41,19 @@ export type RepositoryActionProps = {
     setSelectedItems: (items: RagRepositoryConfig[]) => void;
     setNewRepositoryModalVisible: (state: boolean) => void;
     setEdit: (state: boolean) => void;
-    refetchRepositories: () => void;
 };
 
 function RepositoryActions (props: RepositoryActionProps): ReactElement {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
-    const { setEdit, setNewRepositoryModalVisible, setSelectedItems, refetchRepositories } = props;
+    const { setEdit, setNewRepositoryModalVisible, setSelectedItems } = props;
     return (
         <SpaceBetween direction='horizontal' size='xs'>
             <Button
-                onClick={async () => {
+                onClick={() => {
                     setSelectedItems([]);
-                    // Invalidate cache and trigger refetch
+                    // Invalidate cache - this will automatically trigger refetch of active queries
                     dispatch(ragApi.util.invalidateTags(['repositories']));
-                    await refetchRepositories();
                 }}
                 ariaLabel={'Refresh repository table'}
             >
@@ -96,7 +94,8 @@ function RepositoryActionButton (dispatch: ThunkDispatch<any, any, Action>, noti
             setDisabledModel(false);
             setShowModal(false);
         } else if (!isDeleteLoading && isDeleteError && selectedRepo) {
-            notificationService.generateNotification(`Error deleting repository: ${deleteError.data?.message ?? deleteError.data}`, 'error');
+            const errorMessage = 'data' in deleteError ? deleteError.data?.message ?? deleteError.data : deleteError.message;
+            notificationService.generateNotification(`Error deleting repository: ${errorMessage}`, 'error');
             setSelectedItems([]);
             setDisabledModel(false);
             setShowModal(false);
@@ -109,7 +108,8 @@ function RepositoryActionButton (dispatch: ThunkDispatch<any, any, Action>, noti
             notificationService.generateNotification(`Successfully updated repository: ${selectedRepo?.repositoryId}`, 'success');
             setSelectedItems([]);
         } else if (!isUpdating && isUpdateError && selectedRepo) {
-            notificationService.generateNotification(`Error updating repository: ${updateError.data?.message ?? updateError.data}`, 'error');
+            const errorMessage = 'data' in updateError ? updateError.data?.message ?? updateError.data : updateError.message;
+            notificationService.generateNotification(`Error updating repository: ${errorMessage}`, 'error');
             setSelectedItems([]);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -176,9 +176,9 @@ function RepositoryActionButton (dispatch: ThunkDispatch<any, any, Action>, noti
 
 const RepositoryActionHandler = (
     e: any,
-    setNewRepositoryModalVisible: (boolean) => void,
-    setEdit: (boolean) => void,
-    setShowModal: (boolean) => void
+    setNewRepositoryModalVisible: (value: boolean) => void,
+    setEdit: (value: boolean) => void,
+    setShowModal: (value: boolean) => void
 ) => {
     switch (e.detail.id) {
         case 'edit':

@@ -22,6 +22,7 @@ import {
     RagRepositoryConfig,
     ChunkingStrategy,
     RagCollectionConfig as SchemaRagCollectionConfig,
+    CollectionMetadata,
 } from '#root/lib/schema';
 
 export type S3UploadRequest = {
@@ -33,8 +34,9 @@ type IngestDocumentRequest = {
     documents: string[],
     repositoryId: string,
     collectionId?: string,
-    repostiroyType: string,
+    repositoryType: string,
     chunkingStrategy?: ChunkingStrategy;
+    metadata?: CollectionMetadata;
 };
 
 type IngestDocumentJob = {
@@ -206,7 +208,7 @@ export const ragApi = createApi({
                 url: `/repository/${repositoryId}`,
                 method: 'DELETE',
             }),
-            invalidatesTags: ['repositories'],
+            invalidatesTags: ['repositories', 'collections', 'docs', 'jobs'],
         }),
         getPresignedUrl: builder.query<any, string>({
             query: (body) => ({
@@ -252,7 +254,8 @@ export const ragApi = createApi({
                 data: {
                     keys: request.documents,
                     collectionId: request.collectionId,
-                    chunkingStrategy: request.chunkingStrategy
+                    chunkingStrategy: request.chunkingStrategy,
+                    metadata: request.metadata
                 }
             }),
             transformErrorResponse: (baseQueryReturnValue) => ({

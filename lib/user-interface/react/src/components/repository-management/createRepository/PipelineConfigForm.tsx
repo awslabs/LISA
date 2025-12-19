@@ -27,10 +27,10 @@ import {
 } from '@cloudscape-design/components';
 import { FormProps } from '../../../shared/form/form-props';
 
-import { PipelineConfig, RagRepositoryPipeline, RagRepositoryType } from '#root/lib/schema';
-import { getDefaults } from '#root/lib/schema/zodUtil';
+import { PipelineConfig, RagRepositoryPipeline, RagRepositoryType, FixedSizeChunkingStrategySchema } from '#root/lib/schema';
 import { useListCollectionsQuery } from '@/shared/reducers/rag.reducer';
-import { ChunkingConfigForm } from '@/components/document-library/createCollection/ChunkingConfigForm';
+import { ChunkingConfigForm } from '@/shared/form/ChunkingConfigForm';
+import { MetadataForm } from '@/shared/form/MetadataForm';
 
 export type PipelineConfigProps = {
     isEdit: boolean;
@@ -56,7 +56,7 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
             return [
                 {
                     value: 'default',
-                    label: 'Default Collection',
+                    label: 'Default collection',
                     description: 'Documents will be ingested into the default collection',
                 }
             ];
@@ -75,7 +75,10 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
     };
 
     const addConfig = () => {
-        setFields({ pipelines: [...(item || []), getDefaults(RagRepositoryPipeline)] });
+        const newPipeline = RagRepositoryPipeline.partial().parse({
+            chunkingStrategy: FixedSizeChunkingStrategySchema.parse({})
+        });
+        setFields({ pipelines: [...(item || []), newPipeline] });
     };
 
     const removeConfig = (index: number) => {
@@ -121,7 +124,7 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                                 <Button
                                     variant='icon'
                                     iconName='remove'
-                                    disabled={isEdit}
+                                    ariaLabel='Remove pipeline'
                                     onClick={() => removeConfig(index)} />
                             }>
                             Pipeline {index + 1}
@@ -131,7 +134,7 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                         <ChunkingConfigForm
                             item={pipeline.chunkingStrategy}
                             setFields={(values) => {
-                                const updatedFields = {};
+                                const updatedFields: Record<string, unknown> = {};
                                 // Store using the new chunkingStrategy structure
                                 if (values.chunkingStrategy) {
                                     updatedFields[`pipelines[${index}].chunkingStrategy`] = values.chunkingStrategy;
@@ -148,7 +151,17 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                                 const updatedFields = fields.map((field) => `pipelines[${index}].${field}`);
                                 touchFields(updatedFields);
                             }}
-                            formErrors={formErrors.pipelines?.[index]?.chunkingStrategy || {}}
+                            formErrors={formErrors.pipelines?.[index] || {}}
+                        />
+
+                        <MetadataForm
+                            tags={pipeline.metadata?.tags || []}
+                            onTagsChange={(tags) => {
+                                setFields({
+                                    [`pipelines[${index}].metadata.tags`]: tags
+                                });
+                            }}
+                            errorText={formErrors.pipelines?.[index]?.metadata?.tags}
                         />
 
                         <FormField
@@ -167,13 +180,15 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                                     onChange(index, 'collectionId', detail.selectedOption.value)}
                                 statusType={isFetchingCollections ? 'loading' : 'finished'}
                                 virtualScroll
+                                disabled={isEdit}
                             />
                         </FormField>
 
                         <FormField
                             label='S3 Bucket'
+                            constraintText='Required'
                             errorText={formErrors.pipelines?.[index]?.s3Bucket}
-                            description={RagRepositoryPipeline.shape.s3Bucket.description}
+                            description={isEdit ? 'S3 bucket cannot be changed for existing pipelines (requires infrastructure redeployment)' : RagRepositoryPipeline.shape.s3Bucket.description}
                         >
                             <Input
                                 value={pipeline.s3Bucket}
@@ -181,26 +196,30 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                                     onChange(index, 's3Bucket', detail.value)
                                 }
                                 onBlur={() => touchFields([`pipelines[${index}].s3Bucket`])}
+                                placeholder='my-documents-bucket'
+                                disabled={isEdit}
                             />
                         </FormField>
 
                         <FormField
-                            label='S3 Prefix'
+                            label='S3 Prefix (optional)'
                             errorText={formErrors.pipelines?.[index]?.s3Prefix}
-                            description={RagRepositoryPipeline.shape.s3Prefix.description}>
+                            description={isEdit ? 'S3 prefix cannot be changed for existing pipelines (requires infrastructure redeployment)' : RagRepositoryPipeline.shape.s3Prefix.description}>
                             <Input
                                 value={pipeline.s3Prefix}
                                 onChange={({ detail }) =>
                                     onChange(index, 's3Prefix', detail.value)
                                 }
                                 onBlur={() => touchFields([`pipelines[${index}].s3Prefix`])}
+                                placeholder='documents/engineering/'
+                                disabled={isEdit}
                             />
                         </FormField>
 
                         <FormField
                             label='Trigger'
                             errorText={formErrors.pipelines?.[index]?.trigger}
-                            description={RagRepositoryPipeline.shape.trigger.description}>
+                            description={isEdit ? 'Trigger type cannot be changed for existing pipelines (requires infrastructure redeployment)' : RagRepositoryPipeline.shape.trigger.description}>
                             <Select
                                 selectedOption={{ label: pipeline.trigger, value: pipeline.trigger }}
                                 onChange={({ detail }) =>
@@ -211,19 +230,21 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                                     { label: 'Event', value: 'event', description: 'This ingestion pipeline runs whenever changes are detected.' },
                                 ]}
                                 onBlur={() => touchFields([`pipelines[${index}].trigger`])}
+                                disabled={isEdit}
                             />
                         </FormField>
 
                         <FormField
                             label='Auto Remove'
                             errorText={formErrors.pipelines?.[index]?.autoRemove}
-                            description={RagRepositoryPipeline.shape.autoRemove.description}
+                            description={isEdit ? 'Auto remove setting cannot be changed for existing pipelines (requires infrastructure redeployment)' : RagRepositoryPipeline.shape.autoRemove.description}
                         >
                             <Toggle
                                 checked={pipeline.autoRemove}
                                 onChange={({ detail }) =>
                                     onChange(index, 'autoRemove', detail.checked)
                                 }
+                                disabled={isEdit}
                             />
                         </FormField>
                     </SpaceBetween>
@@ -236,6 +257,12 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                 onClick={addConfig}>
                 Add Configuration
             </Button>
+            {isEdit && (
+                <div style={{ fontSize: '14px', color: '#5f6b7a', marginTop: '8px' }}>
+                    <strong>Note:</strong> Adding or removing pipelines requires infrastructure redeployment.
+                    Existing pipeline configurations cannot be modified.
+                </div>
+            )}
         </SpaceBetween>
     );
 }

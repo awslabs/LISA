@@ -15,6 +15,7 @@
  */
 
 import { defineConfig } from 'vitepress';
+import { tabsMarkdownPlugin } from 'vitepress-plugin-tabs'
 
 const navLinks = [
   {
@@ -51,7 +52,7 @@ const navLinks = [
   {
     text: 'Advanced Configuration',
     items: [
-      { text: 'Programmatic API Tokens', link: '/config/api-tokens' },
+      { text: 'API Token Management', link: '/config/api-tokens' },
       { text: 'Model Compatibility', link: '/config/model-compatibility' },
       { text: 'Model Management API', link: '/config/model-management-api' },
       { text: 'Model Management UI', link: '/config/model-management-ui' },
@@ -93,6 +94,11 @@ export default defineConfig({
   outDir: 'dist',
   base: '/LISA/',
   head: [['link', { rel: 'icon', href: '/LISA/favicon.ico' }]],
+  markdown: {
+    config(md) {
+      md.use(tabsMarkdownPlugin)
+    },
+  },
   // https://vitepress.dev/reference/default-theme-config
   themeConfig: {
     logo: {

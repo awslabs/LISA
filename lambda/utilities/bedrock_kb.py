@@ -270,8 +270,6 @@ class S3DocumentDiscoveryService:
                 bucket=s3_bucket,
                 document_key=document_key,
                 metadata_content=metadata_content,
-                repository_id=repository_id,
-                collection_id=collection_id,
             )
             logger.info(f"Created metadata file for s3://{s3_bucket}/{document_key}")
         except Exception as e:
@@ -552,6 +550,7 @@ def ingest_bedrock_s3_documents(
     embedding_model: str,
     s3_prefix: str = "",
     batch_size: int = 100,
+    metadata: Optional[Dict[str, Any]] = None,
 ) -> Tuple[int, int]:
     """
     Discover and create ingestion jobs for existing documents in S3 bucket.
@@ -622,6 +621,7 @@ def ingest_bedrock_s3_documents(
                 ingestion_type=IngestionType.EXISTING,  # Mark as pre-existing documents
                 job_type=JobActionType.DOCUMENT_BATCH_INGESTION,
                 s3_paths=s3_paths,
+                metadata=metadata,
             )
 
             ingestion_job_repository.save(job)
@@ -643,6 +643,7 @@ def create_s3_scan_job(
     embedding_model: str,
     s3_bucket: str,
     s3_prefix: str = "",
+    metadata: Optional[Dict[str, Any]] = None,
 ) -> str:
     """
     Create a batch ingestion job to scan and ingest existing S3 documents.
@@ -659,6 +660,7 @@ def create_s3_scan_job(
         embedding_model: Embedding model identifier
         s3_bucket: S3 bucket to scan
         s3_prefix: Optional S3 prefix to scan within bucket
+        metadata: Optional pre-merged metadata to include in the job
 
     Returns:
         Job ID of the created scan job
@@ -680,6 +682,7 @@ def create_s3_scan_job(
         ingestion_type=IngestionType.EXISTING,  # Mark as pre-existing documents
         job_type=JobActionType.DOCUMENT_BATCH_INGESTION,
         s3_paths=[],  # Empty list signals S3 scan mode
+        metadata=metadata,
     )
 
     ingestion_job_repository.save(job)

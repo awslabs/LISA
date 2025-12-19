@@ -1,0 +1,4923 @@
+{
+  "Parameters": {
+    "ModelsApiGuardrailsTableNameParameterParameter9338827B": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/guardrailsTableName"
+    },
+    "LisaRestApiUriStringParameterParameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/lisaServeRestApiUri"
+    },
+    "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/layerVersion/common"
+    },
+    "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/layerVersion/fastapi"
+    },
+    "SsmParameterValuedevtestlisalisalayerVersioncdkC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/layerVersion/cdk"
+    },
+    "SsmParameterValuedevtestlisalisabucketbucketaccesslogsC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/bucket/bucket-access-logs"
+    },
+    "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/appManagementKeySecretName"
+    },
+    "BootstrapVersion": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/cdk-bootstrap/hnb659fds/version",
+      "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+    }
+  },
+  "Resources": {
+    "ModelsApiRestApimodelsC1697580": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputFnGetAttLisaApiBaseRestApiBD7EFE41RootResourceId15433D4A"
+        },
+        "PathPart": "models",
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "ModelsApiRestApimodelsOPTIONS5A796DE8": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "Integration": {
+          "IntegrationResponses": [
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+              },
+              "StatusCode": "204"
+            }
+          ],
+          "RequestTemplates": {
+            "application/json": "{ statusCode: 200 }"
+          },
+          "Type": "MOCK"
+        },
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "StatusCode": "204"
+          }
+        ],
+        "ResourceId": {
+          "Ref": "ModelsApiRestApimodelsC1697580"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "ModelsApiRestApimodelsproxy5167503B": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Ref": "ModelsApiRestApimodelsC1697580"
+        },
+        "PathPart": "{proxy+}",
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "ModelsApiRestApimodelsproxyOPTIONS87D3B81B": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "Integration": {
+          "IntegrationResponses": [
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+              },
+              "StatusCode": "204"
+            }
+          ],
+          "RequestTemplates": {
+            "application/json": "{ statusCode: 200 }"
+          },
+          "Type": "MOCK"
+        },
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "StatusCode": "204"
+          }
+        ],
+        "ResourceId": {
+          "Ref": "ModelsApiRestApimodelsproxy5167503B"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "ModelsApiRestApimodelsproxyANYApiPermissionLisaModelsModelsApiRestApi2F36137AANYmodelsproxy93282F24": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "ModelsApiLisaModelsmodelshandler36D33339",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/*/models/*"
+            ]
+          ]
+        }
+      }
+    },
+    "ModelsApiRestApimodelsproxyANYApiPermissionTestLisaModelsModelsApiRestApi2F36137AANYmodelsproxyD1C02325": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "ModelsApiLisaModelsmodelshandler36D33339",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/*/models/*"
+            ]
+          ]
+        }
+      }
+    },
+    "ModelsApiRestApimodelsproxyANY6E9F83E5": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "ANY",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiLisaModelsmodelshandler36D33339",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "ModelsApiRestApimodelsproxy5167503B"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "ModelsApiRestApimodelsGETB3D039CA": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "GET",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiLisaModelsmodelshandler36D33339",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "ModelsApiRestApimodelsC1697580"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "ModelsApiRestApimodelsPOST3CF25A3C": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "POST",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiLisaModelsmodelshandler36D33339",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "ModelsApiRestApimodelsC1697580"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "ModelsApiRestApidocsC105FAE1": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputFnGetAttLisaApiBaseRestApiBD7EFE41RootResourceId15433D4A"
+        },
+        "PathPart": "docs",
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "ModelsApiRestApidocsOPTIONS1FA68409": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "Integration": {
+          "IntegrationResponses": [
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+              },
+              "StatusCode": "204"
+            }
+          ],
+          "RequestTemplates": {
+            "application/json": "{ statusCode: 200 }"
+          },
+          "Type": "MOCK"
+        },
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "StatusCode": "204"
+          }
+        ],
+        "ResourceId": {
+          "Ref": "ModelsApiRestApidocsC105FAE1"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "ModelsApiRestApidocsGETApiPermissionLisaModelsModelsApiRestApi2F36137AGETdocs7FD44A2B": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "ModelsApiLisaModelsmodelsdocs57EF06DB",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/GET/docs"
+            ]
+          ]
+        }
+      }
+    },
+    "ModelsApiRestApidocsGETApiPermissionTestLisaModelsModelsApiRestApi2F36137AGETdocsAE2A1BD3": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "ModelsApiLisaModelsmodelsdocs57EF06DB",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/GET/docs"
+            ]
+          ]
+        }
+      }
+    },
+    "ModelsApiRestApidocsGETFEF5AB72": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "NONE",
+        "HttpMethod": "GET",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiLisaModelsmodelsdocs57EF06DB",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "ModelsApiRestApidocsC105FAE1"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "ModelsApiRestApiopenapijsonD9AE9024": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputFnGetAttLisaApiBaseRestApiBD7EFE41RootResourceId15433D4A"
+        },
+        "PathPart": "openapi.json",
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "ModelsApiRestApiopenapijsonOPTIONS1255CA22": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "Integration": {
+          "IntegrationResponses": [
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+              },
+              "StatusCode": "204"
+            }
+          ],
+          "RequestTemplates": {
+            "application/json": "{ statusCode: 200 }"
+          },
+          "Type": "MOCK"
+        },
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "StatusCode": "204"
+          }
+        ],
+        "ResourceId": {
+          "Ref": "ModelsApiRestApiopenapijsonD9AE9024"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "ModelsApiRestApiopenapijsonGETFEBC2C73": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "NONE",
+        "HttpMethod": "GET",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiLisaModelsmodelshandler36D33339",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "ModelsApiRestApiopenapijsonD9AE9024"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "ModelsApiModelTable72B9582E": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "model_id",
+            "AttributeType": "S"
+          }
+        ],
+        "BillingMode": "PAY_PER_REQUEST",
+        "KeySchema": [
+          {
+            "AttributeName": "model_id",
+            "KeyType": "HASH"
+          }
+        ],
+        "SSESpecification": {
+          "SSEEnabled": true
+        }
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete"
+    },
+    "ModelsApiModelTableNameParameterF3E005A6": {
+      "Type": "AWS::SSM::Parameter",
+      "Properties": {
+        "Name": "/dev/test-lisa/lisa/modelTableName",
+        "Type": "String",
+        "Value": {
+          "Ref": "ModelsApiModelTable72B9582E"
+        }
+      }
+    },
+    "ModelsApiecsmodelbuildrepo74B1906D": {
+      "Type": "AWS::ECR::Repository",
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain"
+    },
+    "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerroleD506279E": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+              ]
+            ]
+          }
+        ],
+        "Policies": [
+          {
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Action": "sts:AssumeRole",
+                  "Effect": "Allow",
+                  "Resource": "arn:*:iam::*:role/cdk-*"
+                },
+                {
+                  "Action": [
+                    "ec2:CreateNetworkInterface",
+                    "ec2:DescribeNetworkInterfaces",
+                    "ec2:DescribeSubnets",
+                    "ec2:DeleteNetworkInterface",
+                    "ec2:AssignPrivateIpAddresses",
+                    "ec2:UnassignPrivateIpAddresses"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": "*"
+                }
+              ],
+              "Version": "2012-10-17"
+            },
+            "PolicyName": "lambdaPermissions"
+          }
+        ]
+      }
+    },
+    "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFunc775C7BAD": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "1ebc9d3ac2033816c4abb63e4afd69d350b4aba8704cc9236b82ea520b74f4b0.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "LISA_VPC_ID": {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPC8B8C4E4BB8544CDA"
+            },
+            "LISA_SECURITY_GROUP_ID": {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            },
+            "LISA_CONFIG": "{\"appName\":\"lisa\",\"deploymentName\":\"test-lisa\",\"deploymentPrefix\":\"/dev/test-lisa/lisa\",\"region\":\"us-iso-east-1\",\"deploymentStage\":\"dev\",\"removalPolicy\":\"destroy\",\"s3BucketModels\":\"hf-models-gaiic\",\"mountS3DebUrl\":\"https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb\",\"certificateAuthorityBundle\":\"\",\"pypiConfig\":{\"indexUrl\":\"localhost:8080\",\"trustedHost\":\"localhost\"},\"nvmeContainerMountPath\":\"/nvme\",\"nvmeHostMountPath\":\"/nvme\",\"condaUrl\":\"\"}"
+          }
+        },
+        "EphemeralStorage": {
+          "Size": 2048
+        },
+        "FunctionName": "LisaModels-ecs_model_deployer-Func",
+        "Handler": "index.handler",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncdkC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 1024,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerroleD506279E",
+            "Arn"
+          ]
+        },
+        "Runtime": "nodejs24.x",
+        "Timeout": 600,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerroleD506279E"
+      ]
+    },
+    "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderec2bucketA3074A95": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "LoggingConfiguration": {
+          "DestinationBucketName": {
+            "Fn::Select": [
+              0,
+              {
+                "Fn::Split": [
+                  "/",
+                  {
+                    "Fn::Select": [
+                      5,
+                      {
+                        "Fn::Split": [
+                          ":",
+                          {
+                            "Ref": "SsmParameterValuedevtestlisalisabucketbucketaccesslogsC96584B6F00A464EAD1953AFF4B05118Parameter"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "Tags": [
+          {
+            "Key": "aws-cdk:cr-owned:97c50996",
+            "Value": "true"
+          }
+        ]
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain"
+    },
+    "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderec2bucketPolicy0C3E0058": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderec2bucketA3074A95"
+        },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "s3:*",
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              },
+              "Effect": "Deny",
+              "Principal": {
+                "AWS": "*"
+              },
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderec2bucketA3074A95",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderec2bucketA3074A95",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        }
+      }
+    },
+    "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderec2dplmntAwsCliLayerB03BDD23": {
+      "Type": "AWS::Lambda::LayerVersion",
+      "Properties": {
+        "Content": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "c49d356cac773d491c5f7ac148995a1181498a8e289429f8612a7f7e3814f535.zip"
+        },
+        "Description": "/opt/awscli/aws"
+      }
+    },
+    "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderec2dplmntCustomResourceCBF35CCE": {
+      "Type": "Custom::CDKBucketDeployment",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C81C01536",
+            "Arn"
+          ]
+        },
+        "SourceBucketNames": [
+          "cdk-hnb659fds-assets-012345678901-us-iso-east-1"
+        ],
+        "SourceObjectKeys": [
+          "158cef6fe13582103654cb48259892ae3f9975552a59f2bfad165bd6b8a6b998.zip"
+        ],
+        "DestinationBucketName": {
+          "Ref": "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderec2bucketA3074A95"
+        },
+        "WaitForDistributionInvalidation": true,
+        "Prune": true,
+        "OutputObjectKeys": true
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete"
+    },
+    "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderec2role48B644BC": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ec2.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "RoleName": "LisaModels-docker-image-builder-ec2-role"
+      }
+    },
+    "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderec2policy17F11E25": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "s3:GetObject",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    {
+                      "Fn::GetAtt": [
+                        "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderec2bucketA3074A95",
+                        "Arn"
+                      ]
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": "s3:ListBucket",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderec2bucketA3074A95",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": [
+                "ecr:GetAuthorizationToken",
+                "ecr:InitiateLayerUpload",
+                "ecr:UploadLayerPart",
+                "ecr:CompleteLayerUpload",
+                "ecr:PutImage",
+                "ecr:BatchCheckLayerAvailability"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": [
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderec2policy17F11E25",
+        "Roles": [
+          {
+            "Ref": "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderec2role48B644BC"
+          }
+        ]
+      }
+    },
+    "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderrole27133073": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          },
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+              ]
+            ]
+          }
+        ],
+        "RoleName": "LisaModels-docker_image_builder_role"
+      }
+    },
+    "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderpolicyA4349424": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "ec2:RunInstances",
+                "ec2:CreateTags",
+                "ec2:CreateNetworkInterface",
+                "ec2:DescribeNetworkInterfaces",
+                "ec2:DescribeSubnets",
+                "ec2:DeleteNetworkInterface",
+                "ec2:AssignPrivateIpAddresses",
+                "ec2:UnassignPrivateIpAddresses"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": "iam:PassRole",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderec2role48B644BC",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": "ssm:GetParameter",
+              "Effect": "Allow",
+              "Resource": "arn:*:ssm:*::parameter/aws/service/*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderpolicyA4349424",
+        "Roles": [
+          {
+            "Ref": "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderrole27133073"
+          }
+        ]
+      }
+    },
+    "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderprofile7E79BDC1": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "InstanceProfileName": "LisaModels-docker-image-builder-profile",
+        "Roles": [
+          {
+            "Ref": "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderec2role48B644BC"
+          }
+        ]
+      }
+    },
+    "ModelsApidockerimagebuilderLisaModelsdockerimagebuilder35917FEB": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "LISA_DOCKER_BUCKET": {
+              "Ref": "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderec2bucketA3074A95"
+            },
+            "LISA_ECR_URI": {
+              "Fn::Join": [
+                "",
+                [
+                  {
+                    "Fn::Select": [
+                      4,
+                      {
+                        "Fn::Split": [
+                          ":",
+                          {
+                            "Fn::GetAtt": [
+                              "ModelsApiecsmodelbuildrepo74B1906D",
+                              "Arn"
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  ".dkr.ecr.",
+                  {
+                    "Fn::Select": [
+                      3,
+                      {
+                        "Fn::Split": [
+                          ":",
+                          {
+                            "Fn::GetAtt": [
+                              "ModelsApiecsmodelbuildrepo74B1906D",
+                              "Arn"
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  ".",
+                  {
+                    "Ref": "AWS::URLSuffix"
+                  },
+                  "/",
+                  {
+                    "Ref": "ModelsApiecsmodelbuildrepo74B1906D"
+                  }
+                ]
+              ]
+            },
+            "LISA_INSTANCE_PROFILE": {
+              "Fn::GetAtt": [
+                "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderprofile7E79BDC1",
+                "Arn"
+              ]
+            },
+            "LISA_MOUNTS3_DEB_URL": "https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb",
+            "LISA_IMAGEBUILDER_VOLUME_SIZE": "50"
+          }
+        },
+        "FunctionName": "LisaModels-docker-image-builder",
+        "Handler": "dockerimagebuilder.handler",
+        "MemorySize": 1024,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderrole27133073",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderrole27133073"
+      ]
+    },
+    "ModelsApiModelsSfnLambdaRoleF400F0BC": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+              ]
+            ]
+          }
+        ],
+        "Policies": [
+          {
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Action": [
+                    "dynamodb:DeleteItem",
+                    "dynamodb:GetItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:UpdateItem",
+                    "dynamodb:Scan",
+                    "dynamodb:Query"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": [
+                    {
+                      "Fn::GetAtt": [
+                        "ModelsApiModelTable72B9582E",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          {
+                            "Fn::GetAtt": [
+                              "ModelsApiModelTable72B9582E",
+                              "Arn"
+                            ]
+                          },
+                          "/*"
+                        ]
+                      ]
+                    },
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "arn:",
+                          {
+                            "Ref": "AWS::Partition"
+                          },
+                          ":dynamodb:us-iso-east-1:012345678901:table/",
+                          {
+                            "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+                          }
+                        ]
+                      ]
+                    },
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "arn:",
+                          {
+                            "Ref": "AWS::Partition"
+                          },
+                          ":dynamodb:us-iso-east-1:012345678901:table/",
+                          {
+                            "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+                          },
+                          "/*"
+                        ]
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "Action": [
+                    "cloudformation:CreateStack",
+                    "cloudformation:DeleteStack",
+                    "cloudformation:DescribeStacks"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": "arn:*:cloudformation:*:*:stack/*"
+                },
+                {
+                  "Action": "lambda:InvokeFunction",
+                  "Effect": "Allow",
+                  "Resource": [
+                    {
+                      "Fn::GetAtt": [
+                        "ModelsApidockerimagebuilderLisaModelsdockerimagebuilder35917FEB",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFunc775C7BAD",
+                        "Arn"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "Action": [
+                    "ecr:DescribeImages",
+                    "ecr:DescribeRepositories",
+                    "ecr:GetRepositoryPolicy",
+                    "ecr:ListImages"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": "*"
+                },
+                {
+                  "Action": [
+                    "ec2:CreateNetworkInterface",
+                    "ec2:DescribeNetworkInterfaces",
+                    "ec2:DescribeSubnets",
+                    "ec2:DeleteNetworkInterface",
+                    "ec2:AssignPrivateIpAddresses",
+                    "ec2:UnassignPrivateIpAddresses"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": "*"
+                },
+                {
+                  "Action": "ec2:TerminateInstances",
+                  "Condition": {
+                    "StringEquals": {
+                      "aws:ResourceTag/lisa_temporary_instance": "true"
+                    }
+                  },
+                  "Effect": "Allow",
+                  "Resource": "*"
+                },
+                {
+                  "Action": "secretsmanager:GetSecretValue",
+                  "Effect": "Allow",
+                  "Resource": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "arn:",
+                        {
+                          "Ref": "AWS::Partition"
+                        },
+                        ":secretsmanager:us-iso-east-1:012345678901:secret:",
+                        {
+                          "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+                        },
+                        "-??????"
+                      ]
+                    ]
+                  }
+                },
+                {
+                  "Action": [
+                    "autoscaling:DescribeAutoScalingGroups",
+                    "autoscaling:UpdateAutoScalingGroup",
+                    "autoscaling:PutScheduledUpdateGroupAction",
+                    "autoscaling:DeleteScheduledAction",
+                    "autoscaling:DescribeScheduledActions"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": "*"
+                },
+                {
+                  "Action": [
+                    "ecs:DescribeTaskDefinition",
+                    "ecs:RegisterTaskDefinition",
+                    "ecs:UpdateService",
+                    "ecs:DescribeServices"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": "*"
+                },
+                {
+                  "Action": "cloudformation:DescribeStackResources",
+                  "Effect": "Allow",
+                  "Resource": "arn:*:cloudformation:*:*:stack/*"
+                },
+                {
+                  "Action": "iam:PassRole",
+                  "Effect": "Allow",
+                  "Resource": "*"
+                },
+                {
+                  "Action": [
+                    "bedrock:InvokeModel",
+                    "bedrock:InvokeModelWithResponseStream",
+                    "bedrock:ApplyGuardrail"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": "*"
+                },
+                {
+                  "Action": "ssm:GetParameter",
+                  "Effect": "Allow",
+                  "Resource": [
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "arn:",
+                          {
+                            "Ref": "AWS::Partition"
+                          },
+                          ":ssm:us-iso-east-1:012345678901:parameter/dev/test-lisa/lisa/lisaServeRestApiUri"
+                        ]
+                      ]
+                    },
+                    "arn:aws:ssm:us-iso-east-1:012345678901:parameter/dev/test-lisa/lisa/lisaServeRestApiUri",
+                    "arn:aws:ssm:us-iso-east-1:012345678901:parameter/LISA-management-key",
+                    "arn:aws:ssm:us-iso-east-1:012345678901:parameter/dev/test-lisa/lisa/LiteLLMDbConnectionInfo",
+                    "arn:aws:ssm:us-iso-east-1:012345678901:parameter/dev/test-lisa/lisa/modelTableName"
+                  ]
+                },
+                {
+                  "Action": "secretsmanager:GetSecretValue",
+                  "Effect": "Allow",
+                  "Resource": "arn:aws:secretsmanager:us-iso-east-1:012345678901:secret:*"
+                }
+              ],
+              "Version": "2012-10-17"
+            },
+            "PolicyName": "lambdaPermissions"
+          }
+        ]
+      }
+    },
+    "ModelsApiScheduleManagementD0F63E98": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Description": "Manages Auto Scaling scheduled actions for LISA model scheduling",
+        "Environment": {
+          "Variables": {
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            }
+          }
+        },
+        "Handler": "models.scheduling.schedule_management.lambda_handler",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 300,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiScheduleMonitoring0B04A820": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Description": "Processes Auto Scaling Group CloudWatch events to update model status",
+        "Environment": {
+          "Variables": {
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "ECS_CLUSTER_NAME": "/dev/test-lisa/lisa-ECS-Cluster",
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "REST_API_VERSION": "v2"
+          }
+        },
+        "Handler": "models.scheduling.schedule_monitoring.lambda_handler",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 300,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiScheduleManagementInvokePerms61B92E48": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "ModelsApiScheduleManagementD0F63E98",
+                  "Arn"
+                ]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "ModelsApiScheduleManagementInvokePerms61B92E48",
+        "Roles": [
+          {
+            "Ref": "ModelsApiModelsSfnLambdaRoleF400F0BC"
+          }
+        ]
+      }
+    },
+    "ModelsApiAutoScalingEventsRuleF8ACA336": {
+      "Type": "AWS::Events::Rule",
+      "Properties": {
+        "Description": "Triggers ScheduleMonitoring Lambda when Auto Scaling Group instances launch or terminate successfully",
+        "EventPattern": {
+          "source": [
+            "aws.autoscaling"
+          ],
+          "detail-type": [
+            "EC2 Instance Launch Successful",
+            "EC2 Instance Terminate Successful"
+          ]
+        },
+        "State": "ENABLED",
+        "Targets": [
+          {
+            "Arn": {
+              "Fn::GetAtt": [
+                "ModelsApiScheduleMonitoring0B04A820",
+                "Arn"
+              ]
+            },
+            "Id": "Target0"
+          }
+        ]
+      }
+    },
+    "ModelsApiAutoScalingEventsRuleAllowEventRuleLisaModelsModelsApiScheduleMonitoringFC77CB9E29D717F3": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "ModelsApiScheduleMonitoring0B04A820",
+            "Arn"
+          ]
+        },
+        "Principal": "events.amazonaws.com",
+        "SourceArn": {
+          "Fn::GetAtt": [
+            "ModelsApiAutoScalingEventsRuleF8ACA336",
+            "Arn"
+          ]
+        }
+      }
+    },
+    "ModelsApiCreateModelWorkflowSetModelToCreatingFunc4E8D1CA0": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "DOCKER_IMAGE_BUILDER_FN_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApidockerimagebuilderLisaModelsdockerimagebuilder35917FEB",
+                "Arn"
+              ]
+            },
+            "ECR_REPOSITORY_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApiecsmodelbuildrepo74B1906D",
+                "Arn"
+              ]
+            },
+            "ECR_REPOSITORY_NAME": {
+              "Ref": "ModelsApiecsmodelbuildrepo74B1906D"
+            },
+            "ECS_MODEL_DEPLOYER_FN_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFunc775C7BAD",
+                "Arn"
+              ]
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+            },
+            "REST_API_VERSION": "v2",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
+            "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}",
+            "AWS_ACCOUNT_ID": "012345678901",
+            "AWS_PARTITION": "aws"
+          }
+        },
+        "Handler": "models.state_machine.create_model.handle_set_model_to_creating",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiCreateModelWorkflowStartCopyDockerImageFuncE508BA76": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "DOCKER_IMAGE_BUILDER_FN_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApidockerimagebuilderLisaModelsdockerimagebuilder35917FEB",
+                "Arn"
+              ]
+            },
+            "ECR_REPOSITORY_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApiecsmodelbuildrepo74B1906D",
+                "Arn"
+              ]
+            },
+            "ECR_REPOSITORY_NAME": {
+              "Ref": "ModelsApiecsmodelbuildrepo74B1906D"
+            },
+            "ECS_MODEL_DEPLOYER_FN_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFunc775C7BAD",
+                "Arn"
+              ]
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+            },
+            "REST_API_VERSION": "v2",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
+            "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}",
+            "AWS_ACCOUNT_ID": "012345678901",
+            "AWS_PARTITION": "aws"
+          }
+        },
+        "Handler": "models.state_machine.create_model.handle_start_copy_docker_image",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiCreateModelWorkflowPollDockerImageAvailableFuncF23F9A33": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "DOCKER_IMAGE_BUILDER_FN_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApidockerimagebuilderLisaModelsdockerimagebuilder35917FEB",
+                "Arn"
+              ]
+            },
+            "ECR_REPOSITORY_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApiecsmodelbuildrepo74B1906D",
+                "Arn"
+              ]
+            },
+            "ECR_REPOSITORY_NAME": {
+              "Ref": "ModelsApiecsmodelbuildrepo74B1906D"
+            },
+            "ECS_MODEL_DEPLOYER_FN_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFunc775C7BAD",
+                "Arn"
+              ]
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+            },
+            "REST_API_VERSION": "v2",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
+            "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}",
+            "AWS_ACCOUNT_ID": "012345678901",
+            "AWS_PARTITION": "aws"
+          }
+        },
+        "Handler": "models.state_machine.create_model.handle_poll_docker_image_available",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiCreateModelWorkflowHandleFailureFunc7CC3D0A8": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "DOCKER_IMAGE_BUILDER_FN_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApidockerimagebuilderLisaModelsdockerimagebuilder35917FEB",
+                "Arn"
+              ]
+            },
+            "ECR_REPOSITORY_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApiecsmodelbuildrepo74B1906D",
+                "Arn"
+              ]
+            },
+            "ECR_REPOSITORY_NAME": {
+              "Ref": "ModelsApiecsmodelbuildrepo74B1906D"
+            },
+            "ECS_MODEL_DEPLOYER_FN_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFunc775C7BAD",
+                "Arn"
+              ]
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+            },
+            "REST_API_VERSION": "v2",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
+            "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}",
+            "AWS_ACCOUNT_ID": "012345678901",
+            "AWS_PARTITION": "aws"
+          }
+        },
+        "Handler": "models.state_machine.create_model.handle_failure",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiCreateModelWorkflowStartCreateStackFuncCEE91381": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "DOCKER_IMAGE_BUILDER_FN_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApidockerimagebuilderLisaModelsdockerimagebuilder35917FEB",
+                "Arn"
+              ]
+            },
+            "ECR_REPOSITORY_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApiecsmodelbuildrepo74B1906D",
+                "Arn"
+              ]
+            },
+            "ECR_REPOSITORY_NAME": {
+              "Ref": "ModelsApiecsmodelbuildrepo74B1906D"
+            },
+            "ECS_MODEL_DEPLOYER_FN_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFunc775C7BAD",
+                "Arn"
+              ]
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+            },
+            "REST_API_VERSION": "v2",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
+            "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}",
+            "AWS_ACCOUNT_ID": "012345678901",
+            "AWS_PARTITION": "aws"
+          }
+        },
+        "Handler": "models.state_machine.create_model.handle_start_create_stack",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 480,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiCreateModelWorkflowPollCreateStackFunc3B3660A0": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "DOCKER_IMAGE_BUILDER_FN_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApidockerimagebuilderLisaModelsdockerimagebuilder35917FEB",
+                "Arn"
+              ]
+            },
+            "ECR_REPOSITORY_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApiecsmodelbuildrepo74B1906D",
+                "Arn"
+              ]
+            },
+            "ECR_REPOSITORY_NAME": {
+              "Ref": "ModelsApiecsmodelbuildrepo74B1906D"
+            },
+            "ECS_MODEL_DEPLOYER_FN_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFunc775C7BAD",
+                "Arn"
+              ]
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+            },
+            "REST_API_VERSION": "v2",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
+            "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}",
+            "AWS_ACCOUNT_ID": "012345678901",
+            "AWS_PARTITION": "aws"
+          }
+        },
+        "Handler": "models.state_machine.create_model.handle_poll_create_stack",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiCreateModelWorkflowCreateScheduleFuncBB684C18": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "DOCKER_IMAGE_BUILDER_FN_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApidockerimagebuilderLisaModelsdockerimagebuilder35917FEB",
+                "Arn"
+              ]
+            },
+            "ECR_REPOSITORY_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApiecsmodelbuildrepo74B1906D",
+                "Arn"
+              ]
+            },
+            "ECR_REPOSITORY_NAME": {
+              "Ref": "ModelsApiecsmodelbuildrepo74B1906D"
+            },
+            "ECS_MODEL_DEPLOYER_FN_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFunc775C7BAD",
+                "Arn"
+              ]
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+            },
+            "REST_API_VERSION": "v2",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
+            "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}",
+            "AWS_ACCOUNT_ID": "012345678901",
+            "AWS_PARTITION": "aws",
+            "SCHEDULE_MANAGEMENT_FUNCTION_NAME": {
+              "Ref": "ModelsApiScheduleManagementD0F63E98"
+            }
+          }
+        },
+        "Handler": "models.state_machine.schedule_handlers.handle_schedule_creation",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiCreateModelWorkflowAddModelToLitellmFunc6B8DBAE6": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "DOCKER_IMAGE_BUILDER_FN_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApidockerimagebuilderLisaModelsdockerimagebuilder35917FEB",
+                "Arn"
+              ]
+            },
+            "ECR_REPOSITORY_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApiecsmodelbuildrepo74B1906D",
+                "Arn"
+              ]
+            },
+            "ECR_REPOSITORY_NAME": {
+              "Ref": "ModelsApiecsmodelbuildrepo74B1906D"
+            },
+            "ECS_MODEL_DEPLOYER_FN_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFunc775C7BAD",
+                "Arn"
+              ]
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+            },
+            "REST_API_VERSION": "v2",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
+            "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}",
+            "AWS_ACCOUNT_ID": "012345678901",
+            "AWS_PARTITION": "aws"
+          }
+        },
+        "Handler": "models.state_machine.create_model.handle_add_model_to_litellm",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiCreateModelWorkflowAddGuardrailsToLitellmFunc539E23C4": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "DOCKER_IMAGE_BUILDER_FN_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApidockerimagebuilderLisaModelsdockerimagebuilder35917FEB",
+                "Arn"
+              ]
+            },
+            "ECR_REPOSITORY_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApiecsmodelbuildrepo74B1906D",
+                "Arn"
+              ]
+            },
+            "ECR_REPOSITORY_NAME": {
+              "Ref": "ModelsApiecsmodelbuildrepo74B1906D"
+            },
+            "ECS_MODEL_DEPLOYER_FN_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFunc775C7BAD",
+                "Arn"
+              ]
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+            },
+            "REST_API_VERSION": "v2",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
+            "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}",
+            "AWS_ACCOUNT_ID": "012345678901",
+            "AWS_PARTITION": "aws"
+          }
+        },
+        "Handler": "models.state_machine.create_model.handle_add_guardrails_to_litellm",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiCreateModelWorkflowCreateModelSMRoleA50933E5": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "states.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        }
+      }
+    },
+    "ModelsApiCreateModelWorkflowCreateModelSMRoleDefaultPolicy3AEF4263": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiCreateModelWorkflowSetModelToCreatingFunc4E8D1CA0",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiCreateModelWorkflowSetModelToCreatingFunc4E8D1CA0",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiCreateModelWorkflowAddModelToLitellmFunc6B8DBAE6",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiCreateModelWorkflowAddModelToLitellmFunc6B8DBAE6",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiCreateModelWorkflowCreateScheduleFuncBB684C18",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiCreateModelWorkflowCreateScheduleFuncBB684C18",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiCreateModelWorkflowAddGuardrailsToLitellmFunc539E23C4",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiCreateModelWorkflowAddGuardrailsToLitellmFunc539E23C4",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiCreateModelWorkflowHandleFailureFunc7CC3D0A8",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiCreateModelWorkflowHandleFailureFunc7CC3D0A8",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiCreateModelWorkflowStartCopyDockerImageFuncE508BA76",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiCreateModelWorkflowStartCopyDockerImageFuncE508BA76",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiCreateModelWorkflowPollDockerImageAvailableFuncF23F9A33",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiCreateModelWorkflowPollDockerImageAvailableFuncF23F9A33",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiCreateModelWorkflowStartCreateStackFuncCEE91381",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiCreateModelWorkflowStartCreateStackFuncCEE91381",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiCreateModelWorkflowPollCreateStackFunc3B3660A0",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiCreateModelWorkflowPollCreateStackFunc3B3660A0",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "ModelsApiCreateModelWorkflowCreateModelSMRoleDefaultPolicy3AEF4263",
+        "Roles": [
+          {
+            "Ref": "ModelsApiCreateModelWorkflowCreateModelSMRoleA50933E5"
+          }
+        ]
+      }
+    },
+    "ModelsApiCreateModelWorkflowCreateModelSM80C5B2A6": {
+      "Type": "AWS::StepFunctions::StateMachine",
+      "Properties": {
+        "DefinitionString": {
+          "Fn::Join": [
+            "",
+            [
+              "{\"StartAt\":\"SetModelToCreating\",\"States\":{\"SetModelToCreating\":{\"Next\":\"CreateModelInfraChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiCreateModelWorkflowSetModelToCreatingFunc4E8D1CA0",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"CreateModelInfraChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.create_infra\",\"BooleanEquals\":true,\"Next\":\"StartCopyDockerImage\"}],\"Default\":\"AddModelToLitellm\"},\"AddModelToLitellm\":{\"Next\":\"CheckGuardrailsChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiCreateModelWorkflowAddModelToLitellmFunc6B8DBAE6",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"CreateSchedule\":{\"Next\":\"AddModelToLitellm\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiCreateModelWorkflowCreateScheduleFuncBB684C18",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"CheckGuardrailsChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.guardrailsConfig\",\"IsPresent\":true,\"Next\":\"AddGuardrailsToLitellm\"}],\"Default\":\"CreateSuccess\"},\"CreateSuccess\":{\"Type\":\"Succeed\"},\"AddGuardrailsToLitellm\":{\"Next\":\"CreateSuccess\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.TaskFailed\"],\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiCreateModelWorkflowAddGuardrailsToLitellmFunc539E23C4",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"HandleFailure\":{\"Next\":\"CreateFailed\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiCreateModelWorkflowHandleFailureFunc7CC3D0A8",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"StartCopyDockerImage\":{\"Next\":\"CheckImageTypeChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.TaskFailed\"],\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiCreateModelWorkflowStartCopyDockerImageFuncE508BA76",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"CheckImageTypeChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.image_info.image_status\",\"StringEquals\":\"prebuilt\",\"Next\":\"StartCreateStack\"}],\"Default\":\"PollDockerImageAvailable\"},\"PollDockerImageAvailable\":{\"Next\":\"PollDockerImageChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"MaxPollsExceededException\"],\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiCreateModelWorkflowPollDockerImageAvailableFuncF23F9A33",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"WaitBeforePollingDockerImage\":{\"Type\":\"Wait\",\"Seconds\":60,\"Next\":\"PollDockerImageAvailable\"},\"PollDockerImageChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.continue_polling_docker\",\"BooleanEquals\":true,\"Next\":\"WaitBeforePollingDockerImage\"}],\"Default\":\"StartCreateStack\"},\"StartCreateStack\":{\"Next\":\"PollCreateStack\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"StackFailedToCreateException\"],\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiCreateModelWorkflowStartCreateStackFuncCEE91381",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"PollCreateStack\":{\"Next\":\"PollCreateStackChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"MaxPollsExceededException\",\"UnexpectedCloudFormationStateException\"],\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiCreateModelWorkflowPollCreateStackFunc3B3660A0",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"WaitBeforePollingCreateStack\":{\"Type\":\"Wait\",\"Seconds\":60,\"Next\":\"PollCreateStack\"},\"PollCreateStackChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.continue_polling_stack\",\"BooleanEquals\":true,\"Next\":\"WaitBeforePollingCreateStack\"}],\"Default\":\"CreateSchedule\"},\"CreateFailed\":{\"Type\":\"Fail\"}}}"
+            ]
+          ]
+        },
+        "RoleArn": {
+          "Fn::GetAtt": [
+            "ModelsApiCreateModelWorkflowCreateModelSMRoleA50933E5",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiCreateModelWorkflowCreateModelSMRoleDefaultPolicy3AEF4263",
+        "ModelsApiCreateModelWorkflowCreateModelSMRoleA50933E5"
+      ],
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete"
+    },
+    "ModelsApiDeleteModelWorkflowSetModelToDeletingFuncCA1C7F8D": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "REST_API_VERSION": "v2",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev"
+          }
+        },
+        "Handler": "models.state_machine.delete_model.handle_set_model_to_deleting",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiDeleteModelWorkflowDeleteFromLitellmFunc75B8FA09": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "REST_API_VERSION": "v2",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev"
+          }
+        },
+        "Handler": "models.state_machine.delete_model.handle_delete_from_litellm",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiDeleteModelWorkflowDeleteStackFunc0B8E2D75": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "REST_API_VERSION": "v2",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev"
+          }
+        },
+        "Handler": "models.state_machine.delete_model.handle_delete_stack",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiDeleteModelWorkflowMonitorDeleteStackFunc2CE43E62": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "REST_API_VERSION": "v2",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev"
+          }
+        },
+        "Handler": "models.state_machine.delete_model.handle_monitor_delete_stack",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiDeleteModelWorkflowDeleteFromDdbFuncAB2B6BFB": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "REST_API_VERSION": "v2",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev"
+          }
+        },
+        "Handler": "models.state_machine.delete_model.handle_delete_from_ddb",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiDeleteModelWorkflowDeleteGuardrailsFunc9C6905A9": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "REST_API_VERSION": "v2",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev"
+          }
+        },
+        "Handler": "models.state_machine.delete_model.handle_delete_guardrails",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiDeleteModelWorkflowDeleteModelSMRole51851444": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "states.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        }
+      }
+    },
+    "ModelsApiDeleteModelWorkflowDeleteModelSMRoleDefaultPolicy8A3C524C": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiDeleteModelWorkflowSetModelToDeletingFuncCA1C7F8D",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiDeleteModelWorkflowSetModelToDeletingFuncCA1C7F8D",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiDeleteModelWorkflowDeleteFromLitellmFunc75B8FA09",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiDeleteModelWorkflowDeleteFromLitellmFunc75B8FA09",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiDeleteModelWorkflowDeleteGuardrailsFunc9C6905A9",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiDeleteModelWorkflowDeleteGuardrailsFunc9C6905A9",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiDeleteModelWorkflowDeleteFromDdbFuncAB2B6BFB",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiDeleteModelWorkflowDeleteFromDdbFuncAB2B6BFB",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiDeleteModelWorkflowDeleteStackFunc0B8E2D75",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiDeleteModelWorkflowDeleteStackFunc0B8E2D75",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiDeleteModelWorkflowMonitorDeleteStackFunc2CE43E62",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiDeleteModelWorkflowMonitorDeleteStackFunc2CE43E62",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "ModelsApiDeleteModelWorkflowDeleteModelSMRoleDefaultPolicy8A3C524C",
+        "Roles": [
+          {
+            "Ref": "ModelsApiDeleteModelWorkflowDeleteModelSMRole51851444"
+          }
+        ]
+      }
+    },
+    "ModelsApiDeleteModelWorkflowDeleteModelSMDAC2A84A": {
+      "Type": "AWS::StepFunctions::StateMachine",
+      "Properties": {
+        "DefinitionString": {
+          "Fn::Join": [
+            "",
+            [
+              "{\"StartAt\":\"SetModelToDeleting\",\"States\":{\"SetModelToDeleting\":{\"Next\":\"DeleteFromLitellm\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiDeleteModelWorkflowSetModelToDeletingFuncCA1C7F8D",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"DeleteFromLitellm\":{\"Next\":\"DeleteGuardrails\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiDeleteModelWorkflowDeleteFromLitellmFunc75B8FA09",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"DeleteGuardrails\":{\"Next\":\"DeleteStackChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiDeleteModelWorkflowDeleteGuardrailsFunc9C6905A9",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"DeleteStackChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.cloudformation_stack_arn\",\"IsNull\":false,\"Next\":\"DeleteStack\"}],\"Default\":\"DeleteFromDdb\"},\"DeleteFromDdb\":{\"Next\":\"DeleteSuccess\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiDeleteModelWorkflowDeleteFromDdbFuncAB2B6BFB",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"DeleteSuccess\":{\"Type\":\"Succeed\"},\"DeleteStack\":{\"Next\":\"MonitorDeleteStack\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiDeleteModelWorkflowDeleteStackFunc0B8E2D75",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"MonitorDeleteStack\":{\"Next\":\"PollDeleteStackChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiDeleteModelWorkflowMonitorDeleteStackFunc2CE43E62",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"WaitBeforePollDeleteStack\":{\"Type\":\"Wait\",\"Seconds\":60,\"Next\":\"MonitorDeleteStack\"},\"PollDeleteStackChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.continue_polling\",\"BooleanEquals\":true,\"Next\":\"WaitBeforePollDeleteStack\"}],\"Default\":\"DeleteFromDdb\"}}}"
+            ]
+          ]
+        },
+        "RoleArn": {
+          "Fn::GetAtt": [
+            "ModelsApiDeleteModelWorkflowDeleteModelSMRole51851444",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiDeleteModelWorkflowDeleteModelSMRoleDefaultPolicy8A3C524C",
+        "ModelsApiDeleteModelWorkflowDeleteModelSMRole51851444"
+      ],
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete"
+    },
+    "ModelsApiUpdateModelWorkflowHandleJobIntakeFuncA1438F67": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "REST_API_VERSION": "v2",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
+            "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}"
+          }
+        },
+        "Handler": "models.state_machine.update_model.handle_job_intake",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiUpdateModelWorkflowHandlePollCapacityFunc5376513F": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "REST_API_VERSION": "v2",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
+            "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}"
+          }
+        },
+        "Handler": "models.state_machine.update_model.handle_poll_capacity",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiUpdateModelWorkflowHandleEcsUpdateFunc1CF09788": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "REST_API_VERSION": "v2",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
+            "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}"
+          }
+        },
+        "Handler": "models.state_machine.update_model.handle_ecs_update",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiUpdateModelWorkflowHandlePollEcsDeploymentFuncDF9FFF3B": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "REST_API_VERSION": "v2",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
+            "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}"
+          }
+        },
+        "Handler": "models.state_machine.update_model.handle_poll_ecs_deployment",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiUpdateModelWorkflowHandleUpdateGuardrailsFuncAA02BA03": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "REST_API_VERSION": "v2",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
+            "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}"
+          }
+        },
+        "Handler": "models.state_machine.update_model.handle_update_guardrails",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiUpdateModelWorkflowHandleFinishUpdateFunc92E550FB": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "REST_API_VERSION": "v2",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
+            "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}"
+          }
+        },
+        "Handler": "models.state_machine.update_model.handle_finish_update",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiUpdateModelWorkflowUpdateModelSMRoleF6FA4558": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "states.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        }
+      }
+    },
+    "ModelsApiUpdateModelWorkflowUpdateModelSMRoleDefaultPolicy3F382CD9": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiUpdateModelWorkflowHandleJobIntakeFuncA1438F67",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiUpdateModelWorkflowHandleJobIntakeFuncA1438F67",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiUpdateModelWorkflowHandleUpdateGuardrailsFuncAA02BA03",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiUpdateModelWorkflowHandleUpdateGuardrailsFuncAA02BA03",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiUpdateModelWorkflowHandleFinishUpdateFunc92E550FB",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiUpdateModelWorkflowHandleFinishUpdateFunc92E550FB",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiUpdateModelWorkflowHandlePollCapacityFunc5376513F",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiUpdateModelWorkflowHandlePollCapacityFunc5376513F",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiUpdateModelWorkflowHandleEcsUpdateFunc1CF09788",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiUpdateModelWorkflowHandleEcsUpdateFunc1CF09788",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiUpdateModelWorkflowHandlePollEcsDeploymentFuncDF9FFF3B",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiUpdateModelWorkflowHandlePollEcsDeploymentFuncDF9FFF3B",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "ModelsApiUpdateModelWorkflowUpdateModelSMRoleDefaultPolicy3F382CD9",
+        "Roles": [
+          {
+            "Ref": "ModelsApiUpdateModelWorkflowUpdateModelSMRoleF6FA4558"
+          }
+        ]
+      }
+    },
+    "ModelsApiUpdateModelWorkflowUpdateModelSMDB7A1316": {
+      "Type": "AWS::StepFunctions::StateMachine",
+      "Properties": {
+        "DefinitionString": {
+          "Fn::Join": [
+            "",
+            [
+              "{\"StartAt\":\"HandleJobIntake\",\"States\":{\"HandleJobIntake\":{\"Next\":\"HasEcsUpdateChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiUpdateModelWorkflowHandleJobIntakeFuncA1438F67",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"HasEcsUpdateChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.needs_ecs_update\",\"BooleanEquals\":true,\"Next\":\"HandleEcsUpdate\"}],\"Default\":\"HasGuardrailsUpdateChoice\"},\"HasGuardrailsUpdateChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.needs_guardrails_update\",\"BooleanEquals\":true,\"Next\":\"HandleUpdateGuardrails\"}],\"Default\":\"HasCapacityUpdateChoice\"},\"HasCapacityUpdateChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.has_capacity_update\",\"BooleanEquals\":true,\"Next\":\"HandlePollCapacity\"}],\"Default\":\"HandleFinishUpdate\"},\"HandleUpdateGuardrails\":{\"Next\":\"HasCapacityUpdateChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiUpdateModelWorkflowHandleUpdateGuardrailsFuncAA02BA03",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"HandleFinishUpdate\":{\"Next\":\"UpdateSuccess\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiUpdateModelWorkflowHandleFinishUpdateFunc92E550FB",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"WaitBeforeModelAvailable\":{\"Type\":\"Wait\",\"SecondsPath\":\"$.model_warmup_seconds\",\"Next\":\"HandleFinishUpdate\"},\"UpdateSuccess\":{\"Type\":\"Succeed\"},\"HandlePollCapacity\":{\"Next\":\"PollAsgChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiUpdateModelWorkflowHandlePollCapacityFunc5376513F",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"WaitBeforePollAsg\":{\"Type\":\"Wait\",\"Seconds\":60,\"Next\":\"HandlePollCapacity\"},\"PollAsgChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.should_continue_capacity_polling\",\"BooleanEquals\":true,\"Next\":\"WaitBeforePollAsg\"}],\"Default\":\"WaitBeforeModelAvailable\"},\"HandleEcsUpdate\":{\"Next\":\"HandlePollEcsDeployment\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiUpdateModelWorkflowHandleEcsUpdateFunc1CF09788",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"HandlePollEcsDeployment\":{\"Next\":\"PollEcsDeploymentChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiUpdateModelWorkflowHandlePollEcsDeploymentFuncDF9FFF3B",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"WaitBeforePollEcsDeployment\":{\"Type\":\"Wait\",\"Seconds\":60,\"Next\":\"HandlePollEcsDeployment\"},\"PollEcsDeploymentChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.should_continue_ecs_polling\",\"BooleanEquals\":true,\"Next\":\"WaitBeforePollEcsDeployment\"}],\"Default\":\"HasGuardrailsUpdateChoice\"}}}"
+            ]
+          ]
+        },
+        "RoleArn": {
+          "Fn::GetAtt": [
+            "ModelsApiUpdateModelWorkflowUpdateModelSMRoleF6FA4558",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiUpdateModelWorkflowUpdateModelSMRoleDefaultPolicy3F382CD9",
+        "ModelsApiUpdateModelWorkflowUpdateModelSMRoleF6FA4558"
+      ],
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete"
+    },
+    "ModelsApiLisaModelApiLambdaExecutionRole3E663E08": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Description": "Role used by LISA ModelApi lambdas to access AWS resources",
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+              ]
+            ]
+          }
+        ],
+        "Policies": [
+          {
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Action": [
+                    "dynamodb:BatchGetItem",
+                    "dynamodb:ConditionCheckItem",
+                    "dynamodb:DescribeTable",
+                    "dynamodb:GetItem",
+                    "dynamodb:GetRecords",
+                    "dynamodb:GetShardIterator",
+                    "dynamodb:Query",
+                    "dynamodb:Scan",
+                    "dynamodb:BatchWriteItem",
+                    "dynamodb:DeleteItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:UpdateItem"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": [
+                    {
+                      "Fn::GetAtt": [
+                        "ModelsApiModelTable72B9582E",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          {
+                            "Fn::GetAtt": [
+                              "ModelsApiModelTable72B9582E",
+                              "Arn"
+                            ]
+                          },
+                          "/*"
+                        ]
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "Version": "2012-10-17"
+            },
+            "PolicyName": "lambdaPermissions"
+          }
+        ],
+        "RoleName": "test-lisa-LisaModelApiLambdaExecutionRole"
+      }
+    },
+    "ModelsApiLisaModelApiLambdaExecutionRoleDefaultPolicy1C96D538": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "ssm:DescribeParameters",
+                "ssm:GetParameters",
+                "ssm:GetParameter",
+                "ssm:GetParameterHistory"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":ssm:us-iso-east-1:012345678901:parameter/dev/test-lisa/lisa/lisaServeRestApiUri"
+                  ]
+                ]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "ModelsApiLisaModelApiLambdaExecutionRoleDefaultPolicy1C96D538",
+        "Roles": [
+          {
+            "Ref": "ModelsApiLisaModelApiLambdaExecutionRole3E663E08"
+          }
+        ]
+      }
+    },
+    "ModelsApiLisaModelsmodelshandler36D33339": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Description": "Manage model",
+        "Environment": {
+          "Variables": {
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "REST_API_VERSION": "v2",
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
+            "CREATE_SFN_ARN": {
+              "Ref": "ModelsApiCreateModelWorkflowCreateModelSM80C5B2A6"
+            },
+            "DELETE_SFN_ARN": {
+              "Ref": "ModelsApiDeleteModelWorkflowDeleteModelSMDAC2A84A"
+            },
+            "UPDATE_SFN_ARN": {
+              "Ref": "ModelsApiUpdateModelWorkflowUpdateModelSMDB7A1316"
+            },
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "SCHEDULE_MANAGEMENT_FUNCTION_NAME": {
+              "Ref": "ModelsApiScheduleManagementD0F63E98"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+            },
+            "ADMIN_GROUP": "",
+            "LISA_RAG_VECTOR_STORE_TABLE_PS_NAME": "/dev/test-lisa/lisa/ragVectorStoreTableName",
+            "LISA_RAG_COLLECTIONS_TABLE_PS_NAME": "/dev/test-lisa/lisa/ragCollectionsTableName"
+          }
+        },
+        "FunctionName": "LisaModels-models-handler",
+        "Handler": "models.lambda_functions.handler",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiLisaModelApiLambdaExecutionRole3E663E08",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiLisaModelApiLambdaExecutionRoleDefaultPolicy1C96D538",
+        "ModelsApiLisaModelApiLambdaExecutionRole3E663E08"
+      ]
+    },
+    "ModelsApiModelsApiCertPerms4642C7FC": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "iam:GetServerCertificate",
+              "Effect": "Allow",
+              "Resource": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "ModelsApiModelsApiCertPerms4642C7FC",
+        "Roles": [
+          {
+            "Ref": "ModelsApiLisaModelApiLambdaExecutionRole3E663E08"
+          },
+          {
+            "Ref": "ModelsApiModelsSfnLambdaRoleF400F0BC"
+          }
+        ]
+      }
+    },
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler4896A6FDAFEC": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::Select": [
+            6,
+            {
+              "Fn::Split": [
+                ":",
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiLisaModelsmodelshandler36D33339",
+                    "Arn"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/GET/models"
+            ]
+          ]
+        }
+      }
+    },
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler67aa168D70F9": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::Select": [
+            6,
+            {
+              "Fn::Split": [
+                ":",
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiLisaModelsmodelshandler36D33339",
+                    "Arn"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/POST/models"
+            ]
+          ]
+        }
+      }
+    },
+    "ModelsApiLisaModelsmodelsdocs57EF06DB": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Description": "Manage model",
+        "Environment": {
+          "Variables": {
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "REST_API_VERSION": "v2",
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
+            "CREATE_SFN_ARN": {
+              "Ref": "ModelsApiCreateModelWorkflowCreateModelSM80C5B2A6"
+            },
+            "DELETE_SFN_ARN": {
+              "Ref": "ModelsApiDeleteModelWorkflowDeleteModelSMDAC2A84A"
+            },
+            "UPDATE_SFN_ARN": {
+              "Ref": "ModelsApiUpdateModelWorkflowUpdateModelSMDB7A1316"
+            },
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "SCHEDULE_MANAGEMENT_FUNCTION_NAME": {
+              "Ref": "ModelsApiScheduleManagementD0F63E98"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+            },
+            "ADMIN_GROUP": "",
+            "LISA_RAG_VECTOR_STORE_TABLE_PS_NAME": "/dev/test-lisa/lisa/ragVectorStoreTableName",
+            "LISA_RAG_COLLECTIONS_TABLE_PS_NAME": "/dev/test-lisa/lisa/ragCollectionsTableName"
+          }
+        },
+        "FunctionName": "LisaModels-models-docs",
+        "Handler": "models.lambda_functions.docs",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiLisaModelApiLambdaExecutionRole3E663E08",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiLisaModelApiLambdaExecutionRoleDefaultPolicy1C96D538",
+        "ModelsApiLisaModelApiLambdaExecutionRole3E663E08"
+      ]
+    },
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandlerdb88636D3056": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::Select": [
+            6,
+            {
+              "Fn::Split": [
+                ":",
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiLisaModelsmodelshandler36D33339",
+                    "Arn"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/GET/openapi.json"
+            ]
+          ]
+        }
+      }
+    },
+    "ModelsApiModelsApiStateMachinePerms95A4A4A1": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "states:StartExecution",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Ref": "ModelsApiCreateModelWorkflowCreateModelSM80C5B2A6"
+                },
+                {
+                  "Ref": "ModelsApiDeleteModelWorkflowDeleteModelSMDAC2A84A"
+                },
+                {
+                  "Ref": "ModelsApiUpdateModelWorkflowUpdateModelSMDB7A1316"
+                }
+              ]
+            },
+            {
+              "Action": [
+                "dynamodb:GetItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:Scan"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiModelTable72B9582E",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiModelTable72B9582E",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "dynamodb:GetItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:Query",
+                "dynamodb:Scan"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":dynamodb:us-iso-east-1:012345678901:table/",
+                      {
+                        "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":dynamodb:us-iso-east-1:012345678901:table/",
+                      {
+                        "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "autoscaling:DescribeAutoScalingGroups",
+                "autoscaling:UpdateAutoScalingGroup",
+                "autoscaling:PutScheduledUpdateGroupAction",
+                "autoscaling:DeleteScheduledAction",
+                "autoscaling:DescribeScheduledActions"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "ModelsApiScheduleManagementD0F63E98",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": "ssm:GetParameter",
+              "Effect": "Allow",
+              "Resource": [
+                "arn:aws:ssm:us-iso-east-1:012345678901:parameter/dev/test-lisa/lisa/ragVectorStoreTableName",
+                "arn:aws:ssm:us-iso-east-1:012345678901:parameter/dev/test-lisa/lisa/ragCollectionsTableName"
+              ]
+            },
+            {
+              "Action": [
+                "dynamodb:Scan",
+                "dynamodb:Query",
+                "dynamodb:GetItem"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                "arn:aws:dynamodb:us-iso-east-1:012345678901:table/test-lisa-dev-rag-repository-config*",
+                "arn:aws:dynamodb:us-iso-east-1:012345678901:table/*RagCollectionsTable*",
+                "arn:aws:dynamodb:us-iso-east-1:012345678901:table/test-lisa-*-rag-*"
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "ModelsApiModelsApiStateMachinePerms95A4A4A1",
+        "Roles": [
+          {
+            "Ref": "ModelsApiLisaModelApiLambdaExecutionRole3E663E08"
+          }
+        ]
+      }
+    },
+    "ModelsApiModelApiKeyCleanup843C6643": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Description": "Remove api_key from existing Bedrock models to fix Invalid API Key format errors",
+        "Environment": {
+          "Variables": {
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "REST_API_VERSION": "v2",
+            "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
+          }
+        },
+        "Handler": "models.model_api_key_cleanup.lambda_handler",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 300,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiModelApiKeyCleanupProviderframeworkonEventServiceRoleF5508E89": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    "ModelsApiModelApiKeyCleanupProviderframeworkonEventServiceRoleDefaultPolicy13D5D897": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiModelApiKeyCleanup843C6643",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiModelApiKeyCleanup843C6643",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:GetFunction",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "ModelsApiModelApiKeyCleanup843C6643",
+                  "Arn"
+                ]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "ModelsApiModelApiKeyCleanupProviderframeworkonEventServiceRoleDefaultPolicy13D5D897",
+        "Roles": [
+          {
+            "Ref": "ModelsApiModelApiKeyCleanupProviderframeworkonEventServiceRoleF5508E89"
+          }
+        ]
+      }
+    },
+    "ModelsApiModelApiKeyCleanupProviderframeworkonEvent93A3C88F": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "bdc104ed9cab1b5b6421713c8155f0b753380595356f710400609664d3635eca.zip"
+        },
+        "Description": "AWS CDK resource provider framework - onEvent (LisaModels/ModelsApi/ModelApiKeyCleanupProvider)",
+        "Environment": {
+          "Variables": {
+            "USER_ON_EVENT_FUNCTION_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApiModelApiKeyCleanup843C6643",
+                "Arn"
+              ]
+            }
+          }
+        },
+        "Handler": "framework.onEvent",
+        "LoggingConfig": {
+          "ApplicationLogLevel": "FATAL",
+          "LogFormat": "JSON"
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelApiKeyCleanupProviderframeworkonEventServiceRoleF5508E89",
+            "Arn"
+          ]
+        },
+        "Runtime": "nodejs22.x",
+        "Timeout": 900
+      },
+      "DependsOn": [
+        "ModelsApiModelApiKeyCleanupProviderframeworkonEventServiceRoleDefaultPolicy13D5D897",
+        "ModelsApiModelApiKeyCleanupProviderframeworkonEventServiceRoleF5508E89"
+      ]
+    },
+    "ModelsApiModelApiKeyCleanupResource4C024102": {
+      "Type": "AWS::CloudFormation::CustomResource",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "ModelsApiModelApiKeyCleanupProviderframeworkonEvent93A3C88F",
+            "Arn"
+          ]
+        },
+        "CleanupVersion": "1"
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete"
+    },
+    "CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756CServiceRole89A01265": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    "CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756CServiceRoleDefaultPolicy88902FDF": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "s3:GetObject*",
+                "s3:GetBucket*",
+                "s3:List*"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":s3:::cdk-hnb659fds-assets-012345678901-us-iso-east-1"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":s3:::cdk-hnb659fds-assets-012345678901-us-iso-east-1/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "s3:GetObject*",
+                "s3:GetBucket*",
+                "s3:List*",
+                "s3:DeleteObject*",
+                "s3:PutObject",
+                "s3:PutObjectLegalHold",
+                "s3:PutObjectRetention",
+                "s3:PutObjectTagging",
+                "s3:PutObjectVersionTagging",
+                "s3:Abort*"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderec2bucketA3074A95",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderec2bucketA3074A95",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756CServiceRoleDefaultPolicy88902FDF",
+        "Roles": [
+          {
+            "Ref": "CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756CServiceRole89A01265"
+          }
+        ]
+      }
+    },
+    "CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C81C01536": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "3423a042b818e31c1e34a19d6689ab2e5f9b70fcbe9e71df66f241b20a200bd9.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "AWS_CA_BUNDLE": "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem"
+          }
+        },
+        "Handler": "index.handler",
+        "Layers": [
+          {
+            "Ref": "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderec2dplmntAwsCliLayerB03BDD23"
+          }
+        ],
+        "Role": {
+          "Fn::GetAtt": [
+            "CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756CServiceRole89A01265",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 900
+      },
+      "DependsOn": [
+        "CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756CServiceRoleDefaultPolicy88902FDF",
+        "CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756CServiceRole89A01265"
+      ]
+    }
+  },
+  "Rules": {
+    "CheckBootstrapVersion": {
+      "Assertions": [
+        {
+          "Assert": {
+            "Fn::Not": [
+              {
+                "Fn::Contains": [
+                  [
+                    "1",
+                    "2",
+                    "3",
+                    "4",
+                    "5"
+                  ],
+                  {
+                    "Ref": "BootstrapVersion"
+                  }
+                ]
+              }
+            ]
+          },
+          "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+        }
+      ]
+    }
+  }
+}

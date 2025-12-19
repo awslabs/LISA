@@ -17,11 +17,9 @@
 import json
 import logging
 import re
-import time
 from typing import Any, Dict, Optional
 
-import boto3
-from models.domain_objects import CollectionMetadata, RagCollectionConfig
+from models.domain_objects import RagCollectionConfig
 from utilities.validation import ValidationError
 
 logger = logging.getLogger(__name__)
@@ -40,55 +38,95 @@ RESERVED_FIELDS = {
 
 
 class MetadataGenerator:
-    """Generator for Bedrock KB metadata files."""
+    """Static utility class for metadata generation and merging."""
 
-    def __init__(self, cloudwatch_client=None):
-        """Initialize metadata generator with caching.
-
-        Args:
-            cloudwatch_client: Optional CloudWatch client for metrics (defaults to creating one)
-        """
-        self._collection_cache: Dict[str, Dict[str, Any]] = {}
-        self._cache_ttl = 300  # 5 minutes
-        self.cloudwatch_client = cloudwatch_client or boto3.client("cloudwatch")
-
-    def _emit_metric(
-        self,
-        metric_name: str,
-        value: float = 1.0,
-        repository_id: Optional[str] = None,
-        collection_id: Optional[str] = None,
-    ) -> None:
-        """Emit CloudWatch metric.
+    @staticmethod
+    def _extract_tags_from_metadata(metadata: Any) -> set:
+        """Extract tags from metadata object or dictionary.
 
         Args:
-            metric_name: Name of the metric
-            value: Metric value
-            repository_id: Optional repository ID for dimensions
-            collection_id: Optional collection ID for dimensions
+            metadata: Metadata object (dict or object with tags attribute)
+
+        Returns:
+            Set of tag strings
         """
-        try:
-            dimensions = []
-            if repository_id:
-                dimensions.append({"Name": "RepositoryId", "Value": repository_id})
-            if collection_id:
-                dimensions.append({"Name": "CollectionId", "Value": collection_id})
+        if isinstance(metadata, dict):
+            return set(metadata.get("tags", []))
+        elif hasattr(metadata, "tags") and metadata.tags:
+            return set(metadata.tags)
+        return set()
 
-            metric_data = {
-                "MetricName": metric_name,
-                "Value": value,
-                "Unit": "Count",
-            }
+    @staticmethod
+    def merge_metadata(
+        repository: Dict[str, Any],
+        collection: Optional[Dict[str, Any]],
+        document_metadata: Optional[Dict[str, Any]] = None,
+        for_bedrock_kb: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Merge metadata from repository, collection, and document sources.
 
-            if dimensions:
-                metric_data["Dimensions"] = dimensions
+        This is the core metadata merging logic used by both ingestion jobs and Bedrock KB.
+        Follows the hierarchy: repository → collection → document (document has highest precedence).
 
-            self.cloudwatch_client.put_metric_data(Namespace="LISA/BedrockKB", MetricData=[metric_data])
-        except Exception as e:
-            logger.warning(f"Failed to emit CloudWatch metric {metric_name}: {e}")
+        Args:
+            repository: Repository configuration dictionary
+            collection: Collection configuration dictionary (optional)
+            document_metadata: Document-specific metadata (optional)
+            for_bedrock_kb: If True, formats tags for Bedrock KB (individual tag_ fields + comma-separated tags)
+                           If False, keeps tags as array for ingestion jobs
 
+        Returns:
+            Merged metadata dictionary
+        """
+        merged_metadata: Dict[str, Any] = {}
+        all_tags: set = set()
+
+        # Helper function to merge non-tag metadata
+        def merge_non_tag_metadata(metadata_source: Dict[str, Any]) -> None:
+            for key, value in metadata_source.items():
+                if key != "tags" and not isinstance(value, dict):
+                    merged_metadata[key] = value
+
+        # 1. Merge repository metadata (lowest precedence)
+        repo_metadata = repository.get("metadata")
+        if repo_metadata:
+            all_tags.update(MetadataGenerator._extract_tags_from_metadata(repo_metadata))
+            if isinstance(repo_metadata, dict):
+                merge_non_tag_metadata(repo_metadata)
+
+        # 2. Merge collection metadata (medium precedence)
+        if collection and collection.get("metadata"):
+            coll_metadata = collection["metadata"]
+            all_tags.update(MetadataGenerator._extract_tags_from_metadata(coll_metadata))
+            if isinstance(coll_metadata, dict):
+                merge_non_tag_metadata(coll_metadata)
+
+        # 3. Merge document-specific metadata (highest precedence)
+        if document_metadata:
+            all_tags.update(MetadataGenerator._extract_tags_from_metadata(document_metadata))
+            merge_non_tag_metadata(document_metadata)
+
+        # Add repository identifier
+        merged_metadata["repositoryId"] = repository.get("repositoryId", "")
+        merged_metadata["collectionId"] = collection.get("collectionId", "") if collection else "default"
+
+        # Apply tag formatting based on target system
+        if all_tags:
+            if for_bedrock_kb:
+                # Add tags as individual tag_ fields for Bedrock KB
+                for tag in all_tags:
+                    merged_metadata[f"tag_{tag}"] = True
+                # Create comma-separated tags field
+                merged_metadata["tags"] = ",".join(sorted(all_tags))
+            else:
+                # Keep tags as array for ingestion jobs
+                merged_metadata["tags"] = list(all_tags)
+
+        return merged_metadata
+
+    @staticmethod
     def generate_metadata_json(
-        self,
         repository: Dict[str, Any],
         collection: Optional[RagCollectionConfig],
         document_metadata: Optional[Dict[str, Any]] = None,
@@ -111,66 +149,36 @@ class MetadataGenerator:
         Raises:
             ValidationError: If metadata validation fails
         """
-        # Start with empty metadata
-        merged_metadata: Dict[str, Any] = {}
-
-        # Merge repository metadata
-        repo_metadata = repository.get("metadata")
-        if repo_metadata:
-            if isinstance(repo_metadata, dict):
-                # Add tags as individual fields
-                for tag in repo_metadata.get("tags", []):
-                    merged_metadata[f"tag_{tag}"] = True
-            elif hasattr(repo_metadata, "tags"):
-                for tag in repo_metadata.tags:
-                    merged_metadata[f"tag_{tag}"] = True
-
-        # Merge collection metadata
-        if collection and collection.metadata:
-            coll_metadata = collection.metadata
-            if isinstance(coll_metadata, CollectionMetadata):
-                # Add tags as individual fields
-                for tag in coll_metadata.tags:
-                    merged_metadata[f"tag_{tag}"] = True
-            elif isinstance(coll_metadata, dict):
-                for tag in coll_metadata.get("tags", []):
-                    merged_metadata[f"tag_{tag}"] = True
-
-        # Add collection identifiers
+        # Convert collection to dict format for the shared merge function
+        collection_dict = None
         if collection:
-            merged_metadata["collectionId"] = collection.collectionId
-            merged_metadata["collectionName"] = collection.name or collection.collectionId
+            collection_dict = collection.model_dump() if hasattr(collection, "model_dump") else collection.__dict__
 
-        # Add repository identifier
-        merged_metadata["repositoryId"] = repository.get("repositoryId", "")
+        # Use shared merge function with Bedrock KB formatting
+        merged_metadata = MetadataGenerator.merge_metadata(
+            repository=repository,
+            collection=collection_dict,
+            document_metadata=document_metadata,
+            for_bedrock_kb=True,
+        )
 
-        # Merge document-specific metadata (highest precedence)
-        if document_metadata:
-            merged_metadata.update(document_metadata)
-
-        # Create comma-separated tags from all tag_ fields
-        tag_keys = [key[4:] for key in merged_metadata.keys() if key.startswith("tag_")]
-        if tag_keys:
-            merged_metadata["tags"] = ",".join(sorted(tag_keys))
+        # For Bedrock KB: Remove empty collection fields if no collection provided
+        if not collection:
+            merged_metadata.pop("collectionId", None)
+            merged_metadata.pop("collectionName", None)
 
         # Validate merged metadata
-        self.validate_metadata(merged_metadata)
+        MetadataGenerator.validate_metadata(merged_metadata)
 
         # Return in Bedrock KB format
         return {"metadataAttributes": merged_metadata}
 
-    def validate_metadata(
-        self,
-        metadata: Dict[str, Any],
-        repository_id: Optional[str] = None,
-        collection_id: Optional[str] = None,
-    ) -> bool:
+    @staticmethod
+    def validate_metadata(metadata: Dict[str, Any]) -> bool:
         """Validate metadata against Bedrock KB requirements.
 
         Args:
             metadata: Metadata dictionary to validate
-            repository_id: Optional repository ID for metrics
-            collection_id: Optional collection ID for metrics
 
         Returns:
             True if valid
@@ -178,30 +186,26 @@ class MetadataGenerator:
         Raises:
             ValidationError: If validation fails
         """
-        try:
-            # Check total size
-            metadata_json = json.dumps(metadata)
-            metadata_size = len(metadata_json.encode("utf-8"))
-            if metadata_size > MAX_METADATA_SIZE_BYTES:
-                self._emit_metric("MetadataValidationFailed", 1.0, repository_id, collection_id)
-                raise ValidationError(
-                    f"Metadata size ({metadata_size} bytes) exceeds limit ({MAX_METADATA_SIZE_BYTES} bytes)"
-                )
+        # Check total size
+        metadata_json = json.dumps(metadata)
+        metadata_size = len(metadata_json.encode("utf-8"))
+        if metadata_size > MAX_METADATA_SIZE_BYTES:
+            raise ValidationError(
+                f"Metadata size ({metadata_size} bytes) exceeds limit ({MAX_METADATA_SIZE_BYTES} bytes)"
+            )
 
-            # Validate each key-value pair
-            for key, value in metadata.items():
-                # Validate key
-                self._validate_metadata_key(key)
+        # Validate each key-value pair
+        for key, value in metadata.items():
+            # Validate key
+            MetadataGenerator._validate_metadata_key(key)
 
-                # Validate value type and size
-                self._validate_metadata_value(key, value)
+            # Validate value type and size
+            MetadataGenerator._validate_metadata_value(key, value)
 
-            return True
-        except ValidationError:
-            self._emit_metric("MetadataValidationFailed", 1.0, repository_id, collection_id)
-            raise
+        return True
 
-    def _validate_metadata_key(self, key: str) -> None:
+    @staticmethod
+    def _validate_metadata_key(key: str) -> None:
         """Validate metadata key.
 
         Args:
@@ -225,7 +229,8 @@ class MetadataGenerator:
                 "Only alphanumeric, underscore, and hyphen are allowed"
             )
 
-    def _validate_metadata_value(self, key: str, value: Any) -> None:
+    @staticmethod
+    def _validate_metadata_value(key: str, value: Any) -> None:
         """Validate metadata value.
 
         Args:
@@ -260,74 +265,3 @@ class MetadataGenerator:
                     raise ValidationError(
                         f"Metadata array element for key '{key}' exceeds maximum length of {MAX_METADATA_VALUE_LENGTH}"
                     )
-
-    def get_metadata_s3_key(self, document_s3_key: str) -> str:
-        """Generate S3 key for metadata file.
-
-        Args:
-            document_s3_key: S3 key of the document
-
-        Returns:
-            S3 key for the metadata file (document_key + ".metadata.json")
-        """
-        return f"{document_s3_key}.metadata.json"
-
-    def get_collection_metadata_cached(
-        self, collection_id: str, repository_id: str, collection_repo
-    ) -> Optional[Dict[str, Any]]:
-        """Get collection metadata with caching.
-
-        Args:
-            collection_id: Collection ID
-            repository_id: Repository ID
-            collection_repo: Collection repository instance
-
-        Returns:
-            Collection metadata dictionary or None
-        """
-        cache_key = f"{repository_id}#{collection_id}"
-        cached = self._collection_cache.get(cache_key)
-
-        # Check cache
-        if cached and time.time() - cached["timestamp"] < self._cache_ttl:
-            logger.debug(f"Using cached metadata for collection {collection_id}")
-            return cached["metadata"]
-
-        # Fetch from DynamoDB
-        try:
-            collection = collection_repo.find_by_id(collection_id, repository_id)
-            if collection and collection.metadata:
-                metadata = collection.metadata
-                if isinstance(metadata, CollectionMetadata):
-                    # Flatten metadata for Bedrock KB compatibility
-                    metadata_dict = {}
-                    # Add tags as an array field
-                    if metadata.tags:
-                        metadata_dict["tags"] = metadata.tags
-                else:
-                    metadata_dict = metadata
-
-                # Cache result
-                self._collection_cache[cache_key] = {"metadata": metadata_dict, "timestamp": time.time()}
-
-                logger.debug(f"Cached metadata for collection {collection_id}")
-                return metadata_dict
-        except Exception as e:
-            logger.warning(f"Failed to fetch collection metadata: {e}")
-
-        return None
-
-    def clear_cache(self, collection_id: Optional[str] = None, repository_id: Optional[str] = None) -> None:
-        """Clear metadata cache.
-
-        Args:
-            collection_id: Specific collection to clear (optional)
-            repository_id: Specific repository to clear (optional)
-        """
-        if collection_id and repository_id:
-            cache_key = f"{repository_id}#{collection_id}"
-            self._collection_cache.pop(cache_key, None)
-            logger.debug(f"Cleared cache for collection {collection_id}")
-        else:
-            self._collection_cache.clear()
-            logger.debug("Cleared all metadata cache")

@@ -17,7 +17,7 @@
 
 import { Authorizer, Cors, EndpointType, RestApi, StageOptions } from 'aws-cdk-lib/aws-apigateway';
 
-import { AttributeType, BillingMode, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
+import { AttributeType, BillingMode, ProjectionType, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 
 import { CustomAuthorizer } from '../api-base/authorizer';
 import { Duration, Stack, StackProps } from 'aws-cdk-lib';
@@ -39,7 +39,7 @@ import {
 } from 'aws-cdk-lib/aws-iam';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { LAMBDA_PATH } from '../util';
-import { getDefaultRuntime } from '../api-base/utils';
+import { getPythonRuntime } from '../api-base/utils';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { EventBus } from 'aws-cdk-lib/aws-events';
 
@@ -69,7 +69,7 @@ export class LisaApiBaseConstruct extends Construct {
         // TokenTable is now managed in API Base so it's independent of Serve
         // Create the table - if it already exists from previous Serve deployment,
         // CloudFormation will handle the conflict. For new deployments, it will be created.
-        let tokenTable: ITable | undefined;
+        let tokenTable: Table | undefined;
 
         // Use new table name to avoid conflicts with existing Serve stack deployments
         const tableName = `${config.deploymentName}-LISAApiBaseTokenTable`;
@@ -86,6 +86,13 @@ export class LisaApiBaseConstruct extends Construct {
             billingMode: BillingMode.PAY_PER_REQUEST,
             encryption: TableEncryption.AWS_MANAGED,
             removalPolicy: config.removalPolicy,
+        });
+
+        // Add GSI for querying tokens by username
+        tokenTable.addGlobalSecondaryIndex({
+            indexName: 'username-index',
+            partitionKey: { name: 'username', type: AttributeType.STRING },
+            projectionType: ProjectionType.ALL,
         });
 
         // Store token table name in SSM for cross-stack reference
@@ -160,7 +167,7 @@ export class LisaApiBaseConstruct extends Construct {
         });
 
         const rotationLambda = new Function(scope, createCdkId([scope.node.id, 'managementKeyRotationLambda']), {
-            runtime: getDefaultRuntime(),
+            runtime: getPythonRuntime(),
             handler: 'management_key.handler',
             code: Code.fromAsset(config.lambdaPath || LAMBDA_PATH),
             timeout: Duration.minutes(5),
@@ -196,6 +203,7 @@ export class LisaApiBaseConstruct extends Construct {
             }),
             securityGroups: securityGroups,
             vpc: vpc.vpc,
+            vpcSubnets: vpc.subnetSelection
         });
 
         managementKeySecret.addRotationSchedule('RotationSchedule', {

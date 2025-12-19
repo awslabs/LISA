@@ -47,7 +47,7 @@ import { LAMBDA_PATH, RAG_LAYER_PATH } from '../util';
 import { IngestionStack } from './ingestion/ingestion-stack';
 import * as child_process from 'child_process';
 import * as path from 'path';
-import { getDefaultRuntime } from '../api-base/utils';
+import { getPythonRuntime } from '../api-base/utils';
 import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
 
 export type LisaRagProps = {
@@ -361,6 +361,20 @@ export class LisaRagConstruct extends Construct {
         const ragVectorStoreTable = new CfnOutput(scope, createCdkId([config.deploymentPrefix, 'RagVectorStoreTable']), {
             key: 'ragVectorStoreTable',
             value: ragRepositoryConfigTable.tableArn
+        });
+
+        // Create SSM parameter for vector store table name so other stacks can optionally reference it
+        new StringParameter(scope, createCdkId(['RagVectorStoreTableName', 'Parameter']), {
+            parameterName: `${config.deploymentPrefix}/ragVectorStoreTableName`,
+            stringValue: ragRepositoryConfigTable.tableName,
+            description: 'RAG Vector Store (Repository Config) DynamoDB table name',
+        });
+
+        // Create SSM parameter for collections table name so other stacks can optionally reference it
+        new StringParameter(scope, createCdkId(['RagCollectionsTableName', 'Parameter']), {
+            parameterName: `${config.deploymentPrefix}/ragCollectionsTableName`,
+            stringValue: collectionsTable.tableName,
+            description: 'RAG Collections DynamoDB table name',
         });
 
         baseEnvironment['LISA_RAG_VECTOR_STORE_TABLE'] = ragRepositoryConfigTable.tableName;
@@ -730,7 +744,7 @@ export class LisaRagConstruct extends Construct {
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
 
         return new Function(this.scope, createCdkId([repositoryId, 'CreateDbUserLambda']), {
-            runtime: getDefaultRuntime(),
+            runtime: getPythonRuntime(),
             handler: 'utilities.db_setup_iam_auth.handler',
             code: Code.fromAsset(lambdaPath),
             timeout: Duration.minutes(2),

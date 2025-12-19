@@ -31,7 +31,7 @@ import {
     Wait,
 } from 'aws-cdk-lib/aws-stepfunctions';
 import { Vpc } from '../../networking/vpc';
-import { getDefaultRuntime } from '../../api-base/utils';
+import { getPythonRuntime } from '../../api-base/utils';
 import { LAMBDA_PATH } from '../../util';
 
 type UpdateMcpServerStateMachineProps = BaseProps & {
@@ -70,7 +70,7 @@ export class UpdateMcpServerStateMachine extends Construct {
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         const handleJobIntake = new LambdaInvoke(this, 'HandleJobIntake', {
             lambdaFunction: new Function(this, 'HandleJobIntakeFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'mcp_server.state_machine.update_mcp_server.handle_job_intake',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
@@ -87,7 +87,7 @@ export class UpdateMcpServerStateMachine extends Construct {
 
         const handlePollCapacity = new LambdaInvoke(this, 'HandlePollCapacity', {
             lambdaFunction: new Function(this, 'HandlePollCapacityFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'mcp_server.state_machine.update_mcp_server.handle_poll_capacity',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
@@ -104,7 +104,7 @@ export class UpdateMcpServerStateMachine extends Construct {
 
         const handleEcsUpdate = new LambdaInvoke(this, 'HandleEcsUpdate', {
             lambdaFunction: new Function(this, 'HandleEcsUpdateFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'mcp_server.state_machine.update_mcp_server.handle_ecs_update',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
@@ -121,7 +121,7 @@ export class UpdateMcpServerStateMachine extends Construct {
 
         const handlePollEcsDeployment = new LambdaInvoke(this, 'HandlePollEcsDeployment', {
             lambdaFunction: new Function(this, 'HandlePollEcsDeploymentFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'mcp_server.state_machine.update_mcp_server.handle_poll_ecs_deployment',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,
@@ -138,7 +138,7 @@ export class UpdateMcpServerStateMachine extends Construct {
 
         const handleFinishUpdate = new LambdaInvoke(this, 'HandleFinishUpdate', {
             lambdaFunction: new Function(this, 'HandleFinishUpdateFunc', {
-                runtime: getDefaultRuntime(),
+                runtime: getPythonRuntime(),
                 handler: 'mcp_server.state_machine.update_mcp_server.handle_finish_update',
                 code: Code.fromAsset(lambdaPath),
                 timeout: LAMBDA_TIMEOUT,

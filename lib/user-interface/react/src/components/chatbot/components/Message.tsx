@@ -27,9 +27,12 @@ import { useAppSelector } from '@/config/store';
 import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
 import ChatBubble from '@cloudscape-design/chat-components/chat-bubble';
 import Avatar from '@cloudscape-design/chat-components/avatar';
+
 import remarkBreaks from 'remark-breaks';
 import remarkMath from 'remark-math';
-import rehypeMathjax from 'rehype-mathjax';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
+
 import { MessageContent } from '@langchain/core/messages';
 import { base64ToBlob, fetchImage, getDisplayableMessage, messageContainsImage } from '@/components/utils';
 import React, { useEffect, useState, useMemo } from 'react';
@@ -182,7 +185,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
             if (isInlineCode) {
                 return (
                     <code
-                        className='bg-gray-300 bg-opacity-25 border-opacity-25 border-gray-500 border-solid text-red-600 px-1 py-0.5 rounded text-sm font-mono'
+                        className='bg-zinc-300/25 border-zinc-500/25 border-solid text-red-600 px-1 py-0.5 rounded text-sm font-mono'
                         style={{
                             backgroundColor: 'rgba(209, 213, 219, 0.25)',
                             border: '1px solid rgba(107, 114, 128, 0.25)',
@@ -276,7 +279,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                 {markdownDisplay ? (
                     <ReactMarkdown
                         remarkPlugins={[remarkBreaks, remarkMath]}
-                        rehypePlugins={[rehypeMathjax]}
+                        rehypePlugins={[rehypeKatex]}
                         children={getDisplayableMessage(content, message.type === MessageTypes.AI ? ragCitations : undefined)}
                         components={markdownComponents}
                     />

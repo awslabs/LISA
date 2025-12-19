@@ -1,7 +1,117 @@
 #!/bin/bash
 set -e
 
+# Environment variables for LISA deployment
 declare -a vars=("S3_BUCKET_MODELS" "LOCAL_MODEL_PATH" "MODEL_NAME" "S3_MOUNT_POINT" "THREADS")
+
+# vLLM Configuration Environment Variables (read natively by vLLM):
+# Based on official vLLM documentation: https://docs.vllm.ai/en/latest/configuration/env_vars/
+#
+# CORE PERFORMANCE & MEMORY:
+#   VLLM_GPU_MEMORY_UTILIZATION - GPU memory usage fraction (0.0-1.0, default: 0.9)
+#   VLLM_CPU_OFFLOAD_GB - Offload model layers to CPU memory (GB)
+#   VLLM_SWAP_SPACE - Disk swap space for memory overflow (GB)
+#   VLLM_ENFORCE_EAGER - Disable CUDA graphs for debugging (true/false)
+#   VLLM_MAX_MODEL_LEN - Maximum context length override
+#   VLLM_ALLOW_LONG_MAX_MODEL_LEN - Allow context length > model config (true/false)
+#
+# PARALLEL PROCESSING & DISTRIBUTED:
+#   VLLM_TENSOR_PARALLEL_SIZE - Split model across GPUs (1,2,4,8)
+#   VLLM_PIPELINE_PARALLEL_SIZE - Pipeline parallelism stages
+#   VLLM_DATA_PARALLEL_SIZE - Data parallel replicas
+#   VLLM_DISTRIBUTED_EXECUTOR_BACKEND - Backend (ray/mp)
+#   VLLM_WORKER_USE_RAY - Use Ray for workers (true/false)
+#   VLLM_ENGINE_USE_RAY - Use Ray for engine (true/false)
+#   VLLM_WORKER_MULTIPROC_METHOD - Multiprocess method (spawn/fork)
+#   LOCAL_RANK - Local rank in distributed setting
+#   CUDA_VISIBLE_DEVICES - GPU devices to use
+#
+# MODEL FORMAT & LOADING:
+#   VLLM_LOAD_FORMAT - Model format (auto/pt/safetensors/npcache/dummy)
+#   VLLM_DTYPE - Model precision (auto/half/float16/bfloat16/float/float32)
+#   VLLM_KV_CACHE_DTYPE - KV cache precision (auto/fp8/fp8_e5m2/fp8_e4m3)
+#   VLLM_QUANTIZATION - Quantization method (awq/gptq/squeezellm/fp8/etc)
+#   VLLM_TRUST_REMOTE_CODE - Allow custom model code (true/false)
+#   VLLM_REVISION - Model revision/branch to use
+#   VLLM_TOKENIZER_REVISION - Tokenizer revision/branch
+#   VLLM_USE_MODELSCOPE - Load from ModelScope instead of HF Hub (true/false)
+#
+# PERFORMANCE TUNING:
+#   VLLM_MAX_NUM_BATCHED_TOKENS - Max tokens per batch
+#   VLLM_MAX_NUM_SEQS - Max concurrent sequences (default: 256)
+#   VLLM_MAX_PADDINGS - Max padding tokens per batch
+#   VLLM_BLOCK_SIZE - Memory block size (8/16/32)
+#   VLLM_SEED - Random seed for reproducibility
+#   VLLM_FLOAT32_MATMUL_PRECISION - Float32 matmul precision (ieee/tf32)
+#
+# ATTENTION & BACKENDS:
+#   VLLM_ATTENTION_BACKEND - Attention backend (FLASH_ATTN/XFORMERS/ROCM_FLASH/TORCH_SDPA/FLASHINFER/etc)
+#   VLLM_ENABLE_PREFIX_CACHING - Enable prefix caching (true/false, default: true)
+#   VLLM_ENABLE_CHUNKED_PREFILL - Enable chunked prefill (true/false, default: true)
+#   VLLM_MAX_CHUNKED_PREFILL_TOKENS - Max tokens per prefill chunk
+#   VLLM_FLASH_ATTN_VERSION - Force Flash Attention version (2/3)
+#   VLLM_USE_FLASHINFER_SAMPLER - Use FlashInfer sampler (true/false)
+#
+# COMPILATION & OPTIMIZATION:
+#   VLLM_USE_AOT_COMPILE - Enable AOT compilation (true/false)
+#   VLLM_FORCE_AOT_LOAD - Force loading AOT compiled models (true/false)
+#   VLLM_USE_STANDALONE_COMPILE - Enable Inductor standalone compile (true/false)
+#   VLLM_DISABLE_COMPILE_CACHE - Disable compilation cache (true/false)
+#   VLLM_USE_V2_MODEL_RUNNER - Enable v2 model runner (true/false)
+#
+# SPECULATIVE DECODING:
+#   VLLM_SPECULATIVE_MODEL - Draft model for speculative decoding
+#   VLLM_NUM_SPECULATIVE_TOKENS - Number of speculative tokens
+#   VLLM_SPECULATIVE_DRAFT_TENSOR_PARALLEL_SIZE - Draft model tensor parallel size
+#
+# MULTI-MODAL MODELS:
+#   VLLM_IMAGE_FETCH_TIMEOUT - Timeout for fetching images (seconds, default: 5)
+#   VLLM_VIDEO_FETCH_TIMEOUT - Timeout for fetching videos (seconds, default: 30)
+#   VLLM_AUDIO_FETCH_TIMEOUT - Timeout for fetching audio (seconds, default: 10)
+#   VLLM_MAX_AUDIO_CLIP_FILESIZE_MB - Max audio file size (MB, default: 25)
+#
+# LORA SUPPORT:
+#   VLLM_ENABLE_LORA - Enable LoRA adapters (true/false)
+#   VLLM_MAX_LORAS - Maximum number of LoRA adapters
+#   VLLM_MAX_LORA_RANK - Maximum LoRA rank
+#   VLLM_LORA_EXTRA_VOCAB_SIZE - Extra vocabulary for LoRA
+#   VLLM_LORA_DTYPE - LoRA precision (auto/float16/bfloat16)
+#   VLLM_ALLOW_RUNTIME_LORA_UPDATING - Allow runtime LoRA updates (true/false)
+#
+# LOGGING & DEBUGGING:
+#   VLLM_CONFIGURE_LOGGING - Configure vLLM logging (true/false, default: true)
+#   VLLM_LOGGING_LEVEL - Logging level (DEBUG/INFO/WARN/ERROR, default: INFO)
+#   VLLM_LOGGING_CONFIG_PATH - Custom logging config file path
+#   VLLM_LOG_STATS_INTERVAL - Stats logging interval (seconds, default: 10)
+#   VLLM_TRACE_FUNCTION - Trace function calls for debugging (true/false)
+#   VERBOSE - Enable verbose installation logs (true/false)
+#
+# CACHE & STORAGE:
+#   VLLM_CACHE_ROOT - Root directory for vLLM cache files
+#   VLLM_CONFIG_ROOT - Root directory for vLLM config files
+#   VLLM_ASSETS_CACHE - Path for storing downloaded assets
+#   VLLM_XLA_CACHE_PATH - XLA persistent cache directory (TPU)
+#
+# NETWORKING & API:
+#   VLLM_HOST_IP - IP address for distributed communication
+#   VLLM_PORT - Communication port for distributed setup
+#   VLLM_API_KEY - API key for vLLM API server
+#   VLLM_ENGINE_ITERATION_TIMEOUT_S - Timeout per engine iteration (seconds, default: 60)
+#   VLLM_HTTP_TIMEOUT_KEEP_ALIVE - HTTP keep-alive timeout (seconds, default: 5)
+#
+# ADVANCED FEATURES:
+#   VLLM_USE_TRITON_AWQ - Use Triton implementations of AWQ (true/false)
+#   VLLM_FUSED_MOE_CHUNK_SIZE - Fused MoE chunk size (default: 16384)
+#   VLLM_KEEP_ALIVE_ON_ENGINE_DEATH - Keep API server alive on engine error (true/false)
+#   VLLM_SLEEP_WHEN_IDLE - Reduce CPU usage when idle (true/false)
+#
+# ROCM SPECIFIC (AMD GPUs):
+#   VLLM_ROCM_USE_AITER - Enable AITER ops on ROCm (true/false)
+#   VLLM_ROCM_USE_SKINNY_GEMM - Use skinny GEMM on ROCm (true/false)
+#   VLLM_ROCM_CUSTOM_PAGED_ATTN - Use custom paged attention on MI3* (true/false)
+#
+# Custom LISA Environment Variables:
+#   MAX_TOTAL_TOKENS - Alias for VLLM_MAX_MODEL_LEN (for backward compatibility)
 
 # Check the necessary environment variables
 for var in "${vars[@]}"; do
@@ -22,31 +132,57 @@ mkdir -p ${LOCAL_MODEL_PATH}
 # Use rsync with S3_MOUNT_POINT
 ls ${S3_MOUNT_POINT}/${MODEL_NAME} | xargs -n1 -P${THREADS} -I% rsync -Pa --exclude "*.bin" ${S3_MOUNT_POINT}/${MODEL_NAME}/% ${LOCAL_MODEL_PATH}/
 
+# Build additional arguments for parameters not supported via env vars
 ADDITIONAL_ARGS=""
-if [[ -n "${MAX_TOTAL_TOKENS}" ]]; then
-  ADDITIONAL_ARGS+=" --max-model-len ${MAX_TOTAL_TOKENS}"
+
+# Backward compatibility: MAX_TOTAL_TOKENS -> VLLM_MAX_MODEL_LEN
+if [[ -n "${MAX_TOTAL_TOKENS}" ]] && [[ -z "${VLLM_MAX_MODEL_LEN}" ]]; then
+  export VLLM_MAX_MODEL_LEN="${MAX_TOTAL_TOKENS}"
 fi
 
-# Add vLLM specific arguments from environment variables
-if [[ -n "${VLLM_TENSOR_PARALLEL_SIZE}" ]]; then
-  ADDITIONAL_ARGS+=" --tensor-parallel-size ${VLLM_TENSOR_PARALLEL_SIZE}"
+# Check available memory and set defaults if not specified
+TOTAL_MEM_KB=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+TOTAL_MEM_GB=$((TOTAL_MEM_KB / 1024 / 1024))
+echo "Total system memory: ${TOTAL_MEM_GB}GB"
+
+# Check GPU availability
+if command -v nvidia-smi &> /dev/null; then
+    GPU_INFO=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | head -1)
+    GPU_MEM_MB=${GPU_INFO}
+    GPU_MEM_GB=$((GPU_MEM_MB / 1024))
+    echo "GPU memory available: ${GPU_MEM_GB}GB"
+else
+    echo "No GPU detected or nvidia-smi not available"
+    GPU_MEM_GB=0
 fi
 
-if [[ -n "${VLLM_ASYNC_SCHEDULING}" ]] && [[ "${VLLM_ASYNC_SCHEDULING}" == "true" ]]; then
-  ADDITIONAL_ARGS+=" --async-scheduling"
+# Memory warnings and recommendations
+if [[ -z "${VLLM_DEVICE}" ]] && [[ ${TOTAL_MEM_GB} -lt 20 ]]; then
+  echo "Warning: Low system memory detected (${TOTAL_MEM_GB}GB)."
+  if [[ ${GPU_MEM_GB} -gt 16 ]]; then
+    echo "Recommendation: GPU has sufficient memory (${GPU_MEM_GB}GB), model should load on GPU"
+  else
+    echo "Recommendation: Consider using CPU-only mode with VLLM_DEVICE=cpu or upgrade instance type"
+  fi
 fi
 
-if [[ -n "${VLLM_MAX_PARALLEL_LOADING_WORKERS}" ]]; then
-  ADDITIONAL_ARGS+=" --max-parallel-loading-workers ${VLLM_MAX_PARALLEL_LOADING_WORKERS}"
-fi
-
-if [[ -n "${VLLM_USE_TQDM_ON_LOAD}" ]] && [[ "${VLLM_USE_TQDM_ON_LOAD}" == "true" ]]; then
-  ADDITIONAL_ARGS+=" --use-tqdm-on-load"
+# Validate tensor parallel configuration
+if [[ -n "${VLLM_TENSOR_PARALLEL_SIZE}" ]] && [[ ${VLLM_TENSOR_PARALLEL_SIZE} -gt 1 ]]; then
+    if [[ ${GPU_MEM_GB} -eq 0 ]]; then
+        echo "Error: Tensor parallelism requires GPU but no GPU detected"
+        exit 1
+    fi
+    echo "Using tensor parallelism with ${VLLM_TENSOR_PARALLEL_SIZE} GPUs"
 fi
 
 # Start the webserver
-echo "Starting vLLM"
+# vLLM natively reads VLLM_* environment variables for configuration
+echo "Starting vLLM with args: ${ADDITIONAL_ARGS}"
+echo "vLLM environment variables:"
+env | grep -E "^(VLLM_|MAX_TOTAL_TOKENS)=" || echo "No vLLM environment variables set"
+
 python3 -m vllm.entrypoints.openai.api_server \
     --model ${LOCAL_MODEL_PATH} \
     --served-model-name ${MODEL_NAME} \
-    --port 8080 ${ADDITIONAL_ARGS}
+    --port 8080 \
+    ${ADDITIONAL_ARGS}

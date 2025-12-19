@@ -17,13 +17,13 @@
 import logging
 import os
 from copy import deepcopy
-from datetime import datetime, UTC
 from typing import Any, Dict
 from uuid import uuid4
 
 import boto3
 from models.clients.litellm_client import LiteLLMClient
 from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint, retry_config
+from utilities.time import now
 
 from ..domain_objects import ModelStatus
 
@@ -74,7 +74,7 @@ def handle_set_model_to_deleting(event: Dict[str, Any], context: Any) -> Dict[st
         Key=model_key,
         UpdateExpression="SET last_modified_date = :lmd, model_status = :ms",
         ExpressionAttributeValues={
-            ":lmd": int(datetime.now(UTC).timestamp()),
+            ":lmd": now(),
             ":ms": ModelStatus.DELETING,
         },
     )

@@ -14,11 +14,14 @@
   limitations under the License.
 */
 
-/** @type {import('tailwindcss').Config} */
+// .vitepress/theme/index.ts
+import type { Theme } from 'vitepress';
+import DefaultTheme from 'vitepress/theme';
+import { enhanceAppWithTabs } from 'vitepress-plugin-tabs/client';
+
 export default {
-    content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
-    theme: {
-        extend: {},
+    extends: DefaultTheme,
+    enhanceApp ({ app }) {
+        enhanceAppWithTabs(app);
     },
-    plugins: [],
-};
+} satisfies Theme;

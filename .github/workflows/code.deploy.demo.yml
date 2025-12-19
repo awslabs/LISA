@@ -20,9 +20,9 @@ jobs:
     environment: demo
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v4
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v4
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@3d21ddcb5087c3d29b7e19fe293e3455fabe32af # v4
+        uses: aws-actions/configure-aws-credentials@cf459bd40262a8603163308e488de922e4eb5a95 # v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT }}:role/${{ vars.ROLE_NAME_TO_ASSUME }}
@@ -32,14 +32,14 @@ jobs:
         id: create-yaml
         run: |
           echo "${{vars.CONFIG_YAML}}" > config-custom.yaml
-      - name: Set up Python 3.11
-        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v5
+      - name: Set up Python 3.13
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v5
         with:
-          python-version: "3.11"
-      - name: Use Node.js 20.x
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v4
+          python-version: "3.13"
+      - name: Use Node.js 24.x
+        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v4
         with:
-          node-version: 20.x
+          node-version: 24.x
       - name: Install CDK dependencies
         run: |
           npm ci
@@ -53,7 +53,7 @@ jobs:
     if: always()
     steps:
       - name: Send Notification that Demo Deploy Finished
-        uses: rtCamp/action-slack-notify@cdf0a2130cbcdfd82ba5fcac8e076370bf381b36 # v2
+        uses: rtCamp/action-slack-notify@e31e87e03dd19038e411e38ae27cbad084a90661 # v2
         env:
           SLACK_WEBHOOK: ${{ secrets.INTERNAL_DEV_SLACK_WEBHOOK_URL }}
           SLACK_COLOR: ${{ contains(join(needs.*.result, ' '), 'failure') && 'failure' || 'success' }}

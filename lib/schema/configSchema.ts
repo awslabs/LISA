@@ -447,7 +447,7 @@ export type ImageAsset = z.infer<typeof ImageAssetSchema>;
 export const ContainerConfigSchema = z.object({
     image: ImageAssetSchema.describe('Base image for the container.'),
     environment: z
-        .record(z.any())
+        .record(z.string(), z.any())
         .transform((obj) => {
             return Object.entries(obj).reduce(
                 (acc, [key, value]) => {
@@ -460,7 +460,7 @@ export const ContainerConfigSchema = z.object({
         .default({})
         .describe('Environment variables for the container.'),
     sharedMemorySize: z.number().min(0).default(0).describe('The value for the size of the /dev/shm volume.'),
-    healthCheckConfig: ContainerHealthCheckConfigSchema.default({}),
+    healthCheckConfig: ContainerHealthCheckConfigSchema.default(ContainerHealthCheckConfigSchema.parse({})),
     privileged: z.boolean().optional(),
     memoryReservation: z.number().min(0).optional().describe('Memory reservation in MiB for the container.')
 }).describe('Configuration for the container.');
@@ -527,7 +527,7 @@ export const TaskDefinitionSchema = z.object({
     containerMemoryReservationMiB: z.number().default(1024 * 2)
         .describe('The amount (in MiB) of memory to present to the container.').optional(),
     memoryLimitMiB: z.number().positive().describe('The amount (in MiB) of memory to present to the container.').optional(),
-    environment: z.record(z.string()).describe('Environment variables set on the task container'),
+    environment: z.record(z.string(), z.string()).describe('Environment variables set on the task container'),
     applicationTarget: ApplicationTargetSchema.optional().describe('How the load balancer should target the task.')
 });
 
@@ -553,14 +553,14 @@ export type TaskDefinition = z.infer<typeof TaskDefinitionSchema>;
  * @property {LoadBalancerConfigSchema} loadBalancerConfig - Configuration for load balancer settings.
  */
 export const EcsBaseConfigSchema = z.object({
-    amiHardwareType: z.nativeEnum(AmiHardwareType).describe('Name of the model.'),
+    amiHardwareType: z.enum(AmiHardwareType).describe('Name of the model.'),
     autoScalingConfig: AutoScalingConfigSchema.describe('Configuration for auto scaling settings.'),
-    buildArgs: z.record(z.string()).optional()
+    buildArgs: z.record(z.string(), z.string()).optional()
         .describe('Optional build args to be applied when creating the task container if containerConfig.image.type is ASSET'),
     containerMemoryBuffer: z.number().default(1024 * 2)
         .describe('This is the amount of memory to buffer (or subtract off) from the total instance memory, ' +
             'if we don\'t include this, the container can have a hard time finding available RAM resources to start and the tasks will fail deployment'),
-    tasks: z.record(TaskDefinitionSchema),
+    tasks: z.record(z.string(), TaskDefinitionSchema),
     instanceType: z.enum(VALID_INSTANCE_KEYS).describe('EC2 instance type for running the model.'),
     internetFacing: z.boolean().default(false).describe('Whether or not the cluster will be configured as internet facing'),
     loadBalancerConfig: LoadBalancerConfigSchema
@@ -614,7 +614,7 @@ export const EcsClusterConfigSchema = z
         modelId: z.string().optional(),
         deploy: z.boolean().default(true),
         streaming: z.boolean().nullable().default(null),
-        modelType: z.nativeEnum(ModelType),
+        modelType: z.enum(ModelType),
         instanceType: z.enum(VALID_INSTANCE_KEYS),
         inferenceContainer: z
             .union([z.literal('tgi'), z.literal('tei'), z.literal('instructor'), z.literal('vllm')])
@@ -701,6 +701,7 @@ const AuthConfigSchema = z.object({
     clientId: z.string().describe('Client ID for OIDC IDP .'),
     adminGroup: z.string().default('').describe('Name of the admin group.'),
     userGroup: z.string().default('').describe('Name of the user group.'),
+    apiGroup: z.string().default('').describe('Name of the API group for API token access.'),
     jwtGroupsProperty: z.string().default('').describe('Name of the JWT groups property.'),
     additionalScopes: z.array(z.string()).default([]).describe('Additional JWT scopes to request.'),
 }).describe('Configuration schema for authorization.');
@@ -796,6 +797,7 @@ const RoleConfig = z.object({
     UIDeploymentRole: z.string().max(64).optional(),
     VectorStoreCreatorRole: z.string().max(64).optional(),
     McpServerDeployerRole: z.string().max(64),
+    ApiTokensApiRole: z.string().max(64),
 })
     .describe('Role overrides used across stacks.');
 
@@ -813,7 +815,7 @@ export const RawConfigObject = z.object({
         .or(z.string())
         .transform((value) => value.toString())
         .refine((value) => value.length === 12, {
-            message: 'AWS account number should be 12 digits. If your account ID starts with 0, then please surround the ID with quotation marks.',
+            error: 'AWS account number should be 12 digits. If your account ID starts with 0, then please surround the ID with quotation marks.'
         })
         .describe('AWS account number for deployment. Must be 12 digits.'),
     region: z.string().describe('AWS region for deployment.'),
@@ -847,7 +849,7 @@ export const RawConfigObject = z.object({
         .array(z.union([z.number(), z.string()]))
         .transform((arr) => arr.map(String))
         .refine((value) => value.every((num) => num.length === 12), {
-            message: 'AWS account number should be 12 digits. If your account ID starts with 0, then please surround the ID with quotation marks.',
+            error: 'AWS account number should be 12 digits. If your account ID starts with 0, then please surround the ID with quotation marks.'
         })
         .optional()
         .describe('List of AWS account numbers for ECR repositories.'),
@@ -868,8 +870,8 @@ export const RawConfigObject = z.object({
         indexUrl: '',
         trustedHost: '',
     }).describe('Pypi configuration.'),
-    baseImage: z.string().default('python:3.11').describe('Base image used for LISA serve components'),
-    nodejsImage: z.string().default('public.ecr.aws/lambda/nodejs:18').describe('Base image used for LISA NodeJS lambda deployments'),
+    baseImage: z.string().default('python:3.13-slim').describe('Base image used for LISA serve components'),
+    nodejsImage: z.string().default('public.ecr.aws/lambda/nodejs:24').describe('Base image used for LISA NodeJS lambda deployments'),
     condaUrl: z.string().default('').describe('Conda URL configuration'),
     certificateAuthorityBundle: z.string().default('').describe('Certificate Authority Bundle file'),
     ragRepositories: z.array(RagRepositoryConfigSchema).describe('Rag Repository configuration.'),
@@ -901,6 +903,7 @@ export const RawConfigObject = z.object({
             commonLayerPath: z.string().optional().describe('Lambda common layer code path'),
             fastapiLayerPath: z.string().optional().describe('Lambda API code path'),
             ragLayerPath: z.string().optional().describe('Lambda RAG layer code path'),
+            cdkLayerPath: z.string().optional().describe('Lambda CDK layer code path'),
         })
         .optional()
         .describe('Configuration for local Lambda layer code'),
@@ -913,7 +916,7 @@ export const RawConfigObject = z.object({
         })
         .optional()
         .describe('Aspect CDK injector for permissions. Ref: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_iam.PermissionsBoundary.html'),
-    stackSynthesizer: z.nativeEnum(stackSynthesizerType).optional().describe('Set the stack synthesize type. Ref: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.StackSynthesizer.html'),
+    stackSynthesizer: z.enum(stackSynthesizerType).optional().describe('Set the stack synthesize type. Ref: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.StackSynthesizer.html'),
     bootstrapQualifier: z.string().optional().describe('CDK bootstrap qualifier to use for stack synthesis. Defaults to CDK default if not specified.'),
     bootstrapRolePrefix: z.string().optional().describe('Prefix for CDK bootstrap role names. Useful when roles have custom prefixes like My_User_Roles_. Leave empty for standard role names.'),
     litellmConfig: LiteLLMConfig,

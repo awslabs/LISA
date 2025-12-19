@@ -19,6 +19,8 @@ import crypto from 'node:crypto';
 import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Repository } from 'aws-cdk-lib/aws-ecr';
+import { Rule } from 'aws-cdk-lib/aws-events';
+import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
 import {
     Effect,
     IRole,
@@ -35,7 +37,7 @@ import { CustomResource, Duration } from 'aws-cdk-lib';
 import { Provider } from 'aws-cdk-lib/custom-resources';
 import { Construct } from 'constructs';
 
-import { getDefaultRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
+import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
 import { APP_MANAGEMENT_KEY, BaseProps } from '../schema';
 import { Vpc } from '../networking/vpc';
 
@@ -60,7 +62,7 @@ import { LAMBDA_PATH } from '../util';
  */
 type ModelsApiProps = BaseProps & {
     authorizer?: IAuthorizer;
-    guardrailsTable: ITable;
+    guardrailsTable?: ITable;
     lisaServeEndpointUrlPs?: StringParameter;
     restApiId: string;
     rootResourceId: string;
@@ -75,7 +77,18 @@ export class ModelsApi extends Construct {
     constructor (scope: Construct, id: string, props: ModelsApiProps) {
         super(scope, id);
 
-        const { authorizer, config, guardrailsTable, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
+
+        // Use guardrailsTable passed from serve stack, or fall back to SSM parameter lookup for backward compatibility
+        const guardrailsTable = props.guardrailsTable ?? (() => {
+            const guardrailsTableNamePs = StringParameter.fromStringParameterName(
+                this,
+                'GuardrailsTableNameParameter',
+                `${config.deploymentPrefix}/guardrailsTableName`
+            );
+            return Table.fromTableName(this, 'GuardrailsTable', guardrailsTableNamePs.stringValue);
+        })();
+        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
 
         const lisaServeEndpointUrlPs = props.lisaServeEndpointUrlPs ?? StringParameter.fromStringParameterName(
             scope,
@@ -154,6 +167,70 @@ export class ModelsApi extends Construct {
             this.createStateMachineLambdaRole(modelTable.tableArn, guardrailsTable.tableArn, dockerImageBuilder.dockerImageBuilderFn.functionArn,
                 ecsModelDeployer.ecsModelDeployerFn.functionArn, lisaServeEndpointUrlPs.parameterArn, managementKeyName, config);
 
+        const scheduleManagementLambda = new Function(this, 'ScheduleManagement', {
+            runtime: getPythonRuntime(),
+            handler: 'models.scheduling.schedule_management.lambda_handler',
+            code: Code.fromAsset(lambdaPath),
+            layers: lambdaLayers,
+            environment: {
+                MODEL_TABLE_NAME: modelTable.tableName,
+            },
+            role: stateMachinesLambdaRole,
+            vpc: vpc.vpc,
+            vpcSubnets: vpc.subnetSelection,
+            securityGroups: securityGroups,
+            timeout: Duration.minutes(5),
+            description: 'Manages Auto Scaling scheduled actions for LISA model scheduling',
+        });
+
+        const scheduleMonitoringLambda = new Function(this, 'ScheduleMonitoring', {
+            runtime: getPythonRuntime(),
+            handler: 'models.scheduling.schedule_monitoring.lambda_handler',
+            code: Code.fromAsset(lambdaPath),
+            layers: lambdaLayers,
+            environment: {
+                MODEL_TABLE_NAME: modelTable.tableName,
+                ECS_CLUSTER_NAME: `${config.deploymentPrefix}-ECS-Cluster`,
+                LISA_API_URL_PS_NAME: lisaServeEndpointUrlPs.parameterName,
+                MANAGEMENT_KEY_NAME: managementKeyName,
+                REST_API_VERSION: 'v2',
+            },
+            role: stateMachinesLambdaRole,
+            vpc: vpc.vpc,
+            vpcSubnets: vpc.subnetSelection,
+            securityGroups: securityGroups,
+            timeout: Duration.minutes(5),
+            description: 'Processes Auto Scaling Group CloudWatch events to update model status',
+        });
+
+        // Add permission for state machine lambdas to invoke the ScheduleManagement lambda
+        const scheduleManagementPermission = new Policy(this, 'ScheduleManagementInvokePerms', {
+            statements: [
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: [
+                        'lambda:InvokeFunction',
+                    ],
+                    resources: [
+                        scheduleManagementLambda.functionArn,
+                    ],
+                })
+            ]
+        });
+        stateMachinesLambdaRole.attachInlinePolicy(scheduleManagementPermission);
+
+        new Rule(this, 'AutoScalingEventsRule', {
+            eventPattern: {
+                source: ['aws.autoscaling'],
+                detailType: [
+                    'EC2 Instance Launch Successful',
+                    'EC2 Instance Terminate Successful'
+                ]
+            },
+            targets: [new LambdaFunction(scheduleMonitoringLambda)],
+            description: 'Triggers ScheduleMonitoring Lambda when Auto Scaling Group instances launch or terminate successfully',
+        });
+
         const createModelStateMachine = new CreateModelStateMachine(this, 'CreateModelWorkflow', {
             config: config,
             modelTable: modelTable,
@@ -167,6 +244,7 @@ export class ModelsApi extends Construct {
             ecsModelImageRepository: ecsModelBuildRepo,
             restApiContainerEndpointPs: lisaServeEndpointUrlPs,
             managementKeyName: managementKeyName,
+            scheduleManagementFunctionName: scheduleManagementLambda.functionName,
             ...(stateMachineExecutionRole),
         });
 
@@ -204,11 +282,17 @@ export class ModelsApi extends Construct {
             DELETE_SFN_ARN: deleteModelStateMachine.stateMachineArn,
             UPDATE_SFN_ARN: updateModelStateMachine.stateMachineArn,
             MODEL_TABLE_NAME: modelTable.tableName,
+            SCHEDULE_MANAGEMENT_FUNCTION_NAME: scheduleManagementLambda.functionName,
             GUARDRAILS_TABLE_NAME: guardrailsTable.tableName,
+            ADMIN_GROUP: config.authConfig?.adminGroup || '',
+            // SSM parameter names for RAG tables (optional - only exist if RAG is deployed)
+            ...(config.deployRag && {
+                LISA_RAG_VECTOR_STORE_TABLE_PS_NAME: `${config.deploymentPrefix}/ragVectorStoreTableName`,
+                LISA_RAG_COLLECTIONS_TABLE_PS_NAME: `${config.deploymentPrefix}/ragCollectionsTableName`,
+            }),
         };
 
         const lambdaRole: IRole = createLambdaRole(this, config.deploymentName, 'ModelApi', modelTable.tableArn, config.roles?.ModelApiRole);
-        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         // create proxy handler
         const lambdaFunction = registerAPIEndpoint(
             this,
@@ -223,7 +307,7 @@ export class ModelsApi extends Construct {
                 method: 'ANY',
                 environment
             },
-            getDefaultRuntime(),
+            getPythonRuntime(),
             vpc,
             securityGroups,
             authorizer,
@@ -295,7 +379,7 @@ export class ModelsApi extends Construct {
                 lambdaPath,
                 lambdaLayers,
                 f,
-                getDefaultRuntime(),
+                getPythonRuntime(),
                 vpc,
                 securityGroups,
                 authorizer,
@@ -320,6 +404,7 @@ export class ModelsApi extends Construct {
                     effect: Effect.ALLOW,
                     actions: [
                         'dynamodb:GetItem',
+                        'dynamodb:UpdateItem',
                         'dynamodb:Scan',
                     ],
                     resources: [
@@ -346,16 +431,54 @@ export class ModelsApi extends Construct {
                     effect: Effect.ALLOW,
                     actions: [
                         'autoscaling:DescribeAutoScalingGroups',
+                        'autoscaling:UpdateAutoScalingGroup',
+                        'autoscaling:PutScheduledUpdateGroupAction',
+                        'autoscaling:DeleteScheduledAction',
+                        'autoscaling:DescribeScheduledActions',
                     ],
                     resources: ['*'],  // we do not know ASG names in advance
                 }),
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: [
+                        'lambda:InvokeFunction',
+                    ],
+                    resources: [
+                        scheduleManagementLambda.functionArn,
+                    ],
+                }),
+                ...(config.deployRag ? [
+                    new PolicyStatement({
+                        effect: Effect.ALLOW,
+                        actions: [
+                            'ssm:GetParameter',
+                        ],
+                        resources: [
+                            `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/ragVectorStoreTableName`,
+                            `arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/ragCollectionsTableName`,
+                        ],
+                    }),
+                    new PolicyStatement({
+                        effect: Effect.ALLOW,
+                        actions: [
+                            'dynamodb:Scan',
+                            'dynamodb:Query',
+                            'dynamodb:GetItem',
+                        ],
+                        resources: [
+                            // Allow access to RAG tables (use wildcards since CDK generates unique suffixes)
+                            `arn:${config.partition}:dynamodb:${config.region}:${config.accountNumber}:table/${config.deploymentName}-${config.deploymentStage}-rag-repository-config*`,
+                            `arn:${config.partition}:dynamodb:${config.region}:${config.accountNumber}:table/*RagCollectionsTable*`,
+                            `arn:${config.partition}:dynamodb:${config.region}:${config.accountNumber}:table/${config.deploymentName}-*-rag-*`,
+                        ],
+                    })] : []),
             ]
         });
         lambdaFunction.role!.attachInlinePolicy(workflowPermissions);
 
         // Model API key cleanup - runs once per deployment version
         const modelApiKeyCleanupLambda = new Function(this, 'ModelApiKeyCleanup', {
-            runtime: getDefaultRuntime(),
+            runtime: getPythonRuntime(),
             handler: 'models.model_api_key_cleanup.lambda_handler',
             code: Code.fromAsset(lambdaPath),
             layers: lambdaLayers,
@@ -367,6 +490,7 @@ export class ModelsApi extends Construct {
             },
             role: stateMachinesLambdaRole,
             vpc: vpc.vpc,
+            vpcSubnets: vpc.subnetSelection,
             securityGroups: securityGroups,
             timeout: Duration.minutes(5),
             description: 'Remove api_key from existing Bedrock models to fix Invalid API Key format errors',
@@ -396,7 +520,7 @@ export class ModelsApi extends Construct {
      * @param managementKeyName - Name of the management key secret
      * @returns The created role
      */
-    createStateMachineLambdaRole (modelTableArn: string, guardrailTableArn: string ,dockerImageBuilderFnArn: string, ecsModelDeployerFnArn: string, lisaServeEndpointUrlParamArn: string, managementKeyName: string, config: any): IRole {
+    createStateMachineLambdaRole (modelTableArn: string, guardrailTableArn: string, dockerImageBuilderFnArn: string, ecsModelDeployerFnArn: string, lisaServeEndpointUrlParamArn: string, managementKeyName: string, config: any): IRole {
         return new Role(this, Roles.MODEL_SFN_LAMBDA_ROLE, {
             assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
             managedPolicies: [
@@ -472,7 +596,7 @@ export class ModelsApi extends Construct {
                             ],
                             resources: ['*'],
                             conditions: {
-                                'StringEquals': {'aws:ResourceTag/lisa_temporary_instance': 'true'}
+                                'StringEquals': { 'aws:ResourceTag/lisa_temporary_instance': 'true' }
                             }
                         }),
                         new PolicyStatement({
@@ -487,6 +611,9 @@ export class ModelsApi extends Construct {
                             actions: [
                                 'autoscaling:DescribeAutoScalingGroups',
                                 'autoscaling:UpdateAutoScalingGroup',
+                                'autoscaling:PutScheduledUpdateGroupAction',
+                                'autoscaling:DeleteScheduledAction',
+                                'autoscaling:DescribeScheduledActions',
                             ],
                             resources: ['*'],  // We do not know the ASG names in advance
                         }),

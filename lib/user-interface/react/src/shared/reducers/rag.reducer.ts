@@ -34,7 +34,7 @@ type IngestDocumentRequest = {
     documents: string[],
     repositoryId: string,
     collectionId?: string,
-    repostiroyType: string,
+    repositoryType: string,
     chunkingStrategy?: ChunkingStrategy;
     metadata?: CollectionMetadata;
 };
@@ -254,7 +254,8 @@ export const ragApi = createApi({
                 data: {
                     keys: request.documents,
                     collectionId: request.collectionId,
-                    chunkingStrategy: request.chunkingStrategy
+                    chunkingStrategy: request.chunkingStrategy,
+                    metadata: request.metadata
                 }
             }),
             transformErrorResponse: (baseQueryReturnValue) => ({

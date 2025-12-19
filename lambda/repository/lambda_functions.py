@@ -967,7 +967,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
 
     # Get collection if specified
     collection: Optional[dict[str, Any]] = None
-    if request.collectionId:
+    if request.collectionId and request.collectionId != repository.get("embeddingModelId"):
         collection = collection_service.get_collection(
             collection_id=request.collectionId,
             repository_id=repository_id,

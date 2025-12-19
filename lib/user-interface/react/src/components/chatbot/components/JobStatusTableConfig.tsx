@@ -20,6 +20,7 @@ import { CollectionPreferencesProps } from '@cloudscape-design/components';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faFileImport } from '@fortawesome/free-solid-svg-icons';
 import { DEFAULT_PAGE_SIZE_OPTIONS } from '../../../shared/preferences/common-preferences';
+import { formatDate } from '@/shared/util/formats';
 
 export type JobStatusItem = {
     id: string;
@@ -95,7 +96,7 @@ export const TABLE_DEFINITION: {
         id: 'id',
         header: 'Job ID',
         cell: (item) => (
-            <span className='font-mono text-sm text-gray-500'>
+            <span className='font-mono text-sm text-zinc-500'>
                 {item.id}
             </span>
         ),
@@ -132,7 +133,7 @@ export const TABLE_DEFINITION: {
         id: 'collection_id',
         header: 'Collection',
         cell: (item) => (
-            <span className='text-sm text-gray-600'>
+            <span className='text-sm text-zinc-600'>
                 {item.collection_id}
             </span>
         ),
@@ -142,23 +143,7 @@ export const TABLE_DEFINITION: {
     {
         id: 'created_date',
         header: 'Created',
-        cell: (item) => {
-            if (!item.created_date) {
-                return <span className='text-gray-500'>-</span>;
-            }
-
-            // Format the date - assuming it's a timestamp or ISO string
-            const date = new Date(item.created_date);
-            if (isNaN(date.getTime())) {
-                return <span className='text-gray-500'>-</span>;
-            }
-
-            return (
-                <span className='text-sm'>
-                    {date.toLocaleDateString()} {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
-            );
-        },
+        cell: (item) => formatDate(item.created_date),
         sortingField: 'created_date',
         visible: true
     }

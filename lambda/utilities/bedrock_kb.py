@@ -270,8 +270,6 @@ class S3DocumentDiscoveryService:
                 bucket=s3_bucket,
                 document_key=document_key,
                 metadata_content=metadata_content,
-                repository_id=repository_id,
-                collection_id=collection_id,
             )
             logger.info(f"Created metadata file for s3://{s3_bucket}/{document_key}")
         except Exception as e:

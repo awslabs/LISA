@@ -892,7 +892,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Lists available MCP Workbench tools",
         "Environment": {
@@ -920,7 +920,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -948,7 +948,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Create MCP Workbench tools",
         "Environment": {
@@ -976,7 +976,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -1004,7 +1004,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Get MCP Workbench tool",
         "Environment": {
@@ -1032,7 +1032,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -1060,7 +1060,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Update MCP Workbench tool",
         "Environment": {
@@ -1088,7 +1088,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -1116,7 +1116,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Delete MCP Workbench tool",
         "Environment": {
@@ -1144,7 +1144,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -1172,7 +1172,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Validate Python code syntax",
         "Environment": {
@@ -1200,7 +1200,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -1238,6 +1238,20 @@
           ],
           "Version": "2012-10-17"
         },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+              ]
+            ]
+          }
+        ],
         "Policies": [
           {
             "PolicyDocument": {
@@ -1302,12 +1316,28 @@
         ]
       }
     },
+    "McpWorkbenchS3EventHandlerLambdaSecurityGroup4B83DBDB": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Automatic security group for Lambda Function LisaMcpWorkbenchS3EventHandlerLambdaDBF04951",
+        "SecurityGroupEgress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Allow all outbound traffic by default",
+            "IpProtocol": "-1"
+          }
+        ],
+        "VpcId": {
+          "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPC8B8C4E4BB8544CDA"
+        }
+      }
+    },
     "McpWorkbenchS3EventHandlerLambdaB4D5E3E4": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Environment": {
           "Variables": {
@@ -1328,8 +1358,26 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
-        "Timeout": 120
+        "Runtime": "python3.13",
+        "Timeout": 120,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::GetAtt": [
+                "McpWorkbenchS3EventHandlerLambdaSecurityGroup4B83DBDB",
+                "GroupId"
+              ]
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
       },
       "DependsOn": [
         "McpWorkbenchS3EventHandlerRole545174C5"

@@ -220,7 +220,7 @@ export const DocumentSummarizationModal = ({
                         statusType={isFetchingModels ? 'loading' : 'finished'}
                         loadingText='Loading models (might take few seconds)...'
                         placeholder='Select a model'
-                        empty={<div className='text-gray-500'>No models available.</div>}
+                        empty={<div className='text-zinc-500'>No models available.</div>}
                         filteringType='auto'
                         value={selectedModel?.modelId ?? ''}
                         enteredTextLabel={(text) => `Use: "${text}"`}

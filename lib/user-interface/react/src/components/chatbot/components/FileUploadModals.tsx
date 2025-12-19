@@ -262,9 +262,9 @@ export const RagUploadModal = ({
                 documents: fileKeys,
                 repositoryId: ragConfig.repositoryId,
                 collectionId: ragConfig.collection?.collectionId,
-                repostiroyType: ragConfig.repositoryType,
+                repositoryType: ragConfig.repositoryType,
                 chunkingStrategy: overrideChunkingStrategy ? chunkingStrategy : undefined,
-                metadata: tags.length > 0 ? { tags } : undefined,
+                metadata: tags.length > 0 ? { tags, customFields: {} } : undefined,
             });
 
             if ('error' in ingestResp) {

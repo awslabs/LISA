@@ -257,7 +257,7 @@
           "cdk-hnb659fds-assets-012345678901-us-iso-east-1"
         ],
         "SourceObjectKeys": [
-          "f5c76f011854ffc3b9b0e58b86ed09170a54d6b6e896eae12f6a0773ef830bfc.zip"
+          "1ebc9d3ac2033816c4abb63e4afd69d350b4aba8704cc9236b82ea520b74f4b0.zip"
         ],
         "DestinationBucketName": {
           "Ref": "DocsBucketECEA003F"

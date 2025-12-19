@@ -1,4 +1,39 @@
 {
+  "Parameters": {
+    "ModelsApiGuardrailsTableNameParameterParameter9338827B": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/guardrailsTableName"
+    },
+    "LisaRestApiUriStringParameterParameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/lisaServeRestApiUri"
+    },
+    "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/layerVersion/common"
+    },
+    "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/layerVersion/fastapi"
+    },
+    "SsmParameterValuedevtestlisalisalayerVersioncdkC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/layerVersion/cdk"
+    },
+    "SsmParameterValuedevtestlisalisabucketbucketaccesslogsC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/bucket/bucket-access-logs"
+    },
+    "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/appManagementKeySecretName"
+    },
+    "BootstrapVersion": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/cdk-bootstrap/hnb659fds/version",
+      "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+    }
+  },
   "Resources": {
     "ModelsApiRestApimodelsC1697580": {
       "Type": "AWS::ApiGateway::Resource",
@@ -614,7 +649,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "2c6ff821ee55bfd1624f5e2f39d39ce7d761c97bf6108ca29c30102c56b68a1a.zip"
+          "S3Key": "1ebc9d3ac2033816c4abb63e4afd69d350b4aba8704cc9236b82ea520b74f4b0.zip"
         },
         "Environment": {
           "Variables": {
@@ -644,7 +679,7 @@
             "Arn"
           ]
         },
-        "Runtime": "nodejs18.x",
+        "Runtime": "nodejs24.x",
         "Timeout": 600,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -774,7 +809,7 @@
           "cdk-hnb659fds-assets-012345678901-us-iso-east-1"
         ],
         "SourceObjectKeys": [
-          "9effa906703c74def5a9bbf3a3db197be8dfacbea4d2d0d822b510eb7ef50b80.zip"
+          "158cef6fe13582103654cb48259892ae3f9975552a59f2bfad165bd6b8a6b998.zip"
         ],
         "DestinationBucketName": {
           "Ref": "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderec2bucketA3074A95"
@@ -973,7 +1008,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Environment": {
           "Variables": {
@@ -1047,7 +1082,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 60,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -1134,14 +1169,31 @@
                       ]
                     },
                     {
-                      "Fn::ImportValue": "LisaServe:ExportsOutputFnGetAttGuardrailsTableCEF5B750Arn22DC7C03"
+                      "Fn::Join": [
+                        "",
+                        [
+                          "arn:",
+                          {
+                            "Ref": "AWS::Partition"
+                          },
+                          ":dynamodb:us-iso-east-1:012345678901:table/",
+                          {
+                            "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+                          }
+                        ]
+                      ]
                     },
                     {
                       "Fn::Join": [
                         "",
                         [
+                          "arn:",
                           {
-                            "Fn::ImportValue": "LisaServe:ExportsOutputFnGetAttGuardrailsTableCEF5B750Arn22DC7C03"
+                            "Ref": "AWS::Partition"
+                          },
+                          ":dynamodb:us-iso-east-1:012345678901:table/",
+                          {
+                            "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
                           },
                           "/*"
                         ]
@@ -1231,7 +1283,10 @@
                 {
                   "Action": [
                     "autoscaling:DescribeAutoScalingGroups",
-                    "autoscaling:UpdateAutoScalingGroup"
+                    "autoscaling:UpdateAutoScalingGroup",
+                    "autoscaling:PutScheduledUpdateGroupAction",
+                    "autoscaling:DeleteScheduledAction",
+                    "autoscaling:DescribeScheduledActions"
                   ],
                   "Effect": "Allow",
                   "Resource": "*"
@@ -1300,12 +1355,194 @@
         ]
       }
     },
+    "ModelsApiScheduleManagementD0F63E98": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Description": "Manages Auto Scaling scheduled actions for LISA model scheduling",
+        "Environment": {
+          "Variables": {
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            }
+          }
+        },
+        "Handler": "models.scheduling.schedule_management.lambda_handler",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 300,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiScheduleMonitoring0B04A820": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Description": "Processes Auto Scaling Group CloudWatch events to update model status",
+        "Environment": {
+          "Variables": {
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "ECS_CLUSTER_NAME": "/dev/test-lisa/lisa-ECS-Cluster",
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "REST_API_VERSION": "v2"
+          }
+        },
+        "Handler": "models.scheduling.schedule_monitoring.lambda_handler",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 300,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiScheduleManagementInvokePerms61B92E48": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "ModelsApiScheduleManagementD0F63E98",
+                  "Arn"
+                ]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "ModelsApiScheduleManagementInvokePerms61B92E48",
+        "Roles": [
+          {
+            "Ref": "ModelsApiModelsSfnLambdaRoleF400F0BC"
+          }
+        ]
+      }
+    },
+    "ModelsApiAutoScalingEventsRuleF8ACA336": {
+      "Type": "AWS::Events::Rule",
+      "Properties": {
+        "Description": "Triggers ScheduleMonitoring Lambda when Auto Scaling Group instances launch or terminate successfully",
+        "EventPattern": {
+          "source": [
+            "aws.autoscaling"
+          ],
+          "detail-type": [
+            "EC2 Instance Launch Successful",
+            "EC2 Instance Terminate Successful"
+          ]
+        },
+        "State": "ENABLED",
+        "Targets": [
+          {
+            "Arn": {
+              "Fn::GetAtt": [
+                "ModelsApiScheduleMonitoring0B04A820",
+                "Arn"
+              ]
+            },
+            "Id": "Target0"
+          }
+        ]
+      }
+    },
+    "ModelsApiAutoScalingEventsRuleAllowEventRuleLisaModelsModelsApiScheduleMonitoringFC77CB9E29D717F3": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "ModelsApiScheduleMonitoring0B04A820",
+            "Arn"
+          ]
+        },
+        "Principal": "events.amazonaws.com",
+        "SourceArn": {
+          "Fn::GetAtt": [
+            "ModelsApiAutoScalingEventsRuleF8ACA336",
+            "Arn"
+          ]
+        }
+      }
+    },
     "ModelsApiCreateModelWorkflowSetModelToCreatingFunc4E8D1CA0": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Environment": {
           "Variables": {
@@ -1335,7 +1572,7 @@
               "Ref": "ModelsApiModelTable72B9582E"
             },
             "GUARDRAILS_TABLE_NAME": {
-              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
             },
             "REST_API_VERSION": "v2",
             "MANAGEMENT_KEY_NAME": {
@@ -1363,7 +1600,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 60,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -1390,7 +1627,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Environment": {
           "Variables": {
@@ -1420,7 +1657,7 @@
               "Ref": "ModelsApiModelTable72B9582E"
             },
             "GUARDRAILS_TABLE_NAME": {
-              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
             },
             "REST_API_VERSION": "v2",
             "MANAGEMENT_KEY_NAME": {
@@ -1448,7 +1685,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 60,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -1475,7 +1712,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Environment": {
           "Variables": {
@@ -1505,7 +1742,7 @@
               "Ref": "ModelsApiModelTable72B9582E"
             },
             "GUARDRAILS_TABLE_NAME": {
-              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
             },
             "REST_API_VERSION": "v2",
             "MANAGEMENT_KEY_NAME": {
@@ -1533,7 +1770,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 60,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -1560,7 +1797,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Environment": {
           "Variables": {
@@ -1590,7 +1827,7 @@
               "Ref": "ModelsApiModelTable72B9582E"
             },
             "GUARDRAILS_TABLE_NAME": {
-              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
             },
             "REST_API_VERSION": "v2",
             "MANAGEMENT_KEY_NAME": {
@@ -1618,7 +1855,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 60,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -1645,7 +1882,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Environment": {
           "Variables": {
@@ -1675,7 +1912,7 @@
               "Ref": "ModelsApiModelTable72B9582E"
             },
             "GUARDRAILS_TABLE_NAME": {
-              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
             },
             "REST_API_VERSION": "v2",
             "MANAGEMENT_KEY_NAME": {
@@ -1703,7 +1940,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 480,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -1730,7 +1967,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Environment": {
           "Variables": {
@@ -1760,7 +1997,7 @@
               "Ref": "ModelsApiModelTable72B9582E"
             },
             "GUARDRAILS_TABLE_NAME": {
-              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
             },
             "REST_API_VERSION": "v2",
             "MANAGEMENT_KEY_NAME": {
@@ -1788,7 +2025,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 60,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -1810,12 +2047,12 @@
         "ModelsApiModelsSfnLambdaRoleF400F0BC"
       ]
     },
-    "ModelsApiCreateModelWorkflowAddModelToLitellmFunc6B8DBAE6": {
+    "ModelsApiCreateModelWorkflowCreateScheduleFuncBB684C18": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Environment": {
           "Variables": {
@@ -1845,7 +2082,95 @@
               "Ref": "ModelsApiModelTable72B9582E"
             },
             "GUARDRAILS_TABLE_NAME": {
-              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+            },
+            "REST_API_VERSION": "v2",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
+            "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}",
+            "AWS_ACCOUNT_ID": "012345678901",
+            "AWS_PARTITION": "aws",
+            "SCHEDULE_MANAGEMENT_FUNCTION_NAME": {
+              "Ref": "ModelsApiScheduleManagementD0F63E98"
+            }
+          }
+        },
+        "Handler": "models.state_machine.schedule_handlers.handle_schedule_creation",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiCreateModelWorkflowAddModelToLitellmFunc6B8DBAE6": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "DOCKER_IMAGE_BUILDER_FN_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApidockerimagebuilderLisaModelsdockerimagebuilder35917FEB",
+                "Arn"
+              ]
+            },
+            "ECR_REPOSITORY_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApiecsmodelbuildrepo74B1906D",
+                "Arn"
+              ]
+            },
+            "ECR_REPOSITORY_NAME": {
+              "Ref": "ModelsApiecsmodelbuildrepo74B1906D"
+            },
+            "ECS_MODEL_DEPLOYER_FN_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFunc775C7BAD",
+                "Arn"
+              ]
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
             },
             "REST_API_VERSION": "v2",
             "MANAGEMENT_KEY_NAME": {
@@ -1873,7 +2198,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 60,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -1900,7 +2225,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Environment": {
           "Variables": {
@@ -1930,7 +2255,7 @@
               "Ref": "ModelsApiModelTable72B9582E"
             },
             "GUARDRAILS_TABLE_NAME": {
-              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
             },
             "REST_API_VERSION": "v2",
             "MANAGEMENT_KEY_NAME": {
@@ -1958,7 +2283,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 60,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -2045,6 +2370,32 @@
                       {
                         "Fn::GetAtt": [
                           "ModelsApiCreateModelWorkflowAddModelToLitellmFunc6B8DBAE6",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiCreateModelWorkflowCreateScheduleFuncBB684C18",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiCreateModelWorkflowCreateScheduleFuncBB684C18",
                           "Arn"
                         ]
                       },
@@ -2250,6 +2601,17 @@
                   "Arn"
                 ]
               },
+              "\",\"Payload.$\":\"$\"}},\"CreateSchedule\":{\"Next\":\"AddModelToLitellm\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiCreateModelWorkflowCreateScheduleFuncBB684C18",
+                  "Arn"
+                ]
+              },
               "\",\"Payload.$\":\"$\"}},\"CheckGuardrailsChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.guardrailsConfig\",\"IsPresent\":true,\"Next\":\"AddGuardrailsToLitellm\"}],\"Default\":\"CreateSuccess\"},\"CreateSuccess\":{\"Type\":\"Succeed\"},\"AddGuardrailsToLitellm\":{\"Next\":\"CreateSuccess\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.TaskFailed\"],\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
               {
                 "Ref": "AWS::Partition"
@@ -2316,7 +2678,7 @@
                   "Arn"
                 ]
               },
-              "\",\"Payload.$\":\"$\"}},\"WaitBeforePollingCreateStack\":{\"Type\":\"Wait\",\"Seconds\":60,\"Next\":\"PollCreateStack\"},\"PollCreateStackChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.continue_polling_stack\",\"BooleanEquals\":true,\"Next\":\"WaitBeforePollingCreateStack\"}],\"Default\":\"AddModelToLitellm\"},\"CreateFailed\":{\"Type\":\"Fail\"}}}"
+              "\",\"Payload.$\":\"$\"}},\"WaitBeforePollingCreateStack\":{\"Type\":\"Wait\",\"Seconds\":60,\"Next\":\"PollCreateStack\"},\"PollCreateStackChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.continue_polling_stack\",\"BooleanEquals\":true,\"Next\":\"WaitBeforePollingCreateStack\"}],\"Default\":\"CreateSchedule\"},\"CreateFailed\":{\"Type\":\"Fail\"}}}"
             ]
           ]
         },
@@ -2339,7 +2701,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Environment": {
           "Variables": {
@@ -2347,7 +2709,7 @@
               "Ref": "ModelsApiModelTable72B9582E"
             },
             "GUARDRAILS_TABLE_NAME": {
-              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
             },
             "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
             "REST_API_VERSION": "v2",
@@ -2373,7 +2735,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 60,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -2400,7 +2762,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Environment": {
           "Variables": {
@@ -2408,7 +2770,7 @@
               "Ref": "ModelsApiModelTable72B9582E"
             },
             "GUARDRAILS_TABLE_NAME": {
-              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
             },
             "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
             "REST_API_VERSION": "v2",
@@ -2434,7 +2796,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 60,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -2461,7 +2823,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Environment": {
           "Variables": {
@@ -2469,7 +2831,7 @@
               "Ref": "ModelsApiModelTable72B9582E"
             },
             "GUARDRAILS_TABLE_NAME": {
-              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
             },
             "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
             "REST_API_VERSION": "v2",
@@ -2495,7 +2857,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 60,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -2522,7 +2884,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Environment": {
           "Variables": {
@@ -2530,7 +2892,7 @@
               "Ref": "ModelsApiModelTable72B9582E"
             },
             "GUARDRAILS_TABLE_NAME": {
-              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
             },
             "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
             "REST_API_VERSION": "v2",
@@ -2556,7 +2918,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 60,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -2583,7 +2945,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Environment": {
           "Variables": {
@@ -2591,7 +2953,7 @@
               "Ref": "ModelsApiModelTable72B9582E"
             },
             "GUARDRAILS_TABLE_NAME": {
-              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
             },
             "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
             "REST_API_VERSION": "v2",
@@ -2617,7 +2979,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 60,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -2644,7 +3006,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Environment": {
           "Variables": {
@@ -2652,7 +3014,7 @@
               "Ref": "ModelsApiModelTable72B9582E"
             },
             "GUARDRAILS_TABLE_NAME": {
-              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
             },
             "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
             "REST_API_VERSION": "v2",
@@ -2678,7 +3040,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 60,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -2985,7 +3347,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Environment": {
           "Variables": {
@@ -2993,7 +3355,7 @@
               "Ref": "ModelsApiModelTable72B9582E"
             },
             "GUARDRAILS_TABLE_NAME": {
-              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
             },
             "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
             "REST_API_VERSION": "v2",
@@ -3020,7 +3382,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 60,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -3047,7 +3409,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Environment": {
           "Variables": {
@@ -3055,7 +3417,7 @@
               "Ref": "ModelsApiModelTable72B9582E"
             },
             "GUARDRAILS_TABLE_NAME": {
-              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
             },
             "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
             "REST_API_VERSION": "v2",
@@ -3082,7 +3444,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 60,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -3109,7 +3471,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Environment": {
           "Variables": {
@@ -3117,7 +3479,7 @@
               "Ref": "ModelsApiModelTable72B9582E"
             },
             "GUARDRAILS_TABLE_NAME": {
-              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
             },
             "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
             "REST_API_VERSION": "v2",
@@ -3144,7 +3506,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 60,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -3171,7 +3533,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Environment": {
           "Variables": {
@@ -3179,7 +3541,7 @@
               "Ref": "ModelsApiModelTable72B9582E"
             },
             "GUARDRAILS_TABLE_NAME": {
-              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
             },
             "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
             "REST_API_VERSION": "v2",
@@ -3206,7 +3568,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 60,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -3233,7 +3595,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Environment": {
           "Variables": {
@@ -3241,7 +3603,7 @@
               "Ref": "ModelsApiModelTable72B9582E"
             },
             "GUARDRAILS_TABLE_NAME": {
-              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
             },
             "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
             "REST_API_VERSION": "v2",
@@ -3268,7 +3630,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 60,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -3295,7 +3657,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Environment": {
           "Variables": {
@@ -3303,7 +3665,7 @@
               "Ref": "ModelsApiModelTable72B9582E"
             },
             "GUARDRAILS_TABLE_NAME": {
-              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
             },
             "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
             "REST_API_VERSION": "v2",
@@ -3330,7 +3692,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 60,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -3756,7 +4118,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Manage model",
         "Environment": {
@@ -3776,9 +4138,15 @@
             "MODEL_TABLE_NAME": {
               "Ref": "ModelsApiModelTable72B9582E"
             },
+            "SCHEDULE_MANAGEMENT_FUNCTION_NAME": {
+              "Ref": "ModelsApiScheduleManagementD0F63E98"
+            },
             "GUARDRAILS_TABLE_NAME": {
-              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
-            }
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+            },
+            "ADMIN_GROUP": "",
+            "LISA_RAG_VECTOR_STORE_TABLE_PS_NAME": "/dev/test-lisa/lisa/ragVectorStoreTableName",
+            "LISA_RAG_COLLECTIONS_TABLE_PS_NAME": "/dev/test-lisa/lisa/ragCollectionsTableName"
           }
         },
         "FunctionName": "LisaModels-models-handler",
@@ -3798,7 +4166,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -3845,7 +4213,7 @@
         ]
       }
     },
-    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler006504F92FF4": {
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler4896A6FDAFEC": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",
@@ -3884,7 +4252,7 @@
         }
       }
     },
-    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler8c94963143BB": {
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler67aa168D70F9": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",
@@ -3928,7 +4296,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Manage model",
         "Environment": {
@@ -3948,9 +4316,15 @@
             "MODEL_TABLE_NAME": {
               "Ref": "ModelsApiModelTable72B9582E"
             },
+            "SCHEDULE_MANAGEMENT_FUNCTION_NAME": {
+              "Ref": "ModelsApiScheduleManagementD0F63E98"
+            },
             "GUARDRAILS_TABLE_NAME": {
-              "Fn::ImportValue": "LisaServe:ExportsOutputRefGuardrailsTableCEF5B750E67E057A"
-            }
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+            },
+            "ADMIN_GROUP": "",
+            "LISA_RAG_VECTOR_STORE_TABLE_PS_NAME": "/dev/test-lisa/lisa/ragVectorStoreTableName",
+            "LISA_RAG_COLLECTIONS_TABLE_PS_NAME": "/dev/test-lisa/lisa/ragCollectionsTableName"
           }
         },
         "FunctionName": "LisaModels-models-docs",
@@ -3970,7 +4344,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -3993,7 +4367,7 @@
         "ModelsApiLisaModelApiLambdaExecutionRole3E663E08"
       ]
     },
-    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandlerc8ad666086F0": {
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandlerdb88636D3056": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",
@@ -4055,6 +4429,7 @@
             {
               "Action": [
                 "dynamodb:GetItem",
+                "dynamodb:UpdateItem",
                 "dynamodb:Scan"
               ],
               "Effect": "Allow",
@@ -4093,14 +4468,31 @@
               "Effect": "Allow",
               "Resource": [
                 {
-                  "Fn::ImportValue": "LisaServe:ExportsOutputFnGetAttGuardrailsTableCEF5B750Arn22DC7C03"
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":dynamodb:us-iso-east-1:012345678901:table/",
+                      {
+                        "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+                      }
+                    ]
+                  ]
                 },
                 {
                   "Fn::Join": [
                     "",
                     [
+                      "arn:",
                       {
-                        "Fn::ImportValue": "LisaServe:ExportsOutputFnGetAttGuardrailsTableCEF5B750Arn22DC7C03"
+                        "Ref": "AWS::Partition"
+                      },
+                      ":dynamodb:us-iso-east-1:012345678901:table/",
+                      {
+                        "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
                       },
                       "/*"
                     ]
@@ -4109,9 +4501,46 @@
               ]
             },
             {
-              "Action": "autoscaling:DescribeAutoScalingGroups",
+              "Action": [
+                "autoscaling:DescribeAutoScalingGroups",
+                "autoscaling:UpdateAutoScalingGroup",
+                "autoscaling:PutScheduledUpdateGroupAction",
+                "autoscaling:DeleteScheduledAction",
+                "autoscaling:DescribeScheduledActions"
+              ],
               "Effect": "Allow",
               "Resource": "*"
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "ModelsApiScheduleManagementD0F63E98",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": "ssm:GetParameter",
+              "Effect": "Allow",
+              "Resource": [
+                "arn:aws:ssm:us-iso-east-1:012345678901:parameter/dev/test-lisa/lisa/ragVectorStoreTableName",
+                "arn:aws:ssm:us-iso-east-1:012345678901:parameter/dev/test-lisa/lisa/ragCollectionsTableName"
+              ]
+            },
+            {
+              "Action": [
+                "dynamodb:Scan",
+                "dynamodb:Query",
+                "dynamodb:GetItem"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                "arn:aws:dynamodb:us-iso-east-1:012345678901:table/test-lisa-dev-rag-repository-config*",
+                "arn:aws:dynamodb:us-iso-east-1:012345678901:table/*RagCollectionsTable*",
+                "arn:aws:dynamodb:us-iso-east-1:012345678901:table/test-lisa-*-rag-*"
+              ]
             }
           ],
           "Version": "2012-10-17"
@@ -4129,7 +4558,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Remove api_key from existing Bedrock models to fix Invalid API Key format errors",
         "Environment": {
@@ -4157,7 +4586,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 300,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -4462,37 +4891,6 @@
         "CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756CServiceRoleDefaultPolicy88902FDF",
         "CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756CServiceRole89A01265"
       ]
-    }
-  },
-  "Parameters": {
-    "LisaRestApiUriStringParameterParameter": {
-      "Type": "AWS::SSM::Parameter::Value<String>",
-      "Default": "/dev/test-lisa/lisa/lisaServeRestApiUri"
-    },
-    "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter": {
-      "Type": "AWS::SSM::Parameter::Value<String>",
-      "Default": "/dev/test-lisa/lisa/layerVersion/common"
-    },
-    "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter": {
-      "Type": "AWS::SSM::Parameter::Value<String>",
-      "Default": "/dev/test-lisa/lisa/layerVersion/fastapi"
-    },
-    "SsmParameterValuedevtestlisalisalayerVersioncdkC96584B6F00A464EAD1953AFF4B05118Parameter": {
-      "Type": "AWS::SSM::Parameter::Value<String>",
-      "Default": "/dev/test-lisa/lisa/layerVersion/cdk"
-    },
-    "SsmParameterValuedevtestlisalisabucketbucketaccesslogsC96584B6F00A464EAD1953AFF4B05118Parameter": {
-      "Type": "AWS::SSM::Parameter::Value<String>",
-      "Default": "/dev/test-lisa/lisa/bucket/bucket-access-logs"
-    },
-    "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter": {
-      "Type": "AWS::SSM::Parameter::Value<String>",
-      "Default": "/dev/test-lisa/lisa/appManagementKeySecretName"
-    },
-    "BootstrapVersion": {
-      "Type": "AWS::SSM::Parameter::Value<String>",
-      "Default": "/cdk-bootstrap/hnb659fds/version",
-      "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
     }
   },
   "Rules": {

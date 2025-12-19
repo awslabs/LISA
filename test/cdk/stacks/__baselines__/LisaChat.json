@@ -755,13 +755,40 @@
             {
               "Action": [
                 "dynamodb:BatchGetItem",
-                "dynamodb:GetRecords",
-                "dynamodb:GetShardIterator",
                 "dynamodb:Query",
                 "dynamodb:GetItem",
                 "dynamodb:Scan",
                 "dynamodb:ConditionCheckItem",
                 "dynamodb:DescribeTable"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "McpApiMcpServersTable96D5EF7B",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "McpApiMcpServersTable96D5EF7B",
+                          "Arn"
+                        ]
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator"
               ],
               "Effect": "Allow",
               "Resource": [
@@ -822,8 +849,6 @@
             {
               "Action": [
                 "dynamodb:BatchGetItem",
-                "dynamodb:GetRecords",
-                "dynamodb:GetShardIterator",
                 "dynamodb:Query",
                 "dynamodb:GetItem",
                 "dynamodb:Scan",
@@ -874,7 +899,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Lists available mcp servers for user",
         "Environment": {
@@ -903,7 +928,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -931,7 +956,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Returns the selected mcp server",
         "Environment": {
@@ -960,7 +985,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -988,7 +1013,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Creates the mcp server",
         "Environment": {
@@ -1017,7 +1042,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -1045,7 +1070,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Deletes selected mcp server",
         "Environment": {
@@ -1074,7 +1099,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -1102,7 +1127,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Creates or updates selected mcp server",
         "Environment": {
@@ -1131,7 +1156,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -1275,8 +1300,6 @@
             {
               "Action": [
                 "dynamodb:BatchGetItem",
-                "dynamodb:GetRecords",
-                "dynamodb:GetShardIterator",
                 "dynamodb:Query",
                 "dynamodb:GetItem",
                 "dynamodb:Scan",
@@ -1288,35 +1311,53 @@
                 "dynamodb:DescribeTable"
               ],
               "Effect": "Allow",
-              "Resource": [
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:",
-                      {
-                        "Ref": "AWS::Partition"
-                      },
-                      ":dynamodb:us-iso-east-1:012345678901:table/",
-                      {
-                        "Fn::GetAtt": [
-                          "McpApiMcpServersTableNameParameter40CBF850",
-                          "Value"
-                        ]
-                      }
-                    ]
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":dynamodb:us-iso-east-1:012345678901:table/",
+                    {
+                      "Fn::GetAtt": [
+                        "McpApiMcpServersTableNameParameter40CBF850",
+                        "Value"
+                      ]
+                    }
                   ]
-                },
-                {
-                  "Ref": "AWS::NoValue"
-                }
-              ]
+                ]
+              }
+            },
+            {
+              "Action": [
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":dynamodb:us-iso-east-1:012345678901:table/",
+                    {
+                      "Fn::GetAtt": [
+                        "McpApiMcpServersTableNameParameter40CBF850",
+                        "Value"
+                      ]
+                    }
+                  ]
+                ]
+              }
             },
             {
               "Action": [
                 "dynamodb:BatchGetItem",
-                "dynamodb:GetRecords",
-                "dynamodb:GetShardIterator",
                 "dynamodb:Query",
                 "dynamodb:GetItem",
                 "dynamodb:Scan",
@@ -1324,17 +1365,25 @@
                 "dynamodb:DescribeTable"
               ],
               "Effect": "Allow",
-              "Resource": [
-                {
-                  "Fn::GetAtt": [
-                    "ConfigurationApiConfigurationTable4B2B7EE1",
-                    "Arn"
-                  ]
-                },
-                {
-                  "Ref": "AWS::NoValue"
-                }
-              ]
+              "Resource": {
+                "Fn::GetAtt": [
+                  "ConfigurationApiConfigurationTable4B2B7EE1",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": [
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "ConfigurationApiConfigurationTable4B2B7EE1",
+                  "Arn"
+                ]
+              }
             },
             {
               "Action": [
@@ -1345,17 +1394,12 @@
                 "dynamodb:DescribeTable"
               ],
               "Effect": "Allow",
-              "Resource": [
-                {
-                  "Fn::GetAtt": [
-                    "ConfigurationApiConfigurationTable4B2B7EE1",
-                    "Arn"
-                  ]
-                },
-                {
-                  "Ref": "AWS::NoValue"
-                }
-              ]
+              "Resource": {
+                "Fn::GetAtt": [
+                  "ConfigurationApiConfigurationTable4B2B7EE1",
+                  "Arn"
+                ]
+              }
             }
           ],
           "Version": "2012-10-17"
@@ -1385,7 +1429,7 @@
               {
                 "Ref": "ConfigurationApiConfigurationTable4B2B7EE1"
               },
-              "\",\"Item\":{\"versionId\":{\"N\":\"0\"},\"changedBy\":{\"S\":\"System\"},\"configScope\":{\"S\":\"global\"},\"changeReason\":{\"S\":\"Initial deployment default config\"},\"createdAt\":{\"S\":\"1764279647\"},\"configuration\":{\"M\":{\"enabledComponents\":{\"M\":{\"deleteSessionHistory\":{\"BOOL\":\"True\"},\"viewMetaData\":{\"BOOL\":\"True\"},\"editKwargs\":{\"BOOL\":\"True\"},\"editPromptTemplate\":{\"BOOL\":\"True\"},\"editChatHistoryBuffer\":{\"BOOL\":\"True\"},\"editNumOfRagDocument\":{\"BOOL\":\"True\"},\"uploadRagDocs\":{\"BOOL\":\"True\"},\"uploadContextDocs\":{\"BOOL\":\"True\"},\"documentSummarization\":{\"BOOL\":\"True\"},\"showRagLibrary\":{\"BOOL\":\"True\"},\"showMcpWorkbench\":{\"BOOL\":\"False\"},\"showPromptTemplateLibrary\":{\"BOOL\":\"True\"},\"mcpConnections\":{\"BOOL\":\"True\"},\"modelLibrary\":{\"BOOL\":\"True\"},\"encryptSession\":{\"BOOL\":\"False\"}}},\"systemBanner\":{\"M\":{\"isEnabled\":{\"BOOL\":\"False\"},\"text\":{\"S\":\"\"},\"textColor\":{\"S\":\"\"},\"backgroundColor\":{\"S\":\"\"}}}}}}}}"
+              "\",\"Item\":{\"versionId\":{\"N\":\"0\"},\"changedBy\":{\"S\":\"System\"},\"configScope\":{\"S\":\"global\"},\"changeReason\":{\"S\":\"Initial deployment default config\"},\"createdAt\":{\"S\":\"1766083137\"},\"configuration\":{\"M\":{\"enabledComponents\":{\"M\":{\"deleteSessionHistory\":{\"BOOL\":\"True\"},\"viewMetaData\":{\"BOOL\":\"True\"},\"editKwargs\":{\"BOOL\":\"True\"},\"editPromptTemplate\":{\"BOOL\":\"True\"},\"editChatHistoryBuffer\":{\"BOOL\":\"True\"},\"editNumOfRagDocument\":{\"BOOL\":\"True\"},\"uploadRagDocs\":{\"BOOL\":\"True\"},\"uploadContextDocs\":{\"BOOL\":\"True\"},\"documentSummarization\":{\"BOOL\":\"True\"},\"showRagLibrary\":{\"BOOL\":\"True\"},\"showMcpWorkbench\":{\"BOOL\":\"False\"},\"showPromptTemplateLibrary\":{\"BOOL\":\"True\"},\"mcpConnections\":{\"BOOL\":\"True\"},\"modelLibrary\":{\"BOOL\":\"True\"},\"encryptSession\":{\"BOOL\":\"False\"}}},\"systemBanner\":{\"M\":{\"isEnabled\":{\"BOOL\":\"False\"},\"text\":{\"S\":\"\"},\"textColor\":{\"S\":\"\"},\"backgroundColor\":{\"S\":\"\"}}}}}}}}"
             ]
           ]
         },
@@ -1697,7 +1741,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Get configuration",
         "Environment": {
@@ -1733,7 +1777,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -1761,7 +1805,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Updates config data",
         "Environment": {
@@ -1797,7 +1841,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -1825,7 +1869,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "34a66902956b031404ef497526f619b900363fe7fd65ff02b1de4c30fe10c034.zip"
+          "S3Key": "bc8ef58951f4c88e641dd23090e9d2e2e61c7530a07960e767522941e959b625.zip"
         },
         "Handler": "index.handler",
         "Role": {
@@ -2987,13 +3031,40 @@
             {
               "Action": [
                 "dynamodb:BatchGetItem",
-                "dynamodb:GetRecords",
-                "dynamodb:GetShardIterator",
                 "dynamodb:Query",
                 "dynamodb:GetItem",
                 "dynamodb:Scan",
                 "dynamodb:ConditionCheckItem",
                 "dynamodb:DescribeTable"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "SessionApiSessionsTableDA695141",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "SessionApiSessionsTableDA695141",
+                          "Arn"
+                        ]
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator"
               ],
               "Effect": "Allow",
               "Resource": [
@@ -3052,8 +3123,6 @@
             {
               "Action": [
                 "dynamodb:BatchGetItem",
-                "dynamodb:GetRecords",
-                "dynamodb:GetShardIterator",
                 "dynamodb:Query",
                 "dynamodb:GetItem",
                 "dynamodb:Scan",
@@ -3191,7 +3260,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Lists available sessions for user",
         "Environment": {
@@ -3237,7 +3306,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -3265,7 +3334,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Returns the selected session",
         "Environment": {
@@ -3311,7 +3380,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -3339,7 +3408,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Deletes selected session",
         "Environment": {
@@ -3385,7 +3454,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -3413,7 +3482,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Deletes all sessions for selected user",
         "Environment": {
@@ -3459,7 +3528,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -3487,7 +3556,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Creates or updates selected session",
         "Environment": {
@@ -3533,7 +3602,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -3561,7 +3630,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Updates session name",
         "Environment": {
@@ -3607,7 +3676,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -3635,7 +3704,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Attaches image to session",
         "Environment": {
@@ -3681,7 +3750,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -4114,8 +4183,6 @@
             {
               "Action": [
                 "dynamodb:BatchGetItem",
-                "dynamodb:GetRecords",
-                "dynamodb:GetShardIterator",
                 "dynamodb:Query",
                 "dynamodb:GetItem",
                 "dynamodb:Scan",
@@ -4148,9 +4215,36 @@
             },
             {
               "Action": [
-                "dynamodb:BatchGetItem",
                 "dynamodb:GetRecords",
-                "dynamodb:GetShardIterator",
+                "dynamodb:GetShardIterator"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "PromptTemplateApiPromptTemplatesTable2B59FA4A",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "PromptTemplateApiPromptTemplatesTable2B59FA4A",
+                          "Arn"
+                        ]
+                      },
+                      "/index/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "dynamodb:BatchGetItem",
                 "dynamodb:Query",
                 "dynamodb:GetItem",
                 "dynamodb:Scan",
@@ -4790,7 +4884,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Creates prompt template",
         "Environment": {
@@ -4819,7 +4913,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -4847,7 +4941,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Retrieves specific prompt template by ID",
         "Environment": {
@@ -4876,7 +4970,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -4904,7 +4998,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Lists all available prompt templates",
         "Environment": {
@@ -4933,7 +5027,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -4961,7 +5055,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Updates an existing prompt template",
         "Environment": {
@@ -4990,7 +5084,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -5018,7 +5112,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Deletes a specific prompt template by ID",
         "Environment": {
@@ -5047,7 +5141,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -5429,8 +5523,6 @@
             {
               "Action": [
                 "dynamodb:BatchGetItem",
-                "dynamodb:GetRecords",
-                "dynamodb:GetShardIterator",
                 "dynamodb:Query",
                 "dynamodb:GetItem",
                 "dynamodb:Scan",
@@ -5438,17 +5530,25 @@
                 "dynamodb:DescribeTable"
               ],
               "Effect": "Allow",
-              "Resource": [
-                {
-                  "Fn::GetAtt": [
-                    "UserPreferencesApiUserPreferencesTableD7C804C6",
-                    "Arn"
-                  ]
-                },
-                {
-                  "Ref": "AWS::NoValue"
-                }
-              ]
+              "Resource": {
+                "Fn::GetAtt": [
+                  "UserPreferencesApiUserPreferencesTableD7C804C6",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": [
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "UserPreferencesApiUserPreferencesTableD7C804C6",
+                  "Arn"
+                ]
+              }
             },
             {
               "Action": [
@@ -5459,17 +5559,12 @@
                 "dynamodb:DescribeTable"
               ],
               "Effect": "Allow",
-              "Resource": [
-                {
-                  "Fn::GetAtt": [
-                    "UserPreferencesApiUserPreferencesTableD7C804C6",
-                    "Arn"
-                  ]
-                },
-                {
-                  "Ref": "AWS::NoValue"
-                }
-              ]
+              "Resource": {
+                "Fn::GetAtt": [
+                  "UserPreferencesApiUserPreferencesTableD7C804C6",
+                  "Arn"
+                ]
+              }
             }
           ],
           "Version": "2012-10-17"
@@ -5487,7 +5582,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Returns the preferences for the calling user",
         "Environment": {
@@ -5514,7 +5609,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [
@@ -5542,7 +5637,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0c2704e63d70eb7c50da9ce629e93ea4d041fd679002004787748c23395db463.zip"
+          "S3Key": "aa196ee9205d016b2640e09c6c001376129c6be6be7fa4e4294019a3fb10ee6b.zip"
         },
         "Description": "Creates or updates user preferences for user",
         "Environment": {
@@ -5569,7 +5664,7 @@
             "Arn"
           ]
         },
-        "Runtime": "python3.11",
+        "Runtime": "python3.13",
         "Timeout": 180,
         "VpcConfig": {
           "SecurityGroupIds": [

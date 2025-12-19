@@ -185,7 +185,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
             if (isInlineCode) {
                 return (
                     <code
-                        className='bg-gray-300 bg-opacity-25 border-opacity-25 border-gray-500 border-solid text-red-600 px-1 py-0.5 rounded text-sm font-mono'
+                        className='bg-zinc-300/25 border-zinc-500/25 border-solid text-red-600 px-1 py-0.5 rounded text-sm font-mono'
                         style={{
                             backgroundColor: 'rgba(209, 213, 219, 0.25)',
                             border: '1px solid rgba(107, 114, 128, 0.25)',

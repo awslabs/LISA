@@ -75,7 +75,7 @@ export function EmbeddingModelInput (props: EmbeddingModelInputProps): ReactElem
                 statusType={isFetchingEmbeddingModels ? 'loading' : 'finished'}
                 loadingText='Loading embedding models...'
                 placeholder={placeholder}
-                empty={<div className='text-gray-500'>No embedding models available.</div>}
+                empty={<div className='text-zinc-500'>No embedding models available.</div>}
                 filteringType='auto'
                 value={value}
                 enteredTextLabel={(text) => `Use: "${text}"`}

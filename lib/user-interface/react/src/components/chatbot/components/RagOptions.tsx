@@ -225,7 +225,7 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
                     statusType={isLoadingRepositories ? 'loading' : 'finished'}
                     loadingText='Loading repositories (might take few seconds)...'
                     placeholder='Select a RAG Repository'
-                    empty={<div className='text-gray-500'>No repositories available.</div>}
+                    empty={<div className='text-zinc-500'>No repositories available.</div>}
                     filteringType='auto'
                     value={selectedRepositoryOption}
                     enteredTextLabel={(text) => `Use: "${text}"`}
@@ -240,7 +240,7 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
                     statusType={isLoadingCollections ? 'loading' : 'finished'}
                     loadingText='Loading collections...'
                     placeholder='Select a collection (optional)'
-                    empty={<div className='text-gray-500'>No collections available.</div>}
+                    empty={<div className='text-zinc-500'>No collections available.</div>}
                     filteringType='auto'
                     value={selectedCollectionOption}
                     enteredTextLabel={(text) => `Use: "${text}"`}

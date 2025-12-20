@@ -35,7 +35,7 @@ export default defineConfig({
         fixturesFolder: `${PROJECT_ROOT}/src/e2e/fixtures`,
         setupNodeEvents () {
         },
-        baseUrl: 'https://5bma74uv9c.execute-api.us-east-1.amazonaws.com/dev',
+        baseUrl: 'https://chat.dev.lisa.aiml-adc.aws.dev',
         env: {
             TEST_ACCOUNT_PASSWORD: process.env.TEST_ACCOUNT_PASSWORD,
         },

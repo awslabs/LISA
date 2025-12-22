@@ -16,7 +16,6 @@
 
 import {
     AttributeEditor,
-    Box,
     Container,
     FormField,
     Grid,
@@ -105,7 +104,7 @@ export const SessionConfiguration = ({
             size='large'
         >
             <SpaceBetween direction='vertical' size='l'>
-                <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }, { colspan: 6 }, { colspan: 6 }]}>
+                <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }, { colspan: 6 }, { colspan: 6 }, { colspan: 6 }]}>
                     <Toggle
                         onChange={({ detail }) => updateSessionConfiguration('streaming', detail.checked)}
                         checked={chatConfiguration.sessionConfiguration.streaming}
@@ -128,11 +127,7 @@ export const SessionConfiguration = ({
                             Show Message Metadata
                         </Toggle>}
                     {systemConfig && systemConfig.configuration.enabledComponents.editChatHistoryBuffer && !isImageModel && !modelOnly &&
-                        <SpaceBetween size={'s'} direction={'horizontal'}>
-                            <Box float='left' textAlign='center' variant='awsui-key-label'
-                                padding={{ vertical: 'xxs' }}>
-                                <label>Chat History Buffer Size:</label>
-                            </Box>
+                        <FormField label='Chat History Buffer Size'>
                             <Select
                                 disabled={isRunning}
                                 filteringType='auto'
@@ -143,13 +138,9 @@ export const SessionConfiguration = ({
                                 onChange={({ detail }) => updateSessionConfiguration('chatHistoryBufferSize', parseInt(detail.selectedOption.value))}
                                 options={oneThroughTenOptions}
                             />
-                        </SpaceBetween>}
+                        </FormField>}
                     {systemConfig && systemConfig.configuration.enabledComponents.editNumOfRagDocument && !isImageModel && !modelOnly &&
-                        <SpaceBetween size={'s'} direction={'horizontal'}>
-                            <Box float='left' textAlign='center' variant='awsui-key-label'
-                                padding={{ vertical: 'xxs' }}>
-                                <label>Matching RAG Excerpts:</label>
-                            </Box>
+                        <FormField label='Matching RAG Excerpts'>
                             <Select
                                 disabled={isRunning}
                                 filteringType='auto'
@@ -160,7 +151,7 @@ export const SessionConfiguration = ({
                                 onChange={({ detail }) => updateSessionConfiguration('ragTopK', parseInt(detail.selectedOption.value))}
                                 options={oneThroughTenOptions}
                             />
-                        </SpaceBetween>}
+                        </FormField>}
                 </Grid>
                 {systemConfig && systemConfig.configuration.enabledComponents.editKwargs && !isImageModel &&
                     <Container
@@ -176,6 +167,7 @@ export const SessionConfiguration = ({
                             label='Max Tokens'
                             constraintText='Must be greater than or equal to 0 - Defaults to null (no limit) if not specified.'
                             description='The maximum number of tokens that can be generated in the completion.'
+                            controlId='max-tokens-input'
                         >
                             <Input
                                 value={chatConfiguration.sessionConfiguration.max_tokens?.toString()}
@@ -341,9 +333,11 @@ export const SessionConfiguration = ({
                                 }}
                             />
                         </FormField>
-                        {!modelOnly && <FormField label='Stop'
-                            description='Up to 4 sequences where the API will stop generating further tokens.'>
-                            <Container>
+                        {!modelOnly &&
+                            <SpaceBetween size='s'>
+                                <Header variant='h3' description='Up to 4 sequences where the API will stop generating further tokens.'>
+                                    Stop
+                                </Header>
                                 <AttributeEditor
                                     addButtonText='Add'
                                     onAddButtonClick={() => {
@@ -391,8 +385,7 @@ export const SessionConfiguration = ({
                                     ]}
                                     empty='No stop sequences provided.'
                                 />
-                            </Container>
-                        </FormField>
+                            </SpaceBetween>
                         }
                         {!modelOnly && <FormField
                             label='Seed'

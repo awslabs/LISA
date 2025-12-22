@@ -39,7 +39,6 @@ import { useNavigate } from 'react-router-dom';
 import { fetchImage, getSessionDisplay, messageContainsImage } from '@/components/utils';
 import { LisaChatSession } from '@/components/types';
 import Box from '@cloudscape-design/components/box';
-import React from 'react';
 import JSZip from 'jszip';
 import { downloadFile } from '@/shared/util/downloader';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
@@ -155,7 +154,10 @@ export function Sessions ({ newSession }) {
             // Reset the tracking state
             setSessionBeingDeleted(null);
         } else if (!isDeleteByIdLoading && isDeleteByIdError) {
-            notificationService.generateNotification(`Error deleting session: ${deleteByIdError.data?.message ?? deleteByIdError.data}`, 'error');
+            const errorMessage = 'data' in deleteByIdError && deleteByIdError.data
+                ? (typeof deleteByIdError.data === 'string' ? deleteByIdError.data : deleteByIdError.data.message || 'Unknown error')
+                : 'Unknown error';
+            notificationService.generateNotification(`Error deleting session: ${errorMessage}`, 'error');
 
             // Reset the tracking state on error too
             setSessionBeingDeleted(null);
@@ -167,7 +169,10 @@ export function Sessions ({ newSession }) {
         if (!isDeleteUserSessionsLoading && isDeleteUserSessionsSuccess) {
             notificationService.generateNotification('Successfully deleted all user sessions', 'success');
         } else if (!isDeleteUserSessionsLoading && isDeleteUserSessionsError) {
-            notificationService.generateNotification(`Error deleting user sessions: ${deleteUserSessionsError.data?.message ?? deleteUserSessionsError.data}`, 'error');
+            const errorMessage = 'data' in deleteUserSessionsError && deleteUserSessionsError.data
+                ? (typeof deleteUserSessionsError.data === 'string' ? deleteUserSessionsError.data : deleteUserSessionsError.data.message || 'Unknown error')
+                : 'Unknown error';
+            notificationService.generateNotification(`Error deleting user sessions: ${errorMessage}`, 'error');
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isDeleteUserSessionsSuccess, isDeleteUserSessionsError, deleteUserSessionsError, isDeleteUserSessionsLoading]);
@@ -179,7 +184,10 @@ export function Sessions ({ newSession }) {
             setSessionToRename(null);
             setNewSessionName('');
         } else if (!isUpdateSessionNameLoading && isUpdateSessionNameError) {
-            notificationService.generateNotification(`Error renaming session: ${updateSessionNameError?.message || 'Unknown error'}`, 'error');
+            const errorMessage = updateSessionNameError && 'message' in updateSessionNameError
+                ? updateSessionNameError.message
+                : 'Unknown error';
+            notificationService.generateNotification(`Error renaming session: ${errorMessage}`, 'error');
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isUpdateSessionNameSuccess, isUpdateSessionNameError, updateSessionNameError, isUpdateSessionNameLoading]);
@@ -226,6 +234,7 @@ export function Sessions ({ newSession }) {
                                                 placeholder='Search sessions by name...'
                                                 clearAriaLabel='Clear search'
                                                 type='search'
+                                                controlId='session-search-input'
                                             />
                                             {searchQuery && (
                                                 <Box variant='small' color='text-status-info'>
@@ -239,13 +248,13 @@ export function Sessions ({ newSession }) {
                                         iconName='search'
                                         variant='inline-link'
                                         ariaLabel='Search sessions'
-                                    ></Button>
+                                    />
                                 </Popover>
                                 <Button
                                     iconName='add-plus'
                                     variant='inline-link'
                                     onClick={() => {
-                                        navigate('ai-assistant');
+                                        navigate('/ai-assistant');
                                         newSession();
                                     }}
                                     ariaLabel='New Session'
@@ -309,7 +318,7 @@ export function Sessions ({ newSession }) {
                                             <Box key={item.sessionId} padding='xxs'>
                                                 <Grid gridDefinition={[{ colspan: 10 }, { colspan: 2 }]}>
                                                     <Box>
-                                                        <Link onClick={() => navigate(`ai-assistant/${item.sessionId}`)}>
+                                                        <Link onClick={() => navigate(`/ai-assistant/${item.sessionId}`)}>
                                                             <Box
                                                                 color={item.sessionId === currentSessionId ? 'text-status-info' : 'text-status-inactive'}
                                                                 fontWeight={item.sessionId === currentSessionId ? 'bold' : 'normal'}
@@ -353,11 +362,9 @@ export function Sessions ({ newSession }) {
                                                                         const images = sess.history.filter((msg) => msg.type === 'ai' && messageContainsImage(msg.content))
                                                                             .flatMap((msg) => {
                                                                                 if (Array.isArray(msg.content)) {
-                                                                                    return msg.content.map((contentItem) => {
-                                                                                        if (contentItem.type === 'image_url') {
-                                                                                            return contentItem.image_url.url;
-                                                                                        }
-                                                                                    });
+                                                                                    return msg.content
+                                                                                        .filter((contentItem: any) => contentItem.type === 'image_url' && contentItem.image_url?.url)
+                                                                                        .map((contentItem: any) => contentItem.image_url.url as string);
                                                                                 }
                                                                                 return [];
                                                                             });
@@ -425,6 +432,7 @@ export function Sessions ({ newSession }) {
                     <FormField
                         label='Session Name'
                         description='Enter a new name for this session'
+                        controlId='session-rename-input'
                     >
                         <Input
                             value={newSessionName}

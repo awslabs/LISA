@@ -138,6 +138,7 @@ export const PromptTemplateModal = ({
                                 filteringType='auto'
                                 value={suggestText}
                                 empty={'No Prompt found'}
+                                enteredTextLabel={(value) => `Use "${value}"`}
                                 statusType={isFetchingList ? 'loading' : 'finished'}
                                 onChange={({detail}) => {
                                     setSuggestText(detail.value);

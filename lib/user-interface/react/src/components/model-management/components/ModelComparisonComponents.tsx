@@ -187,6 +187,7 @@ export const PromptInputSection = memo(function PromptInputSection ({
                 minRows={2}
                 spellcheck={true}
                 disabled={!canCompare && !shouldShowStopButton}
+                controlId='model-comparison-prompt-input'
             />
         </SpaceBetween>
     );

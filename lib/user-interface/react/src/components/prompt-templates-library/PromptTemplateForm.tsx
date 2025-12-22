@@ -65,16 +65,21 @@ export function PromptTemplateForm (props: PromptTemplateFormProps) {
     const notificationService = useNotificationService(dispatch);
 
     // if create/update was successful, redirect back to list
-    if (isCreatingSuccess || isUpdatingSuccess) {
-        navigate('/prompt-templates');
-    }
+    useEffect(() => {
+        if (isCreatingSuccess || isUpdatingSuccess) {
+            navigate('/prompt-templates');
+        }
+    }, [isCreatingSuccess, isUpdatingSuccess, navigate]);
 
-    if (isSuccess) {
-        dispatch(setBreadcrumbs([
-            { text: 'Prompt Templates', href: '/prompt-templates' },
-            { text: data.title, href: '' }
-        ]));
-    }
+    // Set breadcrumbs when data is loaded
+    useEffect(() => {
+        if (isSuccess && data) {
+            dispatch(setBreadcrumbs([
+                { text: 'Prompt Templates', href: '/prompt-templates' },
+                { text: data.title, href: '' }
+            ]));
+        }
+    }, [isSuccess, data, dispatch]);
 
     const schema = z.object({
         title: z.string().trim().min(1, 'String cannot be empty.'),
@@ -91,13 +96,16 @@ export function PromptTemplateForm (props: PromptTemplateFormProps) {
     const canEdit = promptTemplateId ? (isUserAdmin || data?.isOwner) : true;
     const disabled = isFetching || isCreating || isUpdating;
 
-    if (isEdit && isUninitialized && promptTemplateId) {
-        getPromptTemplateQuery(promptTemplateId).then((response) => {
-            if (response.isSuccess) {
-                setFields(response.data);
-            }
-        });
-    }
+    // Load prompt template data in edit mode
+    useEffect(() => {
+        if (isEdit && isUninitialized && promptTemplateId) {
+            getPromptTemplateQuery(promptTemplateId).then((response) => {
+                if (response.isSuccess) {
+                    setFields(response.data);
+                }
+            });
+        }
+    }, [isEdit, isUninitialized, promptTemplateId, getPromptTemplateQuery, setFields]);
 
     const submit = (promptTemplate: NewPromptTemplate) => {
         if (isValid) {
@@ -171,11 +179,17 @@ export function PromptTemplateForm (props: PromptTemplateFormProps) {
             <Container header={<Header>Details</Header>}>
                 <SpaceBetween direction='vertical' size='s'>
                     <FormField label='Title' errorText={errors?.title} description={'This will be used to identify your template.'}>
-                        <Input value={state.form.title} inputMode='text' onBlur={() => touchFields(['title'])} onChange={({ detail }) => {
-                            setFields({ 'title': detail.value });
-                        }}
-                        disabled={disabled}
-                        placeholder='Enter template title' />
+                        <Input
+                            value={state.form.title}
+                            inputMode='text'
+                            onBlur={() => touchFields(['title'])}
+                            onChange={({ detail }) => {
+                                setFields({ 'title': detail.value });
+                            }}
+                            disabled={disabled}
+                            placeholder='Enter template title'
+                            controlId='prompt-template-title-input'
+                        />
                     </FormField>
 
                     <FormField label='Type' errorText={errors?.type} description={'The type of template you are creating.'}>
@@ -199,27 +213,32 @@ export function PromptTemplateForm (props: PromptTemplateFormProps) {
                     </FormField>
 
                     <FormField label='Share with specific groups' errorText={tokenTextErrors?.groups} description={'Templates are public by default. Enter groups here to limit sharing to a specific subset. Enter a group name and then press return.'}>
-                        <Input value={tokenText} inputMode='text' onChange={({ detail }) => {
-                            setTokenText(detail.value);
-                            if (detail.value.length === 0) {
-                                touchFields(['groups'], ModifyMethod.Unset);
-                            }
-                        }} onKeyDown={({detail}) => {
-                            if (detail.keyCode === KeyCode.enter) {
-                                setFields({groups: state.form.groups.concat(`group:${tokenText}`)});
-                                touchFields(['groups'], ModifyMethod.Unset);
-                                setTokenText('');
-                            }
-                        }}
-                        onBlur={() => {
-                            if (tokenText.length === 0) {
-                                touchFields(['groups'], ModifyMethod.Unset);
-                            } else {
-                                touchFields(['groups']);
-                            }
-                        }}
-                        placeholder='Enter group name'
-                        disabled={disabled || sharePublic} />
+                        <Input
+                            value={tokenText}
+                            inputMode='text'
+                            onChange={({ detail }) => {
+                                setTokenText(detail.value);
+                                if (detail.value.length === 0) {
+                                    touchFields(['groups'], ModifyMethod.Unset);
+                                }
+                            }} onKeyDown={({detail}) => {
+                                if (detail.keyCode === KeyCode.enter) {
+                                    setFields({groups: state.form.groups.concat(`group:${tokenText}`)});
+                                    touchFields(['groups'], ModifyMethod.Unset);
+                                    setTokenText('');
+                                }
+                            }}
+                            onBlur={() => {
+                                if (tokenText.length === 0) {
+                                    touchFields(['groups'], ModifyMethod.Unset);
+                                } else {
+                                    touchFields(['groups']);
+                                }
+                            }}
+                            placeholder='Enter group name'
+                            disabled={disabled || sharePublic}
+                            controlId='prompt-template-groups-input'
+                        />
                     </FormField>
                     <TokenGroup items={tokens} onDismiss={({detail}) => {
                         const newTokens = [...state.form.groups];

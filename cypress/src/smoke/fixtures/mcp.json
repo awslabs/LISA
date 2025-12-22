@@ -1,0 +1,55 @@
+{
+  "Items": [
+    {
+      "serverId": "mcp-server-001",
+      "name": "Weather Service",
+      "description": "Provides weather information and forecasts",
+      "status": "running",
+      "enabled": true,
+      "createdAt": "2024-01-15T10:30:00Z",
+      "updatedAt": "2024-01-20T14:22:00Z",
+      "owner": "admin",
+      "serverType": "hosted",
+      "config": {
+        "port": 8080,
+        "environment": "production"
+      },
+      "healthStatus": "healthy",
+      "lastHealthCheck": "2024-01-22T12:00:00Z"
+    },
+    {
+      "serverId": "mcp-server-002", 
+      "name": "Database Connector",
+      "description": "Connects to various database systems",
+      "status": "stopped",
+      "enabled": false,
+      "createdAt": "2024-01-10T08:15:00Z",
+      "updatedAt": "2024-01-18T11:30:00Z",
+      "owner": "admin",
+      "serverType": "hosted",
+      "config": {
+        "port": 8081,
+        "environment": "development"
+      },
+      "healthStatus": "unhealthy",
+      "lastHealthCheck": "2024-01-21T15:45:00Z"
+    },
+    {
+      "serverId": "mcp-server-003",
+      "name": "File Processing Service",
+      "description": "Handles file uploads and processing",
+      "status": "running",
+      "enabled": true,
+      "createdAt": "2024-01-12T12:45:00Z",
+      "updatedAt": "2024-01-22T09:15:00Z",
+      "owner": "testuser",
+      "serverType": "hosted",
+      "config": {
+        "port": 8082,
+        "environment": "production"
+      },
+      "healthStatus": "healthy",
+      "lastHealthCheck": "2024-01-22T12:30:00Z"
+    }
+  ]
+}

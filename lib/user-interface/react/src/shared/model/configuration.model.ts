@@ -67,8 +67,8 @@ export type IConfiguration = BaseConfiguration & {
 export const systemBannerConfigSchema = z.object({
     isEnabled: z.boolean().default(false),
     text: z.string().default(''),
-    textColor: z.string().default(''),
-    backgroundColor: z.string().default(''),
+    textColor: z.string().default('#000000'),
+    backgroundColor: z.string().default('#ffffff'),
 }).refine((data) => !data.isEnabled || (data.isEnabled && data.text.length >= 1), {
     message: 'Text is required when banner is activated.',
     path: ['text']

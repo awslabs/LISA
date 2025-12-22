@@ -88,7 +88,18 @@ export class ChatMemory extends BaseMemory {
      */
     async loadMemoryVariables (): Promise<MemoryVariables> {
         const messages: BaseMessage[] = await this.chatHistory.getMessages();
-        const lisaMessages = messages.map((message) => new LisaChatMessage({ ...message, type: message._getType() }));
+        const lisaMessages = messages.map((message) => {
+            // Handle both LisaChatMessage instances and plain objects
+            if (message instanceof LisaChatMessage) {
+                return message;
+            } else {
+                // If it's a plain object, create a new LisaChatMessage instance
+                return new LisaChatMessage({
+                    ...message,
+                    type: message.type || (message as any)._getType?.() || 'human'
+                });
+            }
+        });
 
         if (this.returnMessages) {
             return {

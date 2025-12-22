@@ -1,0 +1,114 @@
+{
+  "collections": [
+    {
+      "collectionId": "550e8400-e29b-41d4-a716-446655440001",
+      "repositoryId": "repo-001",
+      "name": "API Documentation Collection",
+      "description": "Complete API documentation and reference materials",
+      "chunkingStrategy": {
+        "type": "FIXED_SIZE",
+        "size": 512,
+        "overlap": 50
+      },
+      "allowChunkingOverride": true,
+      "metadata": {
+        "source": "documentation",
+        "category": "technical",
+        "version": "v1.0"
+      },
+      "allowedGroups": ["admin", "developers"],
+      "embeddingModel": "text-embedding-ada-002",
+      "createdBy": "admin",
+      "createdAt": "2024-01-15T10:30:00Z",
+      "updatedAt": "2024-01-20T14:22:00Z",
+      "status": "ACTIVE",
+      "default": false
+    },
+    {
+      "collectionId": "550e8400-e29b-41d4-a716-446655440002",
+      "repositoryId": "repo-001",
+      "name": "User Guides Collection",
+      "description": "End-user documentation and tutorials",
+      "chunkingStrategy": {
+        "type": "FIXED_SIZE",
+        "size": 1024,
+        "overlap": 100
+      },
+      "allowChunkingOverride": true,
+      "metadata": {
+        "source": "user-docs",
+        "category": "guides",
+        "audience": "end-users"
+      },
+      "allowedGroups": ["admin", "support", "users"],
+      "embeddingModel": "text-embedding-ada-002",
+      "createdBy": "admin",
+      "createdAt": "2024-01-12T08:15:00Z",
+      "updatedAt": "2024-01-18T11:30:00Z",
+      "status": "ACTIVE",
+      "default": false
+    },
+    {
+      "collectionId": "550e8400-e29b-41d4-a716-446655440003",
+      "repositoryId": "repo-002",
+      "name": "Product Specifications",
+      "description": "Detailed product specifications and feature documentation",
+      "chunkingStrategy": {
+        "type": "FIXED_SIZE",
+        "size": 768,
+        "overlap": 75
+      },
+      "allowChunkingOverride": false,
+      "metadata": {
+        "source": "product-specs",
+        "category": "specifications",
+        "confidentiality": "internal"
+      },
+      "allowedGroups": ["admin", "product-team"],
+      "embeddingModel": "text-embedding-ada-002",
+      "createdBy": "admin",
+      "createdAt": "2024-01-10T16:45:00Z",
+      "updatedAt": "2024-01-22T09:15:00Z",
+      "status": "ACTIVE",
+      "default": false
+    },
+    {
+      "collectionId": "550e8400-e29b-41d4-a716-446655440004",
+      "repositoryId": "repo-003",
+      "name": "Training Materials Archive",
+      "description": "Archived training materials and onboarding content",
+      "chunkingStrategy": {
+        "type": "FIXED_SIZE",
+        "size": 512,
+        "overlap": 50
+      },
+      "allowChunkingOverride": true,
+      "metadata": {
+        "source": "training",
+        "category": "archived",
+        "retention": "5-years"
+      },
+      "allowedGroups": ["admin", "hr"],
+      "embeddingModel": "text-embedding-ada-002",
+      "createdBy": "testuser",
+      "createdAt": "2024-01-05T12:00:00Z",
+      "updatedAt": "2024-01-15T14:30:00Z",
+      "status": "ARCHIVED",
+      "default": false
+    },
+    {
+      "collectionId": "550e8400-e29b-41d4-a716-446655440005",
+      "repositoryId": "repo-001",
+      "name": "Default Collection",
+      "description": "Default collection for general documents",
+      "allowChunkingOverride": true,
+      "allowedGroups": ["admin", "users"],
+      "embeddingModel": "text-embedding-ada-002",
+      "createdBy": "system",
+      "createdAt": "2024-01-01T00:00:00Z",
+      "updatedAt": "2024-01-01T00:00:00Z",
+      "status": "ACTIVE",
+      "default": true
+    }
+  ]
+}

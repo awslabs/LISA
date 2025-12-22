@@ -1,1 +1,55 @@
-[]
+[
+  {
+    "repositoryId": "repo-001",
+    "repositoryName": "Technical Documentation",
+    "description": "Company technical documentation and guides",
+    "createdAt": "2024-01-15T10:30:00Z",
+    "updatedAt": "2024-01-20T14:22:00Z",
+    "owner": "admin",
+    "status": "active",
+    "documentCount": 45,
+    "collections": [
+      {
+        "collectionId": "col-001",
+        "collectionName": "API Documentation",
+        "documentCount": 12,
+        "status": "ready"
+      },
+      {
+        "collectionId": "col-002", 
+        "collectionName": "User Guides",
+        "documentCount": 18,
+        "status": "ready"
+      }
+    ]
+  },
+  {
+    "repositoryId": "repo-002",
+    "repositoryName": "Product Knowledge Base",
+    "description": "Product specifications and feature documentation",
+    "createdAt": "2024-01-10T08:15:00Z",
+    "updatedAt": "2024-01-18T11:30:00Z",
+    "owner": "admin",
+    "status": "active",
+    "documentCount": 23,
+    "collections": [
+      {
+        "collectionId": "col-003",
+        "collectionName": "Feature Specs",
+        "documentCount": 15,
+        "status": "ready"
+      }
+    ]
+  },
+  {
+    "repositoryId": "repo-003",
+    "repositoryName": "Training Materials",
+    "description": "Employee training and onboarding materials",
+    "createdAt": "2024-01-12T12:45:00Z",
+    "updatedAt": "2024-01-22T09:15:00Z",
+    "owner": "testuser",
+    "status": "processing",
+    "documentCount": 8,
+    "collections": []
+  }
+]

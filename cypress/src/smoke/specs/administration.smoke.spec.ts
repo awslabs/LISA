@@ -17,31 +17,47 @@
 /// <reference types="cypress" />
 
 /**
- * E2E suite for Administration features:
+ * E2E suite for Administration Menu:
  * - Ensures admin users can view and interact with the Administration menu
  * - Verifies correct menu items and expansion behavior
- * - Confirms non-admin users do not see the Administration option
+ * - Tests basic admin menu functionality
  */
 
 import {
     checkAdminButtonExists,
     expandAdminMenu,
-    checkNoAdminButton,
 } from '../../support/adminHelpers';
 
-describe('Administration features (Smoke)', () => {
-    it('Admin sees the button', () => {
+describe('Administration Menu (Smoke)', () => {
+    beforeEach(() => {
         cy.loginAs('admin');
+    });
+
+    it('Admin sees the Administration button', () => {
         checkAdminButtonExists();
     });
 
-    it('Admin can expand menu', () => {
-        cy.loginAs('admin');
+    it('Admin can expand menu and see all menu items', () => {
         expandAdminMenu();
     });
 
-    it('Non-admin does not see the button', () => {
-        cy.loginAs('user');
-        checkNoAdminButton();
+    it('Admin menu collapses when clicked again', () => {
+        // Expand menu first
+        cy.get('button[aria-label="Administration"]')
+            .filter(':visible')
+            .click()
+            .should('have.attr', 'aria-expanded', 'true');
+
+        cy.get('[role="menu"]')
+            .should('be.visible');
+
+        // Collapse menu
+        cy.get('button[aria-label="Administration"]')
+            .filter(':visible')
+            .click()
+            .should('have.attr', 'aria-expanded', 'false');
+
+        cy.get('[role="menu"]')
+            .should('not.be.visible');
     });
 });

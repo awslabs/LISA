@@ -38,7 +38,7 @@
     "git-repo-info": "^2.1.1",
     "jszip": "^3.10.1",
     "katex": "^0.16.27",
-    "langchain": "^1.1.5",
+    "langchain": "^1.2.3",
     "lodash": "^4.17.21",
     "luxon": "^3.7.2",
     "mermaid": "^11.12.2",

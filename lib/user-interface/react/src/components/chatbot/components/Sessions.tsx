@@ -154,10 +154,7 @@ export function Sessions ({ newSession }) {
             // Reset the tracking state
             setSessionBeingDeleted(null);
         } else if (!isDeleteByIdLoading && isDeleteByIdError) {
-            const errorMessage = 'data' in deleteByIdError && deleteByIdError.data
-                ? (typeof deleteByIdError.data === 'string' ? deleteByIdError.data : deleteByIdError.data.message || 'Unknown error')
-                : 'Unknown error';
-            notificationService.generateNotification(`Error deleting session: ${errorMessage}`, 'error');
+            notificationService.generateNotification(`Error deleting session: ${deleteByIdError.message || 'Unknown error'}`, 'error');
 
             // Reset the tracking state on error too
             setSessionBeingDeleted(null);
@@ -169,10 +166,7 @@ export function Sessions ({ newSession }) {
         if (!isDeleteUserSessionsLoading && isDeleteUserSessionsSuccess) {
             notificationService.generateNotification('Successfully deleted all user sessions', 'success');
         } else if (!isDeleteUserSessionsLoading && isDeleteUserSessionsError) {
-            const errorMessage = 'data' in deleteUserSessionsError && deleteUserSessionsError.data
-                ? (typeof deleteUserSessionsError.data === 'string' ? deleteUserSessionsError.data : deleteUserSessionsError.data.message || 'Unknown error')
-                : 'Unknown error';
-            notificationService.generateNotification(`Error deleting user sessions: ${errorMessage}`, 'error');
+            notificationService.generateNotification(`Error deleting user sessions: ${deleteUserSessionsError.message || 'Unknown error'}`, 'error');
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isDeleteUserSessionsSuccess, isDeleteUserSessionsError, deleteUserSessionsError, isDeleteUserSessionsLoading]);
@@ -184,10 +178,7 @@ export function Sessions ({ newSession }) {
             setSessionToRename(null);
             setNewSessionName('');
         } else if (!isUpdateSessionNameLoading && isUpdateSessionNameError) {
-            const errorMessage = updateSessionNameError && 'message' in updateSessionNameError
-                ? updateSessionNameError.message
-                : 'Unknown error';
-            notificationService.generateNotification(`Error renaming session: ${errorMessage}`, 'error');
+            notificationService.generateNotification(`Error renaming session: ${updateSessionNameError.message || 'Unknown error'}`, 'error');
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isUpdateSessionNameSuccess, isUpdateSessionNameError, updateSessionNameError, isUpdateSessionNameLoading]);

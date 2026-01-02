@@ -216,12 +216,12 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
         },
     }), [isStreaming, onMermaidRenderComplete]); // Include isStreaming and onMermaidRenderComplete so the component can access them
 
-    const renderContent = (messageType: string, content: MessageContent, metadata?: LisaChatMessageMetadata) => {
+    const renderContent = (content: MessageContent, metadata?: LisaChatMessageMetadata) => {
         if (Array.isArray(content)) {
-            return content.map((item, index) => {
-                if (item.type === 'text') {
-                    return item.text.startsWith('File context:') ? <div key={index}></div> : <div key={index}>{getDisplayableMessage(item.text, message.type === MessageTypes.AI ? ragCitations : undefined)}</div>;
-                } else if (item.type === 'image_url') {
+            return content.map((item: any, index) => {
+                if (item.type === 'text' && typeof item.text === 'string') {
+                    return item.text.startsWith('File context:') ? null : <div key={index}>{getDisplayableMessage(item.text, message.type === MessageTypes.AI ? ragCitations : undefined)}</div>;
+                } else if (item.type === 'image_url' && item.image_url?.url) {
                     return message.type === MessageTypes.HUMAN ?
                         <img key={index} src={item.image_url.url} alt='User provided' style={{ maxWidth: '50%', maxHeight: '30em', marginTop: '8px' }} /> :
                         <Grid key={`${index}-Grid`} gridDefinition={[{ colspan: 11 }, { colspan: 1 }]}>
@@ -349,7 +349,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                         }
                         actions={showUsage ? <UsageInfo usage={message.usage} /> : undefined}
                     >
-                        {renderContent(message.type, message.content, message.metadata)}
+                        {renderContent(message.content, message.metadata)}
                         {showMetadata && !isStreaming &&
                             <ExpandableSection
                                 variant='footer'
@@ -403,7 +403,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                             }
                         >
                             <div style={{ maxWidth: '60em' }}>
-                                {renderContent(message.type, message.content)}
+                                {renderContent(message.content)}
                             </div>
                         </ChatBubble>
                         <ButtonGroup
@@ -432,9 +432,9 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                 </SpaceBetween>
             )}
             {message?.type === MessageTypes.TOOL && (
-                <ExpandableSection variant='footer' headerText={`🔨Called Tool - ${message?.metadata?.toolName} 🔨`}>
+                <ExpandableSection variant='footer' headerText={`🔨Called Tool - ${(message?.metadata as any)?.toolName || 'Unknown'} 🔨`}>
                     <JsonView data={{
-                        arguments: message?.metadata?.args,
+                        arguments: (message?.metadata as any)?.args,
                         result: message?.content,
                     }} style={darkStyles} />
                 </ExpandableSection>

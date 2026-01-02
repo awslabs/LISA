@@ -44,12 +44,8 @@ export class LisaChatMessageHistory extends BaseChatMessageHistory {
         void message;
     // noop since messages are managed at the session level
     }
-    async addAIChatMessage (message: string): Promise<void> {
-        void message;
-    // noop since messages are managed at the session level
-    }
 
-    async addAIMessage (message: string): Promise<void> {
+    async addAIChatMessage (message: string): Promise<void> {
         void message;
     // noop since messages are managed at the session level
     }

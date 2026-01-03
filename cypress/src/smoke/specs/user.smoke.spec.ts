@@ -23,7 +23,7 @@
 
 import { checkNoAdminButton } from '../../support/adminHelpers';
 
-describe('Administration features - User (Smoke)', () => {
+describe('User features (Smoke)', () => {
     beforeEach(() => {
         cy.loginAs('user');
     });
@@ -43,7 +43,7 @@ describe('Administration features - User (Smoke)', () => {
 
         adminPaths.forEach((path) => {
             cy.visit(path, { failOnStatusCode: false });
-            
+
             // Should be redirected away from admin path
             // Check that we're either on home page or an error/access denied page
             cy.url().should('satisfy', (url) => {

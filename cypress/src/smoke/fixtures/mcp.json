@@ -18,7 +18,7 @@
       "lastHealthCheck": "2024-01-22T12:00:00Z"
     },
     {
-      "serverId": "mcp-server-002", 
+      "serverId": "mcp-server-002",
       "name": "Database Connector",
       "description": "Connects to various database systems",
       "status": "stopped",

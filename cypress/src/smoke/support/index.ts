@@ -27,7 +27,7 @@ declare global {
              * @example cy.session('admin', () => cy.loginAs('admin'))
              */
             loginAs(role?: 'admin' | 'user'): Chainable<void>;
-            
+
             /**
              * Custom command to setup API stubs for a given role.
              * Call this after cy.session() to re-establish intercepts.

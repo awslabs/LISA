@@ -2,54 +2,110 @@
   {
     "repositoryId": "repo-001",
     "repositoryName": "Technical Documentation",
-    "description": "Company technical documentation and guides",
+    "type": "pgvector",
+    "embeddingModelId": "titan-embed",
+    "status": "UPDATE_COMPLETE",
+    "allowedGroups": ["admin"],
+    "metadata": {
+      "tags": []
+    },
+    "rdsConfig": {
+      "dbPort": 5432,
+      "username": "postgres",
+      "dbName": "postgres"
+    },
+    "pipelines": [
+      {
+        "trigger": "event",
+        "chunkingStrategy": {
+          "type": "fixed",
+          "size": 512,
+          "overlap": 51
+        },
+        "s3Prefix": "",
+        "autoRemove": true,
+        "collectionId": "default",
+        "s3Bucket": "docs"
+      }
+    ],
     "createdAt": "2024-01-15T10:30:00Z",
     "updatedAt": "2024-01-20T14:22:00Z",
-    "owner": "admin",
-    "status": "active",
-    "documentCount": 45,
-    "collections": [
-      {
-        "collectionId": "col-001",
-        "collectionName": "API Documentation",
-        "documentCount": 12,
-        "status": "ready"
-      },
-      {
-        "collectionId": "col-002", 
-        "collectionName": "User Guides",
-        "documentCount": 18,
-        "status": "ready"
-      }
-    ]
+    "createdBy": "admin"
   },
   {
     "repositoryId": "repo-002",
     "repositoryName": "Product Knowledge Base",
-    "description": "Product specifications and feature documentation",
+    "type": "opensearch",
+    "embeddingModelId": "e5-embed",
+    "status": "UPDATE_COMPLETE",
+    "allowedGroups": ["admin"],
+    "metadata": {
+      "tags": ["open-rag"]
+    },
+    "opensearchConfig": {
+      "dataNodeInstanceType": "r7g.large.search",
+      "volumeType": "gp3",
+      "dataNodes": 2,
+      "multiAzWithStandby": false,
+      "masterNodes": 0,
+      "volumeSize": 20,
+      "masterNodeInstanceType": "r7g.large.search"
+    },
+    "pipelines": [
+      {
+        "metadata": {
+          "customFields": {},
+          "tags": ["open-pipe"]
+        },
+        "autoRemove": true,
+        "trigger": "event",
+        "chunkingStrategy": {
+          "type": "fixed",
+          "size": 1000,
+          "overlap": 51
+        },
+        "s3Prefix": "",
+        "collectionId": "default",
+        "s3Bucket": "lisa-rag-pipeline"
+      }
+    ],
     "createdAt": "2024-01-10T08:15:00Z",
     "updatedAt": "2024-01-18T11:30:00Z",
-    "owner": "admin",
-    "status": "active",
-    "documentCount": 23,
-    "collections": [
-      {
-        "collectionId": "col-003",
-        "collectionName": "Feature Specs",
-        "documentCount": 15,
-        "status": "ready"
-      }
-    ]
+    "createdBy": "admin"
   },
   {
     "repositoryId": "repo-003",
     "repositoryName": "Training Materials",
-    "description": "Employee training and onboarding materials",
-    "createdAt": "2024-01-12T12:45:00Z",
-    "updatedAt": "2024-01-22T09:15:00Z",
-    "owner": "testuser",
-    "status": "processing",
-    "documentCount": 8,
-    "collections": []
+    "type": "pgvector",
+    "embeddingModelId": "qwen3-embed-06b",
+    "status": "CREATE_COMPLETE",
+    "allowedGroups": [],
+    "metadata": {
+      "tags": ["repo-non-chunk"]
+    },
+    "rdsConfig": {
+      "dbPort": 5432,
+      "username": "postgres",
+      "dbName": "postgres"
+    },
+    "pipelines": [
+      {
+        "metadata": {
+          "customFields": {},
+          "tags": ["none-chunk-pipe"]
+        },
+        "autoRemove": true,
+        "trigger": "event",
+        "chunkingStrategy": {
+          "type": "none"
+        },
+        "s3Prefix": "",
+        "collectionId": "default",
+        "s3Bucket": "lisa-rag-pipeline"
+      }
+    ],
+    "createdAt": "2025-12-18T17:06:48.878529Z",
+    "updatedAt": "2025-12-18T17:06:48.878533Z",
+    "createdBy": "testuser"
   }
 ]

@@ -42,8 +42,7 @@ const API_STUBS = [
  *
  * @param {'admin'|'user'} role - The role to simulate.
  */
-
-function setupLoginStubs(role: 'admin' | 'user') {
+function setupLoginStubs (role: 'admin' | 'user') {
     const isAdmin = role === 'admin';
 
     let apiBase: string = '/dev/';
@@ -125,11 +124,11 @@ function setupLoginStubs(role: 'admin' | 'user') {
  */
 Cypress.Commands.add('loginAs', (role = 'user') => {
     setupLoginStubs(role);
-    
+
     // --- Trigger the login flow in the UI ---
     cy.visit('/');
     cy.contains('Sign in').click();
-    
+
     // Wait for login to complete by checking we're no longer on login screen
     cy.contains('Sign in').should('not.exist');
 });

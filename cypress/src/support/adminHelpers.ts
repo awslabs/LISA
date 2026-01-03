@@ -71,10 +71,10 @@ export function checkNoAdminButton () {
  * Navigate to a specific admin page by menu item name
  * @param menuItemName - The exact text of the menu item to click
  */
-export function navigateToAdminPage(menuItemName: string) {
+export function navigateToAdminPage (menuItemName: string) {
     checkAdminButtonExists();
     expandAdminMenu();
-    
+
     // Use the aliased dropdown container to find and click the menu item
     cy.get('@adminDropdown')
         .find('[role="menuitem"]')
@@ -87,9 +87,9 @@ export function navigateToAdminPage(menuItemName: string) {
  * @param urlFragment - The expected URL fragment (e.g., '/admin/configuration')
  * @param pageTitle - Optional expected page title text
  */
-export function verifyAdminPageLoaded(urlFragment: string, pageTitle?: string) {
+export function verifyAdminPageLoaded (urlFragment: string, pageTitle?: string) {
     cy.url().should('include', urlFragment);
-    
+
     if (pageTitle) {
         cy.get('h1, h2, [data-testid="page-title"]')
             .should('be.visible')
@@ -106,9 +106,9 @@ export function verifyAdminPageLoaded(urlFragment: string, pageTitle?: string) {
  * @param tableSelector - Optional CSS selector for the table (defaults to finding any table)
  * @param minRows - Minimum number of data rows expected (defaults to 1)
  */
-export function verifyTableHasData(tableSelector?: string, minRows: number = 1) {
+export function verifyTableHasData (tableSelector?: string, minRows: number = 1) {
     const selector = tableSelector || 'table, [role="table"]';
-    
+
     cy.get(selector)
         .should('be.visible')
         .within(() => {
@@ -122,7 +122,7 @@ export function verifyTableHasData(tableSelector?: string, minRows: number = 1) 
  * Verify that a Cloudscape table component has rendered with data
  * Uses Cloudscape-specific selectors for better reliability
  */
-export function verifyCloudscapeTableHasData(minRows: number = 1) {
+export function verifyCloudscapeTableHasData (minRows: number = 1) {
     // Cloudscape tables use specific CSS classes and structure
     // Look for table body rows with dynamic class names
     cy.get('tbody tr, [class*="awsui_row_"]')
@@ -133,7 +133,7 @@ export function verifyCloudscapeTableHasData(minRows: number = 1) {
  * Verify that cards (used in model management) have rendered with data
  * @param minCards - Minimum number of cards expected (defaults to 1)
  */
-export function verifyCardsHaveData(minCards: number = 1) {
+export function verifyCardsHaveData (minCards: number = 1) {
     // Cloudscape cards use dynamic class names with hashes
     // Look for list items within the cards container that have the card class pattern
     cy.get('[class*="awsui_card_"][class*="awsui_card-selectable_"]')
@@ -145,7 +145,7 @@ export function verifyCardsHaveData(minCards: number = 1) {
  * Used for MCP Workbench and similar list-based views
  * @param minItems - Minimum number of list items expected (defaults to 1)
  */
-export function verifyListHasData(minItems: number = 1) {
+export function verifyListHasData (minItems: number = 1) {
     // Look for list items with data-testid attributes (used in MCP Workbench)
     cy.get('ul[class*="awsui_root_"] li[data-testid]')
         .should('have.length.at.least', minItems);
@@ -155,11 +155,11 @@ export function verifyListHasData(minItems: number = 1) {
  * Wait for loading to complete and verify content is rendered
  * @param loadingSelector - Selector for loading indicator (optional)
  */
-export function waitForContentToLoad(loadingSelector?: string) {
+export function waitForContentToLoad (loadingSelector?: string) {
     if (loadingSelector) {
         cy.get(loadingSelector).should('not.exist');
     }
-    
+
     // Wait for common loading indicators to disappear
     cy.get('[data-testid="loading"], .awsui-spinner, .loading')
         .should('not.exist');
@@ -173,7 +173,7 @@ export function waitForContentToLoad(loadingSelector?: string) {
  * @param contentType - Type of content to verify ('table', 'cards', 'list', or 'custom')
  * @param minItems - Minimum number of items expected
  */
-export function navigateAndVerifyAdminPage(
+export function navigateAndVerifyAdminPage (
     menuItemName: string,
     urlFragment: string,
     pageTitle?: string,
@@ -183,7 +183,7 @@ export function navigateAndVerifyAdminPage(
     navigateToAdminPage(menuItemName);
     verifyAdminPageLoaded(urlFragment, pageTitle);
     waitForContentToLoad();
-    
+
     switch (contentType) {
         case 'table':
             verifyCloudscapeTableHasData(minItems);

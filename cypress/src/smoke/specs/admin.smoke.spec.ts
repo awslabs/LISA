@@ -25,13 +25,40 @@
 
 import {
     navigateAndVerifyAdminPage,
-    verifyCloudscapeTableHasData,
-    verifyCardsHaveData,
+    checkAdminButtonExists,
+    expandAdminMenu,
 } from '../../support/adminHelpers';
 
 describe('Admin Navigation (Smoke)', () => {
     beforeEach(() => {
         cy.loginAs('admin');
+    });
+    it('Admin sees the Administration button', () => {
+        checkAdminButtonExists();
+    });
+
+    it('Admin can expand menu and see all menu items', () => {
+        expandAdminMenu();
+    });
+
+    it('Admin menu collapses when clicked again', () => {
+        // Expand menu first
+        cy.get('button[aria-label="Administration"]')
+            .filter(':visible')
+            .click()
+            .should('have.attr', 'aria-expanded', 'true');
+
+        cy.get('[role="menu"]')
+            .should('be.visible');
+
+        // Collapse menu
+        cy.get('button[aria-label="Administration"]')
+            .filter(':visible')
+            .click()
+            .should('have.attr', 'aria-expanded', 'false');
+
+        cy.get('[role="menu"]')
+            .should('not.be.visible');
     });
 
     it('Admin can access Configuration page and see configuration data', () => {
@@ -87,7 +114,7 @@ describe('Admin Navigation (Smoke)', () => {
             'list',
             3 // Expecting at least 3 tool files from fixture
         );
-        
+
         // Verify specific tool files from fixtures
         cy.get('li[data-testid="bad_actors_db.py"]').should('be.visible');
         cy.get('li[data-testid="calculator.py"]').should('be.visible');

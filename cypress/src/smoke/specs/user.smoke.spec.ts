@@ -32,22 +32,24 @@ describe('Administration features - User (Smoke)', () => {
         checkNoAdminButton();
     });
 
-     it('Non-admin user cannot directly access admin pages', () => {
+    it('Non-admin user cannot directly access admin pages', () => {
         const adminPaths = [
-            '/admin/configuration',
-            '/admin/model',
-            '/admin/rag',
-            '/admin/api-token',
-            '/admin/mcp'
+            '#/configuration',
+            '#/model-management',
+            '#/repository-management',
+            '#/api-token-management',
+            '#/mcp-management'
         ];
 
         adminPaths.forEach((path) => {
             cy.visit(path, { failOnStatusCode: false });
             
-            // Should be redirected or see access denied
-            cy.url().should('not.include', path);
-            // Alternative: check for access denied message
-            // cy.contains('Access Denied', 'Unauthorized', 'Forbidden').should('be.visible');
+            // Should be redirected away from admin path
+            // Check that we're either on home page or an error/access denied page
+            cy.url().should('satisfy', (url) => {
+                // URL should not contain the admin path, or should show access denied
+                return !url.includes(path) || url.includes('access-denied') || url.includes('unauthorized');
+            });
         });
     });
 });

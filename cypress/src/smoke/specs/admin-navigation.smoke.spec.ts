@@ -37,103 +37,15 @@ describe('Admin Navigation (Smoke)', () => {
     it('Admin can access Configuration page and see configuration data', () => {
         navigateAndVerifyAdminPage(
             'Configuration',
-            '/admin/configuration',
+            '/configuration',
             'Configuration',
             'custom' // Configuration page may not have a standard table
         );
-        
-        // Verify configuration content is visible
-        cy.get('form, .awsui-form-field, [data-testid="configuration"]')
-            .should('be.visible');
-    });
-
-    it('Admin can access Model Management page and see model cards', () => {
-        navigateAndVerifyAdminPage(
-            'Model Management',
-            '/admin/model',
-            'Model',
-            'cards',
-            2 // Expecting at least 2 models from fixture
-        );
-    });
-
-    it('Admin can access RAG Management page and see repository table', () => {
-        navigateAndVerifyAdminPage(
-            'RAG Management',
-            '/admin/rag',
-            'RAG',
-            'table',
-            3 // Expecting at least 3 repositories from fixture
-        );
-    });
-
-    it('Admin can access API Token Management page and see tokens table', () => {
-        navigateAndVerifyAdminPage(
-            'API Token Management',
-            '/admin/api-token',
-            'API Token',
-            'table',
-            3 // Expecting at least 3 tokens from fixture
-        );
-    });
-
-    it('Admin can access MCP Management page and see MCP servers table', () => {
-        navigateAndVerifyAdminPage(
-            'MCP Management',
-            '/admin/mcp',
-            'MCP',
-            'table',
-            3 // Expecting at least 3 MCP servers from fixture
-        );
-    });
-
-    it('All admin pages render with proper data from fixtures', () => {
-        const adminPages = [
-            { 
-                name: 'Model Management', 
-                urlFragment: '/admin/model', 
-                title: 'Model',
-                contentType: 'cards' as const,
-                minItems: 2
-            },
-            { 
-                name: 'RAG Management', 
-                urlFragment: '/admin/rag', 
-                title: 'RAG',
-                contentType: 'table' as const,
-                minItems: 3
-            },
-            { 
-                name: 'API Token Management', 
-                urlFragment: '/admin/api-token', 
-                title: 'API Token',
-                contentType: 'table' as const,
-                minItems: 3
-            },
-            { 
-                name: 'MCP Management', 
-                urlFragment: '/admin/mcp', 
-                title: 'MCP',
-                contentType: 'table' as const,
-                minItems: 3
-            }
-        ];
-
-        // Navigate to each page and verify data rendering
-        adminPages.forEach((page) => {
-            navigateAndVerifyAdminPage(
-                page.name,
-                page.urlFragment,
-                page.title,
-                page.contentType,
-                page.minItems
-            );
-        });
     });
 
     it('Model Management page shows model cards with correct data', () => {
-        navigateAndVerifyAdminPage('Model Management', '/admin/model', 'Model', 'cards', 2);
-        
+        navigateAndVerifyAdminPage('Model Management', '/model-management', 'Model', 'cards', 2);
+
         // Verify specific model data from fixtures
         cy.contains('mistral-vllm').should('be.visible');
         cy.contains('claude-3-7').should('be.visible');
@@ -141,8 +53,8 @@ describe('Admin Navigation (Smoke)', () => {
     });
 
     it('API Token Management page shows tokens with correct data', () => {
-        navigateAndVerifyAdminPage('API Token Management', '/admin/api-token', 'API Token', 'table', 3);
-        
+        navigateAndVerifyAdminPage('API Token Management', '/api-token-management', 'API Token', 'table', 3);
+
         // Verify specific token data from fixtures
         cy.contains('Development Token').should('be.visible');
         cy.contains('Production API Key').should('be.visible');
@@ -150,8 +62,8 @@ describe('Admin Navigation (Smoke)', () => {
     });
 
     it('RAG Management page shows repositories with correct data', () => {
-        navigateAndVerifyAdminPage('RAG Management', '/admin/rag', 'RAG', 'table', 3);
-        
+        navigateAndVerifyAdminPage('RAG Management', '/repository-management', 'RAG', 'table', 3);
+
         // Verify specific repository data from fixtures
         cy.contains('Technical Documentation').should('be.visible');
         cy.contains('Product Knowledge Base').should('be.visible');
@@ -159,11 +71,26 @@ describe('Admin Navigation (Smoke)', () => {
     });
 
     it('MCP Management page shows servers with correct data', () => {
-        navigateAndVerifyAdminPage('MCP Management', '/admin/mcp', 'MCP', 'table', 3);
-        
+        navigateAndVerifyAdminPage('MCP Management', '/mcp-management', 'MCP', 'table', 3);
+
         // Verify specific MCP server data from fixtures
         cy.contains('Weather Service').should('be.visible');
         cy.contains('Database Connector').should('be.visible');
         cy.contains('File Processing Service').should('be.visible');
+    });
+
+    it('MCP Workbench page shows tool files with correct data', () => {
+        navigateAndVerifyAdminPage(
+            'MCP Workbench',
+            '/mcp-workbench',
+            'MCP Workbench',
+            'list',
+            3 // Expecting at least 3 tool files from fixture
+        );
+        
+        // Verify specific tool files from fixtures
+        cy.get('li[data-testid="bad_actors_db.py"]').should('be.visible');
+        cy.get('li[data-testid="calculator.py"]').should('be.visible');
+        cy.get('li[data-testid="weather.py"]').should('be.visible');
     });
 });

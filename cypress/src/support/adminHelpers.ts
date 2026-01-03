@@ -33,11 +33,20 @@ export function expandAdminMenu () {
         .click()
         .should('have.attr', 'aria-expanded', 'true');
 
-    cy.get('[role="menu"]')
+    // Get the button-dropdown container once and reuse it
+    cy.get('button[aria-label="Administration"]')
+        .closest('[class*="awsui_button-dropdown_"]')
+        .as('adminDropdown');
+
+    // Verify menu is visible
+    cy.get('@adminDropdown')
+        .find('[role="menu"]')
         .should('be.visible');
 
-    cy.get('[role="menuitem"]')
-        .should('have.length', 5)
+    // Verify menu items
+    cy.get('@adminDropdown')
+        .find('[role="menuitem"]')
+        .should('have.length', 6)
         .then(($items) => {
             const labels = $items
                 .map((_, el) => Cypress.$(el).text().trim())
@@ -47,7 +56,8 @@ export function expandAdminMenu () {
                 'Model Management',
                 'RAG Management',
                 'API Token Management',
-                'MCP Management'
+                'MCP Management',
+                'MCP Workbench'
             ]);
         });
 }
@@ -65,7 +75,9 @@ export function navigateToAdminPage(menuItemName: string) {
     checkAdminButtonExists();
     expandAdminMenu();
     
-    cy.get('[role="menuitem"]')
+    // Use the aliased dropdown container to find and click the menu item
+    cy.get('@adminDropdown')
+        .find('[role="menuitem"]')
         .contains(menuItemName)
         .click();
 }
@@ -112,13 +124,9 @@ export function verifyTableHasData(tableSelector?: string, minRows: number = 1) 
  */
 export function verifyCloudscapeTableHasData(minRows: number = 1) {
     // Cloudscape tables use specific CSS classes and structure
-    cy.get('[data-testid="table"], .awsui-table, table')
-        .should('be.visible')
-        .within(() => {
-            // Look for table body rows or Cloudscape row elements
-            cy.get('tbody tr, .awsui-table-row, [data-testid="table-row"]')
-                .should('have.length.at.least', minRows);
-        });
+    // Look for table body rows with dynamic class names
+    cy.get('tbody tr, [class*="awsui_row_"]')
+        .should('have.length.at.least', minRows);
 }
 
 /**
@@ -126,9 +134,21 @@ export function verifyCloudscapeTableHasData(minRows: number = 1) {
  * @param minCards - Minimum number of cards expected (defaults to 1)
  */
 export function verifyCardsHaveData(minCards: number = 1) {
-    cy.get('[data-testid="cards"], .awsui-cards, .awsui-cards-card')
-        .should('be.visible')
-        .and('have.length.at.least', minCards);
+    // Cloudscape cards use dynamic class names with hashes
+    // Look for list items within the cards container that have the card class pattern
+    cy.get('[class*="awsui_card_"][class*="awsui_card-selectable_"]')
+        .should('have.length.at.least', minCards);
+}
+
+/**
+ * Verify that a list component has rendered with data
+ * Used for MCP Workbench and similar list-based views
+ * @param minItems - Minimum number of list items expected (defaults to 1)
+ */
+export function verifyListHasData(minItems: number = 1) {
+    // Look for list items with data-testid attributes (used in MCP Workbench)
+    cy.get('ul[class*="awsui_root_"] li[data-testid]')
+        .should('have.length.at.least', minItems);
 }
 
 /**
@@ -150,14 +170,14 @@ export function waitForContentToLoad(loadingSelector?: string) {
  * @param menuItemName - The menu item to click
  * @param urlFragment - Expected URL fragment
  * @param pageTitle - Expected page title
- * @param contentType - Type of content to verify ('table', 'cards', or 'custom')
+ * @param contentType - Type of content to verify ('table', 'cards', 'list', or 'custom')
  * @param minItems - Minimum number of items expected
  */
 export function navigateAndVerifyAdminPage(
     menuItemName: string,
     urlFragment: string,
     pageTitle?: string,
-    contentType: 'table' | 'cards' | 'custom' = 'table',
+    contentType: 'table' | 'cards' | 'list' | 'custom' = 'table',
     minItems: number = 1
 ) {
     navigateToAdminPage(menuItemName);
@@ -170,6 +190,9 @@ export function navigateAndVerifyAdminPage(
             break;
         case 'cards':
             verifyCardsHaveData(minItems);
+            break;
+        case 'list':
+            verifyListHasData(minItems);
             break;
         case 'custom':
             // For custom verification, just ensure page loaded

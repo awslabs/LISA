@@ -28,7 +28,7 @@ import {
     expandAdminMenu,
 } from '../../support/adminHelpers';
 
-describe('Administration Menu (Smoke)', () => {
+describe('Administration features - Admin (Smoke)', () => {
     beforeEach(() => {
         cy.loginAs('admin');
     });

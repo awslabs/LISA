@@ -17,24 +17,22 @@
 /// <reference types="cypress" />
 
 /**
- * E2E suite for User Access Control:
- * - Ensures non-admin users cannot access administration features
- * - Verifies proper access control enforcement
- * - Tests user role restrictions
+ * E2E suite for Administration features (User role):
+ * - Confirms non-admin users do not see the Administration option
  */
 
 import { checkNoAdminButton } from '../../support/adminHelpers';
 
-describe('User Access Control (Smoke)', () => {
+describe('Administration features - User (Smoke)', () => {
     beforeEach(() => {
         cy.loginAs('user');
     });
 
-    it('Non-admin user does not see Administration button', () => {
+    it('Non-admin does not see the button', () => {
         checkNoAdminButton();
     });
 
-    it('Non-admin user cannot directly access admin pages', () => {
+     it('Non-admin user cannot directly access admin pages', () => {
         const adminPaths = [
             '/admin/configuration',
             '/admin/model',

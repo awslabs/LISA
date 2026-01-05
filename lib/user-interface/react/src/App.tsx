@@ -273,7 +273,9 @@ function App () {
                                 <Route
                                     path='mcp-workbench/*'
                                     element={
-                                        <McpWorkbench setNav={setNav} />
+                                        <AdminRoute>
+                                            <McpWorkbench setNav={setNav} />
+                                        </AdminRoute>
                                     }
                                 />
                             }

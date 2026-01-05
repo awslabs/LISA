@@ -174,7 +174,9 @@ export function McpWorkbenchManagementComponent (): ReactElement {
     }, [validateMcpToolMutation, editor, notificationService]), 300);
 
     // remove top breadcrumbs
-    dispatch(setBreadcrumbs([]));
+    useEffect(() => {
+        dispatch(setBreadcrumbs([]));
+    }, [dispatch]);
 
     // Reset pagination when filter changes
     useEffect(() => {

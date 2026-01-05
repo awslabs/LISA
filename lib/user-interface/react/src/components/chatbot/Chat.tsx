@@ -785,6 +785,7 @@ export default function Chat ({ sessionId }) {
                                         onChange={({ detail: { value } }) => handleUserModelChange(value)}
                                         options={modelsOptions}
                                         ref={modelSelectRef}
+                                        controlId='model-selection-autosuggest'
                                     />
                                 </FormField>
                                 {window.env.RAG_ENABLED && !isImageGenerationMode && (
@@ -812,6 +813,7 @@ export default function Chat ({ sessionId }) {
                                 onChange={({ detail }) => setUserPrompt(detail.value)}
                                 onAction={handleAction}
                                 onKeyDown={handleKeyPress}
+                                controlId='chat-prompt-input'
                                 secondaryActions={
                                     <Box padding={{ left: 'xxs', top: 'xs' }}>
                                         <ButtonGroup

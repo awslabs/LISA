@@ -181,7 +181,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     </FormField>
                 </>
             )}
-            <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }, { colspan: 6 }]}>
+            <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }, { colspan: 6 }, { colspan: 6 }]}>
                 <FormField
                     label='Streaming'
                     description='Enable streaming responses for real-time token-by-token output generation.'

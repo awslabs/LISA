@@ -28,12 +28,12 @@ export const useSession = (sessionId: string, getSessionById: any) => {
     const dispatch = useAppDispatch();
     const auth = useAuth();
 
-    const [session, setSession] = useState<LisaChatSession>({
+    const [session, setSession] = useState<LisaChatSession>(() => ({
         history: [],
         sessionId: '',
         userId: '',
         startTime: new Date(Date.now()).toISOString(),
-    });
+    }));
     const [internalSessionId, setInternalSessionId] = useState<string | null>(null);
     const [loadingSession, setLoadingSession] = useState(false);
     const [chatConfiguration, setChatConfiguration] = useState<IChatConfiguration>(baseConfig);

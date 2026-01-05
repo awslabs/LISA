@@ -24,6 +24,23 @@ import {
 } from '../../components/types';
 import { RESTAPI_URI } from '../../components/utils';
 
+/**
+ * Extract error message from API response
+ */
+const extractErrorMessage = (baseQueryReturnValue: any): string => {
+    let message = 'Unknown error';
+    if (baseQueryReturnValue.data) {
+        if (baseQueryReturnValue.data.type === 'RequestValidationError') {
+            message = baseQueryReturnValue.data.detail.map((error: any) => error.msg).join(', ');
+        } else if (typeof baseQueryReturnValue.data === 'string') {
+            message = baseQueryReturnValue.data;
+        } else if (baseQueryReturnValue.data.message) {
+            message = baseQueryReturnValue.data.message;
+        }
+    }
+    return message;
+};
+
 export const sessionApi = createApi({
     reducerPath: 'sessions',
     baseQuery: lisaBaseQuery(),
@@ -67,13 +84,10 @@ export const sessionApi = createApi({
                     name: session.name
                 }
             }),
-            transformErrorResponse: (baseQueryReturnValue) => {
-                // transform into SerializedError
-                return {
-                    name: 'Update Session Error',
-                    message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message
-                };
-            },
+            transformErrorResponse: (baseQueryReturnValue) => ({
+                name: 'Update Session Error',
+                message: extractErrorMessage(baseQueryReturnValue)
+            }),
             invalidatesTags: ['sessions'],
         }),
         updateSessionName: builder.mutation<LisaChatSession, { sessionId: string, name: string }>({
@@ -85,13 +99,10 @@ export const sessionApi = createApi({
                 }
             }),
             invalidatesTags: ['sessions'],
-            transformErrorResponse: (baseQueryReturnValue) => {
-                // transform into SerializedError
-                return {
-                    name: 'Rename Session Error',
-                    message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message
-                };
-            },
+            transformErrorResponse: (baseQueryReturnValue) => ({
+                name: 'Rename Session Error',
+                message: extractErrorMessage(baseQueryReturnValue)
+            }),
         }),
         attachImageToSession: builder.mutation<LisaAttachImageResponse, LisaAttachImageRequest>({
             query: (attachImageRequest) => ({
@@ -101,13 +112,10 @@ export const sessionApi = createApi({
                     message: attachImageRequest.message
                 }
             }),
-            transformErrorResponse: (baseQueryReturnValue) => {
-                // transform into SerializedError
-                return {
-                    name: 'Attach Image to Session Error',
-                    message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message
-                };
-            },
+            transformErrorResponse: (baseQueryReturnValue) => ({
+                name: 'Attach Image to Session Error',
+                message: extractErrorMessage(baseQueryReturnValue)
+            }),
             invalidatesTags: ['sessions'],
         }),
         deleteSessionById: builder.mutation<LisaChatSession, string>({
@@ -115,13 +123,10 @@ export const sessionApi = createApi({
                 url: `/session/${sessionId}`,
                 method: 'DELETE',
             }),
-            transformErrorResponse: (baseQueryReturnValue) => {
-                // transform into SerializedError
-                return {
-                    name: 'Delete Session Error',
-                    message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message
-                };
-            },
+            transformErrorResponse: (baseQueryReturnValue) => ({
+                name: 'Delete Session Error',
+                message: extractErrorMessage(baseQueryReturnValue)
+            }),
             invalidatesTags: ['sessions'],
         }),
         deleteAllSessionsForUser: builder.mutation<LisaChatSession, void>({
@@ -129,13 +134,10 @@ export const sessionApi = createApi({
                 url: '/session',
                 method: 'DELETE',
             }),
-            transformErrorResponse: (baseQueryReturnValue) => {
-                // transform into SerializedError
-                return {
-                    name: 'Delete Session Error',
-                    message: baseQueryReturnValue.data?.type === 'RequestValidationError' ? baseQueryReturnValue.data.detail.map((error) => error.msg).join(', ') : baseQueryReturnValue.data.message
-                };
-            },
+            transformErrorResponse: (baseQueryReturnValue) => ({
+                name: 'Delete All Sessions Error',
+                message: extractErrorMessage(baseQueryReturnValue)
+            }),
             invalidatesTags: ['sessions'],
         }),
     }),

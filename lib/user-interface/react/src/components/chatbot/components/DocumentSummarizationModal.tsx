@@ -297,10 +297,15 @@ Repeat the following 2 steps 5 times.
                     }}
                     value={userPrompt}
                 /> : null}
-                <FormField label='Create new chat session'>
-                    <Toggle checked={createNewChatSession} onChange={({ detail }) =>
-                        setCreateNewChatSession(detail.checked)
-                    } />
+                <FormField
+                    label='Create new chat session'
+                    controlId='create-new-chat-session-toggle'
+                >
+                    <Toggle
+                        checked={createNewChatSession}
+                        onChange={({ detail }) => setCreateNewChatSession(detail.checked)}
+                        controlId='create-new-chat-session-toggle'
+                    />
                 </FormField>
             </SpaceBetween>
         </Modal>

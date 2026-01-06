@@ -214,6 +214,7 @@ export function runChatTests (options: {
 
                 navigateAndVerifyChatPage();
 
+                // Wait for sessions to load using the existing stubSession alias
                 cy.wait('@stubSession');
 
                 selectSessionByName('Technical Discussion');

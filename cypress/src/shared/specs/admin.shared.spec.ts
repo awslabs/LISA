@@ -37,6 +37,8 @@ export function runAdminTests (options: {
         // Wait for the page to fully load and initial API calls to complete
         // This is especially important for the first test after login
         cy.wait(2000);
+
+        cy.wait('@stubConfiguration');
         checkAdminButtonExists();
     });
 

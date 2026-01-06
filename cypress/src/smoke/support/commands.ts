@@ -62,6 +62,9 @@ function setupLoginStubs (role: 'admin' | 'user') {
         cy.intercept('GET', `**/${apiBase}/${name}*`, { fixture: `${name}.json` }).as(alias);
     });
 
+    // --- Additional alias for session endpoint (used in chat tests) ---
+    cy.intercept('GET', `**/${apiBase}/session*`, { fixture: 'session.json' }).as('stubSession');
+
     // --- Stub the OIDC /token endpoint with a fresh, valid-looking JWT ---
     cy.fixture('oidc-user.json').then((user) => {
         const now = Math.floor(Date.now() / 1000);

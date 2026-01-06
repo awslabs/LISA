@@ -244,10 +244,7 @@ export function Sessions ({ newSession }) {
                                 <Button
                                     iconName='add-plus'
                                     variant='inline-link'
-                                    onClick={() => {
-                                        navigate('/ai-assistant');
-                                        newSession();
-                                    }}
+                                    onClick={newSession}
                                     ariaLabel='New Session'
                                 ></Button>
                                 <Button

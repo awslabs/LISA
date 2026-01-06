@@ -126,6 +126,7 @@ export function runAdminTests (options: {
     it('MCP Workbench page loads', () => {
         const minItems = expectMinItems ? 3 : 0;
         const contentType = expectMinItems ? 'list' : 'custom';
+        cy.wait('@stubConfiguration');
         navigateAndVerifyAdminPage(
             'MCP Workbench',
             '/mcp-workbench',

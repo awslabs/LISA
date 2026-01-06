@@ -21,7 +21,7 @@ pydantic==2.12.5
 PyJWT==2.10.1
 text-generation==0.7.0
 prisma==0.15.0
-pynacl==1.6.1
+pynacl==1.6.2
 starlette>=0.40.0,<0.51.0
 
 # ASGI Server - Version constrained by litellm[proxy]==1.80.9

@@ -27,7 +27,7 @@ prisma==0.15.0
 psycopg2-binary==2.9.11
 pydantic==2.12.5
 PyJWT==2.10.1
-pynacl==1.6.1
+pynacl==1.6.2
 pypdf==6.4.1
 lxml==6.0.2
 python-docx==1.2.0

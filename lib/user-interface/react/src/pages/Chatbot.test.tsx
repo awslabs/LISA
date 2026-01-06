@@ -76,8 +76,8 @@ describe('Chatbot', () => {
             <Provider store={createMockStore()}>
                 <MemoryRouter initialEntries={[initialEntry]}>
                     <Routes>
-                        <Route path="/ai-assistant" element={<Chatbot setNav={mockSetNav} />} />
-                        <Route path="/ai-assistant/:sessionId" element={<Chatbot setNav={mockSetNav} />} />
+                        <Route path='/ai-assistant' element={<Chatbot setNav={mockSetNav} />} />
+                        <Route path='/ai-assistant/:sessionId' element={<Chatbot setNav={mockSetNav} />} />
                     </Routes>
                 </MemoryRouter>
             </Provider>

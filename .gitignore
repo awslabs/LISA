@@ -53,3 +53,6 @@ config-custom.yaml
 # Test Artifacts
 /cypress/videos
 /cypress/screenshots
+
+# Cypress local environment
+/cypress/.env.local

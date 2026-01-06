@@ -18,7 +18,9 @@ import './commands';
 import '../../support/adminHelpers';
 
 declare global {
+    // eslint-disable-next-line @typescript-eslint/no-namespace
     namespace Cypress {
+        // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
         interface Chainable {
             /**
              * Custom command to log in a user via stubbed OAuth2/OIDC.

@@ -210,6 +210,18 @@ function App () {
                                     </AdminRoute>
                                 }
                             />
+                            <Route
+                                path='mcp-workbench'
+                                element={
+                                    config?.configuration?.enabledComponents?.showMcpWorkbench ? (
+                                        <AdminRoute>
+                                            <McpWorkbench setNav={setNav} />
+                                        </AdminRoute>
+                                    ) : (
+                                        <Navigate to={import.meta.env.BASE_URL} replace />
+                                    )
+                                }
+                            />
                             {config?.configuration?.enabledComponents?.enableUserApiTokens && <Route
                                 path='user-api-token'
                                 element={
@@ -269,16 +281,6 @@ function App () {
                                     </PrivateRoute>
                                 }
                             />}
-                            {config?.configuration?.enabledComponents?.showMcpWorkbench &&
-                                <Route
-                                    path='mcp-workbench/*'
-                                    element={
-                                        <AdminRoute>
-                                            <McpWorkbench setNav={setNav} />
-                                        </AdminRoute>
-                                    }
-                                />
-                            }
                             {config?.configuration?.enabledComponents?.enableModelComparisonUtility && <Route
                                 path='model-comparison'
                                 element={

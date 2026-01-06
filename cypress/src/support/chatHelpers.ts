@@ -22,39 +22,61 @@
 /**
  * Navigate to the AI Assistant (chat) page by clicking the menu item
  */
-export function navigateToChatPage() {
-    cy.get('a[aria-label="AI Assistant"]')
-        .eq(2)
-        .should('exist')
-        .and('be.visible')
-        .click();
+export function navigateToChatPage () {
+    // For e2e tests, login should already direct to chat page
+    // For smoke tests, we may need to click the menu item
+    // Check if we're already on the chat page
+    cy.url().then((url) => {
+        if (!url.includes('/ai-assistant')) {
+            cy.get('a[aria-label="AI Assistant"]')
+                .eq(2)
+                .should('exist')
+                .and('be.visible')
+                .click();
+        }
+    });
 }
 
 /**
  * Verify that the chat page has loaded correctly
  */
-export function verifyChatPageLoaded() {
+export function verifyChatPageLoaded () {
     cy.url().should('include', '/ai-assistant');
-    
+
     // Wait for the prompt input textarea to be visible
     // Use attribute selectors that are stable across builds
-    cy.get('textarea[placeholder*="message" i]', { timeout: 10000 })
+    cy.get('textarea[placeholder*="message" i]')
         .first()
-        .should('exist');
+        .should('exist')
+        .and('be.visible');
+}
+
+/**
+ * Wait for initial API calls to complete
+ * This prevents cancelled requests when interacting with dropdowns too early
+ */
+export function waitForInitialDataLoad () {
+    // Wait for any loading spinners to disappear
+    cy.get('[data-testid="loading"], .awsui-spinner, .loading', { timeout: 5000 })
+        .should('not.exist');
+
+    // Give the page more time to stabilize after auth and initial API calls
+    cy.wait(3000);
 }
 
 /**
  * Navigate to chat page and verify it loaded
  */
-export function navigateAndVerifyChatPage() {
+export function navigateAndVerifyChatPage () {
     navigateToChatPage();
     verifyChatPageLoaded();
+    waitForInitialDataLoad();
 }
 
 /**
  * Wait for chat sessions to load in the sidebar
  */
-export function waitForSessionsToLoad() {
+export function waitForSessionsToLoad () {
     // Wait for loading state to complete
     cy.get('[data-testid="loading"], .awsui-spinner, .loading')
         .should('not.exist');
@@ -64,7 +86,7 @@ export function waitForSessionsToLoad() {
  * Select a session from the history sidebar by name
  * @param sessionName - The name of the session to select
  */
-export function selectSessionByName(sessionName: string) {
+export function selectSessionByName (sessionName: string) {
     cy.contains(sessionName)
         .should('be.visible')
         .click();
@@ -74,7 +96,7 @@ export function selectSessionByName(sessionName: string) {
  * Verify that a session has loaded with its history
  * @param sessionId - The expected session ID in the URL
  */
-export function verifySessionLoaded(sessionId: string) {
+export function verifySessionLoaded (sessionId: string) {
     cy.url().should('include', `/ai-assistant/${sessionId}`);
 }
 
@@ -82,7 +104,7 @@ export function verifySessionLoaded(sessionId: string) {
  * Verify that chat history messages are displayed
  * @param messageTexts - Array of message text snippets to verify
  */
-export function verifyChatHistory(messageTexts: string[]) {
+export function verifyChatHistory (messageTexts: string[]) {
     messageTexts.forEach((text) => {
         cy.contains(text).should('be.visible');
     });

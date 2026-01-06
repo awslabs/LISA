@@ -17,39 +17,21 @@
 /// <reference types="cypress" />
 
 /**
- * E2E suite for Administration features (User role):
- * - Confirms non-admin users do not see the Administration option
+ * Smoke test suite for User role features.
+ * Uses shared test suite.
  */
 
-import { checkNoAdminButton } from '../../support/adminHelpers';
+import { runUserTests } from '../../shared/specs/user.shared.spec';
 
 describe('User features (Smoke)', () => {
+
     beforeEach(() => {
         cy.loginAs('user');
     });
 
-    it('Non-admin does not see the button', () => {
-        checkNoAdminButton();
+    after(() => {
+        cy.clearAllSessionStorage();
     });
 
-    it('Non-admin user cannot directly access admin pages', () => {
-        const adminPaths = [
-            '#/configuration',
-            '#/model-management',
-            '#/repository-management',
-            '#/api-token-management',
-            '#/mcp-management'
-        ];
-
-        adminPaths.forEach((path) => {
-            cy.visit(path, { failOnStatusCode: false });
-
-            // Should be redirected away from admin path
-            // Check that we're either on home page or an error/access denied page
-            cy.url().should('satisfy', (url) => {
-                // URL should not contain the admin path, or should show access denied
-                return !url.includes(path) || url.includes('access-denied') || url.includes('unauthorized');
-            });
-        });
-    });
+    runUserTests();
 });

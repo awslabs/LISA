@@ -19,6 +19,9 @@
  * Contains reusable helpers for verifying data rendering in tables, cards, and lists.
  */
 
+// Common loading indicator selectors
+const LOADING_SELECTORS = '[data-testid="loading"], .awsui-spinner, [class*="awsui_spinner"]';
+
 /**
  * Verify that a table contains at least one data row (excluding headers)
  * @param tableSelector - Optional CSS selector for the table (defaults to finding any table)
@@ -30,7 +33,6 @@ export function verifyTableHasData (tableSelector?: string, minRows: number = 1)
     cy.get(selector)
         .should('be.visible')
         .within(() => {
-            // Check for table rows that contain data (not just headers)
             cy.get('tbody tr, [role="row"]:not([role="columnheader"])')
                 .should('have.length.at.least', minRows);
         });
@@ -42,7 +44,6 @@ export function verifyTableHasData (tableSelector?: string, minRows: number = 1)
  */
 export function verifyCloudscapeTableHasData (minRows: number = 1) {
     // Cloudscape tables use specific CSS classes and structure
-    // Look for table body rows with dynamic class names
     cy.get('tbody tr, [class*="awsui_row_"]')
         .should('have.length.at.least', minRows);
 }
@@ -53,7 +54,6 @@ export function verifyCloudscapeTableHasData (minRows: number = 1) {
  */
 export function verifyCardsHaveData (minCards: number = 1) {
     // Cloudscape cards use dynamic class names with hashes
-    // Look for list items within the cards container that have the card class pattern
     cy.get('[class*="awsui_card_"][class*="awsui_card-selectable_"]')
         .should('have.length.at.least', minCards);
 }
@@ -71,14 +71,13 @@ export function verifyListHasData (minItems: number = 1) {
 
 /**
  * Wait for loading to complete and verify content is rendered
- * @param loadingSelector - Selector for loading indicator (optional)
+ * Uses Cypress's built-in retry mechanism instead of arbitrary waits
  */
-export function waitForContentToLoad (loadingSelector?: string) {
-    if (loadingSelector) {
-        cy.get(loadingSelector).should('not.exist');
-    }
-
-    // Wait for common loading indicators to disappear
-    cy.get('[data-testid="loading"], .awsui-spinner, .loading')
-        .should('not.exist');
+export function waitForContentToLoad () {
+    // Wait for loading indicators to disappear (Cypress will retry automatically)
+    cy.get('body').then(($body) => {
+        if ($body.find(LOADING_SELECTORS).length > 0) {
+            cy.get(LOADING_SELECTORS, { timeout: 10000 }).should('not.exist');
+        }
+    });
 }

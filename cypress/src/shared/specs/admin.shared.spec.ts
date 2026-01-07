@@ -23,8 +23,9 @@
 
 import {
     navigateAndVerifyAdminPage,
-    checkAdminButtonExists,
+    getAdminButton,
     expandAdminMenu,
+    collapseAdminMenu,
 } from '../../support/adminHelpers';
 
 export function runAdminTests (options: {
@@ -33,35 +34,17 @@ export function runAdminTests (options: {
 } = {}) {
     const { expectMinItems = false, verifyFixtureData = false } = options;
 
-    it('Admin sees the Administration button', () => {
-        // Wait for the page to fully load and initial API calls to complete
-        // This is especially important for the first test after login
-        cy.wait(2000);
-        checkAdminButtonExists();
-    });
+    it('Admin sees the Administration button and can expand/collapse menu', () => {
+        // Verify button exists and is collapsed
+        getAdminButton()
+            .should('be.visible')
+            .and('have.attr', 'aria-expanded', 'false');
 
-    it('Admin can expand menu and see all menu items', () => {
+        // Expand and verify menu items
         expandAdminMenu();
-    });
 
-    it('Admin menu collapses when clicked again', () => {
-        // Expand menu first
-        cy.get('button[aria-label="Administration"]')
-            .filter(':visible')
-            .click()
-            .should('have.attr', 'aria-expanded', 'true');
-
-        cy.get('[role="menu"]')
-            .should('be.visible');
-
-        // Collapse menu
-        cy.get('button[aria-label="Administration"]')
-            .filter(':visible')
-            .click()
-            .should('have.attr', 'aria-expanded', 'false');
-
-        cy.get('[role="menu"]')
-            .should('not.be.visible');
+        // Collapse and verify
+        collapseAdminMenu();
     });
 
     it('Admin can access Configuration page', () => {
@@ -78,7 +61,6 @@ export function runAdminTests (options: {
         navigateAndVerifyAdminPage('Model Management', '/model-management', 'Model', 'cards', minItems);
 
         if (verifyFixtureData) {
-            // Verify specific model data from fixtures
             cy.contains('mistral-vllm').should('be.visible');
             cy.contains('claude-3-7').should('be.visible');
             cy.contains('InService').should('be.visible');
@@ -90,7 +72,6 @@ export function runAdminTests (options: {
         navigateAndVerifyAdminPage('API Token Management', '/api-token-management', 'API Token', 'table', minItems);
 
         if (verifyFixtureData) {
-            // Verify specific token data from fixtures
             cy.contains('Development Token').should('be.visible');
             cy.contains('Production API Key').should('be.visible');
             cy.contains('Test Environment Token').should('be.visible');
@@ -102,7 +83,6 @@ export function runAdminTests (options: {
         navigateAndVerifyAdminPage('RAG Management', '/repository-management', 'RAG', 'table', minItems);
 
         if (verifyFixtureData) {
-            // Verify specific repository data from fixtures
             cy.contains('Technical Documentation').should('be.visible');
             cy.contains('Product Knowledge Base').should('be.visible');
             cy.contains('Training Materials').should('be.visible');
@@ -114,7 +94,6 @@ export function runAdminTests (options: {
         navigateAndVerifyAdminPage('MCP Management', '/mcp-management', 'MCP', 'table', minItems);
 
         if (verifyFixtureData) {
-            // Verify specific MCP server data from fixtures
             cy.contains('Weather Service').should('be.visible');
             cy.contains('Database Connector').should('be.visible');
             cy.contains('File Processing Service').should('be.visible');
@@ -124,7 +103,6 @@ export function runAdminTests (options: {
     it('MCP Workbench page loads', () => {
         const minItems = expectMinItems ? 3 : 0;
         const contentType = expectMinItems ? 'list' : 'custom';
-        cy.wait('@stubConfiguration');
         navigateAndVerifyAdminPage(
             'MCP Workbench',
             '/mcp-workbench',
@@ -134,7 +112,6 @@ export function runAdminTests (options: {
         );
 
         if (verifyFixtureData) {
-            // Verify specific tool files from fixtures
             cy.get('li[data-testid="bad_actors_db.py"]').should('be.visible');
             cy.get('li[data-testid="calculator.py"]').should('be.visible');
             cy.get('li[data-testid="weather.py"]').should('be.visible');

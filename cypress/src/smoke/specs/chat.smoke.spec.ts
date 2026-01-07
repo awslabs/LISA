@@ -27,9 +27,11 @@ describe('Chat Page (Smoke)', () => {
     beforeEach(() => {
         cy.loginAs('user');
     });
+
     after(() => {
         cy.clearAllSessionStorage();
     });
+
     runChatTests({
         testSessionSelection: true,
         testRAGConfiguration: true,

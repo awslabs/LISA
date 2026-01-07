@@ -28,6 +28,12 @@ import {
     verifyChatHistory,
 } from '../../support/chatHelpers';
 
+const MODEL_INPUT_SELECTOR = 'input[placeholder*="model" i], input[aria-label*="model" i]';
+const RAG_REPO_SELECTOR = 'input#rag-repository-autosuggest, input[placeholder*="RAG Repository" i]';
+const COLLECTION_SELECTOR = 'input#collection-autosuggest, input[placeholder*="collection" i]';
+const MESSAGE_INPUT_SELECTOR = 'textarea[placeholder*="message" i]';
+const DROPDOWN_OPTION_SELECTOR = '[role="option"], [role="menuitem"]';
+
 export function runChatTests (options: {
     testSessionSelection?: boolean;
     testRAGConfiguration?: boolean;
@@ -53,7 +59,7 @@ export function runChatTests (options: {
                 navigateAndVerifyChatPage();
                 cy.wait('@getModels');
 
-                cy.get('input[placeholder*="model" i], input[aria-label*="model" i]')
+                cy.get(MODEL_INPUT_SELECTOR)
                     .first()
                     .should('exist')
                     .click();
@@ -64,24 +70,15 @@ export function runChatTests (options: {
         } else {
             navigateAndVerifyChatPage();
 
-            // Wait for models API call to complete by checking that the input is populated
-            // The component will show a loading state or be disabled while fetching
-            cy.get('input[placeholder*="model" i], input[aria-label*="model" i]', { timeout: 45000 })
+            // Wait for models API call to complete
+            cy.get(MODEL_INPUT_SELECTOR, { timeout: 45000 })
                 .first()
-                .should('exist')
-                .and('be.visible')
-                .and('not.be.disabled');
-
-            // Additional wait to ensure the component has fully processed the models data
-            cy.wait(2000);
-
-            // Click to open dropdown
-            cy.get('input[placeholder*="model" i], input[aria-label*="model" i]')
-                .first()
+                .should('be.visible')
+                .and('not.be.disabled')
                 .click({ force: true });
 
             // Wait for dropdown options to appear
-            cy.get('[role="option"], [role="menuitem"]')
+            cy.get(DROPDOWN_OPTION_SELECTOR)
                 .should('be.visible')
                 .and('have.length.at.least', 1);
         }
@@ -107,32 +104,29 @@ export function runChatTests (options: {
                 });
 
                 navigateAndVerifyChatPage();
-
                 cy.wait('@getRepositories');
 
-                cy.get('input#rag-repository-autosuggest, input[placeholder*="RAG Repository" i]')
+                cy.get(RAG_REPO_SELECTOR)
                     .should('be.visible')
                     .clear()
                     .type('Technical');
 
-                cy.get('[role="option"], [role="menuitem"]')
+                cy.get(DROPDOWN_OPTION_SELECTOR)
                     .contains('Technical Documentation')
                     .should('be.visible')
                     .click();
 
                 cy.wait('@getCollections');
 
-                cy.get('input#rag-repository-autosuggest, input[placeholder*="RAG Repository" i]')
+                cy.get(RAG_REPO_SELECTOR)
                     .should('have.value', 'repo-001');
 
-                cy.get('input#collection-autosuggest, input[placeholder*="collection" i]')
-                    .should('not.be.disabled');
-
-                cy.get('input#collection-autosuggest, input[placeholder*="collection" i]')
+                cy.get(COLLECTION_SELECTOR)
+                    .should('not.be.disabled')
                     .clear()
                     .type('API');
 
-                cy.get('[role="option"], [role="menuitem"]')
+                cy.get(DROPDOWN_OPTION_SELECTOR)
                     .contains('API Documentation Collection')
                     .should('be.visible');
             });
@@ -141,8 +135,7 @@ export function runChatTests (options: {
         it('RAG repository dropdown is accessible', () => {
             navigateAndVerifyChatPage();
 
-            // Wait for the input to be ready
-            cy.get('input#rag-repository-autosuggest, input[placeholder*="RAG Repository" i]')
+            cy.get(RAG_REPO_SELECTOR)
                 .should('be.visible')
                 .and('not.be.disabled')
                 .click({ force: true });
@@ -153,27 +146,26 @@ export function runChatTests (options: {
         navigateAndVerifyChatPage();
 
         // Initially, message input should be disabled until model is selected
-        cy.get('textarea[placeholder*="message" i]')
+        cy.get(MESSAGE_INPUT_SELECTOR)
             .should('be.visible')
             .and('be.disabled');
 
         // Select a model first
-        cy.get('input[placeholder*="model" i], input[aria-label*="model" i]', { timeout: 45000 })
+        cy.get(MODEL_INPUT_SELECTOR, { timeout: 45000 })
             .first()
-            .should('exist')
-            .and('be.visible')
+            .should('be.visible')
             .and('not.be.disabled')
             .click({ force: true });
 
         // Wait for dropdown options and select the first available model
-        cy.get('[role="option"], [role="menuitem"]')
+        cy.get(DROPDOWN_OPTION_SELECTOR)
             .should('be.visible')
             .and('have.length.at.least', 1)
             .first()
             .click();
 
         // Now message input should be enabled
-        cy.get('textarea[placeholder*="message" i]')
+        cy.get(MESSAGE_INPUT_SELECTOR)
             .should('be.visible')
             .and('not.be.disabled');
     });
@@ -191,7 +183,6 @@ export function runChatTests (options: {
                 });
 
                 navigateAndVerifyChatPage();
-
                 cy.wait('@stubSession');
 
                 selectSessionByName('Technical Discussion');
@@ -213,16 +204,12 @@ export function runChatTests (options: {
                 });
 
                 navigateAndVerifyChatPage();
-
-                // Wait for sessions to load using the existing stubSession alias
                 cy.wait('@stubSession');
 
                 selectSessionByName('Technical Discussion');
-
                 cy.wait('@getSession');
 
                 verifySessionLoaded('f56fc284-629c-4ba7-ab3d-56f4a21c13ee');
-
                 verifyChatHistory([
                     'What is the difference between REST and GraphQL?',
                     'REST and GraphQL are both API architectures'
@@ -254,7 +241,7 @@ export function runChatTests (options: {
                 cy.wait('@getSession');
                 cy.wait('@getModels');
 
-                cy.get('input[placeholder*="model" i], input[aria-label*="model" i]')
+                cy.get(MODEL_INPUT_SELECTOR)
                     .should('have.value', 'mistral-vllm');
             });
         });
@@ -289,10 +276,10 @@ export function runChatTests (options: {
 
                 cy.wait('@getSession');
 
-                cy.get('input#rag-repository-autosuggest, input[placeholder*="RAG Repository" i]')
+                cy.get(RAG_REPO_SELECTOR)
                     .should('have.value', 'repo-001');
 
-                cy.get('input#collection-autosuggest, input[placeholder*="collection" i]')
+                cy.get(COLLECTION_SELECTOR)
                     .should('not.be.disabled')
                     .and('have.value', 'API Documentation Collection');
             });

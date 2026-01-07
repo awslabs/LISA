@@ -18,9 +18,6 @@
 
 import { randomUUID, randomString, toBase64Url } from './utils';
 
-// Base application URL from Cypress config
-const BASE_URL = Cypress.config('baseUrl');
-
 // List of endpoints to stub with fixtures
 const API_STUBS = [
     'models',
@@ -37,111 +34,142 @@ const API_STUBS = [
 ];
 
 /**
- * Setup API stubs and OIDC mocks for a given role.
- * This is the core login logic extracted for reuse.
- *
- * @param {'admin'|'user'} role - The role to simulate.
+ * Setup API stubs for smoke tests.
  */
-function setupLoginStubs (role: 'admin' | 'user') {
-    const isAdmin = role === 'admin';
+function setupApiStubs (env: Record<string, unknown>) {
+    const script = `window.env = ${JSON.stringify(env)};`;
+    const apiBase = String(env.API_BASE_URL).replace(/\/+$/, '');
 
-    let apiBase: string = '/dev/';
-    // --- Stub env.js so window.env is correct ---
-    cy.fixture('env.json').then((env) => {
-        const script = `window.env = ${JSON.stringify(env)};`;
-        apiBase = env.API_BASE_URL.replace(/\/+$/, '');
-        cy.intercept('GET', '**/env.js', {
-            body: script,
-            headers: { 'Content-Type': 'application/javascript' },
-        }).as('stubEnv');
-    });
+    cy.intercept('GET', '**/env.js', {
+        body: script,
+        headers: { 'Content-Type': 'application/javascript' },
+    }).as('stubEnv');
 
-    // --- Stub all API endpoints ---
+    // Stub all API endpoints
     API_STUBS.forEach((name) => {
         const alias = `stub${name.charAt(0).toUpperCase()}${name.slice(1)}`;
-        cy.intercept('GET', `**/${apiBase}/${name}*`, { fixture: `${name}.json` }).as(alias);
+        cy.intercept('GET', `**${apiBase}/${name}*`, { fixture: `${name}.json` }).as(alias);
     });
+}
 
-    // --- Additional alias for session endpoint (used in chat tests) ---
-    cy.intercept('GET', `**/${apiBase}/session*`, { fixture: 'session.json' }).as('stubSession');
+/**
+ * Build a mock OIDC user object.
+ */
+function buildOidcUser (role: 'admin' | 'user', env: Record<string, unknown>) {
+    const isAdmin = role === 'admin';
+    const groups = isAdmin ? ['admin'] : ['user'];
+    const now = Math.floor(Date.now() / 1000);
 
-    // --- Stub the OIDC /token endpoint with a fresh, valid-looking JWT ---
-    cy.fixture('oidc-user.json').then((user) => {
-        const now = Math.floor(Date.now() / 1000);
-        const profile = {
-            ...user.profile,
-            iat: now,
-            exp: now + 3600,
-            'cognito:groups': isAdmin ? ['admin'] : ['user'],
-            sub: randomUUID(),
-            'cognito:username': randomUUID(),
-            preferred_username: randomString(8),
-            origin_jti: randomUUID(),
-            event_id: randomUUID(),
-            aud: randomUUID(),
-            name: `User ${randomString(5)}`,
-            email: `${randomString(6)}@example.com`,
-        };
+    const jwtPayload = {
+        sub: randomUUID(),
+        iss: env.AUTHORITY,
+        aud: env.CLIENT_ID,
+        exp: now + 3600,
+        iat: now,
+        token_use: 'id',
+        'cognito:groups': groups,
+        'cognito:username': randomUUID(),
+        preferred_username: `test-${role}`,
+        name: `Test ${role.charAt(0).toUpperCase() + role.slice(1)}`,
+        email: `test-${role}@example.com`,
+        origin_jti: randomUUID(),
+        event_id: randomUUID(),
+    };
 
-        // --- Build an signed JWT that the OIDC client will accept ---
-        const header = { alg: 'none', typ: 'JWT' };
-        const payload = { ...profile, token_use: 'id' };
-        const id_token = `${toBase64Url(header)}.${toBase64Url(payload)}.`;
+    const header = { alg: 'none', typ: 'JWT' };
+    const id_token = `${toBase64Url(header)}.${toBase64Url(jwtPayload)}.`;
 
-        // --- Build the stubbed response ---
-        const stubbed = {
-            ...user,
-            profile,
-            id_token,
-            access_token: randomString(30),
-            refresh_token: randomString(40),
-            expires_at: now + 3600,
-        };
+    return {
+        id_token,
+        access_token: randomString(30),
+        refresh_token: randomString(40),
+        token_type: 'Bearer',
+        expires_at: now + 3600,
+        profile: jwtPayload,
+        session_state: null,
+        scope: 'openid profile email',
+    };
+}
 
-        cy.intercept('POST', '**/token', {
-            statusCode: 200,
-            headers: { 'Content-Type': 'application/json' },
-            body: stubbed,
-        }).as('stubToken');
-    });
+/**
+ * Setup OIDC stubs for the login flow.
+ */
+function setupOidcStubs (role: 'admin' | 'user', env: Record<string, unknown>) {
+    const oidcUser = buildOidcUser(role, env);
 
-    // --- Stub the OAuth2 authorize callback to redirect straight into the app ---
-    cy.intercept('GET', '**/authorize?*', (req) => {
-        const { state } = req.query;
-        req.redirect(`${BASE_URL}?code=1234&state=${state}`);
-    }).as('stubSigninCallback');
-
-    // --- Stub OIDC discovery document ---
+    // Stub OIDC discovery
     cy.intercept('GET', '**/.well-known/openid-configuration', {
         statusCode: 200,
         fixture: 'openid-config.json',
     }).as('stubOidc');
+
+    // Stub the token endpoint to return our mock user
+    cy.intercept('POST', '**/token', {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: {
+            id_token: oidcUser.id_token,
+            access_token: oidcUser.access_token,
+            refresh_token: oidcUser.refresh_token,
+            token_type: 'Bearer',
+            expires_in: 3600,
+        },
+    }).as('stubToken');
+
+    // Stub the authorize endpoint to redirect back with a code
+    cy.intercept('GET', '**/authorize?*', (req) => {
+        const url = new URL(req.url);
+        const state = url.searchParams.get('state');
+        const redirectUri = url.searchParams.get('redirect_uri') || 'http://localhost:3000';
+        
+        // Redirect back to the app with auth code
+        req.redirect(`${redirectUri}?code=mock-auth-code&state=${state}`);
+    }).as('stubAuthorize');
 }
 
 /**
- * Custom command to log in a user via stubbed OAuth2/OIDC.
- * Can log in as an 'admin' or a normal 'user'.
- * This performs the actual login flow and should be wrapped in cy.session() by the caller.
- *
- * @param {'admin'|'user'} role - The role to simulate (defaults to 'user').
+ * Wait for the app to be fully loaded.
+ */
+function waitForAppReady () {
+    // Wait for "Loading configuration..." to disappear
+    cy.contains('Loading configuration...', { timeout: 15000 }).should('not.exist');
+
+    // Wait for spinners to disappear
+    cy.get('body').then(($body) => {
+        if ($body.find('[class*="awsui_spinner"]').length > 0) {
+            cy.get('[class*="awsui_spinner"]', { timeout: 10000 }).should('not.exist');
+        }
+    });
+}
+
+/**
+ * Custom command to log in a user via stubbed OIDC flow.
  */
 Cypress.Commands.add('loginAs', (role = 'user') => {
-    setupLoginStubs(role);
+    cy.fixture('env.json').then((env) => {
+        // Setup all stubs
+        setupApiStubs(env);
+        setupOidcStubs(role, env);
 
-    // --- Trigger the login flow in the UI ---
-    cy.visit('/');
-    cy.contains('Sign in').click();
+        // Visit the app
+        cy.visit('/');
 
-    // Wait for login to complete by checking we're no longer on login screen
-    cy.contains('Sign in').should('not.exist');
+        // Click sign in to trigger OIDC flow
+        cy.contains('Sign in').click();
+
+        // Wait for the redirect and login to complete
+        cy.contains('Sign in', { timeout: 10000 }).should('not.exist');
+
+        // Wait for app to be ready
+        waitForAppReady();
+    });
 });
 
 /**
- * Custom command to setup API stubs for a given role.
- * This should be called in beforeEach after cy.session() to re-establish intercepts.
- *
- * @param {'admin'|'user'} role - The role to simulate.
+ * Custom command to setup API stubs.
  */
-Cypress.Commands.add('setupStubs', (role = 'user') => {
-    setupLoginStubs(role);
+Cypress.Commands.add('setupStubs', () => {
+    cy.fixture('env.json').then((env) => {
+        setupApiStubs(env);
+    });
 });

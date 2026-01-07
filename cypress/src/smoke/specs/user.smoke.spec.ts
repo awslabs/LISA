@@ -24,7 +24,6 @@
 import { runUserTests } from '../../shared/specs/user.shared.spec';
 
 describe('User features (Smoke)', () => {
-
     beforeEach(() => {
         cy.loginAs('user');
     });

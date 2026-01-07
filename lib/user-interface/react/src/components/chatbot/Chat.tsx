@@ -19,6 +19,7 @@ import { useAuth } from 'react-oidc-context';
 import Form from '@cloudscape-design/components/form';
 import Box from '@cloudscape-design/components/box';
 import SpaceBetween from '@cloudscape-design/components/space-between';
+import Spinner from '@cloudscape-design/components/spinner';
 import {
     Autosuggest,
     ButtonGroup, Checkbox,
@@ -719,24 +720,37 @@ export default function Chat ({ sessionId }) {
             )}
             <div className='overflow-y-auto h-[calc(100vh-20rem)] bottom-8'>
                 <SpaceBetween direction='vertical' size='l'>
-                    {useMemo(() => session.history.map((message, idx) => (<Message
-                        key={idx}
-                        message={message}
-                        showMetadata={chatConfiguration.sessionConfiguration.showMetadata}
-                        isRunning={false}
-                        callingToolName={undefined}
-                        isStreaming={isStreaming && idx === session.history.length - 1}
-                        markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay}
-                        setChatConfiguration={setChatConfiguration}
-                        handleSendGenerateRequest={handleSendGenerateRequest}
-                        chatConfiguration={chatConfiguration}
-                        setUserPrompt={setUserPrompt}
-                        onMermaidRenderComplete={handleMermaidRenderComplete}
-                    />
-                    // eslint-disable-next-line react-hooks/exhaustive-deps
-                    )), [session.history, chatConfiguration])}
+                    {loadingSession && (
+                        <Box textAlign='center' padding='l'>
+                            <SpaceBetween size='s' direction='vertical'>
+                                <Spinner size='large' />
+                                <Box color='text-status-info'>Loading session...</Box>
+                                <Box variant='small' color='text-status-inactive'>Please wait while we load your conversation history</Box>
+                            </SpaceBetween>
+                        </Box>
+                    )}
 
-                    {(isRunning || callingToolName) && !isStreaming && <Message
+                    {useMemo(() => {
+                        if (loadingSession) return null;
+
+                        return session.history.map((message, idx) => (<Message
+                            key={idx}
+                            message={message}
+                            showMetadata={chatConfiguration.sessionConfiguration.showMetadata}
+                            isRunning={false}
+                            callingToolName={undefined}
+                            isStreaming={isStreaming && idx === session.history.length - 1}
+                            markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay}
+                            setChatConfiguration={setChatConfiguration}
+                            handleSendGenerateRequest={handleSendGenerateRequest}
+                            chatConfiguration={chatConfiguration}
+                            setUserPrompt={setUserPrompt}
+                            onMermaidRenderComplete={handleMermaidRenderComplete}
+                        />));
+                    // eslint-disable-next-line react-hooks/exhaustive-deps
+                    }, [session.history, chatConfiguration, loadingSession])}
+
+                    {!loadingSession && (isRunning || callingToolName) && !isStreaming && <Message
                         isRunning={isRunning}
                         callingToolName={callingToolName}
                         markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay}
@@ -747,7 +761,7 @@ export default function Chat ({ sessionId }) {
                         setUserPrompt={setUserPrompt}
                         onMermaidRenderComplete={handleMermaidRenderComplete}
                     />}
-                    {session.history.length === 0 && sessionId === undefined && (
+                    {!loadingSession && session.history.length === 0 && sessionId === undefined && (
                         <WelcomeScreen
                             navigate={navigate}
                             modelSelectRef={modelSelectRef}

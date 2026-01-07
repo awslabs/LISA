@@ -37,22 +37,31 @@ export function expandAdminMenu () {
     // click → verify expanded → verify menu items
     cy.get('button[aria-label="Administration"]')
         .filter(':visible')
+        .first()
         .click()
         .should('have.attr', 'aria-expanded', 'true');
 
+    // Wait for dropdown animation to complete
+    cy.wait(500);
+
     // Get the button-dropdown container once and reuse it
     cy.get('button[aria-label="Administration"]')
+        .filter(':visible')
+        .first()
         .closest('[class*="awsui_button-dropdown_"]')
         .as('adminDropdown');
 
-    // Verify menu is visible
+    // Verify menu is visible - use filter to get only visible menu
     cy.get('@adminDropdown')
         .find('[role="menu"]')
-        .should('be.visible');
+        .filter(':visible')
+        .should('exist')
+        .and('be.visible');
 
     // Verify menu items
     cy.get('@adminDropdown')
         .find('[role="menuitem"]')
+        .filter(':visible')
         .should('have.length', 6)
         .then(($items) => {
             const labels = $items
@@ -80,11 +89,20 @@ export function checkNoAdminButton () {
  */
 export function navigateToAdminPage (menuItemName: string) {
     checkAdminButtonExists();
-    expandAdminMenu();
 
-    // Use the aliased dropdown container to find and click the menu item
-    cy.get('@adminDropdown')
-        .find('[role="menuitem"]')
+    // Click to expand menu
+    cy.get('button[aria-label="Administration"]')
+        .filter(':visible')
+        .first()
+        .click()
+        .should('have.attr', 'aria-expanded', 'true');
+
+    // Wait for dropdown animation
+    cy.wait(500);
+
+    // Find and click the menu item
+    cy.get('[role="menuitem"]')
+        .filter(':visible')
         .contains(menuItemName)
         .click();
 }

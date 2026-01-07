@@ -16,6 +16,7 @@
 
 import { default as Axios, AxiosError, AxiosRequestConfig } from 'axios';
 import { getBaseURI } from '../../components/utils';
+import { OidcConfig } from '../../config/oidc.config';
 
 export const lisaAxios = Axios.create({
     baseURL: getBaseURI(),
@@ -23,7 +24,7 @@ export const lisaAxios = Axios.create({
 
 lisaAxios.interceptors.request.use(
     (config) => {
-        const oidcString = sessionStorage.getItem(`oidc.user:${window.env.AUTHORITY}:${window.env.CLIENT_ID}`);
+        const oidcString = sessionStorage.getItem(`oidc.user:${OidcConfig.authority}:${OidcConfig.client_id}`);
         const token = oidcString ? JSON.parse(oidcString).id_token : '';
 
         if (config.headers === undefined) {

@@ -20,11 +20,12 @@ import { useHref, useNavigate } from 'react-router-dom';
 import { applyDensity, Density, Mode } from '@cloudscape-design/global-styles';
 import TopNavigation, { TopNavigationProps } from '@cloudscape-design/components/top-navigation';
 import { getBaseURI } from './utils';
-import { purgeStore, useAppSelector } from '../config/store';
+import { purgeStore, useAppSelector } from '@/config/store';
 import { selectCurrentUserIsAdmin, selectCurrentUserIsApiUser, selectCurrentUsername } from '../shared/reducers/user.reducer';
-import { IConfiguration } from '../shared/model/configuration.model';
+import { IConfiguration } from '@/shared/model/configuration.model';
 import { ButtonDropdownProps } from '@cloudscape-design/components';
 import ColorSchemeContext from '@/shared/color-scheme.provider';
+import { OidcConfig } from '@/config/oidc.config';
 
 applyDensity(Density.Comfortable);
 
@@ -190,7 +191,14 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                 break;
                             case 'signout':
                                 await purgeStore();
-                                await auth.signoutSilent();
+                                await auth.removeUser();
+                                await auth.signoutRedirect({
+                                    extraQueryParams: {
+                                        client_id: OidcConfig.client_id,
+                                        redirect_uri: window.location.origin,
+                                        response_type: OidcConfig.response_type
+                                    }
+                                });
                                 break;
                             case 'color-mode':
                                 setColorScheme(colorScheme === Mode.Light ? Mode.Dark : Mode.Light);

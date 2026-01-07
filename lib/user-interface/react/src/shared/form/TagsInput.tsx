@@ -58,7 +58,11 @@ export function TagsInput (props: TagsInputProps): ReactElement {
                         label: tag,
                         dismissLabel: `Remove ${tag}`
                     }))}
-                    onDismiss={disabled ? undefined : ({ detail: { itemIndex } }) => handleRemove(itemIndex)}
+                    onDismiss={({ detail: { itemIndex } }) => {
+                        if (!disabled) {
+                            handleRemove(itemIndex);
+                        }
+                    }}
                 />
                 <Input
                     value={inputValue}

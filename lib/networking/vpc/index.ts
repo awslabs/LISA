@@ -151,9 +151,9 @@ export class Vpc extends Construct {
         );
         if (!sgOverrides?.restAlbSecurityGroupId){
             if (config.restApiConfig?.sslCertIamArn) {
-                SecurityGroupFactory.addHttpsTraffic(ecsModelAlbSg);
+                SecurityGroupFactory.addHttpsTraffic(restApiAlbSg);
             } else {
-                SecurityGroupFactory.addVpcTraffic(ecsModelAlbSg, vpc.vpcCidrBlock);
+                SecurityGroupFactory.addVpcTraffic(restApiAlbSg, vpc.vpcCidrBlock);
             }
         }
 

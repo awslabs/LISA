@@ -44,7 +44,7 @@ const extractErrorMessage = (baseQueryReturnValue: any): string => {
 export const sessionApi = createApi({
     reducerPath: 'sessions',
     baseQuery: lisaBaseQuery(),
-    tagTypes: ['sessions'],
+    tagTypes: ['sessions', 'session'],
     refetchOnFocus: true,
     refetchOnMountOrArgChange: true,
     endpoints: (builder) => ({
@@ -52,6 +52,10 @@ export const sessionApi = createApi({
             query: (sessionId: string) => ({
                 url: `/session/${sessionId}`
             }),
+            // Provide specific tags for individual sessions
+            providesTags: (result, error, sessionId) => [
+                { type: 'session', id: sessionId }
+            ],
         }),
         getSessionHealth: builder.query<any, void>({
             query: () => ({
@@ -62,7 +66,8 @@ export const sessionApi = createApi({
             query: () => ({
                 url: '/session'
             }),
-            providesTags:['sessions'],
+            // Simple tag for session list
+            providesTags: ['sessions'],
         }),
         updateSession: builder.mutation<LisaChatSession, LisaChatSession>({
             query: (session) => ({
@@ -88,7 +93,11 @@ export const sessionApi = createApi({
                 name: 'Update Session Error',
                 message: extractErrorMessage(baseQueryReturnValue)
             }),
-            invalidatesTags: ['sessions'],
+            // Invalidate session list (for updated metadata) and specific session details
+            invalidatesTags: (result, error, session) => [
+                'sessions',
+                { type: 'session', id: session.sessionId }
+            ],
         }),
         updateSessionName: builder.mutation<LisaChatSession, { sessionId: string, name: string }>({
             query: (session) => ({
@@ -98,7 +107,11 @@ export const sessionApi = createApi({
                     name: session.name
                 }
             }),
-            invalidatesTags: ['sessions'],
+            // Only invalidate the specific session and session list
+            invalidatesTags: (result, error, { sessionId }) => [
+                'sessions',
+                { type: 'session', id: sessionId }
+            ],
             transformErrorResponse: (baseQueryReturnValue) => ({
                 name: 'Rename Session Error',
                 message: extractErrorMessage(baseQueryReturnValue)
@@ -116,7 +129,10 @@ export const sessionApi = createApi({
                 name: 'Attach Image to Session Error',
                 message: extractErrorMessage(baseQueryReturnValue)
             }),
-            invalidatesTags: ['sessions'],
+            // Only invalidate the specific session
+            invalidatesTags: (result, error, { sessionId }) => [
+                { type: 'session', id: sessionId }
+            ],
         }),
         deleteSessionById: builder.mutation<LisaChatSession, string>({
             query: (sessionId: string) => ({
@@ -127,7 +143,11 @@ export const sessionApi = createApi({
                 name: 'Delete Session Error',
                 message: extractErrorMessage(baseQueryReturnValue)
             }),
-            invalidatesTags: ['sessions'],
+            // Invalidate session list and the specific session
+            invalidatesTags: (result, error, sessionId) => [
+                'sessions',
+                { type: 'session', id: sessionId }
+            ],
         }),
         deleteAllSessionsForUser: builder.mutation<LisaChatSession, void>({
             query: () => ({
@@ -138,7 +158,8 @@ export const sessionApi = createApi({
                 name: 'Delete All Sessions Error',
                 message: extractErrorMessage(baseQueryReturnValue)
             }),
-            invalidatesTags: ['sessions'],
+            // Invalidate everything when deleting all sessions
+            invalidatesTags: ['sessions', 'session'],
         }),
     }),
 });

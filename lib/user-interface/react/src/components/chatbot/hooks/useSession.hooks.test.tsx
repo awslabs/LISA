@@ -21,7 +21,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useAuth } from 'react-oidc-context';
 
 import { useSession } from './useSession.hooks';
-import { breadcrumbsReducer } from '@/shared/reducers/breadcrumbs.reducer';
+import breadcrumbsReducer from '@/shared/reducers/breadcrumbs.reducer';
 
 // Mock react-oidc-context
 vi.mock('react-oidc-context');
@@ -59,11 +59,16 @@ describe('useSession', () => {
         (useAuth as any).mockReturnValue(mockAuth);
     });
 
-    it('creates new session when sessionId is undefined', () => {
+    it('creates new session when sessionId is undefined', async () => {
         const { result } = renderHook(
             () => useSession(undefined, mockGetSessionById),
             { wrapper }
         );
+
+        await act(async () => {
+            // Wait for useEffect to complete
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        });
 
         expect(result.current.session.sessionId).toBe('test-session-id-123');
         expect(result.current.session.history).toEqual([]);
@@ -104,7 +109,7 @@ describe('useSession', () => {
         expect(result.current.loadingSession).toBe(false);
     });
 
-    it('creates new session when transitioning from existing session to undefined', () => {
+    it('creates new session when transitioning from existing session to undefined', async () => {
         const { result, rerender } = renderHook(
             ({ sessionId }) => useSession(sessionId, mockGetSessionById),
             {
@@ -113,11 +118,20 @@ describe('useSession', () => {
             }
         );
 
+        await act(async () => {
+            // Wait for initial useEffect
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        });
+
         // Initially has existing session ID
         expect(result.current.internalSessionId).toBe('existing-session-id');
 
         // Transition to new session (sessionId becomes undefined)
-        rerender({ sessionId: undefined });
+        await act(async () => {
+            rerender({ sessionId: undefined });
+            // Wait for useEffect to complete
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        });
 
         // Should create new session immediately (no cache interference)
         expect(result.current.session.sessionId).toBe('test-session-id-123');
@@ -125,7 +139,7 @@ describe('useSession', () => {
         expect(result.current.internalSessionId).toBe('test-session-id-123');
     });
 
-    it('does not reload session if sessionId has not changed', () => {
+    it('does not reload session if sessionId has not changed', async () => {
         const { rerender } = renderHook(
             ({ sessionId }) => useSession(sessionId, mockGetSessionById),
             {
@@ -134,11 +148,19 @@ describe('useSession', () => {
             }
         );
 
+        await act(async () => {
+            // Wait for initial useEffect
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        });
+
         // Clear the mock call count
         mockGetSessionById.mockClear();
 
         // Re-render with same sessionId
-        rerender({ sessionId: 'same-session-id' });
+        await act(async () => {
+            rerender({ sessionId: 'same-session-id' });
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        });
 
         // Should not call getSessionById again
         expect(mockGetSessionById).not.toHaveBeenCalled();

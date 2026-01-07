@@ -1,0 +1,59 @@
+{
+  "Items": [
+    {
+      "id": "user-mcp-001",
+      "name": "Personal Weather API",
+      "url": "https://api.weather.example.com/mcp",
+      "description": "Personal weather service integration",
+      "created": "2024-01-15T10:30:00Z",
+      "owner": "admin",
+      "status": "active",
+      "groups": ["weather", "public"],
+      "isOwner": true,
+      "canUse": true,
+      "customHeaders": {
+        "X-API-Key": "weather-api-key"
+      },
+      "clientConfig": {
+        "name": "weather-client",
+        "version": "1.0.0"
+      }
+    },
+    {
+      "id": "user-mcp-002",
+      "name": "Document Processing",
+      "url": "https://docs.example.com/mcp",
+      "description": "Document analysis and processing service",
+      "created": "2024-01-10T08:15:00Z",
+      "owner": "admin",
+      "status": "active",
+      "groups": ["documents", "admin"],
+      "isOwner": true,
+      "canUse": true,
+      "customHeaders": {},
+      "clientConfig": {
+        "name": "doc-processor",
+        "version": "2.1.0"
+      }
+    },
+    {
+      "id": "user-mcp-003",
+      "name": "Analytics Service",
+      "url": "https://analytics.example.com/mcp",
+      "description": "Data analytics and reporting",
+      "created": "2024-01-12T12:45:00Z",
+      "owner": "testuser",
+      "status": "inactive",
+      "groups": ["analytics"],
+      "isOwner": false,
+      "canUse": true,
+      "customHeaders": {
+        "Authorization": "Bearer analytics-token"
+      },
+      "clientConfig": {
+        "name": "analytics-client",
+        "version": "1.5.2"
+      }
+    }
+  ]
+}

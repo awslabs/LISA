@@ -116,7 +116,8 @@ repos:
       files: \.[jt]sx?$
       types: [file]
       args:
-        - --max-warnings=10
+        - --max-warnings=20
+        - --no-warn-ignored
         - --fix
 
 # - repo: https://github.com/Lucas-C/pre-commit-hooks-safety

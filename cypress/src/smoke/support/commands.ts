@@ -29,15 +29,20 @@ const API_STUBS = [
     'configuration',
     'health',
     'session',
+    'api-tokens',
+    'mcp',
+    'mcp-server',
+    'mcp-workbench',
+    'collections',
 ];
 
 /**
- * Custom command to log in a user via stubbed OAuth2/OIDC.
- * Can log in as an 'admin' or a normal 'user'.
+ * Setup API stubs and OIDC mocks for a given role.
+ * This is the core login logic extracted for reuse.
  *
- * @param {'admin'|'user'} role - The role to simulate (defaults to 'user').
+ * @param {'admin'|'user'} role - The role to simulate.
  */
-Cypress.Commands.add('loginAs', (role = 'user') => {
+function setupLoginStubs (role: 'admin' | 'user') {
     const isAdmin = role === 'admin';
 
     let apiBase: string = '/dev/';
@@ -56,6 +61,9 @@ Cypress.Commands.add('loginAs', (role = 'user') => {
         const alias = `stub${name.charAt(0).toUpperCase()}${name.slice(1)}`;
         cy.intercept('GET', `**/${apiBase}/${name}*`, { fixture: `${name}.json` }).as(alias);
     });
+
+    // --- Additional alias for session endpoint (used in chat tests) ---
+    cy.intercept('GET', `**/${apiBase}/session*`, { fixture: 'session.json' }).as('stubSession');
 
     // --- Stub the OIDC /token endpoint with a fresh, valid-looking JWT ---
     cy.fixture('oidc-user.json').then((user) => {
@@ -108,8 +116,32 @@ Cypress.Commands.add('loginAs', (role = 'user') => {
         statusCode: 200,
         fixture: 'openid-config.json',
     }).as('stubOidc');
+}
+
+/**
+ * Custom command to log in a user via stubbed OAuth2/OIDC.
+ * Can log in as an 'admin' or a normal 'user'.
+ * This performs the actual login flow and should be wrapped in cy.session() by the caller.
+ *
+ * @param {'admin'|'user'} role - The role to simulate (defaults to 'user').
+ */
+Cypress.Commands.add('loginAs', (role = 'user') => {
+    setupLoginStubs(role);
 
     // --- Trigger the login flow in the UI ---
     cy.visit('/');
     cy.contains('Sign in').click();
+
+    // Wait for login to complete by checking we're no longer on login screen
+    cy.contains('Sign in').should('not.exist');
+});
+
+/**
+ * Custom command to setup API stubs for a given role.
+ * This should be called in beforeEach after cy.session() to re-establish intercepts.
+ *
+ * @param {'admin'|'user'} role - The role to simulate.
+ */
+Cypress.Commands.add('setupStubs', (role = 'user') => {
+    setupLoginStubs(role);
 });

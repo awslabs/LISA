@@ -26,6 +26,8 @@ import { RESTAPI_URI, RESTAPI_VERSION, markLastUserMessageAsGuardrailTriggered }
 import { IModel } from '@/shared/model/model-management.model';
 import { GenerateLLMRequestParams, IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { ChatMemory } from '@/shared/util/chat-memory';
+import { useAppDispatch } from '@/config/store';
+import { sessionApi } from '@/shared/reducers/session.reducer';
 
 // Custom hook for chat generation
 export const useChatGeneration = ({
@@ -51,6 +53,7 @@ export const useChatGeneration = ({
     auth: any;
     notificationService: any;
 }) => {
+    const dispatch = useAppDispatch();
     const [isRunning, setIsRunning] = useState(false);
     const [isStreaming, setIsStreaming] = useState(false);
     const stopRequested = useRef(false);
@@ -79,6 +82,10 @@ export const useChatGeneration = ({
         setIsRunning(true);
         stopRequested.current = false;
         const startTime = performance.now(); // Start client timer
+
+        // Capture session state before adding messages to determine if this is a new session
+        const isNewSession = session.history.length === 0;
+
         try {
             // Handle image generation mode specifically
             if (isImageGenerationMode) {
@@ -403,7 +410,7 @@ export const useChatGeneration = ({
                 } else {
                     const response = await llmClient.invoke(messages, { tools: modelSupportsTools ? openAiTools : undefined });
                     const content = response.content as string;
-                    const usage = response.response_metadata.tokenUsage;
+                    const usage = (response.response_metadata as any)?.tokenUsage;
 
                     // Check if guardrail was triggered
                     const isGuardrailTriggered = (response as any)?.id === 'guardrail-response';
@@ -447,6 +454,16 @@ export const useChatGeneration = ({
             throw error;
         } finally {
             setIsRunning(false);
+            // Invalidate session cache after any message is sent to ensure fresh data
+            // This ensures session details are up-to-date when viewed from other components
+            if (session.sessionId) {
+                // Invalidate session cache after any message is sent to ensure fresh data
+                // For new sessions, also invalidate the session list so they appear in the sidebar
+                dispatch(sessionApi.util.invalidateTags([
+                    { type: 'session' as const, id: session.sessionId },
+                    ...(isNewSession ? ['sessions' as const] : [])
+                ]));
+            }
         }
     };
 

@@ -100,10 +100,9 @@ export function navigateToAdminPage (menuItemName: string) {
     // Wait for dropdown animation
     cy.wait(500);
 
-    // Find and click the menu item
-    cy.get('[role="menuitem"]')
+    // Find and click the menu item by text content
+    cy.contains('[role="menuitem"]', menuItemName)
         .filter(':visible')
-        .contains(menuItemName)
         .click();
 }
 

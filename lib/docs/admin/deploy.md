@@ -196,6 +196,30 @@ restApiConfig:
   sslCertIamArn: arn:<aws-partition>:iam::<account-number>:server-certificate/<certificate-name>
 ```
 
+#### Accepting Self-Signed Certificate in Browser
+
+When using a self-signed certificate, the LISA UI will load normally, but API calls from the UI to the SERVE ALB (REST API ALB) will be blocked by the browser due to the self-signed certificate. To allow the UI to communicate with the SERVE ALB, you need to accept the certificate for the SERVE ALB domain:
+
+1. **Navigate to the SERVE ALB Domain**: Open a new browser tab and navigate directly to the REST API ALB domain (the serve domain). You can test this by navigating to `https://<serve-alb-domain>/health` or any other endpoint.
+2. **Accept the Certificate**: When the browser displays a security warning about the self-signed certificate:
+   - Look for an "Advanced" or "Show Details" option
+   - Click "Proceed to [domain]" or "Accept the Risk and Continue"
+   - Some browsers may show this as a "rejected host" warning - you can accept it to proceed
+
+**Alternative Method - Using Developer Tools**:
+1. **Open Developer Tools**: Press `F12` or right-click and select "Inspect" to open your browser's developer tools
+2. **Navigate to the LISA UI**
+3. **Go to the Network Tab**: This will show you the API requests that are being blocked when the LISA UI tries to connect to the SERVE ALB
+4. **Click on a Failed Request**: Click on a failed request (typically showing a certificate error) to see the SERVE ALB domain
+5. **Navigate to the Domain**: Copy the SERVE ALB domain from the failed request and navigate to it directly in a new tab to accept the certificate
+
+**Note**: The exact steps vary by browser:
+- **Chrome/Edge**: Click "Advanced" → "Proceed to [domain] (unsafe)"
+- **Firefox**: Click "Advanced" → "Accept the Risk and Continue"
+- **Safari**: Click "Show Details" → "visit this website" → "Visit Website"
+
+After accepting the certificate for the SERVE ALB domain, the UI will be able to make API calls to the SERVE ALB successfully. The browser will remember your choice for this domain.
+
 ### Step 9: Customize Model Deployment
 
 In the `ecsModels` section of `config-custom.yaml`, allow our deployment process to pull the model weights for you.

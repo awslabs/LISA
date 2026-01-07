@@ -35,6 +35,7 @@ from ....utils.guardrails import (
     get_model_guardrails,
     is_guardrail_violation,
 )
+from ....utils.metrics import publish_metrics_event
 
 # Local LiteLLM installation URL. By default, LiteLLM runs on port 4000. Change the port here if the
 # port was changed as part of the LiteLLM startup in entrypoint.sh
@@ -293,6 +294,10 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
         if guardrail_response:
             return guardrail_response
 
+        # Publish metrics for streaming chat completions (API users)
+        if api_path in ["chat/completions", "v1/chat/completions"] and response.status_code == 200:
+            await publish_metrics_event(request, params, response.status_code)
+
         # Normal streaming (no error or non-guardrail error)
         # Use guardrail-aware generator for chat/completions endpoints
         if api_path in ["chat/completions", "v1/chat/completions"]:
@@ -314,4 +319,9 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
 
         if response.status_code != 200:
             logger.error(f"LiteLLM error response: {response.text}")
+
+        # Publish metrics for chat completions (API users)
+        if api_path in ["chat/completions", "v1/chat/completions"]:
+            await publish_metrics_event(request, params, response.status_code)
+
         return JSONResponse(response.json(), status_code=response.status_code)

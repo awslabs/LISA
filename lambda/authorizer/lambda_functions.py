@@ -66,7 +66,7 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
         # Add management token to Admin groups
         groups = json.dumps([admin_group])
         allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=username)
-        allow_policy["context"] = {"username": username, "groups": groups}
+        allow_policy["context"] = {"username": username, "groups": groups, "authType": "management"}
         logger.debug(f"Generated policy: {allow_policy}")
         return allow_policy
 
@@ -78,7 +78,7 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
             groups = json.dumps(token_info.get("groups", []))
 
             allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=username)
-            allow_policy["context"] = {"username": username, "groups": groups}
+            allow_policy["context"] = {"username": username, "groups": groups, "authType": "api_token"}
             logger.debug(f"Generated policy: {allow_policy}")
             return allow_policy
 
@@ -88,7 +88,7 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: i
         groups = json.dumps(get_property_path(jwt_data, jwt_groups_property) or [])
         username = find_jwt_username(jwt_data)
         allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=username)
-        allow_policy["context"] = {"username": username, "groups": groups}
+        allow_policy["context"] = {"username": username, "groups": groups, "authType": "jwt"}
 
         if not is_in_user_group:
             return deny_policy

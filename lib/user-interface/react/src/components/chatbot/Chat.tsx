@@ -86,6 +86,7 @@ export default function Chat ({ sessionId }) {
     const notificationService = useNotificationService(dispatch);
     const modelSelectRef = useRef<HTMLInputElement>(null);
     const bottomRef = useRef(null);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
     const auth = useAuth();
     const userName = useAppSelector(selectCurrentUsername);
 
@@ -127,6 +128,7 @@ export default function Chat ({ sessionId }) {
     const [hasUserInteractedWithModel, setHasUserInteractedWithModel] = useState(false);
     const [mermaidRenderComplete, setMermaidRenderComplete] = useState(0);
     const [dynamicMaxRows, setDynamicMaxRows] = useState(8);
+    const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
 
     // Callback to handle Mermaid diagram rendering completion
     const handleMermaidRenderComplete = useCallback(() => {
@@ -480,10 +482,42 @@ export default function Chat ({ sessionId }) {
     }, [sessionHealth]);
 
     useEffect(() => {
-        if (bottomRef.current) {
-            bottomRef.current.scrollIntoView({ behavior: 'smooth' });
+        if (shouldAutoScroll && bottomRef.current) {
+            // Use 'auto' instead of 'smooth' to prevent jagged scrolling during rapid streaming
+            // which was breaking AT_BOTTOM_THRESHOLD disabling auto-scroll without user input
+            bottomRef.current.scrollIntoView({ behavior: 'auto' });
         }
-    }, [isStreaming, session, mermaidRenderComplete]);
+    }, [isStreaming, session, mermaidRenderComplete, shouldAutoScroll]);
+
+    // Scroll event listener to detect scroll position
+    useEffect(() => {
+        const scrollContainer = scrollContainerRef.current;
+        if (!scrollContainer) return;
+
+        const handleScroll = () => {
+            // Check if we're at the bottom
+            const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
+            const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+
+            // Small threshold to account for rounding issues
+            const AT_BOTTOM_THRESHOLD = 30;
+
+            if (distanceFromBottom <= AT_BOTTOM_THRESHOLD) {
+                // At bottom - ensure auto-scroll is enabled
+                if (!shouldAutoScroll) {
+                    setShouldAutoScroll(true);
+                }
+            } else {
+                // Not at bottom - disable auto-scroll
+                if (shouldAutoScroll) {
+                    setShouldAutoScroll(false);
+                }
+            }
+        };
+
+        scrollContainer.addEventListener('scroll', handleScroll);
+        return () => scrollContainer.removeEventListener('scroll', handleScroll);
+    }, [shouldAutoScroll]);
 
     // Reset tool call counter when session changes
     useEffect(() => {
@@ -512,6 +546,9 @@ export default function Chat ({ sessionId }) {
 
         // Reset tool call counter when human provides input
         consecutiveToolCallCount.current = 0;
+
+        // Re-enable auto-scroll when user sends a new message
+        setShouldAutoScroll(true);
 
         setSession((prev) => ({
             ...prev,
@@ -717,7 +754,7 @@ export default function Chat ({ sessionId }) {
                     }
                 />
             )}
-            <div className='overflow-y-auto h-[calc(100vh-20rem)] bottom-8'>
+            <div ref={scrollContainerRef} className='overflow-y-auto h-[calc(100vh-20rem)] bottom-8'>
                 <SpaceBetween direction='vertical' size='l'>
                     {loadingSession && (
                         <Box textAlign='center' padding='l'>

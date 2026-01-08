@@ -45,6 +45,7 @@ import { GuardrailsTable } from '../models/guardrails-table';
 export type LisaServeApplicationProps = {
     vpc: Vpc;
     securityGroups: ISecurityGroup[];
+    metricsQueueUrl?: string;
 } & BaseProps & StackProps;
 
 /**
@@ -248,6 +249,12 @@ export class LisaServeApplicationConstruct extends Construct {
             container.addEnvironment('REGISTERED_MODELS_PS_NAME', this.modelsPs.parameterName);
             container.addEnvironment('LITELLM_DB_INFO_PS_NAME', litellmDbConnectionInfoPs.parameterName);
             container.addEnvironment('GUARDRAILS_TABLE_NAME', guardrailsTableName);
+            // Add metrics queue URL if provided
+            if (props.metricsQueueUrl) {
+                // Get the queue URL from SSM parameter
+                const queueUrl = StringParameter.valueForStringParameter(scope, props.metricsQueueUrl);
+                container.addEnvironment('USAGE_METRICS_QUEUE_URL', queueUrl);
+            }
         }
         restApi.node.addDependency(this.modelsPs);
         restApi.node.addDependency(litellmDbConnectionInfoPs);
@@ -308,6 +315,26 @@ export class LisaServeApplicationConstruct extends Construct {
             litellmDbConnectionInfoPs.grantRead(restRole);
             restRole.attachInlinePolicy(invocation_permissions);
             restRole.attachInlinePolicy(guardrails_permissions);
+
+            // Grant SQS send permissions if metrics queue URL is provided
+            if (props.metricsQueueUrl) {
+                // Get the queue name from SSM parameter
+                const queueName = StringParameter.valueForStringParameter(
+                    scope,
+                    `${config.deploymentPrefix}/queue-name/usage-metrics`
+                );
+                const sqs_permissions = new Policy(scope, 'SQSMetricsPerms', {
+                    statements: [
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: ['sqs:SendMessage'],
+                            resources: [`arn:${config.partition}:sqs:${config.region}:${config.accountNumber}:${queueName}`],
+                        }),
+                    ]
+                });
+                restRole.attachInlinePolicy(sqs_permissions);
+            }
+
             if (serveRole) {
                 this.modelsPs.grantRead(serveRole);
                 litellmDbConnectionInfoPs.grantRead(serveRole);

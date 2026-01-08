@@ -93,6 +93,12 @@ export class MetricsConstruct extends Construct {
             stringValue: usageMetricsQueue.queueName,
         });
 
+        // Store queue URL in SSM for cross-stack access
+        new StringParameter(this, 'UsageMetricsQueueUrl', {
+            parameterName: `${config.deploymentPrefix}/queue-url/usage-metrics`,
+            stringValue: usageMetricsQueue.queueUrl,
+        });
+
         const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
             restApiId: restApiId,
             rootResourceId: rootResourceId,
@@ -107,9 +113,18 @@ export class MetricsConstruct extends Construct {
         dashboard.addWidgets(
             // Dashboard Title
             new cloudwatch.TextWidget({
-                markdown: '# LISA Metrics Dashboard',
+                markdown: '# **LISA Metrics Dashboard**',
                 width: 24,
                 height: 1,
+                background: cloudwatch.TextWidgetBackground.TRANSPARENT
+            }),
+
+            // Overview (Aggregate) metrics section
+            new cloudwatch.TextWidget({
+                markdown: '## **Overview (Aggregate)**',
+                width: 24,
+                height: 1,
+                background: cloudwatch.TextWidgetBackground.TRANSPARENT
             }),
             // Total Prompts Widget
             new cloudwatch.GraphWidget({
@@ -122,7 +137,7 @@ export class MetricsConstruct extends Construct {
                         period: Duration.hours(1),
                     }),
                 ],
-                width: 12,
+                width: 8,
                 height: 6,
             }),
             // Total RAG Usage Widget
@@ -136,7 +151,7 @@ export class MetricsConstruct extends Construct {
                         period: Duration.hours(1),
                     }),
                 ],
-                width: 12,
+                width: 8,
                 height: 6,
             }),
             // Total MCP Tool Calls Widget
@@ -150,46 +165,7 @@ export class MetricsConstruct extends Construct {
                         period: Duration.hours(1),
                     }),
                 ],
-                width: 12,
-                height: 6,
-            }),
-            // Prompts by User Widget
-            new cloudwatch.GraphWidget({
-                title: 'Prompts by User',
-                left: [
-                    new cloudwatch.MathExpression({
-                        expression: 'SEARCH(\'{LISA/UsageMetrics,UserId} MetricName="UserPromptCount"\', \'Sum\', 3600)',
-                        label: '',
-                        period: Duration.hours(1),
-                    }),
-                ],
-                width: 12,
-                height: 6,
-            }),
-            // RAG Usage by User Widget
-            new cloudwatch.GraphWidget({
-                title: 'RAG Usage by User',
-                left: [
-                    new cloudwatch.MathExpression({
-                        expression: 'SEARCH(\'{LISA/UsageMetrics,UserId} MetricName="UserRAGUsageCount"\', \'Sum\', 3600)',
-                        label: '',
-                        period: Duration.hours(1),
-                    }),
-                ],
-                width: 12,
-                height: 6,
-            }),
-            // MCP Tool Calls by User Widget
-            new cloudwatch.GraphWidget({
-                title: 'MCP Tool Calls by User',
-                left: [
-                    new cloudwatch.MathExpression({
-                        expression: 'SEARCH(\'{LISA/UsageMetrics,UserId} MetricName="UserMCPToolCalls"\', \'Sum\', 3600)',
-                        label: '',
-                        period: Duration.hours(1),
-                    }),
-                ],
-                width: 12,
+                width: 8,
                 height: 6,
             }),
             // MCP Tool Calls by Tool Widget
@@ -202,7 +178,7 @@ export class MetricsConstruct extends Construct {
                         period: Duration.hours(1),
                     }),
                 ],
-                width: 12,
+                width: 8,
                 height: 6,
             }),
             // Unique Users Widget
@@ -216,7 +192,7 @@ export class MetricsConstruct extends Construct {
                         period: Duration.days(1),
                     }),
                 ],
-                width: 12,
+                width: 8,
                 height: 6,
             }),
             // Users by Group Widget
@@ -230,8 +206,63 @@ export class MetricsConstruct extends Construct {
                     }),
                 ],
                 view: cloudwatch.GraphWidgetView.PIE,
-                width: 12,
+                width: 8,
                 height: 6,
+            }),
+
+            // User Metrics section
+            new cloudwatch.TextWidget({
+                markdown: '## **User Usage Metrics**',
+                width: 24,
+                height: 1,
+                background: cloudwatch.TextWidgetBackground.TRANSPARENT
+            }),
+            // Prompts by User Widget
+            new cloudwatch.GraphWidget({
+                title: 'Prompts by User',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: 'SEARCH(\'{LISA/UsageMetrics,UserId} MetricName="UserPromptCount"\', \'Sum\', 3600)',
+                        label: '',
+                        period: Duration.hours(1),
+                    }),
+                ],
+                width: 8,
+                height: 6,
+            }),
+            // RAG Usage by User Widget
+            new cloudwatch.GraphWidget({
+                title: 'RAG Usage by User',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: 'SEARCH(\'{LISA/UsageMetrics,UserId} MetricName="UserRAGUsageCount"\', \'Sum\', 3600)',
+                        label: '',
+                        period: Duration.hours(1),
+                    }),
+                ],
+                width: 8,
+                height: 6,
+            }),
+            // MCP Tool Calls by User Widget
+            new cloudwatch.GraphWidget({
+                title: 'MCP Tool Calls by User',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: 'SEARCH(\'{LISA/UsageMetrics,UserId} MetricName="UserMCPToolCalls"\', \'Sum\', 3600)',
+                        label: '',
+                        period: Duration.hours(1),
+                    }),
+                ],
+                width: 8,
+                height: 6,
+            }),
+
+            // Group Metrics section
+            new cloudwatch.TextWidget({
+                markdown: '## **Group Usage Metrics**',
+                width: 24,
+                height: 1,
+                background: cloudwatch.TextWidgetBackground.TRANSPARENT
             }),
             // Group Prompt Counts Widget
             new cloudwatch.GraphWidget({
@@ -243,7 +274,7 @@ export class MetricsConstruct extends Construct {
                         period: Duration.hours(1),
                     }),
                 ],
-                width: 12,
+                width: 8,
                 height: 6,
             }),
             // Group RAG Usage Widget
@@ -256,7 +287,7 @@ export class MetricsConstruct extends Construct {
                         period: Duration.hours(1),
                     }),
                 ],
-                width: 12,
+                width: 8,
                 height: 6,
             }),
             // Group MCP Usage Widget
@@ -269,7 +300,7 @@ export class MetricsConstruct extends Construct {
                         period: Duration.hours(1),
                     }),
                 ],
-                width: 12,
+                width: 8,
                 height: 6,
             }),
         );

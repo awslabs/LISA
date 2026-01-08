@@ -444,3 +444,40 @@ class Authorizer:
         request.state.api_token_info = token_info
         request.state.username = token_info.get("username", "api-token")
         request.state.groups = token_info.get("groups", [])
+
+
+def is_api_user(request: Request) -> bool:
+    """
+    Check if the user authenticated with an API token.
+
+    Args:
+        request: The FastAPI request object
+
+    Returns:
+        True if user authenticated via API token, False otherwise
+    """
+    return hasattr(request.state, "api_token_info")
+
+
+def get_user_context(request: Request) -> tuple[str, list[str]]:
+    """
+    Get user information from the request.
+
+    Works with both API token and JWT authentication.
+
+    Args:
+        request: The FastAPI request object
+
+    Returns:
+        Tuple of (username, groups)
+    """
+    if is_api_user(request):
+        token_info = request.state.api_token_info
+        username = token_info.get("username", "api-token")
+        groups = token_info.get("groups", [])
+    else:
+        # JWT-authenticated user or management token
+        username = getattr(request.state, "username", "unknown")
+        groups = getattr(request.state, "groups", [])
+
+    return username, groups

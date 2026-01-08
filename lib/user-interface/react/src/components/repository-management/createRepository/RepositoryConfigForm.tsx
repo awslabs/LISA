@@ -48,11 +48,16 @@ export function RepositoryConfigForm (props: FormProps<RagRepositoryConfig> & Re
                 errorText={formErrors?.repositoryId}
                 description={shape.repositoryId.description}
                 constraintText='Required. Only lowercase alphanumeric characters and hyphens allowed.'>
-                <Input value={item.repositoryId} inputMode='text'
+                <Input 
+                    data-testid='repository-id-input'
+                    value={item.repositoryId} 
+                    inputMode='text'
                     onBlur={() => touchFields(['repositoryId'])}
                     onChange={({ detail }) => {
                         setFields({ 'repositoryId': detail.value });
-                    }} disabled={isEdit} placeholder='postgres-rag' />
+                    }} 
+                    disabled={isEdit} 
+                    placeholder='postgres-rag' />
             </FormField>
             <FormField label='Repository Name - optional'
                 errorText={formErrors?.repositoryName}
@@ -88,6 +93,7 @@ export function RepositoryConfigForm (props: FormProps<RagRepositoryConfig> & Re
                 errorText={formErrors?.type}
                 description={shape.type.description}>
                 <Select
+                    data-testid='repository-type-select'
                     selectedOption={{ label: item.type, value: item.type }}
                     onChange={({ detail }) => {
                         if (item.type === detail.selectedOption.value) {

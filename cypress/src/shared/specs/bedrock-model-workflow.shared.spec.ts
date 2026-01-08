@@ -36,6 +36,19 @@ import {
     verifyChatResponse,
     deleteAllSessions,
 } from '../../support/modelFormHelpers';
+import {
+    RepositoryConfig,
+    navigateToRepositoryManagement,
+    openCreateRepositoryWizard,
+    fillRepositoryConfig,
+    selectKnowledgeBase,
+    selectDataSource,
+    skipToCreateRepository,
+    completeRepositoryWizard,
+    waitForRepositoryCreationSuccess,
+    verifyRepositoryInList,
+    deleteRepositoryIfExists,
+} from '../../support/repositoryHelpers';
 
 // Amazon Nova Micro - cheapest Bedrock serverless model
 const DEFAULT_TEST_MODEL: BedrockModelConfig = {
@@ -47,12 +60,18 @@ const DEFAULT_TEST_MODEL: BedrockModelConfig = {
 
 export type BedrockWorkflowTestOptions = {
     modelConfig?: BedrockModelConfig;
+    repositoryConfig?: RepositoryConfig;
     skipChat?: boolean;
     skipCleanup?: boolean;
 };
 
 export function runBedrockModelWorkflowTests (options: BedrockWorkflowTestOptions = {}) {
     const testModel = options.modelConfig || DEFAULT_TEST_MODEL;
+    const testRepository: RepositoryConfig = options.repositoryConfig || {
+        repositoryId: `e2e-repo-${Date.now()}`,
+        knowledgeBaseName: 'test-bedrock-kb',
+        dataSourceIndex: 0,
+    };
     const testPrompt = 'Hello, respond with one word: working';
 
     it('Admin creates a Bedrock model via wizard', () => {
@@ -69,6 +88,23 @@ export function runBedrockModelWorkflowTests (options: BedrockWorkflowTestOption
         verifyModelInList(testModel.modelId);
     });
 
+    it('Admin creates a repository with the new Bedrock model', () => {
+        navigateToRepositoryManagement();
+
+        openCreateRepositoryWizard();
+        fillRepositoryConfig(testRepository);
+        selectKnowledgeBase(testRepository.knowledgeBaseName);
+        selectDataSource(testRepository.dataSourceIndex);
+        skipToCreateRepository();
+        completeRepositoryWizard();
+        waitForRepositoryCreationSuccess(testRepository.repositoryId);
+    });
+
+    it('New repository appears in RAG Management list', () => {
+        navigateToRepositoryManagement();
+        verifyRepositoryInList(testRepository.repositoryId);
+    });
+
     it('User selects new model in Chat and sends a message', () => {
         navigateAndVerifyChatPage();
         selectModelInChat(testModel.modelId);
@@ -79,6 +115,12 @@ export function runBedrockModelWorkflowTests (options: BedrockWorkflowTestOption
     it('Cleanup: delete all chat sessions', () => {
         navigateAndVerifyChatPage();
         deleteAllSessions();
+    });
+
+    it('Cleanup: delete test repository', () => {
+        navigateToRepositoryManagement();
+        cy.wait(2000);
+        deleteRepositoryIfExists(testRepository.repositoryId);
     });
 
     it('Cleanup: delete test model', () => {

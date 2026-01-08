@@ -269,7 +269,10 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
     }
 
     return (
-        <Modal size={'large'} onDismiss={() => {
+        <Modal 
+            data-testid='create-repository-modal'
+            size={'large'} 
+            onDismiss={() => {
             dispatch(
                 setConfirmationModal({
                     action: 'Discard',
@@ -283,6 +286,7 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
                 }));
         }} visible={visible} header={`${isEdit ? 'Update' : 'Create'} Repository`}>
             <Wizard
+                data-testid='create-repository-wizard'
                 i18nStrings={{
                     stepNumberLabel: (stepNumber) => `Step ${stepNumber}`,
                     collapsedStepsLabel: (stepNumber, stepsCount) => `Step ${stepNumber} of ${stepsCount}`,

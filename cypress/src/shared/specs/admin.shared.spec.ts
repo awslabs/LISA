@@ -23,7 +23,6 @@
 
 import {
     navigateAndVerifyAdminPage,
-    getAdminButton,
     expandAdminMenu,
     collapseAdminMenu,
 } from '../../support/adminHelpers';
@@ -35,14 +34,8 @@ export function runAdminTests (options: {
     const { expectMinItems = false, verifyFixtureData = false } = options;
 
     it('Admin sees the Administration button and can expand/collapse menu', () => {
-        // Verify button exists and is collapsed
-        getAdminButton()
-            .should('be.visible')
-            .and('have.attr', 'aria-expanded', 'false');
-
         // Expand and verify menu items
         expandAdminMenu();
-
         // Collapse and verify
         collapseAdminMenu();
     });

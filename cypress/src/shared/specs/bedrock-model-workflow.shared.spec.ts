@@ -32,6 +32,8 @@ import {
     verifyModelInList,
     deleteModelIfExists,
     selectModelInChat,
+    sendChatMessage,
+    verifyChatResponse,
     deleteAllSessions,
 } from '../../support/modelFormHelpers';
 import {
@@ -92,9 +94,6 @@ const DEFAULT_TEST_MODEL: BedrockModelConfig = {
 
 export type BedrockWorkflowTestOptions = {
     modelConfig?: BedrockModelConfig;
-    repositoryConfig?: RepositoryConfig;
-    collectionConfig?: CollectionConfig;
-    promptTemplateConfig?: PromptTemplateConfig;
     skipChat?: boolean;
     skipCleanup?: boolean;
     testDocumentPath?: string;

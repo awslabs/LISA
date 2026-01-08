@@ -55,7 +55,7 @@
     "redux-persist": "^6.0.0",
     "regenerator-runtime": "^0.14.1",
     "rehype-katex": "^7.0.1",
-    "remark-breaks": "^4.0.0",
+    "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
     "tailwindcss": "^4.1.18",
     "tinyglobby": "^0.2.15",

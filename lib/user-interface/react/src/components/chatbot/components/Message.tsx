@@ -28,8 +28,8 @@ import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
 import ChatBubble from '@cloudscape-design/chat-components/chat-bubble';
 import Avatar from '@cloudscape-design/chat-components/avatar';
 
-import remarkBreaks from 'remark-breaks';
 import remarkMath from 'remark-math';
+import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 
@@ -220,7 +220,24 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
         if (Array.isArray(content)) {
             return content.map((item: any, index) => {
                 if (item.type === 'text' && typeof item.text === 'string') {
-                    return item.text.startsWith('File context:') ? null : <div key={index}>{getDisplayableMessage(item.text, message.type === MessageTypes.AI ? ragCitations : undefined)}</div>;
+                    if (item.text.startsWith('File context:')) return null;
+
+                    const displayableText = getDisplayableMessage(item.text, message.type === MessageTypes.AI ? ragCitations : undefined);
+
+                    return (
+                        <div key={index} style={{ maxWidth: '60em' }}>
+                            {markdownDisplay ? (
+                                <ReactMarkdown
+                                    remarkPlugins={[remarkMath, remarkGfm]}
+                                    rehypePlugins={[rehypeKatex]}
+                                    children={displayableText}
+                                    components={markdownComponents}
+                                />
+                            ) : (
+                                <div style={{ whiteSpace: 'pre-line' }}>{displayableText}</div>
+                            )}
+                        </div>
+                    );
                 } else if (item.type === 'image_url' && item.image_url?.url) {
                     return message.type === MessageTypes.HUMAN ?
                         <img key={index} src={item.image_url.url} alt='User provided' style={{ maxWidth: '50%', maxHeight: '30em', marginTop: '8px' }} /> :
@@ -278,7 +295,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
             <div style={{ maxWidth: '60em' }}>
                 {markdownDisplay ? (
                     <ReactMarkdown
-                        remarkPlugins={[remarkBreaks, remarkMath]}
+                        remarkPlugins={[remarkMath, remarkGfm]}
                         rehypePlugins={[rehypeKatex]}
                         children={getDisplayableMessage(content, message.type === MessageTypes.AI ? ragCitations : undefined)}
                         components={markdownComponents}

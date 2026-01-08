@@ -93,7 +93,7 @@ def extract_messages_for_metrics(params: dict) -> list[dict]:
     return formatted_messages
 
 
-async def publish_metrics_event(request: Request, params: dict, response_status: int) -> None:
+def publish_metrics_event(request: Request, params: dict, response_status: int) -> None:
     """
     Publish metrics event to SQS queue for API users
 

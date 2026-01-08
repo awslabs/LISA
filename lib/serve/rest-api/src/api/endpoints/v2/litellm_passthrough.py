@@ -322,6 +322,6 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
 
         # Publish metrics for chat completions (API users)
         if api_path in ["chat/completions", "v1/chat/completions"]:
-            await publish_metrics_event(request, params, response.status_code)
+            publish_metrics_event(request, params, response.status_code)
 
         return JSONResponse(response.json(), status_code=response.status_code)

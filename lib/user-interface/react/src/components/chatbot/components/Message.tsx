@@ -420,7 +420,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                 />
                             }
                         >
-                            <div className="message-content" style={{ maxWidth: '60em' }}>
+                            <div className='message-content' style={{ maxWidth: '60em' }}>
                                 {renderContent(message.content)}
                             </div>
                         </ChatBubble>

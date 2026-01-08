@@ -225,7 +225,7 @@ export default function Chat ({ sessionId }) {
         setModelFilterValue(selectedModel?.modelId ?? '');
     }, [selectedModel]);
 
-    const { memory, setMemory, metadata } = useMemory(
+    const { memory, metadata } = useMemory(
         session,
         chatConfiguration,
         selectedModel,
@@ -643,9 +643,8 @@ export default function Chat ({ sessionId }) {
                 setInternalSessionId={setInternalSessionId}
                 setSession={setSession}
                 handleSendGenerateRequest={handleSendGenerateRequest}
-                setMemory={setMemory}
                 // eslint-disable-next-line react-hooks/exhaustive-deps
-            />), conditionalDeps([modals.documentSummarization], [modals.documentSummarization], [modals.documentSummarization, openModal, closeModal, fileContext, setFileContext, setUserPrompt, userPrompt, selectedModel, setSelectedModel, chatConfiguration, setChatConfiguration, auth.user?.profile.sub, setInternalSessionId, setSession, handleSendGenerateRequest, setMemory])) }
+            />), conditionalDeps([modals.documentSummarization], [modals.documentSummarization], [modals.documentSummarization, openModal, closeModal, fileContext, setFileContext, setUserPrompt, userPrompt, selectedModel, setSelectedModel, chatConfiguration, setChatConfiguration, auth.user?.profile.sub, setInternalSessionId, setSession, handleSendGenerateRequest])) }
 
             {useMemo(() => (<SessionConfiguration
                 chatConfiguration={chatConfiguration}

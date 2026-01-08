@@ -43,7 +43,6 @@ export default defineConfig({
     e2e: {
         specPattern: `${PROJECT_ROOT}/src/e2e/specs/**/*.e2e.spec.ts`,
         supportFile: `${PROJECT_ROOT}/src/e2e/support/index.ts`,
-        experimentalStudio: true,
         fixturesFolder: `${PROJECT_ROOT}/src/e2e/fixtures`,
         setupNodeEvents () {
         },

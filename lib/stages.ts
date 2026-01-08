@@ -317,6 +317,22 @@ export class LisaServeApplicationStage extends Stage {
             mcpApiStack.addDependency(apiBaseStack);
             this.stacks.push(mcpApiStack);
         }
+        let metricsStack: LisaMetricsStack | undefined;
+        if (config.deployMetrics) {
+            metricsStack = new LisaMetricsStack(this, 'LisaMetrics', {
+                ...baseStackProps,
+                authorizer: apiBaseStack.authorizer!,
+                stackName: createCdkId([config.deploymentName, config.appName, 'metrics', config.deploymentStage]),
+                description: `LISA-metrics: ${config.deploymentName}-${config.deploymentStage}`,
+                restApiId: apiBaseStack.restApiId,
+                rootResourceId: apiBaseStack.rootResourceId,
+                securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
+                vpc: networkingStack.vpc,
+            });
+            metricsStack.addDependency(apiBaseStack);
+            metricsStack.addDependency(coreStack);
+            this.stacks.push(metricsStack);
+        }
 
         if (config.deployServe) {
             const serveStack = new LisaServeApplicationStack(this, 'LisaServe', {
@@ -325,6 +341,7 @@ export class LisaServeApplicationStage extends Stage {
                 stackName: createCdkId([config.deploymentName, config.appName, 'serve', config.deploymentStage]),
                 vpc: networkingStack.vpc,
                 securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
+                metricsQueueUrl: metricsStack ? `${config.deploymentPrefix}/queue-url/usage-metrics` : undefined,
             });
             this.stacks.push(serveStack);
             serveStack.addDependency(networkingStack);
@@ -383,25 +400,6 @@ export class LisaServeApplicationStage extends Stage {
                 ragStack.addDependency(apiBaseStack);
                 this.stacks.push(ragStack);
                 apiDeploymentStack.addDependency(ragStack);
-            }
-
-            // Declare metricsStack here so that we can reference it in chatStack
-            let metricsStack: LisaMetricsStack | undefined;
-            if (config.deployMetrics) {
-                metricsStack = new LisaMetricsStack(this, 'LisaMetrics', {
-                    ...baseStackProps,
-                    authorizer: apiBaseStack.authorizer!,
-                    stackName: createCdkId([config.deploymentName, config.appName, 'metrics', config.deploymentStage]),
-                    description: `LISA-metrics: ${config.deploymentName}-${config.deploymentStage}`,
-                    restApiId: apiBaseStack.restApiId,
-                    rootResourceId: apiBaseStack.rootResourceId,
-                    securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
-                    vpc: networkingStack.vpc,
-                });
-                metricsStack.addDependency(apiBaseStack);
-                metricsStack.addDependency(coreStack);
-                apiDeploymentStack.addDependency(metricsStack);
-                this.stacks.push(metricsStack);
             }
 
             if (config.deployChat) {

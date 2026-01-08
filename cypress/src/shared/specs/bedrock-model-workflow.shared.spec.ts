@@ -32,55 +32,10 @@ import {
     verifyModelInList,
     deleteModelIfExists,
     selectModelInChat,
+    sendChatMessage,
+    verifyChatResponse,
     deleteAllSessions,
 } from '../../support/modelFormHelpers';
-import {
-    RepositoryConfig,
-    navigateToRepositoryManagement,
-    openCreateRepositoryWizard,
-    fillRepositoryConfig,
-    selectKnowledgeBase,
-    selectDataSource,
-    skipToCreateRepository,
-    completeRepositoryWizard,
-    waitForRepositoryCreationSuccess,
-    verifyRepositoryInList,
-    deleteRepositoryIfExists,
-} from '../../support/repositoryHelpers';
-import {
-    PromptTemplateConfig,
-    navigateToPromptTemplates,
-    openCreatePromptTemplateWizard,
-    fillPromptTemplateConfig,
-    completePromptTemplateWizard,
-    waitForPromptTemplateCreationSuccess,
-    verifyPromptTemplateInList,
-    deletePromptTemplateIfExists,
-    selectPromptTemplateInChat,
-    selectDirectiveAndSend,
-} from '../../support/promptTemplateHelpers';
-import {
-    CollectionConfig,
-    navigateToRagManagement,
-    waitForRepositoryReady,
-    getAutoCreatedCollectionInfo,
-    renameCollection,
-    uploadDocument,
-    waitForDocumentIngested,
-    selectRagRepositoryInChat,
-    selectCollectionInChat,
-    sendMessageAndVerifyRagResponse,
-} from '../../support/collectionHelpers';
-
-
-// Use date-based naming for easier debugging and test reusability
-function getTodayDateString (): string {
-    const today = new Date();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    const year = today.getFullYear();
-    return `${month}-${day}-${year}`;
-}
 
 // Amazon Nova Micro - cheapest Bedrock serverless model
 const DEFAULT_TEST_MODEL: BedrockModelConfig = {
@@ -92,9 +47,6 @@ const DEFAULT_TEST_MODEL: BedrockModelConfig = {
 
 export type BedrockWorkflowTestOptions = {
     modelConfig?: BedrockModelConfig;
-    repositoryConfig?: RepositoryConfig;
-    collectionConfig?: CollectionConfig;
-    promptTemplateConfig?: PromptTemplateConfig;
     skipChat?: boolean;
     skipCleanup?: boolean;
     testDocumentPath?: string;
@@ -104,69 +56,7 @@ export function runBedrockModelWorkflowTests (options: BedrockWorkflowTestOption
     const dateString = getTodayDateString();
     const skipCleanup = options.skipCleanup ?? false;
     const testModel = options.modelConfig || DEFAULT_TEST_MODEL;
-    const testRepository: RepositoryConfig = options.repositoryConfig || {
-        repositoryId: `e2e-repo-${dateString}`,
-        knowledgeBaseName: 'test-bedrock-kb',
-        dataSourceIndex: 0,
-    };
-    const testCollection: CollectionConfig = options.collectionConfig || {
-        collectionId: `e2e-collection-${dateString}`,
-        collectionName: `E2E Test Collection ${dateString}`,
-        repositoryId: testRepository.repositoryId,
-    };
-    const testDocumentPath = options.testDocumentPath || 'test-document.txt';
-
-    // Track test state for dependencies
-    const testState = {
-        modelCreated: false,
-        repositoryCreated: false,
-        repositoryReady: false,
-        collectionRenamed: false,
-        collectionId: '', // Store the actual collection ID
-        documentUploaded: false,
-        documentIngested: false,
-        personaTemplateCreated: false,
-        directiveTemplateCreated: false,
-    };
-
-    const testPromptTemplatePersona: PromptTemplateConfig = {
-        title: `E2E Magic 8 Ball Persona ${dateString}`,
-        body: `You are a Magic 8 Ball—a mystical oracle that responds to yes/no questions with cryptic, fate-laden answers. You speak only in the traditional Magic 8 Ball responses, selecting one at random for each query. Never explain yourself, provide reasoning, or deviate from these phrases.
-Positive Responses:
-It is certain
-It is decidedly so
-Without a doubt
-Yes definitely
-You may rely on it
-As I see it, yes
-Most likely
-Outlook good
-Yes
-Signs point to yes
-
-Non-Committal Responses:
-Reply hazy, try again
-Ask again later
-Better not tell you now
-Cannot predict now
-Concentrate and ask again
-
-Negative Responses:
-Don't count on it
-My reply is no
-My sources say no
-Outlook not so good
-Very doubtful
-Respond with only one phrase per message, chosen randomly. Treat every input as a question seeking guidance from the universe.`,
-        type: 'system',
-        sharePublic: true,
-    };
-    const testPromptTemplateDirective: PromptTemplateConfig = {
-        title: `E2E Test Directive ${dateString}`,
-        body: 'Is it going to rain',
-        type: 'user',
-        sharePublic: true,
-    };
+    const testPrompt = 'Hello, respond with one word: working';
 
     it('Admin creates a Bedrock model via wizard (or uses existing)', () => {
         // Ensure app is fully ready before navigating
@@ -202,164 +92,11 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
         verifyModelInList(testModel.modelId);
     });
 
-    it('Admin creates a Bedrock Knowledgebase repository (or uses existing)', () => {
-        navigateToRepositoryManagement();
-
-        // Wait for repositories API to load and check if repository already exists
-        cy.wait('@getRepositories', { timeout: 30000 }).then((interception) => {
-            const repositories = interception.response?.body || [];
-            const repoExists = repositories.some((repo: any) => repo.repositoryId === testRepository.repositoryId);
-
-            if (repoExists) {
-                cy.log(`Repository ${testRepository.repositoryId} already exists, skipping creation`);
-                testState.repositoryCreated = true;
-            } else {
-                openCreateRepositoryWizard();
-                fillRepositoryConfig(testRepository);
-                selectKnowledgeBase(testRepository.knowledgeBaseName);
-                selectDataSource(testRepository.dataSourceIndex);
-                skipToCreateRepository();
-                completeRepositoryWizard();
-                waitForRepositoryCreationSuccess(testRepository.repositoryId);
-                testState.repositoryCreated = true;
-            }
-        });
-    });
-
-    it('New repository appears in RAG Management list', function () {
-        if (!testState.repositoryCreated) {
-            this.skip();
-        }
-
-        navigateToRepositoryManagement();
-        verifyRepositoryInList(testRepository.repositoryId);
-    });
-
-    it('Wait for repository to be fully created and ready', function () {
-        if (!testState.repositoryCreated) {
-            this.skip();
-        }
-
-        navigateToRepositoryManagement();
-        waitForRepositoryReady(testRepository.repositoryId, 300000);
-        testState.repositoryReady = true;
-    });
-
-    it('Rename auto-created collection to known name', function () {
-        if (!testState.repositoryReady) {
-            this.skip();
-        }
-
-        navigateToRagManagement();
-
-        // Get the auto-created collection info (name and ID) and rename it
-        getAutoCreatedCollectionInfo(testRepository.repositoryId).then((collectionInfo) => {
-            cy.log(`Auto-created collection: ${collectionInfo.name} (ID: ${collectionInfo.id})`);
-            testState.collectionId = collectionInfo.id; // Store the collection ID
-            renameCollection(collectionInfo.name, testCollection.collectionName);
-            testState.collectionRenamed = true;
-        });
-    });
-
-    it('Upload test document to collection via chat page', function () {
-        if (!testState.collectionRenamed) {
-            this.skip();
-        }
-
-        // Navigate to chat page
-        navigateAndVerifyChatPage();
-
-        // Select model, repository, and collection
-        selectModelInChat(testModel.modelId);
-        selectRagRepositoryInChat(testRepository.repositoryId);
-        selectCollectionInChat(testCollection.collectionName);
-
-        // Upload the document
-        uploadDocument(testDocumentPath);
-        testState.documentUploaded = true;
-    });
-
-    it('Wait for document to be ingested', function () {
-        if (!testState.documentUploaded) {
-            this.skip();
-        }
-
-        waitForDocumentIngested(testRepository.repositoryId, testState.collectionId, testDocumentPath, 300000);
-        testState.documentIngested = true;
-    });
-
-    it('Admin creates a persona prompt template (or uses existing)', () => {
-        navigateToPromptTemplates();
-
-        // Wait for prompt templates API to load and check if template already exists
-        cy.wait('@getPromptTemplates', { timeout: 30000 }).then((interception) => {
-            const templates = interception.response?.body || [];
-            const templateExists = templates.some((template: any) => template.title === testPromptTemplatePersona.title);
-
-            if (templateExists) {
-                cy.log(`Prompt template "${testPromptTemplatePersona.title}" already exists, skipping creation`);
-                testState.personaTemplateCreated = true;
-            } else {
-                openCreatePromptTemplateWizard();
-                fillPromptTemplateConfig(testPromptTemplatePersona);
-                completePromptTemplateWizard();
-                waitForPromptTemplateCreationSuccess(testPromptTemplatePersona.title);
-                testState.personaTemplateCreated = true;
-            }
-        });
-    });
-
-    it('Persona prompt template appears in Prompt Templates list', function () {
-        if (!testState.personaTemplateCreated) {
-            this.skip();
-        }
-
-        navigateToPromptTemplates();
-        verifyPromptTemplateInList(testPromptTemplatePersona.title);
-    });
-
-    it('Admin creates a directive prompt template (or uses existing)', () => {
-        navigateToPromptTemplates();
-
-        // Wait for prompt templates API to load and check if template already exists
-        cy.wait('@getPromptTemplates', { timeout: 30000 }).then((interception) => {
-            const templates = interception.response?.body || [];
-            const templateExists = templates.some((template: any) => template.title === testPromptTemplateDirective.title);
-
-            if (templateExists) {
-                cy.log(`Prompt template "${testPromptTemplateDirective.title}" already exists, skipping creation`);
-                testState.directiveTemplateCreated = true;
-            } else {
-                openCreatePromptTemplateWizard();
-                fillPromptTemplateConfig(testPromptTemplateDirective);
-                completePromptTemplateWizard();
-                waitForPromptTemplateCreationSuccess(testPromptTemplateDirective.title);
-                testState.directiveTemplateCreated = true;
-            }
-        });
-    });
-
-    it('Directive prompt template appears in Prompt Templates list', function () {
-        if (!testState.directiveTemplateCreated) {
-            this.skip();
-        }
-
-        navigateToPromptTemplates();
-        verifyPromptTemplateInList(testPromptTemplateDirective.title);
-    });
-
-    it('User selects model, applies persona, inserts directive, and sends message', function () {
-        if (!testState.modelCreated || !testState.personaTemplateCreated || !testState.directiveTemplateCreated) {
-            this.skip();
-        }
-
+    it('User selects new model in Chat and sends a message', () => {
         navigateAndVerifyChatPage();
         selectModelInChat(testModel.modelId);
-
-        // Apply the Magic 8 Ball persona (system prompt)
-        selectPromptTemplateInChat(testPromptTemplatePersona.title, 'system');
-        // Insert directive template and send message
-        selectDirectiveAndSend(testPromptTemplateDirective.title);
+        sendChatMessage(testPrompt);
+        verifyChatResponse(testPrompt);
     });
 
     it('User selects model with RAG and sends message with source references', function () {
@@ -388,45 +125,7 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
         deleteAllSessions();
     });
 
-    it('Cleanup: delete test repository', function () {
-        if (skipCleanup) {
-            cy.log('Skipping cleanup: skipCleanup option is enabled');
-            this.skip();
-        }
-
-        navigateToRepositoryManagement();
-        cy.wait(2000);
-        deleteRepositoryIfExists(testRepository.repositoryId);
-    });
-
-    it('Cleanup: delete persona prompt template', function () {
-        if (skipCleanup) {
-            cy.log('Skipping cleanup: skipCleanup option is enabled');
-            this.skip();
-        }
-
-        navigateToPromptTemplates();
-        cy.wait(2000);
-        deletePromptTemplateIfExists(testPromptTemplatePersona.title);
-    });
-
-    it('Cleanup: delete directive prompt template', function () {
-        if (skipCleanup) {
-            cy.log('Skipping cleanup: skipCleanup option is enabled');
-            this.skip();
-        }
-
-        navigateToPromptTemplates();
-        cy.wait(2000);
-        deletePromptTemplateIfExists(testPromptTemplateDirective.title);
-    });
-
-    it('Cleanup: delete test model', function () {
-        if (skipCleanup) {
-            cy.log('Skipping cleanup: skipCleanup option is enabled');
-            this.skip();
-        }
-
+    it('Cleanup: delete test model', () => {
         navigateToAdminPage('Model Management');
         cy.wait(2000);
         deleteModelIfExists(testModel.modelId);

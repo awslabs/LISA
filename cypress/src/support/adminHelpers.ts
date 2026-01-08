@@ -50,20 +50,19 @@ export function getAdminButton (): Cypress.Chainable {
     return cy.get('header button[aria-label="Administration"]');
 }
 
-/**
- * @deprecated Use getAdminButton() instead
- */
-export function checkAdminButtonExists () {
-    getAdminButton()
-        .should('exist')
-        .and('be.visible')
-        .and('have.attr', 'aria-expanded', 'false');
+export function getLibraryButton (): Cypress.Chainable {
+    // Use aria-label which is reliable in Cloudscape TopNavigation
+    return cy.get('header button[aria-label="Libraries"]');
 }
-
 /**
  * Expand the admin menu and verify all items are present
  */
 export function expandAdminMenu () {
+    // Wait for both Administration and Libraries buttons to be visible
+    // This prevents clicking Administration before the header is fully rendered
+    getLibraryButton().should('be.visible');
+    getAdminButton().should('be.visible');
+
     getAdminButton()
         .click()
         .should('have.attr', 'aria-expanded', 'true');

@@ -169,6 +169,7 @@ export function selectModel (modelName?: string) {
             .click();
     }
 }
+<<<<<<< HEAD
 
 /**
  * Send a message that's already in the input field by clicking the send button
@@ -188,3 +189,5 @@ export function verifyChatResponseReceived (minMessages: number = 2) {
     cy.get('[data-testid="chat-message"]', { timeout: 30000 })
         .should('have.length.at.least', minMessages);
 }
+=======
+>>>>>>> bcec1b94 (Add model creation test)

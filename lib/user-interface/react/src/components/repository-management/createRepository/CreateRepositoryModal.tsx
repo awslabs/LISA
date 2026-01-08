@@ -269,20 +269,24 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
     }
 
     return (
-        <Modal size={'large'} onDismiss={() => {
-            dispatch(
-                setConfirmationModal({
-                    action: 'Discard',
-                    resourceName: 'Model Creation',
-                    onConfirm: () => {
-                        setVisible(false);
-                        setIsEdit(false);
-                        resetState();
-                    },
-                    description: 'Are you sure you want to discard your changes?',
-                }));
-        }} visible={visible} header={`${isEdit ? 'Update' : 'Create'} Repository`}>
+        <Modal
+            data-testid='create-repository-modal'
+            size={'large'}
+            onDismiss={() => {
+                dispatch(
+                    setConfirmationModal({
+                        action: 'Discard',
+                        resourceName: 'Model Creation',
+                        onConfirm: () => {
+                            setVisible(false);
+                            setIsEdit(false);
+                            resetState();
+                        },
+                        description: 'Are you sure you want to discard your changes?',
+                    }));
+            }} visible={visible} header={`${isEdit ? 'Update' : 'Create'} Repository`}>
             <Wizard
+                data-testid='create-repository-wizard'
                 i18nStrings={{
                     stepNumberLabel: (stepNumber) => `Step ${stepNumber}`,
                     collapsedStepsLabel: (stepNumber, stepsCount) => `Step ${stepNumber} of ${stepsCount}`,

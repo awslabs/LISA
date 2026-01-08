@@ -142,6 +142,7 @@ function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificat
 
     return (
         <ButtonDropdown
+            data-testid='model-actions-dropdown'
             items={items}
             variant='primary'
             disabled={!selectedModel}

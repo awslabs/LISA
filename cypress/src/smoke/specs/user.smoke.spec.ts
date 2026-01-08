@@ -24,7 +24,6 @@
 import { runUserTests } from '../../shared/specs/user.shared.spec';
 
 describe('User features (Smoke)', () => {
-
     beforeEach(() => {
         cy.loginAs('user');
     });
@@ -33,5 +32,7 @@ describe('User features (Smoke)', () => {
         cy.clearAllSessionStorage();
     });
 
-    runUserTests();
+    runUserTests({
+        verifyFixtureData: true,
+    });
 });

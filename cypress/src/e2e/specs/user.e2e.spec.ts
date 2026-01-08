@@ -17,22 +17,21 @@
 /// <reference types="cypress" />
 
 /**
- * Smoke test suite for Chat Page features.
- * Uses shared test suite with fixture-based session testing enabled.
+ * E2E suite for User role features.
+ * Uses shared test suite against real deployment.
  */
+import { runUserTests } from '../../shared/specs/user.shared.spec';
 
-import { runChatTests } from '../../shared/specs/chat.shared.spec';
+describe('User features (E2E)', () => {
+    before(() => {
+        cy.clearAllSessionStorage();
+    });
 
-describe('Chat Page (Smoke)', () => {
     beforeEach(() => {
         cy.loginAs('user');
     });
 
-    after(() => {
-        cy.clearAllSessionStorage();
-    });
-
-    runChatTests({
-        verifyFixtureData: true,
+    runUserTests({
+        verifyFixtureData: false,
     });
 });

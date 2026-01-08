@@ -34,9 +34,7 @@ import { handleUpload } from './FileUploadModals';
 import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { v4 as uuidv4 } from 'uuid';
 import FormField from '@cloudscape-design/components/form-field';
-import { LisaChatMessageHistory } from '../../adapters/lisa-chat-history';
 import Toggle from '@cloudscape-design/components/toggle';
-import { ChatMemory } from '@/shared/util/chat-memory';
 
 export type DocumentSummarizationModalProps = {
     showDocumentSummarizationModal: boolean;
@@ -53,7 +51,6 @@ export type DocumentSummarizationModalProps = {
     setSession: (state: LisaChatSession) => void;
     userName: string;
     handleSendGenerateRequest: () => void;
-    setMemory: (state: ChatMemory) => void;
 };
 
 export const DocumentSummarizationModal = ({
@@ -70,7 +67,6 @@ export const DocumentSummarizationModal = ({
     setSession,
     userName,
     handleSendGenerateRequest,
-    setMemory
 }: DocumentSummarizationModalProps) => {
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [successfulUploads, setSuccessfulUpload] = useState<string[]>(undefined);
@@ -167,13 +163,6 @@ export const DocumentSummarizationModal = ({
                                             startTime: new Date(Date.now()).toISOString(),
                                         };
                                         setSession(newSession);
-
-                                        setMemory(new ChatMemory({
-                                            chatHistory: new LisaChatMessageHistory(newSession),
-                                            returnMessages: false,
-                                            memoryKey: 'history',
-                                            k: chatConfiguration.sessionConfiguration.chatHistoryBufferSize,
-                                        }));
                                     }
 
                                     setSummarize(true);

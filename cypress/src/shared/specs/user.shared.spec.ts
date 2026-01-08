@@ -19,12 +19,17 @@
 /**
  * Shared test suite for User role features.
  * Can be used by both smoke tests (with fixtures) and e2e tests (with real data).
+ *
+ * Interceptors should be set up in beforeEach by the calling spec.
  */
 
 import { checkNoAdminButton } from '../../support/adminHelpers';
 
 export function runUserTests () {
     it('Non-admin does not see the Administration button', () => {
+        // Wait for configuration to load before checking UI
+        cy.wait('@getConfiguration', { timeout: 30000 });
+
         checkNoAdminButton();
     });
 
@@ -41,7 +46,7 @@ export function runUserTests () {
         adminPaths.forEach((path) => {
             cy.visit(path, { failOnStatusCode: false, timeout: 10000 });
 
-            cy.url({ timeout: 10000 }).should('satisfy', (url) => {
+            cy.url({ timeout: 10000 }).should('satisfy', (url: string) => {
                 // Should be redirected away from admin path, or show access denied
                 // Accept homepage redirect as valid (which is what AdminRoute does)
                 return !url.includes(path.replace('#/', '')) ||

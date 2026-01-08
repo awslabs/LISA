@@ -161,8 +161,13 @@ export abstract class PipelineStack extends Stack {
         const collectionId = pipelineConfig.collectionId ?? pipelineConfig.embeddingModel;
         const collectionName = `${repositoryId}-${collectionId}`;
         // Create a new EventBridge rule for the S3 event pattern
+        // Rule name must be <= 64 chars. Keep it descriptive but short
+        // Format: {deployment}-{stage}-{repoId}-S3{action}-{shortHash}
+        // Use short hash of collection name for uniqueness when repo IDs collide
+        const collectionHash = crypto.createHash('sha256').update(collectionName).digest('hex').substring(0, 6);
+        const ruleName = `${config.deploymentName}-${config.deploymentStage}-${repositoryId}-S3${eventName}-${collectionHash}`.substring(0, 64);
         return new Rule(this, `${repositoryId}-S3Event${eventName}Rule-${disambiguator}`, {
-            ruleName: `${config.deploymentName}-${config.deploymentStage}-${config.appName}-${collectionName}-S3${eventName}Rule-${disambiguator}`.substring(0, 127),
+            ruleName,
             eventPattern,
             // Define the state machine target with input transformation
             targets: [new LambdaFunction(ingestionLambda, {
@@ -191,8 +196,11 @@ export abstract class PipelineStack extends Stack {
      * Creates an EventBridge rule for daily scheduled triggers
      */
     private createDailyLambdaRule (config: PartialConfig, ingestionLambda: IFunction, ragConfig: RagRepositoryDeploymentConfig, pipelineConfig: PipelineConfig, disambiguator: string): Rule {
+        // Rule name must be <= 64 chars
+        // Format: {deployment}-{stage}-{repoId}-DailyIngest-{hash}
+        const ruleName = `${config.deploymentName}-${config.deploymentStage}-${ragConfig.repositoryId}-DailyIngest-${disambiguator}`.substring(0, 64);
         return new Rule(this, `${ragConfig.repositoryId}-S3DailyIngestRule-${disambiguator}`, {
-            ruleName: `${config.deploymentName}-${config.deploymentStage}-DailyIngestRule-${disambiguator}`,
+            ruleName,
             // Schedule the rule to run daily at midnight
             schedule: Schedule.cron({
                 minute: '0',

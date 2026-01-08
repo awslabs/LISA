@@ -26,61 +26,76 @@ import {
     waitForContentToLoad,
 } from './dataHelpers';
 
-export function checkAdminButtonExists () {
-    cy.get('button[aria-label="Administration"]')
-        .should('exist')
-        .and('be.visible')
-        .and('have.attr', 'aria-expanded', 'false');
+// Cloudscape TopNavigation selectors
+// Use aria-label to target the specific Administration menu, not just any [role="menu"]
+const ADMIN_MENU_SELECTOR = '[role="menu"][aria-label="Administration"]';
+const MENU_ITEM_SELECTOR = '[role="menuitem"]';
+
+// Core menu items that are always present for admin users
+const EXPECTED_MENU_ITEMS = [
+    'Configuration',
+    'Model Management',
+    'RAG Management',
+    'API Token Management',
+    'MCP Management',
+    'MCP Workbench',
+];
+
+/**
+ * Get the visible admin button with built-in retry.
+ * Cloudscape TopNavigation buttons have aria-label for accessibility.
+ */
+export function getAdminButton (): Cypress.Chainable {
+    // Use aria-label which is reliable in Cloudscape TopNavigation
+    return cy.get('header button[aria-label="Administration"]');
 }
 
+export function getLibraryButton (): Cypress.Chainable {
+    // Use aria-label which is reliable in Cloudscape TopNavigation
+    return cy.get('header button[aria-label="Libraries"]');
+}
+/**
+ * Expand the admin menu and verify all items are present
+ */
 export function expandAdminMenu () {
-    // click → verify expanded → verify menu items
-    cy.get('button[aria-label="Administration"]')
-        .filter(':visible')
-        .first()
+    // Wait for both Administration and Libraries buttons to be visible
+    // This prevents clicking Administration before the header is fully rendered
+    getLibraryButton().should('be.visible');
+    getAdminButton().should('be.visible');
+
+    getAdminButton()
         .click()
         .should('have.attr', 'aria-expanded', 'true');
 
-    // Wait for dropdown animation to complete
-    cy.wait(500);
-
-    // Get the button-dropdown container once and reuse it
-    cy.get('button[aria-label="Administration"]')
+    // Wait for the Administration menu specifically (not Libraries or other menus)
+    cy.get(ADMIN_MENU_SELECTOR)
+        .should('be.visible')
+        .find(MENU_ITEM_SELECTOR)
         .filter(':visible')
-        .first()
-        .closest('[class*="awsui_button-dropdown_"]')
-        .as('adminDropdown');
-
-    // Verify menu is visible - use filter to get only visible menu
-    cy.get('@adminDropdown')
-        .find('[role="menu"]')
-        .filter(':visible')
-        .should('exist')
-        .and('be.visible');
-
-    // Verify menu items
-    cy.get('@adminDropdown')
-        .find('[role="menuitem"]')
-        .filter(':visible')
-        .should('have.length', 6)
+        .should('have.length.at.least', EXPECTED_MENU_ITEMS.length)
         .then(($items) => {
-            const labels = $items
-                .map((_, el) => Cypress.$(el).text().trim())
-                .get();
-            expect(labels).to.deep.equal([
-                'Configuration',
-                'Model Management',
-                'RAG Management',
-                'API Token Management',
-                'MCP Management',
-                'MCP Workbench'
-            ]);
+            const labels = $items.map((_, el) => Cypress.$(el).text().trim()).get();
+            // Verify core items are present
+            EXPECTED_MENU_ITEMS.forEach((item) => {
+                expect(labels).to.include(item);
+            });
         });
 }
 
+/**
+ * Collapse the admin menu
+ */
+export function collapseAdminMenu () {
+    getAdminButton()
+        .click()
+        .should('have.attr', 'aria-expanded', 'false');
+
+    cy.get(ADMIN_MENU_SELECTOR).should('not.be.visible');
+}
+
 export function checkNoAdminButton () {
-    cy.get('button[aria-label="Administration"]')
-        .should('not.exist');
+    // Use the specific selector for the Administration button
+    cy.get('header button[aria-label="Administration"]').should('not.exist');
 }
 
 /**
@@ -88,20 +103,11 @@ export function checkNoAdminButton () {
  * @param menuItemName - The exact text of the menu item to click
  */
 export function navigateToAdminPage (menuItemName: string) {
-    checkAdminButtonExists();
+    // First expand the menu using the same pattern as expandAdminMenu
+    expandAdminMenu();
 
-    // Click to expand menu
-    cy.get('button[aria-label="Administration"]')
-        .filter(':visible')
-        .first()
-        .click()
-        .should('have.attr', 'aria-expanded', 'true');
-
-    // Wait for dropdown animation
-    cy.wait(500);
-
-    // Find and click the menu item by text content
-    cy.contains('[role="menuitem"]', menuItemName)
+    // Then click the specific menu item
+    cy.contains(MENU_ITEM_SELECTOR, menuItemName)
         .filter(':visible')
         .click();
 }
@@ -119,7 +125,6 @@ export function verifyAdminPageLoaded (urlFragment: string, pageTitle?: string) 
             .should('be.visible')
             .and('contain.text', pageTitle);
     } else {
-        // Just verify some main content is visible
         cy.get('h1, h2, [data-testid="page-title"], main, [role="main"]')
             .should('be.visible');
     }

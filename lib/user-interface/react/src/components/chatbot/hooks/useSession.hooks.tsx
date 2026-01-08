@@ -96,11 +96,14 @@ export const useSession = (sessionId: string, getSessionById: any) => {
                 setSession((prev) => ({ ...prev, history: [] }));
                 loadSession(sessionId);
             }
-        } else {
-            // Create new session when no sessionId is provided
+        } else if (!internalSessionId || internalSessionId !== session.sessionId || session.history.length > 0) {
+            // Create new session when:
+            // - No sessionId provided AND no internal session yet, OR
+            // - Transitioning from an existing session (internalSessionId doesn't match current session or has history)
             createNewSession();
         }
-    }, [sessionId, dispatch, loadSession, createNewSession]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [sessionId, dispatch, loadSession]);
 
     return {
         session,

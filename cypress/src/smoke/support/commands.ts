@@ -18,19 +18,19 @@
 
 import { randomUUID, randomString, toBase64Url } from './utils';
 
-// List of endpoints to stub with fixtures
+// API endpoints with their aliases (matching E2E pattern)
 const API_STUBS = [
-    'models',
-    'prompt-templates',
-    'repository',
-    'configuration',
-    'health',
-    'session',
-    'api-tokens',
-    'mcp',
-    'mcp-server',
-    'mcp-workbench',
-    'collections',
+    { endpoint: 'models', alias: 'getModels' },
+    { endpoint: 'prompt-templates', alias: 'getPromptTemplates' },
+    { endpoint: 'repository', alias: 'getRepositories' },
+    { endpoint: 'configuration', alias: 'getConfiguration' },
+    { endpoint: 'health', alias: 'getHealth' },
+    { endpoint: 'session', alias: 'getSessions' },
+    { endpoint: 'api-tokens', alias: 'getApiTokens' },
+    { endpoint: 'mcp', alias: 'getMcp' },
+    { endpoint: 'mcp-server', alias: 'getMcpServers' },
+    { endpoint: 'mcp-workbench', alias: 'getMcpWorkbench' },
+    { endpoint: 'collections', alias: 'getCollections' },
 ];
 
 /**
@@ -45,10 +45,9 @@ function setupApiStubs (env: Record<string, unknown>) {
         headers: { 'Content-Type': 'application/javascript' },
     }).as('stubEnv');
 
-    // Stub all API endpoints
-    API_STUBS.forEach((name) => {
-        const alias = `stub${name.charAt(0).toUpperCase()}${name.slice(1)}`;
-        cy.intercept('GET', `**${apiBase}/${name}*`, { fixture: `${name}.json` }).as(alias);
+    // Stub all API endpoints with consistent aliases
+    API_STUBS.forEach(({ endpoint, alias }) => {
+        cy.intercept('GET', `**${apiBase}/${endpoint}*`, { fixture: `${endpoint}.json` }).as(alias);
     });
 }
 
@@ -121,7 +120,7 @@ function setupOidcStubs (role: 'admin' | 'user', env: Record<string, unknown>) {
         const url = new URL(req.url);
         const state = url.searchParams.get('state');
         const redirectUri = url.searchParams.get('redirect_uri') || 'http://localhost:3000';
-        
+
         // Redirect back to the app with auth code
         req.redirect(`${redirectUri}?code=mock-auth-code&state=${state}`);
     }).as('stubAuthorize');

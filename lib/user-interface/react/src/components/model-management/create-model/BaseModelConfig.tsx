@@ -188,6 +188,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     errorText={props.formErrors?.streaming}
                 >
                     <Toggle
+                        data-testid='streaming-toggle'
                         onChange={({ detail }) =>
                             props.setFields({'streaming': detail.checked})
                         }

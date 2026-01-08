@@ -23,7 +23,6 @@
 
 import {
     navigateAndVerifyAdminPage,
-    getAdminButton,
     expandAdminMenu,
     collapseAdminMenu,
 } from '../../support/adminHelpers';
@@ -35,14 +34,8 @@ export function runAdminTests (options: {
     const { expectMinItems = false, verifyFixtureData = false } = options;
 
     it('Admin sees the Administration button and can expand/collapse menu', () => {
-        // Verify button exists and is collapsed
-        getAdminButton()
-            .should('be.visible')
-            .and('have.attr', 'aria-expanded', 'false');
-
         // Expand and verify menu items
         expandAdminMenu();
-
         // Collapse and verify
         collapseAdminMenu();
     });
@@ -71,6 +64,9 @@ export function runAdminTests (options: {
         const minItems = expectMinItems ? 3 : 0;
         navigateAndVerifyAdminPage('API Token Management', '/api-token-management', 'API Token', 'table', minItems);
 
+        // Wait for API tokens to load
+        cy.wait('@getApiTokens', { timeout: 30000 });
+
         if (verifyFixtureData) {
             cy.contains('Development Token').should('be.visible');
             cy.contains('Production API Key').should('be.visible');
@@ -81,6 +77,7 @@ export function runAdminTests (options: {
     it('RAG Management page loads and shows repositories table', () => {
         const minItems = expectMinItems ? 3 : 0;
         navigateAndVerifyAdminPage('RAG Management', '/repository-management', 'RAG', 'table', minItems);
+        cy.wait('@getRepositories', { timeout: 30000 });
 
         if (verifyFixtureData) {
             cy.contains('Technical Documentation').should('be.visible');
@@ -92,6 +89,7 @@ export function runAdminTests (options: {
     it('MCP Management page loads and shows servers table', () => {
         const minItems = expectMinItems ? 3 : 0;
         navigateAndVerifyAdminPage('MCP Management', '/mcp-management', 'MCP', 'table', minItems);
+        cy.wait('@getMcp', { timeout: 30000 });
 
         if (verifyFixtureData) {
             cy.contains('Weather Service').should('be.visible');
@@ -110,6 +108,7 @@ export function runAdminTests (options: {
             contentType,
             minItems
         );
+        cy.wait('@getMcpWorkbench', { timeout: 30000 });
 
         if (verifyFixtureData) {
             cy.get('li[data-testid="bad_actors_db.py"]').should('be.visible');

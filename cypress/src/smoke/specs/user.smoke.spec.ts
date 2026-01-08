@@ -32,5 +32,7 @@ describe('User features (Smoke)', () => {
         cy.clearAllSessionStorage();
     });
 
-    runUserTests();
+    runUserTests({
+        verifyFixtureData: true,
+    });
 });

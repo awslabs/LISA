@@ -17,22 +17,22 @@
 /// <reference types="cypress" />
 
 /**
- * Smoke test suite for Chat Page features.
- * Uses shared test suite with fixture-based session testing enabled.
+ * E2E suite for Admin Navigation features.
+ * Uses shared test suite against real deployment.
  */
+import { runAdminTests } from '../../shared/specs/admin.shared.spec';
 
-import { runChatTests } from '../../shared/specs/chat.shared.spec';
-
-describe('Chat Page (Smoke)', () => {
-    beforeEach(() => {
-        cy.loginAs('user');
-    });
-
-    after(() => {
+describe('Admin Navigation (E2E)', () => {
+    before(() => {
         cy.clearAllSessionStorage();
     });
 
-    runChatTests({
-        verifyFixtureData: true,
+    beforeEach(() => {
+        cy.loginAs('admin');
+    });
+
+    runAdminTests({
+        expectMinItems: false,
+        verifyFixtureData: false,
     });
 });

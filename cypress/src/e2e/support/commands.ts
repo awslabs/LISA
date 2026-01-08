@@ -16,87 +16,177 @@
 
 /// <reference types="cypress" />
 
-// Base application URL from Cypress config
 import { getTopLevelDomain } from './utils';
 
 const BASE_URL = Cypress.config('baseUrl') as string;
 
+const APIS = [
+    { pattern: '**/configuration*', alias: 'getConfiguration', critical: true },
+    { pattern: '**/models*', alias: 'getModels', chat: true },
+    { pattern: '**/session*', alias: 'getSessions', chat: true },
+    { pattern: '**/api-tokens*', alias: 'getApiTokens' },
+    { pattern: '**/repository*', alias: 'getRepositories', chat: true },
+    { pattern: '**/collection*', alias: 'getCollections' },
+    { pattern: '**/mcp*', alias: 'getMcp' },
+    { pattern: '**/mcp-management*', alias: 'getMcpServers' },
+    { pattern: '**/mcp-workbench*', alias: 'getMcpWorkbench' },
+    { pattern: '**/prompt-templates*', alias: 'getPromptTemplates' },
+    { pattern: '**/user-preferences*', alias: 'getUserPreferences' },
+];
+
 /**
- * Custom command to log in a user via stubbed OAuth2/OIDC.
- * Can log in as an 'admin' or a normal 'user'.
- *
- * @param {'admin'|'user'} username - The username to simulate (defaults to 'user').
+ * Setup intercepts for critical API calls.
+ * Call this before visiting the app.
  */
-Cypress.Commands.add('loginAs', (username = 'user') => {
+function setupApiIntercepts () {
+    APIS.forEach(({ pattern, alias }) => {
+        cy.intercept('GET', pattern).as(alias);
+    });
+}
+
+/**
+ * Wait for all critical API calls to complete.
+ */
+function waitForCriticalApis () {
+    const aliases = APIS.filter(({ critical }) => critical)
+        .map(({ alias }) => `@${alias}`);
+    cy.wait(aliases, { timeout: 30000 });
+}
+
+/**
+ * Wait for the app to be fully loaded after authentication.
+ */
+function waitForAppReady () {
+    // Wait for "Loading configuration..." to disappear
+    cy.contains('Loading configuration...', { timeout: 15000 }).should('not.exist');
+
+    // Wait for any loading spinners to complete
+    cy.get('body').then(($body) => {
+        if ($body.find('[class*="awsui_spinner"]').length > 0) {
+            cy.get('[class*="awsui_spinner"]', { timeout: 10000 }).should('not.exist');
+        }
+    });
+
+    // Wait for header to be visible (indicates app is ready)
+    cy.get('header', { timeout: 15000 }).should('be.visible');
+}
+
+/**
+ * Custom command to log in a user via Cognito OAuth2/OIDC.
+ * Uses cy.session() for caching and role-specific credentials.
+ *
+ * @param {'admin'|'user'} role - The role to log in as (defaults to 'user').
+ */
+Cypress.Commands.add('loginAs', (role = 'user') => {
     const log = Cypress.log({
         displayName: 'Cognito Login',
-        message: [`🔐 Authenticating | ${username}`],
+        message: [`🔐 Authenticating | ${role}`],
         autoEnd: false,
     });
-    let cognitoOathEndpoint = '';
-    let cognitoOathClientName = '';
-    let cognitoAuthEndpoint = '';
+
     log.snapshot('before');
-    // Temporarily suppress exceptions. We expect to get 401's which will trigger the login redirect
-    cy.on('uncaught:exception', () => {
-        return false;
-    });
+
+    // Temporarily suppress exceptions during login flow
+    cy.on('uncaught:exception', () => false);
+
     cy.session(
-        `cognito-${username}`,
+        `cognito-${role}`,
         () => {
-            // Handle cognito portal information
             cy.request(BASE_URL + '/env.js').then((resp) => {
                 const OIDC_URL_REGEX = /["']?AUTHORITY['"]?:\s*['"]?([A-Za-z:\-._/0-9]+)['"]?/;
-                const OIDC_APP_NAME_REGEX = /["']?CLIENT_ID['"]?:\s*['"]?([A-Za-z:\-._/0-9]+)['"]?/;
+
                 const oidcUrlMatches = OIDC_URL_REGEX.exec(resp.body);
-                if (oidcUrlMatches && oidcUrlMatches.length === 2) {
-                    cognitoOathEndpoint = oidcUrlMatches[1];
-                }
-                const oidcClientNameMatches = OIDC_APP_NAME_REGEX.exec(resp.body);
-                if (oidcClientNameMatches && oidcClientNameMatches.length === 2) {
-                    cognitoOathClientName = oidcClientNameMatches[1];
-                }
+                const cognitoOathEndpoint = oidcUrlMatches?.[1] || '';
+
                 cy.request(`${cognitoOathEndpoint}/.well-known/openid-configuration`).then((oathResponse) => {
-                    cognitoAuthEndpoint = getTopLevelDomain(oathResponse.body.authorization_endpoint);
-                    // click the sign in link
+                    const cognitoAuthEndpoint = getTopLevelDomain(oathResponse.body.authorization_endpoint);
+
+                    // Start the login flow
                     cy.visit(BASE_URL);
                     cy.contains('button', 'Sign in').click();
-                    cy.origin(cognitoAuthEndpoint, { args: username }, (username: string) => {
-                        cy.on('uncaught:exception', () => {
-                            return false;
-                        });
-                        // This is a lot of overhead to put in username, but there are intermittent results while waiting
-                        // for the DOM to stabilize after the redirect and this way is more foolproof
+
+                    // Perform login on Cognito hosted UI
+                    cy.origin(cognitoAuthEndpoint, { args: role }, (userRole: string) => {
+                        cy.on('uncaught:exception', () => false);
+
+                        // Get credentials based on role
+                        const username = userRole === 'admin'
+                            ? Cypress.env('ADMIN_USER_NAME')
+                            : Cypress.env('USER_NAME');
+                        const password = userRole === 'admin'
+                            ? Cypress.env('ADMIN_PASSWORD')
+                            : Cypress.env('USER_PASSWORD');
+
+                        // Wait for username field and fill it
                         cy.get('input[name="username"]', { timeout: 10000 })
                             .filter(':visible')
                             .first()
-                            .as('usernameInput')
-                            .then(() => {
-                                // click may re‑render; re‑query afterwards
-                                cy.get('@usernameInput').click({ force: true });
-                            })
-                            .then(() => {
-                                cy.get('@usernameInput').clear({ force: true });
-                                cy.get('@usernameInput').type(username, { force: true });
-                            });
-                        cy.get('input[name="password"]').filter(':visible').type(Cypress.env('TEST_ACCOUNT_PASSWORD'), { force: true });
-                        cy.get('input[aria-label="submit"]').filter(':visible').click({ force: true });
-                    },
-                    );
+                            .as('usernameInput');
+                        cy.get('@usernameInput').click({ force: true });
+                        cy.get('@usernameInput').clear({ force: true });
+                        cy.get('@usernameInput').type(username, { force: true });
+
+                        // Fill password
+                        cy.get('input[name="password"]')
+                            .filter(':visible')
+                            .type(password, { force: true, log: false });
+
+                        // Submit
+                        cy.get('input[type="submit"], input[aria-label="submit"], button[type="submit"]')
+                            .filter(':visible')
+                            .first()
+                            .click({ force: true });
+                    });
+
+                    // Wait for redirect back to app
+                    cy.wait(2000);
                 });
-                cy.wait(2000);
             });
         },
         {
             validate: () => {
-                cy.wrap(sessionStorage)
-                    .invoke('getItem', `oidc.user:${cognitoOathEndpoint}:${cognitoOathClientName}`)
-                    .should('exist');
-
+                // Check that we have an OIDC token in sessionStorage
+                // The key format is: oidc.user:<authority>:<client_id>
+                // We check for any key starting with 'oidc.user:' since we don't have the exact values here
+                cy.window().then((win) => {
+                    const hasOidcToken = Object.keys(win.sessionStorage).some((key) =>
+                        key.startsWith('oidc.user:')
+                    );
+                    expect(hasOidcToken).to.equal(true);
+                });
             },
-        },
+            cacheAcrossSpecs: true,
+        }
     );
+
+    // After session restore/setup, Cypress clears the page
+    // We must visit again and wait for APIs
+    setupApiIntercepts();
     cy.visit(BASE_URL);
+    waitForAppReady();
+    waitForCriticalApis();
+
     log.snapshot('after');
     log.end();
+});
+
+/**
+ * Custom command to ensure the app is ready for testing.
+ * Use in beforeEach when you need to ensure APIs have loaded.
+ * Does not re-visit if already on the app.
+ */
+Cypress.Commands.add('waitForApp', () => {
+    // Check if we're already on the app
+    cy.url().then((url) => {
+        const isOnApp = url.includes(new URL(BASE_URL).host);
+
+        if (!isOnApp) {
+            // Need to visit the app
+            setupApiIntercepts();
+            cy.visit(BASE_URL);
+            waitForCriticalApis();
+        }
+
+        waitForAppReady();
+    });
 });

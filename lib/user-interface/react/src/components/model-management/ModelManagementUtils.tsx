@@ -109,7 +109,7 @@ const formatScheduleDetails = (model: IModel) => {
 };
 
 export const createCardDefinitions = (defaultModelId?: string) => ({
-    header: (model: IModel) => <div>{model.modelId} {model.modelId === defaultModelId && <Badge>DEFAULT</Badge>}</div>,
+    header: (model: IModel) => <div data-testid={`model-card-${model.modelId}`}>{model.modelId} {model.modelId === defaultModelId && <Badge>DEFAULT</Badge>}</div>,
     sections: [
         {
             id: 'modelName',

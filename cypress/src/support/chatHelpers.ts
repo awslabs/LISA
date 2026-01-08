@@ -19,6 +19,15 @@
  * Contains reusable helpers for chat page navigation and verification.
  */
 
+// Chat page selectors
+export const CHAT_SELECTORS = {
+    MODEL_INPUT: 'input[placeholder*="model" i], input[aria-label*="model" i]',
+    RAG_REPO_INPUT: 'input#rag-repository-autosuggest, input[placeholder*="RAG Repository" i]',
+    COLLECTION_INPUT: 'input#collection-autosuggest, input[placeholder*="collection" i]',
+    MESSAGE_INPUT: 'textarea[placeholder*="message" i]',
+    DROPDOWN_OPTION: '[role="option"], [role="menuitem"]',
+};
+
 /**
  * Navigate to the AI Assistant (chat) page by clicking the menu item
  */
@@ -108,4 +117,55 @@ export function verifyChatHistory (messageTexts: string[]) {
     messageTexts.forEach((text) => {
         cy.contains(text).should('be.visible');
     });
+}
+
+
+/**
+ * Get the model input element
+ */
+export function getModelInput (): Cypress.Chainable {
+    return cy.get(CHAT_SELECTORS.MODEL_INPUT).first();
+}
+
+/**
+ * Get the RAG repository input element
+ */
+export function getRagRepoInput (): Cypress.Chainable {
+    return cy.get(CHAT_SELECTORS.RAG_REPO_INPUT);
+}
+
+/**
+ * Get the message input textarea
+ */
+export function getMessageInput (): Cypress.Chainable {
+    return cy.get(CHAT_SELECTORS.MESSAGE_INPUT);
+}
+
+/**
+ * Get dropdown options
+ */
+export function getDropdownOptions (): Cypress.Chainable {
+    return cy.get(CHAT_SELECTORS.DROPDOWN_OPTION);
+}
+
+/**
+ * Select a model from the dropdown
+ * @param modelName - Optional specific model name to select, otherwise selects first available
+ */
+export function selectModel (modelName?: string) {
+    getModelInput()
+        .should('be.visible')
+        .and('not.be.disabled')
+        .click({ force: true });
+
+    if (modelName) {
+        getDropdownOptions()
+            .contains(modelName)
+            .click();
+    } else {
+        getDropdownOptions()
+            .should('be.visible')
+            .first()
+            .click();
+    }
 }

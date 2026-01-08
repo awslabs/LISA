@@ -498,10 +498,10 @@ export default function Chat ({ sessionId }) {
             // Check if we're at the bottom
             const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
             const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-            
+
             // Small threshold to account for rounding issues
             const AT_BOTTOM_THRESHOLD = 30;
-            
+
             if (distanceFromBottom <= AT_BOTTOM_THRESHOLD) {
                 // At bottom - ensure auto-scroll is enabled
                 if (!shouldAutoScroll) {

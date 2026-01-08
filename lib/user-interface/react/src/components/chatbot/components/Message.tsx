@@ -32,6 +32,7 @@ import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+import styles from './Message.module.css';
 
 import { MessageContent } from '@langchain/core/messages';
 import { base64ToBlob, fetchImage, getDisplayableMessage, messageContainsImage } from '@/components/utils';
@@ -225,7 +226,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                     const displayableText = getDisplayableMessage(item.text, message.type === MessageTypes.AI ? ragCitations : undefined);
 
                     return (
-                        <div key={index} style={{ maxWidth: '60em' }}>
+                        <div key={index} className={styles.messageContent} style={{ maxWidth: '60em' }}>
                             {markdownDisplay ? (
                                 <ReactMarkdown
                                     remarkPlugins={[remarkMath, remarkGfm]}
@@ -292,7 +293,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
             });
         }
         return (
-            <div style={{ maxWidth: '60em' }}>
+            <div className={styles.messageContent} style={{ maxWidth: '60em' }}>
                 {markdownDisplay ? (
                     <ReactMarkdown
                         remarkPlugins={[remarkMath, remarkGfm]}
@@ -419,7 +420,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                 />
                             }
                         >
-                            <div style={{ maxWidth: '60em' }}>
+                            <div className="message-content" style={{ maxWidth: '60em' }}>
                                 {renderContent(message.content)}
                             </div>
                         </ChatBubble>

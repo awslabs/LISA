@@ -94,6 +94,7 @@ const DEFAULT_TEST_MODEL: BedrockModelConfig = {
 
 export type BedrockWorkflowTestOptions = {
     modelConfig?: BedrockModelConfig;
+    repositoryConfig?: RepositoryConfig;
     skipChat?: boolean;
     skipCleanup?: boolean;
     testDocumentPath?: string;

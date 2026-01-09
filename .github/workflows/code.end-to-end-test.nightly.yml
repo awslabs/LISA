@@ -51,8 +51,8 @@ jobs:
         with:
           name: cypress-e2e-artifacts
           path: |
-            cypress/e2e/videos
-            cypress/e2e/screenshots
+            cypress/videos/e2e
+            cypress/screenshots/e2e
 
   notify_e2e_end:
     name: 🔔 E2E Tests Finished

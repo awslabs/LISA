@@ -169,3 +169,22 @@ export function selectModel (modelName?: string) {
             .click();
     }
 }
+
+/**
+ * Send a message that's already in the input field by clicking the send button
+ */
+export function sendMessageWithButton () {
+    cy.get('button[aria-label="Send message"]')
+        .should('be.visible')
+        .and('not.be.disabled')
+        .click();
+}
+
+/**
+ * Verify that a chat response was received
+ * @param minMessages - Minimum number of messages expected (default: 2 for user + assistant)
+ */
+export function verifyChatResponseReceived (minMessages: number = 2) {
+    cy.get('[data-testid="chat-message"]', { timeout: 30000 })
+        .should('have.length.at.least', minMessages);
+}

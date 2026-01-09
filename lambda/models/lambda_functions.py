@@ -13,8 +13,10 @@
 #   limitations under the License.
 
 """APIGW endpoints for managing models."""
+import logging
 import os
 from typing import Annotated, Union
+from urllib.parse import urlparse
 
 import boto3
 import botocore.session
@@ -24,7 +26,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from mangum import Mangum
-from utilities.auth import get_groups, is_admin
+from utilities.auth import get_groups, get_username, is_admin
 from utilities.common_functions import retry_config
 from utilities.fastapi_middleware.aws_api_gateway_middleware import AWSAPIGatewayMiddleware
 
@@ -54,6 +56,8 @@ from .handler import (
     UpdateModelHandler,
     UpdateScheduleHandler,
 )
+
+logger = logging.getLogger(__name__)
 
 sess = botocore.session.Session()
 app = FastAPI(redirect_slashes=False, lifespan="off", docs_url="/docs", openapi_url="/openapi.json")
@@ -119,9 +123,77 @@ async def user_error_handler(
 @app.post(path="/")
 async def create_model(create_request: CreateModelRequest, request: Request) -> CreateModelResponse:
     """Endpoint to create a model."""
-    admin_status, _ = get_admin_status_and_groups(request)
+    admin_status, user_groups = get_admin_status_and_groups(request)
     if not admin_status:
         raise HTTPException(status_code=403, detail="User does not have permission to create models.")
+
+    # Extract user context for audit logging
+    event = request.scope.get("aws.event", {})
+    username = get_username(event) if event else "unknown"
+    auth_type = event.get("requestContext", {}).get("authorizer", {}).get("authType", "unknown")
+    source_ip = event.get("requestContext", {}).get("identity", {}).get("sourceIp", "unknown")
+
+    # Extract container image and healthcheck details for audit logging
+    container_image = None
+    registry_domain = None
+    healthcheck_command = None
+
+    if create_request.containerConfig:
+        container_image = create_request.containerConfig.image.baseImage
+        # Extract registry domain from image URL
+        try:
+            if "://" in container_image:
+                registry_domain = urlparse(container_image).netloc
+            elif "/" in container_image:
+                registry_domain = container_image.split("/")[0]
+            else:
+                registry_domain = "unknown"
+        except Exception:
+            registry_domain = "parse_error"
+
+        healthcheck_command = create_request.containerConfig.healthCheckConfig.command
+
+    # Log CreateModel request for security audit
+    logger.info(
+        "CreateModel request",
+        extra={
+            "event_type": "CREATE_MODEL_REQUEST",
+            "user": {
+                "username": username,
+                "groups": user_groups,
+                "auth_type": auth_type,
+                "source_ip": source_ip,
+            },
+            "model": {
+                "model_id": create_request.modelId,
+                "model_name": create_request.modelName,
+                "instance_type": create_request.instanceType if hasattr(create_request, "instanceType") else None,
+                "auto_scaling": (
+                    {
+                        "min_capacity": (
+                            create_request.autoScalingConfig.minCapacity if create_request.autoScalingConfig else None
+                        ),
+                        "max_capacity": (
+                            create_request.autoScalingConfig.maxCapacity if create_request.autoScalingConfig else None
+                        ),
+                    }
+                    if create_request.autoScalingConfig
+                    else None
+                ),
+            },
+            "container": (
+                {
+                    "base_image": container_image,
+                    "registry_domain": registry_domain,
+                    "image_type": create_request.containerConfig.image.type if create_request.containerConfig else None,
+                    "healthcheck_command": healthcheck_command,
+                }
+                if create_request.containerConfig
+                else None
+            ),
+        },
+    )
+
     create_handler = CreateModelHandler(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
@@ -129,9 +201,44 @@ async def create_model(create_request: CreateModelRequest, request: Request) -> 
         guardrails_table_resource=guardrails_table,
     )
     try:
-        return create_handler(create_request=create_request)
+        response = create_handler(create_request=create_request)
+
+        # Log successful creation
+        logger.info(
+            "CreateModel request successful",
+            extra={
+                "event_type": "CREATE_MODEL_SUCCESS",
+                "model_id": create_request.modelId,
+                "username": username,
+            },
+        )
+
+        return response
     except ModelAlreadyExistsError as e:
+        # Log failure
+        logger.warning(
+            "CreateModel request failed - model already exists",
+            extra={
+                "event_type": "CREATE_MODEL_FAILURE",
+                "model_id": create_request.modelId,
+                "username": username,
+                "error": str(e),
+            },
+        )
         raise HTTPException(status_code=409, detail=str(e))
+    except Exception as e:
+        # Log unexpected failure
+        logger.error(
+            "CreateModel request failed with unexpected error",
+            extra={
+                "event_type": "CREATE_MODEL_ERROR",
+                "model_id": create_request.modelId,
+                "username": username,
+                "error": str(e),
+            },
+            exc_info=True,
+        )
+        raise
 
 
 @app.get(path="", include_in_schema=False)

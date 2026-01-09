@@ -20,6 +20,7 @@ import { ButtonGroup, StatusIndicator } from '@cloudscape-design/components';
 import { downloadSvgAsPng } from '@/shared/util/downloader';
 import { MERMAID_SANITIZATION_CONFIG } from '@/components/chatbot/config/mermaidSanitizationConfig';
 import DOMPurify from 'dompurify';
+import { useDarkMode } from '@/components/hooks/useDarkMode';
 
 type MermaidDiagramProps = {
     chart: string;
@@ -34,20 +35,24 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = React.memo(({ chart, id, i
     const [svg, setSvg] = useState<string>('');
     const [isLoading, setIsLoading] = useState(true);
     const mermaidInitialized = useRef(false);
-    const lastRenderedChart = useRef<string>('');
+    const lastRenderedChart = useRef<string>('');    
+    const isDarkMode = useDarkMode();
 
-    // Initialize Mermaid once
+    // Initialize Mermaid with theme based on mode
     useEffect(() => {
-        if (!mermaidInitialized.current) {
-            mermaid.initialize({
-                startOnLoad: false,
-                theme: 'dark',
-                securityLevel: 'loose',
-                suppressErrorRendering: true,
-            });
-            mermaidInitialized.current = true;
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: isDarkMode ? 'dark' : 'default',
+            securityLevel: 'loose',
+            suppressErrorRendering: true,
+        });
+        mermaidInitialized.current = true;
+        // Force re-render when theme changes
+        if (lastRenderedChart.current) {
+            lastRenderedChart.current = '';
+            setSvg('');
         }
-    }, []);
+    }, [isDarkMode]);
 
 
     // Render the diagram once
@@ -119,25 +124,26 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = React.memo(({ chart, id, i
         return (
             <div style={{
                 padding: '12px',
-                backgroundColor: '#2d1b1b',
-                border: '1px solid #d13212',
+                backgroundColor: isDarkMode ? '#2d1b1b' : '#fee',
+                border: isDarkMode ? '1px solid #d13212' : '1px solid #c33',
                 borderRadius: '4px',
-                color: '#ff6b6b',
+                color: isDarkMode ? '#ff6b6b' : '#c33',
                 fontSize: '12px',
                 textWrap: 'wrap'
             }}>
                 <strong>Mermaid Error:</strong> {error}
                 <details style={{ marginTop: '8px' }}>
-                    <summary style={{ cursor: 'pointer', color: '#ff9999' }}>
+                    <summary style={{ cursor: 'pointer', color: isDarkMode ? '#ff9999' : '#d44' }}>
                         Show diagram source
                     </summary>
                     <pre style={{
                         marginTop: '8px',
                         padding: '8px',
-                        backgroundColor: '#1a1a1a',
+                        backgroundColor: isDarkMode ? '#1a1a1a' : '#f5f5f5',
                         borderRadius: '2px',
                         overflow: 'auto',
-                        fontSize: '11px'
+                        fontSize: '11px',
+                        color: isDarkMode ? '#d4d4d4' : '#333'
                     }}>
                         {chart}
                     </pre>
@@ -151,10 +157,10 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = React.memo(({ chart, id, i
         return (
             <div style={{
                 padding: '12px',
-                backgroundColor: '#1a1a1a',
-                border: '1px solid #444',
+                backgroundColor: isDarkMode ? '#1a1a1a' : '#f5f5f5',
+                border: isDarkMode ? '1px solid #444' : '1px solid #ddd',
                 borderRadius: '4px',
-                color: '#888',
+                color: isDarkMode ? '#888' : '#666',
                 textAlign: 'center'
             }}>
                 Rendering Mermaid diagram...
@@ -207,8 +213,8 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = React.memo(({ chart, id, i
                 ref={containerRef}
                 style={{
                     padding: '12px',
-                    backgroundColor: '#1a1a1a',
-                    border: '1px solid #333',
+                    backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
+                    border: isDarkMode ? '1px solid #333' : '1px solid #ddd',
                     borderRadius: '4px',
                     overflow: 'auto'
                 }}

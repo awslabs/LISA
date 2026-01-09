@@ -296,7 +296,7 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
 
         # Publish metrics for streaming chat completions (API users)
         if api_path in ["chat/completions", "v1/chat/completions"] and response.status_code == 200:
-            await publish_metrics_event(request, params, response.status_code)
+            publish_metrics_event(request, params, response.status_code)
 
         # Normal streaming (no error or non-guardrail error)
         # Use guardrail-aware generator for chat/completions endpoints

@@ -18,10 +18,10 @@ import ReactMarkdown from 'react-markdown';
 import Box from '@cloudscape-design/components/box';
 import ExpandableSection from '@cloudscape-design/components/expandable-section';
 import { ButtonDropdown, ButtonGroup, Grid, SpaceBetween, StatusIndicator } from '@cloudscape-design/components';
-import { JsonView, darkStyles } from 'react-json-view-lite';
+import { JsonView, darkStyles, defaultStyles } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { LisaChatMessage, LisaChatMessageMetadata, MessageTypes } from '../../types';
 import { useAppSelector } from '@/config/store';
 import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
@@ -44,6 +44,7 @@ import ImageViewer from '@/components/chatbot/components/ImageViewer';
 import MermaidDiagram from '@/components/chatbot/components/MermaidDiagram';
 import UsageInfo from '@/components/chatbot/components/UsageInfo';
 import { merge } from 'lodash';
+import { useDarkMode } from '@/components/hooks/useDarkMode';
 
 type MessageProps = {
     message?: LisaChatMessage;
@@ -67,6 +68,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
     const [showImageViewer, setShowImageViewer] = useState(false);
     const [selectedImage, setSelectedImage] = useState(undefined);
     const [selectedMetadata, setSelectedMetadata] = useState(undefined);
+    const isDarkMode = useDarkMode();
 
     useEffect(() => {
         if (resend) {
@@ -116,7 +118,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                             />
                         </div>
                         <SyntaxHighlighter
-                            style={vscDarkPlus}
+                            style={isDarkMode ? oneDark : oneLight}
                             language={language}
                             PreTag='div'
                             {...props}
@@ -161,8 +163,8 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                         </div>
                         <pre
                             style={{
-                                backgroundColor: '#1e1e1e',
-                                color: '#d4d4d4',
+                                backgroundColor: isDarkMode ? '#1e1e1e' : '#f5f5f5',
+                                color: isDarkMode ? '#d4d4d4' : '#333333',
                                 padding: '16px',
                                 borderRadius: '6px',
                                 overflow: 'auto',
@@ -215,7 +217,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                 <CodeBlockWithoutLanguage code={codeString} />
             );
         },
-    }), [isStreaming, onMermaidRenderComplete]); // Include isStreaming and onMermaidRenderComplete so the component can access them
+    }), [isStreaming, onMermaidRenderComplete, isDarkMode]);
 
     const renderContent = (content: MessageContent, metadata?: LisaChatMessageMetadata) => {
         if (Array.isArray(content)) {
@@ -376,7 +378,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                 <JsonView data={{
                                     ...message.metadata,
                                     ...(message.usage && { usage: message.usage })
-                                }} style={darkStyles} />
+                                }} style={isDarkMode ? darkStyles : defaultStyles} />
                             </ExpandableSection>}
                     </ChatBubble>
                     {!isStreaming && !messageContainsImage(message.content) && <div
@@ -454,7 +456,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                     <JsonView data={{
                         arguments: (message?.metadata as any)?.args,
                         result: message?.content,
-                    }} style={darkStyles} />
+                    }} style={isDarkMode ? darkStyles : defaultStyles} />
                 </ExpandableSection>
             )}
         </div>

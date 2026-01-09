@@ -57,6 +57,10 @@ from .handler import (
 logger = logging.getLogger(__name__)
 
 sess = botocore.session.Session()
+app = FastAPI(redirect_slashes=False, lifespan="off", docs_url="/docs", openapi_url="/openapi.json")
+app.add_middleware(AWSAPIGatewayMiddleware)
+
+sess = botocore.session.Session()
 app = create_fastapi_app()
 
 autoscaling = boto3.client("autoscaling", region_name=os.environ["AWS_REGION"], config=retry_config)

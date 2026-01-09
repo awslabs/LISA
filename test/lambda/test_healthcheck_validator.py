@@ -38,7 +38,9 @@ class TestValidHealthcheckFormats:
 
     def test_valid_cmd_shell_array_with_complex_command(self):
         """Test that CMD-SHELL with complex shell command is valid."""
-        validate_healthcheck_command(["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"])
+        validate_healthcheck_command(
+            ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+        )
         # Should not raise any exception
 
     def test_valid_cmd_array(self):
@@ -53,7 +55,9 @@ class TestValidHealthcheckFormats:
 
     def test_valid_cmd_array_multiple_arguments(self):
         """Test that CMD array with multiple arguments is valid."""
-        validate_healthcheck_command(["CMD", "python", "-c", "import requests; requests.get('http://localhost:8080')"])
+        validate_healthcheck_command(
+            ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8080')"]
+        )
         # Should not raise any exception
 
 
@@ -64,35 +68,35 @@ class TestInvalidHealthcheckFormats:
         """Test that None command raises ValueError."""
         with pytest.raises(ValueError) as exc_info:
             validate_healthcheck_command(None)
-
+        
         assert "cannot be None" in str(exc_info.value)
 
     def test_empty_string_raises_error(self):
         """Test that empty string raises ValueError."""
         with pytest.raises(ValueError) as exc_info:
             validate_healthcheck_command("")
-
+        
         assert "cannot be an empty string" in str(exc_info.value)
 
     def test_whitespace_only_string_raises_error(self):
         """Test that whitespace-only string raises ValueError."""
         with pytest.raises(ValueError) as exc_info:
             validate_healthcheck_command("   ")
-
+        
         assert "cannot be an empty string" in str(exc_info.value)
 
     def test_empty_array_raises_error(self):
         """Test that empty array raises ValueError."""
         with pytest.raises(ValueError) as exc_info:
             validate_healthcheck_command([])
-
+        
         assert "array cannot be empty" in str(exc_info.value)
 
     def test_array_without_cmd_prefix_raises_error(self):
         """Test that array without CMD/CMD-SHELL prefix raises ValueError."""
         with pytest.raises(ValueError) as exc_info:
             validate_healthcheck_command(["curl", "-f", "http://localhost:8080/health"])
-
+        
         error_message = str(exc_info.value)
         assert "must start with 'CMD' or 'CMD-SHELL'" in error_message
         assert "got: 'curl'" in error_message
@@ -101,7 +105,7 @@ class TestInvalidHealthcheckFormats:
         """Test that array with invalid prefix raises ValueError."""
         with pytest.raises(ValueError) as exc_info:
             validate_healthcheck_command(["SHELL", "curl -f http://localhost:8080/health"])
-
+        
         error_message = str(exc_info.value)
         assert "must start with 'CMD' or 'CMD-SHELL'" in error_message
         assert "got: 'SHELL'" in error_message
@@ -110,7 +114,7 @@ class TestInvalidHealthcheckFormats:
         """Test that array with only CMD prefix and no command raises ValueError."""
         with pytest.raises(ValueError) as exc_info:
             validate_healthcheck_command(["CMD"])
-
+        
         error_message = str(exc_info.value)
         assert "must contain a command after 'CMD'" in error_message
 
@@ -118,7 +122,7 @@ class TestInvalidHealthcheckFormats:
         """Test that array with only CMD-SHELL prefix and no command raises ValueError."""
         with pytest.raises(ValueError) as exc_info:
             validate_healthcheck_command(["CMD-SHELL"])
-
+        
         error_message = str(exc_info.value)
         assert "must contain a command after 'CMD-SHELL'" in error_message
 
@@ -126,21 +130,21 @@ class TestInvalidHealthcheckFormats:
         """Test that array with empty command after prefix raises ValueError."""
         with pytest.raises(ValueError) as exc_info:
             validate_healthcheck_command(["CMD-SHELL", ""])
-
+        
         assert "cannot be empty after CMD/CMD-SHELL prefix" in str(exc_info.value)
 
     def test_array_with_whitespace_command_after_prefix_raises_error(self):
         """Test that array with whitespace-only command after prefix raises ValueError."""
         with pytest.raises(ValueError) as exc_info:
             validate_healthcheck_command(["CMD-SHELL", "   "])
-
+        
         assert "cannot be empty after CMD/CMD-SHELL prefix" in str(exc_info.value)
 
     def test_integer_command_raises_error(self):
         """Test that integer command raises ValueError."""
         with pytest.raises(ValueError) as exc_info:
             validate_healthcheck_command(123)
-
+        
         error_message = str(exc_info.value)
         assert "must be a string or array" in error_message
         assert "got: int" in error_message
@@ -149,7 +153,7 @@ class TestInvalidHealthcheckFormats:
         """Test that dict command raises ValueError."""
         with pytest.raises(ValueError) as exc_info:
             validate_healthcheck_command({"command": "curl"})
-
+        
         error_message = str(exc_info.value)
         assert "must be a string or array" in error_message
         assert "got: dict" in error_message
@@ -158,7 +162,7 @@ class TestInvalidHealthcheckFormats:
         """Test that boolean command raises ValueError."""
         with pytest.raises(ValueError) as exc_info:
             validate_healthcheck_command(True)
-
+        
         error_message = str(exc_info.value)
         assert "must be a string or array" in error_message
         assert "got: bool" in error_message
@@ -171,7 +175,7 @@ class TestErrorMessageHelpfulness:
         """Test that missing prefix error includes example format."""
         with pytest.raises(ValueError) as exc_info:
             validate_healthcheck_command(["curl", "http://localhost:8080"])
-
+        
         error_message = str(exc_info.value)
         assert "Example:" in error_message
         assert "CMD-SHELL" in error_message
@@ -181,7 +185,7 @@ class TestErrorMessageHelpfulness:
         """Test that empty command error includes example format."""
         with pytest.raises(ValueError) as exc_info:
             validate_healthcheck_command(["CMD"])
-
+        
         error_message = str(exc_info.value)
         assert "Example:" in error_message
         assert "CMD-SHELL" in error_message
@@ -190,7 +194,7 @@ class TestErrorMessageHelpfulness:
         """Test that wrong type error includes example format."""
         with pytest.raises(ValueError) as exc_info:
             validate_healthcheck_command(123)
-
+        
         error_message = str(exc_info.value)
         assert "Example:" in error_message
         assert "CMD-SHELL" in error_message
@@ -199,7 +203,7 @@ class TestErrorMessageHelpfulness:
         """Test that error messages mention both valid prefixes."""
         with pytest.raises(ValueError) as exc_info:
             validate_healthcheck_command(["INVALID", "command"])
-
+        
         error_message = str(exc_info.value)
         assert "CMD" in error_message
         assert "CMD-SHELL" in error_message

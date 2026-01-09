@@ -14,26 +14,75 @@
   limitations under the License.
 */
 
-import { Stack } from 'aws-cdk-lib';
+import { App, Stack } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
-import MockApp from '../mocks/MockApp';
+import { VectorStoreCreatorStack } from '../../../lib/rag/vector-store/vector-store-creator';
 import ConfigParser from '../mocks/ConfigParser';
+import { Vpc } from '../../../lib/networking/vpc';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as ssm from 'aws-cdk-lib/aws-ssm';
 
 describe('VectorStoreCreator IAM Self-Targeting Prevention', () => {
-    let stacks: Stack[];
+    let app: App;
+    let stack: Stack;
     let template: Template;
 
     beforeAll(() => {
-        const config = ConfigParser.parseConfig(['config-test.yaml', 'assets.yaml']);
-        stacks = MockApp.create(config).stacks;
+        const config = ConfigParser.parseConfig();
+        app = new App();
+        stack = new Stack(app, 'TestStack', {
+            env: {
+                account: '012345678901',
+                region: config.region,
+            },
+        });
 
-        // Find the RAG stack which contains VectorStoreCreator
-        const ragStack = stacks.find((stack) => stack.stackName.includes('RAG'));
-        expect(ragStack).toBeDefined();
-        template = Template.fromStack(ragStack!);
+        // Create mock VPC
+        const vpc = new Vpc(stack, 'TestVpc', { config });
+
+        // Create mock DynamoDB table output
+        const mockTable = new dynamodb.Table(stack, 'MockRagVectorStoreTable', {
+            partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
+        });
+
+        // Create mock SSM parameter for RAG Lambda execution role
+        new ssm.StringParameter(stack, 'MockRagLambdaExecutionRole', {
+            parameterName: `${config.deploymentPrefix}/roles/LisaRAGLambdaExecutionRole`,
+            stringValue: `arn:aws:iam::012345678901:role/mock-rag-lambda-execution-role`,
+        });
+
+        // Create mock SSM parameter for CDK layer
+        new ssm.StringParameter(stack, 'MockCdkLayer', {
+            parameterName: `${config.deploymentPrefix}/layerVersion/cdk`,
+            stringValue: `arn:aws:lambda:${config.region}:012345678901:layer:mock-cdk-layer:1`,
+        });
+
+        // Create mock layers
+        const mockLayer = lambda.LayerVersion.fromLayerVersionArn(
+            stack,
+            'MockLayer',
+            `arn:aws:lambda:${config.region}:012345678901:layer:mock-layer:1`
+        );
+
+        // Create VectorStoreCreatorStack
+        new VectorStoreCreatorStack(stack, 'VectorStoreCreator', {
+            config,
+            ragVectorStoreTable: {
+                value: mockTable.tableArn,
+            } as any,
+            vpc,
+            baseEnvironment: {
+                LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER: '/test/create-state-machine',
+                LISA_RAG_DELETE_STATE_MACHINE_ARN_PARAMETER: '/test/delete-state-machine',
+            },
+            layers: [mockLayer],
+        });
+
+        template = Template.fromStack(stack);
     });
 
-    describe('IAM Policy Self-Targeting Prevention', () => {
+    describe('IAM Policy Self-Targeting Prevention (Requirements 1.1, 1.3)', () => {
         it('should prevent the VectorStoreCreator role from modifying itself', () => {
             // Find the VectorStoreCreator role
             const roles = template.findResources('AWS::IAM::Role', {
@@ -69,12 +118,12 @@ describe('VectorStoreCreator IAM Self-Targeting Prevention', () => {
             // The policies are added via addToPolicy which creates separate AWS::IAM::Policy resources
             // Find all IAM policies
             const allPolicies = template.findResources('AWS::IAM::Policy');
-
+            
             // Find the policy attached to our role
             let targetPolicy: any = null;
-            for (const [, policy] of Object.entries(allPolicies)) {
+            for (const [policyId, policy] of Object.entries(allPolicies)) {
                 const policyProps = (policy as any).Properties;
-                if (policyProps.Roles && policyProps.Roles.some((role: any) =>
+                if (policyProps.Roles && policyProps.Roles.some((role: any) => 
                     role.Ref === roleLogicalId
                 )) {
                     targetPolicy = policyProps;
@@ -137,9 +186,9 @@ describe('VectorStoreCreator IAM Self-Targeting Prevention', () => {
             // Find the policy attached to our role
             const allPolicies = template.findResources('AWS::IAM::Policy');
             let targetPolicy: any = null;
-            for (const [, policy] of Object.entries(allPolicies)) {
+            for (const [policyId, policy] of Object.entries(allPolicies)) {
                 const policyProps = (policy as any).Properties;
-                if (policyProps.Roles && policyProps.Roles.some((role: any) =>
+                if (policyProps.Roles && policyProps.Roles.some((role: any) => 
                     role.Ref === roleLogicalId
                 )) {
                     targetPolicy = policyProps;
@@ -166,7 +215,7 @@ describe('VectorStoreCreator IAM Self-Targeting Prevention', () => {
         });
 
         it('should restrict AssumeRole to CDK bootstrap roles only', () => {
-            // Find the VectorStoreCreator role
+            // Find the VectorStoreCreator role with inline policies
             const roles = template.findResources('AWS::IAM::Role', {
                 Properties: {
                     AssumeRolePolicyDocument: {
@@ -192,27 +241,19 @@ describe('VectorStoreCreator IAM Self-Targeting Prevention', () => {
 
             const roleKeys = Object.keys(roles);
             expect(roleKeys.length).toBeGreaterThan(0);
-            const roleLogicalId = roleKeys[0];
 
-            // Find the policy attached to our role
-            const allPolicies = template.findResources('AWS::IAM::Policy');
-            let targetPolicy: any = null;
-            for (const [, policy] of Object.entries(allPolicies)) {
-                const policyProps = (policy as any).Properties;
-                if (policyProps.Roles && policyProps.Roles.some((role: any) =>
-                    role.Ref === roleLogicalId
-                )) {
-                    targetPolicy = policyProps;
-                    break;
-                }
-            }
-
-            expect(targetPolicy).toBeDefined();
+            const roleProperties = roles[roleKeys[0]].Properties;
+            expect(roleProperties.Policies).toBeDefined();
 
             // Find the policy statement that allows AssumeRole
-            const assumeRoleStatement = targetPolicy.PolicyDocument.Statement.find((stmt: any) =>
-                stmt.Action === 'iam:AssumeRole'
-            );
+            let assumeRoleStatement: any = null;
+            for (const policy of roleProperties.Policies) {
+                const statements = policy.PolicyDocument.Statement;
+                assumeRoleStatement = statements.find((stmt: any) =>
+                    Array.isArray(stmt.Action) && stmt.Action.includes('iam:AssumeRole')
+                );
+                if (assumeRoleStatement) break;
+            }
 
             expect(assumeRoleStatement).toBeDefined();
             expect(assumeRoleStatement.Resource).toBeDefined();
@@ -227,7 +268,7 @@ describe('VectorStoreCreator IAM Self-Targeting Prevention', () => {
         });
 
         it('should allow PassRole only to specific AWS services', () => {
-            // Find the VectorStoreCreator role
+            // Find the VectorStoreCreator role with inline policies
             const roles = template.findResources('AWS::IAM::Role', {
                 Properties: {
                     AssumeRolePolicyDocument: {
@@ -253,27 +294,19 @@ describe('VectorStoreCreator IAM Self-Targeting Prevention', () => {
 
             const roleKeys = Object.keys(roles);
             expect(roleKeys.length).toBeGreaterThan(0);
-            const roleLogicalId = roleKeys[0];
 
-            // Find the policy attached to our role
-            const allPolicies = template.findResources('AWS::IAM::Policy');
-            let targetPolicy: any = null;
-            for (const [, policy] of Object.entries(allPolicies)) {
-                const policyProps = (policy as any).Properties;
-                if (policyProps.Roles && policyProps.Roles.some((role: any) =>
-                    role.Ref === roleLogicalId
-                )) {
-                    targetPolicy = policyProps;
-                    break;
-                }
-            }
-
-            expect(targetPolicy).toBeDefined();
+            const roleProperties = roles[roleKeys[0]].Properties;
+            expect(roleProperties.Policies).toBeDefined();
 
             // Find the policy statement that allows PassRole
-            const passRoleStatement = targetPolicy.PolicyDocument.Statement.find((stmt: any) =>
-                stmt.Action === 'iam:PassRole'
-            );
+            let passRoleStatement: any = null;
+            for (const policy of roleProperties.Policies) {
+                const statements = policy.PolicyDocument.Statement;
+                passRoleStatement = statements.find((stmt: any) =>
+                    Array.isArray(stmt.Action) && stmt.Action.includes('iam:PassRole')
+                );
+                if (passRoleStatement) break;
+            }
 
             expect(passRoleStatement).toBeDefined();
             expect(passRoleStatement.Condition).toBeDefined();
@@ -318,7 +351,7 @@ describe('VectorStoreCreator IAM Self-Targeting Prevention', () => {
         });
 
         it('should allow service-linked role creation for required services', () => {
-            // Find the VectorStoreCreator role
+            // Find the VectorStoreCreator role with inline policies
             const roles = template.findResources('AWS::IAM::Role', {
                 Properties: {
                     AssumeRolePolicyDocument: {
@@ -344,27 +377,19 @@ describe('VectorStoreCreator IAM Self-Targeting Prevention', () => {
 
             const roleKeys = Object.keys(roles);
             expect(roleKeys.length).toBeGreaterThan(0);
-            const roleLogicalId = roleKeys[0];
 
-            // Find the policy attached to our role
-            const allPolicies = template.findResources('AWS::IAM::Policy');
-            let targetPolicy: any = null;
-            for (const [, policy] of Object.entries(allPolicies)) {
-                const policyProps = (policy as any).Properties;
-                if (policyProps.Roles && policyProps.Roles.some((role: any) =>
-                    role.Ref === roleLogicalId
-                )) {
-                    targetPolicy = policyProps;
-                    break;
-                }
-            }
-
-            expect(targetPolicy).toBeDefined();
+            const roleProperties = roles[roleKeys[0]].Properties;
+            expect(roleProperties.Policies).toBeDefined();
 
             // Find the policy statement that allows CreateServiceLinkedRole
-            const serviceLinkedRoleStatement = targetPolicy.PolicyDocument.Statement.find((stmt: any) =>
-                stmt.Action === 'iam:CreateServiceLinkedRole'
-            );
+            let serviceLinkedRoleStatement: any = null;
+            for (const policy of roleProperties.Policies) {
+                const statements = policy.PolicyDocument.Statement;
+                serviceLinkedRoleStatement = statements.find((stmt: any) =>
+                    Array.isArray(stmt.Action) && stmt.Action.includes('iam:CreateServiceLinkedRole')
+                );
+                if (serviceLinkedRoleStatement) break;
+            }
 
             expect(serviceLinkedRoleStatement).toBeDefined();
             expect(serviceLinkedRoleStatement.Condition).toBeDefined();

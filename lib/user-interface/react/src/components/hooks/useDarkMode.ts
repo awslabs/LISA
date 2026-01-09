@@ -19,11 +19,11 @@ import { useEffect, useState } from 'react';
 /**
  * Custom hook to detect and track dark mode by monitoring the 'awsui-dark-mode' class on the body element.
  * This hook automatically updates when the user toggles between light and dark themes via user-profile dropdown.
- * 
+ *
  * @returns {boolean} isDarkMode - True if dark mode is active, false otherwise
  */
 export const useDarkMode = (): boolean => {
-    const [isDarkMode, setIsDarkMode] = useState(() => 
+    const [isDarkMode, setIsDarkMode] = useState(() =>
         document.body.classList.contains('awsui-dark-mode')
     );
 

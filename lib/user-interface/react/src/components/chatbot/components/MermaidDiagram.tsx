@@ -35,7 +35,7 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = React.memo(({ chart, id, i
     const [svg, setSvg] = useState<string>('');
     const [isLoading, setIsLoading] = useState(true);
     const mermaidInitialized = useRef(false);
-    const lastRenderedChart = useRef<string>('');    
+    const lastRenderedChart = useRef<string>('');
     const isDarkMode = useDarkMode();
 
     // Initialize Mermaid with theme based on mode

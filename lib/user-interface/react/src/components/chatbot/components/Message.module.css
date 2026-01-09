@@ -36,6 +36,7 @@
     width: 100%;
 }
 
+/* Default/Light mode table styling */
 .messageContent th,
 .messageContent td {
     border: 1px solid #d1d5db;
@@ -45,4 +46,14 @@
 
 .messageContent tbody tr:nth-child(even) {
     background-color: #f9fafb;
+}
+
+/* Dark mode table styling */
+:global(.awsui-dark-mode) .messageContent th,
+:global(.awsui-dark-mode) .messageContent td {
+    border: 1px solid #4b5563;
+}
+
+:global(.awsui-dark-mode) .messageContent tbody tr:nth-child(even) {
+    background-color: #1f2937;
 }

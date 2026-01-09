@@ -32,9 +32,9 @@ const navLinks = [
       {
         text: 'Architecture Overview',  link: '/admin/architecture',
         items: [
-          { text: 'Serve', link: '/admin/architecture#serve' },
+          { text: 'Serve', link: '/admin/architecture#lisa-serve' },
+          { text: 'MCP', link: '/admin/architecture#lisa-mcp' },
           { text: 'Chat UI', link: '/admin/architecture#chat-ui' },
-          { text: 'Model Management', link: '/admin/architecture#model-management' },
         ],
       },
       { text: 'Deployment', link: '/admin/deploy',

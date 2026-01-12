@@ -105,6 +105,7 @@ function PromptTemplatesActionButton (dispatch: ThunkDispatch<any, any, Action>,
             onItemClick={(e) =>
                 ModelActionHandler(e, selectedPromptTemplate, dispatch, deleteMutation, navigate)
             }
+            data-testid='prompt-template-actions-dropdown'
         >
             Actions
         </ButtonDropdown>

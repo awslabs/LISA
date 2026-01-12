@@ -166,11 +166,14 @@ export function PromptTemplateForm (props: PromptTemplateFormProps) {
             header={<Header variant='h1'>Template</Header>}
             actions={
                 <SpaceBetween direction='horizontal' size='s'>
-                    <Button onClick={() => navigate(-1)}>Cancel</Button>
-                    <Button variant='primary'
+                    <Button onClick={() => navigate(-1)} data-testid='prompt-template-cancel-button'>Cancel</Button>
+                    <Button
+                        variant='primary'
                         disabled={disabled || !canEdit}
                         disabledReason={!canEdit ? 'You can only edit prompts you created.' : undefined}
-                        onClick={() => submit(state.form)}>
+                        onClick={() => submit(state.form)}
+                        data-testid='prompt-template-submit-button'
+                    >
                         { promptTemplateId ? 'Update' : 'Create'} Template
                     </Button>
                 </SpaceBetween>
@@ -189,6 +192,7 @@ export function PromptTemplateForm (props: PromptTemplateFormProps) {
                             disabled={disabled}
                             placeholder='Enter template title'
                             controlId='prompt-template-title-input'
+                            data-testid='prompt-template-title-input'
                         />
                     </FormField>
 
@@ -199,17 +203,22 @@ export function PromptTemplateForm (props: PromptTemplateFormProps) {
                                 setFields({'type': detail.selectedOption.value});
                             }}
                             options={Object.entries(PromptTemplateType).map(([key, value]) => ({label: key, value}))}
+                            data-testid='prompt-template-type-select'
                         />
                     </FormField>
 
                     <FormField label='Share with everyone'>
-                        <Toggle checked={sharePublic} onChange={({detail}) => {
-                            setSharePublic(detail.checked);
-                            setFields({groups: detail.checked ? ['lisa:public'] : []});
-                            touchFields(['groups'], ModifyMethod.Unset);
-                            setTokenText('');
-                        }}
-                        disabled={disabled} />
+                        <Toggle
+                            checked={sharePublic}
+                            onChange={({detail}) => {
+                                setSharePublic(detail.checked);
+                                setFields({groups: detail.checked ? ['lisa:public'] : []});
+                                touchFields(['groups'], ModifyMethod.Unset);
+                                setTokenText('');
+                            }}
+                            disabled={disabled}
+                            data-testid='prompt-template-share-public-toggle'
+                        />
                     </FormField>
 
                     <FormField label='Share with specific groups' errorText={tokenTextErrors?.groups} description={'Templates are public by default. Enter groups here to limit sharing to a specific subset. Enter a group name and then press return.'}>
@@ -249,11 +258,16 @@ export function PromptTemplateForm (props: PromptTemplateFormProps) {
                     <hr />
 
                     <FormField label='Prompt' errorText={errors?.body}>
-                        <Textarea value={state.form.body} onBlur={() => touchFields(['body'])} onChange={({ detail }) => {
-                            setFields({ 'body': detail.value });
-                        }}
-                        placeholder='Enter your template content'
-                        disabled={disabled} />
+                        <Textarea
+                            value={state.form.body}
+                            onBlur={() => touchFields(['body'])}
+                            onChange={({ detail }) => {
+                                setFields({ 'body': detail.value });
+                            }}
+                            placeholder='Enter your template content'
+                            disabled={disabled}
+                            data-testid='prompt-template-body-textarea'
+                        />
                     </FormField>
                 </SpaceBetween>
             </Container>

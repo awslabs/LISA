@@ -47,6 +47,7 @@ export const sessionApi = createApi({
     tagTypes: ['sessions', 'session'],
     refetchOnFocus: true,
     refetchOnMountOrArgChange: true,
+    keepUnusedDataFor: 60, // Keep cache for 60s to prevent cancellation during rapid navigation
     endpoints: (builder) => ({
         getSessionById: builder.query<LisaChatSession, string>({
             query: (sessionId: string) => ({

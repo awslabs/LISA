@@ -35,16 +35,14 @@ export function Chatbot ({ setNav }) {
             dispatch(sessionApi.util.invalidateTags([{ type: 'session', id: sessionId }]));
         }
 
-        // Navigate first, then let the route change trigger the key update
+        // Force a key update to remount the Chat component
+        setKey(new Date().toISOString());
+
+        // Navigate to clear the sessionId from URL
         navigate('/ai-assistant', { replace: true });
     }, [navigate, dispatch, sessionId]);
 
-    // Update key when sessionId changes to undefined (new session)
-    useEffect(() => {
-        if (sessionId === undefined) {
-            setKey(new Date().toISOString());
-        }
-    }, [sessionId]);
+
 
     useEffect(() => {
         setNav(<Sessions newSession={handleNewSession} />);

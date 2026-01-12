@@ -154,7 +154,8 @@ export function Sessions ({ newSession }) {
             // Reset the tracking state
             setSessionBeingDeleted(null);
         } else if (!isDeleteByIdLoading && isDeleteByIdError) {
-            notificationService.generateNotification(`Error deleting session: ${deleteByIdError.message || 'Unknown error'}`, 'error');
+            const errorMessage = 'message' in deleteByIdError ? deleteByIdError.message : 'Unknown error';
+            notificationService.generateNotification(`Error deleting session: ${errorMessage}`, 'error');
 
             // Reset the tracking state on error too
             setSessionBeingDeleted(null);
@@ -166,7 +167,8 @@ export function Sessions ({ newSession }) {
         if (!isDeleteUserSessionsLoading && isDeleteUserSessionsSuccess) {
             notificationService.generateNotification('Successfully deleted all user sessions', 'success');
         } else if (!isDeleteUserSessionsLoading && isDeleteUserSessionsError) {
-            notificationService.generateNotification(`Error deleting user sessions: ${deleteUserSessionsError.message || 'Unknown error'}`, 'error');
+            const errorMessage = 'message' in deleteUserSessionsError ? deleteUserSessionsError.message : 'Unknown error';
+            notificationService.generateNotification(`Error deleting user sessions: ${errorMessage}`, 'error');
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isDeleteUserSessionsSuccess, isDeleteUserSessionsError, deleteUserSessionsError, isDeleteUserSessionsLoading]);
@@ -178,7 +180,8 @@ export function Sessions ({ newSession }) {
             setSessionToRename(null);
             setNewSessionName('');
         } else if (!isUpdateSessionNameLoading && isUpdateSessionNameError) {
-            notificationService.generateNotification(`Error renaming session: ${updateSessionNameError.message || 'Unknown error'}`, 'error');
+            const errorMessage = 'message' in updateSessionNameError ? updateSessionNameError.message : 'Unknown error';
+            notificationService.generateNotification(`Error renaming session: ${errorMessage}`, 'error');
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isUpdateSessionNameSuccess, isUpdateSessionNameError, updateSessionNameError, isUpdateSessionNameLoading]);
@@ -206,76 +209,71 @@ export function Sessions ({ newSession }) {
     };
 
     return (
-        <div className='p-9'>
-            <SpaceBetween size={'xl'} direction={'vertical'}>
-                <Header
-                    actions={
-                        <div className='mr-10'>
-                            <SpaceBetween direction='horizontal' size='xl'>
-                                <Popover
-                                    size='large'
-                                    position='bottom'
-                                    dismissButton={false}
-                                    triggerType='click'
-                                    content={
-                                        <SpaceBetween size='s'>
-                                            <Input
-                                                value={searchQuery}
-                                                onChange={({ detail }) => setSearchQuery(detail.value)}
-                                                placeholder='Search sessions by name...'
-                                                clearAriaLabel='Clear search'
-                                                type='search'
-                                                controlId='session-search-input'
-                                            />
-                                            {searchQuery && (
-                                                <Box variant='small' color='text-status-info'>
-                                                    Found {filteredSessions.length} session{filteredSessions.length !== 1 ? 's' : ''}
-                                                </Box>
-                                            )}
-                                        </SpaceBetween>
-                                    }
-                                >
-                                    <Button
-                                        iconName='search'
-                                        variant='inline-link'
-                                        ariaLabel='Search sessions'
-                                    />
-                                </Popover>
-                                <Button
-                                    iconName='add-plus'
-                                    variant='inline-link'
-                                    onClick={newSession}
-                                    ariaLabel='New Session'
-                                ></Button>
-                                <Button
-                                    iconAlt='Refresh list'
-                                    iconName='refresh'
-                                    variant='inline-link'
-                                    onClick={() => dispatch(sessionApi.util.invalidateTags(['sessions']))}
-                                    ariaLabel='Refresh Sessions'
-                                ></Button>
-                                {config?.configuration.enabledComponents.deleteSessionHistory &&
-                                    <Button
-                                        iconAlt='Delete sessions'
-                                        iconName='delete-marker'
-                                        variant='inline-link'
-                                        onClick={() =>
-                                            dispatch(
-                                                setConfirmationModal({
-                                                    action: 'Delete',
-                                                    resourceName: 'All Sessions',
-                                                    onConfirm: () => deleteUserSessions(),
-                                                    description: 'This will delete all of your user sessions.'
-                                                })
-                                            )}
-                                        ariaLabel='Delete All Sessions'
-                                    ></Button>}
-                            </SpaceBetween>
-                        </div>
-                    }
-                >
+        <div className='p-5'>
+            <SpaceBetween size='s' direction='vertical'>
+                <Header>
                     History
                 </Header>
+                <SpaceBetween direction='horizontal' size='xs'>
+                    <Popover
+                        size='large'
+                        position='bottom'
+                        dismissButton={false}
+                        triggerType='custom'
+                        content={
+                            <SpaceBetween size='s'>
+                                <Input
+                                    value={searchQuery}
+                                    onChange={({ detail }) => setSearchQuery(detail.value)}
+                                    placeholder='Search sessions by name...'
+                                    clearAriaLabel='Clear search'
+                                    type='search'
+                                    controlId='session-search-input'
+                                />
+                                {searchQuery && (
+                                    <Box variant='small' color='text-status-info'>
+                                        Found {filteredSessions.length} session{filteredSessions.length !== 1 ? 's' : ''}
+                                    </Box>
+                                )}
+                            </SpaceBetween>
+                        }
+                    >
+                        <Button
+                            iconName='search'
+                            variant='inline-icon'
+                            ariaLabel='Search sessions'
+                        />
+                    </Popover>
+                    <Button
+                        iconName='add-plus'
+                        variant='inline-icon'
+                        onClick={newSession}
+                        ariaLabel='New Session'
+                    />
+                    <Button
+                        iconAlt='Refresh list'
+                        iconName='refresh'
+                        variant='inline-icon'
+                        onClick={() => dispatch(sessionApi.util.invalidateTags(['sessions']))}
+                        ariaLabel='Refresh Sessions'
+                    />
+                    {config?.configuration.enabledComponents.deleteSessionHistory &&
+                        <Button
+                            iconAlt='Delete sessions'
+                            iconName='delete-marker'
+                            variant='inline-icon'
+                            onClick={() =>
+                                dispatch(
+                                    setConfirmationModal({
+                                        action: 'Delete',
+                                        resourceName: 'All Sessions',
+                                        onConfirm: () => deleteUserSessions(),
+                                        description: 'This will delete all of your user sessions.'
+                                    })
+                                )}
+                            ariaLabel='Delete All Sessions'
+                        />}
+                </SpaceBetween>
             </SpaceBetween>
 
             {isSessionsLoading && (
@@ -288,109 +286,111 @@ export function Sessions ({ newSession }) {
             )}
 
             {!isSessionsLoading && (
-                <SpaceBetween size='s' className='pt-5'>
-                    {(() => {
-                        const timeGroups = Object.entries(groupedSessions);
+                <div className='pt-2'>
+                    <SpaceBetween size='s'>
+                        {(() => {
+                            const timeGroups = Object.entries(groupedSessions);
 
-                        return timeGroups.map(([timeGroup, sessions]) => {
-                            if (sessions.length === 0) return null;
+                            return timeGroups.map(([timeGroup, sessions]) => {
+                                if (sessions.length === 0) return null;
 
-                            return (
-                                <ExpandableSection
-                                    key={timeGroup}
-                                    headerText={timeGroup}
-                                    defaultExpanded={timeGroup === 'Last Day' || timeGroup === 'Last 7 Days'}
-                                >
-                                    <SpaceBetween size='xxs'>
-                                        {sessions.map((item) => (
-                                            <Box key={item.sessionId} padding='xxs'>
-                                                <Grid gridDefinition={[{ colspan: 10 }, { colspan: 2 }]}>
-                                                    <Box>
-                                                        <Link onClick={() => navigate(`/ai-assistant/${item.sessionId}`)}>
-                                                            <Box
-                                                                color={item.sessionId === currentSessionId ? 'text-status-info' : 'text-status-inactive'}
-                                                                fontWeight={item.sessionId === currentSessionId ? 'bold' : 'normal'}
-                                                            >
-                                                                {getSessionDisplay(item, 40)}
-                                                            </Box>
-                                                        </Link>
-                                                    </Box>
-                                                    <Box>
-                                                        <ButtonDropdown
-                                                            items={[
-                                                                { id: 'rename-session', text: 'Rename Session', iconName: 'edit' },
-                                                                { id: 'delete-session', text: 'Delete Session', iconName: 'delete-marker' },
-                                                                { id: 'download-session', text: 'Download Session', iconName: 'download' },
-                                                                { id: 'export-images', text: 'Export AI Images', iconName: 'folder' },
-                                                            ]}
-                                                            ariaLabel='Control instance'
-                                                            variant='icon'
-                                                            onItemClick={(e) => {
-                                                                if (e.detail.id === 'delete-session') {
-                                                                    dispatch(
-                                                                        setConfirmationModal({
-                                                                            action: 'Delete',
-                                                                            resourceName: 'Session',
-                                                                            onConfirm: () => {
-                                                                                setSessionBeingDeleted(item.sessionId);
-                                                                                deleteById(item.sessionId);
-                                                                            },
-                                                                            description: `This will delete the Session: ${item.sessionId}.`
-                                                                        })
-                                                                    );
-                                                                } else if (e.detail.id === 'download-session') {
-                                                                    getSessionById(item.sessionId).then((resp) => {
-                                                                        const sess: LisaChatSession = resp.data;
-                                                                        const file = new Blob([JSON.stringify(sess, null, 2)], { type: 'application/json' });
-                                                                        downloadFile(URL.createObjectURL(file), `${sess.sessionId}.json`);
-                                                                    });
-                                                                } else if (e.detail.id === 'export-images') {
-                                                                    getSessionById(item.sessionId).then(async (resp) => {
-                                                                        const sess: LisaChatSession = resp.data;
-                                                                        const images = sess.history.filter((msg) => msg.type === 'ai' && messageContainsImage(msg.content))
-                                                                            .flatMap((msg) => {
-                                                                                if (Array.isArray(msg.content)) {
-                                                                                    return msg.content
-                                                                                        .filter((contentItem: any) => contentItem.type === 'image_url' && contentItem.image_url?.url)
-                                                                                        .map((contentItem: any) => contentItem.image_url.url as string);
-                                                                                }
-                                                                                return [];
-                                                                            });
+                                return (
+                                    <ExpandableSection
+                                        key={timeGroup}
+                                        headerText={timeGroup}
+                                        defaultExpanded={timeGroup === 'Last Day' || timeGroup === 'Last 7 Days'}
+                                    >
+                                        <SpaceBetween size='xxs'>
+                                            {sessions.map((item) => (
+                                                <Box key={item.sessionId} padding='xxs'>
+                                                    <Grid gridDefinition={[{ colspan: 10 }, { colspan: 2 }]}>
+                                                        <Box>
+                                                            <Link onClick={() => navigate(`/ai-assistant/${item.sessionId}`)}>
+                                                                <Box
+                                                                    color={item.sessionId === currentSessionId ? 'text-status-info' : 'text-status-inactive'}
+                                                                    fontWeight={item.sessionId === currentSessionId ? 'bold' : 'normal'}
+                                                                >
+                                                                    {getSessionDisplay(item, 40)}
+                                                                </Box>
+                                                            </Link>
+                                                        </Box>
+                                                        <Box>
+                                                            <ButtonDropdown
+                                                                items={[
+                                                                    { id: 'rename-session', text: 'Rename Session', iconName: 'edit' },
+                                                                    { id: 'delete-session', text: 'Delete Session', iconName: 'delete-marker' },
+                                                                    { id: 'download-session', text: 'Download Session', iconName: 'download' },
+                                                                    { id: 'export-images', text: 'Export AI Images', iconName: 'folder' },
+                                                                ]}
+                                                                ariaLabel='Control instance'
+                                                                variant='icon'
+                                                                onItemClick={(e) => {
+                                                                    if (e.detail.id === 'delete-session') {
+                                                                        dispatch(
+                                                                            setConfirmationModal({
+                                                                                action: 'Delete',
+                                                                                resourceName: 'Session',
+                                                                                onConfirm: () => {
+                                                                                    setSessionBeingDeleted(item.sessionId);
+                                                                                    deleteById(item.sessionId);
+                                                                                },
+                                                                                description: `This will delete the Session: ${item.sessionId}.`
+                                                                            })
+                                                                        );
+                                                                    } else if (e.detail.id === 'download-session') {
+                                                                        getSessionById(item.sessionId).then((resp) => {
+                                                                            const sess: LisaChatSession = resp.data;
+                                                                            const file = new Blob([JSON.stringify(sess, null, 2)], { type: 'application/json' });
+                                                                            downloadFile(URL.createObjectURL(file), `${sess.sessionId}.json`);
+                                                                        });
+                                                                    } else if (e.detail.id === 'export-images') {
+                                                                        getSessionById(item.sessionId).then(async (resp) => {
+                                                                            const sess: LisaChatSession = resp.data;
+                                                                            const images = sess.history.filter((msg) => msg.type === 'ai' && messageContainsImage(msg.content))
+                                                                                .flatMap((msg) => {
+                                                                                    if (Array.isArray(msg.content)) {
+                                                                                        return msg.content
+                                                                                            .filter((contentItem: any) => contentItem.type === 'image_url' && contentItem.image_url?.url)
+                                                                                            .map((contentItem: any) => contentItem.image_url.url as string);
+                                                                                    }
+                                                                                    return [];
+                                                                                });
 
-                                                                        if (images.length === 0) {
-                                                                            notificationService.generateNotification('No images found to export', 'info');
-                                                                        } else {
-                                                                            const zip = new JSZip();
-                                                                            const imagePromises = images.map(async (imageUrl, index) => {
-                                                                                try {
-                                                                                    const blob = await fetchImage(imageUrl);
-                                                                                    zip.file(`image_${index + 1}.png`, blob, { binary: true });
-                                                                                } catch (error) {
-                                                                                    console.error(`Error processing image ${index + 1}:`, error);
-                                                                                }
-                                                                            });
+                                                                            if (images.length === 0) {
+                                                                                notificationService.generateNotification('No images found to export', 'info');
+                                                                            } else {
+                                                                                const zip = new JSZip();
+                                                                                const imagePromises = images.map(async (imageUrl, index) => {
+                                                                                    try {
+                                                                                        const blob = await fetchImage(imageUrl);
+                                                                                        zip.file(`image_${index + 1}.png`, blob, { binary: true });
+                                                                                    } catch (error) {
+                                                                                        console.error(`Error processing image ${index + 1}:`, error);
+                                                                                    }
+                                                                                });
 
-                                                                            // Wait for all images to be processed
-                                                                            await Promise.all(imagePromises);
-                                                                            const content = await zip.generateAsync({ type: 'blob' });
-                                                                            downloadFile(URL.createObjectURL(content), `${sess.sessionId}-images.zip`);
-                                                                        }
-                                                                    });
-                                                                } else if (e.detail.id === 'rename-session') {
-                                                                    handleRenameSession(item);
-                                                                }
-                                                            }}
-                                                        />
-                                                    </Box>
-                                                </Grid>
-                                            </Box>
-                                        ))}
-                                    </SpaceBetween>
-                                </ExpandableSection>
-                            );
-                        });
-                    })()}
-                </SpaceBetween>
+                                                                                // Wait for all images to be processed
+                                                                                await Promise.all(imagePromises);
+                                                                                const content = await zip.generateAsync({ type: 'blob' });
+                                                                                downloadFile(URL.createObjectURL(content), `${sess.sessionId}-images.zip`);
+                                                                            }
+                                                                        });
+                                                                    } else if (e.detail.id === 'rename-session') {
+                                                                        handleRenameSession(item);
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </Box>
+                                                    </Grid>
+                                                </Box>
+                                            ))}
+                                        </SpaceBetween>
+                                    </ExpandableSection>
+                                );
+                            });
+                        })()}
+                    </SpaceBetween>
+                </div>
             )}
 
             {/* Rename Session Modal */}

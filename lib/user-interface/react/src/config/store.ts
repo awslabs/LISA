@@ -20,6 +20,7 @@ import storage from 'redux-persist/lib/storage';
 import { persistReducer, persistStore } from 'redux-persist';
 
 import sharedReducers, { rootMiddleware } from '../shared/reducers';
+import { rtkQueryErrorMiddleware } from '../shared/reducers/rtkQueryErrorMiddleware';
 
 const persistConfig = {
     key: 'lisa',
@@ -33,7 +34,9 @@ const store = configureStore({
     middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware({
             serializableCheck: false,
-        }).concat(...rootMiddleware),
+        })
+            .concat(rtkQueryErrorMiddleware)
+            .concat(...rootMiddleware),
 });
 
 export async function purgeStore () {

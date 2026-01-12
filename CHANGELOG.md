@@ -16,10 +16,10 @@ Many UI elements in light mode were being rendered in a dark theme, such as code
 Significantly enhanced the smoke tests to be more reliable. Added new E2E tests that reuse the smoke tests and a new model creation workflow E2E test.
 
 **Bugs Fixed:**
-- Addressed wrong use of  in 
+- Addressed wrong use of  in
 - Addressed  routing issue
 - Fixed a naming issue with EventBridge role names
-- Fixed ordering of Zod constraints with 
+- Fixed ordering of Zod constraints with
 
 ### [Auto-Scrolling Fix]
 Allows users to break out of auto-scrolling during streamed responses by scrolling away from the bottom of the screen. Users can re-enable the auto-scrolling by scrolling back down to the bottom of the stream.

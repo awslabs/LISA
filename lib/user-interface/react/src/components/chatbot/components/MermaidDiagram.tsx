@@ -20,7 +20,9 @@ import { ButtonGroup, StatusIndicator } from '@cloudscape-design/components';
 import { downloadSvgAsPng } from '@/shared/util/downloader';
 import { MERMAID_SANITIZATION_CONFIG } from '@/components/chatbot/config/mermaidSanitizationConfig';
 import DOMPurify from 'dompurify';
-import { useDarkMode } from '@/components/hooks/useDarkMode';
+import { useContext } from 'react';
+import { Mode } from '@cloudscape-design/global-styles';
+import ColorSchemeContext from '@/shared/color-scheme.provider';
 
 type MermaidDiagramProps = {
     chart: string;
@@ -36,7 +38,8 @@ const MermaidDiagram: React.FC<MermaidDiagramProps> = React.memo(({ chart, id, i
     const [isLoading, setIsLoading] = useState(true);
     const mermaidInitialized = useRef(false);
     const lastRenderedChart = useRef<string>('');
-    const isDarkMode = useDarkMode();
+    const { colorScheme } = useContext(ColorSchemeContext);
+    const isDarkMode = colorScheme === Mode.Dark;
 
     // Initialize Mermaid with theme based on mode
     useEffect(() => {

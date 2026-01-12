@@ -16,7 +16,7 @@
 
 import { useParams, useNavigate } from 'react-router-dom';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 
 import Chat from '../components/chatbot/Chat';
 import Sessions from '../components/chatbot/components/Sessions';
@@ -28,6 +28,7 @@ export function Chatbot ({ setNav }) {
     const navigate = useNavigate();
     const dispatch = useAppDispatch();
     const [key, setKey] = useState(() => new Date().toISOString());
+    const prevSessionIdRef = useRef(sessionId);
 
     const handleNewSession = useCallback(() => {
         // Clear specific cached session data that might interfere with new session creation
@@ -35,12 +36,18 @@ export function Chatbot ({ setNav }) {
             dispatch(sessionApi.util.invalidateTags([{ type: 'session', id: sessionId }]));
         }
 
-        // Force a key update to remount the Chat component
-        setKey(new Date().toISOString());
-
         // Navigate to clear the sessionId from URL
         navigate('/ai-assistant', { replace: true });
     }, [navigate, dispatch, sessionId]);
+
+    // Update key when sessionId changes from a value to undefined (new session clicked)
+    useEffect(() => {
+        if (prevSessionIdRef.current && !sessionId) {
+            // We transitioned from having a sessionId to not having one (new session)
+            setKey(new Date().toISOString());
+        }
+        prevSessionIdRef.current = sessionId;
+    }, [sessionId]);
 
 
 

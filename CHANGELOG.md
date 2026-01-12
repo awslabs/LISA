@@ -1,56 +1,33 @@
 # v6.1.1
 
-## Key Features
-
-### [Prompt Template Test]
-Added an end-to-end test for the creation of prompt templates, including the creation of a persona and directive, along with the bedrock model creation.
-
-**Enhancements:**
-- **Middleware**: Added middleware to RTK to retry failed or cancelled queries, which was particularly problematic for Cypress tests but also helped cache failed values.
-- **UI Cleanup**: Cleaned up session button group layout.
-
+##  UI Cleanup
 ### [Light/Dark Theme Fixes]
-Many UI elements in light mode were being rendered in a dark theme, such as code blocks, Mermaid tables, message metadata, etc. This change addresses these issues and ensures elements render in their appropriate theme based on the user's selected theme.
+Some UI elements in light mode were being rendered in a dark theme, such as code blocks, Mermaid tables, message metadata, etc. This change ensures elements render in their appropriate theme based on the user's selection.
+
+### [Auto-Scrolling Fix]
+Allows users to break out of auto-scrolling during streamed responses by scrolling away from the bottom of the screen. Users can reset auto-scrolling by scrolling back down to the bottom of the stream.
+
+### [API Token Dashboard Metrics]
+This change ensures that users who programmatically interact with LISA are captured in the metrics dashboard. Additionally, it introduces a reorganization of the metrics dashboard to enhance readability.
 
 ### [Cypress Smoke Test Refactor]
 Significantly enhanced the smoke tests to be more reliable. Added new E2E tests that reuse the smoke tests and a new model creation workflow E2E test.
 
-**Bugs Fixed:**
-- Addressed wrong use of  in 
-- Addressed  routing issue
-- Fixed a naming issue with EventBridge role names
-- Fixed ordering of Zod constraints with 
-
-### [Auto-Scrolling Fix]
-Allows users to break out of auto-scrolling during streamed responses by scrolling away from the bottom of the screen. Users can re-enable the auto-scrolling by scrolling back down to the bottom of the stream.
-
-### [API Token User Metrics]
-This change ensures that users who programmatically interact with LISA are captured in the metrics dashboard. Additionally, it introduces a reorganization of the metrics dashboard to enhance readability.
-
-### [Markdown CSS Scoping]
-Scoped the message CSS to the component to avoid polluting other components.
+### [Session History Reload Fix]
+Fixed session history not loading when selected, and updated session hooks to correctly invalidate and retrieve the session after selecting a new session.
 
 ### [Markdown Table Support]
 Introduced GitHub Flavored Markdown (GFM) to support markdown tables. Added Tailwind CSS overrides to render markdown in chat prompts. Enhanced the system prompt to render math expressions without additional prompting.
 
-### [Session Reload Fix]
-Updated session hooks to correctly invalidate and retrieve the session after selecting a new session.
-
-**Enhancements:**
-- Added a Spinner to session loading
-- Fixed clearing user session on logout
-- Fixed security group misconfiguration for override configuration
 
 ## Key Changes
-- **Documentation**: Added access control details to the getting started documentation, instructions on how to accept the self-signed certificate in the browser, and updates to configuration labels.
-- **Bugfixes**: Fixed session history not loading when selected, and addressed React form warnings.
+- **Documentation**: Added access control details to the Getting Started section along with general updates, added instructions on how to accept the self-signed certificate in the browser, and updates to configuration labels.
 - **Cypress Tests**: Added additional smoke tests to ensure admin pages load with data, chat prompts render responses, chat sessions are selectable and load properly, and non-admins can't navigate to admin pages.
-- **Administrative**: Added an  wrapper around the  component.
+- **Administrative**: Added an `AdminRoute` wrapper around the `McpWorkbench` component.
 
 ## Acknowledgements
-* @121983012+jmharold
 * @bedanley
-* @evmann
+* @estohlmann
 * @jmharold
 
 **Full Changelog**: https://github.com/awslabs/LISA/compare/v6.1.0..v6.1.1

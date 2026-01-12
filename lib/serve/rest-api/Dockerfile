@@ -4,12 +4,18 @@ FROM ${BASE_IMAGE}
 ARG PRISMA_CACHE_DIR=PRISMA_CACHE
 ENV PRISMA_CACHE_DIR=$PRISMA_CACHE_DIR
 
+# Apply SSH security hardening
+COPY scripts/docker/harden-ssh.sh /tmp/harden-ssh.sh
+RUN chmod +x /tmp/harden-ssh.sh && /tmp/harden-ssh.sh && rm /tmp/harden-ssh.sh
+
 # Install build dependencies for madoka package
-RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
-    make \
-    && rm -rf /var/lib/apt/lists/*
+RUN if command -v apt-get >/dev/null 2>&1; then \
+        apt-get update && apt-get install -y gcc g++ make && rm -rf /var/lib/apt/lists/*; \
+    elif command -v yum >/dev/null 2>&1; then \
+        yum install -y gcc gcc-c++ make && yum clean all; \
+    elif command -v apk >/dev/null 2>&1; then \
+        apk add --no-cache gcc g++ make musl-dev; \
+    fi
 
 # Copy LiteLLM config directly out of the LISA config.yaml file
 ARG LITELLM_CONFIG

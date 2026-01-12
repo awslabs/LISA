@@ -1,6 +1,10 @@
 ARG BASE_IMAGE=python:3.13-slim
 FROM ${BASE_IMAGE}
 
+# Apply SSH security hardening
+COPY scripts/docker/harden-ssh.sh /tmp/harden-ssh.sh
+RUN chmod +x /tmp/harden-ssh.sh && /tmp/harden-ssh.sh && rm /tmp/harden-ssh.sh
+
 #### POINT TO NEW PYPI CONFIG
 ARG PYPI_INDEX_URL
 ARG PYPI_TRUSTED_HOST

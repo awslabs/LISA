@@ -1,6 +1,10 @@
 ARG BASE_IMAGE=public.ecr.aws/lambda/python:3.13
 FROM ${BASE_IMAGE}
 
+# Apply SSH security hardening
+COPY scripts/docker/harden-ssh.sh /tmp/harden-ssh.sh
+RUN chmod +x /tmp/harden-ssh.sh && /tmp/harden-ssh.sh && rm /tmp/harden-ssh.sh
+
 ARG BUILD_DIR=build
 
 WORKDIR /workdir

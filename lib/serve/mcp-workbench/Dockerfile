@@ -15,12 +15,18 @@ ENV RCLONE_SOURCE=$RCLONE_SOURCE
 
 WORKDIR /workspace
 
-RUN apt-get update && apt-get install -y \
-    curl \
-    fuse3 \
-    unzip \
-    xz-utils \
-    && rm -rf /var/lib/apt/lists/*
+# Apply SSH security hardening
+COPY scripts/docker/harden-ssh.sh /tmp/harden-ssh.sh
+RUN chmod +x /tmp/harden-ssh.sh && /tmp/harden-ssh.sh && rm /tmp/harden-ssh.sh
+
+# Install dependencies
+RUN if command -v apt-get >/dev/null 2>&1; then \
+        apt-get update && apt-get install -y curl fuse3 unzip xz-utils && rm -rf /var/lib/apt/lists/*; \
+    elif command -v yum >/dev/null 2>&1; then \
+        yum install -y curl fuse3 unzip xz && yum clean all; \
+    elif command -v apk >/dev/null 2>&1; then \
+        apk add --no-cache curl fuse3 unzip xz; \
+    fi
 
 # Install s6-overlay
 ADD $S6_OVERLAY_NOARCH_SOURCE /tmp/

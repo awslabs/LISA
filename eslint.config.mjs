@@ -22,10 +22,44 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import importPlugin from 'eslint-plugin-import';
 import globals from 'globals';
 
+
+const tsRules = {
+    ...tseslint.configs.recommended.rules,
+    'eqeqeq': ['error', 'smart'],
+    // Stylistic rules
+    '@stylistic/indent': 'error',
+    '@stylistic/quotes': ['error', 'single'],
+    '@stylistic/arrow-parens': 'error',
+    '@stylistic/arrow-spacing': 'error',
+    '@stylistic/brace-style': 'error',
+    '@stylistic/computed-property-spacing': ['error', 'never'],
+    '@stylistic/jsx-quotes': ['error', 'prefer-single'],
+    '@stylistic/keyword-spacing': ['error', { 'before': true }],
+    '@stylistic/semi': 'error',
+    '@stylistic/space-before-function-paren': 'error',
+    '@stylistic/space-infix-ops': 'error',
+    '@stylistic/space-unary-ops': 'error',
+    // TypeScript overrides
+    '@typescript-eslint/ban-types': 'off',
+    '@typescript-eslint/consistent-type-definitions': ['error', 'type'],
+    '@typescript-eslint/no-non-null-assertion': 'off',
+    '@typescript-eslint/no-explicit-any': 'off'
+}
+
+const reactRules = {
+    ...reactHooks.configs.recommended.rules,
+    // React hooks - downgrade new rules to warnings
+    'react-hooks/set-state-in-effect': 'warn',
+    'react-hooks/immutability': 'warn',
+    'react-hooks/purity': 'warn',
+    'react-hooks/use-memo': 'warn',
+}
+
 export default [
     js.configs.recommended,
+    // React files - browser and jest globals only
     {
-        files: ['**/*.ts', '**/*.tsx'],
+        files: ['lib/user-interface/react/**/*.ts', 'lib/user-interface/react/**/*.tsx'],
         languageOptions: {
             parser: tsparser,
             parserOptions: {
@@ -34,12 +68,8 @@ export default [
             },
             globals: {
                 ...globals.browser,
-                ...globals.node,
                 ...globals.jest,
                 React: 'readonly',
-                // Cypress globals
-                cy: 'readonly',
-                Cypress: 'readonly',
             },
         },
         plugins: {
@@ -49,33 +79,59 @@ export default [
             'import': importPlugin,
         },
         rules: {
-            ...tseslint.configs.recommended.rules,
-            ...reactHooks.configs.recommended.rules,
-            'eqeqeq': ['error', 'smart'],
-            // Stylistic rules
-            '@stylistic/indent': 'error',
-            '@stylistic/quotes': ['error', 'single'],
-            '@stylistic/arrow-parens': 'error',
-            '@stylistic/arrow-spacing': 'error',
-            '@stylistic/brace-style': 'error',
-            '@stylistic/computed-property-spacing': ['error', 'never'],
-            '@stylistic/jsx-quotes': ['error', 'prefer-single'],
-            '@stylistic/keyword-spacing': ['error', { 'before': true }],
-            '@stylistic/semi': 'error',
-            '@stylistic/space-before-function-paren': 'error',
-            '@stylistic/space-infix-ops': 'error',
-            '@stylistic/space-unary-ops': 'error',
-            // TypeScript overrides
-            '@typescript-eslint/ban-types': 'off',
-            '@typescript-eslint/consistent-type-definitions': ['error', 'type'],
-            '@typescript-eslint/no-non-null-assertion': 'off',
-            '@typescript-eslint/no-explicit-any': 'off',
-            // React hooks - downgrade new rules to warnings
-            'react-hooks/set-state-in-effect': 'warn',
-            'react-hooks/immutability': 'warn',
-            'react-hooks/purity': 'warn',
-            'react-hooks/use-memo': 'warn',
+            ...tsRules,
+            ...reactRules
         },
+    },
+    // All Cypress files - mocha, browser, jest, and cypress globals
+    {
+        files: ['cypress/**/*.ts', 'cypress/**/*.js'],
+        languageOptions: {
+            parser: tsparser,
+            parserOptions: {
+                ecmaVersion: 12,
+                sourceType: 'module',
+            },
+            globals: {
+                ...globals.mocha,
+                ...globals.browser,
+                ...globals.jest, // For expect and other test utilities
+                // Cypress globals
+                cy: 'readonly',
+                Cypress: 'readonly',
+            },
+        },
+        plugins: {
+            '@typescript-eslint': tseslint,
+            '@stylistic': stylistic,
+            'import': importPlugin,
+        },
+        rules: tsRules,
+    },
+    // All other TypeScript files - node and jest globals
+    {
+        files: ['**/*.ts', '**/*.tsx'],
+        ignores: [
+            'lib/user-interface/react/**/*',
+            'cypress/**/*'
+        ],
+        languageOptions: {
+            parser: tsparser,
+            parserOptions: {
+                ecmaVersion: 12,
+                sourceType: 'module',
+            },
+            globals: {
+                ...globals.node,
+                ...globals.jest,
+            },
+        },
+        plugins: {
+            '@typescript-eslint': tseslint,
+            '@stylistic': stylistic,
+            'import': importPlugin,
+        },
+        rules: tsRules,
     },
     {
         files: ['**/*.js', '**/*.mjs'],
@@ -91,6 +147,7 @@ export default [
             '**/*.d.ts',
             '**/*.min.js',
             '**/{build,coverage,dist,venv,.venv}/**',
+            '**/*.config.ts',
             'cypress/dist/**',
             'ecs_model_deployer/dist/**',
             'htmlcov/**',

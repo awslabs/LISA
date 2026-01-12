@@ -18,20 +18,21 @@ import ReactMarkdown from 'react-markdown';
 import Box from '@cloudscape-design/components/box';
 import ExpandableSection from '@cloudscape-design/components/expandable-section';
 import { ButtonDropdown, ButtonGroup, Grid, SpaceBetween, StatusIndicator } from '@cloudscape-design/components';
-import { JsonView, darkStyles } from 'react-json-view-lite';
+import { JsonView, darkStyles, defaultStyles } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { LisaChatMessage, LisaChatMessageMetadata, MessageTypes } from '../../types';
 import { useAppSelector } from '@/config/store';
 import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
 import ChatBubble from '@cloudscape-design/chat-components/chat-bubble';
 import Avatar from '@cloudscape-design/chat-components/avatar';
 
-import remarkBreaks from 'remark-breaks';
 import remarkMath from 'remark-math';
+import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+import styles from './Message.module.css';
 
 import { MessageContent } from '@langchain/core/messages';
 import { base64ToBlob, fetchImage, getDisplayableMessage, messageContainsImage } from '@/components/utils';
@@ -43,6 +44,9 @@ import ImageViewer from '@/components/chatbot/components/ImageViewer';
 import MermaidDiagram from '@/components/chatbot/components/MermaidDiagram';
 import UsageInfo from '@/components/chatbot/components/UsageInfo';
 import { merge } from 'lodash';
+import { useContext } from 'react';
+import { Mode } from '@cloudscape-design/global-styles';
+import ColorSchemeContext from '@/shared/color-scheme.provider';
 
 type MessageProps = {
     message?: LisaChatMessage;
@@ -66,6 +70,8 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
     const [showImageViewer, setShowImageViewer] = useState(false);
     const [selectedImage, setSelectedImage] = useState(undefined);
     const [selectedMetadata, setSelectedMetadata] = useState(undefined);
+    const { colorScheme } = useContext(ColorSchemeContext);
+    const isDarkMode = colorScheme === Mode.Dark;
 
     useEffect(() => {
         if (resend) {
@@ -115,7 +121,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                             />
                         </div>
                         <SyntaxHighlighter
-                            style={vscDarkPlus}
+                            style={isDarkMode ? oneDark : oneLight}
                             language={language}
                             PreTag='div'
                             {...props}
@@ -160,8 +166,8 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                         </div>
                         <pre
                             style={{
-                                backgroundColor: '#1e1e1e',
-                                color: '#d4d4d4',
+                                backgroundColor: isDarkMode ? '#1e1e1e' : '#f5f5f5',
+                                color: isDarkMode ? '#d4d4d4' : '#333333',
                                 padding: '16px',
                                 borderRadius: '6px',
                                 overflow: 'auto',
@@ -214,14 +220,31 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                 <CodeBlockWithoutLanguage code={codeString} />
             );
         },
-    }), [isStreaming, onMermaidRenderComplete]); // Include isStreaming and onMermaidRenderComplete so the component can access them
+    }), [isStreaming, onMermaidRenderComplete, isDarkMode]);
 
-    const renderContent = (messageType: string, content: MessageContent, metadata?: LisaChatMessageMetadata) => {
+    const renderContent = (content: MessageContent, metadata?: LisaChatMessageMetadata) => {
         if (Array.isArray(content)) {
-            return content.map((item, index) => {
-                if (item.type === 'text') {
-                    return item.text.startsWith('File context:') ? <></> : <div key={index}>{getDisplayableMessage(item.text, message.type === MessageTypes.AI ? ragCitations : undefined)}</div>;
-                } else if (item.type === 'image_url') {
+            return content.map((item: any, index) => {
+                if (item.type === 'text' && typeof item.text === 'string') {
+                    if (item.text.startsWith('File context:')) return null;
+
+                    const displayableText = getDisplayableMessage(item.text, message.type === MessageTypes.AI ? ragCitations : undefined);
+
+                    return (
+                        <div key={index} className={styles.messageContent} style={{ maxWidth: '60em' }}>
+                            {markdownDisplay ? (
+                                <ReactMarkdown
+                                    remarkPlugins={[remarkMath, remarkGfm]}
+                                    rehypePlugins={[rehypeKatex]}
+                                    children={displayableText}
+                                    components={markdownComponents}
+                                />
+                            ) : (
+                                <div style={{ whiteSpace: 'pre-line' }}>{displayableText}</div>
+                            )}
+                        </div>
+                    );
+                } else if (item.type === 'image_url' && item.image_url?.url) {
                     return message.type === MessageTypes.HUMAN ?
                         <img key={index} src={item.image_url.url} alt='User provided' style={{ maxWidth: '50%', maxHeight: '30em', marginTop: '8px' }} /> :
                         <Grid key={`${index}-Grid`} gridDefinition={[{ colspan: 11 }, { colspan: 1 }]}>
@@ -275,10 +298,10 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
             });
         }
         return (
-            <div style={{ maxWidth: '60em' }}>
+            <div className={styles.messageContent} style={{ maxWidth: '60em' }}>
                 {markdownDisplay ? (
                     <ReactMarkdown
-                        remarkPlugins={[remarkBreaks, remarkMath]}
+                        remarkPlugins={[remarkMath, remarkGfm]}
                         rehypePlugins={[rehypeKatex]}
                         children={getDisplayableMessage(content, message.type === MessageTypes.AI ? ragCitations : undefined)}
                         components={markdownComponents}
@@ -349,7 +372,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                         }
                         actions={showUsage ? <UsageInfo usage={message.usage} /> : undefined}
                     >
-                        {renderContent(message.type, message.content, message.metadata)}
+                        {renderContent(message.content, message.metadata)}
                         {showMetadata && !isStreaming &&
                             <ExpandableSection
                                 variant='footer'
@@ -358,7 +381,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                 <JsonView data={{
                                     ...message.metadata,
                                     ...(message.usage && { usage: message.usage })
-                                }} style={darkStyles} />
+                                }} style={isDarkMode ? darkStyles : defaultStyles} />
                             </ExpandableSection>}
                     </ChatBubble>
                     {!isStreaming && !messageContainsImage(message.content) && <div
@@ -402,8 +425,8 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                 />
                             }
                         >
-                            <div style={{ maxWidth: '60em' }}>
-                                {renderContent(message.type, message.content)}
+                            <div className='message-content' style={{ maxWidth: '60em' }}>
+                                {renderContent(message.content)}
                             </div>
                         </ChatBubble>
                         <ButtonGroup
@@ -432,11 +455,11 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                 </SpaceBetween>
             )}
             {message?.type === MessageTypes.TOOL && (
-                <ExpandableSection variant='footer' headerText={`🔨Called Tool - ${message?.metadata?.toolName} 🔨`}>
+                <ExpandableSection variant='footer' headerText={`🔨Called Tool - ${(message?.metadata as any)?.toolName || 'Unknown'} 🔨`}>
                     <JsonView data={{
-                        arguments: message?.metadata?.args,
+                        arguments: (message?.metadata as any)?.args,
                         result: message?.content,
-                    }} style={darkStyles} />
+                    }} style={isDarkMode ? darkStyles : defaultStyles} />
                 </ExpandableSection>
             )}
         </div>

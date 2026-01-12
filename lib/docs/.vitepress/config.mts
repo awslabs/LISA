@@ -32,9 +32,9 @@ const navLinks = [
       {
         text: 'Architecture Overview',  link: '/admin/architecture',
         items: [
-          { text: 'Serve', link: '/admin/architecture#serve' },
+          { text: 'Serve', link: '/admin/architecture#lisa-serve' },
+          { text: 'MCP', link: '/admin/architecture#lisa-mcp' },
           { text: 'Chat UI', link: '/admin/architecture#chat-ui' },
-          { text: 'Model Management', link: '/admin/architecture#model-management' },
         ],
       },
       { text: 'Deployment', link: '/admin/deploy',
@@ -56,7 +56,7 @@ const navLinks = [
       { text: 'Model Compatibility', link: '/config/model-compatibility' },
       { text: 'Model Management API', link: '/config/model-management-api' },
       { text: 'Model Management UI', link: '/config/model-management-ui' },
-      { text: 'Guardrails', link: '/config/guardrails' },
+      { text: 'Bedrock Guardrails', link: '/config/guardrails' },
       { text: 'Usage & Features', link: '/config/usage' },
       { text: 'RAG Repository', link: '/config/repositories' },
       { text: 'Langfuse Tracing', link: '/config/langfuse-tracing'},

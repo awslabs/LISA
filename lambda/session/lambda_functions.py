@@ -570,9 +570,16 @@ def put_session(event: dict, context: dict) -> dict:
                 ReturnValues="UPDATED_NEW",
             )
 
-        # Publish event to SQS queue for metrics processing (use unencrypted data for metrics)
+        # Publish metrics to SQS queue for non-API-token users
+        # API token users have their metrics tracked in litellm_passthrough.py
         try:
-            if "USAGE_METRICS_QUEUE_NAME" in os.environ:
+            # Get auth type from authorizer context
+            request_context = event.get("requestContext", {})
+            authorizer_context = request_context.get("authorizer", {})
+            auth_type = authorizer_context.get("authType", "jwt")  # Default to jwt for backwards compatibility
+
+            # Only publish metrics for non-API-token users (JWT/UI users)
+            if auth_type != "api_token" and "USAGE_METRICS_QUEUE_NAME" in os.environ:
                 # Create a copy of the event to send to SQS
                 metrics_event = {
                     "userId": user_id,
@@ -585,7 +592,7 @@ def put_session(event: dict, context: dict) -> dict:
                     QueueUrl=os.environ["USAGE_METRICS_QUEUE_NAME"],
                     MessageBody=json.dumps(convert_decimal(metrics_event)),
                 )
-                logger.info(f"Published event to metrics queue for user {user_id}")
+                logger.info(f"Published metrics event to queue for user: {user_id}")
             else:
                 logger.warning("USAGE_METRICS_QUEUE_NAME environment variable not set, metrics not published")
         except Exception as e:

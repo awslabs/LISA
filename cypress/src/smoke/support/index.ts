@@ -16,3 +16,27 @@
 
 import './commands';
 import '../../support/adminHelpers';
+
+declare global {
+    // eslint-disable-next-line @typescript-eslint/no-namespace
+    namespace Cypress {
+        // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
+        interface Chainable {
+            /**
+             * Custom command to log in a user via stubbed OAuth2/OIDC.
+             * Should be wrapped in cy.session() for caching.
+             * @param role - The role to simulate ('admin' or 'user')
+             * @example cy.session('admin', () => cy.loginAs('admin'))
+             */
+            loginAs(role?: 'admin' | 'user'): Chainable<void>;
+
+            /**
+             * Custom command to setup API stubs for a given role.
+             * Call this after cy.session() to re-establish intercepts.
+             * @param role - The role to simulate ('admin' or 'user')
+             * @example cy.setupStubs('admin')
+             */
+            setupStubs(role?: 'admin' | 'user'): Chainable<void>;
+        }
+    }
+}

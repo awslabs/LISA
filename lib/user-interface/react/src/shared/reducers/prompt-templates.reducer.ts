@@ -55,6 +55,7 @@ export const promptTemplateApi = createApi({
     tagTypes: ['promptTemplates'],
     refetchOnFocus: true,
     refetchOnMountOrArgChange: true,
+    keepUnusedDataFor: 60, // Keep cache for 60s to prevent cancellation during rapid navigation
     endpoints: (builder) => ({
         createPromptTemplate: builder.mutation<PromptTemplate, NewPromptTemplate>({
             query: (promptTemplate) => ({

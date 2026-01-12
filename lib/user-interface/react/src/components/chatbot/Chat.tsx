@@ -19,6 +19,7 @@ import { useAuth } from 'react-oidc-context';
 import Form from '@cloudscape-design/components/form';
 import Box from '@cloudscape-design/components/box';
 import SpaceBetween from '@cloudscape-design/components/space-between';
+import Spinner from '@cloudscape-design/components/spinner';
 import {
     Autosuggest,
     ButtonGroup, Checkbox,
@@ -85,6 +86,7 @@ export default function Chat ({ sessionId }) {
     const notificationService = useNotificationService(dispatch);
     const modelSelectRef = useRef<HTMLInputElement>(null);
     const bottomRef = useRef(null);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
     const auth = useAuth();
     const userName = useAppSelector(selectCurrentUsername);
 
@@ -126,6 +128,7 @@ export default function Chat ({ sessionId }) {
     const [hasUserInteractedWithModel, setHasUserInteractedWithModel] = useState(false);
     const [mermaidRenderComplete, setMermaidRenderComplete] = useState(0);
     const [dynamicMaxRows, setDynamicMaxRows] = useState(8);
+    const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
 
     // Callback to handle Mermaid diagram rendering completion
     const handleMermaidRenderComplete = useCallback(() => {
@@ -224,7 +227,7 @@ export default function Chat ({ sessionId }) {
         setModelFilterValue(selectedModel?.modelId ?? '');
     }, [selectedModel]);
 
-    const { memory, setMemory, metadata } = useMemory(
+    const { memory, metadata } = useMemory(
         session,
         chatConfiguration,
         selectedModel,
@@ -479,10 +482,42 @@ export default function Chat ({ sessionId }) {
     }, [sessionHealth]);
 
     useEffect(() => {
-        if (bottomRef.current) {
-            bottomRef.current.scrollIntoView({ behavior: 'smooth' });
+        if (shouldAutoScroll && bottomRef.current) {
+            // Use 'auto' instead of 'smooth' to prevent jagged scrolling during rapid streaming
+            // which was breaking AT_BOTTOM_THRESHOLD disabling auto-scroll without user input
+            bottomRef.current.scrollIntoView({ behavior: 'auto' });
         }
-    }, [isStreaming, session, mermaidRenderComplete]);
+    }, [isStreaming, session, mermaidRenderComplete, shouldAutoScroll]);
+
+    // Scroll event listener to detect scroll position
+    useEffect(() => {
+        const scrollContainer = scrollContainerRef.current;
+        if (!scrollContainer) return;
+
+        const handleScroll = () => {
+            // Check if we're at the bottom
+            const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
+            const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+
+            // Small threshold to account for rounding issues
+            const AT_BOTTOM_THRESHOLD = 30;
+
+            if (distanceFromBottom <= AT_BOTTOM_THRESHOLD) {
+                // At bottom - ensure auto-scroll is enabled
+                if (!shouldAutoScroll) {
+                    setShouldAutoScroll(true);
+                }
+            } else {
+                // Not at bottom - disable auto-scroll
+                if (shouldAutoScroll) {
+                    setShouldAutoScroll(false);
+                }
+            }
+        };
+
+        scrollContainer.addEventListener('scroll', handleScroll);
+        return () => scrollContainer.removeEventListener('scroll', handleScroll);
+    }, [shouldAutoScroll]);
 
     // Reset tool call counter when session changes
     useEffect(() => {
@@ -511,6 +546,9 @@ export default function Chat ({ sessionId }) {
 
         // Reset tool call counter when human provides input
         consecutiveToolCallCount.current = 0;
+
+        // Re-enable auto-scroll when user sends a new message
+        setShouldAutoScroll(true);
 
         setSession((prev) => ({
             ...prev,
@@ -642,9 +680,8 @@ export default function Chat ({ sessionId }) {
                 setInternalSessionId={setInternalSessionId}
                 setSession={setSession}
                 handleSendGenerateRequest={handleSendGenerateRequest}
-                setMemory={setMemory}
                 // eslint-disable-next-line react-hooks/exhaustive-deps
-            />), conditionalDeps([modals.documentSummarization], [modals.documentSummarization], [modals.documentSummarization, openModal, closeModal, fileContext, setFileContext, setUserPrompt, userPrompt, selectedModel, setSelectedModel, chatConfiguration, setChatConfiguration, auth.user?.profile.sub, setInternalSessionId, setSession, handleSendGenerateRequest, setMemory])) }
+            />), conditionalDeps([modals.documentSummarization], [modals.documentSummarization], [modals.documentSummarization, openModal, closeModal, fileContext, setFileContext, setUserPrompt, userPrompt, selectedModel, setSelectedModel, chatConfiguration, setChatConfiguration, auth.user?.profile.sub, setInternalSessionId, setSession, handleSendGenerateRequest])) }
 
             {useMemo(() => (<SessionConfiguration
                 chatConfiguration={chatConfiguration}
@@ -717,26 +754,39 @@ export default function Chat ({ sessionId }) {
                     }
                 />
             )}
-            <div className='overflow-y-auto h-[calc(100vh-20rem)] bottom-8'>
+            <div ref={scrollContainerRef} className='overflow-y-auto h-[calc(100vh-20rem)] bottom-8'>
                 <SpaceBetween direction='vertical' size='l'>
-                    {useMemo(() => session.history.map((message, idx) => (<Message
-                        key={idx}
-                        message={message}
-                        showMetadata={chatConfiguration.sessionConfiguration.showMetadata}
-                        isRunning={false}
-                        callingToolName={undefined}
-                        isStreaming={isStreaming && idx === session.history.length - 1}
-                        markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay}
-                        setChatConfiguration={setChatConfiguration}
-                        handleSendGenerateRequest={handleSendGenerateRequest}
-                        chatConfiguration={chatConfiguration}
-                        setUserPrompt={setUserPrompt}
-                        onMermaidRenderComplete={handleMermaidRenderComplete}
-                    />
-                    // eslint-disable-next-line react-hooks/exhaustive-deps
-                    )), [session.history, chatConfiguration])}
+                    {loadingSession && (
+                        <Box textAlign='center' padding='l'>
+                            <SpaceBetween size='s' direction='vertical'>
+                                <Spinner size='large' />
+                                <Box color='text-status-info'>Loading session...</Box>
+                                <Box variant='small' color='text-status-inactive'>Please wait while we load your conversation history</Box>
+                            </SpaceBetween>
+                        </Box>
+                    )}
 
-                    {(isRunning || callingToolName) && !isStreaming && <Message
+                    {useMemo(() => {
+                        if (loadingSession) return null;
+
+                        return session.history.map((message, idx) => (<Message
+                            key={idx}
+                            message={message}
+                            showMetadata={chatConfiguration.sessionConfiguration.showMetadata}
+                            isRunning={false}
+                            callingToolName={undefined}
+                            isStreaming={isStreaming && idx === session.history.length - 1}
+                            markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay}
+                            setChatConfiguration={setChatConfiguration}
+                            handleSendGenerateRequest={handleSendGenerateRequest}
+                            chatConfiguration={chatConfiguration}
+                            setUserPrompt={setUserPrompt}
+                            onMermaidRenderComplete={handleMermaidRenderComplete}
+                        />));
+                    // eslint-disable-next-line react-hooks/exhaustive-deps
+                    }, [session.history, chatConfiguration, loadingSession])}
+
+                    {!loadingSession && (isRunning || callingToolName) && !isStreaming && <Message
                         isRunning={isRunning}
                         callingToolName={callingToolName}
                         markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay}
@@ -747,7 +797,7 @@ export default function Chat ({ sessionId }) {
                         setUserPrompt={setUserPrompt}
                         onMermaidRenderComplete={handleMermaidRenderComplete}
                     />}
-                    {session.history.length === 0 && sessionId === undefined && (
+                    {!loadingSession && session.history.length === 0 && sessionId === undefined && (
                         <WelcomeScreen
                             navigate={navigate}
                             modelSelectRef={modelSelectRef}
@@ -785,6 +835,7 @@ export default function Chat ({ sessionId }) {
                                         onChange={({ detail: { value } }) => handleUserModelChange(value)}
                                         options={modelsOptions}
                                         ref={modelSelectRef}
+                                        controlId='model-selection-autosuggest'
                                     />
                                 </FormField>
                                 {window.env.RAG_ENABLED && !isImageGenerationMode && (
@@ -812,6 +863,7 @@ export default function Chat ({ sessionId }) {
                                 onChange={({ detail }) => setUserPrompt(detail.value)}
                                 onAction={handleAction}
                                 onKeyDown={handleKeyPress}
+                                controlId='chat-prompt-input'
                                 secondaryActions={
                                     <Box padding={{ left: 'xxs', top: 'xs' }}>
                                         <ButtonGroup

@@ -40,7 +40,10 @@ jobs:
         run: npm ci
       - name: Run Cypress E2E Suite
         env:
-          TEST_ACCOUNT_PASSWORD: ${{ secrets.TEST_ACCOUNT_PASSWORD }}
+          ADMIN_USER_NAME: ${{ secrets.ADMIN_USER_NAME }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          USER_NAME: ${{ secrets.USER_NAME }}
+          USER_PASSWORD: ${{ secrets.USER_PASSWORD }}
         run: npx cypress run --config-file cypress/cypress.e2e.config.ts
       - name: Archive Cypress videos & screenshots
         if: failure() || always()
@@ -48,8 +51,8 @@ jobs:
         with:
           name: cypress-e2e-artifacts
           path: |
-            cypress/e2e/videos
-            cypress/e2e/screenshots
+            cypress/videos/e2e
+            cypress/screenshots/e2e
 
   notify_e2e_end:
     name: 🔔 E2E Tests Finished

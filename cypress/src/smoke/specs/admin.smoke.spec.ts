@@ -17,31 +17,23 @@
 /// <reference types="cypress" />
 
 /**
- * E2E suite for Administration features:
- * - Ensures admin users can view and interact with the Administration menu
- * - Verifies correct menu items and expansion behavior
- * - Confirms non-admin users do not see the Administration option
+ * Smoke test suite for Admin Navigation features.
+ * Uses shared test suite with fixture data verification enabled.
  */
 
-import {
-    checkAdminButtonExists,
-    expandAdminMenu,
-    checkNoAdminButton,
-} from '../../support/adminHelpers';
+import { runAdminTests } from '../../shared/specs/admin.shared.spec';
 
-describe('Administration features (Smoke)', () => {
-    it('Admin sees the button', () => {
+describe('Admin Navigation (Smoke)', () => {
+    beforeEach(() => {
         cy.loginAs('admin');
-        checkAdminButtonExists();
     });
 
-    it('Admin can expand menu', () => {
-        cy.loginAs('admin');
-        expandAdminMenu();
+    after(() => {
+        cy.clearAllSessionStorage();
     });
 
-    it('Non-admin does not see the button', () => {
-        cy.loginAs('user');
-        checkNoAdminButton();
+    runAdminTests({
+        expectMinItems: true,
+        verifyFixtureData: true,
     });
 });

@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { v4 as uuidv4 } from 'uuid';
 import { LisaChatSession } from '@/components/types';
@@ -28,61 +28,87 @@ export const useSession = (sessionId: string, getSessionById: any) => {
     const dispatch = useAppDispatch();
     const auth = useAuth();
 
-    const [session, setSession] = useState<LisaChatSession>({
+    const [session, setSession] = useState<LisaChatSession>(() => ({
         history: [],
         sessionId: '',
         userId: '',
         startTime: new Date(Date.now()).toISOString(),
-    });
+    }));
     const [internalSessionId, setInternalSessionId] = useState<string | null>(null);
     const [loadingSession, setLoadingSession] = useState(false);
     const [chatConfiguration, setChatConfiguration] = useState<IChatConfiguration>(baseConfig);
     const [selectedModel, setSelectedModel] = useState<IModel>();
     const [ragConfig, setRagConfig] = useState<RagConfig>({} as RagConfig);
+    const hasCreatedNewSessionRef = useRef(false);
+
+    // Memoize the session loading function to prevent unnecessary re-renders
+    const loadSession = useCallback(async (id: string) => {
+        try {
+            setLoadingSession(true);
+            const resp = await getSessionById(id);
+            let sess: LisaChatSession = resp.data;
+
+            if (sess.history === undefined) {
+                sess = {
+                    history: [],
+                    sessionId: id,
+                    userId: auth.user?.profile.sub,
+                    startTime: new Date(Date.now()).toISOString(),
+                };
+            }
+            setSession(sess);
+            setChatConfiguration(sess.configuration ?? baseConfig);
+            setSelectedModel(sess.configuration?.selectedModel ?? undefined);
+            setRagConfig(sess.configuration?.ragConfig ?? {} as RagConfig);
+        } catch (error) {
+            console.error('Error loading session:', error);
+        } finally {
+            setLoadingSession(false);
+        }
+    }, [getSessionById, auth.user?.profile.sub]);
+
+    const createNewSession = useCallback(() => {
+        const newSessionId = uuidv4();
+
+        // Reset all session-related state
+        setChatConfiguration(baseConfig);
+        setSelectedModel(undefined);
+        setRagConfig({} as RagConfig);
+        setInternalSessionId(newSessionId);
+
+        const newSession = {
+            history: [],
+            sessionId: newSessionId,
+            userId: auth.user?.profile.sub,
+            startTime: new Date(Date.now()).toISOString(),
+        };
+        setSession(newSession);
+        setLoadingSession(false);
+    }, [auth.user?.profile.sub]);
 
     useEffect(() => {
         // always hide breadcrumbs
         dispatch(setBreadcrumbs([]));
 
         if (sessionId) {
-            setInternalSessionId(sessionId);
-            setLoadingSession(true);
-            setSession((prev) => ({ ...prev, history: [] }));
-
-            getSessionById(sessionId).then((resp: any) => {
-                // session doesn't exist so we create it
-                let sess: LisaChatSession = resp.data;
-                if (sess.history === undefined) {
-                    sess = {
-                        history: [],
-                        sessionId: sessionId,
-                        userId: auth.user?.profile.sub,
-                        startTime: new Date(Date.now()).toISOString(),
-                    };
-                }
-                setSession(sess);
-                setChatConfiguration(sess.configuration ?? baseConfig);
-                setSelectedModel(sess.configuration?.selectedModel ?? undefined);
-                setRagConfig(sess.configuration?.ragConfig ?? {} as RagConfig);
-                setLoadingSession(false);
-            });
+            // Reset the ref when we have a sessionId
+            hasCreatedNewSessionRef.current = false;
+            // Only load if this is a different session than what we currently have
+            if (internalSessionId !== sessionId) {
+                setInternalSessionId(sessionId);
+                setSession((prev) => ({ ...prev, history: [] }));
+                loadSession(sessionId);
+            }
         } else {
-            const newSessionId = uuidv4();
-            setChatConfiguration(baseConfig);
-            setInternalSessionId(newSessionId);
-            const newSession = {
-                history: [],
-                sessionId: newSessionId,
-                userId: auth.user?.profile.sub,
-                startTime: new Date(Date.now()).toISOString(),
-            };
-            setSession(newSession);
+            // No sessionId in URL - create a new session only once
+            // Use ref to prevent creating multiple sessions if effect runs multiple times
+            if (!hasCreatedNewSessionRef.current) {
+                hasCreatedNewSessionRef.current = true;
+                createNewSession();
+            }
         }
-    }, [sessionId, dispatch, auth.user?.profile.sub, getSessionById]);
-
-
-
-
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [sessionId, dispatch, loadSession, createNewSession]);
 
     return {
         session,

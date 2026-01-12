@@ -1,5 +1,2 @@
 @import "tailwindcss";
-
-div :first-child {
-    margin-top: 0;
-}
+@import "katex/dist/katex.min.css";

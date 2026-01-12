@@ -14,22 +14,46 @@
   limitations under the License.
 */
 
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 
 import Chat from '../components/chatbot/Chat';
 import Sessions from '../components/chatbot/components/Sessions';
+import { useAppDispatch } from '@/config/store';
+import { sessionApi } from '@/shared/reducers/session.reducer';
 
 export function Chatbot ({ setNav }) {
     const { sessionId } = useParams();
-    const [key, setKey] = useState(new Date().toISOString());
+    const navigate = useNavigate();
+    const dispatch = useAppDispatch();
+    const [key, setKey] = useState(() => new Date().toISOString());
+    const prevSessionIdRef = useRef(sessionId);
+
+    const handleNewSession = useCallback(() => {
+        // Clear specific cached session data that might interfere with new session creation
+        if (sessionId) {
+            dispatch(sessionApi.util.invalidateTags([{ type: 'session', id: sessionId }]));
+        }
+
+        // Navigate to clear the sessionId from URL
+        navigate('/ai-assistant', { replace: true });
+    }, [navigate, dispatch, sessionId]);
+
+    // Update key when sessionId changes from a value to undefined (new session clicked)
+    useEffect(() => {
+        if (prevSessionIdRef.current && !sessionId) {
+            // We transitioned from having a sessionId to not having one (new session)
+            setKey(new Date().toISOString());
+        }
+        prevSessionIdRef.current = sessionId;
+    }, [sessionId]);
+
+
 
     useEffect(() => {
-        setNav(<Sessions newSession={() => {
-            setKey(new Date().toISOString());
-        }} />);
-    }, [setNav]);
+        setNav(<Sessions newSession={handleNewSession} />);
+    }, [setNav, handleNewSession]);
 
     return <Chat key={key} sessionId={sessionId} />;
 }

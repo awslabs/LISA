@@ -495,64 +495,66 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                     description: 'Are you sure you want to discard your changes?'
                 }));
         }} visible={props.visible} header={`${props.isEdit ? 'Update' : 'Create'} Model`}>
-            <Wizard
-                submitButtonText={props.isEdit ? 'Update Model' : 'Create Model'}
-                i18nStrings={{
-                    stepNumberLabel: (stepNumber) => `Step ${stepNumber}`,
-                    collapsedStepsLabel: (stepNumber, stepsCount) => `Step ${stepNumber} of ${stepsCount}`,
-                    skipToButtonLabel: () => `Skip to ${props.isEdit ? 'Update' : 'Create'}`,
-                    navigationAriaLabel: 'Steps',
-                    cancelButton: 'Cancel',
-                    previousButton: 'Previous',
-                    nextButton: 'Next',
-                    optional: 'LISA hosted models only'
-                }}
-                onNavigate={(event) => {
-                    switch (event.detail.reason) {
-                        case 'step':
-                        case 'previous':
-                            setState({
-                                ...state,
-                                activeStepIndex: event.detail.requestedStepIndex,
-                            });
-                            break;
-                        case 'next':
-                        case 'skip':
-                            {
-                                if (touchFields(requiredFields[state.activeStepIndex]) && isValid) {
-                                    setState({
-                                        ...state,
-                                        activeStepIndex: event.detail.requestedStepIndex,
-                                    });
-                                    break;
+            <div data-testid='create-model-wizard'>
+                <Wizard
+                    submitButtonText={props.isEdit ? 'Update Model' : 'Create Model'}
+                    i18nStrings={{
+                        stepNumberLabel: (stepNumber) => `Step ${stepNumber}`,
+                        collapsedStepsLabel: (stepNumber, stepsCount) => `Step ${stepNumber} of ${stepsCount}`,
+                        skipToButtonLabel: () => `Skip to ${props.isEdit ? 'Update' : 'Create'}`,
+                        navigationAriaLabel: 'Steps',
+                        cancelButton: 'Cancel',
+                        previousButton: 'Previous',
+                        nextButton: 'Next',
+                        optional: 'LISA hosted models only'
+                    }}
+                    onNavigate={(event) => {
+                        switch (event.detail.reason) {
+                            case 'step':
+                            case 'previous':
+                                setState({
+                                    ...state,
+                                    activeStepIndex: event.detail.requestedStepIndex,
+                                });
+                                break;
+                            case 'next':
+                            case 'skip':
+                                {
+                                    if (touchFields(requiredFields[state.activeStepIndex]) && isValid) {
+                                        setState({
+                                            ...state,
+                                            activeStepIndex: event.detail.requestedStepIndex,
+                                        });
+                                        break;
+                                    }
                                 }
-                            }
-                            break;
-                    }
+                                break;
+                        }
 
-                    scrollToInvalid();
-                }}
-                onCancel={() => {
-                    dispatch(
-                        setConfirmationModal({
-                            action: 'Discard',
-                            resourceName: 'Model Creation',
-                            onConfirm: () => {
-                                props.setVisible(false);
-                                props.setIsEdit(false);
-                                resetState();
-                            },
-                            description: 'Are you sure you want to discard your changes?'
-                        }));
-                }}
-                onSubmit={() => {
-                    handleSubmit();
-                }}
-                activeStepIndex={state.activeStepIndex}
-                isLoadingNextStep={isCreating || isUpdating || isScheduleUpdating || isScheduleDeleting}
-                allowSkipTo
-                steps={steps}
-            />
+                        scrollToInvalid();
+                    }}
+                    onCancel={() => {
+                        dispatch(
+                            setConfirmationModal({
+                                action: 'Discard',
+                                resourceName: 'Model Creation',
+                                onConfirm: () => {
+                                    props.setVisible(false);
+                                    props.setIsEdit(false);
+                                    resetState();
+                                },
+                                description: 'Are you sure you want to discard your changes?'
+                            }));
+                    }}
+                    onSubmit={() => {
+                        handleSubmit();
+                    }}
+                    activeStepIndex={state.activeStepIndex}
+                    isLoadingNextStep={isCreating || isUpdating || isScheduleUpdating || isScheduleDeleting}
+                    allowSkipTo
+                    steps={steps}
+                />
+            </div>
         </Modal>
     );
 }

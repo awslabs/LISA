@@ -1,1 +1,29 @@
-[]
+[
+  {
+    "sessionId": "f56fc284-629c-4ba7-ab3d-56f4a21c13ee",
+    "name": "Technical Discussion",
+    "firstHumanMessage": "What is the difference between REST and GraphQL?",
+    "startTime": "2026-01-02T08:30:00.000000+00:00",
+    "createTime": "2026-01-02T08:30:00.000000+00:00",
+    "lastUpdated": "2026-01-02T09:15:00.000000+00:00",
+    "isEncrypted": false
+  },
+  {
+    "sessionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "Product Questions",
+    "firstHumanMessage": "Tell me about the product features",
+    "startTime": "2026-01-01T14:20:00.000000+00:00",
+    "createTime": "2026-01-01T14:20:00.000000+00:00",
+    "lastUpdated": "2026-01-01T15:45:00.000000+00:00",
+    "isEncrypted": false
+  },
+  {
+    "sessionId": "12345678-90ab-cdef-1234-567890abcdef",
+    "name": null,
+    "firstHumanMessage": "How do I get started with the platform?",
+    "startTime": "2025-12-28T10:00:00.000000+00:00",
+    "createTime": "2025-12-28T10:00:00.000000+00:00",
+    "lastUpdated": "2025-12-28T11:30:00.000000+00:00",
+    "isEncrypted": false
+  }
+]

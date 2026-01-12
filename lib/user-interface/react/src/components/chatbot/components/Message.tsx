@@ -44,7 +44,9 @@ import ImageViewer from '@/components/chatbot/components/ImageViewer';
 import MermaidDiagram from '@/components/chatbot/components/MermaidDiagram';
 import UsageInfo from '@/components/chatbot/components/UsageInfo';
 import { merge } from 'lodash';
-import { useDarkMode } from '@/components/hooks/useDarkMode';
+import { useContext } from 'react';
+import { Mode } from '@cloudscape-design/global-styles';
+import ColorSchemeContext from '@/shared/color-scheme.provider';
 
 type MessageProps = {
     message?: LisaChatMessage;
@@ -68,7 +70,8 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
     const [showImageViewer, setShowImageViewer] = useState(false);
     const [selectedImage, setSelectedImage] = useState(undefined);
     const [selectedMetadata, setSelectedMetadata] = useState(undefined);
-    const isDarkMode = useDarkMode();
+    const { colorScheme } = useContext(ColorSchemeContext);
+    const isDarkMode = colorScheme === Mode.Dark;
 
     useEffect(() => {
         if (resend) {

@@ -1510,7 +1510,7 @@
               "Timeout": 5
             },
             "Image": {
-              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:25a2e583550aca5cfe0f79b1e9942e49aada9aa85ca465ad4630b2e08a765c66"
+              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:c16d29d4a2dfd4061c6e3401601c642d92b42e8f68072a2d44c97f9ff528a327"
             },
             "LogConfiguration": {
               "LogDriver": "awslogs",

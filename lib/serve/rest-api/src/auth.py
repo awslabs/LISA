@@ -268,7 +268,7 @@ class ApiTokenAuthorizer:
                         continue
 
                     # Token is valid - return the token info
-                    return token_info
+                    return token_info  # type: ignore[return-value]
 
         return None
 
@@ -277,11 +277,11 @@ class ManagementTokenAuthorizer:
     """Class for checking Management tokens against a SecretsManager secret."""
 
     def __init__(self) -> None:
-        self._cache = TTLCache(maxsize=1, ttl=300)
+        self._cache: TTLCache = TTLCache(maxsize=1, ttl=300)
         self._cache_lock = threading.RLock()
         self._local = threading.local()
 
-    def _get_secrets_client(self):
+    def _get_secrets_client(self) -> Any:
         """Get thread-local secrets manager client."""
         if not hasattr(self._local, "secrets_manager"):
             self._local.secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"])
@@ -293,7 +293,7 @@ class ManagementTokenAuthorizer:
 
         with self._cache_lock:
             if cache_key in self._cache:
-                return self._cache[cache_key]
+                return self._cache[cache_key]  # type: ignore[return-value]
 
         logger.info("Updating management tokens cache")
         secret_tokens = []

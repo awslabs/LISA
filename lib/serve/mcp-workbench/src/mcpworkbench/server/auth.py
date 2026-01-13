@@ -132,10 +132,10 @@ def get_authorization_token(headers: Dict[str, str], header_name: str = "Authori
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app: ASGIApp, dispatch: DispatchFunction | None = None):
+    def __init__(self, app: ASGIApp, dispatch: DispatchFunction | None = None) -> None:
         super().__init__(app, dispatch)
 
-    async def dispatch(self, request, call_next):
+    async def dispatch(self, request: Request, call_next: Any) -> Response:
         response = await call_next(request)
         response.headers["Custom"] = "Example"
         return response
@@ -144,13 +144,13 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 class OIDCHTTPBearer(BaseHTTPMiddleware):
     """OIDC based bearer token authenticator."""
 
-    def __init__(self, app: ASGIApp, dispatch: DispatchFunction | None = None):
+    def __init__(self, app: ASGIApp, dispatch: DispatchFunction | None = None) -> None:
         super().__init__(app, dispatch)
         self._token_authorizer = ApiTokenAuthorizer()
         self._management_token_authorizer = ManagementTokenAuthorizer()
         self._jwks_client = get_jwks_client()
 
-    async def dispatch(self, request: Request, call_next) -> Response:
+    async def dispatch(self, request: Request, call_next: Any) -> Response:
         """Verify the provided bearer token or API Key. API Key will take precedence over the bearer token."""
         if request.method == "OPTIONS":
             return await call_next(request)

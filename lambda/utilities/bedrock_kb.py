@@ -410,6 +410,9 @@ def ingest_document_to_kb(
     bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
 
     # Get datasource bucket for this collection (supports multiple config formats)
+    if job.collection_id is None:
+        raise ValueError("collection_id is required for Bedrock KB operations")
+
     datasource_bucket = get_datasource_bucket_for_collection(
         repository=repository,
         collection_id=job.collection_id,
@@ -454,6 +457,9 @@ def delete_document_from_kb(
     bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
 
     # Get datasource bucket for this collection (supports multiple config formats)
+    if job.collection_id is None:
+        raise ValueError("collection_id is required for Bedrock KB operations")
+
     datasource_bucket = get_datasource_bucket_for_collection(
         repository=repository,
         collection_id=job.collection_id,

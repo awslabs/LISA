@@ -42,7 +42,10 @@ class FoundationModel(BaseModel):
     provider: str = Field(..., description="The foundation model provider, e.g. ecs.textgen.tgi.")
     model_type: ModelType = Field(..., description="The type of foundation model.")
     model_name: str = Field(..., description="The model name.")
-    model_kwargs: Optional[ModelKwargs] = Field(default_factory=None, description="The model arguments.")
+    model_kwargs: Optional[ModelKwargs] = Field(
+        default_factory=None,
+        description="The model arguments.",
+    )
     streaming: bool = Field(False, description="Whether the model supports streaming.")
 
     def to_string(self) -> str:

@@ -20,7 +20,7 @@ from typing import Tuple
 
 import boto3
 import click
-import yaml  # type: ignore[import-untyped]
+import yaml
 from rds_auth import generate_auth_token, get_lambda_role_name
 
 

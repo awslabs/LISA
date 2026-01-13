@@ -484,12 +484,12 @@ def handle_job_intake(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
                 # Use updated values if provided, otherwise use current values from server_config
                 if updated_min_capacity is not None:
-                    update_params["MinCapacity"] = updated_min_capacity
+                    update_params["MinCapacity"] = updated_min_capacity  # type: ignore[assignment]
                 else:
                     update_params["MinCapacity"] = server_config["autoScalingConfig"].get("minCapacity", 1)
 
                 if updated_max_capacity is not None:
-                    update_params["MaxCapacity"] = updated_max_capacity
+                    update_params["MaxCapacity"] = updated_max_capacity  # type: ignore[assignment]
                 else:
                     update_params["MaxCapacity"] = server_config["autoScalingConfig"].get("maxCapacity", 1)
 

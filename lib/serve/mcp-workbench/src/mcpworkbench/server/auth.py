@@ -67,7 +67,7 @@ def get_oidc_metadata(cert_path: Optional[str] = None) -> Dict[str, Any]:
     authority = os.environ.get("AUTHORITY")
     resp = requests.get(f"{authority}/.well-known/openid-configuration", verify=cert_path or True, timeout=30)
     resp.raise_for_status()
-    return resp.json()  # type: ignore
+    return resp.json()
 
 
 def get_jwks_client() -> jwt.PyJWKClient:
@@ -156,10 +156,10 @@ class OIDCHTTPBearer(BaseHTTPMiddleware):
             return await call_next(request)
 
         valid = False
-        if self._token_authorizer.is_valid_api_token(request.headers):
+        if self._token_authorizer.is_valid_api_token(dict(request.headers)):
             logger.info("looks like a valid api token")
             valid = True
-        elif self._management_token_authorizer.is_valid_api_token(request.headers):
+        elif self._management_token_authorizer.is_valid_api_token(dict(request.headers)):
             logger.info("looks like a valid mgmt token")
             valid = True
         else:

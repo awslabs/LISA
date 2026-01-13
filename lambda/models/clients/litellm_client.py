@@ -16,7 +16,7 @@
 
 from typing import Any, Dict, List, Union
 
-import requests
+import requests  # type: ignore[import-untyped,unused-ignore]
 from starlette.datastructures import Headers
 
 from ..exception import ModelNotFoundError

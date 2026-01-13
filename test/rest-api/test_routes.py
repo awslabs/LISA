@@ -16,11 +16,6 @@
 
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
-
-import pytest
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
 
 # Add REST API src to path
 rest_api_src = Path(__file__).parent.parent.parent / "lib" / "serve" / "rest-api" / "src"
@@ -42,7 +37,7 @@ class TestHealthCheck:
         required_vars = ["AWS_REGION", "LOG_LEVEL"]
         mock_env_vars.pop("AWS_REGION")
         missing_vars = [var for var in required_vars if var not in mock_env_vars]
-        
+
         assert "AWS_REGION" in missing_vars
 
     def test_health_check_exception(self):

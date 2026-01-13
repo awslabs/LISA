@@ -87,7 +87,7 @@ def pipeline_ingest_document(job: IngestionJob) -> None:
             try:
                 kb_bucket = get_datasource_bucket_for_collection(
                     repository=repository,
-                    collection_id=job.collection_id,
+                    collection_id=job.collection_id,  # type: ignore[arg-type]
                 )
             except ValueError as e:
                 error_msg = str(e)
@@ -113,7 +113,7 @@ def pipeline_ingest_document(job: IngestionJob) -> None:
             # Check if document already exists (idempotent operation)
             existing_docs = list(
                 rag_document_repository.find_by_source(
-                    job.repository_id, job.collection_id, kb_s3_path, join_docs=False
+                    job.repository_id, job.collection_id, kb_s3_path, join_docs=False  # type: ignore[arg-type]
                 )
             )
 
@@ -165,7 +165,7 @@ def pipeline_ingest_document(job: IngestionJob) -> None:
                 collection = None
                 try:
                     collection = collection_service.get_collection(
-                        collection_id=job.collection_id,
+                        collection_id=job.collection_id,  # type: ignore[arg-type]
                         repository_id=job.repository_id,
                         username="system",
                         user_groups=[],
@@ -203,18 +203,23 @@ def pipeline_ingest_document(job: IngestionJob) -> None:
 
         # Non-Bedrock KB path
         documents = generate_chunks(job)
-        texts, metadatas = prepare_chunks(documents, job.repository_id, job.collection_id)
+        texts, metadatas = prepare_chunks(documents, job.repository_id, job.collection_id)  # type: ignore[arg-type]
         all_ids = store_chunks_in_vectorstore(
             texts=texts,
             metadatas=metadatas,
             repository_id=job.repository_id,
-            collection_id=job.collection_id,
-            embedding_model=job.embedding_model,
+            collection_id=job.collection_id,  # type: ignore[arg-type]
+            embedding_model=job.embedding_model,  # type: ignore[arg-type]
         )
 
         # remove old
         for rag_document in list(
-            rag_document_repository.find_by_source(job.repository_id, job.collection_id, job.s3_path, join_docs=True)
+            rag_document_repository.find_by_source(
+                job.repository_id,
+                job.collection_id,  # type: ignore[arg-type]
+                job.s3_path,
+                join_docs=True,
+            )
         ):
             prev_job = ingestion_job_repository.find_by_document(rag_document.document_id)
 
@@ -323,7 +328,7 @@ def pipeline_ingest_documents(job: IngestionJob) -> None:
                 errors.append(error_msg)
 
         # Update job with document IDs
-        job.document_ids = document_ids
+        job.document_ids = document_ids  # type: ignore[assignment]
 
         if failed == 0:
             ingestion_job_repository.update_status(job, IngestionStatus.INGESTION_COMPLETED)
@@ -385,7 +390,7 @@ def _handle_s3_discovery_scan(job: IngestionJob) -> None:
         # Perform discovery and ingestion
         result = discovery_service.discover_and_ingest_documents(
             repository_id=job.repository_id,
-            collection_id=job.collection_id,
+            collection_id=job.collection_id,  # type: ignore[arg-type]
             s3_bucket=s3_bucket,
             s3_prefix=s3_prefix,
             ingestion_type=job.ingestion_type,
@@ -417,7 +422,7 @@ def remove_document_from_vectorstore(doc: RagDocument) -> None:
         collection_id=doc.collection_id,
         embeddings=embeddings,
     )
-    vector_store.delete(doc.subdocs)
+    vector_store.delete(doc.subdocs)  # type: ignore[union-attr]
 
 
 def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
@@ -717,7 +722,7 @@ def store_chunks_in_vectorstore(
 
     for i, (text_batch, metadata_batch) in enumerate(batches, 1):
         logger.info(f"Processing batch {i}/{total_batches} with {len(text_batch)} texts")
-        batch_ids = vs.add_texts(texts=text_batch, metadatas=metadata_batch)
+        batch_ids = vs.add_texts(texts=text_batch, metadatas=metadata_batch)  # type: ignore[union-attr]
         if not batch_ids:
             raise Exception(f"Failed to store documents in vector store for batch {i}")
         all_ids.extend(batch_ids)

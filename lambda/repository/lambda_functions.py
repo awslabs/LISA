@@ -149,11 +149,11 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     """
     query_string_params = event.get("queryStringParameters")
     path_params = event.get("pathParameters")
-    query = query_string_params.get("query")
-    top_k = int(query_string_params.get("topK", 3))
-    include_score = query_string_params.get("score", "false").lower() == "true"
-    repository_id = path_params.get("repositoryId")
-    collection_id = query_string_params.get("collectionId")
+    query = query_string_params.get("query")  # type: ignore[union-attr]
+    top_k = int(query_string_params.get("topK", 3))  # type: ignore[union-attr]
+    include_score = query_string_params.get("score", "false").lower() == "true"  # type: ignore[union-attr]
+    repository_id = path_params.get("repositoryId")  # type: ignore[union-attr]
+    collection_id = query_string_params.get("collectionId")  # type: ignore[union-attr]
 
     repository = get_repository(event, repository_id=repository_id)
 
@@ -165,13 +165,13 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     model_name = (
         collection_service.get_collection_model(
             repository_id=repository_id,
-            collection_id=collection_id if not is_default else None,
+            collection_id=collection_id if not is_default else None,  # type: ignore[arg-type]
             username=username,
             user_groups=groups,
             is_admin=is_admin,
         )
         if collection_id
-        else query_string_params.get("modelName")
+        else query_string_params.get("modelName")  # type: ignore[union-attr]
     )
 
     if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
@@ -191,9 +191,9 @@ def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
     # Delegate to service for retrieval - service handles repository-specific logic
     docs = service.retrieve_documents(
         query=query,
-        collection_id=search_collection_id,
+        collection_id=search_collection_id,  # type: ignore[arg-type]
         top_k=top_k,
-        model_name=model_name,
+        model_name=model_name,  # type: ignore[arg-type]
         include_score=include_score,
         bedrock_agent_client=bedrock_client,
     )
@@ -311,7 +311,7 @@ def create_bedrock_collection(event: dict, context: dict) -> Dict[str, Any]:
             )
 
             # Create collection using service helper
-            collection = service._create_collection_for_data_source(
+            collection = service._create_collection_for_data_source(  # type: ignore[attr-defined]
                 data_source_id=collection_id, s3_uri=s3_uri, is_default=False, collection_name=collection_name
             )
 
@@ -864,7 +864,14 @@ def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
 
     rag_documents: list[RagDocument] = []
     if document_ids:
-        rag_documents = [doc_repo.find_by_id(document_id=document_id) for document_id in document_ids]
+        rag_documents = [
+            doc
+            for doc in (
+                doc_repo.find_by_id(document_id=document_id)
+                for document_id in document_ids  # type: ignore[arg-type,unused-ignore]
+            )
+            if doc is not None
+        ]
 
     if not rag_documents:
         raise ValueError(f"No documents found in repository collection {repository_id}:{collection_id}")
@@ -998,7 +1005,10 @@ def ingest_documents(event: dict, context: dict) -> dict:
             # Upload metadata file
             try:
                 s3_metadata_manager.upload_metadata_file(
-                    s3_client=s3, bucket=bucket, document_key=key, metadata_content=job.metadata
+                    s3_client=s3,
+                    bucket=bucket,
+                    document_key=key,
+                    metadata_content=job.metadata,  # type: ignore[arg-type]
                 )
                 logger.info(f"Uploaded metadata file for {key}")
             except Exception as e:
@@ -1039,7 +1049,7 @@ def get_document(event: dict, context: dict) -> Dict[str, Any]:
     _ = get_repository(event, repository_id=repository_id)
     doc = doc_repo.find_by_id(document_id=document_id)
 
-    result: dict[str, Any] = doc.model_dump()
+    result: dict[str, Any] = doc.model_dump()  # type: ignore[union-attr]
     return result
 
 
@@ -1065,9 +1075,9 @@ def download_document(event: dict, context: dict) -> str:
     if not repository_id:
         raise ValidationError("repositoryId is required")
     _ = get_repository(event, repository_id=repository_id)
-    doc = doc_repo.find_by_id(document_id=document_id)
+    doc = doc_repo.find_by_id(document_id=document_id)  # type: ignore[arg-type]
 
-    source = doc.source
+    source = doc.source  # type: ignore[union-attr]
     bucket, key = source.replace("s3://", "").split("/", 1)
 
     url: str = s3.generate_presigned_url(
@@ -1291,7 +1301,7 @@ def create(event: dict, context: dict) -> Any:
                 "Please select at least one data source."
             )
         # Convert bedrockKnowledgeBaseConfig to pipelines
-        vector_store_config.pipelines = build_pipeline_configs_from_kb_config(
+        vector_store_config.pipelines = build_pipeline_configs_from_kb_config(  # type: ignore[assignment]
             vector_store_config.bedrockKnowledgeBaseConfig
         )
 
@@ -1519,11 +1529,13 @@ def update_repository(event: dict, context: dict) -> Dict[str, Any]:
                 # If metadata provided but missing tags, preserve existing tags
                 elif "tags" not in current_meta and "tags" in existing_meta:
                     pipeline["metadata"]["tags"] = existing_meta["tags"]
-                    logger.info(f"Preserved tags for collection {collection_id}: {existing_meta['tags']}")
+                    logger.info(f"Preserved tags for collection {collection_id}: " f"{existing_meta['tags']}")
 
     # Check if pipeline configuration has changed
     # Use the converted pipelines from updates if available, otherwise use request.pipelines
-    new_pipelines = updates.get("pipelines") if "pipelines" in updates else request.pipelines
+    new_pipelines = (
+        updates.get("pipelines") if "pipelines" in updates else request.pipelines  # type: ignore[assignment]
+    )
 
     # Validate immutable pipeline fields for existing repositories
     if new_pipelines is not None and current_pipelines:
@@ -1550,7 +1562,7 @@ def update_repository(event: dict, context: dict) -> Dict[str, Any]:
 
             # Check if pipelines were added or removed
             if current_pipeline_keys != new_pipeline_keys:
-                added = new_pipeline_keys - current_pipeline_keys
+                added = new_pipeline_keys - current_pipeline_keys  # type: ignore[assignment]
                 removed = current_pipeline_keys - new_pipeline_keys
                 logger.info(f"Pipeline changes detected: added={list(added)}, removed={list(removed)}")
                 require_deployment = True

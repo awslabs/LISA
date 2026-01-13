@@ -80,7 +80,7 @@ class LisaTextgen(LLM):
 
         text, _ = self.client.generate(prompt, self._foundation_model)
 
-        return text  # type: ignore
+        return text
 
     def _stream(
         self,
@@ -89,7 +89,7 @@ class LisaTextgen(LLM):
         run_manager: Optional[CallbackManagerForLLMRun] = None,
         **kwargs: Any,
     ) -> Iterator[GenerationChunk]:
-        for resp in self.client.generate_stream(prompt, self.foundation_model):
+        for resp in self.client.generate_stream(prompt, self._foundation_model):
             # yield text, if any
             if resp.token:
                 chunk = GenerationChunk(text=resp.token)

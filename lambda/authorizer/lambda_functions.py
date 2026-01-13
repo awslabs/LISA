@@ -159,7 +159,7 @@ def is_valid_api_token(token: str) -> dict | None:
         logger.info(f"Token expired at {token_expiration}")
         return None
 
-    return token_info
+    return token_info  # type: ignore[no-any-return]
 
 
 def id_token_is_valid(*, id_token: str, client_id: str, authority: str) -> Dict[str, Any] | None:

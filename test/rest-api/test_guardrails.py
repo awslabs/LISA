@@ -53,18 +53,17 @@ class TestGetModelGuardrails:
                 "allowedGroups": [],
             },
         ]
-        
+
         mock_table = MagicMock()
         mock_table.query.return_value = {"Items": mock_guardrails}
-        
+
         mock_dynamodb = MagicMock()
         mock_dynamodb.Table.return_value = mock_table
-        
-        with patch.dict("os.environ", mock_env_vars), \
-             patch("boto3.resource", return_value=mock_dynamodb):
-            
+
+        with patch.dict("os.environ", mock_env_vars), patch("boto3.resource", return_value=mock_dynamodb):
+
             result = await get_model_guardrails("test-model")
-            
+
             assert result == mock_guardrails
             mock_table.query.assert_called_once()
 
@@ -73,15 +72,14 @@ class TestGetModelGuardrails:
         """Test retrieval when no guardrails exist."""
         mock_table = MagicMock()
         mock_table.query.return_value = {"Items": []}
-        
+
         mock_dynamodb = MagicMock()
         mock_dynamodb.Table.return_value = mock_table
-        
-        with patch.dict("os.environ", mock_env_vars), \
-             patch("boto3.resource", return_value=mock_dynamodb):
-            
+
+        with patch.dict("os.environ", mock_env_vars), patch("boto3.resource", return_value=mock_dynamodb):
+
             result = await get_model_guardrails("test-model")
-            
+
             assert result == []
 
     @pytest.mark.asyncio
@@ -89,15 +87,14 @@ class TestGetModelGuardrails:
         """Test error handling during guardrail retrieval."""
         mock_table = MagicMock()
         mock_table.query.side_effect = Exception("DynamoDB error")
-        
+
         mock_dynamodb = MagicMock()
         mock_dynamodb.Table.return_value = mock_table
-        
-        with patch.dict("os.environ", mock_env_vars), \
-             patch("boto3.resource", return_value=mock_dynamodb):
-            
+
+        with patch.dict("os.environ", mock_env_vars), patch("boto3.resource", return_value=mock_dynamodb):
+
             result = await get_model_guardrails("test-model")
-            
+
             assert result == []
 
 
@@ -114,9 +111,9 @@ class TestGetApplicableGuardrails:
                 "markedForDeletion": False,
             }
         ]
-        
+
         result = get_applicable_guardrails(user_groups, guardrails, "test-model")
-        
+
         assert result == ["public-filter-test-model"]
 
     def test_group_specific_guardrail_applies(self):
@@ -129,9 +126,9 @@ class TestGetApplicableGuardrails:
                 "markedForDeletion": False,
             }
         ]
-        
+
         result = get_applicable_guardrails(user_groups, guardrails, "test-model")
-        
+
         assert result == ["admin-filter-test-model"]
 
     def test_group_specific_guardrail_does_not_apply(self):
@@ -144,9 +141,9 @@ class TestGetApplicableGuardrails:
                 "markedForDeletion": False,
             }
         ]
-        
+
         result = get_applicable_guardrails(user_groups, guardrails, "test-model")
-        
+
         assert result == []
 
     def test_multiple_guardrails_mixed(self):
@@ -169,9 +166,9 @@ class TestGetApplicableGuardrails:
                 "markedForDeletion": False,
             },
         ]
-        
+
         result = get_applicable_guardrails(user_groups, guardrails, "test-model")
-        
+
         assert len(result) == 2
         assert "public-filter-test-model" in result
         assert "dev-filter-test-model" in result
@@ -192,9 +189,9 @@ class TestGetApplicableGuardrails:
                 "markedForDeletion": True,
             },
         ]
-        
+
         result = get_applicable_guardrails(user_groups, guardrails, "test-model")
-        
+
         assert result == ["active-filter-test-model"]
 
     def test_missing_guardrail_name(self):
@@ -206,9 +203,9 @@ class TestGetApplicableGuardrails:
                 "markedForDeletion": False,
             }
         ]
-        
+
         result = get_applicable_guardrails(user_groups, guardrails, "test-model")
-        
+
         assert result == []
 
     def test_empty_user_groups(self):
@@ -226,9 +223,9 @@ class TestGetApplicableGuardrails:
                 "markedForDeletion": False,
             },
         ]
-        
+
         result = get_applicable_guardrails(user_groups, guardrails, "test-model")
-        
+
         # Only public guardrail should apply
         assert result == ["public-filter-test-model"]
 
@@ -290,29 +287,29 @@ class TestCreateGuardrailStreamingResponse:
         guardrail_response = "Content blocked"
         model_id = "test-model"
         created = 1234567890
-        
+
         chunks = list(create_guardrail_streaming_response(guardrail_response, model_id, created))
-        
+
         assert len(chunks) == 3
-        
+
         # First chunk with content
         first_chunk = json.loads(chunks[0].replace("data: ", "").strip())
         assert first_chunk["model"] == model_id
         assert first_chunk["created"] == created
         assert first_chunk["choices"][0]["delta"]["content"] == guardrail_response
         assert first_chunk["lisa_guardrail_triggered"] is True
-        
+
         # Second chunk with finish_reason
         second_chunk = json.loads(chunks[1].replace("data: ", "").strip())
         assert second_chunk["choices"][0]["finish_reason"] == "stop"
-        
+
         # Final [DONE] marker
         assert chunks[2] == "data: [DONE]\n\n"
 
     def test_streaming_response_default_created(self):
         """Test streaming response with default created timestamp."""
         chunks = list(create_guardrail_streaming_response("Blocked", "model", 0))
-        
+
         first_chunk = json.loads(chunks[0].replace("data: ", "").strip())
         assert first_chunk["created"] == 0
 
@@ -325,12 +322,12 @@ class TestCreateGuardrailJsonResponse:
         guardrail_response = "Content blocked"
         model_id = "test-model"
         created = 1234567890
-        
+
         response = create_guardrail_json_response(guardrail_response, model_id, created)
-        
+
         assert response.status_code == 200
         response_data = json.loads(response.body)
-        
+
         assert response_data["model"] == model_id
         assert response_data["created"] == created
         assert response_data["choices"][0]["message"]["content"] == guardrail_response
@@ -342,14 +339,14 @@ class TestCreateGuardrailJsonResponse:
         """Test JSON response with default created timestamp."""
         response = create_guardrail_json_response("Blocked", "model", 0)
         response_data = json.loads(response.body)
-        
+
         assert response_data["created"] == 0
 
     def test_json_response_structure(self):
         """Test complete structure of JSON response."""
         response = create_guardrail_json_response("Test response", "test-model", 123)
         response_data = json.loads(response.body)
-        
+
         # Check all required fields
         assert "id" in response_data
         assert "object" in response_data
@@ -358,14 +355,14 @@ class TestCreateGuardrailJsonResponse:
         assert "choices" in response_data
         assert "usage" in response_data
         assert "lisa_guardrail_triggered" in response_data
-        
+
         # Check choices structure
         assert len(response_data["choices"]) == 1
         choice = response_data["choices"][0]
         assert "index" in choice
         assert "message" in choice
         assert "finish_reason" in choice
-        
+
         # Check message structure
         message = choice["message"]
         assert message["role"] == "assistant"

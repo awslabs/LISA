@@ -233,7 +233,7 @@ def handle_add_server_to_active(event: Dict[str, Any], context: Any) -> Dict[str
         if mcp_connections_table_name:
             try:
                 api_gateway_url = _get_api_gateway_url(deployment_prefix)
-                if api_gateway_url:
+                if api_gateway_url and name:
                     # Normalize server ID to match what CDK uses for resource naming
                     normalized_id = _normalize_server_identifier(name)
                     # Construct API Gateway URL for the hosted server

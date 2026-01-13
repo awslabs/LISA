@@ -109,7 +109,12 @@ class BedrockKBRepositoryService(RepositoryService):
         )
 
         existing_docs = list(
-            rag_document_repository.find_by_source(job.repository_id, job.collection_id, kb_s3_path, join_docs=False)
+            rag_document_repository.find_by_source(
+                job.repository_id,
+                job.collection_id,
+                kb_s3_path,
+                join_docs=False,
+            )
         )
 
         if existing_docs:
@@ -396,7 +401,7 @@ class BedrockKBRepositoryService(RepositoryService):
 
         return collection
 
-    def create_default_collection(self, ingest_docs=False) -> Optional[RagCollectionConfig]:
+    def create_default_collection(self, ingest_docs: bool = False) -> Optional[RagCollectionConfig]:
         """Create a default collection for Bedrock KB repository.
 
         For Bedrock KB, the collection ID is the data source ID.

@@ -43,7 +43,10 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any] | Any:
     last_evaluated = event.get("lastEvaluated")
 
     # Get all documents
-    docs, last_evaluated, _ = doc_repo.list_all(repository_id=repository_id, last_evaluated_key=last_evaluated)
+    docs, last_evaluated, _ = doc_repo.list_all(
+        repository_id=repository_id,  # type: ignore[arg-type]
+        last_evaluated_key=last_evaluated,
+    )
 
     # Filter to LISA-managed only (MANUAL or AUTO)
     lisa_managed = [d for d in docs if d.ingestion_type in [IngestionType.MANUAL, IngestionType.AUTO]]
@@ -59,7 +62,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any] | Any:
         doc_repo.delete_by_id(doc.document_id)
 
     # Delete from S3 (only LISA-managed)
-    doc_repo.delete_s3_docs(repository_id=repository_id, docs=lisa_managed)
+    doc_repo.delete_s3_docs(repository_id=repository_id, docs=lisa_managed)  # type: ignore[arg-type]
 
     # Ensure JSON-serializable payload for Step Functions when Pydantic models are provided
     serializable_docs = [doc.model_dump() if isinstance(doc, BaseModel) else doc for doc in lisa_managed]

@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 import logging
+from typing import Any
 from uuid import uuid4
 
 from boto3.dynamodb.conditions import Key
@@ -36,7 +37,7 @@ logger = logging.getLogger(__name__)
 class CreateTokenAdminHandler:
     """Admin creates token for any user or system"""
 
-    def __init__(self, token_table):
+    def __init__(self, token_table: Any) -> None:
         self.token_table = token_table
 
     def _get_user_token(self, username: str) -> dict | None:
@@ -98,7 +99,7 @@ class CreateTokenAdminHandler:
 class CreateTokenUserHandler:
     """User creates their own token"""
 
-    def __init__(self, token_table):
+    def __init__(self, token_table: Any) -> None:
         self.token_table = token_table
 
     def _get_user_token(self, username: str) -> dict | None:
@@ -157,7 +158,7 @@ class CreateTokenUserHandler:
 class ListTokensHandler:
     """List tokens - admins see all, users see only their own"""
 
-    def __init__(self, token_table):
+    def __init__(self, token_table: Any) -> None:
         self.token_table = token_table
 
     def __call__(self, username: str, is_admin: bool) -> ListTokensResponse:
@@ -204,7 +205,7 @@ class ListTokensHandler:
 class GetTokenHandler:
     """Get specific token details"""
 
-    def __init__(self, token_table):
+    def __init__(self, token_table: Any) -> None:
         self.token_table = token_table
 
     def __call__(self, token_uuid: str, username: str, is_admin: bool) -> TokenInfo:
@@ -264,7 +265,7 @@ class GetTokenHandler:
 class DeleteTokenHandler:
     """Delete token - handles both modern and legacy tokens"""
 
-    def __init__(self, token_table):
+    def __init__(self, token_table: Any) -> None:
         self.token_table = token_table
 
     def __call__(self, token_uuid: str, username: str, is_admin: bool) -> DeleteTokenResponse:

@@ -1118,6 +1118,9 @@ class PipelineConfig(BaseModel):
 
         # If legacy fields provided but no chunkingStrategy, create one
         if has_legacy and not has_new:
+            # At this point we know both are not None due to has_legacy check
+            if self.chunkSize is None or self.chunkOverlap is None:
+                raise ValueError("chunkSize and chunkOverlap must both be set")
             self.chunkingStrategy = FixedChunkingStrategy(
                 type=ChunkingStrategyType.FIXED, size=self.chunkSize, overlap=self.chunkOverlap
             )

@@ -107,9 +107,9 @@ def pipeline_delete_collection(job: IngestionJob) -> None:
         # Drop index for faster cleanup (OpenSearch/PGVector)
         # This removes all embeddings from the vector store
         if RepositoryType.is_type(repository, RepositoryType.OPENSEARCH):
-            drop_opensearch_index(job.repository_id, job.collection_id)
+            drop_opensearch_index(job.repository_id, job.collection_id)  # type: ignore[arg-type]
         elif RepositoryType.is_type(repository, RepositoryType.PGVECTOR):
-            drop_pgvector_collection(job.repository_id, job.collection_id)
+            drop_pgvector_collection(job.repository_id, job.collection_id)  # type: ignore[arg-type]
         elif RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
             # For Bedrock KB, use bulk delete for efficiency
             # Only delete LISA-managed documents (MANUAL/AUTO), preserve EXISTING
@@ -165,13 +165,13 @@ def pipeline_delete_collection(job: IngestionJob) -> None:
         # Delete all documents and subdocuments from DynamoDB
         # This method handles pagination and batch deletion
         logger.info(f"Deleting all documents from DynamoDB for collection {job.collection_id}")
-        rag_document_repository.delete_all(job.repository_id, job.collection_id)
+        rag_document_repository.delete_all(job.repository_id, job.collection_id)  # type: ignore[arg-type]
         logger.info("Successfully deleted all documents from DynamoDB")
 
         # Delete collection DB entry
         is_default_collection = job.embedding_model is not None
         if not is_default_collection:
-            collection_repo.delete(job.collection_id, job.repository_id)
+            collection_repo.delete(job.collection_id, job.repository_id)  # type: ignore[arg-type]
 
         # Update job status
         ingestion_job_repository.update_status(job, IngestionStatus.DELETE_COMPLETED)
@@ -183,7 +183,11 @@ def pipeline_delete_collection(job: IngestionJob) -> None:
 
         # Update collection status to DELETE_FAILED
         try:
-            collection_repo.update(job.collection_id, job.repository_id, {"status": CollectionStatus.DELETE_FAILED})
+            collection_repo.update(
+                job.collection_id,  # type: ignore[arg-type]
+                job.repository_id,
+                {"status": CollectionStatus.DELETE_FAILED},
+            )
         except Exception as update_error:
             logger.error(f"Failed to update collection status: {update_error}")
 
@@ -221,7 +225,7 @@ def pipeline_delete_document(job: IngestionJob) -> None:
         logger.info(f"Deleting document {job.s3_path} for repository {job.repository_id}")
 
         # Find associated RagDocument
-        rag_document = rag_document_repository.find_by_id(job.document_id, join_docs=True)
+        rag_document = rag_document_repository.find_by_id(job.document_id, join_docs=True)  # type: ignore[arg-type]
 
         if rag_document:
             # Actually remove from vector store
@@ -290,7 +294,7 @@ def pipeline_delete_documents(job: IngestionJob) -> None:
         failed = 0
         errors = []
         # For Bedrock KB, group S3 paths by data source (collection_id)
-        s3_paths_by_data_source = {}
+        s3_paths_by_data_source = {}  # type: ignore[var-annotated]
 
         for document_id in document_ids:
             try:

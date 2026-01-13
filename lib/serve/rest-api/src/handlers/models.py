@@ -92,7 +92,7 @@ async def handle_describe_model(provider: str, model_name: str) -> Dict[str, Any
     if not metadata:
         error_message = f"Metadata for provider {provider} and model {model_name} not found."
         logger.error(error_message, extra={"event": "handle_describe_model", "status": "ERROR"})
-        raise HTTPException(status_code=404, message=error_message)  # type: ignore[call-arg]
+        raise HTTPException(status_code=404, message=error_message)
 
     return metadata  # type: ignore
 

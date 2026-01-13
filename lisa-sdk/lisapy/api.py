@@ -39,8 +39,8 @@ class LisaApi(BaseModel, RepositoryMixin, ModelMixin, ConfigMixin, DocsMixin, Ra
 
         self._session = Session()
         if self.headers:
-            self._session.headers = self.headers  # type: ignore
+            self._session.headers = self.headers
         if self.verify is not None:
             self._session.verify = self.verify
         if self.cookies:
-            self._session.cookies = self.cookies  # type: ignore
+            self._session.cookies = self.cookies

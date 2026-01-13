@@ -26,9 +26,9 @@ from typing import Any, Dict, Optional
 
 import boto3
 import jwt
-import requests  # type: ignore[import-untyped]
-from cachetools import TTLCache  # type: ignore[import-untyped]
-from cachetools.keys import hashkey  # type: ignore[import-untyped]
+import requests
+from cachetools import TTLCache
+from cachetools.keys import hashkey
 from fastapi import HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from loguru import logger
@@ -75,7 +75,7 @@ def get_oidc_metadata(cert_path: Optional[str] = None) -> Dict[str, Any]:
     authority = os.environ.get("AUTHORITY")
     resp = requests.get(f"{authority}/.well-known/openid-configuration", verify=cert_path or True, timeout=30)
     resp.raise_for_status()
-    return resp.json()  # type: ignore
+    return resp.json()
 
 
 def get_jwks_client() -> jwt.PyJWKClient:
@@ -187,7 +187,7 @@ class OIDCHTTPBearer(HTTPBearer):
     """OIDC based bearer token authenticator."""
 
     def __init__(self, authority: Optional[str] = None, client_id: Optional[str] = None, **kwargs: Dict[str, Any]):
-        super().__init__(**kwargs)  # type: ignore[arg-type]
+        super().__init__(**kwargs)
         self.authority = authority or os.environ.get("AUTHORITY", "")
         self.client_id = client_id or os.environ.get("CLIENT_ID", "")
         self.jwks_client = get_jwks_client()
@@ -195,7 +195,7 @@ class OIDCHTTPBearer(HTTPBearer):
     async def id_token_is_valid(self, request: Request) -> Optional[Dict[str, Any]]:
         """Check whether an ID token is valid and return decoded data."""
         http_auth_creds = await super().__call__(request)
-        id_token = http_auth_creds.credentials  # type: ignore[union-attr]
+        id_token = http_auth_creds.credentials
         try:
             signing_key = self.jwks_client.get_signing_key_from_jwt(id_token)
             data: Dict[str, Any] = jwt.decode(
@@ -267,7 +267,7 @@ class ApiTokenAuthorizer:
                         continue
 
                     # Token is valid - return the token info
-                    return token_info  # type: ignore[no-any-return]
+                    return token_info
 
         return None
 
@@ -292,7 +292,7 @@ class ManagementTokenAuthorizer:
 
         with self._cache_lock:
             if cache_key in self._cache:
-                return self._cache[cache_key]  # type: ignore[no-any-return]
+                return self._cache[cache_key]
 
         logger.info("Updating management tokens cache")
         secret_tokens = []
@@ -338,7 +338,7 @@ class Authorizer:
 
     async def __call__(self, request: Request) -> Optional[HTTPAuthorizationCredentials]:
         jwt_data = await self.authenticate_request(request)
-        return jwt_data  # type: ignore[return-value]
+        return jwt_data
 
     async def authenticate_request(self, request: Request) -> Optional[Dict[str, Any]]:
         """Authenticate request and return JWT data if valid, else None. Invalid requests throw an exception"""
@@ -347,7 +347,7 @@ class Authorizer:
 
         # First try API tokens
         logger.trace("Try API Auth Token...")
-        token_info = await self.token_authorizer.is_valid_api_token(request.headers)  # type: ignore[arg-type]
+        token_info = await self.token_authorizer.is_valid_api_token(request.headers)
         if token_info:
             logger.trace("Valid API token")
             self._set_token_context(request, token_info)

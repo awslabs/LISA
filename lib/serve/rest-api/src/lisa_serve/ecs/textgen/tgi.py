@@ -204,7 +204,7 @@ class EcsTextGenTgiAdapter(TextGenModelAdapter, StreamTextGenModelAdapter):
         if is_text_completion:
             response_class = OpenAICompletionsResponse
         else:
-            response_class = OpenAIChatCompletionsResponse  # type: ignore[assignment]
+            response_class = OpenAIChatCompletionsResponse
         async for resp in self.client.generate_stream(**request):
             response = response_class(
                 id=resp_id,
@@ -214,7 +214,7 @@ class EcsTextGenTgiAdapter(TextGenModelAdapter, StreamTextGenModelAdapter):
                 system_fingerprint=fingerprint,
                 choices=[
                     (
-                        OpenAICompletionsChoice(  # type: ignore[list-item]
+                        OpenAICompletionsChoice(
                             index=0,
                             finish_reason=resp.details.finish_reason if resp.details else None,
                             text=resp.token.text,
@@ -232,7 +232,7 @@ class EcsTextGenTgiAdapter(TextGenModelAdapter, StreamTextGenModelAdapter):
                 f"Response: {escape_curly_brackets(response.json())}",
                 extra={"event": f"{self.__class__.__name__}:generate_stream"},
             )
-            yield response  # type: ignore[misc]
+            yield response
 
 
 # Register the model

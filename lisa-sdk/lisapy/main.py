@@ -63,11 +63,11 @@ class LisaLlm(BaseModel):
 
         self._session = requests.Session()
         if self.headers:
-            self._session.headers = self.headers  # type: ignore
+            self._session.headers = self.headers
         if self.verify is not None:
             self._session.verify = self.verify
         if self.cookies:
-            self._session.cookies = self.cookies  # type: ignore
+            self._session.cookies = self.cookies
 
         self.async_timeout = ClientTimeout(self.timeout * 60)
 
@@ -237,7 +237,11 @@ class LisaLlm(BaseModel):
             cookies=self.cookies,
             timeout=self.async_timeout,
         ) as session:
-            async with session.post(f"{self.url}/generateStream", json=request, ssl=self.verify) as response:
+            async with session.post(
+                f"{self.url}/generateStream",
+                json=request,
+                ssl=self.verify,
+            ) as response:
                 if response.status != 200:
                     payload = await response.json()
                     # TODO this probably won't work
@@ -284,7 +288,7 @@ class LisaLlm(BaseModel):
         response = self._session.post(f"{self.url}/embeddings", json=payload)
         if response.status_code == 200:
             output = response.json()
-            return output["embeddings"]  # type: ignore
+            return output["embeddings"]
         else:
             raise parse_error(response.status_code, response)
 
@@ -321,7 +325,7 @@ class LisaLlm(BaseModel):
                     raise parse_error(response.status_code, response)
 
                 output = await response.json()
-                return output["embeddings"]  # type: ignore
+                return output["embeddings"]
 
     def __del__(self) -> None:
         """Close session."""

@@ -69,6 +69,4 @@ class PromptTemplateModel(BaseModel):
         Returns:
             PromptTemplateModel: A new instance of PromptTemplateModel with updated attributes.
         """
-        return self.model_copy(  # type: ignore
-            update=update | {"created": iso_string(), "revision": (self.revision or 0) + 1}
-        )
+        return self.model_copy(update=update | {"created": iso_string(), "revision": (self.revision or 0) + 1})

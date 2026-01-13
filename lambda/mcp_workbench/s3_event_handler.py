@@ -155,7 +155,7 @@ def force_service_deployment(cluster_name: str, service_name: str) -> Dict[str, 
         response = ecs_client.update_service(cluster=cluster_name, service=service_name, forceNewDeployment=True)
 
         logger.info(f"Successfully triggered new deployment for service '{service_name}'")
-        return response
+        return dict(response)  # Convert to dict to satisfy return type
 
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "Unknown")

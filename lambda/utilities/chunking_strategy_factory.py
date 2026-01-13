@@ -25,7 +25,10 @@ from utilities.exceptions import RagUploadException
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_STRATEGY = FixedChunkingStrategy(size=os.getenv("CHUNK_SIZE", "512"), overlap=os.getenv("CHUNK_OVERLAP", "51"))
+DEFAULT_STRATEGY = FixedChunkingStrategy(
+    size=os.getenv("CHUNK_SIZE", "512"),
+    overlap=os.getenv("CHUNK_OVERLAP", "51"),
+)
 
 
 class ChunkingStrategyHandler(ABC):
@@ -94,7 +97,7 @@ class FixedSizeChunkingHandler(ChunkingStrategyHandler):
             chunk_overlap=chunk_overlap,
             length_function=len,
         )
-        return text_splitter.split_documents(docs)  # type: ignore [no-any-return]
+        return text_splitter.split_documents(docs)
 
 
 class NoneChunkingHandler(ChunkingStrategyHandler):

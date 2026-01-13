@@ -109,7 +109,7 @@ class CollectionService:
         """
 
         # Check if collection name already exists in this repository
-        existing = self.collection_repo.find_by_name(collection.repositoryId, collection.name)
+        existing = self.collection_repo.find_by_name(collection.repositoryId, collection.name)  # type: ignore[arg-type]
         if existing:
             raise ValidationError(
                 f"Collection with name '{collection.name}' already exists in repository '{collection.repositoryId}'"
@@ -293,6 +293,9 @@ class CollectionService:
 
         # For regular collections, verify access and update status
         if not is_default_collection:
+            if collection_id is None:
+                raise ValidationError("collection_id is required for non-default collections")
+
             collection = self.collection_repo.find_by_id(collection_id, repository_id)
             if not collection:
                 raise ValidationError(f"Collection {collection_id} not found")
@@ -300,7 +303,11 @@ class CollectionService:
                 raise ValidationError(f"Permission denied to delete collection {collection_id}")
 
             # Update collection status to DELETE_IN_PROGRESS
-            self.collection_repo.update(collection_id, repository_id, {"status": CollectionStatus.DELETE_IN_PROGRESS})
+            self.collection_repo.update(
+                collection_id,
+                repository_id,
+                {"status": CollectionStatus.DELETE_IN_PROGRESS},
+            )
 
             embedding_model = None  # Don't set embedding_model for regular collections
         else:
@@ -354,7 +361,7 @@ class CollectionService:
 
             # Add summary if counts available
             if lisa_managed_count is not None and user_managed_count is not None:
-                response["summary"] = {
+                response["summary"] = {  # type: ignore[assignment]
                     "lisaManagedDocuments": lisa_managed_count,
                     "userManagedDocuments": user_managed_count,
                     "action": (
@@ -369,8 +376,12 @@ class CollectionService:
             logger.error(f"Failed to submit deletion job: {e}", exc_info=True)
 
             # Update collection status to DELETE_FAILED (only for regular collections)
-            if not is_default_collection:
-                self.collection_repo.update(collection_id, repository_id, {"status": CollectionStatus.DELETE_FAILED})
+            if not is_default_collection and collection_id is not None:
+                self.collection_repo.update(
+                    collection_id,
+                    repository_id,
+                    {"status": CollectionStatus.DELETE_FAILED},
+                )
 
             raise
 
@@ -473,7 +484,8 @@ class CollectionService:
 
         logger.info(
             f"Listing all user collections for user={username}, is_admin={is_admin}, "
-            f"page_size={page_size}, filter={filter_text}, sort_by={sort_params.sort_by.value}"
+            f"page_size={page_size}, filter={filter_text}, "
+            f"sort_by={sort_params.sort_by.value}"  # type: ignore[union-attr]
         )
 
         # Get repositories user can access
@@ -709,8 +721,8 @@ class CollectionService:
                 "offset": end_idx,
                 "filters": {
                     "filter": filter_text,
-                    "sortBy": sort_params.sort_by.value,
-                    "sortOrder": sort_params.sort_order.value,
+                    "sortBy": sort_params.sort_by.value,  # type: ignore[union-attr]
+                    "sortOrder": sort_params.sort_order.value,  # type: ignore[union-attr]
                 },
             }
 
@@ -803,8 +815,8 @@ class CollectionService:
             token_filters = pagination_token.get("filters", {})
             if (
                 token_filters.get("filter") != filter_text
-                or token_filters.get("sortBy") != sort_params.sort_by.value
-                or token_filters.get("sortOrder") != sort_params.sort_order.value
+                or token_filters.get("sortBy") != sort_params.sort_by.value  # type: ignore[union-attr]
+                or token_filters.get("sortOrder") != sort_params.sort_order.value  # type: ignore[union-attr]
             ):
                 logger.warning("Pagination token filters don't match, resetting cursors")
                 cursors = {}
@@ -878,7 +890,11 @@ class CollectionService:
                 cursors[repo_id]["exhausted"] = True
 
         # Merge batches using heap for efficient sorting
-        merged = self._merge_sorted_batches(batches, sort_params.sort_by.value, sort_params.sort_order.value)
+        merged = self._merge_sorted_batches(
+            batches,
+            sort_params.sort_by.value,  # type: ignore[union-attr]
+            sort_params.sort_order.value,  # type: ignore[union-attr]
+        )
 
         # Extract requested page
         start_idx = global_offset
@@ -907,8 +923,8 @@ class CollectionService:
                 "seenCollectionIds": serializable_seen_ids,
                 "filters": {
                     "filter": filter_text,
-                    "sortBy": sort_params.sort_by.value,
-                    "sortOrder": sort_params.sort_order.value,
+                    "sortBy": sort_params.sort_by.value,  # type: ignore[union-attr]
+                    "sortOrder": sort_params.sort_order.value,  # type: ignore[union-attr]
                 },
             }
 

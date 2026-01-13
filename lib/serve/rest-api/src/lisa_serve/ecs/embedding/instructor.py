@@ -78,7 +78,7 @@ class EcsEmbeddingInstructorAdapter(EmbeddingModelAdapter):
 
         try:
             async with ClientSession() as session:
-                async with session.post(self.endpoint_url, json=payload) as server_response:  # type: ignore[arg-type]
+                async with session.post(self.endpoint_url, json=payload) as server_response:
                     server_response.raise_for_status()
                     server_response_json = await server_response.json()
 

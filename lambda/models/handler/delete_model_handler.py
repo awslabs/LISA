@@ -108,7 +108,7 @@ class DeleteModelHandler(BaseApiHandler):
             response = ssm_client.get_parameter(Name=parameter_name)
             table_name = response["Parameter"]["Value"]
             logger.debug(f"Retrieved RAG vector store table name from SSM: {table_name}")
-            return table_name
+            return table_name  # type: ignore[no-any-return]
         except ClientError as e:
             if e.response["Error"]["Code"] == "ParameterNotFound":
                 logger.debug(f"SSM parameter {parameter_name} not found - RAG not deployed")

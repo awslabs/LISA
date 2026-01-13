@@ -14,7 +14,7 @@
 
 from typing import Dict, Optional, Union
 
-from requests import Session
+from requests import Session  # type: ignore[import-untyped,unused-ignore]
 
 
 class BaseMixin:

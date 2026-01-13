@@ -13,7 +13,7 @@
 #   limitations under the License.
 
 """Custom errors."""
-from requests import Response
+from requests import Response  # type: ignore[import-untyped,unused-ignore]
 
 
 class RateLimitExceededError(Exception):

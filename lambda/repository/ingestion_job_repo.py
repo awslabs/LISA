@@ -164,7 +164,9 @@ class IngestionJobRepository:
             # Add username filter for non-admin users
             if not is_admin:
                 query_params["FilterExpression"] = "username = :username"
-                query_params["ExpressionAttributeValues"].update({":username": username, ":system_username": "system"})
+                expr_attr_values = query_params["ExpressionAttributeValues"]
+                if isinstance(expr_attr_values, dict):
+                    expr_attr_values.update({":username": username, ":system_username": "system"})
 
             # Add pagination token if provided
             if last_evaluated_key:

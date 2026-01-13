@@ -24,6 +24,7 @@ from typing import Any, Dict, List
 from fastmcp import FastMCP
 from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
+from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Mount, Route
 
@@ -68,12 +69,12 @@ class MCPWorkbenchServer:
     def _add_management_routes(self, app: Starlette) -> None:
         if self.config.exit_route_path:
 
-            async def exit_endpoint(request):
+            async def exit_endpoint(request: Request) -> JSONResponse:
                 """HTTP GET endpoint to gracefully shutdown the server."""
                 logger.info("Exit requested via HTTP endpoint")
 
                 # Schedule shutdown after response is sent
-                async def delayed_shutdown():
+                async def delayed_shutdown() -> None:
                     await asyncio.sleep(1)
                     logger.info("Shutting down server...")
                     sys.exit(0)
@@ -91,7 +92,7 @@ class MCPWorkbenchServer:
 
         if self.config.rescan_route_path:
 
-            async def rescan_endpoint(request):
+            async def rescan_endpoint(request: Request) -> JSONResponse:
                 """HTTP GET endpoint to rescan tools directory and reload tools."""
                 try:
                     logger.info("Rescanning tools directory via HTTP...")
@@ -139,7 +140,7 @@ class MCPWorkbenchServer:
 
         mcp_app = self.app.http_app(path="/", transport="streamable-http", stateless_http=True)
 
-        async def health_check(request):
+        async def health_check(request: Request) -> JSONResponse:
             """Health check endpoint for Docker health checks."""
             return JSONResponse({"status": "healthy", "service": "mcpworkbench"})
 
@@ -213,7 +214,7 @@ class MCPWorkbenchServer:
             wrapper_func = function
         else:
             # Wrap sync function to be async
-            async def async_wrapper(**kwargs):
+            async def async_wrapper(**kwargs: Any) -> Any:
                 return function(**kwargs)
 
             wrapper_func = async_wrapper

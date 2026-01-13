@@ -15,7 +15,7 @@ import logging
 import os
 from typing import Dict, List
 
-import requests
+import requests  # type: ignore[import-untyped,unused-ignore]
 
 from .common import BaseMixin
 from .errors import parse_error
@@ -196,7 +196,7 @@ class RagMixin(BaseMixin):
             model_name: Optional model name (required if collection_id not provided)
         """
         url = f"{self.url}/repository/{repo_id}/similaritySearch"
-        params: dict[str, str | int] = {"query": query, "repositoryType": repo_id, "topK": k}  # type: ignore[dict-item]
+        params: dict[str, str | int] = {"query": query, "repositoryType": repo_id, "topK": k}
 
         if collection_id:
             params["collectionId"] = collection_id

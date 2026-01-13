@@ -322,7 +322,7 @@ def create_hosted_mcp_server(event: dict, context: dict) -> Any:
 
         # Scan all items to check for duplicate normalized names
         items = []
-        scan_arguments = {}
+        scan_arguments: dict[str, Any] = {}
         while True:
             response = table.scan(**scan_arguments)
             items.extend(response.get("Items", []))
@@ -371,7 +371,7 @@ def list_hosted_mcp_servers(event: dict, context: dict) -> Dict[str, Any]:
         logger.info(f"Listing all hosted MCP servers for user {user_id} (is_admin)")
         # Get all items from the table
         items = []
-        scan_arguments = {}
+        scan_arguments: dict[str, Any] = {}
         while True:
             response = table.scan(**scan_arguments)
             items.extend(response.get("Items", []))

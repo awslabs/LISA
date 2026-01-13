@@ -17,9 +17,7 @@
 import json
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 # Add REST API src to path
 rest_api_src = Path(__file__).parent.parent.parent / "lib" / "serve" / "rest-api" / "src"
@@ -27,6 +25,7 @@ sys.path.insert(0, str(rest_api_src))
 
 # Mock AWS_REGION before importing metrics
 import os
+
 os.environ.setdefault("AWS_REGION", "us-east-1")
 
 from utils.metrics import extract_messages_for_metrics, publish_metrics_event
@@ -44,9 +43,9 @@ class TestExtractMessagesForMetrics:
                 {"role": "system", "content": "You are helpful"},
             ]
         }
-        
+
         result = extract_messages_for_metrics(params)
-        
+
         assert len(result) == 3
         assert result[0]["type"] == "human"
         assert result[0]["content"] == "Hello"
@@ -64,13 +63,13 @@ class TestExtractMessagesForMetrics:
                     "content": [
                         {"type": "text", "text": "First part"},
                         {"type": "text", "text": "Second part"},
-                    ]
+                    ],
                 }
             ]
         }
-        
+
         result = extract_messages_for_metrics(params)
-        
+
         assert len(result) == 1
         assert result[0]["type"] == "human"
         # Content should be preserved as array
@@ -78,17 +77,10 @@ class TestExtractMessagesForMetrics:
 
     def test_extract_messages_with_rag_context(self):
         """Test detection of RAG context in messages."""
-        params = {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": "Question about File context: document.pdf"
-                }
-            ]
-        }
-        
+        params = {"messages": [{"role": "user", "content": "Question about File context: document.pdf"}]}
+
         result = extract_messages_for_metrics(params)
-        
+
         assert len(result) == 1
         assert result[0]["metadata"].get("ragContext") is True
 
@@ -100,18 +92,14 @@ class TestExtractMessagesForMetrics:
                     "role": "assistant",
                     "content": "Let me check that",
                     "tool_calls": [
-                        {
-                            "id": "call_123",
-                            "type": "function",
-                            "function": {"name": "get_weather", "arguments": "{}"}
-                        }
-                    ]
+                        {"id": "call_123", "type": "function", "function": {"name": "get_weather", "arguments": "{}"}}
+                    ],
                 }
             ]
         }
-        
+
         result = extract_messages_for_metrics(params)
-        
+
         assert len(result) == 1
         assert "toolCalls" in result[0]
         assert len(result[0]["toolCalls"]) == 1
@@ -120,29 +108,25 @@ class TestExtractMessagesForMetrics:
     def test_extract_empty_messages(self):
         """Test extraction with no messages."""
         params = {"messages": []}
-        
+
         result = extract_messages_for_metrics(params)
-        
+
         assert result == []
 
     def test_extract_missing_messages_key(self):
         """Test extraction when messages key is missing."""
         params = {}
-        
+
         result = extract_messages_for_metrics(params)
-        
+
         assert result == []
 
     def test_extract_unknown_role(self):
         """Test extraction with unknown role."""
-        params = {
-            "messages": [
-                {"role": "custom_role", "content": "Test"}
-            ]
-        }
-        
+        params = {"messages": [{"role": "custom_role", "content": "Test"}]}
+
         result = extract_messages_for_metrics(params)
-        
+
         assert len(result) == 1
         assert result[0]["type"] == "custom_role"
 
@@ -155,14 +139,14 @@ class TestExtractMessagesForMetrics:
                     "role": "user",
                     "content": [
                         {"type": "text", "text": "Array content"},
-                        {"type": "image", "url": "http://example.com/image.jpg"}
-                    ]
-                }
+                        {"type": "image", "url": "http://example.com/image.jpg"},
+                    ],
+                },
             ]
         }
-        
+
         result = extract_messages_for_metrics(params)
-        
+
         assert len(result) == 2
         assert isinstance(result[0]["content"], str)
         assert isinstance(result[1]["content"], list)
@@ -174,29 +158,25 @@ class TestPublishMetricsEvent:
     def test_publish_metrics_success(self, mock_env_vars, mock_request):
         """Test successful metrics publishing."""
         mock_env_vars["USAGE_METRICS_QUEUE_URL"] = "https://sqs.us-east-1.amazonaws.com/123456789/metrics"
-        
-        params = {
-            "messages": [
-                {"role": "user", "content": "Hello"}
-            ]
-        }
-        
+
+        params = {"messages": [{"role": "user", "content": "Hello"}]}
+
         mock_request.state.username = "test-user"
         mock_request.state.groups = ["users"]
-        
+
         mock_sqs = MagicMock()
-        
-        with patch.dict("os.environ", mock_env_vars), \
-             patch("utils.metrics.sqs_client", mock_sqs), \
-             patch("utils.metrics.get_user_context", return_value=("test-user", ["users"])):
-            
+
+        with patch.dict("os.environ", mock_env_vars), patch("utils.metrics.sqs_client", mock_sqs), patch(
+            "utils.metrics.get_user_context", return_value=("test-user", ["users"])
+        ):
+
             publish_metrics_event(mock_request, params, 200)
-            
+
             mock_sqs.send_message.assert_called_once()
             call_args = mock_sqs.send_message.call_args
-            
+
             assert call_args[1]["QueueUrl"] == mock_env_vars["USAGE_METRICS_QUEUE_URL"]
-            
+
             # Verify message body structure
             message_body = json.loads(call_args[1]["MessageBody"])
             assert message_body["userId"] == "test-user"
@@ -208,90 +188,84 @@ class TestPublishMetricsEvent:
     def test_publish_metrics_non_200_status(self, mock_env_vars, mock_request):
         """Test metrics not published for non-200 status."""
         mock_env_vars["USAGE_METRICS_QUEUE_URL"] = "https://sqs.us-east-1.amazonaws.com/123456789/metrics"
-        
+
         params = {"messages": []}
         mock_sqs = MagicMock()
-        
-        with patch.dict("os.environ", mock_env_vars), \
-             patch("utils.metrics.sqs_client", mock_sqs):
-            
+
+        with patch.dict("os.environ", mock_env_vars), patch("utils.metrics.sqs_client", mock_sqs):
+
             publish_metrics_event(mock_request, params, 400)
-            
+
             mock_sqs.send_message.assert_not_called()
 
     def test_publish_metrics_no_queue_url(self, mock_env_vars, mock_request):
         """Test metrics not published when queue URL not configured."""
         mock_env_vars.pop("USAGE_METRICS_QUEUE_URL", None)
-        
+
         params = {"messages": []}
         mock_sqs = MagicMock()
-        
-        with patch.dict("os.environ", mock_env_vars, clear=True), \
-             patch("utils.metrics.sqs_client", mock_sqs):
-            
+
+        with patch.dict("os.environ", mock_env_vars, clear=True), patch("utils.metrics.sqs_client", mock_sqs):
+
             publish_metrics_event(mock_request, params, 200)
-            
+
             mock_sqs.send_message.assert_not_called()
 
     def test_publish_metrics_error_handling(self, mock_env_vars, mock_request):
         """Test error handling during metrics publishing."""
         mock_env_vars["USAGE_METRICS_QUEUE_URL"] = "https://sqs.us-east-1.amazonaws.com/123456789/metrics"
-        
+
         params = {"messages": []}
         mock_sqs = MagicMock()
         mock_sqs.send_message.side_effect = Exception("SQS error")
-        
-        with patch.dict("os.environ", mock_env_vars), \
-             patch("utils.metrics.sqs_client", mock_sqs), \
-             patch("utils.metrics.get_user_context", return_value=("test-user", [])):
-            
+
+        with patch.dict("os.environ", mock_env_vars), patch("utils.metrics.sqs_client", mock_sqs), patch(
+            "utils.metrics.get_user_context", return_value=("test-user", [])
+        ):
+
             # Should not raise exception
             publish_metrics_event(mock_request, params, 200)
 
     def test_publish_metrics_session_id_format(self, mock_env_vars, mock_request):
         """Test session ID format for API users."""
         mock_env_vars["USAGE_METRICS_QUEUE_URL"] = "https://sqs.us-east-1.amazonaws.com/123456789/metrics"
-        
+
         params = {"messages": []}
         mock_sqs = MagicMock()
-        
-        with patch.dict("os.environ", mock_env_vars), \
-             patch("utils.metrics.sqs_client", mock_sqs), \
-             patch("utils.metrics.get_user_context", return_value=("api-user", [])):
-            
+
+        with patch.dict("os.environ", mock_env_vars), patch("utils.metrics.sqs_client", mock_sqs), patch(
+            "utils.metrics.get_user_context", return_value=("api-user", [])
+        ):
+
             publish_metrics_event(mock_request, params, 200)
-            
+
             call_args = mock_sqs.send_message.call_args
             message_body = json.loads(call_args[1]["MessageBody"])
-            
+
             # Session ID should start with "api-"
             assert message_body["sessionId"].startswith("api-")
 
     def test_publish_metrics_with_complex_messages(self, mock_env_vars, mock_request):
         """Test metrics publishing with complex message structure."""
         mock_env_vars["USAGE_METRICS_QUEUE_URL"] = "https://sqs.us-east-1.amazonaws.com/123456789/metrics"
-        
+
         params = {
             "messages": [
                 {"role": "user", "content": "Hello"},
-                {
-                    "role": "assistant",
-                    "content": "Hi",
-                    "tool_calls": [{"id": "call_1", "type": "function"}]
-                }
+                {"role": "assistant", "content": "Hi", "tool_calls": [{"id": "call_1", "type": "function"}]},
             ]
         }
-        
+
         mock_sqs = MagicMock()
-        
-        with patch.dict("os.environ", mock_env_vars), \
-             patch("utils.metrics.sqs_client", mock_sqs), \
-             patch("utils.metrics.get_user_context", return_value=("user", ["users"])):
-            
+
+        with patch.dict("os.environ", mock_env_vars), patch("utils.metrics.sqs_client", mock_sqs), patch(
+            "utils.metrics.get_user_context", return_value=("user", ["users"])
+        ):
+
             publish_metrics_event(mock_request, params, 200)
-            
+
             call_args = mock_sqs.send_message.call_args
             message_body = json.loads(call_args[1]["MessageBody"])
-            
+
             assert len(message_body["messages"]) == 2
             assert "toolCalls" in message_body["messages"][1]

@@ -45,6 +45,7 @@ exclude = [
     "^\\.venv/",
     "^cdk\\.out/",
     "^node_modules/",
+    ".*/build/.*",
 ]
 
 [tool.ruff]

@@ -40,18 +40,14 @@ class TestValidateModel:
         with patch.dict("sys.modules", {"lisa_serve.registry": MagicMock()}):
             from utils.request_utils import validate_model
             from utils.resources import RestApiResource
-            
+
             request_data = {
                 "provider": "ecs.textgen.tgi",
                 "modelName": "test-model",
             }
-            
-            mock_cache = {
-                RestApiResource.GENERATE: {
-                    "ecs.textgen.tgi": ["test-model", "other-model"]
-                }
-            }
-            
+
+            mock_cache = {RestApiResource.GENERATE: {"ecs.textgen.tgi": ["test-model", "other-model"]}}
+
             with patch("utils.request_utils.get_registered_models_cache", return_value=mock_cache):
                 # Should not raise exception
                 await validate_model(request_data, RestApiResource.GENERATE)
@@ -62,22 +58,18 @@ class TestValidateModel:
         with patch.dict("sys.modules", {"lisa_serve.registry": MagicMock()}):
             from utils.request_utils import validate_model
             from utils.resources import RestApiResource
-            
+
             request_data = {
                 "provider": "ecs.textgen.tgi",
                 "modelName": "unknown-model",
             }
-            
-            mock_cache = {
-                RestApiResource.GENERATE: {
-                    "ecs.textgen.tgi": ["test-model", "other-model"]
-                }
-            }
-            
+
+            mock_cache = {RestApiResource.GENERATE: {"ecs.textgen.tgi": ["test-model", "other-model"]}}
+
             with patch("utils.request_utils.get_registered_models_cache", return_value=mock_cache):
                 with pytest.raises(ValueError) as exc_info:
                     await validate_model(request_data, RestApiResource.GENERATE)
-                
+
                 assert "does not support model" in str(exc_info.value)
 
 
@@ -89,17 +81,17 @@ class TestHandleStreamExceptions:
         """Test decorator passes through normal stream items."""
         with patch.dict("sys.modules", {"lisa_serve.registry": MagicMock()}):
             from utils.request_utils import handle_stream_exceptions
-            
+
             @handle_stream_exceptions
             async def test_stream():
                 yield "item1"
                 yield "item2"
                 yield "item3"
-            
+
             results = []
             async for item in test_stream():
                 results.append(item)
-            
+
             assert results == ["item1", "item2", "item3"]
 
     @pytest.mark.asyncio
@@ -107,16 +99,16 @@ class TestHandleStreamExceptions:
         """Test decorator handles exceptions in stream."""
         with patch.dict("sys.modules", {"lisa_serve.registry": MagicMock()}):
             from utils.request_utils import handle_stream_exceptions
-            
+
             @handle_stream_exceptions
             async def test_stream():
                 yield "item1"
                 raise ValueError("Test error")
-            
+
             results = []
             async for item in test_stream():
                 results.append(item)
-            
+
             assert len(results) == 2
             assert results[0] == "item1"
             assert "data:" in results[1]
@@ -128,20 +120,20 @@ class TestHandleStreamExceptions:
         """Test error message format in stream."""
         with patch.dict("sys.modules", {"lisa_serve.registry": MagicMock()}):
             from utils.request_utils import handle_stream_exceptions
-            
+
             @handle_stream_exceptions
             async def test_stream():
                 yield "dummy"  # Need at least one yield to make it a generator
                 raise RuntimeError("Custom error message")
-            
+
             results = []
             async for item in test_stream():
                 results.append(item)
-            
+
             assert len(results) == 2
             assert results[0] == "dummy"
             error_data = json.loads(results[1].replace("data:", ""))
-            
+
             assert error_data["event"] == "error"
             assert error_data["data"]["error"]["type"] == "RuntimeError"
             assert error_data["data"]["error"]["message"] == "Custom error message"

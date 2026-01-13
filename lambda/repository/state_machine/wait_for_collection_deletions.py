@@ -41,7 +41,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     job_repo = IngestionJobRepository()
 
     # Query all jobs for this repository
-    pending_jobs = job_repo.find_pending_collection_deletions(repository_id)
+    pending_jobs = job_repo.find_pending_collection_deletions(repository_id)  # type: ignore[arg-type]
 
     pending_count = len(pending_jobs)
     all_complete = pending_count == 0

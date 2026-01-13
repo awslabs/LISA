@@ -96,10 +96,10 @@ class RepositoryMixin(BaseMixin):
         }
 
         if opensearch_config:
-            rag_config["opensearchConfig"] = opensearch_config
+            rag_config["opensearchConfig"] = opensearch_config  # type: ignore[assignment]
         else:
             # Create new OpenSearch cluster config
-            rag_config["opensearchConfig"] = {
+            rag_config["opensearchConfig"] = {  # type: ignore[assignment]
                 "dataNodes": 2,
                 "dataNodeInstanceType": "r7g.large.search",
                 "masterNodes": 0,
@@ -151,6 +151,6 @@ class RepositoryMixin(BaseMixin):
         """
         response = self._session.get(f"{self.url}/repository/status")
         if response.status_code == 200:
-            return response.json()
+            return response.json()  # type: ignore[no-any-return]
         else:
             raise parse_error(response.status_code, response)

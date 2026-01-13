@@ -51,7 +51,7 @@ class ToolDiscovery:
             tools_directory: Path to directory containing tool files
         """
         self.tools_directory = Path(tools_directory)
-        self.loaded_modules: Dict[str, any] = {}
+        self.loaded_modules: Dict[str, Any] = {}
         self.current_tools: Dict[str, ToolInfo] = {}
 
         if not self.tools_directory.exists():
@@ -125,7 +125,7 @@ class ToolDiscovery:
 
         return result
 
-    def _reload_modules(self):
+    def _reload_modules(self) -> None:
         """Reload all previously loaded modules to pick up file changes."""
         modules_to_reload = []
 
@@ -159,7 +159,7 @@ class ToolDiscovery:
         Returns:
             List of tools found in the file
         """
-        tools = []
+        tools: list[ToolInfo] = []
 
         try:
             # Create module name from file path
@@ -192,7 +192,7 @@ class ToolDiscovery:
 
         return tools
 
-    def _find_class_based_tools(self, module, file_path: Path, module_name: str) -> List[ToolInfo]:
+    def _find_class_based_tools(self, module: Any, file_path: Path, module_name: str) -> List[ToolInfo]:
         """Find BaseTool subclasses in the module."""
         tools = []
 
@@ -215,7 +215,7 @@ class ToolDiscovery:
                         # Try to get them from class attributes or use defaults
                         tool_name = getattr(obj, "name", name.lower())
                         tool_description = getattr(obj, "description", f"Tool: {name}")
-                        instance = obj(name=tool_name, description=tool_description)
+                        instance = obj(name=tool_name, description=tool_description)  # type: ignore[call-arg]
                     else:
                         # Custom constructor - try to instantiate with no args
                         instance = obj()
@@ -242,7 +242,7 @@ class ToolDiscovery:
 
         return tools
 
-    def _find_function_based_tools(self, module, file_path: Path, module_name: str) -> List[ToolInfo]:
+    def _find_function_based_tools(self, module: Any, file_path: Path, module_name: str) -> List[ToolInfo]:
         """Find @mcp_tool decorated functions in the module."""
         tools = []
 

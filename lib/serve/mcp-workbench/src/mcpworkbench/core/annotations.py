@@ -15,10 +15,12 @@
 """Annotations for function-based MCP tools."""
 
 from functools import wraps
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, TypeVar, cast
+
+F = TypeVar('F', bound=Callable[..., Any])
 
 
-def mcp_tool(name: str, description: str):
+def mcp_tool(name: str, description: str) -> Callable[[F], F]:
     """
     Decorator to mark a function as an MCP tool.
 
@@ -30,14 +32,14 @@ def mcp_tool(name: str, description: str):
         The decorated function with MCP tool metadata
     """
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: F) -> F:
         # Store metadata as function attributes
-        func._mcp_tool_name = name
-        func._mcp_tool_description = description
-        func._is_mcp_tool = True
+        setattr(func, '_mcp_tool_name', name)
+        setattr(func, '_mcp_tool_description', description)
+        setattr(func, '_is_mcp_tool', True)
 
         @wraps(func)
-        async def wrapper(*args, **kwargs):
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
             # If the function is not already async, we need to handle it
             if hasattr(func, "__code__") and func.__code__.co_flags & 0x80:  # CO_COROUTINE
                 return await func(*args, **kwargs)
@@ -45,12 +47,12 @@ def mcp_tool(name: str, description: str):
                 return func(*args, **kwargs)
 
         # Copy metadata to wrapper
-        wrapper._mcp_tool_name = name
-        wrapper._mcp_tool_description = description
-        wrapper._is_mcp_tool = True
-        wrapper._original_func = func
+        setattr(wrapper, '_mcp_tool_name', name)
+        setattr(wrapper, '_mcp_tool_description', description)
+        setattr(wrapper, '_is_mcp_tool', True)
+        setattr(wrapper, '_original_func', func)
 
-        return wrapper
+        return cast(F, wrapper)
 
     return decorator
 

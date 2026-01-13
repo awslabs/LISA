@@ -37,7 +37,7 @@ class DependencyAuditor:
         self.root = root_path
         self.package_versions: Dict[str, Dict[str, Set[str]]] = defaultdict(lambda: defaultdict(set))
 
-    def find_files(self, pattern: str, exclude_dirs: List[str] = None) -> List[Path]:
+    def find_files(self, pattern: str, exclude_dirs: Optional[List[str]] = None) -> List[Path]:
         """Find files matching pattern, excluding specified directories."""
         exclude_dirs = exclude_dirs or ["node_modules", ".venv", "dist", "build", ".pytest_cache"]
         files = []
@@ -75,7 +75,7 @@ class DependencyAuditor:
 
         return None
 
-    def audit_requirements_files(self):
+    def audit_requirements_files(self) -> None:
         """Audit all requirements.txt files."""
         for file_path in self.find_files("requirements*.txt"):
             rel_path = str(file_path.relative_to(self.root))
@@ -90,7 +90,7 @@ class DependencyAuditor:
             except Exception as e:
                 print(f"Warning: Could not parse {rel_path}: {e}", file=sys.stderr)
 
-    def audit_pyproject_files(self):
+    def audit_pyproject_files(self) -> None:
         """Audit all pyproject.toml files."""
         for file_path in self.find_files("pyproject.toml"):
             rel_path = str(file_path.relative_to(self.root))
@@ -159,7 +159,7 @@ class DependencyAuditor:
             except Exception as e:
                 print(f"Warning: Could not parse {rel_path}: {e}", file=sys.stderr)
 
-    def audit_poetry_lock_files(self):
+    def audit_poetry_lock_files(self) -> None:
         """Audit all poetry.lock files."""
         for file_path in self.find_files("poetry.lock"):
             rel_path = str(file_path.relative_to(self.root))
@@ -298,7 +298,7 @@ class DependencyAuditor:
         return 1
 
 
-def main():
+def main() -> None:
 
     # Find project root
     script_path = Path(__file__).resolve()

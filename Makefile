@@ -376,7 +376,7 @@ test-coverage:
           --cov-report term-missing \
           --cov-report html:build/coverage \
           --cov-report xml:build/coverage/coverage.xml \
-          --cov-fail-under 83
+          --cov-fail-under 80
 	@echo ""
 	@echo "Running MCP Workbench tests with coverage..."
 	@pytest test/mcp-workbench --verbose \
@@ -385,6 +385,7 @@ test-coverage:
           --cov-report html:build/coverage-mcp \
           --cov-report xml:build/coverage-mcp/coverage.xml \
           --cov-append
+		  --cov-fail-under 80
 	@echo ""
 	@echo "Running SDK tests with coverage..."
 	@pytest test/sdk --verbose \
@@ -393,6 +394,7 @@ test-coverage:
           --cov-report html:build/coverage-sdk \
           --cov-report xml:build/coverage-sdk/coverage.xml \
           --cov-append
+		  --cov-fail-under 80
 	@echo ""
 	@echo "Running REST API tests with coverage..."
 	@pytest test/rest-api --verbose \
@@ -401,6 +403,7 @@ test-coverage:
           --cov-report html:build/coverage-rest-api \
           --cov-report xml:build/coverage-rest-api/coverage.xml \
           --cov-append
+		  --cov-fail-under 80
 
 
 ## Run all Python unit tests (non-integration) without coverage

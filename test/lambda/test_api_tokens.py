@@ -32,7 +32,9 @@ os.environ["AWS_SECURITY_TOKEN"] = "testing"
 os.environ["AWS_SESSION_TOKEN"] = "testing"
 os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 os.environ["AWS_REGION"] = "us-east-1"
-os.environ["TOKEN_TABLE_NAME"] = "test-token-table"
+# Set TOKEN_TABLE_NAME before importing - this will be used by lambda_functions.py
+if "TOKEN_TABLE_NAME" not in os.environ:
+    os.environ["TOKEN_TABLE_NAME"] = "test-token-table"
 
 # Import after environment setup
 from api_tokens.domain_objects import (
@@ -771,3 +773,480 @@ def test_delete_token_handler_legacy_token_admin_only(token_table, future_timest
     # Admin should be able to delete legacy token
     result = handler("legacy-hash", "admin", is_admin=True)
     assert "deleted successfully" in result.message
+
+
+# =====================
+# Test lambda_functions.py - FastAPI endpoints
+# =====================
+
+
+@pytest.fixture
+def mock_request():
+    """Create a mock FastAPI Request object."""
+    from unittest.mock import MagicMock
+
+    request = MagicMock()
+    request.scope = {
+        "aws.event": {
+            "requestContext": {
+                "authorizer": {
+                    "claims": {
+                        "username": "test-user",
+                        "cognito:groups": "user-group",
+                    }
+                }
+            }
+        }
+    }
+    return request
+
+
+@pytest.fixture
+def mock_admin_request():
+    """Create a mock FastAPI Request object for admin user."""
+    from unittest.mock import MagicMock
+
+    request = MagicMock()
+    request.scope = {
+        "aws.event": {
+            "requestContext": {
+                "authorizer": {
+                    "claims": {
+                        "username": "admin-user",
+                        "cognito:groups": "admin-group",
+                    }
+                }
+            }
+        }
+    }
+    return request
+
+
+@pytest.fixture
+def mock_api_user_request():
+    """Create a mock FastAPI Request object for API user."""
+    from unittest.mock import MagicMock
+
+    request = MagicMock()
+    request.scope = {
+        "aws.event": {
+            "requestContext": {
+                "authorizer": {
+                    "claims": {
+                        "username": "api-user",
+                        "cognito:groups": "api-group",
+                    }
+                }
+            }
+        }
+    }
+    return request
+
+
+@pytest.mark.asyncio
+async def test_create_token_for_user_endpoint_success(token_table, mock_admin_request, future_timestamp):
+    """Test create_token_for_user endpoint with admin user."""
+    from api_tokens.lambda_functions import create_token_for_user
+
+    with patch("api_tokens.lambda_functions.token_table", token_table):
+        with patch("api_tokens.lambda_functions.get_user_context") as mock_get_user:
+            with patch("api_tokens.lambda_functions.CreateTokenAdminHandler") as mock_handler_class:
+                mock_get_user.return_value = ("admin-user", True, ["admin-group"])
+
+                mock_handler = MagicMock()
+                mock_handler.return_value = CreateTokenResponse(
+                    token="test-token",
+                    tokenUUID="test-uuid",
+                    tokenExpiration=future_timestamp,
+                    createdDate=int(datetime.now().timestamp()),
+                    username="target-user",
+                    name="Test Token",
+                    groups=["admin"],
+                    isSystemToken=False,
+                )
+                mock_handler_class.return_value = mock_handler
+
+                request_data = CreateTokenAdminRequest(
+                    tokenExpiration=future_timestamp, groups=["admin"], name="Test Token", isSystemToken=False
+                )
+
+                result = await create_token_for_user("target-user", mock_admin_request, request_data)
+
+                assert result.token == "test-token"
+                assert result.username == "target-user"
+                mock_handler.assert_called_once_with("target-user", request_data, "admin-user", True)
+
+
+@pytest.mark.asyncio
+async def test_create_token_for_user_endpoint_unauthorized(token_table, future_timestamp):
+    """Test create_token_for_user endpoint without AWS event context."""
+    from api_tokens.lambda_functions import create_token_for_user
+    from fastapi import HTTPException
+
+    mock_request = MagicMock()
+    mock_request.scope = {}  # No aws.event
+
+    request_data = CreateTokenAdminRequest(tokenExpiration=future_timestamp, name="Test Token")
+
+    with pytest.raises(HTTPException) as excinfo:
+        await create_token_for_user("target-user", mock_request, request_data)
+    assert excinfo.value.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_create_own_token_endpoint_success(token_table, mock_api_user_request, future_timestamp):
+    """Test create_own_token endpoint with API user."""
+    from api_tokens.lambda_functions import create_own_token
+
+    with patch("api_tokens.lambda_functions.token_table", token_table):
+        with patch("api_tokens.lambda_functions.get_user_context") as mock_get_user:
+            with patch("api_tokens.lambda_functions.is_api_user") as mock_is_api:
+                with patch("api_tokens.lambda_functions.CreateTokenUserHandler") as mock_handler_class:
+                    mock_get_user.return_value = ("api-user", False, ["api-group"])
+                    mock_is_api.return_value = True
+
+                    mock_handler = MagicMock()
+                    mock_handler.return_value = CreateTokenResponse(
+                        token="user-token",
+                        tokenUUID="user-uuid",
+                        tokenExpiration=future_timestamp,
+                        createdDate=int(datetime.now().timestamp()),
+                        username="api-user",
+                        name="My Token",
+                        groups=["api-group"],
+                        isSystemToken=False,
+                    )
+                    mock_handler_class.return_value = mock_handler
+
+                    request_data = CreateTokenUserRequest(name="My Token", tokenExpiration=future_timestamp)
+
+                    result = await create_own_token(mock_api_user_request, request_data)
+
+                    assert result.token == "user-token"
+                    assert result.username == "api-user"
+                    mock_handler.assert_called_once_with(request_data, "api-user", ["api-group"], False, True)
+
+
+@pytest.mark.asyncio
+async def test_create_own_token_endpoint_unauthorized(token_table, future_timestamp):
+    """Test create_own_token endpoint without AWS event context."""
+    from api_tokens.lambda_functions import create_own_token
+    from fastapi import HTTPException
+
+    mock_request = MagicMock()
+    mock_request.scope = {}  # No aws.event
+
+    request_data = CreateTokenUserRequest(name="My Token", tokenExpiration=future_timestamp)
+
+    with pytest.raises(HTTPException) as excinfo:
+        await create_own_token(mock_request, request_data)
+    assert excinfo.value.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_list_tokens_endpoint_success(token_table, mock_request, future_timestamp):
+    """Test list_tokens endpoint."""
+    from api_tokens.lambda_functions import list_tokens
+
+    # Add test token
+    token_table.put_item(
+        Item={
+            "token": "hash1",
+            "tokenUUID": "uuid1",
+            "username": "test-user",
+            "tokenExpiration": future_timestamp,
+            "createdDate": int(datetime.now().timestamp()),
+            "createdBy": "test-user",
+            "name": "Test Token",
+            "groups": [],
+            "isSystemToken": False,
+        }
+    )
+
+    with patch("api_tokens.lambda_functions.token_table", token_table):
+        with patch("api_tokens.lambda_functions.get_user_context") as mock_get_user:
+            mock_get_user.return_value = ("test-user", False, ["user-group"])
+
+            result = await list_tokens(mock_request)
+
+            assert len(result.tokens) == 1
+            assert result.tokens[0].username == "test-user"
+
+
+@pytest.mark.asyncio
+async def test_list_tokens_endpoint_unauthorized(token_table):
+    """Test list_tokens endpoint without AWS event context."""
+    from api_tokens.lambda_functions import list_tokens
+    from fastapi import HTTPException
+
+    mock_request = MagicMock()
+    mock_request.scope = {}  # No aws.event
+
+    with pytest.raises(HTTPException) as excinfo:
+        await list_tokens(mock_request)
+    assert excinfo.value.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_get_token_endpoint_success(token_table, mock_request, future_timestamp):
+    """Test get_token endpoint."""
+    from api_tokens.lambda_functions import get_token
+
+    # Add test token
+    token_table.put_item(
+        Item={
+            "token": "hash1",
+            "tokenUUID": "uuid1",
+            "username": "test-user",
+            "tokenExpiration": future_timestamp,
+            "createdDate": int(datetime.now().timestamp()),
+            "createdBy": "test-user",
+            "name": "Test Token",
+            "groups": [],
+            "isSystemToken": False,
+        }
+    )
+
+    with patch("api_tokens.lambda_functions.token_table", token_table):
+        with patch("api_tokens.lambda_functions.get_user_context") as mock_get_user:
+            mock_get_user.return_value = ("test-user", False, ["user-group"])
+
+            result = await get_token("uuid1", mock_request)
+
+            assert result.tokenUUID == "uuid1"
+            assert result.username == "test-user"
+
+
+@pytest.mark.asyncio
+async def test_get_token_endpoint_unauthorized(token_table):
+    """Test get_token endpoint without AWS event context."""
+    from api_tokens.lambda_functions import get_token
+    from fastapi import HTTPException
+
+    mock_request = MagicMock()
+    mock_request.scope = {}  # No aws.event
+
+    with pytest.raises(HTTPException) as excinfo:
+        await get_token("uuid1", mock_request)
+    assert excinfo.value.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_delete_token_endpoint_success(token_table, mock_request, future_timestamp):
+    """Test delete_token endpoint."""
+    from api_tokens.lambda_functions import delete_token
+
+    # Add test token
+    token_table.put_item(
+        Item={
+            "token": "hash1",
+            "tokenUUID": "uuid1",
+            "username": "test-user",
+            "tokenExpiration": future_timestamp,
+            "createdDate": int(datetime.now().timestamp()),
+            "createdBy": "test-user",
+            "name": "Test Token",
+            "groups": [],
+            "isSystemToken": False,
+        }
+    )
+
+    with patch("api_tokens.lambda_functions.token_table", token_table):
+        with patch("api_tokens.lambda_functions.get_user_context") as mock_get_user:
+            mock_get_user.return_value = ("test-user", False, ["user-group"])
+
+            result = await delete_token("uuid1", mock_request)
+
+            assert result.message == "Token deleted successfully"
+            assert result.tokenUUID == "uuid1"
+
+
+@pytest.mark.asyncio
+async def test_delete_token_endpoint_unauthorized(token_table):
+    """Test delete_token endpoint without AWS event context."""
+    from api_tokens.lambda_functions import delete_token
+    from fastapi import HTTPException
+
+    mock_request = MagicMock()
+    mock_request.scope = {}  # No aws.event
+
+    with pytest.raises(HTTPException) as excinfo:
+        await delete_token("uuid1", mock_request)
+    assert excinfo.value.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_exception_handlers():
+    """Test FastAPI exception handlers."""
+    from api_tokens.lambda_functions import (
+        forbidden_handler,
+        token_not_found_handler,
+        unauthorized_handler,
+        user_error_handler,
+        validation_exception_handler,
+    )
+
+    mock_request = MagicMock()
+
+    # Test TokenNotFoundError handler
+    exc = TokenNotFoundError("Token not found")
+    response = await token_not_found_handler(mock_request, exc)
+    assert response.status_code == 404
+    assert "Token not found" in response.body.decode()
+
+    # Test UnauthorizedError handler
+    exc = UnauthorizedError("Not authorized")
+    response = await unauthorized_handler(mock_request, exc)
+    assert response.status_code == 401
+    assert "Not authorized" in response.body.decode()
+
+    # Test ForbiddenError handler
+    exc = ForbiddenError("Forbidden")
+    response = await forbidden_handler(mock_request, exc)
+    assert response.status_code == 403
+    assert "Forbidden" in response.body.decode()
+
+    # Test TokenAlreadyExistsError handler
+    exc = TokenAlreadyExistsError("Token exists")
+    response = await user_error_handler(mock_request, exc)
+    assert response.status_code == 400
+    assert "Token exists" in response.body.decode()
+
+    # Test ValueError handler
+    exc = ValueError("Invalid value")
+    response = await user_error_handler(mock_request, exc)
+    assert response.status_code == 400
+    assert "Invalid value" in response.body.decode()
+
+
+@pytest.mark.asyncio
+async def test_validation_exception_handler():
+    """Test RequestValidationError handler."""
+    import json
+
+    from api_tokens.lambda_functions import validation_exception_handler
+    from fastapi.exceptions import RequestValidationError
+
+    mock_request = MagicMock()
+
+    # Create a validation error
+    exc = RequestValidationError(
+        [
+            {
+                "loc": ("body", "name"),
+                "msg": "field required",
+                "type": "value_error.missing",
+            }
+        ]
+    )
+
+    response = await validation_exception_handler(mock_request, exc)
+    assert response.status_code == 422
+    body = json.loads(response.body)
+    assert "detail" in body
+    assert body["type"] == "RequestValidationError"
+
+
+def test_mangum_handler_initialization():
+    """Test that Mangum handlers are properly initialized."""
+    from api_tokens.lambda_functions import docs, handler
+
+    assert handler is not None
+    assert docs is not None
+
+
+def test_fastapi_app_configuration():
+    """Test FastAPI app configuration."""
+    from api_tokens.lambda_functions import app
+
+    # Test app configuration
+    assert app.docs_url == "/docs"
+    assert app.openapi_url == "/openapi.json"
+    # Check middleware is configured
+    assert len(app.user_middleware) > 0
+
+
+def test_dynamodb_initialization():
+    """Test DynamoDB resource and table initialization."""
+    from api_tokens.lambda_functions import dynamodb, token_table
+
+    assert dynamodb is not None
+    assert token_table is not None
+    # Table name can vary based on environment (test-token-table or token-table)
+    assert "token" in token_table.name.lower()
+    assert "table" in token_table.name.lower()
+
+
+# =====================
+# Test handler.py - Exception handling paths
+# =====================
+
+
+def test_get_token_handler_scan_exception(token_table, future_timestamp):
+    """Test GetTokenHandler handles scan exceptions gracefully."""
+    # Add a legacy token (no tokenUUID)
+    token_table.put_item(
+        Item={
+            "token": "legacy-hash",
+            "username": "user1",
+            "tokenExpiration": future_timestamp,
+            "createdDate": int(datetime.now().timestamp()),
+            "createdBy": "user1",
+            "groups": [],
+            "isSystemToken": False,
+        }
+    )
+
+    handler = GetTokenHandler(token_table)
+
+    # Mock scan to raise exception, should fall back to get_item
+    with patch.object(token_table, "scan", side_effect=Exception("Scan failed")):
+        result = handler("legacy-hash", "user1", is_admin=False)
+        assert result.isLegacy is True
+        assert result.name == "legacy-hash"
+
+
+def test_get_token_handler_both_lookups_fail(token_table):
+    """Test GetTokenHandler when both scan and get_item fail."""
+    handler = GetTokenHandler(token_table)
+
+    # Mock both scan and get_item to raise exceptions
+    with patch.object(token_table, "scan", side_effect=Exception("Scan failed")):
+        with patch.object(token_table, "get_item", side_effect=Exception("Get failed")):
+            with pytest.raises(TokenNotFoundError):
+                handler("non-existent", "user1", is_admin=False)
+
+
+def test_delete_token_handler_scan_exception(token_table, future_timestamp):
+    """Test DeleteTokenHandler handles scan exceptions gracefully."""
+    # Add a legacy token (no tokenUUID)
+    token_table.put_item(
+        Item={
+            "token": "legacy-hash",
+            "username": "user1",
+            "tokenExpiration": future_timestamp,
+            "createdDate": int(datetime.now().timestamp()),
+            "createdBy": "user1",
+            "groups": [],
+            "isSystemToken": False,
+        }
+    )
+
+    handler = DeleteTokenHandler(token_table)
+
+    # Mock scan to raise exception, should fall back to get_item
+    with patch.object(token_table, "scan", side_effect=Exception("Scan failed")):
+        # Admin should be able to delete legacy token even when scan fails
+        result = handler("legacy-hash", "admin", is_admin=True)
+        assert "deleted successfully" in result.message
+
+
+def test_delete_token_handler_both_lookups_fail(token_table):
+    """Test DeleteTokenHandler when both scan and get_item fail."""
+    handler = DeleteTokenHandler(token_table)
+
+    # Mock both scan and get_item to raise exceptions
+    with patch.object(token_table, "scan", side_effect=Exception("Scan failed")):
+        with patch.object(token_table, "get_item", side_effect=Exception("Get failed")):
+            with pytest.raises(TokenNotFoundError):
+                handler("non-existent", "user1", is_admin=False)

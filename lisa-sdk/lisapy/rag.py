@@ -42,7 +42,7 @@ class RagMixin(BaseMixin):
         if response.status_code == 200:
             result = response.json()
             # API returns {"documents": [...], "lastEvaluated": ..., ...}
-            return result.get("documents", [])
+            return result.get("documents", [])  # type: ignore[no-any-return]
         else:
             raise parse_error(response.status_code, response)
 
@@ -59,7 +59,7 @@ class RagMixin(BaseMixin):
         url = f"{self.url}/repository/{repo_id}/{document_id}"
         response = self._session.get(url)
         if response.status_code == 200:
-            return response.json()
+            return response.json()  # type: ignore[no-any-return]
         else:
             raise parse_error(response.status_code, response)
 
@@ -179,7 +179,7 @@ class RagMixin(BaseMixin):
             logging.info(f"Full response: {result}")
             jobs = result.get("jobs", [])
             logging.info(f"Jobs extracted: {jobs}")
-            return jobs
+            return jobs  # type: ignore[no-any-return]
         else:
             raise parse_error(response.status_code, response)
 

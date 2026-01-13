@@ -68,7 +68,7 @@ class ListJobsParams:
 
         try:
             decoded = urllib.parse.unquote(query_params["lastEvaluatedKey"])
-            return json.loads(decoded)
+            return json.loads(decoded)  # type: ignore[no-any-return]
         except json.JSONDecodeError as e:
             raise ValidationError(f"Invalid JSON in lastEvaluatedKey: {e}")
         except (TypeError, ValueError) as e:

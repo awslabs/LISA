@@ -17,7 +17,7 @@
 import logging
 import sys
 from datetime import datetime
-from typing import Callable
+from typing import Any, Callable
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware as StarletteCORSMiddleware
@@ -88,9 +88,7 @@ class ExitRouteMiddleware(BaseHTTPMiddleware):
 class RescanMiddleware(BaseHTTPMiddleware):
     """Middleware to handle tool rescanning requests."""
 
-    def __init__(
-        self, app: Any, rescan_path: str, tool_discovery: ToolDiscovery, tool_registry: ToolRegistry
-    ) -> None:
+    def __init__(self, app: Any, rescan_path: str, tool_discovery: ToolDiscovery, tool_registry: ToolRegistry) -> None:
         super().__init__(app)
         self.rescan_path = rescan_path.rstrip("/")
         self.tool_discovery = tool_discovery

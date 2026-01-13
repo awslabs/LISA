@@ -67,7 +67,7 @@ class CollectionMixin(BaseMixin):
 
         response = self._session.post(f"{self.url}/repository/{repository_id}/collection", json=payload)
         if response.status_code in [200, 201]:
-            return response.json()
+            return response.json()  # type: ignore[no-any-return]
         else:
             raise parse_error(response.status_code, response)
 
@@ -86,7 +86,7 @@ class CollectionMixin(BaseMixin):
         """
         response = self._session.get(f"{self.url}/repository/{repository_id}/collection/{collection_id}")
         if response.status_code == 200:
-            return response.json()
+            return response.json()  # type: ignore[no-any-return]
         else:
             raise parse_error(response.status_code, response)
 
@@ -136,7 +136,7 @@ class CollectionMixin(BaseMixin):
 
         response = self._session.put(f"{self.url}/repository/{repository_id}/collection/{collection_id}", json=payload)
         if response.status_code == 200:
-            return response.json()
+            return response.json()  # type: ignore[no-any-return]
         else:
             raise parse_error(response.status_code, response)
 
@@ -200,7 +200,7 @@ class CollectionMixin(BaseMixin):
 
         response = self._session.get(f"{self.url}/repository/{repository_id}/collections", params=params)
         if response.status_code == 200:
-            return response.json()
+            return response.json()  # type: ignore[no-any-return]
         else:
             raise parse_error(response.status_code, response)
 
@@ -241,6 +241,6 @@ class CollectionMixin(BaseMixin):
         response = self._session.get(f"{self.url}/repository/collections", params=params)
         if response.status_code == 200:
             result = response.json()
-            return result.get("collections", [])
+            return result.get("collections", [])  # type: ignore[no-any-return]
         else:
             raise parse_error(response.status_code, response)

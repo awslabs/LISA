@@ -57,7 +57,7 @@ class ModelMixin(BaseMixin):
         """
         response = self._session.post(f"{self.url}/models", json=payload)
         if response.status_code in [200, 201]:
-            return response.json()
+            return response.json()  # type: ignore[no-any-return]
         else:
             raise parse_error(response.status_code, response)
 
@@ -75,7 +75,7 @@ class ModelMixin(BaseMixin):
         """
         response = self._session.post(f"{self.url}/models", json=payload)
         if response.status_code in [200, 201]:
-            return response.json()
+            return response.json()  # type: ignore[no-any-return]
         else:
             raise parse_error(response.status_code, response)
 
@@ -93,7 +93,7 @@ class ModelMixin(BaseMixin):
         """
         response = self._session.post(f"{self.url}/models", json=payload)
         if response.status_code in [200, 201]:
-            return response.json()
+            return response.json()  # type: ignore[no-any-return]
         else:
             raise parse_error(response.status_code, response)
 

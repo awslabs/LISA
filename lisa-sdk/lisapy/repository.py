@@ -52,7 +52,7 @@ class RepositoryMixin(BaseMixin):
         """
         response = self._session.post(f"{self.url}/repository", json=rag_config)
         if response.status_code in [200, 201]:
-            return response.json()
+            return response.json()  # type: ignore[no-any-return]
         else:
             raise parse_error(response.status_code, response)
 

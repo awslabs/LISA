@@ -230,7 +230,7 @@ class S3DocumentDiscoveryService:
     def _get_collection(self, repository_id: str, collection_id: str) -> Optional[RagCollectionConfig]:
         """Get collection configuration."""
         try:
-            return self.collection_service.get_collection(
+            return self.collection_service.get_collection(  # type: ignore[no-any-return]
                 collection_id=collection_id,
                 repository_id=repository_id,
                 username="system",
@@ -349,7 +349,7 @@ def get_datasource_bucket_for_collection(
     # Try legacy format first
     legacy_bucket = bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket")
     if legacy_bucket:
-        return legacy_bucket
+        return legacy_bucket  # type: ignore[no-any-return]
 
     # Try pipelines array (most common in current configs)
     pipelines = repository.get("pipelines", [])
@@ -359,7 +359,7 @@ def get_datasource_bucket_for_collection(
         s3_bucket = pipeline.get("s3Bucket") if isinstance(pipeline, dict) else pipeline.s3Bucket
 
         if pipeline_collection_id == collection_id and s3_bucket:
-            return s3_bucket
+            return s3_bucket  # type: ignore[no-any-return]
 
     # Try dataSources array
     data_sources = bedrock_config.get("dataSources", [])
@@ -373,7 +373,7 @@ def get_datasource_bucket_for_collection(
             if s3_uri and s3_uri.startswith("s3://"):
                 bucket = s3_uri[5:].split("/")[0]
                 if bucket:
-                    return bucket
+                    return bucket  # type: ignore[no-any-return]
 
             logger.error(f"Invalid s3Uri format for data source {ds_id}: {s3_uri}")
             raise ValueError(

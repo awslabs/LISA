@@ -268,7 +268,7 @@ class ApiTokenAuthorizer:
                         continue
 
                     # Token is valid - return the token info
-                    return token_info  # type: ignore[return-value]
+                    return token_info  # type: ignore[no-any-return]
 
         return None
 
@@ -293,7 +293,7 @@ class ManagementTokenAuthorizer:
 
         with self._cache_lock:
             if cache_key in self._cache:
-                return self._cache[cache_key]  # type: ignore[return-value]
+                return self._cache[cache_key]  # type: ignore[no-any-return]
 
         logger.info("Updating management tokens cache")
         secret_tokens = []

@@ -96,7 +96,7 @@ def get_management_key() -> str:
     secret_name_param = ssm_client.get_parameter(Name=os.environ["MANAGEMENT_KEY_SECRET_NAME_PS"])
     secret_name = secret_name_param["Parameter"]["Value"]
     secret_response = secrets_client.get_secret_value(SecretId=secret_name)
-    return secret_response["SecretString"]
+    return secret_response["SecretString"]  # type: ignore[no-any-return]
 
 
 # API token utility functions

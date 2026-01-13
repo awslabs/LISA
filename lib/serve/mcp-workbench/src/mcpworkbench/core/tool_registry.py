@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 class ToolRegistry:
     """Thread-safe registry for managing discovered tools."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the tool registry."""
         self._tools: Dict[str, ToolInfo] = {}
         self._lock = threading.RLock()

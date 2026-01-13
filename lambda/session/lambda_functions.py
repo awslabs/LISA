@@ -50,7 +50,7 @@ config_table = dynamodb.Table(os.environ["CONFIG_TABLE_NAME"])
 executor = ThreadPoolExecutor(max_workers=10)
 
 # Cache for configuration values to avoid repeated database queries
-cache = TTLCache(maxsize=1, ttl=300)  # 5 minutes
+cache: TTLCache = TTLCache(maxsize=1, ttl=300)  # 5 minutes
 
 
 @cached(cache=cache)
@@ -81,7 +81,7 @@ def _is_session_encryption_enabled() -> bool:
             enabled_components = configuration.get("enabledComponents", {})
             encrypt_session = enabled_components.get("encryptSession", False)  # Default to False
             logger.info(f"Retrieved session encryption setting from global config: {encrypt_session}")
-            return encrypt_session
+            return encrypt_session  # type: ignore[no-any-return]
         else:
             logger.warning("No global configuration found, defaulting session encryption to disabled")
             return False

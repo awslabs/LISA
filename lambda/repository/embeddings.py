@@ -14,7 +14,7 @@
 
 import logging
 import os
-from typing import List
+from typing import Any, List
 
 import boto3
 import requests
@@ -50,7 +50,7 @@ class RagEmbeddings(BaseModel):
         validate_model_name(v)
         return v
 
-    def __init__(self, model_name: str, id_token: str | None = None, **data) -> None:
+    def __init__(self, model_name: str, id_token: str | None = None, **data: Any) -> None:
         # Prepare initialization data
         init_data = {"model_name": model_name, **data}
         try:

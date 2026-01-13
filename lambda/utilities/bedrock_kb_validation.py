@@ -46,7 +46,7 @@ def validate_bedrock_kb_exists(kb_id: str, bedrock_agent_client: Optional[Any] =
         kb_config = response.get("knowledgeBase", {})
 
         logger.info(f"Validated Knowledge Base {kb_id}: {kb_config.get('name')}")
-        return kb_config
+        return kb_config  # type: ignore[no-any-return]
 
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "")
@@ -91,7 +91,7 @@ def validate_data_source_exists(
         data_source_config = response.get("dataSource", {})
 
         logger.info(f"Validated Data Source {data_source_id} in KB {kb_id}: " f"{data_source_config.get('name')}")
-        return data_source_config
+        return data_source_config  # type: ignore[no-any-return]
 
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "")

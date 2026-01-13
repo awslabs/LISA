@@ -20,6 +20,7 @@ Run this after installing to verify everything works.
 
 import subprocess
 import sys
+from typing import Any
 
 from mcpworkbench.core.annotations import mcp_tool
 from mcpworkbench.core.base_tool import BaseTool
@@ -53,7 +54,7 @@ def test_basic_functionality() -> bool:
             def __init__(self) -> None:
                 super().__init__("test", "A test tool")
 
-            async def execute(self, **kwargs) -> dict[str, str]:
+            async def execute(self, **kwargs: Any) -> dict[str, str]:
                 return {"result": "test successful"}
 
         # Test tool instantiation

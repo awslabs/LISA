@@ -76,7 +76,7 @@ def get_model_and_validate_access(
 def get_model_and_validate_status(
     model_table,
     model_id: str,
-    allowed_statuses: List[str] = None,
+    allowed_statuses: List[str] | None = None,
     user_groups: Optional[List[str]] = None,
     is_admin: bool = False,
 ) -> Dict[str, Any]:

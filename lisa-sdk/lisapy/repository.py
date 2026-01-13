@@ -70,10 +70,10 @@ class RepositoryMixin(BaseMixin):
     def create_opensearch_repository(
         self,
         repository_id: str,
-        repository_name: str = None,
-        embedding_model_id: str = None,
-        opensearch_config: Dict = None,
-        allowed_groups: List[str] = None,
+        repository_name: str | None = None,
+        embedding_model_id: str | None = None,
+        opensearch_config: Dict | None = None,
+        allowed_groups: List[str] | None = None,
     ) -> Dict:
         """Create an OpenSearch repository configuration.
 

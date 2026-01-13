@@ -153,7 +153,7 @@ class RagMixin(BaseMixin):
         file: str,
         chuck_size: int = 512,
         chuck_overlap: int = 51,
-        collection_id: str = None,
+        collection_id: str | None = None,
     ) -> List[Dict]:
         """Ingest a document and return job information.
 
@@ -184,7 +184,7 @@ class RagMixin(BaseMixin):
             raise parse_error(response.status_code, response)
 
     def similarity_search(
-        self, repo_id: str, query: str, k: int = 3, collection_id: str = None, model_name: str = None
+        self, repo_id: str, query: str, k: int = 3, collection_id: str | None = None, model_name: str | None = None
     ) -> List[Dict]:
         """Perform similarity search.
 

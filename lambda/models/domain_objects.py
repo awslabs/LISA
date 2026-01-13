@@ -1007,8 +1007,8 @@ class FilterParams:
 class SortParams:
     """Shared sorting parameter handling for collections."""
 
-    sort_by: CollectionSortBy = None  # Will be set to default in from_query_params
-    sort_order: SortOrder = None  # Will be set to default in from_query_params
+    sort_by: CollectionSortBy | None = None  # Will be set to default in from_query_params
+    sort_order: SortOrder | None = None  # Will be set to default in from_query_params
 
     @staticmethod
     def from_query_params(query_params: Dict[str, str]) -> SortParams:

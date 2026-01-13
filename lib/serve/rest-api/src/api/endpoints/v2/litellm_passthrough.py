@@ -24,7 +24,7 @@ import boto3
 from auth import Authorizer, extract_user_groups_from_jwt
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
-from requests import requests
+from requests import request as requests_request
 from starlette.status import HTTP_401_UNAUTHORIZED
 from utils.guardrails import (
     create_guardrail_json_response,
@@ -277,7 +277,7 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     http_method = request.method
     if http_method == "GET" or http_method == "DELETE":
 
-        response = requests.request(method=http_method, url=litellm_path, headers=headers)
+        response = requests_request(method=http_method, url=litellm_path, headers=headers)
         return JSONResponse(response.json(), status_code=response.status_code)
     # not a GET or DELETE request, so expect a JSON payload as part of the request
     params = await request.json()
@@ -290,7 +290,7 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
 
     if params.get("stream", False):  # if a streaming request
 
-        response = requests.request(method=http_method, url=litellm_path, json=params, headers=headers, stream=True)
+        response = requests_request(method=http_method, url=litellm_path, json=params, headers=headers, stream=True)
 
         # Check for guardrail violations
         model_id = params.get("model", "")
@@ -317,7 +317,7 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
             )
     else:  # not a streaming request
 
-        response = requests.request(method=http_method, url=litellm_path, json=params, headers=headers)
+        response = requests_request(method=http_method, url=litellm_path, json=params, headers=headers)
 
         # Check for guardrail violations
         model_id = params.get("model", "")

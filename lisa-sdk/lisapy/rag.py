@@ -13,7 +13,7 @@
 #   limitations under the License.
 import logging
 import os
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import requests  # type: ignore[import-untyped,unused-ignore]
 
@@ -116,7 +116,10 @@ class RagMixin(BaseMixin):
         Returns:
             True if upload successful
         """
-        url = presigned_data.get("url")
+        url: Optional[str] = presigned_data.get("url")
+        if not url:
+            raise ValueError("Presigned data missing 'url' field")
+
         fields = presigned_data.get("fields", {})
 
         with open(filename, "rb") as f:

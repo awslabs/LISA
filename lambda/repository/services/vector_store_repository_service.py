@@ -65,9 +65,11 @@ class VectorStoreRepositoryService(RepositoryService):
 
     def get_collection_id_from_config(self, pipeline_config: Dict[str, Any]) -> str:
         """Extract collection ID from pipeline config or use embedding model."""
-        collection_id = pipeline_config.get("collectionId")
+        collection_id: Optional[str] = pipeline_config.get("collectionId")
         if not collection_id:
             collection_id = pipeline_config.get("embeddingModel")
+        if not collection_id:
+            raise ValueError("No collection ID or embedding model found in pipeline config")
         return collection_id
 
     def ingest_document(
@@ -78,11 +80,17 @@ class VectorStoreRepositoryService(RepositoryService):
     ) -> RagDocument:
         """Ingest document into vector store with chunking and embedding."""
         # Store chunks in vector store
+        collection_id_str: str = job.collection_id if job.collection_id else ""
+        embedding_model_str: str = job.embedding_model if job.embedding_model else ""
+
+        if not collection_id_str or not embedding_model_str:
+            raise ValueError("collection_id and embedding_model are required for ingestion")
+
         all_ids = self._store_chunks(
             texts=texts,
             metadatas=metadatas,
-            collection_id=job.collection_id,
-            embedding_model=job.embedding_model,
+            collection_id=collection_id_str,
+            embedding_model=embedding_model_str,
         )
 
         # Create document record

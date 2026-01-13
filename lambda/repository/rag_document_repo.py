@@ -269,7 +269,7 @@ class RagDocumentRepository:
         Returns:
             Total number of documents
         """
-        count = 0
+        count: int = 0
         # Count all rag documents using repo id only
         if not collection_id:
             response = self.doc_table.query(
@@ -277,11 +277,11 @@ class RagDocumentRepository:
                 KeyConditionExpression=Key("repository_id").eq(repository_id),
                 Select="COUNT",
             )
-            count = response.get("Count", 0)
+            count = int(response.get("Count", 0))
         else:
             pk = RagDocument.createPartitionKey(repository_id, collection_id)
             response = self.doc_table.query(KeyConditionExpression=Key("pk").eq(pk), Select="COUNT")
-            count = response.get("Count", 0)
+            count = int(response.get("Count", 0))
         return count
 
     def find_subdocs_by_id(self, document_id: str) -> list[RagSubDocument]:

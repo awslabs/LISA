@@ -75,7 +75,8 @@ def get_oidc_metadata(cert_path: Optional[str] = None) -> Dict[str, Any]:
     authority = os.environ.get("AUTHORITY")
     resp = requests.get(f"{authority}/.well-known/openid-configuration", verify=cert_path or True, timeout=30)
     resp.raise_for_status()
-    return resp.json()
+    result: Dict[str, Any] = resp.json()
+    return result
 
 
 def get_jwks_client() -> jwt.PyJWKClient:
@@ -159,7 +160,7 @@ def extract_user_groups_from_jwt(jwt_data: Optional[Dict[str, Any]]) -> list[str
 
     # Traverse the property path to find groups
     props = jwt_groups_property.split(".")
-    current_node = jwt_data
+    current_node: Any = jwt_data
 
     for prop in props:
         if isinstance(current_node, dict) and prop in current_node:
@@ -170,7 +171,8 @@ def extract_user_groups_from_jwt(jwt_data: Optional[Dict[str, Any]]) -> list[str
 
     # current_node should now be the groups list
     if isinstance(current_node, list):
-        return current_node
+        groups: list[str] = current_node
+        return groups
     else:
         logger.warning(f"Expected list of groups but got {type(current_node)}")
         return []
@@ -267,7 +269,8 @@ class ApiTokenAuthorizer:
                         continue
 
                     # Token is valid - return the token info
-                    return token_info
+                    result: Dict[str, Any] = dict(token_info)
+                    return result
 
         return None
 
@@ -292,10 +295,11 @@ class ManagementTokenAuthorizer:
 
         with self._cache_lock:
             if cache_key in self._cache:
-                return self._cache[cache_key]
+                cached_tokens: list[str] = self._cache[cache_key]
+                return cached_tokens
 
         logger.info("Updating management tokens cache")
-        secret_tokens = []
+        secret_tokens: list[str] = []
         secret_id = os.environ.get("MANAGEMENT_KEY_NAME")
         secrets_manager = self._get_secrets_client()
 
@@ -366,7 +370,7 @@ class Authorizer:
             logger.trace("Valid OIDC token")
             return jwt_data
 
-        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, message="Not authenticated")  # type: ignore[call-arg]
+        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, message="Not authenticated")
 
     def _log_access_attempt(
         self, request: Request, auth_method: str, user_id: str, endpoint: str, success: bool, reason: str = ""

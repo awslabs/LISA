@@ -67,7 +67,8 @@ def get_oidc_metadata(cert_path: Optional[str] = None) -> Dict[str, Any]:
     authority = os.environ.get("AUTHORITY")
     resp = requests.get(f"{authority}/.well-known/openid-configuration", verify=cert_path or True, timeout=30)
     resp.raise_for_status()
-    return resp.json()
+    result: Dict[str, Any] = resp.json()
+    return result
 
 
 def get_jwks_client() -> jwt.PyJWKClient:

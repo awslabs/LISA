@@ -17,7 +17,7 @@
 import logging
 import os
 from datetime import timedelta
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import boto3
 from models.domain_objects import (
@@ -457,13 +457,20 @@ def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
             data_sources = bedrock_config.get("dataSources", [])
             if data_sources:
                 first_data_source = data_sources[0]
-                if isinstance(first_data_source, dict):
-                    collection_id = first_data_source.get("id")
-                else:
-                    collection_id = getattr(first_data_source, "id", None)
+                collection_id_val: Optional[str] = (
+                    first_data_source.get("id") if isinstance(first_data_source, dict) else first_data_source.id
+                )
+                if not collection_id_val:
+                    logger.error(f"Bedrock KB repository {repository_id} has invalid data source")
+                    return
+                collection_id = collection_id_val
             else:
                 # Try legacy single data source ID
-                collection_id = bedrock_config.get("bedrockKnowledgeDatasourceId")
+                collection_id_val = bedrock_config.get("bedrockKnowledgeDatasourceId")
+                if not collection_id_val:
+                    logger.error(f"Bedrock KB repository {repository_id} missing data source ID")
+                    return
+                collection_id = collection_id_val
 
         if not collection_id:
             logger.error(f"Bedrock KB repository {repository_id} missing data source ID")
@@ -670,7 +677,8 @@ def extract_chunk_strategy(pipeline_config: Dict) -> ChunkingStrategy:
 
         if chunk_type == "fixed":
             # Use Pydantic model validation for type safety and validation
-            return FixedChunkingStrategy.model_validate(chunking_strategy)
+            result: FixedChunkingStrategy = FixedChunkingStrategy.model_validate(chunking_strategy)
+            return result
         else:
             # Future: Handle other chunking strategy types (semantic, recursive, etc.)
             raise ValueError(f"Unsupported chunking strategy type: {chunk_type}")

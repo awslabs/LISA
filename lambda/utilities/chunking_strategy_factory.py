@@ -16,7 +16,6 @@
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import List
 
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -26,8 +25,8 @@ from utilities.exceptions import RagUploadException
 logger = logging.getLogger(__name__)
 
 DEFAULT_STRATEGY = FixedChunkingStrategy(
-    size=os.getenv("CHUNK_SIZE", "512"),
-    overlap=os.getenv("CHUNK_OVERLAP", "51"),
+    size=int(os.getenv("CHUNK_SIZE", "512")),
+    overlap=int(os.getenv("CHUNK_OVERLAP", "51")),
 )
 
 
@@ -35,20 +34,20 @@ class ChunkingStrategyHandler(ABC):
     """Abstract base class for chunking strategy handlers."""
 
     @abstractmethod
-    def chunk_documents(self, docs: List[Document], strategy: ChunkingStrategy) -> List[Document]:
+    def chunk_documents(self, docs: list[Document], strategy: ChunkingStrategy) -> list[Document]:
         """
         Chunk documents according to the strategy.
 
         Parameters
         ----------
-        docs : List[Document]
+        docs : list[Document]
             List of documents to chunk
         strategy : ChunkingStrategy
             The chunking strategy configuration
 
         Returns
         -------
-        List[Document]
+        list[Document]
             List of chunked documents
         """
         pass
@@ -57,22 +56,26 @@ class ChunkingStrategyHandler(ABC):
 class FixedSizeChunkingHandler(ChunkingStrategyHandler):
     """Handler for fixed-size chunking strategy."""
 
-    def chunk_documents(self, docs: List[Document], strategy: ChunkingStrategy = DEFAULT_STRATEGY) -> List[Document]:
+    def chunk_documents(self, docs: list[Document], strategy: ChunkingStrategy = DEFAULT_STRATEGY) -> list[Document]:
         """
         Chunk documents using fixed-size strategy with RecursiveCharacterTextSplitter.
 
         Parameters
         ----------
-        docs : List[Document]
+        docs : list[Document]
             List of documents to chunk
         strategy : ChunkingStrategy
             The chunking strategy configuration (FixedChunkingStrategy)
 
         Returns
         -------
-        List[Document]
+        list[Document]
             List of chunked documents
         """
+        # Ensure we have a FixedChunkingStrategy
+        if not isinstance(strategy, FixedChunkingStrategy):
+            raise ValueError(f"Expected FixedChunkingStrategy, got {type(strategy).__name__}")
+
         # Handle both legacy (size/overlap) and new (chunkSize/chunkOverlap) formats
         chunk_size = strategy.size
         chunk_overlap = strategy.overlap
@@ -97,26 +100,27 @@ class FixedSizeChunkingHandler(ChunkingStrategyHandler):
             chunk_overlap=chunk_overlap,
             length_function=len,
         )
-        return text_splitter.split_documents(docs)
+        result: list[Document] = text_splitter.split_documents(docs)
+        return result
 
 
 class NoneChunkingHandler(ChunkingStrategyHandler):
     """Handler for no-chunking strategy - returns documents as-is."""
 
-    def chunk_documents(self, docs: List[Document], strategy: ChunkingStrategy) -> List[Document]:
+    def chunk_documents(self, docs: list[Document], strategy: ChunkingStrategy) -> list[Document]:
         """
         Return documents without chunking.
 
         Parameters
         ----------
-        docs : List[Document]
+        docs : list[Document]
             List of documents to process
         strategy : ChunkingStrategy
             The chunking strategy configuration (NoneChunkingStrategy)
 
         Returns
         -------
-        List[Document]
+        list[Document]
             Original list of documents unmodified
         """
         logger.info(f"Processing {len(docs)} documents with NONE chunking strategy (no chunking)")
@@ -132,20 +136,20 @@ class ChunkingStrategyFactory:
     }
 
     @classmethod
-    def chunk_documents(cls, docs: List[Document], strategy: ChunkingStrategy = DEFAULT_STRATEGY) -> List[Document]:
+    def chunk_documents(cls, docs: list[Document], strategy: ChunkingStrategy = DEFAULT_STRATEGY) -> list[Document]:
         """
         Chunk documents using the appropriate strategy handler.
 
         Parameters
         ----------
-        docs : List[Document]
+        docs : list[Document]
             List of documents to chunk
         strategy : ChunkingStrategy
             The chunking strategy configuration
 
         Returns
         -------
-        List[Document]
+        list[Document]
             List of chunked documents
 
         Raises
@@ -183,13 +187,13 @@ class ChunkingStrategyFactory:
         logger.info(f"Registered chunking strategy handler: {strategy_type.value}")
 
     @classmethod
-    def get_supported_strategies(cls) -> List[ChunkingStrategyType]:
+    def get_supported_strategies(cls) -> list[ChunkingStrategyType]:
         """
         Get list of supported chunking strategy types.
 
         Returns
         -------
-        List[ChunkingStrategyType]
+        list[ChunkingStrategyType]
             List of supported strategy types
         """
         return list(cls._handlers.keys())

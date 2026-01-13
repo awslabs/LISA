@@ -78,9 +78,9 @@ class LisaTextgen(LLM):
                 completion += chunk.text
             return completion
 
-        text, _ = self.client.generate(prompt, self._foundation_model)
-
-        return text
+        response = self.client.generate(prompt, self._foundation_model)
+        result: str = response.generated_text
+        return result
 
     def _stream(
         self,

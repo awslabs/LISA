@@ -63,11 +63,11 @@ class LisaLlm(BaseModel):
 
         self._session = requests.Session()
         if self.headers:
-            self._session.headers = self.headers
+            self._session.headers.update(self.headers)
         if self.verify is not None:
             self._session.verify = self.verify
         if self.cookies:
-            self._session.cookies = self.cookies
+            self._session.cookies.update(self.cookies)
 
         self.async_timeout = ClientTimeout(self.timeout * 60)
 
@@ -288,7 +288,8 @@ class LisaLlm(BaseModel):
         response = self._session.post(f"{self.url}/embeddings", json=payload)
         if response.status_code == 200:
             output = response.json()
-            return output["embeddings"]
+            embeddings: List[List[float]] = output["embeddings"]
+            return embeddings
         else:
             raise parse_error(response.status_code, response)
 
@@ -325,7 +326,8 @@ class LisaLlm(BaseModel):
                     raise parse_error(response.status_code, response)
 
                 output = await response.json()
-                return output["embeddings"]
+                embeddings: List[List[float]] = output["embeddings"]
+                return embeddings
 
     def __del__(self) -> None:
         """Close session."""

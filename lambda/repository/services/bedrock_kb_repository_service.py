@@ -62,7 +62,7 @@ class BedrockKBRepositoryService(RepositoryService):
         which should match one of the data sources in bedrockKnowledgeBaseConfig.
         """
         # The pipeline config should have a collectionId that matches a data source ID
-        collection_id = pipeline_config.get("collectionId")
+        collection_id: Optional[str] = pipeline_config.get("collectionId")
 
         if collection_id:
             return collection_id
@@ -74,10 +74,11 @@ class BedrockKBRepositoryService(RepositoryService):
         data_sources = bedrock_config.get("dataSources", [])
         if data_sources:
             first_data_source = data_sources[0]
-            data_source_id = (
+            data_source_id: Optional[str] = (
                 first_data_source.get("id") if isinstance(first_data_source, dict) else first_data_source.id
             )
-            return data_source_id
+            if data_source_id:
+                return data_source_id
 
         # Try legacy single data source ID
         data_source_id = bedrock_config.get("bedrockKnowledgeDatasourceId")
@@ -107,6 +108,10 @@ class BedrockKBRepositoryService(RepositoryService):
         rag_document_repository = RagDocumentRepository(
             os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"]
         )
+
+        # Ensure collection_id is not None
+        if not job.collection_id:
+            raise ValueError("collection_id is required for document ingestion")
 
         existing_docs = list(
             rag_document_repository.find_by_source(
@@ -254,7 +259,7 @@ class BedrockKBRepositoryService(RepositoryService):
 
         bedrock_config = self.repository.get("bedrockKnowledgeBaseConfig", {})
         # Support both field names for backward compatibility
-        kb_id = bedrock_config.get("knowledgeBaseId", bedrock_config.get("bedrockKnowledgeBaseId"))
+        kb_id: Optional[str] = bedrock_config.get("knowledgeBaseId", bedrock_config.get("bedrockKnowledgeBaseId"))
 
         if not kb_id:
             raise ValueError(
@@ -268,7 +273,7 @@ class BedrockKBRepositoryService(RepositoryService):
         logger.info(f"Retrieving from KB: kb_id={kb_id}, data_source={collection_id}, query={query[:50]}...")
 
         # Build retrieve params with data source filter
-        retrieve_params = {
+        retrieve_params: Dict[str, Any] = {
             "knowledgeBaseId": kb_id,
             "retrievalQuery": {"text": query},
             "retrievalConfiguration": {
@@ -281,7 +286,8 @@ class BedrockKBRepositoryService(RepositoryService):
         # Add data source filter if collection_id is provided
         # collection_id corresponds to the data source ID in Bedrock KB
         if collection_id:
-            retrieve_params["retrievalConfiguration"]["vectorSearchConfiguration"]["filter"] = {
+            vector_search_config = retrieve_params["retrievalConfiguration"]["vectorSearchConfiguration"]
+            vector_search_config["filter"] = {
                 "equals": {
                     "key": "x-amz-bedrock-kb-data-source-id",
                     "value": collection_id,
@@ -307,7 +313,9 @@ class BedrockKBRepositoryService(RepositoryService):
                 )
 
             logger.error(f"Bedrock retrieve failed for KB {kb_id}: {error_message}")
-            if "filter" in retrieve_params.get("retrievalConfiguration", {}).get("vectorSearchConfiguration", {}):
+            retrieval_config = retrieve_params.get("retrievalConfiguration", {})
+            vector_search = retrieval_config.get("vectorSearchConfiguration", {})
+            if "filter" in vector_search:
                 logger.error(
                     "Filter may not be supported. Ensure metadata field 'x-amz-bedrock-kb-data-source-id' "
                     "is configured in the Knowledge Base."
@@ -343,7 +351,10 @@ class BedrockKBRepositoryService(RepositoryService):
     def validate_document_source(self, s3_path: str) -> str:
         """Validate document is from KB data source bucket."""
         bedrock_config = self.repository.get("bedrockKnowledgeBaseConfig", {})
-        kb_bucket = bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket")
+        kb_bucket: Optional[str] = bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket")
+
+        if not kb_bucket:
+            raise ValueError("KB bucket not configured")
 
         return self._validate_and_normalize_path(s3_path, kb_bucket)
 
@@ -426,9 +437,13 @@ class BedrockKBRepositoryService(RepositoryService):
             # Use first data source from array, or legacy single ID
             if data_sources:
                 first_data_source = data_sources[0]
-                data_source_id = (
+                data_source_id: Optional[str] = (
                     first_data_source.get("id") if isinstance(first_data_source, dict) else first_data_source.id
                 )
+                if not data_source_id:
+                    logger.warning(f"Bedrock KB repository {self.repository_id} has invalid data source")
+                    return None
+
                 s3_uri = (
                     first_data_source.get("s3Uri", "")
                     if isinstance(first_data_source, dict)
@@ -436,6 +451,9 @@ class BedrockKBRepositoryService(RepositoryService):
                 )
             else:
                 data_source_id = legacy_data_source_id
+                if not data_source_id:
+                    logger.warning(f"Bedrock KB repository {self.repository_id} missing data source ID")
+                    return None
                 s3_uri = ""
 
             # Use helper method to create collection

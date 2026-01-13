@@ -17,7 +17,7 @@
 from functools import wraps
 from typing import Any, Callable, Dict, TypeVar, cast
 
-F = TypeVar('F', bound=Callable[..., Any])
+F = TypeVar("F", bound=Callable[..., Any])
 
 
 def mcp_tool(name: str, description: str) -> Callable[[F], F]:
@@ -34,9 +34,9 @@ def mcp_tool(name: str, description: str) -> Callable[[F], F]:
 
     def decorator(func: F) -> F:
         # Store metadata as function attributes
-        setattr(func, '_mcp_tool_name', name)
-        setattr(func, '_mcp_tool_description', description)
-        setattr(func, '_is_mcp_tool', True)
+        func._mcp_tool_name = name  # type: ignore[attr-defined]
+        func._mcp_tool_description = description  # type: ignore[attr-defined]
+        func._is_mcp_tool = True  # type: ignore[attr-defined]
 
         @wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -47,10 +47,10 @@ def mcp_tool(name: str, description: str) -> Callable[[F], F]:
                 return func(*args, **kwargs)
 
         # Copy metadata to wrapper
-        setattr(wrapper, '_mcp_tool_name', name)
-        setattr(wrapper, '_mcp_tool_description', description)
-        setattr(wrapper, '_is_mcp_tool', True)
-        setattr(wrapper, '_original_func', func)
+        wrapper._mcp_tool_name = name  # type: ignore[attr-defined]
+        wrapper._mcp_tool_description = description  # type: ignore[attr-defined]
+        wrapper._is_mcp_tool = True  # type: ignore[attr-defined]
+        wrapper._original_func = func  # type: ignore[attr-defined]
 
         return cast(F, wrapper)
 
@@ -59,7 +59,7 @@ def mcp_tool(name: str, description: str) -> Callable[[F], F]:
 
 def is_mcp_tool(func: Callable) -> bool:
     """Check if a function is marked as an MCP tool."""
-    return hasattr(func, "_is_mcp_tool") and func._is_mcp_tool
+    return hasattr(func, "_is_mcp_tool") and getattr(func, "_is_mcp_tool", False)
 
 
 def get_tool_metadata(func: Callable) -> Dict[str, Any]:

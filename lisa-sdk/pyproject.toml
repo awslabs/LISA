@@ -48,5 +48,5 @@ markers = [
     "asyncio: Async tests",
 ]
 testpaths = [
-    "../test/lisa-sdk/"
+    "../test/sdk/"
 ]

@@ -29,18 +29,15 @@ from mcpworkbench.core.tool_registry import ToolRegistry
 @pytest.fixture(scope="function", autouse=True)
 def isolate_modules():
     """Isolate sys.modules for each test to prevent cross-test contamination."""
-    # Save the current state of sys.modules
-    original_modules = sys.modules.copy()
-    
     # Get all mcpworkbench_tools modules before test
-    tools_modules_before = {k for k in sys.modules.keys() if k.startswith('mcpworkbench_tools')}
-    
+    tools_modules_before = {k for k in sys.modules.keys() if k.startswith("mcpworkbench_tools")}
+
     yield
-    
+
     # Clean up any mcpworkbench_tools modules added during the test
-    tools_modules_after = {k for k in sys.modules.keys() if k.startswith('mcpworkbench_tools')}
+    tools_modules_after = {k for k in sys.modules.keys() if k.startswith("mcpworkbench_tools")}
     new_modules = tools_modules_after - tools_modules_before
-    
+
     for module_name in new_modules:
         if module_name in sys.modules:
             del sys.modules[module_name]

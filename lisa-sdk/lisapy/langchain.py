@@ -18,9 +18,9 @@ from typing import Any, cast, Iterator, List, Mapping, Optional, Union
 from httpx import AsyncClient as HttpAsyncClient
 from httpx import Client as HttpClient
 from langchain_core.callbacks.manager import CallbackManagerForLLMRun
+from langchain_core.embeddings import Embeddings
 from langchain_core.language_models.llms import LLM
 from langchain_core.outputs import GenerationChunk
-from langchain_core.embeddings import Embeddings
 from langchain_openai import OpenAIEmbeddings
 from pydantic import BaseModel, ConfigDict, PrivateAttr
 
@@ -101,7 +101,7 @@ class LisaTextgen(LLM):
 class LisaOpenAIEmbeddings(BaseModel, Embeddings):
     """LISA text embedding adapter."""
 
-    model_config = ConfigDict(extra='forbid', arbitrary_types_allowed=True)
+    model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
     lisa_openai_api_base: str
     """LISA REST API URI."""
@@ -155,7 +155,7 @@ class LisaEmbeddings(BaseModel, Embeddings):
     a Lisa API available.
     """
 
-    model_config = ConfigDict(extra='forbid', arbitrary_types_allowed=True)
+    model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
     provider: str
     """Provider of the LISA serve model  e.g., ecs.textgen.tgi."""

@@ -26,15 +26,14 @@ from typing import Any, Dict, Optional
 
 import boto3
 import jwt
-import requests
-from cachetools import TTLCache
-from cachetools.keys import hashkey
+import requests  # type: ignore[import-untyped]
+from cachetools import TTLCache  # type: ignore[import-untyped]
+from cachetools.keys import hashkey  # type: ignore[import-untyped]
 from fastapi import HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from loguru import logger
 from starlette.status import HTTP_401_UNAUTHORIZED
-
-from .utils.decorators import singleton
+from utils.decorators import singleton
 
 TOKEN_EXPIRATION_NAME = "tokenExpiration"  # nosec B105
 TOKEN_TABLE_NAME = "TOKEN_TABLE_NAME"  # nosec B105
@@ -188,7 +187,7 @@ class OIDCHTTPBearer(HTTPBearer):
     """OIDC based bearer token authenticator."""
 
     def __init__(self, authority: Optional[str] = None, client_id: Optional[str] = None, **kwargs: Dict[str, Any]):
-        super().__init__(**kwargs)
+        super().__init__(**kwargs)  # type: ignore[arg-type]
         self.authority = authority or os.environ.get("AUTHORITY", "")
         self.client_id = client_id or os.environ.get("CLIENT_ID", "")
         self.jwks_client = get_jwks_client()
@@ -196,7 +195,7 @@ class OIDCHTTPBearer(HTTPBearer):
     async def id_token_is_valid(self, request: Request) -> Optional[Dict[str, Any]]:
         """Check whether an ID token is valid and return decoded data."""
         http_auth_creds = await super().__call__(request)
-        id_token = http_auth_creds.credentials
+        id_token = http_auth_creds.credentials  # type: ignore[union-attr]
         try:
             signing_key = self.jwks_client.get_signing_key_from_jwt(id_token)
             data: Dict[str, Any] = jwt.decode(
@@ -339,7 +338,7 @@ class Authorizer:
 
     async def __call__(self, request: Request) -> Optional[HTTPAuthorizationCredentials]:
         jwt_data = await self.authenticate_request(request)
-        return jwt_data
+        return jwt_data  # type: ignore[return-value]
 
     async def authenticate_request(self, request: Request) -> Optional[Dict[str, Any]]:
         """Authenticate request and return JWT data if valid, else None. Invalid requests throw an exception"""
@@ -348,7 +347,7 @@ class Authorizer:
 
         # First try API tokens
         logger.trace("Try API Auth Token...")
-        token_info = await self.token_authorizer.is_valid_api_token(request.headers)
+        token_info = await self.token_authorizer.is_valid_api_token(request.headers)  # type: ignore[arg-type]
         if token_info:
             logger.trace("Valid API token")
             self._set_token_context(request, token_info)
@@ -356,7 +355,7 @@ class Authorizer:
 
         # Then try management tokens
         logger.trace("Try Management Auth Token...")
-        if await self.management_token_authorizer.is_valid_api_token(request.headers):
+        if await self.management_token_authorizer.is_valid_api_token(dict(request.headers)):
             logger.trace("Valid Management token")
             return None
 
@@ -367,7 +366,7 @@ class Authorizer:
             logger.trace("Valid OIDC token")
             return jwt_data
 
-        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, message="Not authenticated")
+        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, message="Not authenticated")  # type: ignore[call-arg]
 
     def _log_access_attempt(
         self, request: Request, auth_method: str, user_id: str, endpoint: str, success: bool, reason: str = ""

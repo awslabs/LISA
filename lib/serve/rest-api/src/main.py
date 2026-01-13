@@ -22,15 +22,14 @@ from typing import Any, Dict
 from uuid import uuid4
 
 from aiobotocore.session import get_session
+from api.routes import router
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
+from lisa_serve.registry import registry
 from loguru import logger
-
-from .api.routes import router
-from .lisa_serve.registry import registry
-from .utils.cache_manager import set_registered_models_cache
-from .utils.resources import ModelType, RestApiResource
+from utils.cache_manager import set_registered_models_cache
+from utils.resources import ModelType, RestApiResource
 
 logger.remove()
 logger_level = os.environ.get("LOG_LEVEL", "INFO")

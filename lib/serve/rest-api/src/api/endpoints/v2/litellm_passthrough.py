@@ -21,13 +21,11 @@ from collections.abc import Iterator
 from typing import Union
 
 import boto3
-import requests
+from auth import Authorizer, extract_user_groups_from_jwt
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from starlette.status import HTTP_401_UNAUTHORIZED
-
-from ....auth import Authorizer, extract_user_groups_from_jwt
-from ....utils.guardrails import (
+from utils.guardrails import (
     create_guardrail_json_response,
     create_guardrail_streaming_response,
     extract_guardrail_response,
@@ -35,7 +33,7 @@ from ....utils.guardrails import (
     get_model_guardrails,
     is_guardrail_violation,
 )
-from ....utils.metrics import publish_metrics_event
+from utils.metrics import publish_metrics_event
 
 # Local LiteLLM installation URL. By default, LiteLLM runs on port 4000. Change the port here if the
 # port was changed as part of the LiteLLM startup in entrypoint.sh
@@ -130,7 +128,7 @@ async def apply_guardrails_to_request(params: dict, model_id: str, jwt_data: dic
 
 
 def handle_guardrail_violation_response(
-    response: requests.Response, model_id: str, params: dict, is_streaming: bool
+    response: Response, model_id: str, params: dict, is_streaming: bool
 ) -> Response | None:
     """
     Handle guardrail violation errors in LiteLLM responses.
@@ -151,7 +149,7 @@ def handle_guardrail_violation_response(
         return None
 
     try:
-        error_response = response.json()
+        error_response = response.json()  # type: ignore[attr-defined]
         error_msg = error_response.get("error", {}).get("message", "")
 
         if not is_guardrail_violation(error_msg):
@@ -264,7 +262,7 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     require_admin = api_path not in OPENAI_ROUTES
     jwt_data = await authorizer.authenticate_request(request)
     if not await authorizer.can_access(request, require_admin):
-        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, message="Not authenticated in litellm_passthrough")
+        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, message="Not authenticated in litellm_passthrough")  # type: ignore[call-arg]
 
     # At this point in the request, we have already validated auth with IdP or persistent token. By using LiteLLM for
     # model management, LiteLLM requires an admin key, and that forces all requests to require a key as well. To avoid
@@ -274,7 +272,8 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
 
     http_method = request.method
     if http_method == "GET" or http_method == "DELETE":
-        response = requests.request(method=http_method, url=litellm_path, headers=headers)
+
+        response = request(method=http_method, url=litellm_path, headers=headers)
         return JSONResponse(response.json(), status_code=response.status_code)
     # not a GET or DELETE request, so expect a JSON payload as part of the request
     params = await request.json()
@@ -282,11 +281,14 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     # Apply guardrails for chat/completions requests
     if api_path in ["chat/completions", "v1/chat/completions"]:
         model_id = params.get("model")
-        if model_id:
+        if model_id and jwt_data:
             await apply_guardrails_to_request(params, model_id, jwt_data)
 
     if params.get("stream", False):  # if a streaming request
-        response = requests.request(method=http_method, url=litellm_path, json=params, headers=headers, stream=True)
+
+        response = request(
+            method=http_method, url=litellm_path, json=params, headers=headers, stream=True
+        )
 
         # Check for guardrail violations
         model_id = params.get("model", "")
@@ -303,13 +305,19 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
         if api_path in ["chat/completions", "v1/chat/completions"]:
             model_id = params.get("model", "")
             return StreamingResponse(
-                generate_response_with_guardrail_handling(response.iter_lines(), model_id),
+                generate_response_with_guardrail_handling(
+                    response.iter_lines(), model_id
+                ),
                 status_code=response.status_code,
             )
         else:
-            return StreamingResponse(generate_response(response.iter_lines()), status_code=response.status_code)
+            return StreamingResponse(
+                generate_response(response.iter_lines()),
+                status_code=response.status_code,
+            )
     else:  # not a streaming request
-        response = requests.request(method=http_method, url=litellm_path, json=params, headers=headers)
+
+        response = request(method=http_method, url=litellm_path, json=params, headers=headers)
 
         # Check for guardrail violations
         model_id = params.get("model", "")

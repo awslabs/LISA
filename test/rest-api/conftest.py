@@ -37,6 +37,9 @@ def mock_env_vars(monkeypatch):
         "USER_GROUP": "users",
         "JWT_GROUPS_PROP": "cognito:groups",
         "REGISTERED_MODELS_PS_NAME": "/test/models",
+        "GUARDRAILS_TABLE_NAME": "test-guardrails-table",
+        "USAGE_METRICS_QUEUE_URL": "",
+        "LITELLM_KEY": "test-litellm-key",
     }
     for key, value in env_vars.items():
         monkeypatch.setenv(key, value)
@@ -51,7 +54,12 @@ def mock_request():
     request.method = "GET"
     request.url = Mock()
     request.url.path = "/test"
-    request.state = Mock()
+
+    # Use a simple object for state instead of Mock to allow attribute deletion
+    class State:
+        pass
+
+    request.state = State()
     return request
 
 
@@ -137,6 +145,7 @@ def mock_boto3_client(monkeypatch):
     mock_ddb_table = MagicMock()
     mock_secrets_client = MagicMock()
     mock_ssm_client = MagicMock()
+    mock_sqs_client = MagicMock()
 
     def mock_resource(service_name, **kwargs):
         if service_name == "dynamodb":
@@ -150,6 +159,8 @@ def mock_boto3_client(monkeypatch):
             return mock_secrets_client
         elif service_name == "ssm":
             return mock_ssm_client
+        elif service_name == "sqs":
+            return mock_sqs_client
         return MagicMock()
 
     monkeypatch.setattr("boto3.resource", mock_resource)
@@ -159,4 +170,45 @@ def mock_boto3_client(monkeypatch):
         "dynamodb_table": mock_ddb_table,
         "secrets_manager": mock_secrets_client,
         "ssm": mock_ssm_client,
+        "sqs": mock_sqs_client,
+    }
+
+
+@pytest.fixture
+def mock_guardrails():
+    """Mock guardrails data."""
+    return [
+        {
+            "guardrailName": "content-filter",
+            "modelId": "test-model",
+            "allowedGroups": ["users"],
+            "markedForDeletion": False,
+        },
+        {
+            "guardrailName": "pii-filter",
+            "modelId": "test-model",
+            "allowedGroups": [],
+            "markedForDeletion": False,
+        },
+    ]
+
+
+@pytest.fixture
+def mock_registered_models():
+    """Mock registered models cache."""
+    return {
+        "textgen": {"ecs.textgen.tgi": ["test-model", "other-model"]},
+        "embedding": {"ecs.embedding.tei": ["embedding-model"]},
+        "embeddings": {"ecs.embedding.tei": ["embedding-model"]},
+        "generate": {"ecs.textgen.tgi": ["test-model", "other-model"]},
+        "generateStream": {"ecs.textgen.tgi": ["test-model"]},
+        "metadata": {
+            "ecs.textgen.tgi.test-model": {
+                "provider": "ecs.textgen.tgi",
+                "modelName": "test-model",
+                "modelType": "textgen",
+                "modelKwargs": {},
+            }
+        },
+        "endpointUrls": {"ecs.textgen.tgi.test-model": "http://test-endpoint"},
     }

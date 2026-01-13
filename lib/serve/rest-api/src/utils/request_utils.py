@@ -19,11 +19,10 @@ import sys
 import traceback
 from typing import Any, AsyncGenerator, Callable, Dict, Tuple
 
+from lisa_serve.registry import registry
 from loguru import logger
-
-from ..lisa_serve.registry import registry
-from .cache_manager import cache_model_assets, get_model_assets, get_registered_models_cache
-from .resources import RestApiResource
+from utils.cache_manager import cache_model_assets, get_model_assets, get_registered_models_cache
+from utils.resources import RestApiResource
 
 logger.remove()
 logger_level = os.environ.get("LOG_LEVEL", "INFO")

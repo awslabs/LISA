@@ -76,7 +76,7 @@ class EcsEmbeddingTeiAdapter(EmbeddingModelAdapter):
 
         async with ClientSession() as session:
             async with session.post(
-                self.endpoint_url, json=payload, headers={"Content-Type": "application/json"}
+                self.endpoint_url, json=payload, headers={"Content-Type": "application/json"}  # type: ignore[arg-type]
             ) as server_response:
                 server_response.raise_for_status()
                 server_response_json = await server_response.json()

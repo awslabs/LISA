@@ -54,7 +54,7 @@ def test_basic_functionality() -> bool:
             def __init__(self) -> None:
                 super().__init__("test", "A test tool")
 
-            async def execute(self, **kwargs: Any) -> dict[str, str]:
+            async def execute(self, **kwargs: Any) -> dict[str, str]:  # type: ignore[override]
                 return {"result": "test successful"}
 
         # Test tool instantiation

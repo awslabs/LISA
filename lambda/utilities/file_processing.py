@@ -132,7 +132,7 @@ def _extract_text_content(s3_object: dict) -> str:
     ----------
     s3_object (dict): an S3 object containing a text file body.
     """
-    return s3_object["Body"].read().decode("utf-8", errors="replace")
+    return s3_object["Body"].read().decode("utf-8", errors="replace")  # type: ignore[no-any-return]
 
 
 def generate_chunks(ingestion_job: IngestionJob) -> list[Document]:
@@ -185,7 +185,7 @@ def generate_chunks(ingestion_job: IngestionJob) -> list[Document]:
 
     # Use factory to chunk documents based on strategy
     logger.info(f"Processing document with chunking strategy: {ingestion_job.chunk_strategy.type}")
-    doc_chunks = ChunkingStrategyFactory.chunk_documents(docs, ingestion_job.chunk_strategy)
+    doc_chunks = ChunkingStrategyFactory.chunk_documents(docs, ingestion_job.chunk_strategy)  # type: ignore[arg-type]
 
     # Update part number of doc metadata
     for i, doc in enumerate(doc_chunks):

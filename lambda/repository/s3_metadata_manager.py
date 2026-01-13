@@ -90,6 +90,8 @@ class S3MetadataManager:
                 else:
                     logger.error(f"Failed to upload metadata file after {MAX_RETRIES} attempts: {metadata_key}")
                     raise
+        # This should never be reached due to the raise above, but mypy needs it
+        raise RuntimeError(f"Failed to upload metadata file: {metadata_key}")  # pragma: no cover
 
     def delete_metadata_file(
         self,

@@ -817,7 +817,7 @@ def get_existing_scheduled_action_arns(model_id: str) -> List[str]:
         auto_scaling_config = model_config.get("autoScalingConfig", {})
         scheduling_config = auto_scaling_config.get("scheduling", {})
 
-        return scheduling_config.get("scheduledActionArns", [])
+        return scheduling_config.get("scheduledActionArns", [])  # type: ignore[no-any-return]
 
     except Exception as e:
         logger.error(f"Failed to get existing scheduled actions for model {model_id}: {e}")

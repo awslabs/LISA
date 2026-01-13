@@ -53,9 +53,9 @@ class RepositoryError(Exception):
 
 class IngestionJobRepository:
     def __init__(self) -> None:
-        self._ddb_client = None
-        self._table_name = None
-        self._batch_client = None
+        self._ddb_client: Any = None
+        self._table_name: str | None = None
+        self._batch_client: Any = None
 
     @property
     def ddb_client(self) -> Any:
@@ -199,7 +199,7 @@ class IngestionJobRepository:
         """
         response = self.batch_client.describe_jobs(jobs=[job_id])
         if response.get("jobs"):
-            return response["jobs"][0].get("status")
+            return response["jobs"][0].get("status")  # type: ignore[no-any-return]
         return None
 
     def find_batch_job_for_document(self, document_id: str, job_queue: str) -> Optional[Dict]:

@@ -48,7 +48,7 @@ def _normalize_server_name(name: str) -> str:
     return re.sub(r"[^a-zA-Z0-9]", "", name)
 
 
-def replace_bearer_token_header(mcp_server: dict, replacement: str):
+def replace_bearer_token_header(mcp_server: dict, replacement: str) -> None:
     """Replace {LISA_BEARER_TOKEN} placeholder with actual bearer token in custom headers."""
     custom_headers = mcp_server.get("customHeaders", {})
     for key, value in custom_headers.items():

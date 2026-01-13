@@ -215,7 +215,7 @@ class ToolDiscovery:
                         # Try to get them from class attributes or use defaults
                         tool_name = getattr(obj, "name", name.lower())
                         tool_description = getattr(obj, "description", f"Tool: {name}")
-                        instance = obj(name=tool_name, description=tool_description)
+                        instance = obj(name=tool_name, description=tool_description)  # type: ignore[call-arg]
                     else:
                         # Custom constructor - try to instantiate with no args
                         instance = obj()

@@ -38,7 +38,7 @@ TOKEN_EXPIRATION_NAME = "tokenExpiration"  # nosec B105
 
 
 @authorization_wrapper
-def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: ignore [no-untyped-def]
+def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Handle authorization for REST API."""
     logger.info("REST API authorization handler started")
 

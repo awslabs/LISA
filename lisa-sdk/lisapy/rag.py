@@ -167,7 +167,7 @@ class RagMixin(BaseMixin):
             "chunkOverlap": chuck_overlap,
         }
 
-        payload = {"embeddingModel": {"modelName": model_id}, "keys": [file]}
+        payload: Dict[str, str | Dict | List] = {"embeddingModel": {"modelName": model_id}, "keys": [file]}
         # Add collectionId to body, not query params
         if collection_id:
             payload["collectionId"] = collection_id
@@ -196,7 +196,7 @@ class RagMixin(BaseMixin):
             model_name: Optional model name (required if collection_id not provided)
         """
         url = f"{self.url}/repository/{repo_id}/similaritySearch"
-        params: dict[str, str | int] = {"query": query, "repositoryType": repo_id, "topK": k}
+        params: dict[str, str | int] = {"query": query, "repositoryType": repo_id, "topK": k}  # type: ignore[dict-item]
 
         if collection_id:
             params["collectionId"] = collection_id

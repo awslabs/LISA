@@ -217,7 +217,7 @@ def find_model_by_asg_name(asg_name: str) -> Optional[str]:
         )
 
         if response["Items"]:
-            return response["Items"][0]["model_id"]
+            return response["Items"][0]["model_id"]  # type: ignore[no-any-return]
 
         return None
 
@@ -257,7 +257,7 @@ def get_model_info(model_id: str) -> Optional[Dict[str, Any]]:
         if "Item" not in response:
             return None
 
-        return response["Item"]
+        return response["Item"]  # type: ignore[no-any-return]
 
     except Exception as e:
         logger.error(f"Failed to get model info for {model_id}: {e}")

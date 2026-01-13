@@ -180,7 +180,7 @@ def finish_secret(secret_arn: str, token: str) -> None:
         raise
 
 
-def publish_rotation_event(secret_arn: str, new_version: str, old_version: str) -> None:
+def publish_rotation_event(secret_arn: str, new_version: str, old_version: str | None) -> None:
     """
     Publish a management key rotation event to EventBridge.
     """

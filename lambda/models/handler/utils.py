@@ -37,7 +37,7 @@ def to_lisa_model(model_dict: Dict[str, Any]) -> LISAModel:
 
 
 def get_model_and_validate_access(
-    model_table, model_id: str, user_groups: Optional[List[str]] = None, is_admin: bool = False
+    model_table: Any, model_id: str, user_groups: Optional[List[str]] = None, is_admin: bool = False
 ) -> Dict[str, Any]:
     """
     Get model from DynamoDB and validate user access
@@ -70,11 +70,11 @@ def get_model_and_validate_access(
         if not user_has_group_access(user_groups, allowed_groups):
             raise ValidationError(f"Access denied to access model {model_id}")
 
-    return model_item
+    return model_item  # type: ignore[no-any-return]
 
 
 def get_model_and_validate_status(
-    model_table,
+    model_table: Any,
     model_id: str,
     allowed_statuses: List[str] | None = None,
     user_groups: Optional[List[str]] = None,
@@ -130,17 +130,17 @@ def attach_guardrails_to_model(model: LISAModel, guardrail_items: List[Dict[str,
     }
 
 
-def fetch_guardrails_for_model(guardrails_table, model_id: str) -> List[Dict[str, Any]]:
+def fetch_guardrails_for_model(guardrails_table: Any, model_id: str) -> List[Dict[str, Any]]:
     """Query guardrails table for a specific model ID."""
     guardrails_response = guardrails_table.query(
         IndexName="ModelIdIndex",
         KeyConditionExpression="modelId = :modelId",
         ExpressionAttributeValues={":modelId": model_id},
     )
-    return guardrails_response.get("Items", [])
+    return guardrails_response.get("Items", [])  # type: ignore[no-any-return]
 
 
-def fetch_all_guardrails(guardrails_table) -> List[Dict[str, Any]]:
+def fetch_all_guardrails(guardrails_table: Any) -> List[Dict[str, Any]]:
     """Scan all guardrails from the table with pagination."""
     all_guardrails = []
     guardrails_response = guardrails_table.scan()

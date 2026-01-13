@@ -362,7 +362,7 @@ class CollectionRepository:
 
             count = response.get("Count", 0)
             logger.info(f"Counted {count} collections for repository {repository_id}")
-            return count
+            return count  # type: ignore[no-any-return]
 
         except Exception as e:
             logger.error(f"Failed to count collections for repository {repository_id}: {e}")

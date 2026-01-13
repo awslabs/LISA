@@ -178,7 +178,7 @@ def _get_mcp_connections_table_name(deployment_prefix: str) -> Optional[str]:
     """Get MCP connections table name from SSM parameter if chat is deployed."""
     try:
         response = ssmClient.get_parameter(Name=f"{deployment_prefix}/table/mcpServersTable")
-        return response["Parameter"]["Value"]
+        return response["Parameter"]["Value"]  # type: ignore[no-any-return]
     except ssmClient.exceptions.ParameterNotFound:
         logger.info("MCP connections table SSM parameter not found, chat may not be deployed")
         return None
@@ -191,7 +191,7 @@ def _get_api_gateway_url(deployment_prefix: str) -> Optional[str]:
     """Get API Gateway base URL from SSM parameter."""
     try:
         response = ssmClient.get_parameter(Name=f"{deployment_prefix}/LisaApiUrl")
-        return response["Parameter"]["Value"]
+        return response["Parameter"]["Value"]  # type: ignore[no-any-return]
     except Exception as e:
         logger.warning(f"Error getting API Gateway URL: {str(e)}")
         return None

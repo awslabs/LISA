@@ -13,7 +13,6 @@
 #   limitations under the License.
 
 import logging
-from typing import Optional
 from uuid import uuid4
 
 from boto3.dynamodb.conditions import Key
@@ -40,7 +39,7 @@ class CreateTokenAdminHandler:
     def __init__(self, token_table):
         self.token_table = token_table
 
-    def _get_user_token(self, username: str) -> Optional[dict]:
+    def _get_user_token(self, username: str) -> dict | None:
         """Query for existing token by username using GSI"""
         response = self.token_table.query(
             IndexName="username-index", KeyConditionExpression=Key("username").eq(username), Limit=1
@@ -48,7 +47,9 @@ class CreateTokenAdminHandler:
         items = response.get("Items", [])
         return items[0] if items else None
 
-    def __call__(self, username: str, request: CreateTokenAdminRequest, created_by: str, is_admin: bool):
+    def __call__(
+        self, username: str, request: CreateTokenAdminRequest, created_by: str, is_admin: bool
+    ) -> CreateTokenResponse:
         # Authorization: Only admins can create tokens for other users
         if not is_admin:
             raise UnauthorizedError("Only admins can create tokens for other users")
@@ -100,7 +101,7 @@ class CreateTokenUserHandler:
     def __init__(self, token_table):
         self.token_table = token_table
 
-    def _get_user_token(self, username: str) -> Optional[dict]:
+    def _get_user_token(self, username: str) -> dict | None:
         """Query for existing token by username using GSI"""
         response = self.token_table.query(
             IndexName="username-index", KeyConditionExpression=Key("username").eq(username), Limit=1
@@ -110,7 +111,7 @@ class CreateTokenUserHandler:
 
     def __call__(
         self, request: CreateTokenUserRequest, username: str, user_groups: list[str], is_admin: bool, is_api_user: bool
-    ):
+    ) -> CreateTokenResponse:
         # Authorization: User must be admin or in apiGroup
         if not is_admin and not is_api_user:
             raise ForbiddenError("User must be in the API group to create tokens")

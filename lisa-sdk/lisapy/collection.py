@@ -186,7 +186,7 @@ class CollectionMixin(BaseMixin):
         Raises:
             Exception: If the request fails
         """
-        params = {
+        params: dict[str, str | int] = {
             "page": page,
             "pageSize": min(page_size, 100),
             "sortBy": sort_by,
@@ -227,7 +227,7 @@ class CollectionMixin(BaseMixin):
         Raises:
             Exception: If the request fails
         """
-        params = {
+        params: dict[str, str | int] = {
             "pageSize": min(page_size, 100),
             "sortBy": sort_by,
             "sortOrder": sort_order,

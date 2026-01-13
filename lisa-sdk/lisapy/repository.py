@@ -65,7 +65,7 @@ class RepositoryMixin(BaseMixin):
         Returns:
             Dict: Created repository information
         """
-        return self.create_repository(rag_config)
+        return self.create_repository(rag_config)  # type: ignore[arg-type]
 
     def create_opensearch_repository(
         self,
@@ -109,7 +109,7 @@ class RepositoryMixin(BaseMixin):
                 "multiAzWithStandby": False,
             }
 
-        return self.create_repository(rag_config)
+        return self.create_repository(rag_config)  # type: ignore[arg-type]
 
     def create_bedrock_kb_repository(self, rag_config: Dict) -> Dict:
         """Create a Bedrock Knowledge Base repository configuration.

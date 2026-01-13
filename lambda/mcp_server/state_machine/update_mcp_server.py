@@ -46,7 +46,7 @@ def _get_mcp_connections_table_name(deployment_prefix: str) -> Optional[str]:
     """Get MCP connections table name from SSM parameter if chat is deployed."""
     try:
         response = ssm_client.get_parameter(Name=f"{deployment_prefix}/table/mcpServersTable")
-        return response["Parameter"]["Value"]
+        return response["Parameter"]["Value"]  # type: ignore[no-any-return]
     except ssm_client.exceptions.ParameterNotFound:
         logger.info("MCP connections table SSM parameter not found, chat may not be deployed")
         return None

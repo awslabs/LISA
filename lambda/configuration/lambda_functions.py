@@ -75,6 +75,7 @@ def update_configuration(event: dict, context: dict) -> dict[str, str]:
         table.put_item(Item=body)
     except ClientError:
         logger.exception("Error updating session in DynamoDB")
+        raise
 
     return {"status": "ok"}
 

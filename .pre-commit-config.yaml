@@ -107,7 +107,7 @@ repos:
         - --config-file=pyproject.toml
         - --install-types
         - --non-interactive
-      exclude: ^test
+      exclude: ^test/
 
 - repo: https://github.com/pre-commit/mirrors-eslint
   rev: 'v9.39.1'

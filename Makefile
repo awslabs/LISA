@@ -3,7 +3,9 @@
 	createTypeScriptEnvironment installTypeScriptRequirements \
 	deploy destroy \
 	clean cleanTypeScript cleanPython cleanCfn cleanMisc \
-	help dockerCheck dockerLogin listStacks modelCheck buildNpmModules
+	help dockerCheck dockerLogin listStacks modelCheck buildNpmModules \
+	test test-coverage test-lambda test-mcp-workbench test-sdk test-integ test-rag-integ test-metadata-integ \
+	lock-poetry validate-deps
 
 #################################################################################
 # GLOBALS                                                                       #
@@ -366,14 +368,62 @@ help:
 	}' \
 	| more $(shell test $(shell uname) = Darwin && echo '--no-init --raw-control-chars')
 
-## Run Python tests with coverage report
+## Run all Python unit tests (non-integration) with coverage report
 test-coverage:
-	pytest --verbose \
+	@echo "Running lambda tests with coverage..."
+	@pytest test/lambda --verbose \
           --cov lambda \
+          --cov lib/serve/rest-api/src \
           --cov-report term-missing \
           --cov-report html:build/coverage \
           --cov-report xml:build/coverage/coverage.xml \
           --cov-fail-under 83
+	@echo ""
+	@echo "Running MCP Workbench tests with coverage..."
+	@pytest test/mcp-workbench --verbose \
+          --cov lib/serve/mcp-workbench/src \
+          --cov-report term-missing \
+          --cov-report html:build/coverage-mcp \
+          --cov-report xml:build/coverage-mcp/coverage.xml \
+          --cov-append
+
+## Run all Python unit tests (non-integration) without coverage
+test:
+	@echo "Running lambda tests..."
+	@pytest test/lambda --verbose
+	@echo ""
+	@echo "Running MCP Workbench tests..."
+	@pytest test/mcp-workbench --verbose
+
+## Run lambda tests only
+test-lambda:
+	pytest test/lambda --verbose
+
+## Run MCP Workbench tests only
+test-mcp-workbench:
+	pytest test/mcp-workbench --verbose
+
+## Run LISA SDK integration tests only
+test-sdk:
+	pytest test/lisa-sdk --verbose
+
+## Run integration tests (Python-based)
+test-integ:
+	pytest test/python --verbose
+
+## Run RAG integration tests (requires deployed LISA environment)
+test-rag-integ:
+	@echo "Running RAG integration tests..."
+	@echo "Note: These tests require a deployed LISA environment with:"
+	@echo "  - LISA_API_URL environment variable set"
+	@echo "  - LISA_DEPLOYMENT_NAME environment variable set"
+	@echo "  - AWS credentials configured"
+	@echo ""
+	pytest test/integration --verbose
+
+## Run repository metadata preservation integration tests
+test-metadata-integ:
+	pytest test/integration/test_repository_update_metadata_preservation.py --verbose
 
 ## Regenerate all Poetry lock files
 lock-poetry:

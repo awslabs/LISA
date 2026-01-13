@@ -17,12 +17,12 @@ from typing import Any, cast, Iterator, List, Mapping, Optional, Union
 
 from httpx import AsyncClient as HttpAsyncClient
 from httpx import Client as HttpClient
-from langchain.callbacks.manager import CallbackManagerForLLMRun
-from langchain.llms.base import LLM
-from langchain.schema.output import GenerationChunk
+from langchain_core.callbacks.manager import CallbackManagerForLLMRun
+from langchain_core.language_models.llms import LLM
+from langchain_core.outputs import GenerationChunk
 from langchain_core.embeddings import Embeddings
 from langchain_openai import OpenAIEmbeddings
-from pydantic import BaseModel, Extra, PrivateAttr
+from pydantic import BaseModel, ConfigDict, PrivateAttr
 
 from .main import FoundationModel, LisaLlm
 
@@ -101,6 +101,8 @@ class LisaTextgen(LLM):
 class LisaOpenAIEmbeddings(BaseModel, Embeddings):
     """LISA text embedding adapter."""
 
+    model_config = ConfigDict(extra='forbid', arbitrary_types_allowed=True)
+
     lisa_openai_api_base: str
     """LISA REST API URI."""
 
@@ -115,12 +117,6 @@ class LisaOpenAIEmbeddings(BaseModel, Embeddings):
 
     _embedding_model: OpenAIEmbeddings = PrivateAttr(default_factory=None)
     """OpenAI-compliant client for making requests against embedding model."""
-
-    class Config:
-        """Configuration for this pydantic object."""
-
-        extra = Extra.forbid
-        arbitrary_types_allowed = True
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -159,6 +155,8 @@ class LisaEmbeddings(BaseModel, Embeddings):
     a Lisa API available.
     """
 
+    model_config = ConfigDict(extra='forbid', arbitrary_types_allowed=True)
+
     provider: str
     """Provider of the LISA serve model  e.g., ecs.textgen.tgi."""
 
@@ -169,12 +167,6 @@ class LisaEmbeddings(BaseModel, Embeddings):
     """An instance of the Lisa client."""
 
     _foundation_model: FoundationModel = PrivateAttr(default_factory=None)
-
-    class Config:
-        """Configuration for this pydantic object."""
-
-        extra = Extra.forbid
-        arbitrary_types_allowed = True
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)

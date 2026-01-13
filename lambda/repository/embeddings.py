@@ -18,7 +18,7 @@ from typing import List
 
 import boto3
 import requests
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 from utilities.auth import get_management_key
 from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint, retry_config
 from utilities.validation import validate_model_name, ValidationError
@@ -35,6 +35,8 @@ class RagEmbeddings(BaseModel):
     """
     Handles document embeddings through LiteLLM using management credentials.
     """
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     model_name: str
     token: str
@@ -68,9 +70,6 @@ class RagEmbeddings(BaseModel):
         except Exception:
             logger.error("Failed to initialize pipeline embeddings", exc_info=True)
             raise
-
-    class Config:
-        arbitrary_types_allowed = True
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         """

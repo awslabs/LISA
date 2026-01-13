@@ -60,12 +60,12 @@ class MCPWorkbenchServer:
         # Register built-in management tools
         self._register_management_tools()
 
-    def _register_management_tools(self):
+    def _register_management_tools(self) -> None:
         """Register built-in management tools - now removed as they are HTTP routes."""
         # Management functionality moved to HTTP GET endpoints
         pass
 
-    def _add_management_routes(self, app: Starlette):
+    def _add_management_routes(self, app: Starlette) -> None:
         if self.config.exit_route_path:
 
             async def exit_endpoint(request):
@@ -134,7 +134,7 @@ class MCPWorkbenchServer:
 
             app.add_route(self.config.rescan_route_path, rescan_endpoint, methods=["GET"])
 
-    def _create_starlette_app(self):
+    def _create_starlette_app(self) -> Starlette:
         """Create Starlette application with MCP and HTTP routes."""
 
         mcp_app = self.app.http_app(path="/", transport="streamable-http", stateless_http=True)
@@ -163,7 +163,7 @@ class MCPWorkbenchServer:
 
         return Starlette(routes=routes, lifespan=mcp_app.lifespan)
 
-    async def _register_discovered_tools(self, tools: List[ToolInfo]):
+    async def _register_discovered_tools(self, tools: List[ToolInfo]) -> None:
         """Register discovered tools with FastMCP."""
         for tool_info in tools:
             try:
@@ -171,7 +171,7 @@ class MCPWorkbenchServer:
             except Exception as e:
                 logger.error(f"Failed to register tool {tool_info.name}: {e}")
 
-    async def _register_single_tool(self, tool_info: ToolInfo):
+    async def _register_single_tool(self, tool_info: ToolInfo) -> None:
         """Register a single discovered tool with FastMCP."""
         if tool_info.tool_type == ToolType.CLASS_BASED:
             await self._register_class_tool(tool_info)
@@ -180,7 +180,7 @@ class MCPWorkbenchServer:
         else:
             logger.error(f"Unknown tool type for {tool_info.name}: {tool_info.tool_type}")
 
-    async def _register_class_tool(self, tool_info: ToolInfo):
+    async def _register_class_tool(self, tool_info: ToolInfo) -> None:
         """Register a class-based tool with FastMCP."""
         if not isinstance(tool_info.tool_instance, BaseTool):
             raise ValueError(f"Class tool {tool_info.name} instance must be a BaseTool")
@@ -198,7 +198,7 @@ class MCPWorkbenchServer:
         self.registered_tools[tool_info.name] = tool_info
         logger.debug(f"Registered class-based tool: {tool_info.name}")
 
-    async def _register_function_tool(self, tool_info: ToolInfo):
+    async def _register_function_tool(self, tool_info: ToolInfo) -> None:
         """Register a function-based tool with FastMCP."""
         if not callable(tool_info.tool_instance):
             raise ValueError(f"Function tool {tool_info.name} instance must be callable")
@@ -227,7 +227,7 @@ class MCPWorkbenchServer:
         self.registered_tools[tool_info.name] = tool_info
         logger.debug(f"Registered function-based tool: {tool_info.name}")
 
-    async def discover_and_register_tools(self):
+    async def discover_and_register_tools(self) -> List[ToolInfo]:
         """Discover and register initial tools."""
         logger.info("Discovering initial tools...")
         tools = self.tool_discovery.discover_tools()
@@ -240,7 +240,7 @@ class MCPWorkbenchServer:
 
         return tools
 
-    async def start(self):
+    async def start(self) -> None:
         """Start the server."""
         # Discover and register tools
         await self.discover_and_register_tools()
@@ -271,7 +271,7 @@ class MCPWorkbenchServer:
         server = uvicorn.Server(config)
         await server.serve()
 
-    def run(self):
+    def run(self) -> None:
         """Run the server (blocking)."""
         # Use a more robust approach to handle event loops
         asyncio.run(self.start())

@@ -88,7 +88,7 @@ def main(
     cors_origins: Optional[str],
     verbose: bool,
     debug: bool,
-):
+) -> None:
     """MCP Workbench - A dynamic host for Python files used as MCP tools."""
 
     # Set logging level
@@ -113,7 +113,7 @@ def main(
     if host:
         cli_overrides["host"] = host
     if port:
-        cli_overrides["port"] = port
+        cli_overrides["port"] = str(port)
     if exit_route:
         cli_overrides["exit_route"] = exit_route
     if rescan_route:
@@ -122,7 +122,7 @@ def main(
     # Handle CORS origins
     if cors_origins:
         cleaned_origins = re.sub(r'^([\s"]+)?(.+?)([\s"]*)?$', r"\2", cors_origins)
-        origins = [origin.strip() for origin in cleaned_origins.split(",")]
+        origins: list[str] = [origin.strip() for origin in cleaned_origins.split(",")]
         cli_overrides["cors_origins"] = origins
 
     # Merge configurations

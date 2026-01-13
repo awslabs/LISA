@@ -87,7 +87,7 @@ def get_all_dynamodb_models() -> List[Dict[str, str]]:
         return []
 
 
-def get_database_connection():
+def get_database_connection() -> Any:
     """Get database connection using connection info from SSM."""
     ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
 

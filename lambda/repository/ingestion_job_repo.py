@@ -17,7 +17,7 @@
 import logging
 import os
 from datetime import timedelta
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 import boto3
 from models.domain_objects import IngestionJob, IngestionStatus
@@ -27,7 +27,7 @@ from utilities.time import utc_now
 logger = logging.getLogger(__name__)
 
 
-def _get_ingestion_job_table():
+def _get_ingestion_job_table() -> Any:
     """Lazy initialization of DynamoDB table."""
     dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
     return dynamodb.Table(os.environ["LISA_INGESTION_JOB_TABLE_NAME"])
@@ -52,25 +52,25 @@ class RepositoryError(Exception):
 
 
 class IngestionJobRepository:
-    def __init__(self):
+    def __init__(self) -> None:
         self._ddb_client = None
         self._table_name = None
         self._batch_client = None
 
     @property
-    def ddb_client(self):
+    def ddb_client(self) -> Any:
         if self._ddb_client is None:
             self._ddb_client = boto3.client("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
         return self._ddb_client
 
     @property
-    def table_name(self):
+    def table_name(self) -> str:
         if self._table_name is None:
             self._table_name = os.environ["LISA_INGESTION_JOB_TABLE_NAME"]
         return self._table_name
 
     @property
-    def batch_client(self):
+    def batch_client(self) -> Any:
         if self._batch_client is None:
             self._batch_client = boto3.client("batch", region_name=os.environ["AWS_REGION"], config=retry_config)
         return self._batch_client

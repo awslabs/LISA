@@ -52,7 +52,7 @@ async def get_model_guardrails(model_id: str) -> List[Dict[str, Any]]:
 
         guardrails = response.get("Items", [])
         logger.debug(f"Found {len(guardrails)} guardrails for model {model_id}")
-        return guardrails
+        return guardrails  # type: ignore[return-value]
 
     except Exception as e:
         logger.error(f"Error fetching guardrails for model {model_id}: {e}")

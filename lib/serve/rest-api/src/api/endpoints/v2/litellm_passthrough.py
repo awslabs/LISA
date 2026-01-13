@@ -18,7 +18,6 @@ import json
 import logging
 import os
 from collections.abc import Iterator
-from typing import Union
 
 import boto3
 from auth import Authorizer, extract_user_groups_from_jwt
@@ -178,7 +177,7 @@ def handle_guardrail_violation_response(
         return None
 
 
-def generate_response(iterator: Iterator[Union[str, bytes]]) -> Iterator[str]:
+def generate_response(iterator: Iterator[str | bytes]) -> Iterator[str]:
     """For streaming responses, generate strings instead of bytes objects so that clients recognize the LLM output."""
     for line in iterator:
         if isinstance(line, bytes):
@@ -187,7 +186,7 @@ def generate_response(iterator: Iterator[Union[str, bytes]]) -> Iterator[str]:
             yield f"{line}\n\n"
 
 
-def generate_response_with_guardrail_handling(iterator: Iterator[Union[str, bytes]], model: str) -> Iterator[str]:
+def generate_response_with_guardrail_handling(iterator: Iterator[str | bytes], model: str) -> Iterator[str]:
     """
     Generate streaming responses with guardrail violation error handling.
 
@@ -226,8 +225,7 @@ def generate_response_with_guardrail_handling(iterator: Iterator[Union[str, byte
                         if guardrail_response:
                             # Stream the guardrail response
                             created = int(chunk_data.get("created", 0))
-                            for chunk in create_guardrail_streaming_response(guardrail_response, model, created):
-                                yield chunk
+                            yield from create_guardrail_streaming_response(guardrail_response, model, created)
                             return  # Stop streaming after guardrail response
                         else:
                             # Could not extract guardrail response, pass through the error

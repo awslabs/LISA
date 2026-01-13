@@ -17,7 +17,7 @@
 import logging
 import time
 from collections import defaultdict
-from typing import Any, DefaultDict, Dict, List
+from typing import Any, DefaultDict
 
 from fastapi import HTTPException
 
@@ -27,7 +27,7 @@ from ..utils.resources import ModelType
 logger = logging.getLogger(__name__)
 
 
-async def handle_list_models(model_types: List[ModelType]) -> Dict[ModelType, Dict[str, List[str]]]:
+async def handle_list_models(model_types: list[ModelType]) -> dict[ModelType, dict[str, list[str]]]:
     """Handle for list_models endpoint.
 
     Parameters
@@ -49,7 +49,7 @@ async def handle_list_models(model_types: List[ModelType]) -> Dict[ModelType, Di
     return response
 
 
-async def handle_openai_list_models() -> Dict[str, Any]:
+async def handle_openai_list_models() -> dict[str, Any]:
     """Handle for list_models endpoint.
 
     Returns
@@ -59,7 +59,7 @@ async def handle_openai_list_models() -> Dict[str, Any]:
     """
     registered_models_cache = get_registered_models_cache()
 
-    model_payload: List[Dict[str, Any]] = []
+    model_payload: list[dict[str, Any]] = []
     for provider, models in registered_models_cache[ModelType.TEXTGEN].items():
         model_payload.extend(
             {"id": f"{model} ({provider})", "object": "model", "created": int(time.time()), "owned_by": "LISA"}
@@ -70,7 +70,7 @@ async def handle_openai_list_models() -> Dict[str, Any]:
     return response
 
 
-async def handle_describe_model(provider: str, model_name: str) -> Dict[str, Any]:
+async def handle_describe_model(provider: str, model_name: str) -> dict[str, Any]:
     """Handle for describe_model endpoint.
 
     Parameters
@@ -97,7 +97,7 @@ async def handle_describe_model(provider: str, model_name: str) -> Dict[str, Any
     return metadata  # type: ignore
 
 
-async def handle_describe_models(model_types: List[ModelType]) -> DefaultDict[str, DefaultDict[str, Dict[str, Any]]]:
+async def handle_describe_models(model_types: list[ModelType]) -> DefaultDict[str, DefaultDict[str, dict[str, Any]]]:
     """Handle for describe_models endpoint.
 
     Parameters
@@ -112,7 +112,7 @@ async def handle_describe_models(model_types: List[ModelType]) -> DefaultDict[st
     """
     registered_models = await handle_list_models(model_types)
     registered_models_cache = get_registered_models_cache()
-    response: DefaultDict[str, DefaultDict[str, Dict[str, Any]]] = defaultdict(lambda: defaultdict(dict))
+    response: DefaultDict[str, DefaultDict[str, dict[str, Any]]] = defaultdict(lambda: defaultdict(dict))
 
     for model_type, providers in registered_models.items():
         response[model_type] = {}  # type: ignore

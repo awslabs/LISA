@@ -19,7 +19,7 @@ import logging
 import os
 import urllib.parse
 from types import SimpleNamespace
-from typing import Any, cast, Dict, List, Optional
+from typing import Any, cast
 
 import boto3
 from boto3.dynamodb.types import TypeSerializer
@@ -89,7 +89,7 @@ collection_service = CollectionService(vector_store_repo=vs_repo, document_repo=
 
 
 @api_wrapper
-def list_all(event: dict, context: dict) -> List[Dict[str, Any]]:
+def list_all(event: dict, context: dict) -> list[dict[str, Any]]:
     """
     List all available repositories that the user has access to.
 
@@ -122,7 +122,7 @@ def list_status(event: dict, context: dict) -> dict[str, Any]:
 
 
 @api_wrapper
-def similarity_search(event: dict, context: dict) -> Dict[str, Any]:
+def similarity_search(event: dict, context: dict) -> dict[str, Any]:
     """Return documents matching the query.
 
     Conducts similarity search against the vector store returning the top K
@@ -229,7 +229,7 @@ def get_repository(event: dict[str, Any], repository_id: str) -> dict[str, Any]:
     return repo
 
 
-def create_bedrock_collection(event: dict, context: dict) -> Dict[str, Any]:
+def create_bedrock_collection(event: dict, context: dict) -> dict[str, Any]:
     """
     Create collections for a Bedrock Knowledge Base repository based on pipeline configurations.
     This is called by the state machine during repository creation.
@@ -366,7 +366,7 @@ def create_bedrock_collection(event: dict, context: dict) -> Dict[str, Any]:
 
 @api_wrapper
 @admin_only
-def create_collection(event: dict, context: dict) -> Dict[str, Any]:
+def create_collection(event: dict, context: dict) -> dict[str, Any]:
     """
     Create a new collection within a vector store.
 
@@ -434,7 +434,7 @@ def create_collection(event: dict, context: dict) -> Dict[str, Any]:
 
 
 @api_wrapper
-def get_collection(event: dict, context: dict) -> Dict[str, Any]:
+def get_collection(event: dict, context: dict) -> dict[str, Any]:
     """
     Get a collection by ID within a vector store.
 
@@ -493,7 +493,7 @@ def get_collection(event: dict, context: dict) -> Dict[str, Any]:
 
 @api_wrapper
 @admin_only
-def update_collection(event: dict, context: dict) -> Dict[str, Any]:
+def update_collection(event: dict, context: dict) -> dict[str, Any]:
     """
     Update a collection within a vector store.
 
@@ -555,7 +555,7 @@ def update_collection(event: dict, context: dict) -> Dict[str, Any]:
 
 @api_wrapper
 @admin_only
-def delete_collection(event: dict, context: dict) -> Dict[str, Any]:
+def delete_collection(event: dict, context: dict) -> dict[str, Any]:
     """
     Delete a collection (regular or default) within a vector store.
 
@@ -598,7 +598,7 @@ def delete_collection(event: dict, context: dict) -> Dict[str, Any]:
 
     is_default_collection = repo.get("embeddingModelId") == collection_id
     # Delete collection via service
-    result: Dict[str, Any] = collection_service.delete_collection(
+    result: dict[str, Any] = collection_service.delete_collection(
         repository_id=repository_id,
         collection_id=collection_id,  # None for default collections
         embedding_name=embedding_name if is_default_collection else None,  # None for regular collections
@@ -611,7 +611,7 @@ def delete_collection(event: dict, context: dict) -> Dict[str, Any]:
 
 
 @api_wrapper
-def list_collections(event: dict, context: dict) -> Dict[str, Any]:
+def list_collections(event: dict, context: dict) -> dict[str, Any]:
     """
     List collections in a repository with pagination, filtering, and sorting.
 
@@ -724,7 +724,7 @@ def list_collections(event: dict, context: dict) -> Dict[str, Any]:
 
 
 @api_wrapper
-def list_user_collections(event: dict, context: dict) -> Dict[str, Any]:
+def list_user_collections(event: dict, context: dict) -> dict[str, Any]:
     """
     List all collections user has access to across all repositories.
 
@@ -825,7 +825,7 @@ def _ensure_document_ownership(event: dict[str, Any], docs: list[RagDocument]) -
 
 
 @api_wrapper
-def delete_documents(event: dict, context: dict) -> Dict[str, Any]:
+def delete_documents(event: dict, context: dict) -> dict[str, Any]:
     """Purge all records related to the specified document from the RAG repository. If a documentId is supplied, a
     single document will be removed. If a documentName is supplied, all documents with that name will be removed
 
@@ -973,7 +973,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
     repository = get_repository(event, repository_id=repository_id)
 
     # Get collection if specified
-    collection: Optional[dict[str, Any]] = None
+    collection: dict[str, Any] | None = None
     if request.collectionId and request.collectionId != repository.get("embeddingModelId"):
         collection = collection_service.get_collection(
             collection_id=request.collectionId,
@@ -1017,7 +1017,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
         jobs.append({"jobId": job.id, "documentId": job.document_id, "status": job.status, "s3Path": job.s3_path})
 
     collection_id = job.collection_id
-    collection_name: Optional[str] = None
+    collection_name: str | None = None
     if collection:
         collection_name = collection.get("name")
     if not collection_name:
@@ -1027,7 +1027,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
 
 
 @api_wrapper
-def get_document(event: dict, context: dict) -> Dict[str, Any]:
+def get_document(event: dict, context: dict) -> dict[str, Any]:
     """Get a document by ID.
 
     Args:
@@ -1154,7 +1154,7 @@ def list_docs(event: dict, context: dict) -> dict[str, Any]:
     query_string_params = event.get("queryStringParameters", {}) or {}
     collection_id = query_string_params.get("collectionId")
 
-    last_evaluated: Optional[dict[str, Optional[str]]] = None
+    last_evaluated: dict[str, str | None] | None = None
 
     if not repository_id:
         raise ValidationError("repositoryId is required")
@@ -1196,7 +1196,7 @@ def list_docs(event: dict, context: dict) -> dict[str, Any]:
 
 
 @api_wrapper
-def list_jobs(event: Dict[str, Any], context: dict) -> Dict[str, Any]:
+def list_jobs(event: dict[str, Any], context: dict) -> dict[str, Any]:
     """List ingestion jobs for a specific repository with filtering and pagination.
 
     Args:
@@ -1327,7 +1327,7 @@ def create(event: dict, context: dict) -> Any:
 
 
 @api_wrapper
-def get_repository_by_id(event: dict, context: dict) -> Dict[str, Any]:
+def get_repository_by_id(event: dict, context: dict) -> dict[str, Any]:
     """
     Get a vector store configuration by ID.
 
@@ -1421,7 +1421,7 @@ def _validate_immutable_pipeline_fields(current_pipelines: list, new_pipelines: 
 
 @api_wrapper
 @admin_only
-def update_repository(event: dict, context: dict) -> Dict[str, Any]:
+def update_repository(event: dict, context: dict) -> dict[str, Any]:
     """
     Update a vector store configuration. This function is only accessible by administrators.
 
@@ -1704,7 +1704,7 @@ def _remove_legacy(repository_id: str) -> None:
 
 
 @api_wrapper
-def list_bedrock_knowledge_bases(event: dict, context: dict) -> Dict[str, Any]:
+def list_bedrock_knowledge_bases(event: dict, context: dict) -> dict[str, Any]:
     """
     List all ACTIVE Bedrock Knowledge Bases in the AWS account.
 
@@ -1761,7 +1761,7 @@ def list_bedrock_knowledge_bases(event: dict, context: dict) -> Dict[str, Any]:
 
 
 @api_wrapper
-def list_bedrock_data_sources(event: dict, context: dict) -> Dict[str, Any]:
+def list_bedrock_data_sources(event: dict, context: dict) -> dict[str, Any]:
     """
     List data sources for a specific Bedrock Knowledge Base.
 

@@ -19,7 +19,7 @@ import inspect
 import logging
 import sys
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any
 
 from fastmcp import FastMCP
 from starlette.applications import Starlette
@@ -52,7 +52,7 @@ class MCPWorkbenchServer:
         self.config = config
         self.tool_discovery = tool_discovery
         self.tool_registry = tool_registry
-        self.registered_tools: Dict[str, Any] = {}
+        self.registered_tools: dict[str, Any] = {}
 
         # Create FastMCP application
         self.app = FastMCP("mcpworkbench")
@@ -164,7 +164,7 @@ class MCPWorkbenchServer:
 
         return Starlette(routes=routes, lifespan=mcp_app.lifespan)
 
-    async def _register_discovered_tools(self, tools: List[ToolInfo]) -> None:
+    async def _register_discovered_tools(self, tools: list[ToolInfo]) -> None:
         """Register discovered tools with FastMCP."""
         for tool_info in tools:
             try:
@@ -228,7 +228,7 @@ class MCPWorkbenchServer:
         self.registered_tools[tool_info.name] = tool_info
         logger.debug(f"Registered function-based tool: {tool_info.name}")
 
-    async def discover_and_register_tools(self) -> List[ToolInfo]:
+    async def discover_and_register_tools(self) -> list[ToolInfo]:
         """Discover and register initial tools."""
         logger.info("Discovering initial tools...")
         tools = self.tool_discovery.discover_tools()

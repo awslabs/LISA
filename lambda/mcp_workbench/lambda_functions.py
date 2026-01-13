@@ -18,7 +18,7 @@ import logging
 import os
 import uuid
 from decimal import Decimal
-from typing import Any, Dict, Optional
+from typing import Any
 
 import boto3
 import botocore.exceptions
@@ -49,7 +49,7 @@ class MCPToolModel(BaseModel):
     contents: str
 
     # Timestamp of when the tool was created/updated
-    updated_at: Optional[str] = Field(default_factory=iso_string)
+    updated_at: str | None = Field(default_factory=iso_string)
 
     @property
     def s3_key(self) -> str:
@@ -113,7 +113,7 @@ def read(event: dict, context: dict) -> Any:
 
 
 @api_wrapper
-def list(event: dict, context: dict) -> Dict[str, Any]:
+def list(event: dict, context: dict) -> dict[str, Any]:
     """List all tools from S3."""
     if not is_admin(event):
         raise ValueError("Only admin users can access tools.")
@@ -227,7 +227,7 @@ def update(event: dict, context: dict) -> Any:
 
 
 @api_wrapper
-def delete(event: dict, context: dict) -> Dict[str, str]:
+def delete(event: dict, context: dict) -> dict[str, str]:
     """Delete a tool from S3."""
     if not is_admin(event):
         raise ValueError("Only admin users can access tools.")
@@ -260,7 +260,7 @@ def delete(event: dict, context: dict) -> Dict[str, str]:
 
 
 @api_wrapper
-def validate_syntax(event: dict, context: dict) -> Dict[str, Any]:
+def validate_syntax(event: dict, context: dict) -> dict[str, Any]:
     """Validate Python code syntax without execution."""
     if not is_admin(event):
         raise ValueError("Only admin users can validate code syntax.")

@@ -15,7 +15,7 @@
 import json
 import logging
 import os
-from typing import Any, Dict, Optional
+from typing import Any
 
 import boto3
 from botocore.config import Config
@@ -35,7 +35,7 @@ dynamodb = boto3.resource("dynamodb", config=retry_config)
 model_table = dynamodb.Table(os.environ.get("MODEL_TABLE_NAME"))
 
 
-def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Main Lambda handler for CloudWatch Events from Auto Scaling Groups"""
     logger.info(f"Processing event - RequestId: {context.aws_request_id}")
 
@@ -58,7 +58,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         return {"statusCode": 500, "body": json.dumps({"error": "ScheduleMonitoringError", "message": str(e)})}
 
 
-def handle_autoscaling_event(event: Dict[str, Any]) -> Dict[str, Any]:
+def handle_autoscaling_event(event: dict[str, Any]) -> dict[str, Any]:
     """Handle Auto Scaling Group CloudWatch events"""
     try:
         detail = event.get("detail", {})
@@ -85,7 +85,7 @@ def handle_autoscaling_event(event: Dict[str, Any]) -> Dict[str, Any]:
         raise ValueError(f"Failed to handle Auto Scaling event: {str(e)}")
 
 
-def handle_successful_scaling(model_id: str, auto_scaling_group: str, detail: Dict[str, Any]) -> Dict[str, Any]:
+def handle_successful_scaling(model_id: str, auto_scaling_group: str, detail: dict[str, Any]) -> dict[str, Any]:
     """Handle successful Auto Scaling actions using ASG state"""
     try:
         # Check ASG state to determine model status
@@ -137,7 +137,7 @@ def handle_successful_scaling(model_id: str, auto_scaling_group: str, detail: Di
         raise
 
 
-def sync_model_status(event: Dict[str, Any]) -> Dict[str, Any]:
+def sync_model_status(event: dict[str, Any]) -> dict[str, Any]:
     """Manually sync model status using ASG state"""
     model_id = event.get("modelId")
     if not model_id:
@@ -207,7 +207,7 @@ def sync_model_status(event: Dict[str, Any]) -> Dict[str, Any]:
         raise ValueError(f"Failed to sync status: {str(e)}")
 
 
-def find_model_by_asg_name(asg_name: str) -> Optional[str]:
+def find_model_by_asg_name(asg_name: str) -> str | None:
     """Find model ID by looking up which model uses the given Auto Scaling Group"""
     try:
         response = model_table.scan(
@@ -249,7 +249,7 @@ def update_model_status(model_id: str, new_status: ModelStatus, reason: str) -> 
         raise
 
 
-def get_model_info(model_id: str) -> Optional[Dict[str, Any]]:
+def get_model_info(model_id: str) -> dict[str, Any] | None:
     """Get model information from DynamoDB"""
     try:
         response = model_table.get_item(Key={"model_id": model_id})

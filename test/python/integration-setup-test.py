@@ -29,7 +29,7 @@ import json
 import os
 import sys
 import time
-from typing import Any, Dict
+from typing import Any
 
 import boto3
 
@@ -98,7 +98,7 @@ def create_api_token(deployment_name: str, api_key: str) -> str:
         raise
 
 
-def setup_authentication(deployment_name: str, deployment_stage: str) -> Dict[str, str]:
+def setup_authentication(deployment_name: str, deployment_stage: str) -> dict[str, str]:
     """Set up authentication for LISA API calls.
 
     Args:
@@ -207,7 +207,7 @@ def create_bedrock_model(
     model_type: str = "textgen",
     features: any = None,
     skip_create: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a Bedrock model configuration."""
 
     # Skip creation if flag is set
@@ -263,7 +263,7 @@ def create_self_hosted_embedded_model(
     model_name: str,
     base_image: str = "ghcr.io/huggingface/text-embeddings-inference:latest",
     skip_create: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a self-hosted embedded model configuration."""
 
     # Skip creation if flag is set
@@ -354,7 +354,7 @@ def create_self_hosted_model(
     model_name: str,
     base_image: str = "vllm/vllm-openai:latest",
     skip_create: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a self-hosted model configuration."""
 
     # Skip creation if flag is set
@@ -448,7 +448,7 @@ def create_self_hosted_model(
 
 def create_pgvector_repository(
     lisa_client: LisaApi, embedding_model_id: str = None, skip_create: bool = False
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a PGVector repository."""
     repository_id = "pgv-rag"
 
@@ -501,7 +501,7 @@ def create_pgvector_repository(
 
 def create_opensearch_repository(
     lisa_client: LisaApi, embedding_model_id: str = None, skip_create: bool = False
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create an OpenSearch repository."""
     repository_id = "os-rag"
 
@@ -559,6 +559,7 @@ def create_opensearch_repository(
         raise
 
 
+<<<<<<< HEAD
 def create_bedrock_kb_repository(
     lisa_client: LisaApi,
     knowledge_base_id: str,
@@ -1047,6 +1048,9 @@ def create_bedrock_knowledge_base(
 
 
 def cleanup_resources(lisa_client: LisaApi, created_resources: Dict[str, list]):
+=======
+def cleanup_resources(lisa_client: LisaApi, created_resources: dict[str, list]):
+>>>>>>> 8ee43c3c (Run python upgrade and fix)
     """Clean up created resources."""
     print("\n🧹 Cleaning up created resources...")
 

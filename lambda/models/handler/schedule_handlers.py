@@ -13,7 +13,7 @@
 #   limitations under the License.
 
 import json
-from typing import Any, List, Optional
+from typing import Any
 
 from ..domain_objects import (
     DeleteScheduleResponse,
@@ -48,7 +48,7 @@ class UpdateScheduleHandler(ScheduleBaseHandler):
         self,
         model_id: str,
         schedule_config: SchedulingConfig,
-        user_groups: Optional[List[str]] = None,
+        user_groups: list[str] | None = None,
         is_admin: bool = False,
     ) -> UpdateScheduleResponse:
         """Create or update a schedule for a model"""
@@ -86,7 +86,7 @@ class GetScheduleHandler(ScheduleBaseHandler):
     """Handler class for GetSchedule requests"""
 
     def __call__(
-        self, model_id: str, user_groups: Optional[List[str]] = None, is_admin: bool = False
+        self, model_id: str, user_groups: list[str] | None = None, is_admin: bool = False
     ) -> GetScheduleResponse:
         """Get current schedule configuration for a model"""
         # Validate model exists and user access
@@ -111,7 +111,7 @@ class DeleteScheduleHandler(ScheduleBaseHandler):
     """Handler class for DeleteSchedule requests"""
 
     def __call__(
-        self, model_id: str, user_groups: Optional[List[str]] = None, is_admin: bool = False
+        self, model_id: str, user_groups: list[str] | None = None, is_admin: bool = False
     ) -> DeleteScheduleResponse:
         """Delete a schedule for a model"""
         # Validate model exists, user access, and model status
@@ -132,7 +132,7 @@ class GetScheduleStatusHandler(ScheduleBaseHandler):
     """Handler class for GetScheduleStatus requests"""
 
     def __call__(
-        self, model_id: str, user_groups: Optional[List[str]] = None, is_admin: bool = False
+        self, model_id: str, user_groups: list[str] | None = None, is_admin: bool = False
     ) -> GetScheduleStatusResponse:
         """Get current schedule status and next scheduled action for a model"""
         # Validate model exists and user access

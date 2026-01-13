@@ -23,7 +23,8 @@ This file demonstrates how to create MCP (Model Context Protocol) tools using tw
 Both methods allow you to create tools that can be called by AI models to perform specific tasks.
 """
 
-from typing import Annotated, Callable
+from collections.abc import Callable
+from typing import Annotated
 
 from mcpworkbench.core.base_tool import BaseTool
 

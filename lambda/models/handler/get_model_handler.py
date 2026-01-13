@@ -14,7 +14,6 @@
 
 """Handler for GetModel requests."""
 
-from typing import List, Optional
 
 from utilities.auth import user_has_group_access
 
@@ -27,9 +26,7 @@ from .utils import attach_guardrails_to_model, fetch_guardrails_for_model, to_li
 class GetModelHandler(BaseApiHandler):
     """Handler class for GetModel requests."""
 
-    def __call__(
-        self, model_id: str, user_groups: Optional[List[str]] = None, is_admin: bool = False
-    ) -> GetModelResponse:
+    def __call__(self, model_id: str, user_groups: list[str] | None = None, is_admin: bool = False) -> GetModelResponse:
         """Get model metadata from LiteLLM and translate to a model management response object."""
         ddb_item = self._model_table.get_item(Key={"model_id": model_id}).get("Item", None)
         if not ddb_item:

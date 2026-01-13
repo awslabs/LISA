@@ -17,7 +17,7 @@
 import logging
 import os
 from datetime import timedelta
-from typing import Any, Dict, Optional
+from typing import Any
 
 import boto3
 from models.domain_objects import IngestionJob, IngestionStatus
@@ -34,7 +34,7 @@ def _get_ingestion_job_table() -> Any:
 
 
 class IngestionJobListResponse:
-    def __init__(self, jobs: list[IngestionJob], continuation_token: Optional[str]):
+    def __init__(self, jobs: list[IngestionJob], continuation_token: str | None):
         self.jobs = jobs
         self.continuation_token = continuation_token
 
@@ -94,7 +94,7 @@ class IngestionJobRepository:
         items = response.get("Items", [])
         return [IngestionJob(**item) for item in items]
 
-    def find_by_document(self, document_id: str) -> Optional[IngestionJob]:
+    def find_by_document(self, document_id: str) -> IngestionJob | None:
         response = _get_ingestion_job_table().query(
             IndexName="documentId",
             KeyConditionExpression="document_id = :document_id",
@@ -129,8 +129,8 @@ class IngestionJobRepository:
         is_admin: bool,
         time_limit_hours: int = 1,
         page_size: int = 10,
-        last_evaluated_key: Optional[Dict[str, str]] = None,
-    ) -> tuple[list[IngestionJob], Optional[Dict[str, str]]]:
+        last_evaluated_key: dict[str, str] | None = None,
+    ) -> tuple[list[IngestionJob], dict[str, str] | None]:
         """List ingestion jobs filtered by repository, user permissions, and time limit with pagination.
 
         Args:
@@ -190,7 +190,7 @@ class IngestionJobRepository:
 
         return jobs, last_evaluated_key_response
 
-    def get_batch_job_status(self, job_id: str) -> Optional[str]:
+    def get_batch_job_status(self, job_id: str) -> str | None:
         """Get the status of a batch job by job ID.
 
         Args:
@@ -204,7 +204,7 @@ class IngestionJobRepository:
             return response["jobs"][0].get("status")  # type: ignore[no-any-return]
         return None
 
-    def find_batch_job_for_document(self, document_id: str, job_queue: str) -> Optional[Dict]:
+    def find_batch_job_for_document(self, document_id: str, job_queue: str) -> dict | None:
         """Find the batch job associated with a document ingestion.
 
         Args:

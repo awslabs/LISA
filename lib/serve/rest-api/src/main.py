@@ -18,7 +18,7 @@ import os
 import sys
 import time
 from contextlib import asynccontextmanager
-from typing import Any, Dict
+from typing import Any
 from uuid import uuid4
 
 from aiobotocore.session import get_session
@@ -61,7 +61,7 @@ async def lifespan(app: FastAPI):  # type: ignore
     task_logger = logger.bind(event=event)
     task_logger.debug("Start task", status="START")
 
-    new_models: Dict[str, Dict[str, Any]] = {
+    new_models: dict[str, dict[str, Any]] = {
         ModelType.EMBEDDING: {},
         ModelType.TEXTGEN: {},
         RestApiResource.EMBEDDINGS: {},

@@ -14,7 +14,7 @@
 
 import logging
 import os
-from typing import Any, Dict
+from typing import Any
 
 from models.domain_objects import IngestionType
 from pydantic import BaseModel
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"])
 
 
-def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any] | Any:
+def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any] | Any:
     """
     Remove LISA-managed documents from repository.
 

@@ -19,7 +19,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from time import time
-from typing import Any, Dict, Optional
+from typing import Any
 
 import boto3
 import jwt
@@ -62,12 +62,12 @@ if not jwt.algorithms.has_crypto:
     raise RuntimeError("No crypto support for JWT.")
 
 
-def get_oidc_metadata(cert_path: Optional[str] = None) -> Dict[str, Any]:
+def get_oidc_metadata(cert_path: str | None = None) -> dict[str, Any]:
     """Get OIDC endpoints and metadata from authority."""
     authority = os.environ.get("AUTHORITY")
     resp = requests.get(f"{authority}/.well-known/openid-configuration", verify=cert_path or True, timeout=30)
     resp.raise_for_status()
-    result: Dict[str, Any] = resp.json()
+    result: dict[str, Any] = resp.json()
     return result
 
 
@@ -88,11 +88,11 @@ def get_jwks_client() -> jwt.PyJWKClient:
 
 def id_token_is_valid(
     id_token: str, client_id: str, authority: str, jwks_client: jwt.PyJWKClient
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Check whether an ID token is valid and return decoded data."""
     try:
         signing_key = jwks_client.get_signing_key_from_jwt(id_token)
-        data: Dict[str, Any] = jwt.decode(
+        data: dict[str, Any] = jwt.decode(
             id_token,
             signing_key.key,
             algorithms=["RS256"],
@@ -125,7 +125,7 @@ def is_user_in_group(jwt_data: dict[str, Any], group: str, jwt_groups_property: 
     return group in current_node
 
 
-def get_authorization_token(headers: Dict[str, str], header_name: str = "Authorization") -> str:
+def get_authorization_token(headers: dict[str, str], header_name: str = "Authorization") -> str:
     """Get Bearer token from Authorization headers if it exists."""
     if header_name in headers:
         return headers.get(header_name, "").removeprefix("Bearer").strip()
@@ -206,7 +206,7 @@ class ApiTokenAuthorizer:
         ddb_response = self._token_table.get_item(Key={"token": token}, ReturnConsumedCapacity="NONE")
         return ddb_response.get("Item", None)
 
-    def is_valid_api_token(self, headers: Dict[str, str]) -> bool:
+    def is_valid_api_token(self, headers: dict[str, str]) -> bool:
         """Return if API Token from request headers is valid if found."""
         for header_name in API_KEY_HEADER_NAMES:
             token = get_authorization_token(headers, header_name)
@@ -249,7 +249,7 @@ class ManagementTokenAuthorizer:
             self._secret_tokens = secret_tokens
             self._last_run = current_time
 
-    def is_valid_api_token(self, headers: Dict[str, str]) -> bool:
+    def is_valid_api_token(self, headers: dict[str, str]) -> bool:
         """Return if API Token from request headers is valid if found."""
         self._refreshTokens()
 

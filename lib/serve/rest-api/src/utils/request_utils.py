@@ -17,7 +17,8 @@ import json
 import os
 import sys
 import traceback
-from typing import Any, AsyncGenerator, Callable, Dict, Tuple
+from collections.abc import AsyncGenerator, Callable
+from typing import Any
 
 from lisa_serve.registry import registry
 from loguru import logger
@@ -47,7 +48,7 @@ logger.configure(
 )
 
 
-async def validate_model(request_data: Dict[str, Any], resource: RestApiResource) -> None:
+async def validate_model(request_data: dict[str, Any], resource: RestApiResource) -> None:
     """Validate that the selected model is registered and supported for the specified resource.
 
     Parameters
@@ -90,7 +91,7 @@ async def validate_model(request_data: Dict[str, Any], resource: RestApiResource
         raise ValueError(message)
 
 
-async def get_model_and_validator(request_data: Dict[str, Any]) -> Tuple[Any, Any]:
+async def get_model_and_validator(request_data: dict[str, Any]) -> tuple[Any, Any]:
     """Get model and model kwargs validator.
 
     Parameters
@@ -133,8 +134,8 @@ async def get_model_and_validator(request_data: Dict[str, Any]) -> Tuple[Any, An
 
 
 async def validate_and_prepare_llm_request(
-    request_data: Dict[str, Any], resource: RestApiResource
-) -> Tuple[Any, Any, str]:
+    request_data: dict[str, Any], resource: RestApiResource
+) -> tuple[Any, Any, str]:
     """Validate and prepare data for LLM (Language Model) requests.
 
     Parameters
@@ -173,8 +174,8 @@ async def validate_and_prepare_llm_request(
 
 
 def handle_stream_exceptions(
-    func: Callable[..., AsyncGenerator[str, None]],
-) -> Callable[..., AsyncGenerator[str, None]]:
+    func: Callable[..., AsyncGenerator[str]],
+) -> Callable[..., AsyncGenerator[str]]:
     """Decorate a streaming function to handle exceptions gracefully.
 
     This decorator catches any exceptions raised during the execution of a streaming function
@@ -199,7 +200,7 @@ def handle_stream_exceptions(
         The items yielded by the original function, or a JSON-formatted error message in case of an exception.
     """
 
-    async def wrapper(*args: Any, **kwargs: Any) -> AsyncGenerator[str, None]:
+    async def wrapper(*args: Any, **kwargs: Any) -> AsyncGenerator[str]:
         try:
             async for item in func(*args, **kwargs):
                 yield item

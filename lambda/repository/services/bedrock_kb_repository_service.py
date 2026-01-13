@@ -16,7 +16,7 @@
 
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import boto3
 from boto3.dynamodb.conditions import Key
@@ -55,14 +55,14 @@ class BedrockKBRepositoryService(RepositoryService):
         """Bedrock KB does not need virtual default collections."""
         return False
 
-    def get_collection_id_from_config(self, pipeline_config: Dict[str, Any]) -> str:
+    def get_collection_id_from_config(self, pipeline_config: dict[str, Any]) -> str:
         """For Bedrock KB, collection ID is the data source ID.
 
         Extracts the data source ID from the pipeline config's collectionId field,
         which should match one of the data sources in bedrockKnowledgeBaseConfig.
         """
         # The pipeline config should have a collectionId that matches a data source ID
-        collection_id: Optional[str] = pipeline_config.get("collectionId")
+        collection_id: str | None = pipeline_config.get("collectionId")
 
         if collection_id:
             return collection_id
@@ -74,7 +74,7 @@ class BedrockKBRepositoryService(RepositoryService):
         data_sources = bedrock_config.get("dataSources", [])
         if data_sources:
             first_data_source = data_sources[0]
-            data_source_id: Optional[str] = (
+            data_source_id: str | None = (
                 first_data_source.get("id") if isinstance(first_data_source, dict) else first_data_source.id
             )
             if data_source_id:
@@ -90,8 +90,8 @@ class BedrockKBRepositoryService(RepositoryService):
     def ingest_document(
         self,
         job: IngestionJob,
-        texts: List[str],
-        metadatas: List[Dict[str, Any]],
+        texts: list[str],
+        metadatas: list[dict[str, Any]],
     ) -> RagDocument:
         """Track document for Bedrock KB - KB handles actual ingestion.
 
@@ -150,7 +150,7 @@ class BedrockKBRepositoryService(RepositoryService):
         self,
         document: RagDocument,
         s3_client: Any,
-        bedrock_agent_client: Optional[Any] = None,
+        bedrock_agent_client: Any | None = None,
     ) -> None:
         """Delete document from Bedrock KB."""
         if not bedrock_agent_client:
@@ -176,7 +176,7 @@ class BedrockKBRepositoryService(RepositoryService):
         self,
         collection_id: str,
         s3_client: Any,
-        bedrock_agent_client: Optional[Any] = None,
+        bedrock_agent_client: Any | None = None,
     ) -> None:
         """Delete all LISA-managed documents from Bedrock KB collection.
 
@@ -239,8 +239,8 @@ class BedrockKBRepositoryService(RepositoryService):
         top_k: int,
         model_name: str,
         include_score: bool = False,
-        bedrock_agent_client: Optional[Any] = None,
-    ) -> List[Dict[str, Any]]:
+        bedrock_agent_client: Any | None = None,
+    ) -> list[dict[str, Any]]:
         """Retrieve documents from Bedrock KB using retrieve API.
 
         Args:
@@ -259,7 +259,7 @@ class BedrockKBRepositoryService(RepositoryService):
 
         bedrock_config = self.repository.get("bedrockKnowledgeBaseConfig", {})
         # Support both field names for backward compatibility
-        kb_id: Optional[str] = bedrock_config.get("knowledgeBaseId", bedrock_config.get("bedrockKnowledgeBaseId"))
+        kb_id: str | None = bedrock_config.get("knowledgeBaseId", bedrock_config.get("bedrockKnowledgeBaseId"))
 
         if not kb_id:
             raise ValueError(
@@ -273,7 +273,7 @@ class BedrockKBRepositoryService(RepositoryService):
         logger.info(f"Retrieving from KB: kb_id={kb_id}, data_source={collection_id}, query={query[:50]}...")
 
         # Build retrieve params with data source filter
-        retrieve_params: Dict[str, Any] = {
+        retrieve_params: dict[str, Any] = {
             "knowledgeBaseId": kb_id,
             "retrievalQuery": {"text": query},
             "retrievalConfiguration": {
@@ -351,19 +351,19 @@ class BedrockKBRepositoryService(RepositoryService):
     def validate_document_source(self, s3_path: str) -> str:
         """Validate document is from KB data source bucket."""
         bedrock_config = self.repository.get("bedrockKnowledgeBaseConfig", {})
-        kb_bucket: Optional[str] = bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket")
+        kb_bucket: str | None = bedrock_config.get("bedrockKnowledgeDatasourceS3Bucket")
 
         if not kb_bucket:
             raise ValueError("KB bucket not configured")
 
         return self._validate_and_normalize_path(s3_path, kb_bucket)
 
-    def get_vector_store_client(self, collection_id: str, embeddings: Any) -> Optional[Any]:
+    def get_vector_store_client(self, collection_id: str, embeddings: Any) -> Any | None:
         """Bedrock KB does not use external vector store clients."""
         return None
 
     def _create_collection_for_data_source(
-        self, data_source_id: str, s3_uri: str = "", is_default: bool = False, collection_name: Optional[str] = None
+        self, data_source_id: str, s3_uri: str = "", is_default: bool = False, collection_name: str | None = None
     ) -> RagCollectionConfig:
         """Create a collection configuration for a specific data source.
 
@@ -412,7 +412,7 @@ class BedrockKBRepositoryService(RepositoryService):
 
         return collection
 
-    def create_default_collection(self, ingest_docs: bool = False) -> Optional[RagCollectionConfig]:
+    def create_default_collection(self, ingest_docs: bool = False) -> RagCollectionConfig | None:
         """Create a default collection for Bedrock KB repository.
 
         For Bedrock KB, the collection ID is the data source ID.
@@ -437,7 +437,7 @@ class BedrockKBRepositoryService(RepositoryService):
             # Use first data source from array, or legacy single ID
             if data_sources:
                 first_data_source = data_sources[0]
-                data_source_id: Optional[str] = (
+                data_source_id: str | None = (
                     first_data_source.get("id") if isinstance(first_data_source, dict) else first_data_source.id
                 )
                 if not data_source_id:

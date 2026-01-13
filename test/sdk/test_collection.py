@@ -14,7 +14,6 @@
 
 """Unit tests for CollectionMixin."""
 
-from typing import Dict
 
 import pytest
 import responses
@@ -193,7 +192,7 @@ class TestCollectionMixin:
         assert len(responses.calls) == 1
 
     @responses.activate
-    def test_list_collections(self, lisa_api: LisaApi, api_url: str, mock_collections_response: Dict):
+    def test_list_collections(self, lisa_api: LisaApi, api_url: str, mock_collections_response: dict):
         """Test listing collections in a repository."""
         repo_id = "pgvector-rag"
 

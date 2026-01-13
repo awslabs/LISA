@@ -16,7 +16,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, TypedDict
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -42,7 +42,7 @@ class FoundationModel(BaseModel):
     provider: str = Field(..., description="The foundation model provider, e.g. ecs.textgen.tgi.")
     model_type: ModelType = Field(..., description="The type of foundation model.")
     model_name: str = Field(..., description="The model name.")
-    model_kwargs: Optional[ModelKwargs] = Field(
+    model_kwargs: ModelKwargs | None = Field(
         default_factory=None,
         description="The model arguments.",
     )
@@ -76,8 +76,8 @@ class StreamingResponse(BaseModel):
     """Response from text generation with streaming endpoint."""
 
     token: str = Field(..., description="Generated token")
-    finish_reason: Optional[str] = Field(None, description="Generation finish reason when stream is complete.")
-    generated_tokens: Optional[int] = Field(None, description="Number of generated tokens when stream is complete.")
+    finish_reason: str | None = Field(None, description="Generation finish reason when stream is complete.")
+    generated_tokens: int | None = Field(None, description="Number of generated tokens when stream is complete.")
 
 
 class ModelRequest(TypedDict, total=False):
@@ -93,11 +93,11 @@ class ModelRequest(TypedDict, total=False):
     instanceType: str
     inferenceContainer: str
     baseImage: str
-    features: List[Dict[str, str]]
-    allowedGroups: List[str]
-    containerConfig: Dict[str, Any]
-    autoScalingConfig: Dict[str, Any]
-    loadBalancerConfig: Dict[str, Any]
+    features: list[dict[str, str]]
+    allowedGroups: list[str]
+    containerConfig: dict[str, Any]
+    autoScalingConfig: dict[str, Any]
+    loadBalancerConfig: dict[str, Any]
 
 
 class BedrockModelRequest(TypedDict, total=False):
@@ -110,8 +110,8 @@ class BedrockModelRequest(TypedDict, total=False):
     streaming: bool
     multiModal: bool
     modelType: str
-    features: List[Dict[str, str]]
-    allowedGroups: List[str]
+    features: list[dict[str, str]]
+    allowedGroups: list[str]
     apiKey: str
 
 
@@ -122,8 +122,8 @@ class RagRepositoryConfig(TypedDict, total=False):
     repositoryName: str
     embeddingModelId: str
     type: str
-    opensearchConfig: Dict[str, Any]
-    rdsConfig: Dict[str, Any]
-    bedrockKnowledgeBaseConfig: Dict[str, Any]
-    pipelines: List[Dict[str, Any]]
-    allowedGroups: List[str]
+    opensearchConfig: dict[str, Any]
+    rdsConfig: dict[str, Any]
+    bedrockKnowledgeBaseConfig: dict[str, Any]
+    pipelines: list[dict[str, Any]]
+    allowedGroups: list[str]

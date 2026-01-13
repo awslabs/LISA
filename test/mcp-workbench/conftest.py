@@ -17,8 +17,8 @@
 import asyncio
 import sys
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 import pytest
 from mcpworkbench.config.models import CORSConfig, ServerConfig
@@ -44,7 +44,7 @@ def isolate_modules():
 
 
 @pytest.fixture(scope="function")
-def temp_tools_dir() -> Generator[Path, None, None]:
+def temp_tools_dir() -> Generator[Path]:
     """Create a temporary directory for test tools."""
     with tempfile.TemporaryDirectory() as temp_dir:
         tools_dir = Path(temp_dir)

@@ -12,7 +12,6 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from typing import Dict, List
 
 from .common import BaseMixin
 from .errors import parse_error
@@ -21,29 +20,29 @@ from .errors import parse_error
 class ModelMixin(BaseMixin):
     """Mixin for model-related operations."""
 
-    def list_models(self) -> List[Dict]:
+    def list_models(self) -> list[dict]:
         response = self._session.get(f"{self.url}/models")
         if response.status_code == 200:
             json_models = response.json()
-            models: List[Dict] = json_models.get("models")
+            models: list[dict] = json_models.get("models")
             return models
         else:
             raise parse_error(response.status_code, response)
 
-    def list_embedding_models(self) -> List[Dict]:
+    def list_embedding_models(self) -> list[dict]:
         models = self.list_models()
         embeddings = [model for model in models if "embedding" == model["modelType"]]
         return embeddings
 
-    def list_instances(self) -> List[str]:
+    def list_instances(self) -> list[str]:
         response = self._session.get(f"{self.url}/models/metadata/instances")
         if response.status_code == 200:
-            json_instances: List[str] = response.json()
+            json_instances: list[str] = response.json()
             return json_instances
         else:
             raise parse_error(response.status_code, response)
 
-    def create_bedrock_model(self, payload: Dict) -> Dict:
+    def create_bedrock_model(self, payload: dict) -> dict:
         """Create a Bedrock model configuration.
 
         Args:
@@ -61,7 +60,7 @@ class ModelMixin(BaseMixin):
         else:
             raise parse_error(response.status_code, response)
 
-    def create_self_hosted_model(self, payload: Dict) -> Dict:
+    def create_self_hosted_model(self, payload: dict) -> dict:
         """Create a self-hosted model configuration.
 
         Args:
@@ -79,7 +78,7 @@ class ModelMixin(BaseMixin):
         else:
             raise parse_error(response.status_code, response)
 
-    def create_self_hosted_embedded_model(self, payload: Dict) -> Dict:
+    def create_self_hosted_embedded_model(self, payload: dict) -> dict:
         """Create a self-hosted embedding model configuration.
 
         Args:
@@ -115,7 +114,7 @@ class ModelMixin(BaseMixin):
         else:
             raise parse_error(response.status_code, response)
 
-    def get_model(self, model_id: str) -> Dict:
+    def get_model(self, model_id: str) -> dict:
         """Get details of a specific model.
 
         Args:

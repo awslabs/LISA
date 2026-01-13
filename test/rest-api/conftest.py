@@ -14,7 +14,6 @@
 
 """Fixtures for REST API unit tests."""
 
-from typing import Dict
 from unittest.mock import MagicMock, Mock
 
 import pytest
@@ -64,7 +63,7 @@ def mock_request():
 
 
 @pytest.fixture
-def mock_jwt_data() -> Dict:
+def mock_jwt_data() -> dict:
     """Mock JWT data for testing."""
     return {
         "sub": "user-123",
@@ -79,7 +78,7 @@ def mock_jwt_data() -> Dict:
 
 
 @pytest.fixture
-def mock_admin_jwt_data() -> Dict:
+def mock_admin_jwt_data() -> dict:
     """Mock JWT data for admin user."""
     return {
         "sub": "admin-123",
@@ -94,7 +93,7 @@ def mock_admin_jwt_data() -> Dict:
 
 
 @pytest.fixture
-def mock_token_info() -> Dict:
+def mock_token_info() -> dict:
     """Mock API token info from DynamoDB."""
     return {
         "token": "hashed-token-value",
@@ -106,7 +105,7 @@ def mock_token_info() -> Dict:
 
 
 @pytest.fixture
-def mock_admin_token_info() -> Dict:
+def mock_admin_token_info() -> dict:
     """Mock admin API token info from DynamoDB."""
     return {
         "token": "hashed-admin-token",

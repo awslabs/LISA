@@ -18,7 +18,7 @@ import json
 import logging
 import os
 import ssl
-from typing import Any, Dict
+from typing import Any
 
 import boto3
 import create_env_variables  # noqa: F401
@@ -38,7 +38,7 @@ TOKEN_EXPIRATION_NAME = "tokenExpiration"  # nosec B105
 
 
 @authorization_wrapper
-def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Handle authorization for REST API."""
     logger.info("REST API authorization handler started")
 
@@ -108,7 +108,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     return deny_policy
 
 
-def generate_policy(*, effect: str, resource: str, username: str = "username") -> Dict[str, Any]:
+def generate_policy(*, effect: str, resource: str, username: str = "username") -> dict[str, Any]:
     """Generate IAM policy."""
     policy = {
         "principalId": username,
@@ -162,7 +162,7 @@ def is_valid_api_token(token: str) -> dict | None:
     return token_info  # type: ignore[no-any-return]
 
 
-def id_token_is_valid(*, id_token: str, client_id: str, authority: str) -> Dict[str, Any] | None:
+def id_token_is_valid(*, id_token: str, client_id: str, authority: str) -> dict[str, Any] | None:
     """Check whether an ID token is valid and return decoded data."""
     if not jwt.algorithms.has_crypto:
         logger.error("No crypto support for JWT, please install the cryptography dependency")

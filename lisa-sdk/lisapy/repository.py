@@ -12,7 +12,6 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from typing import Dict, List
 
 from .common import BaseMixin
 from .errors import parse_error
@@ -22,7 +21,7 @@ from .types import RagRepositoryConfig
 class RepositoryMixin(BaseMixin):
     """Mixin for repository-related operations."""
 
-    def list_repositories(self) -> List[Dict]:
+    def list_repositories(self) -> list[dict]:
         """List all available repositories.
 
         Returns:
@@ -33,12 +32,12 @@ class RepositoryMixin(BaseMixin):
         """
         response = self._session.get(f"{self.url}/repository")
         if response.status_code == 200:
-            json_models: List[Dict] = response.json()
+            json_models: list[dict] = response.json()
             return json_models
         else:
             raise parse_error(response.status_code, response)
 
-    def create_repository(self, rag_config: RagRepositoryConfig) -> Dict:
+    def create_repository(self, rag_config: RagRepositoryConfig) -> dict:
         """Create a new RAG repository.
 
         Args:
@@ -56,7 +55,7 @@ class RepositoryMixin(BaseMixin):
         else:
             raise parse_error(response.status_code, response)
 
-    def create_pgvector_repository(self, rag_config: Dict) -> Dict:
+    def create_pgvector_repository(self, rag_config: dict) -> dict:
         """Create a PGVector repository configuration.
 
         Args:
@@ -72,9 +71,9 @@ class RepositoryMixin(BaseMixin):
         repository_id: str,
         repository_name: str | None = None,
         embedding_model_id: str | None = None,
-        opensearch_config: Dict | None = None,
-        allowed_groups: List[str] | None = None,
-    ) -> Dict:
+        opensearch_config: dict | None = None,
+        allowed_groups: list[str] | None = None,
+    ) -> dict:
         """Create an OpenSearch repository configuration.
 
         Args:
@@ -140,7 +139,7 @@ class RepositoryMixin(BaseMixin):
         else:
             raise parse_error(response.status_code, response)
 
-    def get_repository_status(self) -> Dict:
+    def get_repository_status(self) -> dict:
         """Get the status of RAG repositories.
 
         Returns:

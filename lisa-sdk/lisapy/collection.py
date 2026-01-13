@@ -14,7 +14,6 @@
 
 """Collection management operations for LISA SDK."""
 
-from typing import Dict, List, Optional
 
 from .common import BaseMixin
 from .errors import parse_error
@@ -27,13 +26,13 @@ class CollectionMixin(BaseMixin):
         self,
         repository_id: str,
         name: str,
-        description: Optional[str] = None,
-        embedding_model: Optional[str] = None,
-        chunking_strategy: Optional[Dict] = None,
-        allowed_groups: Optional[List[str]] = None,
-        metadata: Optional[Dict] = None,
+        description: str | None = None,
+        embedding_model: str | None = None,
+        chunking_strategy: dict | None = None,
+        allowed_groups: list[str] | None = None,
+        metadata: dict | None = None,
         allow_chunking_override: bool = False,
-    ) -> Dict:
+    ) -> dict:
         """Create a new collection in a repository.
 
         Args:
@@ -71,7 +70,7 @@ class CollectionMixin(BaseMixin):
         else:
             raise parse_error(response.status_code, response)
 
-    def get_collection(self, repository_id: str, collection_id: str) -> Dict:
+    def get_collection(self, repository_id: str, collection_id: str) -> dict:
         """Get a collection by ID.
 
         Args:
@@ -94,14 +93,14 @@ class CollectionMixin(BaseMixin):
         self,
         repository_id: str,
         collection_id: str,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        chunking_strategy: Optional[Dict] = None,
-        allowed_groups: Optional[List[str]] = None,
-        metadata: Optional[Dict] = None,
-        allow_chunking_override: Optional[bool] = None,
-        status: Optional[str] = None,
-    ) -> Dict:
+        name: str | None = None,
+        description: str | None = None,
+        chunking_strategy: dict | None = None,
+        allowed_groups: list[str] | None = None,
+        metadata: dict | None = None,
+        allow_chunking_override: bool | None = None,
+        status: str | None = None,
+    ) -> dict:
         """Update a collection.
 
         Args:
@@ -164,11 +163,11 @@ class CollectionMixin(BaseMixin):
         repository_id: str,
         page: int = 1,
         page_size: int = 20,
-        filter_text: Optional[str] = None,
-        status_filter: Optional[str] = None,
+        filter_text: str | None = None,
+        status_filter: str | None = None,
         sort_by: str = "createdAt",
         sort_order: str = "desc",
-    ) -> Dict:
+    ) -> dict:
         """List collections in a repository.
 
         Args:
@@ -207,11 +206,11 @@ class CollectionMixin(BaseMixin):
     def get_user_collections(
         self,
         page_size: int = 20,
-        filter_text: Optional[str] = None,
+        filter_text: str | None = None,
         sort_by: str = "createdAt",
         sort_order: str = "desc",
-        last_evaluated_key: Optional[str] = None,
-    ) -> List[Dict]:
+        last_evaluated_key: str | None = None,
+    ) -> list[dict]:
         """Get all collections user has access to across all repositories.
 
         Args:

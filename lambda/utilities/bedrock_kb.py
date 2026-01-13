@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from models.domain_objects import (
     IngestionJob,
@@ -45,8 +45,8 @@ class S3DocumentDiscoveryResult:
         skipped: int = 0,
         successful: int = 0,
         failed: int = 0,
-        document_ids: Optional[List[str]] = None,
-        errors: Optional[List[str]] = None,
+        document_ids: list[str] | None = None,
+        errors: list[str] | None = None,
     ):
         self.discovered = discovered
         self.skipped = skipped
@@ -194,7 +194,7 @@ class S3DocumentDiscoveryService:
             logger.error(f"Failed to discover S3 documents: {str(e)}", exc_info=True)
             raise
 
-    def _scan_s3_bucket(self, s3_bucket: str, s3_prefix: str) -> Tuple[List[str], int]:
+    def _scan_s3_bucket(self, s3_bucket: str, s3_prefix: str) -> tuple[list[str], int]:
         """
         Scan S3 bucket and return list of document keys.
 
@@ -227,7 +227,7 @@ class S3DocumentDiscoveryService:
 
         return documents_to_process, skipped_count
 
-    def _get_collection(self, repository_id: str, collection_id: str) -> Optional[RagCollectionConfig]:
+    def _get_collection(self, repository_id: str, collection_id: str) -> RagCollectionConfig | None:
         """Get collection configuration."""
         try:
             return self.collection_service.get_collection(  # type: ignore[no-any-return]
@@ -250,8 +250,8 @@ class S3DocumentDiscoveryService:
 
     def _create_metadata_file(
         self,
-        repository: Dict[str, Any],
-        collection: Optional[RagCollectionConfig],
+        repository: dict[str, Any],
+        collection: RagCollectionConfig | None,
         s3_bucket: str,
         document_key: str,
         repository_id: str,
@@ -297,7 +297,7 @@ class S3DocumentDiscoveryService:
         self.rag_document_repository.save(rag_document)
         return rag_document.document_id
 
-    def _trigger_kb_sync(self, repository: Dict[str, Any], collection_id: str, document_count: int) -> None:
+    def _trigger_kb_sync(self, repository: dict[str, Any], collection_id: str, document_count: int) -> None:
         """Trigger Bedrock KB sync for ingested documents."""
         bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
         knowledge_base_id = bedrock_config.get("knowledgeBaseId", bedrock_config.get("bedrockKnowledgeBaseId"))
@@ -322,7 +322,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_datasource_bucket_for_collection(
-    repository: Dict[str, Any],
+    repository: dict[str, Any],
     collection_id: str,
 ) -> str:
     """
@@ -401,7 +401,7 @@ def ingest_document_to_kb(
     s3_client: Any,
     bedrock_agent_client: Any,
     job: IngestionJob,
-    repository: Dict[str, Any],
+    repository: dict[str, Any],
 ) -> None:
     """
     Copy the source object into the KB datasource bucket and trigger ingestion. S3 will
@@ -451,7 +451,7 @@ def delete_document_from_kb(
     s3_client: Any,
     bedrock_agent_client: Any,
     job: IngestionJob,
-    repository: Dict[str, Any],
+    repository: dict[str, Any],
 ) -> None:
     """Remove the source object from the KB datasource bucket and re-sync the KB."""
     bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
@@ -491,9 +491,9 @@ def delete_document_from_kb(
 def bulk_delete_documents_from_kb(
     s3_client: Any,
     bedrock_agent_client: Any,
-    repository: Dict[str, Any],
-    s3_paths: List[str],
-    data_source_id: Optional[str] = None,
+    repository: dict[str, Any],
+    s3_paths: list[str],
+    data_source_id: str | None = None,
 ) -> None:
     """Bulk delete documents from KB datasource bucket and trigger single ingestion.
 
@@ -556,8 +556,8 @@ def ingest_bedrock_s3_documents(
     embedding_model: str,
     s3_prefix: str = "",
     batch_size: int = 100,
-    metadata: Optional[Dict[str, Any]] = None,
-) -> Tuple[int, int]:
+    metadata: dict[str, Any] | None = None,
+) -> tuple[int, int]:
     """
     Discover and create ingestion jobs for existing documents in S3 bucket.
 
@@ -649,7 +649,7 @@ def create_s3_scan_job(
     embedding_model: str,
     s3_bucket: str,
     s3_prefix: str = "",
-    metadata: Optional[Dict[str, Any]] = None,
+    metadata: dict[str, Any] | None = None,
 ) -> str:
     """
     Create a batch ingestion job to scan and ingest existing S3 documents.

@@ -28,7 +28,7 @@ import json
 import os
 import sys
 import traceback
-from typing import Any, Dict, List
+from typing import Any
 
 import boto3
 import psycopg2
@@ -39,7 +39,7 @@ sys.path.append("/opt/python")
 sys.path.append("/var/task")
 
 
-def get_all_dynamodb_models() -> List[Dict[str, str]]:
+def get_all_dynamodb_models() -> list[dict[str, str]]:
     """Get all models from DynamoDB table with their IDs and names."""
     try:
         dynamodb = boto3.client("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
@@ -134,7 +134,7 @@ def get_database_connection() -> Any:
         raise ValueError(f"Failed to connect to database: {e}")
 
 
-def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Lambda handler for Bedrock model API key cleanup.
 

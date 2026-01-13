@@ -14,7 +14,6 @@
 
 """Unit tests for ModelMixin."""
 
-from typing import Dict
 
 import pytest
 import responses
@@ -25,7 +24,7 @@ class TestModelMixin:
     """Test suite for model-related operations."""
 
     @responses.activate
-    def test_list_models(self, lisa_api: LisaApi, api_url: str, mock_models_response: Dict):
+    def test_list_models(self, lisa_api: LisaApi, api_url: str, mock_models_response: dict):
         """Test listing all models."""
         responses.add(responses.GET, f"{api_url}/models", json=mock_models_response, status=200)
 
@@ -37,7 +36,7 @@ class TestModelMixin:
         assert models[2]["provider"] == "ecs.textgen.tgi"
 
     @responses.activate
-    def test_list_embedding_models(self, lisa_api: LisaApi, api_url: str, mock_models_response: Dict):
+    def test_list_embedding_models(self, lisa_api: LisaApi, api_url: str, mock_models_response: dict):
         """Test listing only embedding models."""
         responses.add(responses.GET, f"{api_url}/models", json=mock_models_response, status=200)
 
@@ -128,7 +127,7 @@ class TestModelMixin:
         assert len(responses.calls) == 1
 
     @responses.activate
-    def test_get_model(self, lisa_api: LisaApi, api_url: str, mock_models_response: Dict):
+    def test_get_model(self, lisa_api: LisaApi, api_url: str, mock_models_response: dict):
         """Test getting a specific model by ID."""
         responses.add(responses.GET, f"{api_url}/models", json=mock_models_response, status=200)
 
@@ -138,7 +137,7 @@ class TestModelMixin:
         assert model["modelName"] == "Claude v2"
 
     @responses.activate
-    def test_get_model_not_found(self, lisa_api: LisaApi, api_url: str, mock_models_response: Dict):
+    def test_get_model_not_found(self, lisa_api: LisaApi, api_url: str, mock_models_response: dict):
         """Test getting a model that doesn't exist."""
         responses.add(responses.GET, f"{api_url}/models", json=mock_models_response, status=200)
 

@@ -126,7 +126,7 @@ export class PromptTemplateApi extends Construct {
                 environment,
             },
             {
-                name: 'list',
+                name: 'list_prompt',
                 resource: 'prompt_templates',
                 description: 'Lists all available prompt templates',
                 path: 'prompt-templates',

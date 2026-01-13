@@ -15,14 +15,14 @@
 """Wait for all collection deletion jobs to complete before deleting repository."""
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from repository.ingestion_job_repo import IngestionJobRepository
 
 logger = logging.getLogger(__name__)
 
 
-def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Check if all collection deletion jobs for a repository are complete.
 

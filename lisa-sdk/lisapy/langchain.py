@@ -13,7 +13,8 @@
 #   limitations under the License.
 
 """Langchain adapter."""
-from typing import Any, cast, Iterator, List, Mapping, Optional, Union
+from collections.abc import Iterator, Mapping
+from typing import Any, cast
 
 from httpx import AsyncClient as HttpAsyncClient
 from httpx import Client as HttpClient
@@ -68,8 +69,8 @@ class LisaTextgen(LLM):
     def _call(
         self,
         prompt: str,
-        stop: Optional[List[str]] = None,
-        run_manager: Optional[CallbackManagerForLLMRun] = None,
+        stop: list[str] | None = None,
+        run_manager: CallbackManagerForLLMRun | None = None,
         **kwargs: Any,
     ) -> str:
         if self._foundation_model.streaming:
@@ -85,8 +86,8 @@ class LisaTextgen(LLM):
     def _stream(
         self,
         prompt: str,
-        stop: Optional[List[str]] = None,
-        run_manager: Optional[CallbackManagerForLLMRun] = None,
+        stop: list[str] | None = None,
+        run_manager: CallbackManagerForLLMRun | None = None,
         **kwargs: Any,
     ) -> Iterator[GenerationChunk]:
         for resp in self.client.generate_stream(prompt, self._foundation_model):
@@ -112,7 +113,7 @@ class LisaOpenAIEmbeddings(BaseModel, Embeddings):
     api_token: str
     """API Token for communicating with LISA Serve. This can be a custom API token or the IdP Bearer token."""
 
-    verify: Union[bool, str]
+    verify: bool | str
     """Cert path or option for verifying SSL"""
 
     _embedding_model: OpenAIEmbeddings = PrivateAttr(default_factory=None)
@@ -131,21 +132,21 @@ class LisaOpenAIEmbeddings(BaseModel, Embeddings):
             http_client=HttpClient(verify=self.verify, timeout=120.0),
         )
 
-    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """Use OpenAI API to embed a list of documents."""
-        return cast(List[List[float]], self._embedding_model.embed_documents(texts=texts))
+        return cast(list[list[float]], self._embedding_model.embed_documents(texts=texts))
 
-    def embed_query(self, text: str) -> List[float]:
+    def embed_query(self, text: str) -> list[float]:
         """Use OpenAI API to embed a text."""
-        return cast(List[float], self._embedding_model.embed_query(text=text))
+        return cast(list[float], self._embedding_model.embed_query(text=text))
 
-    async def aembed_documents(self, texts: List[str]) -> List[List[float]]:
+    async def aembed_documents(self, texts: list[str]) -> list[list[float]]:
         """Use OpenAI API to embed a list of documents."""
-        return cast(List[List[float]], await self._embedding_model.aembed_documents(texts=texts))
+        return cast(list[list[float]], await self._embedding_model.aembed_documents(texts=texts))
 
-    async def aembed_query(self, text: str) -> List[float]:
+    async def aembed_query(self, text: str) -> list[float]:
         """Use OpenAI API to embed a text."""
-        return cast(List[float], await self._embedding_model.aembed_query(text=text))
+        return cast(list[float], await self._embedding_model.aembed_query(text=text))
 
 
 class LisaEmbeddings(BaseModel, Embeddings):
@@ -172,7 +173,7 @@ class LisaEmbeddings(BaseModel, Embeddings):
         super().__init__(**kwargs)
         self._foundation_model = self.client.describe_model(self.provider, self.model_name)
 
-    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """Compute doc embeddings using a LISA model.
 
         Parameters
@@ -187,7 +188,7 @@ class LisaEmbeddings(BaseModel, Embeddings):
         """
         return self.client.embed(texts, self._foundation_model)
 
-    def embed_query(self, text: str) -> List[float]:
+    def embed_query(self, text: str) -> list[float]:
         """Compute query embeddings using a LISA model.
 
         Parameters
@@ -202,7 +203,7 @@ class LisaEmbeddings(BaseModel, Embeddings):
         """
         return self.client.embed(text, self._foundation_model)[0]
 
-    async def aembed_query(self, text: str) -> List[float]:
+    async def aembed_query(self, text: str) -> list[float]:
         """Asynchronous compute query embeddings using a LISA model.
 
         Parameters
@@ -217,7 +218,7 @@ class LisaEmbeddings(BaseModel, Embeddings):
         """
         return (await self.client.aembed(text, self._foundation_model))[0]
 
-    async def aembed_documents(self, texts: List[str]) -> List[List[float]]:
+    async def aembed_documents(self, texts: list[str]) -> list[list[float]]:
         """Asynchronous compute doc embeddings using a LISA model.
 
         Parameters

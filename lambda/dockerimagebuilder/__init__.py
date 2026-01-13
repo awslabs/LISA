@@ -16,7 +16,7 @@ import logging
 import os
 import shlex
 import uuid
-from typing import Any, Dict
+from typing import Any
 
 import boto3
 from botocore.exceptions import ClientError
@@ -87,7 +87,7 @@ function buildTagPush() {
 """
 
 
-def handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: ignore [no-untyped-def]
+def handler(event: dict[str, Any], context) -> dict[str, Any]:  # type: ignore [no-untyped-def]
     logger.info(f"Starting Docker image builder with event: {event}")
 
     base_image = event["base_image"]

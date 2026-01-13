@@ -18,7 +18,6 @@ import logging
 import re
 import sys
 from pathlib import Path
-from typing import Optional
 
 import click
 import yaml
@@ -38,7 +37,7 @@ logger = logging.getLogger(__name__)
 def load_config_from_file(config_path: str) -> dict:
     """Load configuration from YAML file."""
     try:
-        with open(config_path, "r") as f:
+        with open(config_path) as f:
             return yaml.safe_load(f) or {}
     except FileNotFoundError:
         logger.error(f"Configuration file not found: {config_path}")
@@ -79,13 +78,13 @@ def merge_config(file_config: dict, cli_overrides: dict) -> dict:
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging")
 @click.option("--debug", is_flag=True, help="Enable debug logging")
 def main(
-    config: Optional[Path],
-    tools_dir: Optional[Path],
-    host: Optional[str],
-    port: Optional[int],
-    exit_route: Optional[str],
-    rescan_route: Optional[str],
-    cors_origins: Optional[str],
+    config: Path | None,
+    tools_dir: Path | None,
+    host: str | None,
+    port: int | None,
+    exit_route: str | None,
+    rescan_route: str | None,
+    cors_origins: str | None,
     verbose: bool,
     debug: bool,
 ) -> None:

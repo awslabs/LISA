@@ -15,7 +15,6 @@
 """Model information routes."""
 
 import logging
-from typing import List, Optional
 
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
@@ -54,7 +53,7 @@ async def describe_model(
 
 @router.get(f"/{RestApiResource.DESCRIBE_MODELS}")
 async def describe_models(
-    model_types: Optional[List[ModelType]] = Query(
+    model_types: list[ModelType] | None = Query(
         None,
         description="The types of models to list. If not provided, all types will be listed.",
         alias="modelTypes",
@@ -71,7 +70,7 @@ async def describe_models(
 
 @router.get(f"/{RestApiResource.LIST_MODELS}")
 async def list_models(
-    model_types: Optional[List[ModelType]] = Query(
+    model_types: list[ModelType] | None = Query(
         None,
         description="The types of models to list. If not provided, all types will be listed.",
         alias="modelTypes",

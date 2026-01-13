@@ -16,7 +16,7 @@
 
 import json
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 import responses
@@ -30,13 +30,13 @@ def api_url() -> str:
 
 
 @pytest.fixture
-def api_headers() -> Dict[str, str]:
+def api_headers() -> dict[str, str]:
     """API headers for testing."""
     return {"Authorization": "Bearer test-token", "Content-Type": "application/json"}
 
 
 @pytest.fixture
-def lisa_api(api_url: str, api_headers: Dict[str, str]) -> LisaApi:
+def lisa_api(api_url: str, api_headers: dict[str, str]) -> LisaApi:
     """Create a LisaApi instance for testing."""
     return LisaApi(url=api_url, headers=api_headers, verify=False)
 
@@ -63,7 +63,7 @@ def load_fixture(filename: str) -> Any:
 
 
 @pytest.fixture
-def mock_models_response() -> Dict:
+def mock_models_response() -> dict:
     """Mock response for list_models endpoint."""
     return {
         "models": [
@@ -116,7 +116,7 @@ def mock_repositories_response() -> list:
 
 
 @pytest.fixture
-def mock_collections_response() -> Dict:
+def mock_collections_response() -> dict:
     """Mock response for list_collections endpoint."""
     return {
         "collections": [
@@ -142,7 +142,7 @@ def mock_collections_response() -> Dict:
 
 
 @pytest.fixture
-def mock_documents_response() -> Dict:
+def mock_documents_response() -> dict:
     """Mock response for list_documents endpoint."""
     return {
         "documents": [

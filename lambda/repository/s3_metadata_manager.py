@@ -16,7 +16,7 @@
 
 import json
 import logging
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 from botocore.exceptions import ClientError
 
@@ -35,7 +35,7 @@ class S3MetadataManager:
         s3_client: Any,
         bucket: str,
         document_key: str,
-        metadata_content: Dict[str, Any],
+        metadata_content: dict[str, Any],
     ) -> str:
         """Upload metadata.json file to S3.
 
@@ -135,8 +135,8 @@ class S3MetadataManager:
             logger.warning(f"Failed to delete metadata file: {metadata_key}, error: {e}")
 
     def batch_upload_metadata(
-        self, s3_client: Any, bucket: str, documents: List[Tuple[str, Dict[str, Any]]]
-    ) -> List[str]:
+        self, s3_client: Any, bucket: str, documents: list[tuple[str, dict[str, Any]]]
+    ) -> list[str]:
         """Upload multiple metadata files in batch.
 
         Args:
@@ -167,7 +167,7 @@ class S3MetadataManager:
 
         return uploaded_keys
 
-    def batch_delete_metadata(self, s3_client: Any, bucket: str, document_keys: List[str]) -> int:
+    def batch_delete_metadata(self, s3_client: Any, bucket: str, document_keys: list[str]) -> int:
         """Delete multiple metadata files in batch.
 
         Args:

@@ -13,7 +13,6 @@
 #   limitations under the License.
 import logging
 import os
-from typing import Dict, List, Optional
 
 import requests  # type: ignore[import-untyped,unused-ignore]
 
@@ -24,7 +23,7 @@ from .errors import parse_error
 class RagMixin(BaseMixin):
     """Mixin for rag-related operations."""
 
-    def list_documents(self, repo_id: str, collection_id: str) -> List[Dict]:
+    def list_documents(self, repo_id: str, collection_id: str) -> list[dict]:
         """List documents in a collection.
 
         Args:
@@ -46,7 +45,7 @@ class RagMixin(BaseMixin):
         else:
             raise parse_error(response.status_code, response)
 
-    def get_document(self, repo_id: str, document_id: str) -> Dict:
+    def get_document(self, repo_id: str, document_id: str) -> dict:
         """Get a single document by ID.
 
         Args:
@@ -116,7 +115,7 @@ class RagMixin(BaseMixin):
         Returns:
             True if upload successful
         """
-        url: Optional[str] = presigned_data.get("url")
+        url: str | None = presigned_data.get("url")
         if not url:
             raise ValueError("Presigned data missing 'url' field")
 
@@ -157,20 +156,20 @@ class RagMixin(BaseMixin):
         chuck_size: int = 512,
         chuck_overlap: int = 51,
         collection_id: str | None = None,
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """Ingest a document and return job information.
 
         Returns:
             List of job dictionaries with jobId, documentId, status, s3Path
         """
         url = f"{self.url}/repository/{repo_id}/bulk"
-        params: Dict[str, str | int] = {
+        params: dict[str, str | int] = {
             "repositoryType": repo_id,
             "chunkSize": chuck_size,
             "chunkOverlap": chuck_overlap,
         }
 
-        payload: Dict[str, str | Dict | List] = {"embeddingModel": {"modelName": model_id}, "keys": [file]}
+        payload: dict[str, str | dict | list] = {"embeddingModel": {"modelName": model_id}, "keys": [file]}
         # Add collectionId to body, not query params
         if collection_id:
             payload["collectionId"] = collection_id
@@ -188,7 +187,7 @@ class RagMixin(BaseMixin):
 
     def similarity_search(
         self, repo_id: str, query: str, k: int = 3, collection_id: str | None = None, model_name: str | None = None
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """Perform similarity search.
 
         Args:
@@ -210,7 +209,7 @@ class RagMixin(BaseMixin):
         response = self._session.get(url, params=params)
         if response.status_code == 200:
             results = response.json()
-            docs: List[Dict] = results.get("docs", [])
+            docs: list[dict] = results.get("docs", [])
             for doc in docs:
                 logging.info("Document content:", doc["Document"]["page_content"])
                 logging.info("Metadata:", doc["Document"]["metadata"])

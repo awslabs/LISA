@@ -17,7 +17,7 @@
 import json
 import urllib.parse
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 
 from utilities.constants import DEFAULT_PAGE_SIZE, DEFAULT_TIME_LIMIT_HOURS, MAX_PAGE_SIZE, MIN_PAGE_SIZE
 from utilities.validation import ValidationError
@@ -29,11 +29,11 @@ class ListJobsParams:
 
     repository_id: str
     page_size: int = 10
-    last_evaluated_key: Optional[Dict[str, Any]] = None
+    last_evaluated_key: dict[str, Any] | None = None
     time_limit_hours: int = DEFAULT_TIME_LIMIT_HOURS
 
     @classmethod
-    def from_event(cls, event: Dict[str, Any]) -> "ListJobsParams":
+    def from_event(cls, event: dict[str, Any]) -> "ListJobsParams":
         """Extract and validate parameters from Lambda event."""
         path_params = event.get("pathParameters", {})
         query_params = event.get("queryStringParameters", {}) or {}
@@ -50,18 +50,18 @@ class ListJobsParams:
         )
 
     @staticmethod
-    def _parse_time_limit(query_params: Dict[str, str]) -> int:
+    def _parse_time_limit(query_params: dict[str, str]) -> int:
         """Parse time limit from query parameters."""
         return int(query_params.get("timeLimit", str(DEFAULT_TIME_LIMIT_HOURS)))
 
     @staticmethod
-    def _parse_page_size(query_params: Dict[str, str]) -> int:
+    def _parse_page_size(query_params: dict[str, str]) -> int:
         """Parse and validate page size from query parameters."""
         page_size = int(query_params.get("pageSize", str(DEFAULT_PAGE_SIZE)))
         return max(MIN_PAGE_SIZE, min(page_size, MAX_PAGE_SIZE))
 
     @staticmethod
-    def _parse_last_evaluated_key(query_params: Dict[str, str]) -> Optional[Dict[str, str]]:
+    def _parse_last_evaluated_key(query_params: dict[str, str]) -> dict[str, str] | None:
         """Parse lastEvaluatedKey with specific error handling."""
         if "lastEvaluatedKey" not in query_params:
             return None

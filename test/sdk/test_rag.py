@@ -15,7 +15,6 @@
 """Unit tests for RagMixin."""
 
 import tempfile
-from typing import Dict
 
 import pytest
 import responses
@@ -26,7 +25,7 @@ class TestRagMixin:
     """Test suite for RAG-related operations."""
 
     @responses.activate
-    def test_list_documents(self, lisa_api: LisaApi, api_url: str, mock_documents_response: Dict):
+    def test_list_documents(self, lisa_api: LisaApi, api_url: str, mock_documents_response: dict):
         """Test listing documents in a collection."""
         repo_id = "pgvector-rag"
         collection_id = "col-123"

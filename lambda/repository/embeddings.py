@@ -14,7 +14,7 @@
 
 import logging
 import os
-from typing import Any, List
+from typing import Any
 
 import boto3
 import requests
@@ -71,7 +71,7 @@ class RagEmbeddings(BaseModel):
             logger.error("Failed to initialize pipeline embeddings", exc_info=True)
             raise
 
-    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """
         Generate embeddings for a list of documents.
 
@@ -148,7 +148,7 @@ class RagEmbeddings(BaseModel):
             logger.error(f"Failed to get embeddings: {str(e)}", exc_info=True)
             raise
 
-    def embed_query(self, text: str) -> List[float]:
+    def embed_query(self, text: str) -> list[float]:
         if not text or not isinstance(text, str):
             raise ValidationError("Invalid query text")
 

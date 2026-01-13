@@ -16,7 +16,6 @@
 
 import json
 import os
-from typing import Tuple
 
 import boto3
 import click
@@ -30,7 +29,7 @@ def generate_config(filepath: str) -> None:
     """Read LiteLLM configuration and rewrite it with LISA-deployed model information."""
     ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"])
 
-    with open(filepath, "r") as fp:
+    with open(filepath) as fp:
         config_contents = yaml.safe_load(fp)
     # Get and load registered models from ParameterStore
     param_response = ssm_client.get_parameter(Name=os.environ["REGISTERED_MODELS_PS_NAME"])
@@ -85,7 +84,7 @@ def generate_config(filepath: str) -> None:
         yaml.safe_dump(config_contents, fp)
 
 
-def get_database_credentials(db_params: dict[str, str]) -> Tuple:
+def get_database_credentials(db_params: dict[str, str]) -> tuple:
     """Get database password from Secrets Manager or using IAM auth."""
 
     if "passwordSecretId" in db_params:

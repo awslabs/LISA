@@ -14,8 +14,9 @@
 
 """Annotations for function-based MCP tools."""
 
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable, cast, Dict, TypeVar
+from typing import Any, cast, TypeVar
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -62,7 +63,7 @@ def is_mcp_tool(func: Callable) -> bool:
     return hasattr(func, "_is_mcp_tool") and getattr(func, "_is_mcp_tool", False)
 
 
-def get_tool_metadata(func: Callable) -> Dict[str, Any]:
+def get_tool_metadata(func: Callable) -> dict[str, Any]:
     """Get the MCP tool metadata from a decorated function."""
     if not is_mcp_tool(func):
         raise ValueError("Function is not marked as an MCP tool")

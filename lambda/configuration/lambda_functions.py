@@ -18,7 +18,7 @@ import logging
 import os
 import time
 from decimal import Decimal
-from typing import Any, Dict
+from typing import Any
 
 import boto3
 from botocore.exceptions import ClientError
@@ -33,7 +33,7 @@ table = dynamodb.Table(os.environ["CONFIG_TABLE_NAME"])
 
 
 @api_wrapper
-def get_configuration(event: dict, context: dict) -> Dict[str, Any]:
+def get_configuration(event: dict, context: dict) -> dict[str, Any]:
     """List configuration entries by configScope from DynamoDB."""
     config_scope = event["queryStringParameters"]["configScope"]
 

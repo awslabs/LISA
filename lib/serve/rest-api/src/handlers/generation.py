@@ -15,7 +15,8 @@
 """Generation route handlers."""
 import json
 import logging
-from typing import Any, AsyncGenerator, Dict, List, Tuple
+from collections.abc import AsyncGenerator
+from typing import Any
 
 from ..utils.request_utils import handle_stream_exceptions, validate_and_prepare_llm_request
 from ..utils.resources import RestApiResource
@@ -23,7 +24,7 @@ from ..utils.resources import RestApiResource
 logger = logging.getLogger(__name__)
 
 
-async def handle_generate(request_data: Dict[str, Any]) -> Dict[str, Any]:
+async def handle_generate(request_data: dict[str, Any]) -> dict[str, Any]:
     """Handle for generate endpoint."""
     model, model_kwargs, text = await validate_and_prepare_llm_request(request_data, RestApiResource.GENERATE)
     try:
@@ -35,20 +36,20 @@ async def handle_generate(request_data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 @handle_stream_exceptions
-async def handle_generate_stream(request_data: Dict[str, Any]) -> AsyncGenerator[str, None]:
+async def handle_generate_stream(request_data: dict[str, Any]) -> AsyncGenerator[str]:
     """Handle for generate_stream endpoint."""
     model, model_kwargs, text = await validate_and_prepare_llm_request(request_data, RestApiResource.GENERATE_STREAM)
     async for response in model.generate_stream(text=text, model_kwargs=model_kwargs):
         yield f"data:{json.dumps(response.dict(exclude_none=True))}\n\n"
 
 
-def render_context(messages_list: List[Dict[str, str]]) -> str:
+def render_context(messages_list: list[dict[str, str]]) -> str:
     """Provide context string for LLM from previous messages."""
     out_str = "\n\n".join([message["content"] for message in messages_list])
     return out_str
 
 
-def parse_model_provider_names(model_string: str) -> Tuple[str, str]:
+def parse_model_provider_names(model_string: str) -> tuple[str, str]:
     """Parse out the model name and its provider name from the combined name of the two.
 
     Format is assumed to be `${model_name} (${provider_name})` and neither of the model_name or provider_name have
@@ -62,8 +63,8 @@ def parse_model_provider_names(model_string: str) -> Tuple[str, str]:
 
 @handle_stream_exceptions
 async def handle_openai_generate_stream(
-    request_data: Dict[str, Any], is_text_completion: bool = False
-) -> AsyncGenerator[str, None]:
+    request_data: dict[str, Any], is_text_completion: bool = False
+) -> AsyncGenerator[str]:
     """Handle for openai_generate_stream endpoint."""
     # map OpenAI API settings (keys) with corresponding TGI model settings (values). Any unsupported options ignored.
     request_mapping = {

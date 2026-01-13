@@ -14,7 +14,7 @@
 
 import logging
 import os
-from typing import Any, Dict
+from typing import Any
 
 import boto3
 from boto3.dynamodb.conditions import Key
@@ -375,7 +375,7 @@ def pipeline_delete_documents(job: IngestionJob) -> None:
         raise Exception(error_msg)
 
 
-def handle_pipeline_delete_event(event: Dict[str, Any], context: Any) -> None:
+def handle_pipeline_delete_event(event: dict[str, Any], context: Any) -> None:
     """Handle pipeline document deletion for S3 ObjectRemoved events."""
     # Extract and validate inputs
     logger.debug(f"Received event: {event}")

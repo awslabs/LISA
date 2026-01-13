@@ -13,6 +13,8 @@
 #   limitations under the License.
 
 """Lambda functions for managing MCP Servers in AWS DynamoDB."""
+from __future__ import annotations
+
 import json
 import logging
 import os
@@ -20,7 +22,7 @@ import re
 import uuid
 from decimal import Decimal
 from functools import reduce
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import boto3
 from boto3.dynamodb.conditions import Attr, Key
@@ -56,7 +58,7 @@ def replace_bearer_token_header(mcp_server: dict, replacement: str) -> None:
             custom_headers[key] = value.replace("{LISA_BEARER_TOKEN}", replacement)
 
 
-def _build_groups_condition(groups: List[str]) -> Any:
+def _build_groups_condition(groups: list[str]) -> Any:
     """Build DynamoDB condition for groups filtering."""
     # Servers with no groups (groups attribute doesn't exist, is null, or is empty array) should be included
     no_groups_condition = Attr("groups").not_exists() | Attr("groups").eq(None) | Attr("groups").eq([])
@@ -70,11 +72,11 @@ def _build_groups_condition(groups: List[str]) -> Any:
 
 
 def _get_mcp_servers(
-    user_id: Optional[str] = None,
-    active: Optional[bool] = None,
-    replace_bearer_token: Optional[str] = None,
-    groups: Optional[List] = None,
-) -> Dict[str, Any]:
+    user_id: str | None = None,
+    active: bool | None = None,
+    replace_bearer_token: str | None = None,
+    groups: list[str] | None = None,
+) -> dict[str, Any]:
     """Helper function to retrieve mcp servers from DynamoDB."""
     filter_expression = None
     condition = None
@@ -123,7 +125,7 @@ def _get_mcp_servers(
         condition = _build_groups_condition(groups)
         filter_expression = condition if filter_expression is None else filter_expression & condition
 
-    scan_arguments = {
+    scan_arguments: dict[str, Any] = {
         "TableName": os.environ["MCP_SERVERS_TABLE_NAME"],
         "IndexName": os.environ["MCP_SERVERS_BY_OWNER_INDEX_NAME"],
     }
@@ -188,17 +190,17 @@ def get(event: dict, context: dict) -> Any:
     raise ValueError(f"Not authorized to get {mcp_server_id}.")
 
 
-def _is_member(user_groups: List[str], prompt_groups: List[str]) -> bool:
+def _is_member(user_groups: list[str], prompt_groups: list[str]) -> bool:
     return bool(set(user_groups) & set(prompt_groups))
 
 
 def _set_can_use(
-    connections: Dict[str, Any], user_id: Optional[str] = None, groups: Optional[List[str]] = None
-) -> Dict[str, Any]:
+    connections: dict[str, Any], user_id: str | None = None, groups: list[str] | None = None
+) -> dict[str, Any]:
     if groups is None:
         groups = []
     items = connections.get("Items", [])
-    formatted_groups = [f"group:{group}" for group in groups]
+    formatted_groups: list[str] = [f"group:{group}" for group in groups]
     for item in items:
         item["canUse"] = (
             _is_member(formatted_groups, item.get("groups", []))
@@ -210,7 +212,7 @@ def _set_can_use(
 
 
 @api_wrapper
-def list(event: dict, context: dict) -> Dict[str, Any]:
+def list_mcp_servers(event: dict, context: dict) -> dict[str, Any]:
     """List mcp servers for a user from DynamoDB."""
     user_id, is_admin_user, groups = get_user_context(event)
 
@@ -275,7 +277,7 @@ def update(event: dict, context: dict) -> Any:
 
 
 @api_wrapper
-def delete(event: dict, context: dict) -> Dict[str, str]:
+def delete(event: dict, context: dict) -> dict[str, str]:
     """Logically delete a mcp server from DynamoDB."""
     user_id, is_admin_user, _ = get_user_context(event)
     mcp_server_id = get_mcp_server_id(event)
@@ -362,7 +364,7 @@ def create_hosted_mcp_server(event: dict, context: dict) -> Any:
 
 @api_wrapper
 @admin_only
-def list_hosted_mcp_servers(event: dict, context: dict) -> Dict[str, Any]:
+def list_hosted_mcp_servers(event: dict, context: dict) -> dict[str, Any]:
     """List all hosted MCP servers from DynamoDB."""
     user_id, is_admin_user, groups = get_user_context(event)
 

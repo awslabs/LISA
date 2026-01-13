@@ -17,7 +17,7 @@
 import logging
 import os
 from datetime import timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import boto3
 from models.domain_objects import (
@@ -425,7 +425,7 @@ def remove_document_from_vectorstore(doc: RagDocument) -> None:
     vector_store.delete(doc.subdocs)  # type: ignore[union-attr]
 
 
-def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
+def handle_pipeline_ingest_event(event: dict[str, Any], context: Any) -> None:
     """Handle pipeline document ingestion."""
     # Extract and validate inputs
     logger.debug(f"Received event: {event}")
@@ -457,7 +457,7 @@ def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
             data_sources = bedrock_config.get("dataSources", [])
             if data_sources:
                 first_data_source = data_sources[0]
-                collection_id_val: Optional[str] = (
+                collection_id_val: str | None = (
                     first_data_source.get("id") if isinstance(first_data_source, dict) else first_data_source.id
                 )
                 if not collection_id_val:
@@ -541,7 +541,7 @@ def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
     logger.info(f"Submitted ingestion job for document {s3_path} in repository {repository_id}")
 
 
-def handle_pipline_ingest_schedule(event: Dict[str, Any], context: Any) -> None:
+def handle_pipline_ingest_schedule(event: dict[str, Any], context: Any) -> None:
     """
     Lists all objects in the specified S3 bucket and prefix that were modified in the last 24 hours.
 
@@ -635,7 +635,7 @@ def handle_pipline_ingest_schedule(event: Dict[str, Any], context: Any) -> None:
         raise e
 
 
-def batch_texts(texts: List[str], metadatas: List[Dict], batch_size: int = 500) -> list[tuple[list[str], list[dict]]]:
+def batch_texts(texts: list[str], metadatas: list[dict], batch_size: int = 500) -> list[tuple[list[str], list[dict]]]:
     """
     Split texts and metadata into batches of specified size.
 
@@ -654,7 +654,7 @@ def batch_texts(texts: List[str], metadatas: List[Dict], batch_size: int = 500) 
     return batches
 
 
-def extract_chunk_strategy(pipeline_config: Dict) -> ChunkingStrategy:
+def extract_chunk_strategy(pipeline_config: dict) -> ChunkingStrategy:
     """
     Extract and validate chunking strategy from pipeline configuration.
 
@@ -696,7 +696,7 @@ def extract_chunk_strategy(pipeline_config: Dict) -> ChunkingStrategy:
         return FixedChunkingStrategy(size=512, overlap=51)
 
 
-def prepare_chunks(docs: List, repository_id: str, collection_id: str) -> tuple[List[str], List[Dict]]:
+def prepare_chunks(docs: list, repository_id: str, collection_id: str) -> tuple[list[str], list[dict]]:
     """Prepare texts and metadata from document chunks."""
     texts = []
     metadatas = []
@@ -709,8 +709,8 @@ def prepare_chunks(docs: List, repository_id: str, collection_id: str) -> tuple[
 
 
 def store_chunks_in_vectorstore(
-    texts: List[str], metadatas: List[Dict], repository_id: str, collection_id: str, embedding_model: str
-) -> List[str]:
+    texts: list[str], metadatas: list[dict], repository_id: str, collection_id: str, embedding_model: str
+) -> list[str]:
     """Store document chunks in vector store using repository service."""
     vs_repo = VectorStoreRepository()
     repository = vs_repo.find_repository_by_id(repository_id)

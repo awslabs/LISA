@@ -18,7 +18,7 @@
 import heapq
 import logging
 import os
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import boto3
 from models.domain_objects import (
@@ -52,9 +52,9 @@ class CollectionService:
 
     def __init__(
         self,
-        collection_repo: Optional[CollectionRepository] = None,
-        vector_store_repo: Optional[VectorStoreRepository] = None,
-        document_repo: Optional[RagDocumentRepository] = None,
+        collection_repo: CollectionRepository | None = None,
+        vector_store_repo: VectorStoreRepository | None = None,
+        document_repo: RagDocumentRepository | None = None,
     ):
         self.collection_repo = collection_repo or CollectionRepository()
         self.vector_store_repo = vector_store_repo or VectorStoreRepository()
@@ -66,7 +66,7 @@ class CollectionService:
         self,
         collection: RagCollectionConfig,
         username: str,
-        user_groups: List[str],
+        user_groups: list[str],
         is_admin: bool,
         require_write: bool = False,
     ) -> bool:
@@ -125,7 +125,7 @@ class CollectionService:
         repository_id: str,
         collection_id: str,
         username: str,
-        user_groups: List[str],
+        user_groups: list[str],
         is_admin: bool,
     ) -> RagCollectionConfig:
         """Get a collection with access control.
@@ -148,11 +148,11 @@ class CollectionService:
         self,
         repository_id: str,
         username: str,
-        user_groups: List[str],
+        user_groups: list[str],
         is_admin: bool,
         page_size: int = 20,
-        last_evaluated_key: Optional[Dict[str, str]] = None,
-    ) -> Tuple[List[RagCollectionConfig], Optional[Dict[str, str]]]:
+        last_evaluated_key: dict[str, str] | None = None,
+    ) -> tuple[list[RagCollectionConfig], dict[str, str] | None]:
         """List collections with access control.
 
         For Bedrock KB repositories, default collections are persisted to the database
@@ -189,7 +189,7 @@ class CollectionService:
         repository_id: str,
         collection_data: Any,
         username: str,
-        user_groups: List[str],
+        user_groups: list[str],
         is_admin: bool,
     ) -> RagCollectionConfig:
         """Update a collection with access control and name uniqueness validation.
@@ -259,12 +259,12 @@ class CollectionService:
     def delete_collection(
         self,
         repository_id: str,
-        collection_id: Optional[str],
-        embedding_name: Optional[str],
+        collection_id: str | None,
+        embedding_name: str | None,
         username: str,
-        user_groups: List[str],
+        user_groups: list[str],
         is_admin: bool,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Delete a collection with access control.
 
         Args:
@@ -390,7 +390,7 @@ class CollectionService:
         repository_id: str,
         collection_name: str,
         username: str,
-        user_groups: List[str],
+        user_groups: list[str],
         is_admin: bool,
     ) -> RagCollectionConfig:
         """Get a collection by name with access control."""
@@ -418,9 +418,9 @@ class CollectionService:
         repository_id: str,
         collection_id: str,
         username: str,
-        user_groups: List[str],
+        user_groups: list[str],
         is_admin: bool,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Get embedding model from collection or repository default.
 
         Args:
@@ -450,13 +450,13 @@ class CollectionService:
     def list_all_user_collections(
         self,
         username: str,
-        user_groups: List[str],
+        user_groups: list[str],
         is_admin: bool,
         page_size: int = 20,
-        pagination_token: Optional[Dict[str, Any]] = None,
-        filter_text: Optional[str] = None,
-        sort_params: Optional[SortParams] = None,
-    ) -> Tuple[List[Dict[str, Any]], Optional[Dict[str, Any]]]:
+        pagination_token: dict[str, Any] | None = None,
+        filter_text: str | None = None,
+        sort_params: SortParams | None = None,
+    ) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
         """
         List all collections user has access to across all repositories.
 
@@ -516,8 +516,8 @@ class CollectionService:
         return collections, next_token
 
     def _get_accessible_repositories(
-        self, username: str, user_groups: List[str], is_admin: bool
-    ) -> List[Dict[str, Any]]:
+        self, username: str, user_groups: list[str], is_admin: bool
+    ) -> list[dict[str, Any]]:
         """
         Get all repositories user has access to.
 
@@ -539,7 +539,7 @@ class CollectionService:
         logger.debug(f"User has access to {len(accessible)} of {len(all_repos)} repositories")
         return accessible
 
-    def _has_repository_access(self, user_groups: List[str], repository: Dict[str, Any]) -> bool:
+    def _has_repository_access(self, user_groups: list[str], repository: dict[str, Any]) -> bool:
         """
         Check if user has access to repository based on groups.
 
@@ -565,8 +565,8 @@ class CollectionService:
         return has_access
 
     def _enrich_with_repository_metadata(
-        self, collections: List[RagCollectionConfig], repositories: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+        self, collections: list[RagCollectionConfig], repositories: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         """
         Enrich collections with repository metadata.
 
@@ -598,7 +598,7 @@ class CollectionService:
 
         return enriched
 
-    def _estimate_total_collections(self, repositories: List[Dict[str, Any]]) -> int:
+    def _estimate_total_collections(self, repositories: list[dict[str, Any]]) -> int:
         """
         Estimate total number of collections across repositories.
 
@@ -621,15 +621,15 @@ class CollectionService:
 
     def _paginate_collections(
         self,
-        repositories: List[Dict[str, Any]],
+        repositories: list[dict[str, Any]],
         username: str,
-        user_groups: List[str],
+        user_groups: list[str],
         is_admin: bool,
         page_size: int,
-        pagination_token: Optional[Dict[str, Any]],
-        filter_text: Optional[str],
+        pagination_token: dict[str, Any] | None,
+        filter_text: str | None,
         sort_params: SortParams,
-    ) -> Tuple[List[Dict[str, Any]], Optional[Dict[str, Any]]]:
+    ) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
         """
         Simple pagination strategy for small-to-medium deployments.
 
@@ -664,7 +664,7 @@ class CollectionService:
                 offset = 0
 
         # Aggregate all collections from accessible repositories
-        all_collections: List[RagCollectionConfig] = []
+        all_collections: list[RagCollectionConfig] = []
 
         for repo in repositories:
             repo_id = repo["repositoryId"]
@@ -752,8 +752,8 @@ class CollectionService:
         return False
 
     def _sort_collections(
-        self, collections: List[RagCollectionConfig], sort_params: SortParams
-    ) -> List[RagCollectionConfig]:
+        self, collections: list[RagCollectionConfig], sort_params: SortParams
+    ) -> list[RagCollectionConfig]:
         """
         Sort collections by specified field and order.
 
@@ -775,15 +775,15 @@ class CollectionService:
 
     def _paginate_large_collections(
         self,
-        repositories: List[Dict[str, Any]],
+        repositories: list[dict[str, Any]],
         username: str,
-        user_groups: List[str],
+        user_groups: list[str],
         is_admin: bool,
         page_size: int,
-        pagination_token: Optional[Dict[str, Any]],
-        filter_text: Optional[str],
+        pagination_token: dict[str, Any] | None,
+        filter_text: str | None,
         sort_params: SortParams,
-    ) -> Tuple[List[Dict[str, Any]], Optional[Dict[str, Any]]]:
+    ) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
         """
         Scalable pagination strategy for large deployments.
 
@@ -931,8 +931,8 @@ class CollectionService:
         return enriched, next_token
 
     def _merge_sorted_batches(
-        self, batches: List[Dict[str, Any]], sort_by: str, sort_order: str
-    ) -> List[RagCollectionConfig]:
+        self, batches: list[dict[str, Any]], sort_by: str, sort_order: str
+    ) -> list[RagCollectionConfig]:
         """
         Merge pre-sorted batches from multiple repositories using min-heap.
 
@@ -951,7 +951,7 @@ class CollectionService:
             return []
 
         # Create heap with first item from each batch
-        heap: List[Tuple[Any, str, int, Dict[str, Any]]] = []
+        heap: list[tuple[Any, str, int, dict[str, Any]]] = []
 
         for batch in batches:
             if batch["collections"]:

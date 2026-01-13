@@ -16,7 +16,7 @@
 import json
 import logging
 import os
-from typing import Any, Dict, List
+from typing import Any
 
 import boto3
 import create_env_variables  # noqa: F401
@@ -75,14 +75,14 @@ def get_user_metrics_all(event: dict, context: dict) -> dict:
         total_mcp_tool_calls = sum(item.get("mcpToolCallsCount", 0) for item in items)
 
         # Collect all unique user groups
-        all_user_groups: Dict[str, int] = {}
+        all_user_groups: dict[str, int] = {}
         for item in items:
             if item.get("userGroups"):
                 for group in item["userGroups"]:
                     all_user_groups[group] = all_user_groups.get(group, 0) + 1
 
         # Collect all MCP tool usage across users
-        all_mcp_tool_usage: Dict[str, int] = {}
+        all_mcp_tool_usage: dict[str, int] = {}
         for item in items:
             if item.get("mcpToolUsage"):
                 for tool_name, count in item["mcpToolUsage"].items():
@@ -126,14 +126,14 @@ def count_unique_users_and_publish_metric() -> Any:
         raise
 
 
-def count_users_by_group_and_publish_metric() -> Dict[str, int]:
+def count_users_by_group_and_publish_metric() -> dict[str, int]:
     """Count users in each group and publish metrics to CloudWatch."""
     try:
         # Scan the table to get users with groups
         response = usage_metrics_table.scan(ProjectionExpression="userGroups")
 
         # Count users in each group
-        group_counts: Dict[str, int] = {}
+        group_counts: dict[str, int] = {}
         for item in response.get("Items", []):
             if "userGroups" in item:
                 for group in item["userGroups"]:
@@ -234,7 +234,7 @@ def process_metrics_sqs_event(event: dict, context: dict) -> None:
             logger.error(f"Error processing SQS message: {str(e)}")
 
 
-def count_rag_usage(messages: List[Dict[str, Any]]) -> int:
+def count_rag_usage(messages: list[dict[str, Any]]) -> int:
     """Count occurrences of 'File context:' in all human messages to determine RAG usage.
 
     Parameters:
@@ -290,7 +290,7 @@ def count_rag_usage(messages: List[Dict[str, Any]]) -> int:
     return file_context_count
 
 
-def calculate_session_metrics(messages: List[Dict[str, Any]]) -> Dict[str, Any]:
+def calculate_session_metrics(messages: list[dict[str, Any]]) -> dict[str, Any]:
     """Calculate metrics for a complete session.
 
     Parameters:
@@ -307,7 +307,7 @@ def calculate_session_metrics(messages: List[Dict[str, Any]]) -> Dict[str, Any]:
         return {"totalPrompts": 0, "ragUsage": 0, "mcpToolCallsCount": 0, "mcpToolUsage": {}}
 
     total_prompts = 0
-    mcp_tool_usage: Dict[str, int] = {}
+    mcp_tool_usage: dict[str, int] = {}
 
     # Count human messages for total prompts
     for message in messages:
@@ -356,8 +356,8 @@ def publish_metric_deltas(
     delta_prompts: int,
     delta_rag: int,
     delta_mcp_calls: int,
-    delta_mcp_usage: Dict[str, int],
-    user_groups: List[str],
+    delta_mcp_usage: dict[str, int],
+    user_groups: list[str],
 ) -> None:
     """Publish only metric deltas to CloudWatch to prevent double counting.
 
@@ -486,7 +486,7 @@ def publish_metric_deltas(
 
 
 def update_user_metrics_by_session(
-    user_id: str, session_id: str, session_metrics: Dict[str, Any], user_groups: List[str]
+    user_id: str, session_id: str, session_metrics: dict[str, Any], user_groups: list[str]
 ) -> None:
     """Update usage metrics for a given user based on session-level metrics.
 
@@ -562,7 +562,7 @@ def update_user_metrics_by_session(
             total_mcp_calls = sum(sm.get("mcpToolCallsCount", 0) for sm in all_session_metrics.values())
 
             # Aggregate MCP tool usage across all sessions
-            aggregate_mcp_usage: Dict[str, int] = {}
+            aggregate_mcp_usage: dict[str, int] = {}
             for sm in all_session_metrics.values():
                 for tool_name, count in sm.get("mcpToolUsage", {}).items():
                     aggregate_mcp_usage[tool_name] = aggregate_mcp_usage.get(tool_name, 0) + count

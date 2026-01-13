@@ -119,7 +119,7 @@ export class McpApi extends Construct {
         // Create API Lambda functions
         const apis: PythonLambdaFunction[] = [
             {
-                name: 'list',
+                name: 'list_mcp_servers',
                 resource: 'mcp_server',
                 description: 'Lists available mcp servers for user',
                 path: 'mcp-server',

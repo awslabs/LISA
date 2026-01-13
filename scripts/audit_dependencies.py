@@ -29,15 +29,14 @@ import sys
 import tomllib
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
 
 
 class DependencyAuditor:
     def __init__(self, root_path: Path):
         self.root = root_path
-        self.package_versions: Dict[str, Dict[str, Set[str]]] = defaultdict(lambda: defaultdict(set))
+        self.package_versions: dict[str, dict[str, set[str]]] = defaultdict(lambda: defaultdict(set))
 
-    def find_files(self, pattern: str, exclude_dirs: Optional[List[str]] = None) -> List[Path]:
+    def find_files(self, pattern: str, exclude_dirs: list[str] | None = None) -> list[Path]:
         """Find files matching pattern, excluding specified directories."""
         exclude_dirs = exclude_dirs or ["node_modules", ".venv", "dist", "build", ".pytest_cache"]
         files = []
@@ -48,7 +47,7 @@ class DependencyAuditor:
 
         return sorted(files)
 
-    def parse_requirement_line(self, line: str) -> Optional[Tuple[str, str]]:
+    def parse_requirement_line(self, line: str) -> tuple[str, str] | None:
         """
         Parse a requirement line into (package, version_spec).
 
@@ -196,7 +195,7 @@ class DependencyAuditor:
 
         return spec
 
-    def are_versions_compatible(self, specs: Set[str]) -> bool:
+    def are_versions_compatible(self, specs: set[str]) -> bool:
         """
         Check if version specs are compatible.
 
@@ -232,7 +231,7 @@ class DependencyAuditor:
         # If we have multiple different exact versions, incompatible
         return len(exact_versions) <= 1
 
-    def generate_report(self) -> Tuple[Dict[str, Dict[str, Set[str]]], int]:
+    def generate_report(self) -> tuple[dict[str, dict[str, set[str]]], int]:
         """
         Generate inconsistency report.
 

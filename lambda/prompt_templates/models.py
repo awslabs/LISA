@@ -14,7 +14,7 @@
 
 import uuid
 from enum import StrEnum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 from utilities.time import iso_string
@@ -34,32 +34,32 @@ class PromptTemplateModel(BaseModel):
     """
 
     # Unique identifier for the prompt template
-    id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()))
+    id: str | None = Field(default_factory=lambda: str(uuid.uuid4()))
 
     # Timestamp of when the prompt template was created
-    created: Optional[str] = Field(default_factory=iso_string)
+    created: str | None = Field(default_factory=iso_string)
 
     # Owner of the prompt template
     owner: str
 
     # List of groups that have access to the prompt template
-    groups: List[str] = Field(default=[])
+    groups: list[str] = Field(default=[])
 
     # Title of the prompt template
     title: str
 
     # Current revision number of the prompt template
-    revision: Optional[int] = Field(default=1)
+    revision: int | None = Field(default=1)
 
     # Flag indicating if this is the latest revision
-    latest: Optional[bool] = Field(default=True)
+    latest: bool | None = Field(default=True)
 
     type: PromptTemplateType = Field(default=PromptTemplateType.PERSONA)
 
     # The main body content of the prompt template
     body: str
 
-    def new_revision(self, update: Dict[str, Any]) -> "PromptTemplateModel":
+    def new_revision(self, update: dict[str, Any]) -> "PromptTemplateModel":
         """
         Create a new revision of the current prompt template.
 

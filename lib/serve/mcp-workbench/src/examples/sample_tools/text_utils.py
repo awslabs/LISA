@@ -33,7 +33,7 @@ except ImportError:
     name="text_length",
     description="Count the number of characters in a text string",
 )
-async def count_characters(text: Annotated[str, "The text string to analyze"]):
+async def count_characters(text: Annotated[str, "The text string to analyze"]) -> dict[str, int | str]:
     """Count the number of characters in the given text."""
     return {
         "text": text,
@@ -50,7 +50,7 @@ async def count_characters(text: Annotated[str, "The text string to analyze"]):
 def transform_text(
     text: Annotated[str, "The text string to transform"],
     transformation: Annotated[str, "Type of transformation: 'upper', 'lower', 'title', or 'capitalize'"],
-):
+) -> dict[str, str]:
     """Transform the given text according to the specified transformation."""
     if transformation == "upper":
         result = text.upper()
@@ -70,6 +70,6 @@ def transform_text(
     name="text_reverse",
     description="Reverse the characters in a text string",
 )
-def reverse_text(text: Annotated[str, "The text string to reverse"]):
+def reverse_text(text: Annotated[str, "The text string to reverse"]) -> dict[str, str]:
     """Reverse the characters in the given text."""
     return {"original": text, "reversed": text[::-1]}

@@ -12,8 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from datetime import datetime, timezone
-from datetime import tzinfo
+from datetime import datetime, timezone, tzinfo
 
 
 def now(tz: tzinfo = timezone.utc) -> int:

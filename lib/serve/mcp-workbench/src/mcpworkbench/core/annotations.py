@@ -15,7 +15,7 @@
 """Annotations for function-based MCP tools."""
 
 from functools import wraps
-from typing import Any, Callable, Dict, TypeVar, cast
+from typing import Any, Callable, cast, Dict, TypeVar
 
 F = TypeVar("F", bound=Callable[..., Any])
 

@@ -35,7 +35,7 @@ ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"])
 class DeleteModelHandler(BaseApiHandler):
     """Handler class for DeleteModel requests."""
 
-    def __call__(self, model_id: str) -> DeleteModelResponse:  # type: ignore
+    def __call__(self, model_id: str) -> DeleteModelResponse:
         """Kick off state machine to delete infrastructure and remove model reference from LiteLLM."""
         table_item = self._model_table.get_item(Key={"model_id": model_id}).get("Item", None)
         if not table_item:

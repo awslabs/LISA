@@ -25,7 +25,7 @@ from mcpworkbench.core.annotations import mcp_tool
 from mcpworkbench.core.base_tool import BaseTool
 
 
-def test_cli_available():
+def test_cli_available() -> bool:
     """Test that the CLI command is available."""
 
     try:
@@ -45,15 +45,15 @@ def test_cli_available():
         return False
 
 
-def test_basic_functionality():
+def test_basic_functionality() -> bool:
     """Test basic functionality works."""
     try:
 
         class TestTool(BaseTool):
-            def __init__(self):
+            def __init__(self) -> None:
                 super().__init__("test", "A test tool")
 
-            async def execute(self, **kwargs):
+            async def execute(self, **kwargs) -> dict[str, str]:
                 return {"result": "test successful"}
 
         # Test tool instantiation
@@ -64,7 +64,7 @@ def test_basic_functionality():
         # Test annotation
 
         @mcp_tool(name="test_func", description="Test function")
-        def test_func():
+        def test_func() -> str:
             return "annotated test successful"
 
         assert hasattr(test_func, "_is_mcp_tool")
@@ -77,7 +77,7 @@ def test_basic_functionality():
         return False
 
 
-def main():
+def main() -> bool:
     """Run all installation tests."""
     print("Testing MCP Workbench installation...")
     print("=" * 50)

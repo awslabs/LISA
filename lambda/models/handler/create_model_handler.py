@@ -27,7 +27,7 @@ from .utils import to_lisa_model
 class CreateModelHandler(BaseApiHandler):
     """Handler class for CreateModel requests."""
 
-    def __call__(self, create_request: CreateModelRequest) -> CreateModelResponse:  # type: ignore
+    def __call__(self, create_request: CreateModelRequest) -> CreateModelResponse:
         """Create model infrastructure and add model data to LiteLLM database."""
         model_id = create_request.modelId
 

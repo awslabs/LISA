@@ -4,7 +4,7 @@
 	deploy destroy \
 	clean cleanTypeScript cleanPython cleanCfn cleanMisc \
 	help dockerCheck dockerLogin listStacks modelCheck buildNpmModules \
-	test test-coverage test-lambda test-mcp-workbench test-sdk test-integ test-rag-integ test-metadata-integ \
+	test test-coverage test-lambda test-mcp-workbench test-sdk test-rest-api test-sdk-integ test-integ test-rag-integ test-metadata-integ \
 	lock-poetry validate-deps
 
 #################################################################################
@@ -373,7 +373,6 @@ test-coverage:
 	@echo "Running lambda tests with coverage..."
 	@pytest test/lambda --verbose \
           --cov lambda \
-          --cov lib/serve/rest-api/src \
           --cov-report term-missing \
           --cov-report html:build/coverage \
           --cov-report xml:build/coverage/coverage.xml \
@@ -386,6 +385,23 @@ test-coverage:
           --cov-report html:build/coverage-mcp \
           --cov-report xml:build/coverage-mcp/coverage.xml \
           --cov-append
+	@echo ""
+	@echo "Running SDK tests with coverage..."
+	@pytest test/sdk --verbose \
+          --cov lisa-sdk/lisapy \
+          --cov-report term-missing \
+          --cov-report html:build/coverage-sdk \
+          --cov-report xml:build/coverage-sdk/coverage.xml \
+          --cov-append
+	@echo ""
+	@echo "Running REST API tests with coverage..."
+	@pytest test/rest-api --verbose \
+          --cov lib/serve/rest-api/src \
+          --cov-report term-missing \
+          --cov-report html:build/coverage-rest-api \
+          --cov-report xml:build/coverage-rest-api/coverage.xml \
+          --cov-append
+
 
 ## Run all Python unit tests (non-integration) without coverage
 test:
@@ -394,6 +410,12 @@ test:
 	@echo ""
 	@echo "Running MCP Workbench tests..."
 	@pytest test/mcp-workbench --verbose
+	@echo ""
+	@echo "Running SDK tests..."
+	@pytest test/sdk --verbose
+	@echo ""
+	@echo "Running REST API tests..."
+	@pytest test/rest-api --verbose
 
 ## Run lambda tests only
 test-lambda:
@@ -403,9 +425,25 @@ test-lambda:
 test-mcp-workbench:
 	pytest test/mcp-workbench --verbose
 
-## Run LISA SDK integration tests only
+## Run LISA SDK unit tests only
 test-sdk:
-	pytest test/lisa-sdk --verbose
+	pytest test/sdk --verbose
+
+## Run REST API unit tests only
+test-rest-api:
+	pytest test/rest-api --verbose
+
+## Run LISA SDK integration tests (requires deployed LISA environment)
+test-sdk-integ:
+	@echo "Running LISA SDK integration tests..."
+	@echo "Note: These tests require a deployed LISA environment with:"
+	@echo "  - --api or --url argument for API endpoint"
+	@echo "  - --region, --deployment, --profile arguments"
+	@echo "  - AWS credentials configured"
+	@echo ""
+	@echo "Example: pytest test/integration/sdk --api https://your-api.com --region us-west-2"
+	@echo ""
+	pytest test/integration/sdk --verbose
 
 ## Run integration tests (Python-based)
 test-integ:

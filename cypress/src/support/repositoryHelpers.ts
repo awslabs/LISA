@@ -118,7 +118,10 @@ export function selectDataSource (index: number = 0) {
  * Skip to the create step in the repository wizard
  */
 export function skipToCreateRepository () {
-    cy.contains('button', 'Skip to Create').should('be.visible').click();
+    cy.contains('button', 'Skip to Create')
+        .scrollIntoView()
+        .should('be.visible')
+        .click();
 }
 
 /**

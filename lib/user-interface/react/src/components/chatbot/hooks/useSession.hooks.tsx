@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { v4 as uuidv4 } from 'uuid';
 import { LisaChatSession } from '@/components/types';
@@ -39,6 +39,7 @@ export const useSession = (sessionId: string, getSessionById: any) => {
     const [chatConfiguration, setChatConfiguration] = useState<IChatConfiguration>(baseConfig);
     const [selectedModel, setSelectedModel] = useState<IModel>();
     const [ragConfig, setRagConfig] = useState<RagConfig>({} as RagConfig);
+    const hasCreatedNewSessionRef = useRef(false);
 
     // Memoize the session loading function to prevent unnecessary re-renders
     const loadSession = useCallback(async (id: string) => {
@@ -90,20 +91,24 @@ export const useSession = (sessionId: string, getSessionById: any) => {
         dispatch(setBreadcrumbs([]));
 
         if (sessionId) {
+            // Reset the ref when we have a sessionId
+            hasCreatedNewSessionRef.current = false;
             // Only load if this is a different session than what we currently have
             if (internalSessionId !== sessionId) {
                 setInternalSessionId(sessionId);
                 setSession((prev) => ({ ...prev, history: [] }));
                 loadSession(sessionId);
             }
-        } else if (!internalSessionId || internalSessionId !== session.sessionId || session.history.length > 0) {
-            // Create new session when:
-            // - No sessionId provided AND no internal session yet, OR
-            // - Transitioning from an existing session (internalSessionId doesn't match current session or has history)
-            createNewSession();
+        } else {
+            // No sessionId in URL - create a new session only once
+            // Use ref to prevent creating multiple sessions if effect runs multiple times
+            if (!hasCreatedNewSessionRef.current) {
+                hasCreatedNewSessionRef.current = true;
+                createNewSession();
+            }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [sessionId, dispatch, loadSession]);
+    }, [sessionId, dispatch, loadSession, createNewSession]);
 
     return {
         session,

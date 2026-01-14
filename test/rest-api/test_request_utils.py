@@ -140,7 +140,6 @@ class TestHandleStreamExceptions:
             assert "trace" in error_data["data"]["error"]
 
 
-
 class TestGetModelAndValidator:
     """Test suite for get_model_and_validator function."""
 
@@ -170,74 +169,67 @@ class TestGetModelAndValidator:
     @pytest.mark.asyncio
     async def test_get_model_from_registry(self):
         """Test getting model from registry when not cached."""
-        with patch.dict("sys.modules", {"lisa_serve.registry": MagicMock()}):
-            from utils.request_utils import get_model_and_validator
+        from utils.request_utils import get_model_and_validator
 
-            mock_adapter = MagicMock()
-            mock_validator = MagicMock()
-            mock_model = MagicMock()
-            mock_adapter.return_value = mock_model
+        mock_adapter = MagicMock()
+        mock_validator = MagicMock()
+        mock_model = MagicMock()
+        mock_adapter.return_value = mock_model
 
-            mock_registry = MagicMock()
-            mock_registry.get_assets.return_value = {
-                "adapter": mock_adapter,
-                "validator": mock_validator,
-            }
+        mock_registry = MagicMock()
+        mock_registry.get_assets.return_value = {
+            "adapter": mock_adapter,
+            "validator": mock_validator,
+        }
 
-            with patch("utils.request_utils.get_model_assets") as mock_get_assets:
-                with patch("utils.request_utils.registry", mock_registry):
-                    with patch("utils.request_utils.get_registered_models_cache") as mock_cache:
-                        with patch("utils.request_utils.cache_model_assets") as mock_cache_assets:
-                            # Not in cache
-                            mock_get_assets.return_value = None
-                            
-                            # Cache has endpoint URL
-                            mock_cache.return_value = {
-                                "endpointUrls": {"ecs.textgen.tgi.test-model": "http://test-endpoint"}
-                            }
+        with patch("utils.request_utils.get_model_assets") as mock_get_assets:
+            with patch("utils.request_utils.get_registered_models_cache") as mock_cache:
+                with patch("utils.request_utils.cache_model_assets") as mock_cache_assets:
+                    # Not in cache
+                    mock_get_assets.return_value = None
 
-                            request_data = {
-                                "provider": "ecs.textgen.tgi",
-                                "modelName": "test-model",
-                            }
+                    # Cache has endpoint URL
+                    mock_cache.return_value = {"endpointUrls": {"ecs.textgen.tgi.test-model": "http://test-endpoint"}}
 
-                            model, validator = await get_model_and_validator(request_data)
+                    request_data = {
+                        "provider": "ecs.textgen.tgi",
+                        "modelName": "test-model",
+                    }
 
-                            assert model == mock_model
-                            assert validator == mock_validator
-                            mock_adapter.assert_called_once_with(
-                                model_name="test-model",
-                                endpoint_url="http://test-endpoint"
-                            )
-                            mock_cache_assets.assert_called_once()
+                    # Pass mock registry via dependency injection
+                    model, validator = await get_model_and_validator(request_data, registry=mock_registry)
+
+                    assert model == mock_model
+                    assert validator == mock_validator
+                    mock_adapter.assert_called_once_with(model_name="test-model", endpoint_url="http://test-endpoint")
+                    mock_cache_assets.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_get_model_endpoint_not_found(self):
         """Test error when endpoint URL not found."""
-        with patch.dict("sys.modules", {"lisa_serve.registry": MagicMock()}):
-            from utils.request_utils import get_model_and_validator
+        from utils.request_utils import get_model_and_validator
 
-            mock_registry = MagicMock()
-            mock_registry.get_assets.return_value = {
-                "adapter": MagicMock(),
-                "validator": MagicMock(),
-            }
+        mock_registry = MagicMock()
+        mock_registry.get_assets.return_value = {
+            "adapter": MagicMock(),
+            "validator": MagicMock(),
+        }
 
-            with patch("utils.request_utils.get_model_assets") as mock_get_assets:
-                with patch("utils.request_utils.registry", mock_registry):
-                    with patch("utils.request_utils.get_registered_models_cache") as mock_cache:
-                        mock_get_assets.return_value = None
-                        mock_cache.return_value = {"endpointUrls": {}}
+        with patch("utils.request_utils.get_model_assets") as mock_get_assets:
+            with patch("utils.request_utils.get_registered_models_cache") as mock_cache:
+                mock_get_assets.return_value = None
+                mock_cache.return_value = {"endpointUrls": {}}
 
-                        request_data = {
-                            "provider": "unknown",
-                            "modelName": "unknown-model",
-                        }
+                request_data = {
+                    "provider": "unknown",
+                    "modelName": "unknown-model",
+                }
 
-                        with pytest.raises(KeyError) as exc_info:
-                            await get_model_and_validator(request_data)
+                with pytest.raises(KeyError) as exc_info:
+                    # Pass mock registry via dependency injection
+                    await get_model_and_validator(request_data, registry=mock_registry)
 
-                        assert "Model endpoint URL not found" in str(exc_info.value)
+                assert "Model endpoint URL not found" in str(exc_info.value)
 
 
 class TestValidateAndPrepareLlmRequest:
@@ -268,9 +260,7 @@ class TestValidateAndPrepareLlmRequest:
                         "modelKwargs": {"temperature": 0.7},
                     }
 
-                    model, kwargs, text = await validate_and_prepare_llm_request(
-                        request_data, RestApiResource.GENERATE
-                    )
+                    model, kwargs, text = await validate_and_prepare_llm_request(request_data, RestApiResource.GENERATE)
 
                     assert model == mock_model
                     assert kwargs == {"temperature": 0.7}
@@ -326,9 +316,7 @@ class TestValidateAndPrepareLlmRequest:
                         "modelKwargs": {},
                     }
 
-                    model, kwargs, text = await validate_and_prepare_llm_request(
-                        request_data, RestApiResource.GENERATE
-                    )
+                    model, kwargs, text = await validate_and_prepare_llm_request(request_data, RestApiResource.GENERATE)
 
                     assert model == mock_model
                     assert kwargs == {}

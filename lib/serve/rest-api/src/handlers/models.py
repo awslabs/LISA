@@ -12,114 +12,116 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""Model route handlers."""
+"""Model route handlers - refactored for testability."""
 
 import logging
-import time
-from collections import defaultdict
 from typing import Any, DefaultDict
 
 from fastapi import HTTPException
-
-from ..utils.cache_manager import get_registered_models_cache
-from ..utils.resources import ModelType
+from services.model_service import ModelService
+from utils.cache_manager import get_registered_models_cache
+from utils.resources import ModelType
 
 logger = logging.getLogger(__name__)
 
 
-async def handle_list_models(model_types: list[ModelType]) -> dict[ModelType, dict[str, list[str]]]:
+def _get_model_service() -> ModelService:
+    """Factory function to create ModelService with current cache.
+
+    This allows for dependency injection in tests.
+    """
+    return ModelService(get_registered_models_cache())
+
+
+async def handle_list_models(
+    model_types: list[ModelType], model_service: ModelService | None = None
+) -> dict[ModelType, dict[str, list[str]]]:
     """Handle for list_models endpoint.
 
     Parameters
     ----------
     model_types : List[ModelType]
-        Model types to list.
-
-    registered_models_cache : Dict[str, Dict[str, Any]]
-        Registered models cache.
+        Model types to list
+    model_service : ModelService | None
+        Optional model service for dependency injection (testing)
 
     Returns
     -------
     Dict[ModelType, Dict[str, List[str]]]
-        List of model names by model type and model provider.
+        List of model names by model type and model provider
     """
-    registered_models_cache = get_registered_models_cache()
-    response = {model_type: registered_models_cache[model_type] for model_type in model_types}
-
-    return response
+    service = model_service or _get_model_service()
+    return service.list_models(model_types)
 
 
-async def handle_openai_list_models() -> dict[str, Any]:
+async def handle_openai_list_models(model_service: ModelService | None = None) -> dict[str, Any]:
     """Handle for list_models endpoint.
+
+    Parameters
+    ----------
+    model_service : ModelService | None
+        Optional model service for dependency injection (testing)
 
     Returns
     -------
-    Dict[str, Union[str, Any]
-        OpenAI-compatible response object to list Models. This only returns Text Generation models.
+    Dict[str, Any]
+        OpenAI-compatible response object to list Models
     """
-    registered_models_cache = get_registered_models_cache()
-
-    model_payload: list[dict[str, Any]] = []
-    for provider, models in registered_models_cache[ModelType.TEXTGEN].items():
-        model_payload.extend(
-            {"id": f"{model} ({provider})", "object": "model", "created": int(time.time()), "owned_by": "LISA"}
-            for model in models
-        )
-
-    response = {"data": model_payload, "object": "list"}
-    return response
+    service = model_service or _get_model_service()
+    return service.list_models_openai_format()
 
 
-async def handle_describe_model(provider: str, model_name: str) -> dict[str, Any]:
+async def handle_describe_model(
+    provider: str, model_name: str, model_service: ModelService | None = None
+) -> dict[str, Any]:
     """Handle for describe_model endpoint.
 
     Parameters
     ----------
     provider : str
-        Model provider name.
-
+        Model provider name
     model_name : str
-        Model name.
+        Model name
+    model_service : ModelService | None
+        Optional model service for dependency injection (testing)
 
     Returns
     -------
     Dict[str, Any]
-        Model metadata.
+        Model metadata
+
+    Raises
+    ------
+    HTTPException
+        If model metadata not found
     """
-    model_key = f"{provider}.{model_name}"
-    registered_models_cache = get_registered_models_cache()
-    metadata = registered_models_cache["metadata"].get(model_key)
+    service = model_service or _get_model_service()
+    metadata = service.get_model_metadata(provider, model_name)
+
     if not metadata:
         error_message = f"Metadata for provider {provider} and model {model_name} not found."
         logger.error(error_message, extra={"event": "handle_describe_model", "status": "ERROR"})
-        raise HTTPException(status_code=404, message=error_message)
+        raise HTTPException(status_code=404, detail=error_message)
 
-    return metadata  # type: ignore
+    return metadata
 
 
-async def handle_describe_models(model_types: list[ModelType]) -> DefaultDict[str, DefaultDict[str, dict[str, Any]]]:
+async def handle_describe_models(
+    model_types: list[ModelType], model_service: ModelService | None = None
+) -> DefaultDict[str, DefaultDict[str, dict[str, Any]]]:
     """Handle for describe_models endpoint.
 
     Parameters
     ----------
     model_types : List[ModelType]
-        Model types to list.
+        Model types to list
+    model_service : ModelService | None
+        Optional model service for dependency injection (testing)
 
     Returns
     -------
     DefaultDict[str, DefaultDict[str, Dict[str, Any]]]
-        Model metadata by model type, model provider, and model name.
+        Model metadata by model type, model provider, and model name
     """
-    registered_models = await handle_list_models(model_types)
-    registered_models_cache = get_registered_models_cache()
-    response: DefaultDict[str, DefaultDict[str, dict[str, Any]]] = defaultdict(lambda: defaultdict(dict))
-
-    for model_type, providers in registered_models.items():
-        response[model_type] = {}  # type: ignore
-        providers = providers or {}
-        for provider, model_names in providers.items():
-            response[model_type][provider] = [
-                registered_models_cache["metadata"][f"{provider}.{model_name}"] for model_name in model_names
-            ]  # type: ignore
-
-    return response
+    service = model_service or _get_model_service()
+    return service.describe_models(model_types)

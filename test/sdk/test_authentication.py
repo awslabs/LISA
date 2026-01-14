@@ -31,7 +31,7 @@ from lisapy.authentication import get_cognito_token
 def test_get_cognito_token_success(mock_getpass, mock_boto_client):
     """Test getting Cognito token successfully."""
     mock_getpass.return_value = "test-password"
-    
+
     mock_cognito = MagicMock()
     mock_cognito.initiate_auth.return_value = {
         "AuthenticationResult": {
@@ -41,12 +41,12 @@ def test_get_cognito_token_success(mock_getpass, mock_boto_client):
         }
     }
     mock_boto_client.return_value = mock_cognito
-    
+
     result = get_cognito_token("test-client-id", "test-user", "us-east-1")
-    
+
     assert "AuthenticationResult" in result
     assert result["AuthenticationResult"]["AccessToken"] == "access-token"
-    
+
     mock_cognito.initiate_auth.assert_called_once_with(
         AuthFlow="USER_PASSWORD_AUTH",
         ClientId="test-client-id",
@@ -62,13 +62,13 @@ def test_get_cognito_token_success(mock_getpass, mock_boto_client):
 def test_get_cognito_token_default_region(mock_getpass, mock_boto_client):
     """Test getting Cognito token with default region."""
     mock_getpass.return_value = "test-password"
-    
+
     mock_cognito = MagicMock()
     mock_cognito.initiate_auth.return_value = {"AuthenticationResult": {}}
     mock_boto_client.return_value = mock_cognito
-    
+
     get_cognito_token("test-client-id", "test-user")
-    
+
     mock_boto_client.assert_called_once_with("cognito-idp", region_name="us-east-1")
 
 
@@ -77,13 +77,13 @@ def test_get_cognito_token_default_region(mock_getpass, mock_boto_client):
 def test_get_cognito_token_custom_region(mock_getpass, mock_boto_client):
     """Test getting Cognito token with custom region."""
     mock_getpass.return_value = "test-password"
-    
+
     mock_cognito = MagicMock()
     mock_cognito.initiate_auth.return_value = {"AuthenticationResult": {}}
     mock_boto_client.return_value = mock_cognito
-    
+
     get_cognito_token("test-client-id", "test-user", "eu-west-1")
-    
+
     mock_boto_client.assert_called_once_with("cognito-idp", region_name="eu-west-1")
 
 
@@ -92,12 +92,12 @@ def test_get_cognito_token_custom_region(mock_getpass, mock_boto_client):
 def test_get_cognito_token_auth_failure(mock_getpass, mock_boto_client):
     """Test getting Cognito token with authentication failure."""
     mock_getpass.return_value = "wrong-password"
-    
+
     mock_cognito = MagicMock()
     mock_cognito.initiate_auth.side_effect = Exception("NotAuthorizedException")
     mock_boto_client.return_value = mock_cognito
-    
+
     with pytest.raises(Exception) as exc_info:
         get_cognito_token("test-client-id", "test-user")
-    
+
     assert "NotAuthorizedException" in str(exc_info.value)

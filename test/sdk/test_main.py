@@ -16,7 +16,7 @@
 
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -141,10 +141,7 @@ class TestLisaLlmGenerate:
 
         llm = LisaLlm(url="https://api.example.com")
         model = FoundationModel(
-            provider="test-provider",
-            model_name="test-model",
-            model_type=ModelType.TEXTGEN,
-            model_kwargs=None
+            provider="test-provider", model_name="test-model", model_type=ModelType.TEXTGEN, model_kwargs=None
         )
 
         mock_response = Mock()
@@ -170,10 +167,7 @@ class TestLisaLlmGenerate:
         llm = LisaLlm(url="https://api.example.com")
         kwargs = ModelKwargs(temperature=0.7, max_new_tokens=100)
         model = FoundationModel(
-            provider="test-provider",
-            model_name="test-model",
-            model_type=ModelType.TEXTGEN,
-            model_kwargs=kwargs
+            provider="test-provider", model_name="test-model", model_type=ModelType.TEXTGEN, model_kwargs=kwargs
         )
 
         mock_response = Mock()
@@ -200,10 +194,7 @@ class TestLisaLlmGenerate:
 
         llm = LisaLlm(url="https://api.example.com")
         model = FoundationModel(
-            provider="test-provider",
-            model_name="test-model",
-            model_type=ModelType.TEXTGEN,
-            model_kwargs=None
+            provider="test-provider", model_name="test-model", model_type=ModelType.TEXTGEN, model_kwargs=None
         )
 
         mock_response = Mock()
@@ -225,17 +216,12 @@ class TestLisaLlmEmbed:
 
         llm = LisaLlm(url="https://api.example.com")
         model = FoundationModel(
-            provider="test-provider",
-            model_name="embed-model",
-            model_type=ModelType.EMBEDDING,
-            model_kwargs=None
+            provider="test-provider", model_name="embed-model", model_type=ModelType.EMBEDDING, model_kwargs=None
         )
 
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "embeddings": [[0.1, 0.2, 0.3]]
-        }
+        mock_response.json.return_value = {"embeddings": [[0.1, 0.2, 0.3]]}
 
         with patch.object(llm._session, "post", return_value=mock_response):
             embeddings = llm.embed("test text", model)
@@ -250,17 +236,12 @@ class TestLisaLlmEmbed:
 
         llm = LisaLlm(url="https://api.example.com")
         model = FoundationModel(
-            provider="test-provider",
-            model_name="embed-model",
-            model_type=ModelType.EMBEDDING,
-            model_kwargs=None
+            provider="test-provider", model_name="embed-model", model_type=ModelType.EMBEDDING, model_kwargs=None
         )
 
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "embeddings": [[0.1, 0.2], [0.3, 0.4]]
-        }
+        mock_response.json.return_value = {"embeddings": [[0.1, 0.2], [0.3, 0.4]]}
 
         with patch.object(llm._session, "post", return_value=mock_response):
             embeddings = llm.embed(["text1", "text2"], model)
@@ -276,10 +257,7 @@ class TestLisaLlmEmbed:
 
         llm = LisaLlm(url="https://api.example.com")
         model = FoundationModel(
-            provider="test-provider",
-            model_name="embed-model",
-            model_type=ModelType.EMBEDDING,
-            model_kwargs=None
+            provider="test-provider", model_name="embed-model", model_type=ModelType.EMBEDDING, model_kwargs=None
         )
 
         mock_response = Mock()
@@ -301,10 +279,7 @@ class TestLisaLlmGenerateStream:
 
         llm = LisaLlm(url="https://api.example.com")
         model = FoundationModel(
-            provider="test-provider",
-            model_name="test-model",
-            model_type=ModelType.TEXTGEN,
-            model_kwargs=None
+            provider="test-provider", model_name="test-model", model_type=ModelType.TEXTGEN, model_kwargs=None
         )
 
         mock_response = Mock()
@@ -332,10 +307,7 @@ class TestLisaLlmGenerateStream:
 
         llm = LisaLlm(url="https://api.example.com")
         model = FoundationModel(
-            provider="test-provider",
-            model_name="test-model",
-            model_type=ModelType.TEXTGEN,
-            model_kwargs=None
+            provider="test-provider", model_name="test-model", model_type=ModelType.TEXTGEN, model_kwargs=None
         )
 
         mock_response = Mock()

@@ -39,10 +39,7 @@ from generate_litellm_config import get_database_credentials
 def temp_config_file():
     """Create a temporary config file."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
-        config = {
-            "db_key": "test-master-key",
-            "model_list": []
-        }
+        config = {"db_key": "test-master-key", "model_list": []}
         yaml.dump(config, f)
         yield Path(f.name)
     Path(f.name).unlink(missing_ok=True)
@@ -55,18 +52,16 @@ def test_get_database_credentials_with_secret():
         "passwordSecretId": "test-secret-id",
         "dbHost": "db.example.com",
         "dbPort": "5432",
-        "dbName": "testdb"
+        "dbName": "testdb",
     }
-    
+
     with patch("generate_litellm_config.boto3.client") as mock_boto:
         mock_secrets = MagicMock()
-        mock_secrets.get_secret_value.return_value = {
-            "SecretString": json.dumps({"password": "test-password-123"})
-        }
+        mock_secrets.get_secret_value.return_value = {"SecretString": json.dumps({"password": "test-password-123"})}
         mock_boto.return_value = mock_secrets
-        
+
         username, password = get_database_credentials(db_params)
-        
+
         assert username == "testuser"
         assert password == "test-password-123"
         mock_secrets.get_secret_value.assert_called_once_with(SecretId="test-secret-id")
@@ -74,19 +69,15 @@ def test_get_database_credentials_with_secret():
 
 def test_get_database_credentials_with_iam():
     """Test getting database credentials using IAM auth."""
-    db_params = {
-        "dbHost": "db.example.com",
-        "dbPort": "5432",
-        "dbName": "testdb"
-    }
-    
+    db_params = {"dbHost": "db.example.com", "dbPort": "5432", "dbName": "testdb"}
+
     with patch("generate_litellm_config.get_lambda_role_name") as mock_role:
         with patch("generate_litellm_config.generate_auth_token") as mock_token:
             mock_role.return_value = "MyLambdaRole"
             mock_token.return_value = "iam-auth-token"
-            
+
             username, password = get_database_credentials(db_params)
-            
+
             assert username == "MyLambdaRole"
             assert password == "iam-auth-token"
             mock_token.assert_called_once_with("db.example.com", "5432", "MyLambdaRole")
@@ -99,9 +90,9 @@ def test_get_database_credentials_prefers_secret():
         "passwordSecretId": "test-secret-id",
         "dbHost": "db.example.com",
         "dbPort": "5432",
-        "dbName": "testdb"
+        "dbName": "testdb",
     }
-    
+
     with patch("generate_litellm_config.boto3.client") as mock_boto:
         with patch("generate_litellm_config.get_lambda_role_name") as mock_role:
             with patch("generate_litellm_config.generate_auth_token") as mock_token:
@@ -110,9 +101,9 @@ def test_get_database_credentials_prefers_secret():
                     "SecretString": json.dumps({"password": "secret-password"})
                 }
                 mock_boto.return_value = mock_secrets
-                
+
                 username, password = get_database_credentials(db_params)
-                
+
                 # Should use Secrets Manager, not IAM
                 assert username == "testuser"
                 assert password == "secret-password"

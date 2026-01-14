@@ -1083,7 +1083,6 @@ async def test_exception_handlers():
         token_not_found_handler,
         unauthorized_handler,
         user_error_handler,
-        validation_exception_handler,
     )
 
     mock_request = MagicMock()

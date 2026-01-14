@@ -400,6 +400,7 @@ test-coverage:
 	@echo "Running REST API tests with coverage..."
 	@pytest test/rest-api --verbose \
           --cov lib/serve/rest-api/src \
+          --cov-config lib/serve/rest-api/.coveragerc \
           --cov-report term-missing \
           --cov-report html:build/coverage-rest-api \
           --cov-report xml:build/coverage-rest-api/coverage.xml \

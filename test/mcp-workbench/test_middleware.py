@@ -16,7 +16,7 @@
 
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -45,8 +45,10 @@ def mock_request():
 @pytest.fixture
 def mock_call_next():
     """Create a mock call_next function."""
+
     async def call_next(request):
         return Mock(status_code=200)
+
     return call_next
 
 
@@ -74,10 +76,10 @@ async def test_exit_route_middleware_exit_path(mock_app, mock_request):
     """Test ExitRouteMiddleware handles exit path."""
     middleware = ExitRouteMiddleware(mock_app, "/exit")
     mock_request.url.path = "/exit"
-    
+
     with patch.object(middleware, "_delayed_exit", new_callable=AsyncMock):
         response = await middleware.dispatch(mock_request, AsyncMock())
-        
+
         assert response.status_code == 200
         body = response.body.decode()
         assert "shutting down" in body.lower()
@@ -88,9 +90,9 @@ async def test_exit_route_middleware_normal_path(mock_app, mock_request, mock_ca
     """Test ExitRouteMiddleware passes through normal requests."""
     middleware = ExitRouteMiddleware(mock_app, "/exit")
     mock_request.url.path = "/other"
-    
+
     response = await middleware.dispatch(mock_request, mock_call_next)
-    
+
     assert response.status_code == 200
 
 
@@ -99,10 +101,10 @@ async def test_exit_route_middleware_trailing_slash(mock_app, mock_request):
     """Test ExitRouteMiddleware handles trailing slashes."""
     middleware = ExitRouteMiddleware(mock_app, "/exit/")
     mock_request.url.path = "/exit"
-    
+
     with patch.object(middleware, "_delayed_exit", new_callable=AsyncMock):
         response = await middleware.dispatch(mock_request, AsyncMock())
-        
+
         assert response.status_code == 200
 
 
@@ -111,7 +113,7 @@ async def test_rescan_middleware_rescan_path(mock_app, mock_request):
     """Test RescanMiddleware handles rescan path."""
     mock_tool_discovery = Mock()
     mock_tool_registry = Mock()
-    
+
     # Create mock rescan result
     mock_rescan_result = Mock()
     mock_rescan_result.tools_added = ["tool1"]
@@ -119,15 +121,15 @@ async def test_rescan_middleware_rescan_path(mock_app, mock_request):
     mock_rescan_result.tools_removed = []
     mock_rescan_result.total_tools = 2
     mock_rescan_result.errors = []
-    
+
     mock_tool_discovery.rescan_tools.return_value = mock_rescan_result
     mock_tool_discovery.discover_tools.return_value = []
-    
+
     middleware = RescanMiddleware(mock_app, "/rescan", mock_tool_discovery, mock_tool_registry)
     mock_request.url.path = "/rescan"
-    
+
     response = await middleware.dispatch(mock_request, AsyncMock())
-    
+
     assert response.status_code == 200
     body = response.body.decode()
     assert "success" in body
@@ -138,12 +140,12 @@ async def test_rescan_middleware_normal_path(mock_app, mock_request, mock_call_n
     """Test RescanMiddleware passes through normal requests."""
     mock_tool_discovery = Mock()
     mock_tool_registry = Mock()
-    
+
     middleware = RescanMiddleware(mock_app, "/rescan", mock_tool_discovery, mock_tool_registry)
     mock_request.url.path = "/other"
-    
+
     response = await middleware.dispatch(mock_request, mock_call_next)
-    
+
     assert response.status_code == 200
 
 
@@ -152,14 +154,14 @@ async def test_rescan_middleware_error(mock_app, mock_request):
     """Test RescanMiddleware handles errors during rescan."""
     mock_tool_discovery = Mock()
     mock_tool_registry = Mock()
-    
+
     mock_tool_discovery.rescan_tools.side_effect = Exception("Rescan failed")
-    
+
     middleware = RescanMiddleware(mock_app, "/rescan", mock_tool_discovery, mock_tool_registry)
     mock_request.url.path = "/rescan"
-    
+
     response = await middleware.dispatch(mock_request, AsyncMock())
-    
+
     assert response.status_code == 500
     body = response.body.decode()
     assert "error" in body.lower()
@@ -170,21 +172,21 @@ async def test_rescan_middleware_updates_registry(mock_app, mock_request):
     """Test RescanMiddleware updates tool registry after rescan."""
     mock_tool_discovery = Mock()
     mock_tool_registry = Mock()
-    
+
     mock_rescan_result = Mock()
     mock_rescan_result.tools_added = []
     mock_rescan_result.tools_updated = []
     mock_rescan_result.tools_removed = []
     mock_rescan_result.total_tools = 0
     mock_rescan_result.errors = []
-    
+
     mock_tool_discovery.rescan_tools.return_value = mock_rescan_result
     mock_tool_discovery.discover_tools.return_value = []
-    
+
     middleware = RescanMiddleware(mock_app, "/rescan", mock_tool_discovery, mock_tool_registry)
     mock_request.url.path = "/rescan"
-    
+
     await middleware.dispatch(mock_request, AsyncMock())
-    
+
     # Verify registry was updated
     mock_tool_registry.update_registry.assert_called_once()

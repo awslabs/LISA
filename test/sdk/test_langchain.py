@@ -14,14 +14,12 @@
 
 """Unit tests for LISA SDK langchain adapters.
 
-Note: These are simplified tests. Full integration tests with real LisaLlm 
+Note: These are simplified tests. Full integration tests with real LisaLlm
 instances are better suited for integration testing due to Pydantic validation complexity.
 """
 
 import sys
 from pathlib import Path
-
-import pytest
 
 # Add SDK to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "lisa-sdk"))
@@ -30,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "lisa-sdk"))
 def test_langchain_imports():
     """Test that langchain module imports successfully."""
     from lisapy.langchain import LisaEmbeddings, LisaOpenAIEmbeddings, LisaTextgen
-    
+
     assert LisaTextgen is not None
     assert LisaOpenAIEmbeddings is not None
     assert LisaEmbeddings is not None
@@ -39,7 +37,7 @@ def test_langchain_imports():
 def test_lisa_textgen_llm_type():
     """Test LisaTextgen has correct LLM type attribute."""
     from lisapy.langchain import LisaTextgen
-    
+
     # Check class has the _llm_type method
     assert hasattr(LisaTextgen, "_llm_type")
 
@@ -47,7 +45,7 @@ def test_lisa_textgen_llm_type():
 def test_lisa_embeddings_has_embed_methods():
     """Test LisaEmbeddings has required embedding methods."""
     from lisapy.langchain import LisaEmbeddings
-    
+
     assert hasattr(LisaEmbeddings, "embed_documents")
     assert hasattr(LisaEmbeddings, "embed_query")
 
@@ -55,7 +53,7 @@ def test_lisa_embeddings_has_embed_methods():
 def test_lisa_openai_embeddings_has_embed_methods():
     """Test LisaOpenAIEmbeddings has required embedding methods."""
     from lisapy.langchain import LisaOpenAIEmbeddings
-    
+
     assert hasattr(LisaOpenAIEmbeddings, "embed_documents")
     assert hasattr(LisaOpenAIEmbeddings, "embed_query")
     assert hasattr(LisaOpenAIEmbeddings, "aembed_documents")

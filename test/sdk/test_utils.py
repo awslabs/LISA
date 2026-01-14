@@ -16,7 +16,6 @@
 
 import os
 import sys
-import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -32,9 +31,9 @@ from lisapy.utils import get_cert_path
 def test_get_cert_path_no_cert_arn():
     """Test get_cert_path with no SSL cert ARN."""
     mock_iam_client = MagicMock()
-    
+
     result = get_cert_path(mock_iam_client)
-    
+
     assert result is True
     mock_iam_client.get_server_certificate.assert_not_called()
 
@@ -43,9 +42,9 @@ def test_get_cert_path_no_cert_arn():
 def test_get_cert_path_empty_cert_arn():
     """Test get_cert_path with empty SSL cert ARN."""
     mock_iam_client = MagicMock()
-    
+
     result = get_cert_path(mock_iam_client)
-    
+
     assert result is True
 
 
@@ -53,9 +52,9 @@ def test_get_cert_path_empty_cert_arn():
 def test_get_cert_path_acm_cert():
     """Test get_cert_path with ACM certificate."""
     mock_iam_client = MagicMock()
-    
+
     result = get_cert_path(mock_iam_client)
-    
+
     assert result is True
     mock_iam_client.get_server_certificate.assert_not_called()
 
@@ -69,23 +68,21 @@ def test_get_cert_path_iam_cert():
             "CertificateBody": "-----BEGIN CERTIFICATE-----\ntest-cert-body\n-----END CERTIFICATE-----"
         }
     }
-    
+
     result = get_cert_path(mock_iam_client)
-    
+
     assert isinstance(result, str)
     assert os.path.exists(result)
-    
+
     # Verify cert was written to file
-    with open(result, "r") as f:
+    with open(result) as f:
         content = f.read()
         assert "BEGIN CERTIFICATE" in content
-    
+
     # Cleanup
     os.unlink(result)
-    
-    mock_iam_client.get_server_certificate.assert_called_once_with(
-        ServerCertificateName="my-cert"
-    )
+
+    mock_iam_client.get_server_certificate.assert_called_once_with(ServerCertificateName="my-cert")
 
 
 @patch.dict(os.environ, {"RESTAPI_SSL_CERT_ARN": "arn:aws:iam::123456789012:server-certificate/test-cert"})
@@ -93,19 +90,15 @@ def test_get_cert_path_cert_content():
     """Test get_cert_path writes correct certificate content."""
     mock_iam_client = MagicMock()
     cert_body = "-----BEGIN CERTIFICATE-----\nMIIC...\n-----END CERTIFICATE-----"
-    mock_iam_client.get_server_certificate.return_value = {
-        "ServerCertificate": {
-            "CertificateBody": cert_body
-        }
-    }
-    
+    mock_iam_client.get_server_certificate.return_value = {"ServerCertificate": {"CertificateBody": cert_body}}
+
     result = get_cert_path(mock_iam_client)
-    
+
     # Verify file content
-    with open(result, "r") as f:
+    with open(result) as f:
         content = f.read()
         assert content == cert_body
-    
+
     # Cleanup
     os.unlink(result)
 
@@ -114,19 +107,13 @@ def test_get_cert_path_cert_content():
 def test_get_cert_path_extracts_cert_name():
     """Test get_cert_path correctly extracts certificate name from ARN."""
     mock_iam_client = MagicMock()
-    mock_iam_client.get_server_certificate.return_value = {
-        "ServerCertificate": {
-            "CertificateBody": "test-cert"
-        }
-    }
-    
+    mock_iam_client.get_server_certificate.return_value = {"ServerCertificate": {"CertificateBody": "test-cert"}}
+
     result = get_cert_path(mock_iam_client)
-    
+
     # Verify correct cert name was used
-    mock_iam_client.get_server_certificate.assert_called_once_with(
-        ServerCertificateName="cert-name"
-    )
-    
+    mock_iam_client.get_server_certificate.assert_called_once_with(ServerCertificateName="cert-name")
+
     # Cleanup
     if isinstance(result, str) and os.path.exists(result):
         os.unlink(result)
@@ -137,8 +124,8 @@ def test_get_cert_path_iam_error():
     """Test get_cert_path handles IAM errors."""
     mock_iam_client = MagicMock()
     mock_iam_client.get_server_certificate.side_effect = Exception("IAM error")
-    
+
     with pytest.raises(Exception) as exc_info:
         get_cert_path(mock_iam_client)
-    
+
     assert "IAM error" in str(exc_info.value)

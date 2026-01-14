@@ -16,6 +16,9 @@
 
 import sys
 from pathlib import Path
+from unittest.mock import patch
+
+import pytest
 
 # Add REST API src to path
 rest_api_src = Path(__file__).parent.parent.parent / "lib" / "serve" / "rest-api" / "src"
@@ -25,28 +28,44 @@ sys.path.insert(0, str(rest_api_src))
 class TestHealthCheck:
     """Test suite for health check endpoint."""
 
-    def test_health_check_success(self, mock_env_vars):
+    @pytest.mark.asyncio
+    async def test_health_check_success(self, mock_env_vars):
         """Test successful health check."""
-        # Health check requires full app context - test the logic directly
-        assert "AWS_REGION" in mock_env_vars
-        assert "LOG_LEVEL" in mock_env_vars
+        from api.routes import health_check
 
-    def test_health_check_missing_env_vars(self, mock_env_vars):
+        response = await health_check()
+
+        assert response.status_code == 200
+        assert b'"status":"OK"' in response.body
+
+    @pytest.mark.asyncio
+    async def test_health_check_missing_env_vars(self, monkeypatch):
         """Test health check with missing environment variables."""
-        # Test the logic that would be in health check
-        required_vars = ["AWS_REGION", "LOG_LEVEL"]
-        mock_env_vars.pop("AWS_REGION")
-        missing_vars = [var for var in required_vars if var not in mock_env_vars]
+        from api.routes import health_check
 
-        assert "AWS_REGION" in missing_vars
+        # Set only one required var
+        monkeypatch.setenv("LOG_LEVEL", "INFO")
+        monkeypatch.delenv("AWS_REGION", raising=False)
 
-    def test_health_check_exception(self):
-        """Test health check with exception."""
-        # Test exception handling logic
-        try:
-            raise Exception("Test error")
-        except Exception as e:
-            assert str(e) == "Test error"
+        response = await health_check()
+
+        assert response.status_code == 503
+        assert b'"status":"UNHEALTHY"' in response.body
+        assert b'"missing_env_vars"' in response.body
+
+    @pytest.mark.asyncio
+    async def test_health_check_exception(self, mock_env_vars):
+        """Test health check with exception during validation."""
+        from api.routes import health_check
+
+        with patch("api.routes.os.getenv") as mock_getenv:
+            mock_getenv.side_effect = Exception("Test error")
+
+            response = await health_check()
+
+            assert response.status_code == 503
+            assert b'"status":"UNHEALTHY"' in response.body
+            assert b'"error"' in response.body
 
 
 class TestRouterConfiguration:

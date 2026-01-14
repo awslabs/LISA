@@ -248,6 +248,7 @@ export enum ModelFeatures {
     SUMMARIZATION = 'summarization',
     IMAGE_INPUT = 'imageInput',
     TOOL_CALLS = 'toolCalls',
+    REASONING = 'reasoning',
 }
 
 /**

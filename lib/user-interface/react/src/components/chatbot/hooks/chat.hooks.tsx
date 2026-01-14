@@ -58,6 +58,7 @@ export const useChatGeneration = ({
     const [isStreaming, setIsStreaming] = useState(false);
     const stopRequested = useRef(false);
     const modelSupportsTools = selectedModel?.features?.filter((feature) => feature.name === ModelFeatures.TOOL_CALLS)?.length && true;
+    const modelSupportsReasoning = selectedModel?.features?.find((feature) => feature.name === ModelFeatures.REASONING) ? true : false;
 
     const createOpenAiClient = useCallback((streaming: boolean) => {
         const modelConfig = {
@@ -205,7 +206,7 @@ export const useChatGeneration = ({
                     }));
 
                     try {
-                        const stream = await llmClient.stream(messages, { tools: modelSupportsTools ? openAiTools : undefined });
+                        const stream = await llmClient.stream(messages, { tools: modelSupportsTools ? openAiTools : undefined, ...(modelSupportsReasoning ? { reasoning: { effort: chatConfiguration.sessionConfiguration.modelArgs.reasoning_effort } } : {}) });
                         const resp: string[] = [];
                         const toolCallsAccumulator: { [index: number]: any } = {};
 
@@ -408,7 +409,7 @@ export const useChatGeneration = ({
                         throw exception;
                     }
                 } else {
-                    const response = await llmClient.invoke(messages, { tools: modelSupportsTools ? openAiTools : undefined });
+                    const response = await llmClient.invoke(messages, { tools: modelSupportsTools ? openAiTools : undefined, ...(modelSupportsReasoning ? { reasoning: { effort: chatConfiguration.sessionConfiguration.modelArgs.reasoning_effort } } : {}) });
                     const content = response.content as string;
                     const usage = (response.response_metadata as any)?.tokenUsage;
 

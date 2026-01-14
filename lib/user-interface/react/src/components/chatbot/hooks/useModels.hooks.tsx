@@ -17,6 +17,7 @@
 import { useMemo } from 'react';
 import { IModel, ModelType } from '@/shared/model/model-management.model';
 import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
+import { ModelFeatures } from '@/components/types';
 
 export const useModels = (
     allModels: IModel[] | undefined,
@@ -52,6 +53,31 @@ export const useModels = (
                         sessionConfiguration: {
                             ...chatConfiguration.sessionConfiguration,
                             streaming: true
+                        }
+                    });
+                }
+                if (model.features?.find((feature) => feature.name === ModelFeatures.REASONING) && !chatConfiguration.sessionConfiguration.modelArgs.reasoning_effort) {
+                    setChatConfiguration({
+                        ...chatConfiguration,
+                        sessionConfiguration: {
+                            ...chatConfiguration.sessionConfiguration,
+                            modelArgs :{
+                                ...chatConfiguration.sessionConfiguration.modelArgs,
+                                reasoning_effort: 'medium',
+                                top_p: 0.95
+                            }
+                        }
+                    });
+                } else if (!model.features?.find((feature) => feature.name === ModelFeatures.REASONING) && chatConfiguration.sessionConfiguration.modelArgs.reasoning_effort) {
+                    setChatConfiguration({
+                        ...chatConfiguration,
+                        sessionConfiguration: {
+                            ...chatConfiguration.sessionConfiguration,
+                            modelArgs: {
+                                ...chatConfiguration.sessionConfiguration.modelArgs,
+                                reasoning_effort: null,
+                                top_p: 0.01
+                            }
                         }
                     });
                 }

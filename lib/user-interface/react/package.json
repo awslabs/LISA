@@ -94,6 +94,8 @@
     "jsdom": "^27.3.0",
     "linkify-it": "^5.0.0",
     "markdown-it": "^14.1.0",
+    "patch-package": "^8.0.1",
+    "postinstall-postinstall": "^2.1.0",
     "prettier": "^3.7.4",
     "redux-mock-store": "^1.5.5",
     "uuid": "^13.0.0",

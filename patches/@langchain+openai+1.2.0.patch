@@ -1,0 +1,20 @@
+diff --git a/node_modules/@langchain/openai/dist/converters/completions.js b/node_modules/@langchain/openai/dist/converters/completions.js
+index 7a7adf5..e8cd852 100644
+--- a/node_modules/@langchain/openai/dist/converters/completions.js
++++ b/node_modules/@langchain/openai/dist/converters/completions.js
+@@ -175,6 +175,7 @@ const convertCompletionsMessageToBaseMessage = ({ message, rawResponse, includeR
+ 				tool_calls: rawToolCalls
+ 			};
+ 			if (includeRawResponse !== void 0) additional_kwargs.__raw_response = rawResponse;
++			if (message.reasoning_content) additional_kwargs.reasoning_content = message.reasoning_content;
+ 			const response_metadata = {
+ 				model_provider: "openai",
+ 				model_name: rawResponse.model,
+@@ -264,6 +265,7 @@ const convertCompletionsDeltaToBaseMessageChunk = ({ delta, rawResponse, include
+ 	else if (delta.tool_calls) additional_kwargs = { tool_calls: delta.tool_calls };
+ 	else additional_kwargs = {};
+ 	if (includeRawResponse) additional_kwargs.__raw_response = rawResponse;
++	if (delta.reasoning_content) additional_kwargs.reasoning_content = delta.reasoning_content;
+ 	if (delta.audio) additional_kwargs.audio = {
+ 		...delta.audio,
+ 		index: rawResponse.choices[0].index

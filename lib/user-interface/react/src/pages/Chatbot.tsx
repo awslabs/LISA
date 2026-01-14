@@ -36,7 +36,11 @@ export function Chatbot ({ setNav }) {
             dispatch(sessionApi.util.invalidateTags([{ type: 'session', id: sessionId }]));
         }
 
-        // Navigate to clear the sessionId from URL
+        // Always update the key to force Chat component remount and clear state
+        // This ensures state is cleared even when already on /ai-assistant (no UUID in URL)
+        setKey(new Date().toISOString());
+
+        // Navigate to clear the sessionId from URL (if not already there)
         navigate('/ai-assistant', { replace: true });
     }, [navigate, dispatch, sessionId]);
 

@@ -70,8 +70,19 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
     const [showImageViewer, setShowImageViewer] = useState(false);
     const [selectedImage, setSelectedImage] = useState(undefined);
     const [selectedMetadata, setSelectedMetadata] = useState(undefined);
+    const [reasoningExpanded, setReasoningExpanded] = useState(true);
     const { colorScheme } = useContext(ColorSchemeContext);
     const isDarkMode = colorScheme === Mode.Dark;
+    const hasMessageContent = message?.content && message.content.trim() && message.content.trim() !== '\u00A0';
+
+    // Auto-expand reasoning when it first appears, then auto-collapse when message content starts arriving
+    useEffect(() => {
+        if (hasMessageContent) {
+            setReasoningExpanded(false);
+        } else if (!hasMessageContent && message?.reasoningContent) {
+            setReasoningExpanded(true);
+        }
+    }, [hasMessageContent, message?.reasoningContent]);
 
     useEffect(() => {
         if (resend) {
@@ -356,7 +367,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                     </Box>
                 </ChatBubble>
             )}
-            {message?.type === 'ai' && !isRunning && !callingToolName && message?.content && (
+            {message?.type === 'ai' && !isRunning && !callingToolName && (message?.content || message?.reasoningContent) && (
                 <SpaceBetween direction='horizontal' size='m'>
                     <ChatBubble
                         ariaLabel='Generative AI assistant'
@@ -372,7 +383,23 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                         }
                         actions={showUsage ? <UsageInfo usage={message.usage} /> : undefined}
                     >
-                        {renderContent(message.content, message.metadata)}
+                        {message?.reasoningContent && (
+                            <Box margin={{ bottom: 's' }}>
+                                <ExpandableSection
+                                    variant='footer'
+                                    headerText='Reasoning'
+                                    expanded={reasoningExpanded}
+                                    onChange={({ detail }) => {
+                                        setReasoningExpanded(detail.expanded);
+                                    }}
+                                >
+                                    <Box color='text-status-inactive' variant='small'>
+                                        <div style={{ whiteSpace: 'pre-line' }}>{message.reasoningContent}</div>
+                                    </Box>
+                                </ExpandableSection>
+                            </Box>
+                        )}
+                        {message?.content && message.content.trim() && message.content.trim() !== '\u00A0' && renderContent(message.content, message.metadata)}
                         {showMetadata && !isStreaming &&
                             <ExpandableSection
                                 variant='footer'

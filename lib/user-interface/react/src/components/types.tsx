@@ -81,6 +81,7 @@ export type LisaChatMessageFields = {
     toolCalls?: any[];
     usage?: UsageInfo;
     guardrailTriggered?: boolean;
+    reasoningContent?: string;
 } & BaseMessageFields;
 
 /**
@@ -92,6 +93,7 @@ export class LisaChatMessage extends BaseMessage implements LisaChatMessageField
     toolCalls?: any[];
     usage?: UsageInfo;
     guardrailTriggered?: boolean;
+    reasoningContent?: string;
 
     constructor (fields: LisaChatMessageFields) {
         super(fields);
@@ -100,6 +102,7 @@ export class LisaChatMessage extends BaseMessage implements LisaChatMessageField
         this.toolCalls = fields.toolCalls ?? [];
         this.usage = fields.usage;
         this.guardrailTriggered = fields.guardrailTriggered ?? false;
+        this.reasoningContent = fields.reasoningContent;
     }
 
     static lc_name () {

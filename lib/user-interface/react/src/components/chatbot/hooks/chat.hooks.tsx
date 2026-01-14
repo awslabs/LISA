@@ -209,6 +209,7 @@ export const useChatGeneration = ({
                         const stream = await llmClient.stream(messages, { tools: modelSupportsTools ? openAiTools : undefined, ...(modelSupportsReasoning ? { reasoning: { effort: chatConfiguration.sessionConfiguration.modelArgs.reasoning_effort } } : {}) });
                         const resp: string[] = [];
                         const toolCallsAccumulator: { [index: number]: any } = {};
+                        let reasoningContentAccumulator = '';
 
                         let guardrailTriggered = false;
 
@@ -226,6 +227,11 @@ export const useChatGeneration = ({
 
                             if (isGuardrailTriggered) {
                                 guardrailTriggered = true;
+                            }
+
+                            // Accumulate reasoning content from additional_kwargs
+                            if ((chunk as any).additional_kwargs?.reasoning_content) {
+                                reasoningContentAccumulator += (chunk as any).additional_kwargs.reasoning_content;
                             }
 
                             // Get tool calls from LangChain streaming chunks
@@ -318,13 +324,16 @@ export const useChatGeneration = ({
 
                             setSession((prev) => {
                                 const lastMessage = prev.history[prev.history.length - 1];
+                                const newContent = lastMessage.content + content;
+                                const finalContent = (reasoningContentAccumulator && !newContent.trim()) ? '\u00A0' : newContent;
                                 return {
                                     ...prev,
                                     history: [...prev.history.slice(0, -1),
                                         new LisaChatMessage({
                                             ...lastMessage,
-                                            content: lastMessage.content + content,
-                                            toolCalls: currentToolCalls
+                                            content: finalContent,
+                                            toolCalls: currentToolCalls,
+                                            reasoningContent: reasoningContentAccumulator || undefined
                                         })
                                     ],
                                 };
@@ -382,7 +391,8 @@ export const useChatGeneration = ({
                                             ...lastMessage.usage,
                                             responseTime: parseFloat(responseTime.toFixed(2))
                                         },
-                                        guardrailTriggered: guardrailTriggered
+                                        guardrailTriggered: guardrailTriggered,
+                                        reasoningContent: reasoningContentAccumulator || undefined
                                     })
                                 ];
 
@@ -416,6 +426,9 @@ export const useChatGeneration = ({
                     // Check if guardrail was triggered
                     const isGuardrailTriggered = (response as any)?.id === 'guardrail-response';
 
+                    // Capture reasoning content from response
+                    const reasoningContent = (response as any).additional_kwargs?.reasoning_content;
+
                     // Calculate response time
                     const responseTime = (performance.now() - startTime) / 1000;
 
@@ -431,7 +444,8 @@ export const useChatGeneration = ({
                             ...usage,
                             responseTime: parseFloat(responseTime.toFixed(2))
                         },
-                        guardrailTriggered: isGuardrailTriggered
+                        guardrailTriggered: isGuardrailTriggered,
+                        reasoningContent: reasoningContent
                     });
 
                     setSession((prev) => {

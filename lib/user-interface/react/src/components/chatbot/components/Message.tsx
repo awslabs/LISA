@@ -73,7 +73,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
     const [reasoningExpanded, setReasoningExpanded] = useState(true);
     const { colorScheme } = useContext(ColorSchemeContext);
     const isDarkMode = colorScheme === Mode.Dark;
-    const hasMessageContent = message?.content && message.content.trim() && message.content.trim() !== '\u00A0';
+    const hasMessageContent = message?.content && typeof message.content === 'string' && message.content.trim() && message.content.trim() !== '\u00A0';
 
     // Auto-expand reasoning when it first appears, then auto-collapse when message content starts arriving
     useEffect(() => {
@@ -393,13 +393,40 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                         setReasoningExpanded(detail.expanded);
                                     }}
                                 >
-                                    <Box color='text-status-inactive' variant='small'>
-                                        <div style={{ whiteSpace: 'pre-line' }}>{message.reasoningContent}</div>
-                                    </Box>
+                                    <div style={{ position: 'relative' }}>
+                                        <div style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', zIndex: 10 }}>
+                                            <ButtonGroup
+                                                onItemClick={({ detail }) => {
+                                                    if (detail.id === 'copy-reasoning') {
+                                                        navigator.clipboard.writeText(message.reasoningContent || '');
+                                                    }
+                                                }}
+                                                ariaLabel='Copy reasoning content'
+                                                dropdownExpandToViewport
+                                                items={[
+                                                    {
+                                                        type: 'icon-button',
+                                                        id: 'copy-reasoning',
+                                                        iconName: 'copy',
+                                                        text: 'Copy Reasoning',
+                                                        popoverFeedback: (
+                                                            <StatusIndicator type='success'>
+                                                                Reasoning copied
+                                                            </StatusIndicator>
+                                                        )
+                                                    }
+                                                ]}
+                                                variant='icon'
+                                            />
+                                        </div>
+                                        <Box color='text-status-inactive' variant='small' padding={{ right: 'xxxl' }}>
+                                            <div style={{ whiteSpace: 'pre-line' }}>{message.reasoningContent}</div>
+                                        </Box>
+                                    </div>
                                 </ExpandableSection>
                             </Box>
                         )}
-                        {message?.content && message.content.trim() && message.content.trim() !== '\u00A0' && renderContent(message.content, message.metadata)}
+                        {message?.content && (typeof message.content === 'string' ? (message.content.trim() && message.content.trim() !== '\u00A0') : true) && renderContent(message.content, message.metadata)}
                         {showMetadata && !isStreaming &&
                             <ExpandableSection
                                 variant='footer'

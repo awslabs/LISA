@@ -27,6 +27,7 @@ from typing import Any, Callable, cast, Dict, Optional, TypeVar, Union
 
 import boto3
 from botocore.config import Config
+from utilities.header_sanitizer import sanitize_headers
 
 from . import create_env_variables  # noqa type: ignore
 
@@ -101,6 +102,11 @@ setup_root_logging()
 def _sanitize_event(event: Dict[str, Dict[str, Any]]) -> str:
     """Sanitize event before logging.
 
+    This function sanitizes the event by:
+    1. Normalizing header keys to lowercase
+    2. Redacting authorization headers
+    3. Replacing security-critical headers with server-controlled values
+
     Parameters
     ----------
     event : Dict[str, Dict[str, Any]]
@@ -111,6 +117,7 @@ def _sanitize_event(event: Dict[str, Dict[str, Any]]) -> str:
     str
         The sanitized event as a JSON-formatted string.
     """
+
     # First normalize keys for our object
     sanitized = copy.deepcopy(event)
     if "headers" in event:
@@ -124,10 +131,16 @@ def _sanitize_event(event: Dict[str, Dict[str, Any]]) -> str:
                 sanitized["multiValueHeaders"][key.lower()] = event["multiValueHeaders"][key]
                 del sanitized["multiValueHeaders"][key]
 
+    # Redact authorization headers
     if "headers" in sanitized and "authorization" in sanitized["headers"]:
         sanitized["headers"]["authorization"] = "<REDACTED>"
-    if "multiValueHeaders" in sanitized and "authorization" in sanitized["headers"]:
+    if "multiValueHeaders" in sanitized and "authorization" in sanitized["multiValueHeaders"]:
         sanitized["multiValueHeaders"]["authorization"] = ["<REDACTED>"]
+
+    # Sanitize security-critical headers to prevent log injection
+    if "headers" in sanitized:
+        sanitized["headers"] = sanitize_headers(sanitized["headers"], event)
+
     return json.dumps(sanitized)
 
 
@@ -267,30 +280,51 @@ def generate_exception_response(
     # Check for ValidationError from utilities.validation
     status_code = 400
     error_message: str
+
     if type(e).__name__ == "ValidationError":
+        # User input validation error - return 400 with error message
         error_message = str(e)
         logger.exception(e)
     elif hasattr(e, "response"):  # i.e. validate the exception was from an API call
+        # AWS SDK exception - extract status code and message
         metadata = e.response.get("ResponseMetadata")
         if metadata:
             status_code = metadata.get("HTTPStatusCode", 400)
         error_message = str(e)
         logger.exception(e)
     elif hasattr(e, "http_status_code"):
+        # Custom exception with http_status_code attribute
         status_code = e.http_status_code
         error_message = getattr(e, "message", str(e))
         logger.exception(e)
     elif hasattr(e, "status_code"):
+        # Custom exception with status_code attribute (e.g., HTTPException)
         status_code = e.status_code
         error_message = getattr(e, "message", str(e))
         logger.exception(e)
     else:
+        # Generic unhandled exception - return 500 with generic message
+        # Log detailed error internally but don't expose to client
         error_msg = str(e)
         if error_msg in ["'requestContext'", "'pathParameters'", "'body'"]:
+            # Missing event parameter - this is a 400 error
+            status_code = 400
             error_message = f"Missing event parameter: {error_msg}"
         else:
-            error_message = f"Bad Request: {error_msg}"
+            # Genuine server error - return 500 with generic message
+            status_code = 500
+            error_message = "An unexpected error occurred while processing your request"
+            # Log detailed error for debugging
+            logger.error(
+                f"Unhandled exception: {type(e).__name__}: {error_msg}",
+                exc_info=e,
+                extra={
+                    "exception_type": type(e).__name__,
+                    "exception_message": error_msg,
+                },
+            )
         logger.exception(e)
+
     return generate_html_response(status_code, error_message)  # type: ignore [arg-type]
 
 

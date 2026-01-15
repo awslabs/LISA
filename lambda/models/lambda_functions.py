@@ -20,15 +20,12 @@ from urllib.parse import urlparse
 
 import boto3
 import botocore.session
-from fastapi import FastAPI, HTTPException, Path, Request
-from fastapi.encoders import jsonable_encoder
-from fastapi.exceptions import RequestValidationError
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import HTTPException, Path, Request
 from fastapi.responses import JSONResponse
 from mangum import Mangum
 from utilities.auth import get_groups, get_username, is_admin
 from utilities.common_functions import retry_config
-from utilities.fastapi_middleware.aws_api_gateway_middleware import AWSAPIGatewayMiddleware
+from utilities.fastapi_factory import create_fastapi_app
 
 from .domain_objects import (
     CreateModelRequest,
@@ -60,17 +57,7 @@ from .handler import (
 logger = logging.getLogger(__name__)
 
 sess = botocore.session.Session()
-app = FastAPI(redirect_slashes=False, lifespan="off", docs_url="/docs", openapi_url="/openapi.json")
-app.add_middleware(AWSAPIGatewayMiddleware)
-
-# Enable CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app = create_fastapi_app()
 
 autoscaling = boto3.client("autoscaling", region_name=os.environ["AWS_REGION"], config=retry_config)
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
@@ -101,14 +88,6 @@ async def model_not_found_handler(request: Request, exc: ModelNotFoundError) -> 
     return JSONResponse(status_code=404, content={"detail": str(exc)})
 
 
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
-    """Handle exception when request fails validation and and translate to a 422 error."""
-    return JSONResponse(
-        status_code=422, content={"detail": jsonable_encoder(exc.errors()), "type": "RequestValidationError"}
-    )
-
-
 @app.exception_handler(InvalidStateTransitionError)
 @app.exception_handler(ModelAlreadyExistsError)
 @app.exception_handler(ValueError)
@@ -117,6 +96,12 @@ async def user_error_handler(
 ) -> JSONResponse:
     """Handle errors when customer requests options that cannot be processed."""
     return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(ModelInUseError)
+async def model_in_use_handler(request: Request, exc: ModelInUseError) -> JSONResponse:
+    """Handle exception when attempting to delete a model that is in use."""
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 
 @app.post(path="", include_in_schema=False)

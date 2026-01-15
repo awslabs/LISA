@@ -182,6 +182,16 @@ export const useChatGeneration = ({
                                 arguments: JSON.stringify(toolCall.args)
                             }
                         }));
+                        if (modelSupportsReasoning) {
+                            if (msg.reasoningContent) {
+                                const thinkingBlock: any = {
+                                    type: 'thinking',
+                                    thinking: msg.reasoningContent
+                                };
+                                thinkingBlock.signature = msg.reasoningSignature;
+                                baseMessage.content.unshift(thinkingBlock);
+                            }
+                        }
                     }
 
                     return baseMessage;
@@ -210,6 +220,7 @@ export const useChatGeneration = ({
                         const resp: string[] = [];
                         const toolCallsAccumulator: { [index: number]: any } = {};
                         let reasoningContentAccumulator = '';
+                        let reasoningSignatureAccumulator = '';
 
                         let guardrailTriggered = false;
 
@@ -232,6 +243,10 @@ export const useChatGeneration = ({
                             // Accumulate reasoning content from additional_kwargs
                             if ((chunk as any).additional_kwargs?.reasoning_content) {
                                 reasoningContentAccumulator += (chunk as any).additional_kwargs.reasoning_content;
+                            }
+
+                            if ((chunk as any).additional_kwargs?.thinking_signature) {
+                                reasoningSignatureAccumulator += (chunk as any).additional_kwargs.thinking_signature;
                             }
 
                             // Get tool calls from LangChain streaming chunks
@@ -333,7 +348,8 @@ export const useChatGeneration = ({
                                             ...lastMessage,
                                             content: finalContent,
                                             toolCalls: currentToolCalls,
-                                            reasoningContent: reasoningContentAccumulator || undefined
+                                            reasoningContent: reasoningContentAccumulator || undefined,
+                                            reasoningSignature: reasoningSignatureAccumulator,
                                         })
                                     ],
                                 };
@@ -392,7 +408,8 @@ export const useChatGeneration = ({
                                             responseTime: parseFloat(responseTime.toFixed(2))
                                         },
                                         guardrailTriggered: guardrailTriggered,
-                                        reasoningContent: reasoningContentAccumulator || undefined
+                                        reasoningContent: reasoningContentAccumulator || undefined,
+                                        reasoningSignature: reasoningSignatureAccumulator,
                                     })
                                 ];
 
@@ -426,8 +443,8 @@ export const useChatGeneration = ({
                     // Check if guardrail was triggered
                     const isGuardrailTriggered = (response as any)?.id === 'guardrail-response';
 
-                    // Capture reasoning content from response
                     const reasoningContent = (response as any).additional_kwargs?.reasoning_content;
+                    const reasoningSignature = (response as any).additional_kwargs?.thinking_signature;
 
                     // Calculate response time
                     const responseTime = (performance.now() - startTime) / 1000;
@@ -445,7 +462,8 @@ export const useChatGeneration = ({
                             responseTime: parseFloat(responseTime.toFixed(2))
                         },
                         guardrailTriggered: isGuardrailTriggered,
-                        reasoningContent: reasoningContent
+                        reasoningContent: reasoningContent,
+                        reasoningSignature: reasoningSignature
                     });
 
                     setSession((prev) => {

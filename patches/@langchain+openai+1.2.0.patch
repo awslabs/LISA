@@ -1,20 +1,25 @@
 diff --git a/node_modules/@langchain/openai/dist/converters/completions.js b/node_modules/@langchain/openai/dist/converters/completions.js
-index 7a7adf5..e8cd852 100644
+index 7a7adf5..a2a56e3 100644
 --- a/node_modules/@langchain/openai/dist/converters/completions.js
 +++ b/node_modules/@langchain/openai/dist/converters/completions.js
-@@ -175,6 +175,7 @@ const convertCompletionsMessageToBaseMessage = ({ message, rawResponse, includeR
+@@ -175,6 +175,10 @@ const convertCompletionsMessageToBaseMessage = ({ message, rawResponse, includeR
  				tool_calls: rawToolCalls
  			};
  			if (includeRawResponse !== void 0) additional_kwargs.__raw_response = rawResponse;
 +			if (message.reasoning_content) additional_kwargs.reasoning_content = message.reasoning_content;
++			// Extract thinking signature from thinking_blocks
++			const thinkingBlock = rawResponse?.choices?.[0]?.message?.thinking_blocks?.[0] || message.thinking_blocks?.[0];
++			if (thinkingBlock?.signature) additional_kwargs.thinking_signature = thinkingBlock.signature;
  			const response_metadata = {
  				model_provider: "openai",
  				model_name: rawResponse.model,
-@@ -264,6 +265,7 @@ const convertCompletionsDeltaToBaseMessageChunk = ({ delta, rawResponse, include
+@@ -264,6 +268,9 @@ const convertCompletionsDeltaToBaseMessageChunk = ({ delta, rawResponse, include
  	else if (delta.tool_calls) additional_kwargs = { tool_calls: delta.tool_calls };
  	else additional_kwargs = {};
  	if (includeRawResponse) additional_kwargs.__raw_response = rawResponse;
 +	if (delta.reasoning_content) additional_kwargs.reasoning_content = delta.reasoning_content;
++	const deltaThinkingBlock = delta.thinking_blocks?.[0];
++	if (deltaThinkingBlock?.signature) additional_kwargs.thinking_signature = deltaThinkingBlock.signature;
  	if (delta.audio) additional_kwargs.audio = {
  		...delta.audio,
  		index: rawResponse.choices[0].index

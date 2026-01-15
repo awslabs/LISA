@@ -84,6 +84,7 @@ export const sessionApi = createApi({
                             usage: elem.usage,
                             guardrailTriggered: elem.guardrailTriggered,
                             reasoningContent: elem.reasoningContent,
+                            reasoningSignature: elem.reasoningSignature,
                         };
                         return message;
                     }),

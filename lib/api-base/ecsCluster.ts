@@ -257,7 +257,7 @@ export class ECSCluster extends Construct {
             // disable managed scaling because we are going to setup rules to do it
             enableManagedScaling: false,
             enableManagedTerminationProtection: false,
-
+            
             // Encrypt SNS topic used for lifecycle hook notifications
             topicEncryptionKey: snsEncryptionKey,
         });

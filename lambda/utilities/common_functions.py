@@ -15,31 +15,9 @@
 """
 Common helper functions for RAG Lambdas.
 
-DEPRECATED: This module is maintained for backward compatibility.
-New code should import from the specific utility modules:
-
-- lambda_decorators: api_wrapper, authorization_wrapper
-- response_builder: generate_html_response, generate_exception_response, DecimalEncoder
-- event_parser: get_session_id, get_principal_id, get_bearer_token, get_id_token
-- aws_helpers: get_cert_path, get_rest_api_container_endpoint, get_lambda_role_name, get_account_and_partition
-- dict_helpers: merge_fields, get_property_path, get_item
-"""
-import logging
-from typing import Any, Callable, TypeVar
-
-# Re-export from organized modules for backward compatibility
-from utilities.aws_helpers import (
-    get_account_and_partition,
-    get_cert_path,
-    get_lambda_role_name,
-    get_rest_api_container_endpoint,
-    retry_config,
-    ssm_client,
-)
-from utilities.dict_helpers import get_item, get_property_path, merge_fields
-from utilities.event_parser import get_bearer_token, get_id_token, get_principal_id, get_session_id
-from utilities.lambda_decorators import api_wrapper, authorization_wrapper, ctx_context
-from utilities.response_builder import DecimalEncoder, generate_exception_response, generate_html_response
+import boto3
+from botocore.config import Config
+from utilities.header_sanitizer import sanitize_headers
 
 from . import create_env_variables  # noqa type: ignore
 
@@ -102,33 +80,454 @@ def setup_root_logging() -> None:
 setup_root_logging()
 
 
-# Export all public functions for backward compatibility
-__all__ = [
-    # Lambda decorators
-    "api_wrapper",
-    "authorization_wrapper",
-    "ctx_context",
-    # Response builders
-    "generate_html_response",
-    "generate_exception_response",
-    "DecimalEncoder",
-    # Event parsers
-    "get_session_id",
-    "get_principal_id",
-    "get_bearer_token",
-    "get_id_token",
-    # AWS helpers
-    "get_cert_path",
-    "get_rest_api_container_endpoint",
-    "get_lambda_role_name",
-    "get_account_and_partition",
-    "retry_config",
-    "ssm_client",
-    # Dict helpers
-    "merge_fields",
-    "get_property_path",
-    "get_item",
-    # Logging
-    "LambdaContextFilter",
-    "setup_root_logging",
-]
+def _sanitize_event(event: Dict[str, Dict[str, Any]]) -> str:
+    """Sanitize event before logging.
+
+    This function sanitizes the event by:
+    1. Normalizing header keys to lowercase
+    2. Redacting authorization headers
+    3. Replacing security-critical headers with server-controlled values
+
+    Parameters
+    ----------
+    event : Dict[str, Dict[str, Any]]
+        The lambda event.
+
+    Returns
+    -------
+    str
+        The sanitized event as a JSON-formatted string.
+    """
+
+    # First normalize keys for our object
+    sanitized = copy.deepcopy(event)
+    if "headers" in event:
+        for key in event["headers"]:
+            if key != key.lower():
+                sanitized["headers"][key.lower()] = event["headers"][key]
+                del sanitized["headers"][key]
+    if "multiValueHeaders" in sanitized:
+        for key in event["multiValueHeaders"]:
+            if key != key.lower():
+                sanitized["multiValueHeaders"][key.lower()] = event["multiValueHeaders"][key]
+                del sanitized["multiValueHeaders"][key]
+
+    # Redact authorization headers
+    if "headers" in sanitized and "authorization" in sanitized["headers"]:
+        sanitized["headers"]["authorization"] = "<REDACTED>"
+    if "multiValueHeaders" in sanitized and "authorization" in sanitized["multiValueHeaders"]:
+        sanitized["multiValueHeaders"]["authorization"] = ["<REDACTED>"]
+
+    # Sanitize security-critical headers to prevent log injection
+    if "headers" in sanitized:
+        sanitized["headers"] = sanitize_headers(sanitized["headers"], event)
+
+    return json.dumps(sanitized)
+
+
+def api_wrapper(f: F) -> F:
+    """Wrap the lambda function.
+
+    Parameters
+    ----------
+    f : F
+        The function to be wrapped.
+
+    Returns
+    -------
+    F
+        The wrapped function.
+    """
+
+    @functools.wraps(f)
+    def wrapper(event: dict, context: dict) -> Dict[str, Union[str, int, Dict[str, str]]]:
+        """Wrap Lambda event.
+
+        Parameters
+        ----------
+        event : dict
+            Lambda event.
+        context : dict
+            Lambda context.
+
+        Returns
+        -------
+        Dict[str, Union[str, int, Dict[str, str]]]
+            _description_
+        """
+        ctx_context.set(context)
+        code_func_name = f.__name__
+        lambda_func_name = context.function_name  # type: ignore [attr-defined]
+        logger.info(f"Lambda {lambda_func_name}({code_func_name}) invoked with {_sanitize_event(event)}")
+        try:
+            result = f(event, context)
+            return generate_html_response(200, result)
+        except Exception as e:
+            return generate_exception_response(e)
+
+    return wrapper  # type: ignore [return-value]
+
+
+def authorization_wrapper(f: F) -> F:
+    """Wrap the lambda function.
+
+    Parameters
+    ----------
+    f : F
+        The function to be wrapped.
+
+    Returns
+    -------
+    F
+        The wrapped function.
+    """
+
+    @functools.wraps(f)
+    def wrapper(event: dict, context: dict) -> F:
+        """Wrap Lambda event.
+
+        Parameters
+        ----------
+        event : dict
+            Lambda event.
+        context : dict
+            Lambda context.
+
+        Returns
+        -------
+        F
+            The wrapped function.
+        """
+        ctx_context.set(context)
+        return f(event, context)  # type: ignore [no-any-return]
+
+    return wrapper  # type: ignore [return-value]
+
+
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, obj: Any) -> Any:
+        if isinstance(obj, Decimal):
+            return float(obj)
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(obj)
+
+
+def generate_html_response(status_code: int, response_body: dict) -> Dict[str, Union[str, int, Dict[str, str]]]:
+    """Generate a response for an API call.
+
+    Parameters
+    ----------
+    status_code : int
+        HTTP status code.
+    response_body : dict
+        Response body.
+
+    Returns
+    -------
+    Dict[str, Union[str, int, Dict[str, str]]]
+        An HTML response.
+    """
+    return {
+        "statusCode": status_code,
+        "body": json.dumps(response_body, cls=DecimalEncoder),
+        "headers": {
+            "Access-Control-Allow-Origin": "*",
+            "Content-Type": "application/json",
+            "Cache-Control": "no-store, no-cache",
+            "Pragma": "no-cache",
+            "Strict-Transport-Security": "max-age:47304000; includeSubDomains",
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+        },
+    }
+
+
+def generate_exception_response(
+    e: Exception,
+) -> Dict[str, Union[str, int, Dict[str, str]]]:
+    """Generate a response for an exception used for all exceptions that are not caught by the API.
+
+    Parameters
+    ----------
+    e : Exception
+        Exception that was caught.
+
+    Returns
+    -------
+    Dict[str, Union[str, int, Dict[str, str]]]
+        An HTML response.
+    """
+    # Check for ValidationError from utilities.validation
+    status_code = 400
+    error_message: str
+
+    if type(e).__name__ == "ValidationError":
+        # User input validation error - return 400 with error message
+        error_message = str(e)
+        logger.exception(e)
+    elif hasattr(e, "response"):  # i.e. validate the exception was from an API call
+        # AWS SDK exception - extract status code and message
+        metadata = e.response.get("ResponseMetadata")
+        if metadata:
+            status_code = metadata.get("HTTPStatusCode", 400)
+        error_message = str(e)
+        logger.exception(e)
+    elif hasattr(e, "http_status_code"):
+        # Custom exception with http_status_code attribute
+        status_code = e.http_status_code
+        error_message = getattr(e, "message", str(e))
+        logger.exception(e)
+    elif hasattr(e, "status_code"):
+        # Custom exception with status_code attribute (e.g., HTTPException)
+        status_code = e.status_code
+        error_message = getattr(e, "message", str(e))
+        logger.exception(e)
+    else:
+        # Generic unhandled exception - return 500 with generic message
+        # Log detailed error internally but don't expose to client
+        error_msg = str(e)
+        if error_msg in ["'requestContext'", "'pathParameters'", "'body'"]:
+            # Missing event parameter - this is a 400 error
+            status_code = 400
+            error_message = f"Missing event parameter: {error_msg}"
+        else:
+            # Genuine server error - return 500 with generic message
+            status_code = 500
+            error_message = "An unexpected error occurred while processing your request"
+            # Log detailed error for debugging
+            logger.error(
+                f"Unhandled exception: {type(e).__name__}: {error_msg}",
+                exc_info=e,
+                extra={
+                    "exception_type": type(e).__name__,
+                    "exception_message": error_msg,
+                },
+            )
+        logger.exception(e)
+
+    return generate_html_response(status_code, error_message)  # type: ignore [arg-type]
+
+
+def get_id_token(event: dict) -> str:
+    """Return token from event request headers.
+
+    Extracts bearer token from authorization header in lambda event.
+    """
+    auth_header = None
+
+    if "authorization" in event["headers"]:
+        auth_header = event["headers"]["authorization"]
+    elif "Authorization" in event["headers"]:
+        auth_header = event["headers"]["Authorization"]
+    else:
+        raise ValueError("Missing authorization token.")
+
+    # remove bearer token prefix if present
+    return str(auth_header).removeprefix("Bearer ").removeprefix("bearer ").strip()
+
+
+_cert_file = None
+
+
+@cache
+def get_cert_path(iam_client: Any) -> Union[str, bool]:
+    """
+    Get cert path for IAM certs for SSL validation against LISA Serve endpoint.
+
+    Returns the path to the certificate file for SSL verification, or True to use
+    default verification if no certificate ARN is specified.
+    """
+    global _cert_file
+
+    cert_arn = os.environ.get("RESTAPI_SSL_CERT_ARN")
+    if not cert_arn:
+        logger.info("No SSL certificate ARN specified, using default verification")
+        return True
+    # For ACM certificates, use default verification since they are trusted AWS certificates
+    elif ":acm:" in cert_arn:
+        logger.info("ACM certificate detected, using default SSL verification")
+        return True
+
+    try:
+        # Clean up previous cert file if it exists
+        if _cert_file and os.path.exists(_cert_file.name):
+            try:
+                os.unlink(_cert_file.name)
+            except Exception as e:
+                logger.warning(f"Failed to clean up previous cert file: {e}")
+
+        # Get the certificate name from the ARN
+        cert_name = cert_arn.split("/")[1]
+        logger.info(f"Retrieving certificate '{cert_name}' from IAM")
+
+        # Get the certificate from IAM
+        rest_api_cert = iam_client.get_server_certificate(ServerCertificateName=cert_name)
+        cert_body = rest_api_cert["ServerCertificate"]["CertificateBody"]
+
+        # Create a new temporary file
+        _cert_file = tempfile.NamedTemporaryFile(delete=False)
+        _cert_file.write(cert_body.encode("utf-8"))
+        _cert_file.flush()
+
+        logger.info(f"Certificate saved to temporary file: {_cert_file.name}")
+        return _cert_file.name
+
+    except Exception as e:
+        logger.error(f"Failed to get certificate from IAM: {e}", exc_info=True)
+        # If we fail to get the cert, return True to fall back to default verification
+        return True
+
+
+@cache
+def get_rest_api_container_endpoint() -> str:
+    """Get REST API container base URI from SSM Parameter Store."""
+    lisa_api_param_response = ssm_client.get_parameter(Name=os.environ["LISA_API_URL_PS_NAME"])
+    lisa_api_endpoint = lisa_api_param_response["Parameter"]["Value"]
+    return f"{lisa_api_endpoint}/{os.environ['REST_API_VERSION']}/serve"
+
+
+def get_session_id(event: dict) -> str:
+    """Get the session ID from the event."""
+    session_id: str = event.get("pathParameters", {}).get("sessionId")
+    return session_id
+
+
+def get_principal_id(event: Any) -> str:
+    """Get principal from event."""
+    principal: str = event.get("requestContext", {}).get("authorizer", {}).get("principal", "")
+    return principal
+
+
+def merge_fields(source: dict, target: dict, fields: list[str]) -> dict:
+    """
+    Merge specified fields from source dictionary to target dictionary.
+    Supports both top-level and nested fields using dot notation.
+
+    Args:
+        source: Source dictionary to copy fields from
+        target: Target dictionary to copy fields into
+        fields: List of field names, can use dot notation for nested fields
+
+    Returns:
+        Updated target dictionary
+    """
+
+    def get_nested_value(obj: dict[str, Any], path: list[str]) -> Any:
+        current: Any = obj
+        for key in path:
+            if not isinstance(current, dict):
+                return None
+            current = current.get(key)
+            if current is None:
+                return None
+        return current
+
+    def set_nested_value(obj: dict, path: list[str], value: Any) -> None:
+        current = obj
+        for key in path[:-1]:
+            if key not in current:
+                current[key] = {}
+            current = current[key]
+        if value is not None:
+            current[path[-1]] = value
+
+    for field in fields:
+        if "." in field:
+            # Handle nested fields
+            keys = field.split(".")
+            value = get_nested_value(source, keys)
+            if value is not None:
+                set_nested_value(target, keys, value)
+        else:
+            # Handle top-level fields
+            if field in source:
+                target[field] = source[field]
+
+    return target
+
+
+def _get_lambda_role_arn() -> str:
+    """Get the ARN of the Lambda execution role.
+
+    Returns
+    -------
+    str
+        The full ARN of the Lambda execution role
+    """
+    sts = boto3.client("sts", region_name=os.environ["AWS_REGION"])
+    identity = sts.get_caller_identity()
+    return cast(str, identity["Arn"])  # This will include the role name
+
+
+def get_lambda_role_name() -> str:
+    """Extract the role name from the Lambda execution role ARN.
+
+    Returns
+    -------
+    str
+        The name of the Lambda execution role without the full ARN
+    """
+    arn = _get_lambda_role_arn()
+    parts = arn.split(":assumed-role/")[1].split("/")
+    return parts[0]  # This is the role name
+
+
+def get_item(response: Any) -> Any:
+    items = response.get("Items", [])
+    return items[0] if items else None
+
+
+def get_property_path(data: dict[str, Any], property_path: str) -> Optional[Any]:
+    """Get the value represented by a property path."""
+    props = property_path.split(".")
+    current_node = data
+    for prop in props:
+        if prop in current_node:
+            current_node = current_node[prop]
+        else:
+            return None
+
+    return current_node
+
+
+def get_bearer_token(event, with_prefix: bool = True):
+    """
+    Extracts a Bearer token from the Authorization header in a Lambda event.
+
+    Args:
+        event (dict): AWS Lambda event (API Gateway / ALB proxy style).
+
+    Returns:
+        str | None: The token string if present and properly formatted, else None.
+    """
+    headers = event.get("headers") or {}
+    # Headers may vary in casing
+    auth_header = headers.get("Authorization") or headers.get("authorization")
+    if not auth_header:
+        return None
+
+    if not auth_header.lower().startswith("bearer "):
+        return None
+
+    # Return the token after "Bearer "
+    return auth_header.split(" ", 1)[1].strip()
+
+
+def get_account_and_partition() -> tuple[str, str]:
+    """Get AWS account ID and partition from environment or ECR repository ARN.
+
+    Returns:
+        tuple[str, str]: (account_id, partition)
+    """
+    account_id = os.environ.get("AWS_ACCOUNT_ID", "")
+    partition = os.environ.get("AWS_PARTITION", "aws")
+
+    if not account_id:
+        ecr_repo_arn = os.environ.get("ECR_REPOSITORY_ARN", "")
+        if ecr_repo_arn:
+            arn_parts = ecr_repo_arn.split(":")
+            partition = arn_parts[1]
+            account_id = arn_parts[4]
+
+    return account_id, partition

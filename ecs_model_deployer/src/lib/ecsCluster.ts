@@ -16,11 +16,12 @@
 
 // ECS Cluster Construct.
 import { CfnOutput, Duration, RemovalPolicy } from 'aws-cdk-lib';
-import { BlockDeviceVolume, GroupMetrics, Monitoring } from 'aws-cdk-lib/aws-autoscaling';
+import { AutoScalingGroup, BlockDeviceVolume, GroupMetrics, Monitoring } from 'aws-cdk-lib/aws-autoscaling';
 import { Metric, Stats } from 'aws-cdk-lib/aws-cloudwatch';
 import { InstanceType, ISecurityGroup, IVpc, SubnetSelection } from 'aws-cdk-lib/aws-ec2';
 import { Alias } from 'aws-cdk-lib/aws-kms';
 import {
+    AsgCapacityProvider,
     Cluster,
     ContainerDefinition,
     ContainerInsights,
@@ -95,15 +96,10 @@ export class ECSCluster extends Construct {
             containerInsightsV2: !config.region?.includes('iso') ? ContainerInsights.ENABLED : ContainerInsights.DISABLED,
         });
 
-        // SNS encryption key for ECS lifecycle hooks (AppSec Finding #5)
-        const snsEncryptionKey = Alias.fromAliasName(
-            this,
-            createCdkId([identifier, 'SnsKey']),
-            'alias/aws/sns'
-        );
-
-        // Create auto scaling group with SNS topic encryption for lifecycle hooks
-        const autoScalingGroup = cluster.addCapacity(createCdkId([identifier, 'ASG']), {
+        // Create auto scaling group explicitly (instead of cluster.addCapacity)
+        // to enable SNS topic encryption for lifecycle hooks
+        const autoScalingGroup = new AutoScalingGroup(this, createCdkId([identifier, 'ASG']), {
+            vpc: vpc,
             vpcSubnets: subnetSelection,
             instanceType: new InstanceType(ecsConfig.instanceType),
             machineImage: EcsOptimizedImage.amazonLinux2(ecsConfig.amiHardwareType),
@@ -124,6 +120,24 @@ export class ECSCluster extends Construct {
             ],
             topicEncryptionKey: snsEncryptionKey,
         });
+
+        // Enable SNS topic encryption for ECS lifecycle hooks
+        // AppSec Finding #5: SNS topics must use server-side encryption
+        // Uses AWS managed key (alias/aws/sns) for lifecycle hook drain notifications
+        const snsEncryptionKey = Alias.fromAliasName(
+            this,
+            createCdkId([identifier, 'SnsKey']),
+            'alias/aws/sns'
+        );
+
+        // Create capacity provider with SNS encryption
+        const capacityProvider = new AsgCapacityProvider(this, createCdkId([identifier, 'CapacityProvider']), {
+            autoScalingGroup,
+            topicEncryptionKey: snsEncryptionKey,
+        });
+
+        // Add capacity provider to cluster
+        cluster.addAsgCapacityProvider(capacityProvider);
 
         new CfnOutput(this, 'autoScalingGroup', {
             key: 'autoScalingGroup',

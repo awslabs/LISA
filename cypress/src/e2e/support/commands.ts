@@ -138,8 +138,8 @@ Cypress.Commands.add('loginAs', (role = 'user') => {
                             .click({ force: true });
                     });
 
-                    // Wait for redirect back to app
-                    cy.wait(2000);
+                    // Wait for redirect back to app and allow configuration to load
+                    cy.wait(20000); // Extended wait for configuration and initial API calls, models, repositories, etc.
                 });
             });
         },

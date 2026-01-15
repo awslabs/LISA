@@ -125,7 +125,9 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
                         status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                         content={
                             "error": "Payload Too Large",
-                            "message": f"Request body size exceeds maximum allowed size of {self.max_request_size} bytes",
+                            "message": (
+                                f"Request body size exceeds maximum allowed size " f"of {self.max_request_size} bytes"
+                            ),
                         },
                     )
             except ValueError:

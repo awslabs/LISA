@@ -47,7 +47,6 @@ from models.domain_objects import (
 from models.lambda_functions import create_model
 
 
-
 class TestCreateModelAuditLogging:
     """Test audit logging for CreateModel API endpoint."""
 
@@ -81,17 +80,19 @@ class TestCreateModelAuditLogging:
         )
 
         # Mock the handler and auth functions
-        with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, \
-             patch("models.lambda_functions.is_admin") as mock_is_admin, \
-             patch("models.lambda_functions.get_groups") as mock_get_groups, \
-             patch("models.lambda_functions.get_username") as mock_get_username, \
-             caplog.at_level(logging.INFO):
-            
+        with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
+            "models.lambda_functions.is_admin"
+        ) as mock_is_admin, patch("models.lambda_functions.get_groups") as mock_get_groups, patch(
+            "models.lambda_functions.get_username"
+        ) as mock_get_username, caplog.at_level(
+            logging.INFO
+        ):
+
             # Setup mocks
             mock_is_admin.return_value = True
             mock_get_groups.return_value = ["admin-group"]
             mock_get_username.return_value = "test-admin"
-            
+
             mock_handler = MagicMock()
             mock_handler_class.return_value = mock_handler
             mock_handler.return_value = MagicMock()
@@ -101,28 +102,28 @@ class TestCreateModelAuditLogging:
 
             # Verify log was created
             assert len(caplog.records) > 0
-            
+
             # Find the CreateModel request log entry
             log_record = None
             for record in caplog.records:
                 if hasattr(record, "event_type") and record.event_type == "CREATE_MODEL_REQUEST":
                     log_record = record
                     break
-            
+
             assert log_record is not None, "CREATE_MODEL_REQUEST log entry not found"
-            
+
             # Verify user context fields
             assert hasattr(log_record, "user")
             assert log_record.user["username"] == "test-admin"
             assert log_record.user["groups"] == ["admin-group"]
             assert log_record.user["auth_type"] == "JWT"
             assert log_record.user["source_ip"] == "192.168.1.100"
-            
+
             # Verify model configuration fields
             assert hasattr(log_record, "model")
             assert log_record.model["model_id"] == "test-model-123"
             assert log_record.model["model_name"] == "test-model-name"
-            
+
             # Verify container field is None for non-LISA hosted model
             assert log_record.container is None
 
@@ -130,7 +131,7 @@ class TestCreateModelAuditLogging:
     async def test_create_model_logs_container_details_for_lisa_hosted(self, caplog):
         """Test that CreateModel logs container details for LISA-hosted models."""
         from models.domain_objects import InferenceContainer, LoadBalancerConfig, LoadBalancerHealthCheckConfig
-        
+
         # Setup mock request
         mock_request = MagicMock()
         mock_request.scope = {
@@ -197,17 +198,19 @@ class TestCreateModelAuditLogging:
         )
 
         # Mock the handler and auth functions
-        with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, \
-             patch("models.lambda_functions.is_admin") as mock_is_admin, \
-             patch("models.lambda_functions.get_groups") as mock_get_groups, \
-             patch("models.lambda_functions.get_username") as mock_get_username, \
-             caplog.at_level(logging.INFO):
-            
+        with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
+            "models.lambda_functions.is_admin"
+        ) as mock_is_admin, patch("models.lambda_functions.get_groups") as mock_get_groups, patch(
+            "models.lambda_functions.get_username"
+        ) as mock_get_username, caplog.at_level(
+            logging.INFO
+        ):
+
             # Setup mocks
             mock_is_admin.return_value = True
             mock_get_groups.return_value = ["admin-group"]
             mock_get_username.return_value = "test-admin"
-            
+
             mock_handler = MagicMock()
             mock_handler_class.return_value = mock_handler
             mock_handler.return_value = MagicMock()
@@ -221,16 +224,16 @@ class TestCreateModelAuditLogging:
                 if hasattr(record, "event_type") and record.event_type == "CREATE_MODEL_REQUEST":
                     log_record = record
                     break
-            
+
             assert log_record is not None
-            
+
             # Verify container image details are logged
             assert hasattr(log_record, "container")
             assert log_record.container["base_image"] == "123456789012.dkr.ecr.us-east-1.amazonaws.com/my-model:latest"
             assert log_record.container["registry_domain"] == "123456789012.dkr.ecr.us-east-1.amazonaws.com"
             assert log_record.container["image_type"] == "ecr"
             assert log_record.container["healthcheck_command"] == ["CMD-SHELL", "curl -f http://localhost:8080/health"]
-            
+
             # Verify model config includes instance type and autoscaling
             assert log_record.model["instance_type"] == "t2.micro"
             assert log_record.model["auto_scaling"]["min_capacity"] == 1
@@ -265,17 +268,19 @@ class TestCreateModelAuditLogging:
         )
 
         # Mock the handler and auth functions
-        with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, \
-             patch("models.lambda_functions.is_admin") as mock_is_admin, \
-             patch("models.lambda_functions.get_groups") as mock_get_groups, \
-             patch("models.lambda_functions.get_username") as mock_get_username, \
-             caplog.at_level(logging.INFO):
-            
+        with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
+            "models.lambda_functions.is_admin"
+        ) as mock_is_admin, patch("models.lambda_functions.get_groups") as mock_get_groups, patch(
+            "models.lambda_functions.get_username"
+        ) as mock_get_username, caplog.at_level(
+            logging.INFO
+        ):
+
             # Setup mocks
             mock_is_admin.return_value = True
             mock_get_groups.return_value = ["admin-group"]
             mock_get_username.return_value = "test-admin"
-            
+
             mock_handler = MagicMock()
             mock_handler_class.return_value = mock_handler
             mock_handler.return_value = MagicMock()
@@ -289,16 +294,15 @@ class TestCreateModelAuditLogging:
                 if hasattr(record, "event_type") and record.event_type == "CREATE_MODEL_REQUEST":
                     log_record = record
                     break
-            
+
             assert log_record is not None
-            
+
             # Verify container field is None when no containerConfig
             assert log_record.container is None
-            
+
             # Verify other fields still present
             assert log_record.user["username"] == "test-admin"
             assert log_record.model["model_id"] == "simple-model"
-
 
     @pytest.mark.asyncio
     async def test_create_model_does_not_log_sensitive_data(self, caplog):
@@ -331,17 +335,19 @@ class TestCreateModelAuditLogging:
         )
 
         # Mock the handler and auth functions
-        with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, \
-             patch("models.lambda_functions.is_admin") as mock_is_admin, \
-             patch("models.lambda_functions.get_groups") as mock_get_groups, \
-             patch("models.lambda_functions.get_username") as mock_get_username, \
-             caplog.at_level(logging.INFO):
-            
+        with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
+            "models.lambda_functions.is_admin"
+        ) as mock_is_admin, patch("models.lambda_functions.get_groups") as mock_get_groups, patch(
+            "models.lambda_functions.get_username"
+        ) as mock_get_username, caplog.at_level(
+            logging.INFO
+        ):
+
             # Setup mocks
             mock_is_admin.return_value = True
             mock_get_groups.return_value = ["admin-group"]
             mock_get_username.return_value = "test-admin"
-            
+
             mock_handler = MagicMock()
             mock_handler_class.return_value = mock_handler
             mock_handler.return_value = MagicMock()
@@ -355,18 +361,18 @@ class TestCreateModelAuditLogging:
                 if hasattr(record, "event_type") and record.event_type == "CREATE_MODEL_REQUEST":
                     log_record = record
                     break
-            
+
             assert log_record is not None
-            
+
             # Verify sensitive data is NOT in the logged user context
             assert "token" not in log_record.user
             assert "accessKey" not in log_record.user
-            
+
             # Get all log record attributes as strings to check they're not accidentally logged
             record_str = str(vars(log_record))
             assert "super-secret-jwt-token-12345" not in record_str
             assert "AKIAIOSFODNN7EXAMPLE" not in record_str
-            
+
             # Verify non-sensitive data IS in logs
             assert log_record.user["username"] == "test-admin"
             assert log_record.model["model_id"] == "test-model"
@@ -399,17 +405,19 @@ class TestCreateModelAuditLogging:
         )
 
         # Mock the handler and auth functions
-        with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, \
-             patch("models.lambda_functions.is_admin") as mock_is_admin, \
-             patch("models.lambda_functions.get_groups") as mock_get_groups, \
-             patch("models.lambda_functions.get_username") as mock_get_username, \
-             caplog.at_level(logging.INFO):
-            
+        with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
+            "models.lambda_functions.is_admin"
+        ) as mock_is_admin, patch("models.lambda_functions.get_groups") as mock_get_groups, patch(
+            "models.lambda_functions.get_username"
+        ) as mock_get_username, caplog.at_level(
+            logging.INFO
+        ):
+
             # Setup mocks for successful creation
             mock_is_admin.return_value = True
             mock_get_groups.return_value = ["admin-group"]
             mock_get_username.return_value = "test-admin"
-            
+
             mock_handler = MagicMock()
             mock_handler_class.return_value = mock_handler
             mock_handler.return_value = MagicMock()
@@ -426,7 +434,7 @@ class TestCreateModelAuditLogging:
     async def test_create_model_logs_for_failed_request(self, caplog):
         """Test that logs are written for failed CreateModel requests."""
         from models.exception import ModelAlreadyExistsError
-        
+
         # Setup mock request
         mock_request = MagicMock()
         mock_request.scope = {
@@ -452,45 +460,47 @@ class TestCreateModelAuditLogging:
         )
 
         # Mock the handler to raise ModelAlreadyExistsError
-        with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, \
-             patch("models.lambda_functions.is_admin") as mock_is_admin, \
-             patch("models.lambda_functions.get_groups") as mock_get_groups, \
-             patch("models.lambda_functions.get_username") as mock_get_username, \
-             caplog.at_level(logging.INFO):
-            
+        with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
+            "models.lambda_functions.is_admin"
+        ) as mock_is_admin, patch("models.lambda_functions.get_groups") as mock_get_groups, patch(
+            "models.lambda_functions.get_username"
+        ) as mock_get_username, caplog.at_level(
+            logging.INFO
+        ):
+
             # Setup mocks
             mock_is_admin.return_value = True
             mock_get_groups.return_value = ["admin-group"]
             mock_get_username.return_value = "test-admin"
-            
+
             mock_handler = MagicMock()
             mock_handler_class.return_value = mock_handler
             mock_handler.side_effect = ModelAlreadyExistsError("Model 'existing-model' already exists")
 
             # Call the endpoint and expect HTTPException
             from fastapi import HTTPException
+
             with pytest.raises(HTTPException) as exc_info:
                 await create_model(create_request, mock_request)
-            
+
             assert exc_info.value.status_code == 409
 
             # Verify request and failure logs exist
             event_types = [getattr(record, "event_type", None) for record in caplog.records]
             assert "CREATE_MODEL_REQUEST" in event_types
             assert "CREATE_MODEL_FAILURE" in event_types
-            
+
             # Find the failure log and verify it contains error details
             failure_log = None
             for record in caplog.records:
                 if hasattr(record, "event_type") and record.event_type == "CREATE_MODEL_FAILURE":
                     failure_log = record
                     break
-            
+
             assert failure_log is not None
             assert failure_log.model_id == "existing-model"
             assert failure_log.username == "test-admin"
             assert "already exists" in failure_log.error
-
 
     @pytest.mark.asyncio
     async def test_create_model_extracts_real_ip_from_api_gateway_context(self, caplog):
@@ -523,17 +533,19 @@ class TestCreateModelAuditLogging:
         )
 
         # Mock the handler and auth functions
-        with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, \
-             patch("models.lambda_functions.is_admin") as mock_is_admin, \
-             patch("models.lambda_functions.get_groups") as mock_get_groups, \
-             patch("models.lambda_functions.get_username") as mock_get_username, \
-             caplog.at_level(logging.INFO):
-            
+        with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
+            "models.lambda_functions.is_admin"
+        ) as mock_is_admin, patch("models.lambda_functions.get_groups") as mock_get_groups, patch(
+            "models.lambda_functions.get_username"
+        ) as mock_get_username, caplog.at_level(
+            logging.INFO
+        ):
+
             # Setup mocks
             mock_is_admin.return_value = True
             mock_get_groups.return_value = ["admin-group"]
             mock_get_username.return_value = "test-admin"
-            
+
             mock_handler = MagicMock()
             mock_handler_class.return_value = mock_handler
             mock_handler.return_value = MagicMock()
@@ -547,12 +559,12 @@ class TestCreateModelAuditLogging:
                 if hasattr(record, "event_type") and record.event_type == "CREATE_MODEL_REQUEST":
                     log_record = record
                     break
-            
+
             assert log_record is not None
-            
+
             # Verify the real IP from API Gateway context is used, not x-forwarded-for
             assert log_record.user["source_ip"] == "203.0.113.42"
-            
+
             # Verify the user-provided x-forwarded-for is NOT in the log
             log_message = log_record.getMessage()
             assert "192.0.2.1" not in log_message
@@ -573,13 +585,13 @@ class TestCreateModelAuditLogging:
         )
 
         # Mock the handler and auth functions
-        with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, \
-             patch("models.lambda_functions.get_admin_status_and_groups") as mock_get_admin, \
-             caplog.at_level(logging.INFO):
-            
+        with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
+            "models.lambda_functions.get_admin_status_and_groups"
+        ) as mock_get_admin, caplog.at_level(logging.INFO):
+
             # Setup mocks - simulate admin with no event context
             mock_get_admin.return_value = (True, [])
-            
+
             mock_handler = MagicMock()
             mock_handler_class.return_value = mock_handler
             mock_handler.return_value = MagicMock()
@@ -593,9 +605,9 @@ class TestCreateModelAuditLogging:
                 if hasattr(record, "event_type") and record.event_type == "CREATE_MODEL_REQUEST":
                     log_record = record
                     break
-            
+
             assert log_record is not None
-            
+
             # Verify default values are used when context is missing
             assert log_record.user["username"] == "unknown"
             assert log_record.user["auth_type"] == "unknown"
@@ -605,10 +617,13 @@ class TestCreateModelAuditLogging:
     async def test_create_model_extracts_registry_domain_from_various_formats(self, caplog):
         """Test that registry domain is correctly extracted from different image URL formats."""
         from models.domain_objects import InferenceContainer, LoadBalancerConfig, LoadBalancerHealthCheckConfig
-        
+
         test_cases = [
             # (image_url, expected_domain)
-            ("123456789012.dkr.ecr.us-east-1.amazonaws.com/my-model:latest", "123456789012.dkr.ecr.us-east-1.amazonaws.com"),
+            (
+                "123456789012.dkr.ecr.us-east-1.amazonaws.com/my-model:latest",
+                "123456789012.dkr.ecr.us-east-1.amazonaws.com",
+            ),
             ("public.ecr.aws/my-repo/model:v1", "public.ecr.aws"),
             ("docker.io/library/nginx:latest", "docker.io"),
             ("https://registry.example.com/model:tag", "registry.example.com"),
@@ -618,7 +633,7 @@ class TestCreateModelAuditLogging:
 
         for image_url, expected_domain in test_cases:
             caplog.clear()
-            
+
             # Setup mock request
             mock_request = MagicMock()
             mock_request.scope = {
@@ -685,17 +700,19 @@ class TestCreateModelAuditLogging:
             )
 
             # Mock the handler and auth functions
-            with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, \
-                 patch("models.lambda_functions.is_admin") as mock_is_admin, \
-                 patch("models.lambda_functions.get_groups") as mock_get_groups, \
-                 patch("models.lambda_functions.get_username") as mock_get_username, \
-                 caplog.at_level(logging.INFO):
-                
+            with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
+                "models.lambda_functions.is_admin"
+            ) as mock_is_admin, patch("models.lambda_functions.get_groups") as mock_get_groups, patch(
+                "models.lambda_functions.get_username"
+            ) as mock_get_username, caplog.at_level(
+                logging.INFO
+            ):
+
                 # Setup mocks
                 mock_is_admin.return_value = True
                 mock_get_groups.return_value = ["admin-group"]
                 mock_get_username.return_value = "test-admin"
-                
+
                 mock_handler = MagicMock()
                 mock_handler_class.return_value = mock_handler
                 mock_handler.return_value = MagicMock()
@@ -709,7 +726,9 @@ class TestCreateModelAuditLogging:
                     if hasattr(record, "event_type") and record.event_type == "CREATE_MODEL_REQUEST":
                         log_record = record
                         break
-                
+
                 assert log_record is not None, f"Log not found for image: {image_url}"
-                assert log_record.container["registry_domain"] == expected_domain, \
-                    f"Expected domain '{expected_domain}' for image '{image_url}', got '{log_record.container['registry_domain']}'"
+                actual_domain = log_record.container["registry_domain"]
+                assert actual_domain == expected_domain, (
+                    f"Expected domain '{expected_domain}' for image '{image_url}', " f"got '{actual_domain}'"
+                )

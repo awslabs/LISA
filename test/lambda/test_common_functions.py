@@ -15,7 +15,6 @@
 import json
 import os
 import sys
-from contextvars import ContextVar
 from datetime import datetime
 from decimal import Decimal
 from types import SimpleNamespace
@@ -35,25 +34,20 @@ os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 os.environ["AWS_REGION"] = "us-east-1"
 
 # Import after environment setup
-from utilities.common_functions import (
-    api_wrapper,
-    authorization_wrapper,
-    DecimalEncoder,
-    generate_exception_response,
-    generate_html_response,
+# Import from specific modules (refactored structure)
+from utilities.aws_helpers import (
     get_account_and_partition,
-    get_bearer_token,
     get_cert_path,
-    get_id_token,
-    get_item,
     get_lambda_role_name,
-    get_principal_id,
-    get_property_path,
     get_rest_api_container_endpoint,
-    get_session_id,
-    LambdaContextFilter,
-    merge_fields,
 )
+
+# Import logging components from common_functions (still there)
+from utilities.common_functions import LambdaContextFilter
+from utilities.dict_helpers import get_item, get_property_path, merge_fields
+from utilities.event_parser import get_bearer_token, get_id_token, get_principal_id, get_session_id
+from utilities.lambda_decorators import api_wrapper, authorization_wrapper
+from utilities.response_builder import DecimalEncoder, generate_exception_response, generate_html_response
 
 # =====================
 # Test LambdaContextFilter
@@ -62,7 +56,7 @@ from utilities.common_functions import (
 
 def test_lambda_context_filter_with_context():
     """Test LambdaContextFilter with valid context."""
-    from utilities.common_functions import ctx_context
+    from utilities.lambda_decorators import ctx_context
 
     # Create a mock context
     mock_context = SimpleNamespace(aws_request_id="test-request-id", function_name="test-function")
@@ -81,32 +75,21 @@ def test_lambda_context_filter_with_context():
 
 def test_lambda_context_filter_without_context():
     """Test LambdaContextFilter when context is missing."""
+    from unittest.mock import patch
 
-    try:
-        # Create a new context var instance to truly clear it
-        import utilities.common_functions
+    # Create filter and log record
+    filter = LambdaContextFilter()
+    record = MagicMock()
 
-        old_ctx = utilities.common_functions.ctx_context
-        utilities.common_functions.ctx_context = ContextVar("lamdbacontext")
-
-        # Create filter and log record
-        filter = LambdaContextFilter()
-        record = MagicMock()
+    # Mock the ctx_context module-level import to raise LookupError
+    with patch("utilities.common_functions.ctx_context") as mock_ctx:
+        mock_ctx.get.side_effect = LookupError("No context")
 
         result = filter.filter(record)
 
         assert result is True
         assert record.requestid == "RID-MISSING"
         assert record.functionname == "FN-MISSING"
-
-        # Restore
-        utilities.common_functions.ctx_context = old_ctx
-    except LookupError:
-        # Context is already clear
-        filter = LambdaContextFilter()
-        record = MagicMock()
-
-        result = filter.filter(record)
 
         assert result is True
         assert record.requestid == "RID-MISSING"
@@ -217,8 +200,8 @@ def test_generate_exception_response_generic():
 
     response = generate_exception_response(error)
 
-    assert response["statusCode"] == 400
-    assert "Bad Request" in response["body"]
+    assert response["statusCode"] == 500
+    assert "An unexpected error occurred" in response["body"]
 
 
 # =====================
@@ -283,7 +266,7 @@ def test_api_wrapper_success():
         return {"result": "success"}
 
     mock_context = SimpleNamespace(function_name="test-func", aws_request_id="req-123")
-    event = {"headers": {}}
+    event = {"headers": {}, "httpMethod": "GET", "path": "/test"}
 
     response = test_function(event, mock_context)
 
@@ -299,12 +282,12 @@ def test_api_wrapper_exception():
         raise ValueError("Test error")
 
     mock_context = SimpleNamespace(function_name="test-func", aws_request_id="req-123")
-    event = {"headers": {}}
+    event = {"headers": {}, "httpMethod": "GET", "path": "/test"}
 
     response = test_function(event, mock_context)
 
-    assert response["statusCode"] == 400
-    assert "Test error" in response["body"]
+    assert response["statusCode"] == 500
+    assert "An unexpected error occurred" in response["body"]
 
 
 # =====================
@@ -395,7 +378,7 @@ def test_get_cert_path_iam_error():
 # =====================
 
 
-@patch("utilities.common_functions.ssm_client")
+@patch("utilities.aws_helpers.ssm_client")
 @patch.dict(os.environ, {"LISA_API_URL_PS_NAME": "/lisa/api/url", "REST_API_VERSION": "v2"})
 def test_get_rest_api_container_endpoint(mock_ssm):
     """Test get_rest_api_container_endpoint retrieves endpoint from SSM."""
@@ -515,7 +498,7 @@ def test_merge_fields_nested_missing():
 # =====================
 
 
-@patch("utilities.common_functions.boto3.client")
+@patch("utilities.aws_helpers.boto3.client")
 def test_get_lambda_role_name(mock_boto_client):
     """Test get_lambda_role_name extracts role name from ARN."""
     mock_sts = MagicMock()

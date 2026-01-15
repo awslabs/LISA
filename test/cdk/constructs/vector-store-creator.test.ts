@@ -49,7 +49,7 @@ describe('VectorStoreCreator IAM Self-Targeting Prevention', () => {
         // Create mock SSM parameter for RAG Lambda execution role
         new ssm.StringParameter(stack, 'MockRagLambdaExecutionRole', {
             parameterName: `${config.deploymentPrefix}/roles/LisaRAGLambdaExecutionRole`,
-            stringValue: `arn:aws:iam::012345678901:role/mock-rag-lambda-execution-role`,
+            stringValue: 'arn:aws:iam::012345678901:role/mock-rag-lambda-execution-role',
         });
 
         // Create mock SSM parameter for CDK layer
@@ -118,12 +118,12 @@ describe('VectorStoreCreator IAM Self-Targeting Prevention', () => {
             // The policies are added via addToPolicy which creates separate AWS::IAM::Policy resources
             // Find all IAM policies
             const allPolicies = template.findResources('AWS::IAM::Policy');
-            
+
             // Find the policy attached to our role
             let targetPolicy: any = null;
-            for (const [policyId, policy] of Object.entries(allPolicies)) {
+            for (const [, policy] of Object.entries(allPolicies)) {
                 const policyProps = (policy as any).Properties;
-                if (policyProps.Roles && policyProps.Roles.some((role: any) => 
+                if (policyProps.Roles && policyProps.Roles.some((role: any) =>
                     role.Ref === roleLogicalId
                 )) {
                     targetPolicy = policyProps;
@@ -186,9 +186,9 @@ describe('VectorStoreCreator IAM Self-Targeting Prevention', () => {
             // Find the policy attached to our role
             const allPolicies = template.findResources('AWS::IAM::Policy');
             let targetPolicy: any = null;
-            for (const [policyId, policy] of Object.entries(allPolicies)) {
+            for (const [, policy] of Object.entries(allPolicies)) {
                 const policyProps = (policy as any).Properties;
-                if (policyProps.Roles && policyProps.Roles.some((role: any) => 
+                if (policyProps.Roles && policyProps.Roles.some((role: any) =>
                     role.Ref === roleLogicalId
                 )) {
                     targetPolicy = policyProps;

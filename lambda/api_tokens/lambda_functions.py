@@ -33,7 +33,7 @@ from .domain_objects import (
     ListTokensResponse,
     TokenInfo,
 )
-from .exception import ForbiddenError, TokenAlreadyExistsError, TokenNotFoundError, UnauthorizedError
+from .exception import TokenAlreadyExistsError, TokenNotFoundError
 from .handler import (
     CreateTokenAdminHandler,
     CreateTokenUserHandler,

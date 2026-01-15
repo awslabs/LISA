@@ -220,6 +220,7 @@ export function CollectionLibraryComponent ({ admin = false }: CollectionLibrary
                                 {admin && (
                                     <>
                                         <ButtonDropdown
+                                            data-testid='collection-actions-button'
                                             items={[
                                                 {
                                                     id: 'edit',

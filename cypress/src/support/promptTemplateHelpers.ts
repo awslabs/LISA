@@ -175,12 +175,8 @@ export function deletePromptTemplateIfExists (templateTitle: string) {
  */
 export function selectPromptTemplateInChat (templateTitle: string, templateType: 'system' | 'user' = 'user') {
     if (templateType === 'system') {
-        // For Persona templates, use the "Edit Persona" button in Additional Configuration dropdown
-        cy.contains('button', 'Additional Configuration')
-            .should('be.visible')
-            .click();
-
-        cy.contains('[role="menuitem"]', 'Edit Persona')
+        // For Persona templates, use the "Select Persona" button on the welcome screen
+        cy.get('[data-testid="select-persona-button"]')
             .should('be.visible')
             .click();
     } else {
@@ -190,40 +186,56 @@ export function selectPromptTemplateInChat (templateTitle: string, templateType:
             .click();
     }
 
-    // Wait for modal to open
+    // Wait for modal to open and get the visible one
     cy.get('[role="dialog"]')
+        .filter(':visible')
+        .first()
+        .should('be.visible');
+
+    // Search for the template
+    cy.get('input[placeholder="Search by title"]')
         .should('be.visible')
-        .within(() => {
-            // Search for and select the template
-            cy.get('input[placeholder="Search by title"]')
-                .should('be.visible')
-                .type(templateTitle);
+        .clear()
+        .type(templateTitle);
 
-            // Select from the dropdown
-            cy.contains('[role="option"]', templateTitle)
-                .should('be.visible')
-                .click();
+    // Wait for dropdown options to appear
+    cy.get('[role="listbox"]')
+        .should('be.visible');
 
-            // Click the Use button
-            const buttonText = templateType === 'system' ? 'Use Persona' : 'Use Prompt';
-            cy.contains('button', buttonText)
-                .should('be.visible')
-                .and('not.be.disabled')
-                .click();
-        });
+    // Select the matching option from the dropdown (skip the "Use..." option)
+    // Find the option with data-value attribute matching the template title
+    cy.get('[role="option"]')
+        .find(`span[data-value="${templateTitle}"]`)
+        .first()
+        .click();
+
+    // Wait a moment for the selection to populate
+    cy.wait(500);
+
+    // Click the Use button using data-testid
+    cy.get('[data-testid="use-prompt-button"]')
+        .should('be.visible')
+        .and('not.be.disabled')
+        .click();
 
     // Wait for modal to close
-    cy.get('[role="dialog"]').should('not.exist');
+    cy.get('[role="dialog"]').filter(':visible').should('not.exist');
 }
 
 /**
  * Send a message that's already in the input field by clicking the send button
  */
 export function sendMessageWithButton () {
+    // Set up intercept for chat completions API
+    cy.intercept('POST', '**/chat/completions').as('chatCompletion');
+
     cy.get('button[aria-label="Send message"]')
         .should('be.visible')
         .and('not.be.disabled')
         .click();
+
+    // Wait for the chat completion to finish
+    cy.wait('@chatCompletion', { timeout: 60000 });
 }
 
 /**
@@ -240,7 +252,47 @@ export function verifyChatResponseReceived (minMessages: number = 2) {
  * @param templateTitle - The title of the directive template to select
  */
 export function selectDirectiveAndSend (templateTitle: string) {
-    selectPromptTemplateInChat(templateTitle, 'user');
+    // Click the "Select Directive" button on the welcome screen
+    cy.get('[data-testid="select-directive-button"]')
+        .should('be.visible')
+        .click();
+
+    // Wait for modal to open
+    cy.get('[role="dialog"]')
+        .filter(':visible')
+        .first()
+        .should('be.visible');
+
+    // Search for the template
+    cy.get('input[placeholder="Search by title"]')
+        .should('be.visible')
+        .clear()
+        .type(templateTitle);
+
+    // Wait for dropdown options to appear
+    cy.get('[role="listbox"]')
+        .should('be.visible');
+
+    // Select the matching option from the dropdown (skip the "Use..." option)
+    // Find the option with data-value attribute matching the template title
+    cy.get('[role="option"]')
+        .find(`span[data-value="${templateTitle}"]`)
+        .first()
+        .click();
+
+    // Wait a moment for the selection to populate the textarea
+    cy.wait(500);
+
+    // Click the Use Prompt button using data-testid
+    cy.get('[data-testid="use-prompt-button"]')
+        .should('be.visible')
+        .and('not.be.disabled')
+        .click();
+
+    // Wait for modal to close
+    cy.get('[role="dialog"]').filter(':visible').should('not.exist');
+
+    // Send the message
     sendMessageWithButton();
     verifyChatResponseReceived();
 }

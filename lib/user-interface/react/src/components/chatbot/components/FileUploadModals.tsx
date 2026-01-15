@@ -385,6 +385,7 @@ export const RagUploadModal = ({
                     onChange={({ detail }) => setSelectedFiles(detail.value)}
                     value={selectedFiles}
                     multiple
+                    data-testid='rag-upload-file-input'
                     i18nStrings={{
                         uploadButtonText: (e) => (e ? 'Choose files' : 'Choose file'),
                         dropzoneText: (e) => (e ? 'Drop files to upload' : 'Drop file to upload'),

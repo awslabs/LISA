@@ -29,6 +29,37 @@ import { ChatMemory } from '@/shared/util/chat-memory';
 import { useAppDispatch } from '@/config/store';
 import { sessionApi } from '@/shared/reducers/session.reducer';
 
+/**
+ * Parses <thinking>...</thinking> blocks from content and extracts them.
+ * Only extracts complete blocks (with both opening and closing tags).
+ * Returns the cleaned content (with thinking blocks removed) and the extracted thinking content.
+ */
+const parseThinkingBlocks = (content: string): { cleanedContent: string; thinkingContent: string } => {
+    if (!content || typeof content !== 'string') {
+        return { cleanedContent: content, thinkingContent: '' };
+    }
+
+    // Match complete <thinking>...</thinking> blocks (case-insensitive)
+    const thinkingRegex = /<thinking>([\s\S]*?)<\/thinking>/gi;
+    const thinkingBlocks: string[] = [];
+    let match;
+
+    // Extract all complete thinking blocks
+    while ((match = thinkingRegex.exec(content)) !== null) {
+        if (match[1]) {
+            thinkingBlocks.push(match[1].trim());
+        }
+    }
+
+    // Remove all complete thinking blocks from content
+    const cleanedContent = content.replace(thinkingRegex, '').trim();
+
+    // Combine all thinking blocks with newlines
+    const thinkingContent = thinkingBlocks.join('\n\n');
+
+    return { cleanedContent, thinkingContent };
+};
+
 // Custom hook for chat generation
 export const useChatGeneration = ({
     chatConfiguration,
@@ -221,6 +252,7 @@ export const useChatGeneration = ({
                         const toolCallsAccumulator: { [index: number]: any } = {};
                         let reasoningContentAccumulator = '';
                         let reasoningSignatureAccumulator = '';
+                        let rawContentAccumulator = ''; // Accumulate raw content to parse thinking blocks
 
                         let guardrailTriggered = false;
 
@@ -232,6 +264,11 @@ export const useChatGeneration = ({
                             }
 
                             const content = chunk.content as string;
+
+                            // Accumulate raw content for thinking block parsing
+                            if (content) {
+                                rawContentAccumulator += content;
+                            }
 
                             // Check if this chunk indicates a guardrail was triggered
                             const isGuardrailTriggered = (chunk as any).id === 'guardrail-response';
@@ -247,6 +284,24 @@ export const useChatGeneration = ({
 
                             if ((chunk as any).additional_kwargs?.thinking_signature) {
                                 reasoningSignatureAccumulator += (chunk as any).additional_kwargs.thinking_signature;
+                            }
+
+                            // Parse thinking blocks from accumulated content (only if model supports reasoning)
+                            // Only parse complete blocks (wait for closing tag)
+                            let cleanedContent = rawContentAccumulator;
+                            if (modelSupportsReasoning) {
+                                const parsed = parseThinkingBlocks(rawContentAccumulator);
+                                cleanedContent = parsed.cleanedContent;
+                                // If we found thinking content and API didn't provide it, use parsed content
+                                // Update reasoning content as complete thinking blocks are found
+                                if (parsed.thinkingContent) {
+                                    if (!reasoningContentAccumulator) {
+                                        reasoningContentAccumulator = parsed.thinkingContent;
+                                    } else if (parsed.thinkingContent.length > reasoningContentAccumulator.length) {
+                                        // If parsed content is longer, it means we got a complete block, update it
+                                        reasoningContentAccumulator = parsed.thinkingContent;
+                                    }
+                                }
                             }
 
                             // Get tool calls from LangChain streaming chunks
@@ -339,7 +394,8 @@ export const useChatGeneration = ({
 
                             setSession((prev) => {
                                 const lastMessage = prev.history[prev.history.length - 1];
-                                const newContent = lastMessage.content + content;
+                                // Use cleaned content (with thinking blocks removed) for display
+                                const newContent = cleanedContent;
                                 const finalContent = (reasoningContentAccumulator && !newContent.trim()) ? '\u00A0' : newContent;
                                 return {
                                     ...prev,
@@ -395,6 +451,19 @@ export const useChatGeneration = ({
                             });
                         }
 
+                        // Final parse of thinking blocks from complete response (only if model supports reasoning)
+                        const finalRawContent = resp.join('');
+                        let finalCleanedContent = finalRawContent;
+                        let finalReasoningContent = reasoningContentAccumulator;
+                        if (modelSupportsReasoning) {
+                            const parsed = parseThinkingBlocks(finalRawContent);
+                            finalCleanedContent = parsed.cleanedContent;
+                            // Use parsed thinking content if we didn't get it from API
+                            if (parsed.thinkingContent && !finalReasoningContent) {
+                                finalReasoningContent = parsed.thinkingContent;
+                            }
+                        }
+
                         // Calculate response time and update the final message with usage info
                         const responseTime = (performance.now() - startTime) / 1000;
                         setSession((prev) => {
@@ -403,12 +472,13 @@ export const useChatGeneration = ({
                                 let updatedHistory = [...prev.history.slice(0, -1),
                                     new LisaChatMessage({
                                         ...lastMessage,
+                                        content: finalCleanedContent,
                                         usage: {
                                             ...lastMessage.usage,
                                             responseTime: parseFloat(responseTime.toFixed(2))
                                         },
                                         guardrailTriggered: guardrailTriggered,
-                                        reasoningContent: reasoningContentAccumulator || undefined,
+                                        reasoningContent: finalReasoningContent || undefined,
                                         reasoningSignature: reasoningSignatureAccumulator,
                                     })
                                 ];
@@ -426,7 +496,7 @@ export const useChatGeneration = ({
                             return prev;
                         });
 
-                        await memory.saveContext({ input: params.input }, { output: resp.join('') });
+                        await memory.saveContext({ input: params.input }, { output: finalCleanedContent });
                         setIsStreaming(false);
                     } catch (exception) {
                         setSession((prev) => ({
@@ -437,24 +507,36 @@ export const useChatGeneration = ({
                     }
                 } else {
                     const response = await llmClient.invoke(messages, { tools: modelSupportsTools ? openAiTools : undefined, ...(modelSupportsReasoning ? { reasoning: { effort: chatConfiguration.sessionConfiguration.modelArgs.reasoning_effort } } : {}) });
-                    const content = response.content as string;
+                    const rawContent = response.content as string;
                     const usage = (response.response_metadata as any)?.tokenUsage;
 
                     // Check if guardrail was triggered
                     const isGuardrailTriggered = (response as any)?.id === 'guardrail-response';
 
-                    const reasoningContent = (response as any).additional_kwargs?.reasoning_content;
+                    // Get reasoning content from API (preferred)
+                    let reasoningContent = (response as any).additional_kwargs?.reasoning_content;
                     const reasoningSignature = (response as any).additional_kwargs?.thinking_signature;
+
+                    // Parse thinking blocks from content (only if model supports reasoning)
+                    let cleanedContent = rawContent;
+                    if (modelSupportsReasoning) {
+                        const parsed = parseThinkingBlocks(rawContent);
+                        cleanedContent = parsed.cleanedContent;
+                        // If we found thinking content and API didn't provide it, use parsed content
+                        if (parsed.thinkingContent && !reasoningContent) {
+                            reasoningContent = parsed.thinkingContent;
+                        }
+                    }
 
                     // Calculate response time
                     const responseTime = (performance.now() - startTime) / 1000;
 
-                    await memory.saveContext({ input: params.input }, { output: content });
+                    await memory.saveContext({ input: params.input }, { output: cleanedContent });
 
-                    // Create the AI message
+                    // Create the AI message with cleaned content (thinking blocks removed)
                     const aiMessage = new LisaChatMessage({
                         type: 'ai',
-                        content,
+                        content: cleanedContent,
                         metadata,
                         toolCalls: [...(response.tool_calls ?? [])],
                         usage: {

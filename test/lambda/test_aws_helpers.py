@@ -17,6 +17,11 @@
 import os
 from unittest.mock import MagicMock, patch
 
+<<<<<<< HEAD
+=======
+import pytest
+
+>>>>>>> 4e53cd7f (Added input validation, security headers, and logging to FastAPI lambdas and apiWrappers)
 # Set required environment variables before importing aws_helpers
 os.environ.setdefault("AWS_REGION", "us-east-1")
 
@@ -44,9 +49,13 @@ class TestGetCertPath:
         assert result is True
         mock_iam.get_server_certificate.assert_not_called()
 
+<<<<<<< HEAD
     @patch.dict(
         os.environ, {"RESTAPI_SSL_CERT_ARN": "arn:aws:acm:us-east-1:123456789012:certificate/abc-123"}, clear=False
     )
+=======
+    @patch.dict(os.environ, {"RESTAPI_SSL_CERT_ARN": "arn:aws:acm:us-east-1:123456789012:certificate/abc-123"}, clear=False)
+>>>>>>> 4e53cd7f (Added input validation, security headers, and logging to FastAPI lambdas and apiWrappers)
     def test_returns_true_for_acm_certificate(self):
         """Test get_cert_path returns True for ACM certificates."""
         mock_iam = MagicMock()
@@ -59,9 +68,13 @@ class TestGetCertPath:
         assert result is True
         mock_iam.get_server_certificate.assert_not_called()
 
+<<<<<<< HEAD
     @patch.dict(
         os.environ, {"RESTAPI_SSL_CERT_ARN": "arn:aws:iam::123456789012:server-certificate/test-cert"}, clear=False
     )
+=======
+    @patch.dict(os.environ, {"RESTAPI_SSL_CERT_ARN": "arn:aws:iam::123456789012:server-certificate/test-cert"}, clear=False)
+>>>>>>> 4e53cd7f (Added input validation, security headers, and logging to FastAPI lambdas and apiWrappers)
     def test_retrieves_iam_certificate(self):
         """Test get_cert_path retrieves IAM certificate."""
         mock_iam = MagicMock()
@@ -78,9 +91,13 @@ class TestGetCertPath:
         assert result != ""
         mock_iam.get_server_certificate.assert_called_once_with(ServerCertificateName="test-cert")
 
+<<<<<<< HEAD
     @patch.dict(
         os.environ, {"RESTAPI_SSL_CERT_ARN": "arn:aws:iam::123456789012:server-certificate/my-cert"}, clear=False
     )
+=======
+    @patch.dict(os.environ, {"RESTAPI_SSL_CERT_ARN": "arn:aws:iam::123456789012:server-certificate/my-cert"}, clear=False)
+>>>>>>> 4e53cd7f (Added input validation, security headers, and logging to FastAPI lambdas and apiWrappers)
     def test_falls_back_on_iam_error(self):
         """Test get_cert_path falls back to True when IAM call fails."""
         mock_iam = MagicMock()

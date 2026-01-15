@@ -69,7 +69,7 @@ export function fillRepositoryConfig (config: RepositoryConfig) {
     cy.get('[data-testid="repository-type-select"]')
         .find('button')
         .click();
-    
+
     cy.get('[role="option"]')
         .contains('BEDROCK_KNOWLEDGE_BASE')
         .should('be.visible')
@@ -93,7 +93,7 @@ export function selectKnowledgeBase (knowledgeBaseName: string) {
     cy.get('[data-testid="knowledge-base-select"]')
         .find('button')
         .click();
-    
+
     // Select the knowledge base by name
     cy.get('[role="option"]')
         .contains(knowledgeBaseName)

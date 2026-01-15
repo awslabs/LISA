@@ -16,9 +16,7 @@
 
 import functools
 import logging
-from typing import Any, Callable, Dict, TypeVar, Union
-
-from utilities.response_builder import generate_html_response
+from typing import Any, Callable, Dict, Optional, TypeVar, Union
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +78,9 @@ def validate_input(max_request_size: int = DEFAULT_MAX_REQUEST_SIZE) -> Callable
             Returns:
                 Error response if validation fails, otherwise calls wrapped function
             """
+            # Import here to avoid circular dependency
+            from utilities.common_functions import generate_html_response
+
             # 1. Validate HTTP method
             http_method = event.get("httpMethod", "")
             valid_methods = {"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}

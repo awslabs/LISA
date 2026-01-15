@@ -18,7 +18,7 @@ import logging
 import os
 import tempfile
 from functools import cache
-from typing import Any, cast, Union
+from typing import Any, Union, cast
 
 import boto3
 from botocore.config import Config

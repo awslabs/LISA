@@ -15,7 +15,7 @@
 """Utility for sanitizing HTTP headers before logging to prevent log injection attacks."""
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 logger = logging.getLogger(__name__)
 

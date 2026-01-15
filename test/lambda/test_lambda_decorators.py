@@ -16,9 +16,16 @@
 
 import json
 from types import SimpleNamespace
+<<<<<<< HEAD
 from unittest.mock import patch
 
 import pytest
+=======
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+>>>>>>> 4e53cd7f (Added input validation, security headers, and logging to FastAPI lambdas and apiWrappers)
 from utilities.lambda_decorators import api_wrapper, authorization_wrapper, ctx_context, get_lambda_context
 
 
@@ -92,6 +99,10 @@ class TestApiWrapper:
 
     def test_context_is_set(self):
         """Test api_wrapper sets Lambda context."""
+<<<<<<< HEAD
+=======
+        from utilities.lambda_decorators import ctx_context
+>>>>>>> 4e53cd7f (Added input validation, security headers, and logging to FastAPI lambdas and apiWrappers)
 
         @api_wrapper
         def test_function(event, context):
@@ -144,6 +155,10 @@ class TestAuthorizationWrapper:
 
     def test_context_is_set(self):
         """Test authorization_wrapper sets Lambda context."""
+<<<<<<< HEAD
+=======
+        from utilities.lambda_decorators import ctx_context
+>>>>>>> 4e53cd7f (Added input validation, security headers, and logging to FastAPI lambdas and apiWrappers)
 
         @authorization_wrapper
         def test_function(event, context):
@@ -176,6 +191,10 @@ class TestGetLambdaContext:
 
     def test_get_context_when_set(self):
         """Test get_lambda_context returns context when set."""
+<<<<<<< HEAD
+=======
+        from utilities.lambda_decorators import ctx_context
+>>>>>>> 4e53cd7f (Added input validation, security headers, and logging to FastAPI lambdas and apiWrappers)
 
         mock_context = SimpleNamespace(function_name="get-context-test", aws_request_id="req-999")
         ctx_context.set(mock_context)

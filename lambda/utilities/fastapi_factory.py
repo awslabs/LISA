@@ -19,10 +19,11 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-
 from utilities.fastapi_middleware.aws_api_gateway_middleware import AWSAPIGatewayMiddleware
 from utilities.fastapi_middleware.exception_handlers import generic_exception_handler
 from utilities.fastapi_middleware.input_validation_middleware import InputValidationMiddleware
+from utilities.fastapi_middleware.request_logging_middleware import RequestLoggingMiddleware
+from utilities.fastapi_middleware.security_headers_middleware import SecurityHeadersMiddleware
 
 
 def create_fastapi_app() -> FastAPI:
@@ -31,11 +32,20 @@ def create_fastapi_app() -> FastAPI:
 
     This factory function creates a FastAPI app with:
     - Standard FastAPI settings (redirect_slashes, lifespan, docs)
-    - Input validation middleware (must be first)
-    - AWS API Gateway middleware
+    - Input validation middleware (null bytes, request size, HTTP methods)
+    - AWS API Gateway middleware (extracts Lambda event context)
+    - Request logging middleware (audit trail with sanitized data)
+    - Security headers middleware (HSTS, X-Frame-Options, etc.)
     - CORS middleware with permissive settings
     - Request validation exception handler (422 errors)
     - Generic exception handler (500 errors)
+
+    Middleware execution order (IMPORTANT):
+    1. InputValidationMiddleware - Validates input FIRST (security)
+    2. AWSAPIGatewayMiddleware - Extracts AWS event context
+    3. RequestLoggingMiddleware - Logs requests with sanitized data
+    4. SecurityHeadersMiddleware - Adds security headers to responses
+    5. CORSMiddleware - Handles CORS (last middleware)
 
     Returns:
         FastAPI: Configured FastAPI application instance
@@ -56,11 +66,10 @@ def create_fastapi_app() -> FastAPI:
         openapi_url="/openapi.json",
     )
 
-    # Add input validation middleware (must be added before other middleware)
-    app.add_middleware(InputValidationMiddleware)
-    # Add AWS API Gateway middleware
-    app.add_middleware(AWSAPIGatewayMiddleware)
-    # Enable CORS with permissive settings
+    # Add middleware in reverse order (last added = first executed)
+    # Middleware execution order: InputValidation -> AWSAPIGateway -> RequestLogging -> SecurityHeaders -> CORS
+
+    # CORS middleware (executed last, added first)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -69,7 +78,21 @@ def create_fastapi_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # Security headers middleware (adds HSTS, X-Frame-Options, etc.)
+    app.add_middleware(SecurityHeadersMiddleware)
+
+    # Request logging middleware (logs all requests with sanitized data)
+    app.add_middleware(RequestLoggingMiddleware)
+
+    # AWS API Gateway middleware (extracts Lambda event context)
+    app.add_middleware(AWSAPIGatewayMiddleware)
+
+    # Input validation middleware (must be executed first for security)
+    app.add_middleware(InputValidationMiddleware)
+
     # Register standard exception handlers
+
+    # Request validation errors (422)
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request, exc: RequestValidationError) -> JSONResponse:
         """Handle exception when request fails validation and translate to a 422 error."""
@@ -77,17 +100,6 @@ def create_fastapi_app() -> FastAPI:
             status_code=422,
             content={"detail": jsonable_encoder(exc.errors()), "type": "RequestValidationError"},
         )
-
-    @app.exception_handler(UnauthorizedError)
-    async def unauthorized_handler(request: Request, exc: UnauthorizedError) -> JSONResponse:
-        """Handle unauthorized access attempts and translate to a 401 error."""
-        return JSONResponse(status_code=401, content={"message": str(exc)})
-
-
-    @app.exception_handler(ForbiddenError)
-    async def forbidden_handler(request: Request, exc: ForbiddenError) -> JSONResponse:
-        """Handle forbidden access attempts and translate to a 403 error."""
-        return JSONResponse(status_code=403, content={"message": str(exc)})
 
     # Generic exception handler (500) - must be registered last
     @app.exception_handler(Exception)

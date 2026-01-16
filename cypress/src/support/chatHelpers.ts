@@ -193,10 +193,13 @@ export function insertChatPrompt (text: string) {
 }
 
 /**
- * Verify that a chat response was received
+ * Verify that a chat response was received and is complete
  * @param minMessages - Minimum number of messages expected (default: 2 for user + assistant)
  */
 export function verifyChatResponseReceived (minMessages: number = 2) {
+    // Wait for "Generating response" box to disappear, indicating the response is complete
+    cy.get('[data-testid="generating-response-box"]', { timeout: 60000 }).should('not.exist');
+
     // Wait for AI response message
     cy.get('[data-testid="chat-message-ai"]', { timeout: 30000 })
         .should('have.length.at.least', 1);

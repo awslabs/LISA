@@ -331,7 +331,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                     }
                     actions={showUsage ? <UsageInfo usage={message.usage} /> : undefined}
                 >
-                    <Box color='text-status-inactive'>
+                    <Box color='text-status-inactive' data-testid='generating-response-box'>
                         Generating response
                     </Box>
                 </ChatBubble>

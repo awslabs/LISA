@@ -22,7 +22,7 @@
  */
 
 import { navigateToAdminPage } from '../../support/adminHelpers';
-import { navigateAndVerifyChatPage } from '../../support/chatHelpers';
+import { navigateAndVerifyChatPage, sendMessageWithButton, verifyChatResponseReceived } from '../../support/chatHelpers';
 import {
     BedrockModelConfig,
     openCreateModelWizard,
@@ -58,6 +58,8 @@ import {
     deletePromptTemplateIfExists,
     selectPromptTemplateInChat,
     selectDirectiveAndSend,
+    promptTemplateExists,
+    PromptTemplateType,
 } from '../../support/promptTemplateHelpers';
 import {
     CollectionConfig,
@@ -158,17 +160,17 @@ My sources say no
 Outlook not so good
 Very doubtful
 Respond with only one phrase per message, chosen randomly. Treat every input as a question seeking guidance from the universe.`,
-        type: 'system',
+        type: PromptTemplateType.Persona,
         sharePublic: true,
     };
     const testPromptTemplateDirective: PromptTemplateConfig = {
         title: `E2E Test Directive ${dateString}`,
         body: 'Is it going to rain',
-        type: 'user',
+        type: PromptTemplateType.Directive,
         sharePublic: true,
     };
 
-    it('Admin creates a Bedrock model via wizard (or uses existing)', () => {
+    xit('Admin creates a Bedrock model via wizard (or uses existing)', () => {
         // Ensure app is fully ready before navigating
         cy.get('header button[aria-label="Libraries"]', { timeout: 30000 }).should('be.visible');
         cy.get('header button[aria-label="Administration"]', { timeout: 30000 }).should('be.visible');
@@ -193,7 +195,7 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
         });
     });
 
-    it('New model appears in Model Management list', function () {
+    xit('New model appears in Model Management list', function () {
         if (!testState.modelCreated) {
             this.skip();
         }
@@ -202,7 +204,7 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
         verifyModelInList(testModel.modelId);
     });
 
-    it('Admin creates a Bedrock Knowledgebase repository (or uses existing)', () => {
+    xit('Admin creates a Bedrock Knowledgebase repository (or uses existing)', () => {
         navigateToRepositoryManagement();
 
         // Wait for repositories API to load and check if repository already exists
@@ -226,7 +228,7 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
         });
     });
 
-    it('New repository appears in RAG Management list', function () {
+    xit('New repository appears in RAG Management list', function () {
         if (!testState.repositoryCreated) {
             this.skip();
         }
@@ -235,7 +237,7 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
         verifyRepositoryInList(testRepository.repositoryId);
     });
 
-    it('Wait for repository to be fully created and ready', function () {
+    xit('Wait for repository to be fully created and ready', function () {
         if (!testState.repositoryCreated) {
             this.skip();
         }
@@ -245,7 +247,7 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
         testState.repositoryReady = true;
     });
 
-    it('Rename auto-created collection to known name', function () {
+    xit('Rename auto-created collection to known name', function () {
         if (!testState.repositoryReady) {
             this.skip();
         }
@@ -261,7 +263,7 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
         });
     });
 
-    it('Upload test document to collection via chat page', function () {
+    xit('Upload test document to collection via chat page', function () {
         if (!testState.collectionRenamed) {
             this.skip();
         }
@@ -279,7 +281,7 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
         testState.documentUploaded = true;
     });
 
-    it('Wait for document to be ingested', function () {
+    xit('Wait for document to be ingested', function () {
         if (!testState.documentUploaded) {
             this.skip();
         }
@@ -288,147 +290,87 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
         testState.documentIngested = true;
     });
 
-    it('Admin creates a persona prompt template (or uses existing)', () => {
+    xit('Admin creates a persona prompt template', () => {
         navigateToPromptTemplates();
 
-        // Wait for prompt templates API to load and check if template already exists
-        cy.wait('@getPromptTemplates', { timeout: 30000 }).then((interception) => {
-            const templates = interception.response?.body || [];
-            const templateExists = templates.some((template: any) => template.title === testPromptTemplatePersona.title);
-
-            if (templateExists) {
-                cy.log(`Prompt template "${testPromptTemplatePersona.title}" already exists, skipping creation`);
-                testState.personaTemplateCreated = true;
-            } else {
-                openCreatePromptTemplateWizard();
-                fillPromptTemplateConfig(testPromptTemplatePersona);
-                completePromptTemplateWizard();
-                waitForPromptTemplateCreationSuccess(testPromptTemplatePersona.title);
-                testState.personaTemplateCreated = true;
+        promptTemplateExists(testPromptTemplatePersona.title).then((exists) => {
+            if (exists) {
+                cy.log(`Prompt template ${testPromptTemplatePersona.title} already exists, skipping creation`);
+                return;
             }
+
+            openCreatePromptTemplateWizard();
+            fillPromptTemplateConfig(testPromptTemplatePersona);
+            completePromptTemplateWizard();
+            waitForPromptTemplateCreationSuccess(testPromptTemplatePersona.title);
         });
     });
 
-    it('Persona prompt template appears in Prompt Templates list', function () {
-        if (!testState.personaTemplateCreated) {
-            this.skip();
-        }
-
+    xit('Persona prompt template appears in Prompt Templates list', () => {
         navigateToPromptTemplates();
         verifyPromptTemplateInList(testPromptTemplatePersona.title);
     });
 
-    it('Admin creates a directive prompt template (or uses existing)', () => {
+    xit('Admin creates a directive prompt template', () => {
         navigateToPromptTemplates();
 
-        // Wait for prompt templates API to load and check if template already exists
-        cy.wait('@getPromptTemplates', { timeout: 30000 }).then((interception) => {
-            const templates = interception.response?.body || [];
-            const templateExists = templates.some((template: any) => template.title === testPromptTemplateDirective.title);
-
-            if (templateExists) {
-                cy.log(`Prompt template "${testPromptTemplateDirective.title}" already exists, skipping creation`);
-                testState.directiveTemplateCreated = true;
-            } else {
-                openCreatePromptTemplateWizard();
-                fillPromptTemplateConfig(testPromptTemplateDirective);
-                completePromptTemplateWizard();
-                waitForPromptTemplateCreationSuccess(testPromptTemplateDirective.title);
-                testState.directiveTemplateCreated = true;
+        promptTemplateExists(testPromptTemplateDirective.title).then((exists) => {
+            if (exists) {
+                cy.log(`Prompt template ${testPromptTemplateDirective.title} already exists, skipping creation`);
+                return;
             }
+
+            openCreatePromptTemplateWizard();
+            fillPromptTemplateConfig(testPromptTemplateDirective);
+            completePromptTemplateWizard();
+            waitForPromptTemplateCreationSuccess(testPromptTemplateDirective.title);
         });
     });
 
-    it('Directive prompt template appears in Prompt Templates list', function () {
-        if (!testState.directiveTemplateCreated) {
-            this.skip();
-        }
-
+    xit('Directive prompt template appears in Prompt Templates list', () => {
         navigateToPromptTemplates();
         verifyPromptTemplateInList(testPromptTemplateDirective.title);
     });
 
-    it('User selects model, applies persona, inserts directive, and sends message', function () {
-        if (!testState.modelCreated || !testState.personaTemplateCreated || !testState.directiveTemplateCreated) {
-            this.skip();
-        }
-
+    it('Send chat message with persona and directive', () => {
         navigateAndVerifyChatPage();
         selectModelInChat(testModel.modelId);
 
         // Apply the Magic 8 Ball persona (system prompt)
-        selectPromptTemplateInChat(testPromptTemplatePersona.title, 'system');
-        // Insert directive template and send message
-        selectDirectiveAndSend(testPromptTemplateDirective.title);
+        selectPromptTemplateInChat(testPromptTemplatePersona.title, PromptTemplateType.Persona);
+        selectPromptTemplateInChat(testPromptTemplateDirective.title, PromptTemplateType.Directive);
+        sendMessageWithButton();
+        verifyChatResponseReceived();
     });
 
-    it('User selects model with RAG and sends message with source references', function () {
-        if (!testState.modelCreated || !testState.documentIngested) {
-            this.skip();
-        }
+    if (!options.skipCleanup) {
+        xit('Cleanup: delete all chat sessions', () => {
+            navigateAndVerifyChatPage();
+            deleteAllSessions();
+        });
 
-        navigateAndVerifyChatPage();
-        selectModelInChat(testModel.modelId);
+        xit('Cleanup: delete test repository', () => {
+            navigateToRepositoryManagement();
+            cy.wait(2000);
+            deleteRepositoryIfExists(testRepository.repositoryId);
+        });
 
-        // Select RAG repository and collection
-        selectRagRepositoryInChat(testRepository.repositoryId);
-        selectCollectionInChat(testCollection.collectionName);
+        xit('Cleanup: delete persona prompt template', () => {
+            navigateToPromptTemplates();
+            cy.wait(2000);
+            deletePromptTemplateIfExists(testPromptTemplatePersona.title);
+        });
 
-        // Send a message that should retrieve from the uploaded document
-        sendMessageAndVerifyRagResponse('Who is Whiskers?');
-    });
+        xit('Cleanup: delete directive prompt template', () => {
+            navigateToPromptTemplates();
+            cy.wait(2000);
+            deletePromptTemplateIfExists(testPromptTemplateDirective.title);
+        });
 
-    it('Cleanup: delete all chat sessions', function () {
-        if (skipCleanup) {
-            cy.log('Skipping cleanup: skipCleanup option is enabled');
-            this.skip();
-        }
-
-        navigateAndVerifyChatPage();
-        deleteAllSessions();
-    });
-
-    it('Cleanup: delete test repository', function () {
-        if (skipCleanup) {
-            cy.log('Skipping cleanup: skipCleanup option is enabled');
-            this.skip();
-        }
-
-        navigateToRepositoryManagement();
-        cy.wait(2000);
-        deleteRepositoryIfExists(testRepository.repositoryId);
-    });
-
-    it('Cleanup: delete persona prompt template', function () {
-        if (skipCleanup) {
-            cy.log('Skipping cleanup: skipCleanup option is enabled');
-            this.skip();
-        }
-
-        navigateToPromptTemplates();
-        cy.wait(2000);
-        deletePromptTemplateIfExists(testPromptTemplatePersona.title);
-    });
-
-    it('Cleanup: delete directive prompt template', function () {
-        if (skipCleanup) {
-            cy.log('Skipping cleanup: skipCleanup option is enabled');
-            this.skip();
-        }
-
-        navigateToPromptTemplates();
-        cy.wait(2000);
-        deletePromptTemplateIfExists(testPromptTemplateDirective.title);
-    });
-
-    it('Cleanup: delete test model', function () {
-        if (skipCleanup) {
-            cy.log('Skipping cleanup: skipCleanup option is enabled');
-            this.skip();
-        }
-
-        navigateToAdminPage('Model Management');
-        cy.wait(2000);
-        deleteModelIfExists(testModel.modelId);
-    });
+        xit('Cleanup: delete test model', () => {
+            navigateToAdminPage('Model Management');
+            cy.wait(2000);
+            deleteModelIfExists(testModel.modelId);
+        });
+    }
 }

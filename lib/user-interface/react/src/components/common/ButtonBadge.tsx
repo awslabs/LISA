@@ -17,6 +17,7 @@
 import { Button, SpaceBetween, TextContent } from '@cloudscape-design/components';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { IconDefinition } from '@fortawesome/fontawesome-svg-core';
+import kebabCase from 'lodash/kebabCase';
 
 type ButtonBadgeProps = {
     text: string;
@@ -31,8 +32,10 @@ export const ButtonBadge = ({ text, icon, onClick, show, dataTestId }: ButtonBad
         return null;
     }
 
+    const testId = `${kebabCase(text)}-button`;
+
     return (
-        <Button variant='normal' onClick={onClick} data-testid={dataTestId}>
+        <Button variant='normal' onClick={onClick} data-testid={testId}>
             <SpaceBetween direction='horizontal' size='xs'>
                 <FontAwesomeIcon icon={icon} />
                 <TextContent>{text}</TextContent>

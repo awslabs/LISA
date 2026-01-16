@@ -173,15 +173,14 @@ Cypress.Commands.add('loginAs', (role = 'user') => {
                 // Clear only API cache reducers that may have stale/cancelled data
                 // Preserve: user, userPreferences, notification, modal, breadcrumbGroup
                 const apiReducersToReset = [
-                    'models',           // modelManagementApi.reducerPath
-                    'configuration',    // configurationApi.reducerPath
-                    'sessions',         // sessionApi.reducerPath
-                    'rag',              // ragApi.reducerPath
-                    'promptTemplates',  // promptTemplateApi.reducerPath
-                    'mcpServers',       // mcpServerApi.reducerPath
-                    'mcpTools',         // mcpToolsApi.reducerPath
-                    'apiTokens',        // apiTokenApi.reducerPath
-                    'userPreferences',  // userPreferencesApi.reducerPath
+                    'modelManagement',
+                    'configuration',
+                    'session',
+                    'rag',
+                    'promptTemplates',
+                    'mcpServers',
+                    'mcpTools',
+                    'apiTokens',
                 ];
                 apiReducersToReset.forEach((key) => {
                     if (state[key]) {

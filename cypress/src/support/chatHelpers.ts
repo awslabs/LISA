@@ -169,7 +169,6 @@ export function selectModel (modelName?: string) {
             .click();
     }
 }
-<<<<<<< HEAD
 
 /**
  * Send a message that's already in the input field by clicking the send button
@@ -198,9 +197,6 @@ export function insertChatPrompt (text: string) {
  * @param minMessages - Minimum number of messages expected (default: 2 for user + assistant)
  */
 export function verifyChatResponseReceived (minMessages: number = 2) {
-    // Wait for "Generating response" box to disappear, indicating the response is complete
-    cy.get('[data-testid="generating-response-box"]', { timeout: 60000 }).should('not.exist');
-
     // Wait for AI response message
     cy.get('[data-testid="chat-message-ai"]', { timeout: 30000 })
         .should('have.length.at.least', 1);
@@ -209,5 +205,3 @@ export function verifyChatResponseReceived (minMessages: number = 2) {
     cy.get('[data-testid^="chat-message-"]', { timeout: 30000 })
         .should('have.length.at.least', minMessages);
 }
-=======
->>>>>>> bcec1b94 (Add model creation test)

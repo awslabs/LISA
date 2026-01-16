@@ -380,7 +380,7 @@ class ContainerHealthCheckConfig(BaseModel):
 
     @field_validator("command")
     @classmethod
-    def validate_command(cls, command: Union[str, List[str]]) -> Union[str, List[str]]:
+    def validate_command(cls, command: str | list[str]) -> str | list[str]:
         """Validates healthcheck command format for ECS compatibility."""
         validate_healthcheck_command(command)
         return command

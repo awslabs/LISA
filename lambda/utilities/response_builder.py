@@ -47,7 +47,7 @@ class DecimalEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-def generate_html_response(status_code: int, response_body: dict) -> Dict[str, Union[str, int, Dict[str, str]]]:
+def generate_html_response(status_code: int, response_body: dict) -> dict[str, str | int | dict[str, str]]:
     """
     Generate API Gateway response with security headers.
 
@@ -93,7 +93,7 @@ def generate_html_response(status_code: int, response_body: dict) -> Dict[str, U
     }
 
 
-def generate_exception_response(e: Exception) -> Dict[str, Union[str, int, Dict[str, str]]]:
+def generate_exception_response(e: Exception) -> dict[str, str | int | dict[str, str]]:
     """
     Generate API Gateway error response from exception.
 

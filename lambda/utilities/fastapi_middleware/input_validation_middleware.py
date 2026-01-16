@@ -97,7 +97,7 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
         """
         return "\x00" in data
 
-    async def check_request_size(self, request: Request) -> Optional[JSONResponse]:
+    async def check_request_size(self, request: Request) -> JSONResponse | None:
         """
         Validate that the request body size does not exceed the configured limit.
 
@@ -136,7 +136,7 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
 
         return None
 
-    async def validate_query_params(self, request: Request) -> Optional[JSONResponse]:
+    async def validate_query_params(self, request: Request) -> JSONResponse | None:
         """
         Validate query parameters for null bytes.
 
@@ -165,7 +165,7 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
                 )
         return None
 
-    async def validate_path_params(self, request: Request) -> Optional[JSONResponse]:
+    async def validate_path_params(self, request: Request) -> JSONResponse | None:
         """
         Validate path parameters for null bytes.
 
@@ -193,7 +193,7 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
             )
         return None
 
-    async def validate_request_body(self, request: Request) -> Optional[JSONResponse]:
+    async def validate_request_body(self, request: Request) -> JSONResponse | None:
         """
         Validate request body for null bytes.
 

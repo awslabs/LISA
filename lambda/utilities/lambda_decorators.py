@@ -17,7 +17,8 @@
 import functools
 import logging
 from contextvars import ContextVar
-from typing import Any, Callable, Dict, TypeVar, Union
+from typing import Any, Dict, TypeVar, Union
+from collections.abc import Callable
 
 from utilities.event_parser import sanitize_event_for_logging
 from utilities.input_validation import validate_input
@@ -61,7 +62,7 @@ def api_wrapper(f: F) -> F:
 
     @functools.wraps(f)
     @validate_input()  # Add input validation before processing
-    def wrapper(event: dict, context: dict) -> Dict[str, Union[str, int, Dict[str, str]]]:
+    def wrapper(event: dict, context: dict) -> dict[str, str | int | dict[str, str]]:
         """Execute Lambda handler with API Gateway integration."""
         ctx_context.set(context)
         code_func_name = f.__name__

@@ -88,7 +88,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
         return response
 
-    def _build_log_data(self, request: Request, event: Dict[str, Any]) -> Dict[str, Any]:
+    def _build_log_data(self, request: Request, event: dict[str, Any]) -> dict[str, Any]:
         """
         Build sanitized log data from request and AWS event.
 

@@ -21,7 +21,7 @@ from typing import Any, Dict, Optional
 from utilities.header_sanitizer import sanitize_headers
 
 
-def sanitize_event_for_logging(event: Dict[str, Any]) -> str:
+def sanitize_event_for_logging(event: dict[str, Any]) -> str:
     """
     Sanitize Lambda event before logging.
 
@@ -131,7 +131,7 @@ def get_principal_id(event: dict) -> str:
     return principal
 
 
-def get_bearer_token(event: dict) -> Optional[str]:
+def get_bearer_token(event: dict) -> str | None:
     """
     Extract Bearer token from Authorization header in Lambda event.
 

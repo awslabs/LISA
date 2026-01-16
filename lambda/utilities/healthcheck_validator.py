@@ -16,7 +16,7 @@
 from typing import Union
 
 
-def validate_healthcheck_command(command: Union[str, list[str]]) -> None:
+def validate_healthcheck_command(command: str | list[str]) -> None:
     """
     Validate ECS healthcheck command format.
 

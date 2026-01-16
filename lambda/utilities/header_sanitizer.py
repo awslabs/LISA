@@ -30,7 +30,7 @@ SECURITY_CRITICAL_HEADERS = {
 }
 
 
-def get_real_client_ip(event: Dict[str, Any]) -> str:
+def get_real_client_ip(event: dict[str, Any]) -> str:
     """
     Extract the real client IP address from API Gateway event context.
 
@@ -60,7 +60,7 @@ def get_real_client_ip(event: Dict[str, Any]) -> str:
         return "unknown"
 
 
-def sanitize_headers(headers: Dict[str, Any], event: Dict[str, Any]) -> Dict[str, Any]:
+def sanitize_headers(headers: dict[str, Any], event: dict[str, Any]) -> dict[str, Any]:
     """
     Sanitize HTTP headers by replacing user-controlled values with server-controlled values.
 
@@ -131,7 +131,7 @@ def sanitize_headers(headers: Dict[str, Any], event: Dict[str, Any]) -> Dict[str
     return sanitized
 
 
-def get_sanitized_headers_for_logging(event: Dict[str, Any]) -> Dict[str, Any]:
+def get_sanitized_headers_for_logging(event: dict[str, Any]) -> dict[str, Any]:
     """
     Extract and sanitize headers from Lambda event for safe logging.
 

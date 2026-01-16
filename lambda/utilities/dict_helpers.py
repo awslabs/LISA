@@ -81,7 +81,7 @@ def merge_fields(source: dict, target: dict, fields: list[str]) -> dict:
     return target
 
 
-def get_property_path(data: dict[str, Any], property_path: str) -> Optional[Any]:
+def get_property_path(data: dict[str, Any], property_path: str) -> Any | None:
     """
     Get value from nested dictionary using dot-notation path.
 

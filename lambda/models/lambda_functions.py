@@ -15,7 +15,7 @@
 """APIGW endpoints for managing models."""
 import logging
 import os
-from typing import Annotated, Union
+from typing import Annotated
 from urllib.parse import urlparse
 
 import boto3

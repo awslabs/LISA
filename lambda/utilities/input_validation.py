@@ -16,7 +16,8 @@
 
 import functools
 import logging
-from typing import Any, Callable, Dict, TypeVar, Union
+from typing import Any, Dict, TypeVar, Union
+from collections.abc import Callable
 
 from utilities.response_builder import generate_html_response
 
@@ -62,7 +63,7 @@ def validate_input(max_request_size: int = DEFAULT_MAX_REQUEST_SIZE) -> Callable
 
     def decorator(f: F) -> F:
         @functools.wraps(f)
-        def wrapper(event: dict, context: dict) -> Dict[str, Union[str, int, Dict[str, str]]]:
+        def wrapper(event: dict, context: dict) -> dict[str, str | int | dict[str, str]]:
             """
             Validate Lambda event input.
 

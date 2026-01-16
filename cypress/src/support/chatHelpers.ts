@@ -193,7 +193,7 @@ export function insertChatPrompt (text: string) {
 }
 
 /**
- * Verify that a chat response was received and is complete
+ * Verify that a chat response was received
  * @param minMessages - Minimum number of messages expected (default: 2 for user + assistant)
  */
 export function verifyChatResponseReceived (minMessages: number = 2) {

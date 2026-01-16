@@ -226,12 +226,16 @@ class TestValidateInputDecorator:
         """Test that legitimate special characters are allowed."""
         valid_event["path"] = "/test/path-with_special.chars"
 <<<<<<< HEAD
+<<<<<<< HEAD
         valid_event["queryStringParameters"] = {"param": "value-with_special.chars!@#$%"}
 =======
         valid_event["queryStringParameters"] = {
             "param": "value-with_special.chars!@#$%"
         }
 >>>>>>> 4e53cd7f (Added input validation, security headers, and logging to FastAPI lambdas and apiWrappers)
+=======
+        valid_event["queryStringParameters"] = {"param": "value-with_special.chars!@#$%"}
+>>>>>>> 5bc884ee (pre)
 
         @validate_input()
         def handler(event, context):

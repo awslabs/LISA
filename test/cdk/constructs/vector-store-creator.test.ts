@@ -82,7 +82,7 @@ describe('VectorStoreCreator IAM Self-Targeting Prevention', () => {
         template = Template.fromStack(stack);
     });
 
-    describe('IAM Policy Self-Targeting Prevention (Requirements 1.1, 1.3)', () => {
+    describe('IAM Policy Self-Targeting Prevention', () => {
         it('should prevent the VectorStoreCreator role from modifying itself', () => {
             // Find the VectorStoreCreator role
             const roles = template.findResources('AWS::IAM::Role', {
@@ -215,7 +215,7 @@ describe('VectorStoreCreator IAM Self-Targeting Prevention', () => {
         });
 
         it('should restrict AssumeRole to CDK bootstrap roles only', () => {
-            // Find the VectorStoreCreator role with inline policies
+            // Find the VectorStoreCreator role
             const roles = template.findResources('AWS::IAM::Role', {
                 Properties: {
                     AssumeRolePolicyDocument: {
@@ -241,19 +241,27 @@ describe('VectorStoreCreator IAM Self-Targeting Prevention', () => {
 
             const roleKeys = Object.keys(roles);
             expect(roleKeys.length).toBeGreaterThan(0);
+            const roleLogicalId = roleKeys[0];
 
-            const roleProperties = roles[roleKeys[0]].Properties;
-            expect(roleProperties.Policies).toBeDefined();
+            // Find the policy attached to our role
+            const allPolicies = template.findResources('AWS::IAM::Policy');
+            let targetPolicy: any = null;
+            for (const [, policy] of Object.entries(allPolicies)) {
+                const policyProps = (policy as any).Properties;
+                if (policyProps.Roles && policyProps.Roles.some((role: any) =>
+                    role.Ref === roleLogicalId
+                )) {
+                    targetPolicy = policyProps;
+                    break;
+                }
+            }
+
+            expect(targetPolicy).toBeDefined();
 
             // Find the policy statement that allows AssumeRole
-            let assumeRoleStatement: any = null;
-            for (const policy of roleProperties.Policies) {
-                const statements = policy.PolicyDocument.Statement;
-                assumeRoleStatement = statements.find((stmt: any) =>
-                    Array.isArray(stmt.Action) && stmt.Action.includes('iam:AssumeRole')
-                );
-                if (assumeRoleStatement) break;
-            }
+            const assumeRoleStatement = targetPolicy.PolicyDocument.Statement.find((stmt: any) =>
+                stmt.Action === 'iam:AssumeRole'
+            );
 
             expect(assumeRoleStatement).toBeDefined();
             expect(assumeRoleStatement.Resource).toBeDefined();
@@ -268,7 +276,7 @@ describe('VectorStoreCreator IAM Self-Targeting Prevention', () => {
         });
 
         it('should allow PassRole only to specific AWS services', () => {
-            // Find the VectorStoreCreator role with inline policies
+            // Find the VectorStoreCreator role
             const roles = template.findResources('AWS::IAM::Role', {
                 Properties: {
                     AssumeRolePolicyDocument: {
@@ -294,19 +302,27 @@ describe('VectorStoreCreator IAM Self-Targeting Prevention', () => {
 
             const roleKeys = Object.keys(roles);
             expect(roleKeys.length).toBeGreaterThan(0);
+            const roleLogicalId = roleKeys[0];
 
-            const roleProperties = roles[roleKeys[0]].Properties;
-            expect(roleProperties.Policies).toBeDefined();
+            // Find the policy attached to our role
+            const allPolicies = template.findResources('AWS::IAM::Policy');
+            let targetPolicy: any = null;
+            for (const [, policy] of Object.entries(allPolicies)) {
+                const policyProps = (policy as any).Properties;
+                if (policyProps.Roles && policyProps.Roles.some((role: any) =>
+                    role.Ref === roleLogicalId
+                )) {
+                    targetPolicy = policyProps;
+                    break;
+                }
+            }
+
+            expect(targetPolicy).toBeDefined();
 
             // Find the policy statement that allows PassRole
-            let passRoleStatement: any = null;
-            for (const policy of roleProperties.Policies) {
-                const statements = policy.PolicyDocument.Statement;
-                passRoleStatement = statements.find((stmt: any) =>
-                    Array.isArray(stmt.Action) && stmt.Action.includes('iam:PassRole')
-                );
-                if (passRoleStatement) break;
-            }
+            const passRoleStatement = targetPolicy.PolicyDocument.Statement.find((stmt: any) =>
+                stmt.Action === 'iam:PassRole'
+            );
 
             expect(passRoleStatement).toBeDefined();
             expect(passRoleStatement.Condition).toBeDefined();
@@ -351,7 +367,7 @@ describe('VectorStoreCreator IAM Self-Targeting Prevention', () => {
         });
 
         it('should allow service-linked role creation for required services', () => {
-            // Find the VectorStoreCreator role with inline policies
+            // Find the VectorStoreCreator role
             const roles = template.findResources('AWS::IAM::Role', {
                 Properties: {
                     AssumeRolePolicyDocument: {
@@ -377,19 +393,27 @@ describe('VectorStoreCreator IAM Self-Targeting Prevention', () => {
 
             const roleKeys = Object.keys(roles);
             expect(roleKeys.length).toBeGreaterThan(0);
+            const roleLogicalId = roleKeys[0];
 
-            const roleProperties = roles[roleKeys[0]].Properties;
-            expect(roleProperties.Policies).toBeDefined();
+            // Find the policy attached to our role
+            const allPolicies = template.findResources('AWS::IAM::Policy');
+            let targetPolicy: any = null;
+            for (const [, policy] of Object.entries(allPolicies)) {
+                const policyProps = (policy as any).Properties;
+                if (policyProps.Roles && policyProps.Roles.some((role: any) =>
+                    role.Ref === roleLogicalId
+                )) {
+                    targetPolicy = policyProps;
+                    break;
+                }
+            }
+
+            expect(targetPolicy).toBeDefined();
 
             // Find the policy statement that allows CreateServiceLinkedRole
-            let serviceLinkedRoleStatement: any = null;
-            for (const policy of roleProperties.Policies) {
-                const statements = policy.PolicyDocument.Statement;
-                serviceLinkedRoleStatement = statements.find((stmt: any) =>
-                    Array.isArray(stmt.Action) && stmt.Action.includes('iam:CreateServiceLinkedRole')
-                );
-                if (serviceLinkedRoleStatement) break;
-            }
+            const serviceLinkedRoleStatement = targetPolicy.PolicyDocument.Statement.find((stmt: any) =>
+                stmt.Action === 'iam:CreateServiceLinkedRole'
+            );
 
             expect(serviceLinkedRoleStatement).toBeDefined();
             expect(serviceLinkedRoleStatement.Condition).toBeDefined();

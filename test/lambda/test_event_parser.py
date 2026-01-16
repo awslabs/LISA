@@ -17,7 +17,6 @@
 import json
 
 import pytest
-
 from utilities.event_parser import (
     get_bearer_token,
     get_id_token,

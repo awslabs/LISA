@@ -225,9 +225,7 @@ class TestValidateInputDecorator:
     def test_special_characters_allowed(self, valid_event, mock_context):
         """Test that legitimate special characters are allowed."""
         valid_event["path"] = "/test/path-with_special.chars"
-        valid_event["queryStringParameters"] = {
-            "param": "value-with_special.chars!@#$%"
-        }
+        valid_event["queryStringParameters"] = {"param": "value-with_special.chars!@#$%"}
 
         @validate_input()
         def handler(event, context):

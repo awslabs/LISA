@@ -181,6 +181,18 @@ export function sendMessageWithButton () {
 }
 
 /**
+ * Insert text into the chat prompt input
+ * @param text - The text to insert into the chat input
+ */
+export function insertChatPrompt (text: string) {
+    cy.get(CHAT_SELECTORS.MESSAGE_INPUT)
+        .should('be.visible')
+        .and('not.be.disabled')
+        .clear()
+        .type(text, { delay: 0 });
+}
+
+/**
  * Verify that a chat response was received
  * @param minMessages - Minimum number of messages expected (default: 2 for user + assistant)
  */

@@ -38,7 +38,7 @@ export type PromptTemplateConfig = {
  * Check if a prompt template exists in the prompt templates list
  * @returns Cypress.Chainable<boolean>
  */
-export function promptTemplateExists(templateTitle: string): Cypress.Chainable<boolean> {
+export function promptTemplateExists (templateTitle: string): Cypress.Chainable<boolean> {
     return cy.get('body').then(($body) => {
         return $body.text().includes(templateTitle);
     });
@@ -47,7 +47,7 @@ export function promptTemplateExists(templateTitle: string): Cypress.Chainable<b
 /**
  * Navigate to Prompt Templates Library page
  */
-export function navigateToPromptTemplates() {
+export function navigateToPromptTemplates () {
     cy.get('header button[aria-label="Libraries"]')
         .should('be.visible')
         .click()
@@ -65,7 +65,7 @@ export function navigateToPromptTemplates() {
 /**
  * Open the Create Prompt Template wizard
  */
-export function openCreatePromptTemplateWizard() {
+export function openCreatePromptTemplateWizard () {
     cy.contains('button', 'Create Prompt Template')
         .should('be.visible')
         .and('not.be.disabled')
@@ -77,7 +77,7 @@ export function openCreatePromptTemplateWizard() {
 /**
  * Fill in the prompt template form
  */
-export function fillPromptTemplateConfig(config: PromptTemplateConfig) {
+export function fillPromptTemplateConfig (config: PromptTemplateConfig) {
     // Wait for form to be ready
     cy.get('[data-testid="prompt-template-title-input"]')
         .should('exist');
@@ -125,7 +125,7 @@ export function fillPromptTemplateConfig(config: PromptTemplateConfig) {
 /**
  * Complete the prompt template creation
  */
-export function completePromptTemplateWizard() {
+export function completePromptTemplateWizard () {
     cy.contains('button', 'Create Template')
         .should('be.visible')
         .and('not.be.disabled')
@@ -135,7 +135,7 @@ export function completePromptTemplateWizard() {
 /**
  * Wait for prompt template creation to succeed
  */
-export function waitForPromptTemplateCreationSuccess(templateTitle: string) {
+export function waitForPromptTemplateCreationSuccess (templateTitle: string) {
     // Wait for redirect back to list
     cy.url().should('match', /\/prompt-templates\/?$/);
 
@@ -147,7 +147,7 @@ export function waitForPromptTemplateCreationSuccess(templateTitle: string) {
 /**
  * Verify prompt template appears in the list
  */
-export function verifyPromptTemplateInList(templateTitle: string) {
+export function verifyPromptTemplateInList (templateTitle: string) {
     cy.contains('td', templateTitle, { timeout: 10000 })
         .should('be.visible');
 }
@@ -155,7 +155,7 @@ export function verifyPromptTemplateInList(templateTitle: string) {
 /**
  * Delete a prompt template if it exists
  */
-export function deletePromptTemplateIfExists(templateTitle: string) {
+export function deletePromptTemplateIfExists (templateTitle: string) {
     cy.get('body').then(($body) => {
         if ($body.text().includes(templateTitle)) {
             // Select the template by clicking its radio button
@@ -189,7 +189,7 @@ export function deletePromptTemplateIfExists(templateTitle: string) {
 /**
  * Send a message that's already in the input field by clicking the send button
  */
-export function sendMessageWithButton() {
+export function sendMessageWithButton () {
     cy.get('button[aria-label="Send message"]')
         .should('be.visible')
         .and('not.be.disabled')
@@ -201,7 +201,7 @@ export function sendMessageWithButton() {
  * @param templateTitle - The title of the template to select
  * @param templateType - The type of template (Persona or Directive)
  */
-export function selectPromptTemplateInChat(templateTitle: string, templateType: PromptTemplateType = PromptTemplateType.Directive) {
+export function selectPromptTemplateInChat (templateTitle: string, templateType: PromptTemplateType = PromptTemplateType.Directive) {
     // Use the Welcome Screen buttons (Select Persona / Select Directive)
     // These are visible when there's no chat history
     const isPersona = templateType === PromptTemplateType.Persona;
@@ -240,4 +240,3 @@ export function selectPromptTemplateInChat(templateTitle: string, templateType: 
     cy.get(modalSelector).should('not.be.visible');
     cy.wait(500);
 }
-

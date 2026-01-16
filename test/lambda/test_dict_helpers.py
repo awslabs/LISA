@@ -14,8 +14,6 @@
 
 """Unit tests for dict_helpers module."""
 
-import pytest
-
 from utilities.dict_helpers import get_item, get_property_path, merge_fields
 
 

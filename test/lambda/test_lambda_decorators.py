@@ -16,10 +16,9 @@
 
 import json
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
-
 from utilities.lambda_decorators import api_wrapper, authorization_wrapper, ctx_context, get_lambda_context
 
 
@@ -93,7 +92,6 @@ class TestApiWrapper:
 
     def test_context_is_set(self):
         """Test api_wrapper sets Lambda context."""
-        from utilities.lambda_decorators import ctx_context
 
         @api_wrapper
         def test_function(event, context):
@@ -146,7 +144,6 @@ class TestAuthorizationWrapper:
 
     def test_context_is_set(self):
         """Test authorization_wrapper sets Lambda context."""
-        from utilities.lambda_decorators import ctx_context
 
         @authorization_wrapper
         def test_function(event, context):
@@ -179,7 +176,6 @@ class TestGetLambdaContext:
 
     def test_get_context_when_set(self):
         """Test get_lambda_context returns context when set."""
-        from utilities.lambda_decorators import ctx_context
 
         mock_context = SimpleNamespace(function_name="get-context-test", aws_request_id="req-999")
         ctx_context.set(mock_context)

@@ -23,11 +23,10 @@ type ButtonBadgeProps = {
     text: string;
     icon: IconDefinition;
     onClick: () => void;
-    show?: boolean;
-    dataTestId?: string;
+    show?: boolean
 };
 
-export const ButtonBadge = ({ text, icon, onClick, show, dataTestId }: ButtonBadgeProps) => {
+export const ButtonBadge = ({ text, icon, onClick, show }: ButtonBadgeProps) => {
     if (show !== true) {
         return null;
     }

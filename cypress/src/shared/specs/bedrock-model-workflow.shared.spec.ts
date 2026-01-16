@@ -22,7 +22,7 @@
  */
 
 import { navigateToAdminPage } from '../../support/adminHelpers';
-import { navigateAndVerifyChatPage, sendMessageWithButton, verifyChatResponseReceived } from '../../support/chatHelpers';
+import { insertChatPrompt, navigateAndVerifyChatPage, sendMessageWithButton, verifyChatResponseReceived } from '../../support/chatHelpers';
 import {
     BedrockModelConfig,
     openCreateModelWizard,
@@ -57,7 +57,6 @@ import {
     verifyPromptTemplateInList,
     deletePromptTemplateIfExists,
     selectPromptTemplateInChat,
-    selectDirectiveAndSend,
     promptTemplateExists,
     PromptTemplateType,
 } from '../../support/promptTemplateHelpers';
@@ -71,7 +70,6 @@ import {
     waitForDocumentIngested,
     selectRagRepositoryInChat,
     selectCollectionInChat,
-    sendMessageAndVerifyRagResponse,
 } from '../../support/collectionHelpers';
 
 
@@ -104,7 +102,6 @@ export type BedrockWorkflowTestOptions = {
 
 export function runBedrockModelWorkflowTests (options: BedrockWorkflowTestOptions = {}) {
     const dateString = getTodayDateString();
-    const skipCleanup = options.skipCleanup ?? false;
     const testModel = options.modelConfig || DEFAULT_TEST_MODEL;
     const testRepository: RepositoryConfig = options.repositoryConfig || {
         repositoryId: `e2e-repo-${dateString}`,
@@ -170,7 +167,7 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
         sharePublic: true,
     };
 
-    xit('Admin creates a Bedrock model via wizard (or uses existing)', () => {
+    it('Admin creates a Bedrock model via wizard (or uses existing)', () => {
         // Ensure app is fully ready before navigating
         cy.get('header button[aria-label="Libraries"]', { timeout: 30000 }).should('be.visible');
         cy.get('header button[aria-label="Administration"]', { timeout: 30000 }).should('be.visible');
@@ -179,7 +176,7 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
 
         // Wait for models API to load and check if model already exists
         cy.wait('@getModels', { timeout: 30000 }).then((interception) => {
-            const models = interception.response?.body || {models:[]};
+            const models = interception.response?.body || { models: [] };
             const modelExists = models.models.some((model: any) => model.modelId === testModel.modelId);
 
             if (modelExists) {
@@ -195,7 +192,7 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
         });
     });
 
-    xit('New model appears in Model Management list', function () {
+    it('New model appears in Model Management list', function () {
         if (!testState.modelCreated) {
             this.skip();
         }
@@ -204,7 +201,7 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
         verifyModelInList(testModel.modelId);
     });
 
-    xit('Admin creates a Bedrock Knowledgebase repository (or uses existing)', () => {
+    it('Admin creates a Bedrock Knowledgebase repository (or uses existing)', () => {
         navigateToRepositoryManagement();
 
         // Wait for repositories API to load and check if repository already exists
@@ -228,7 +225,7 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
         });
     });
 
-    xit('New repository appears in RAG Management list', function () {
+    it('New repository appears in RAG Management list', function () {
         if (!testState.repositoryCreated) {
             this.skip();
         }
@@ -237,7 +234,7 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
         verifyRepositoryInList(testRepository.repositoryId);
     });
 
-    xit('Wait for repository to be fully created and ready', function () {
+    it('Wait for repository to be fully created and ready', function () {
         if (!testState.repositoryCreated) {
             this.skip();
         }
@@ -247,7 +244,7 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
         testState.repositoryReady = true;
     });
 
-    xit('Rename auto-created collection to known name', function () {
+    it('Rename auto-created collection to known name', function () {
         if (!testState.repositoryReady) {
             this.skip();
         }
@@ -263,7 +260,7 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
         });
     });
 
-    xit('Upload test document to collection via chat page', function () {
+    it('Upload test document to collection via chat page', function () {
         if (!testState.collectionRenamed) {
             this.skip();
         }
@@ -281,16 +278,15 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
         testState.documentUploaded = true;
     });
 
-    xit('Wait for document to be ingested', function () {
+    it('Wait for document to be ingested', function () {
         if (!testState.documentUploaded) {
             this.skip();
         }
-
         waitForDocumentIngested(testRepository.repositoryId, testState.collectionId, testDocumentPath, 300000);
         testState.documentIngested = true;
     });
 
-    xit('Admin creates a persona prompt template', () => {
+    it('Admin creates a persona prompt template', () => {
         navigateToPromptTemplates();
 
         promptTemplateExists(testPromptTemplatePersona.title).then((exists) => {
@@ -306,12 +302,12 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
         });
     });
 
-    xit('Persona prompt template appears in Prompt Templates list', () => {
+    it('Persona prompt template appears in Prompt Templates list', () => {
         navigateToPromptTemplates();
         verifyPromptTemplateInList(testPromptTemplatePersona.title);
     });
 
-    xit('Admin creates a directive prompt template', () => {
+    it('Admin creates a directive prompt template', () => {
         navigateToPromptTemplates();
 
         promptTemplateExists(testPromptTemplateDirective.title).then((exists) => {
@@ -327,7 +323,7 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
         });
     });
 
-    xit('Directive prompt template appears in Prompt Templates list', () => {
+    it('Directive prompt template appears in Prompt Templates list', () => {
         navigateToPromptTemplates();
         verifyPromptTemplateInList(testPromptTemplateDirective.title);
     });
@@ -343,31 +339,41 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
         verifyChatResponseReceived();
     });
 
+    it('Send chat message with rag response', () => {
+        navigateAndVerifyChatPage();
+        selectModelInChat(testModel.modelId);
+        selectRagRepositoryInChat(testRepository.repositoryId);
+        selectCollectionInChat(testCollection.collectionName);
+        insertChatPrompt('Who is Whiskers?');
+        sendMessageWithButton();
+        verifyChatResponseReceived();
+    });
+
     if (!options.skipCleanup) {
-        xit('Cleanup: delete all chat sessions', () => {
+        it('Cleanup: delete all chat sessions', () => {
             navigateAndVerifyChatPage();
             deleteAllSessions();
         });
 
-        xit('Cleanup: delete test repository', () => {
+        it('Cleanup: delete test repository', () => {
             navigateToRepositoryManagement();
             cy.wait(2000);
             deleteRepositoryIfExists(testRepository.repositoryId);
         });
 
-        xit('Cleanup: delete persona prompt template', () => {
+        it('Cleanup: delete persona prompt template', () => {
             navigateToPromptTemplates();
             cy.wait(2000);
             deletePromptTemplateIfExists(testPromptTemplatePersona.title);
         });
 
-        xit('Cleanup: delete directive prompt template', () => {
+        it('Cleanup: delete directive prompt template', () => {
             navigateToPromptTemplates();
             cy.wait(2000);
             deletePromptTemplateIfExists(testPromptTemplateDirective.title);
         });
 
-        xit('Cleanup: delete test model', () => {
+        it('Cleanup: delete test model', () => {
             navigateToAdminPage('Model Management');
             cy.wait(2000);
             deleteModelIfExists(testModel.modelId);

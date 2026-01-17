@@ -189,9 +189,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         # Use psycopg2's identifier quoting to prevent SQL injection
         cursor.execute(
-            psycopg2.sql.SQL("SELECT * FROM {} LIMIT 1").format(  # noqa: S608
-                psycopg2.sql.Identifier(litellm_table)
-            )
+            psycopg2.sql.SQL("SELECT * FROM {} LIMIT 1").format(psycopg2.sql.Identifier(litellm_table))  # noqa: S608
         )
         columns = [desc[0] for desc in cursor.description]
         print(f"Table {litellm_table} columns: {columns}")

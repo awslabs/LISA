@@ -1,7 +1,7 @@
 #!/bin/bash
 # Runs the lisa-sdk pytest as an integration test
 
-PROJECT_DIR="$(pwd)"
+PROJECT_DIR="$(pwd)/../../"
 PROFILE=$(cat ${PROJECT_DIR}/config-custom.yaml | yq -r .profile)
 REGION=$(cat ${PROJECT_DIR}/config-custom.yaml | yq -r .region)
 DEPLOYMENT_NAME=$(cat ${PROJECT_DIR}/config-custom.yaml | yq -r .deploymentName)

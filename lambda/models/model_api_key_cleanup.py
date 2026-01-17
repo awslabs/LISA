@@ -189,7 +189,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         # Use psycopg2's identifier quoting to prevent SQL injection
         cursor.execute(
-            psycopg2.sql.SQL("SELECT * FROM {} LIMIT 1").format(  # noqa: S608, P103
+            psycopg2.sql.SQL("SELECT * FROM {} LIMIT 1").format(  # noqa: S608
                 psycopg2.sql.Identifier(litellm_table)
             )
         )
@@ -210,7 +210,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         # Query all models from the LiteLLM database
         cursor.execute(
-            psycopg2.sql.SQL("SELECT {}, {}, {} FROM {}").format(  # noqa: S608, P103
+            psycopg2.sql.SQL("SELECT {}, {}, {} FROM {}").format(  # noqa: S608
                 psycopg2.sql.Identifier(model_id_col),
                 psycopg2.sql.Identifier(model_name_col),
                 psycopg2.sql.Identifier(litellm_params_col),
@@ -276,7 +276,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     # Update the model in the database
                     clean_params_json = json.dumps(clean_params)
                     cursor.execute(
-                        psycopg2.sql.SQL("UPDATE {} SET {} = %s WHERE {} = %s").format(  # noqa: S608, P103
+                        psycopg2.sql.SQL("UPDATE {} SET {} = %s WHERE {} = %s").format(  # noqa: S608
                             psycopg2.sql.Identifier(litellm_table),
                             psycopg2.sql.Identifier(litellm_params_col),
                             psycopg2.sql.Identifier(model_id_col),

@@ -625,6 +625,8 @@ export const EcsClusterConfigSchema = z
         autoScalingConfig: AutoScalingConfigSchema,
         loadBalancerConfig: LoadBalancerConfigSchema,
         localModelCode: z.string().default('/opt/model-code'),
+        containerMemoryBuffer: z.number().default(1024 * 2)
+            .describe('Memory in MiB to reserve for the host OS/ECS agent. Container gets (instance memory - buffer). Default: 2048 MiB'),
         modelHosting: z
             .string()
             .default('ecs')

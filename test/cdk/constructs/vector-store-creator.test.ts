@@ -23,6 +23,9 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 
+// Use existing mock directory for Lambda code asset
+const TEST_MOCK_DIR = './test/cdk/mocks/layers';
+
 describe('VectorStoreCreator IAM Self-Targeting Prevention', () => {
     let app: App;
     let stack: Stack;
@@ -30,6 +33,8 @@ describe('VectorStoreCreator IAM Self-Targeting Prevention', () => {
 
     beforeAll(() => {
         const config = ConfigParser.parseConfig();
+        // Override the deployer path to use existing mock directory
+        config.vectorStoreDeployerPath = TEST_MOCK_DIR;
         app = new App();
         stack = new Stack(app, 'TestStack', {
             env: {

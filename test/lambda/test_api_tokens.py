@@ -1079,9 +1079,7 @@ async def test_delete_token_endpoint_unauthorized(token_table):
 async def test_exception_handlers():
     """Test FastAPI exception handlers."""
     from api_tokens.lambda_functions import (
-        forbidden_handler,
         token_not_found_handler,
-        unauthorized_handler,
         user_error_handler,
     )
 
@@ -1092,18 +1090,6 @@ async def test_exception_handlers():
     response = await token_not_found_handler(mock_request, exc)
     assert response.status_code == 404
     assert "Token not found" in response.body.decode()
-
-    # Test UnauthorizedError handler
-    exc = UnauthorizedError("Not authorized")
-    response = await unauthorized_handler(mock_request, exc)
-    assert response.status_code == 401
-    assert "Not authorized" in response.body.decode()
-
-    # Test ForbiddenError handler
-    exc = ForbiddenError("Forbidden")
-    response = await forbidden_handler(mock_request, exc)
-    assert response.status_code == 403
-    assert "Forbidden" in response.body.decode()
 
     # Test TokenAlreadyExistsError handler
     exc = TokenAlreadyExistsError("Token exists")

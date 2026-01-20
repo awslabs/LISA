@@ -33,7 +33,7 @@ from .domain_objects import (
     ListTokensResponse,
     TokenInfo,
 )
-from .exception import ForbiddenError, TokenAlreadyExistsError, TokenNotFoundError, UnauthorizedError
+from .exception import TokenAlreadyExistsError, TokenNotFoundError
 from .handler import (
     CreateTokenAdminHandler,
     CreateTokenUserHandler,
@@ -55,18 +55,6 @@ token_table = dynamodb.Table(os.environ["TOKEN_TABLE_NAME"])
 async def token_not_found_handler(request: Request, exc: TokenNotFoundError) -> JSONResponse:
     """Handle exception when token cannot be found and translate to a 404 error."""
     return JSONResponse(status_code=404, content={"message": str(exc)})
-
-
-@app.exception_handler(UnauthorizedError)
-async def unauthorized_handler(request: Request, exc: UnauthorizedError) -> JSONResponse:
-    """Handle exception when user is not authorized and translate to a 401 error."""
-    return JSONResponse(status_code=401, content={"message": str(exc)})
-
-
-@app.exception_handler(ForbiddenError)
-async def forbidden_handler(request: Request, exc: ForbiddenError) -> JSONResponse:
-    """Handle exception when action is forbidden and translate to a 403 error."""
-    return JSONResponse(status_code=403, content={"message": str(exc)})
 
 
 @app.exception_handler(TokenAlreadyExistsError)

@@ -284,12 +284,12 @@ def create_self_hosted_embedded_model(
             "minCapacity": 1,
             "maxCapacity": 1,
             "cooldown": 420,
-            "defaultInstanceWarmup": 180,
+            "defaultInstanceWarmup": 300,  # Embedding models load faster
             "metricConfig": {
                 "albMetricName": "RequestCountPerTarget",
                 "targetValue": 30,
                 "duration": 60,
-                "estimatedInstanceWarmup": 330,
+                "estimatedInstanceWarmup": 300,
             },
         },
         "containerConfig": {
@@ -298,7 +298,7 @@ def create_self_hosted_embedded_model(
             "healthCheckConfig": {
                 "command": ["CMD-SHELL", "exit 0"],
                 "interval": 10,
-                "startPeriod": 30,
+                "startPeriod": 300,  # 10 minutes to allow for model loading
                 "timeout": 5,
                 "retries": 3,
             },
@@ -308,7 +308,7 @@ def create_self_hosted_embedded_model(
                 "MAX_BATCH_TOKENS": "8192",
                 "MAX_CONCURRENT_REQUESTS": "512",
                 "MAX_CLIENT_BATCH_SIZE": "1024",
-                "TEI_POOLING": "mean",
+                "POOLING": "mean",
                 "AUTO_TRUNCATE": "true",
             },
         },
@@ -384,12 +384,12 @@ def create_self_hosted_model(
             "minCapacity": 1,
             "maxCapacity": 1,
             "cooldown": 420,
-            "defaultInstanceWarmup": 180,
+            "defaultInstanceWarmup": 300,  # Match model loading time
             "metricConfig": {
                 "albMetricName": "RequestCountPerTarget",
                 "targetValue": 30,
                 "duration": 60,
-                "estimatedInstanceWarmup": 330,
+                "estimatedInstanceWarmup": 300,  # Match model loading time
             },
         },
         "containerConfig": {
@@ -398,14 +398,15 @@ def create_self_hosted_model(
             "healthCheckConfig": {
                 "command": ["CMD-SHELL", "exit 0"],
                 "interval": 10,
-                "startPeriod": 30,
+                "startPeriod": 300,  # 10 minutes to allow for model loading
                 "timeout": 5,
                 "retries": 3,
             },
             "environment": {
-                "MAX_TOTAL_TOKENS": "32768",
-                "MAX_INPUT_LENGTH": "16384",
-                "MAX_BATCH_TOKENS": "8192",
+                # MAX_TOTAL_TOKENS is mapped to VLLM_MAX_MODEL_LEN in entrypoint.sh
+                "MAX_TOTAL_TOKENS": "16384",
+                "MAX_INPUT_LENGTH": "8192",
+                "MAX_BATCH_TOKENS": "4096",
                 "MAX_CONCURRENT_REQUESTS": "128",
             },
         },
@@ -1076,12 +1077,18 @@ def cleanup_resources(lisa_client: LisaApi, created_resources: Dict[str, list]):
 
             # Delete data source first
             if "dataSourceId" in kb_info:
-                bedrock_agent_client.delete_data_source(knowledgeBaseId=kb_id, dataSourceId=kb_info["dataSourceId"])
-                print(f"✓ Deleted data source: {kb_info['dataSourceId']}")
+                try:
+                    bedrock_agent_client.delete_data_source(knowledgeBaseId=kb_id, dataSourceId=kb_info["dataSourceId"])
+                    print(f"✓ Deleted data source: {kb_info['dataSourceId']}")
+                except Exception as e:
+                    print(f"✗ Failed to delete data source {kb_info['dataSourceId']}: {e}")
 
             # Delete knowledge base
-            bedrock_agent_client.delete_knowledge_base(knowledgeBaseId=kb_id)
-            print(f"✓ Deleted knowledge base: {kb_id}")
+            try:
+                bedrock_agent_client.delete_knowledge_base(knowledgeBaseId=kb_id)
+                print(f"✓ Deleted knowledge base: {kb_id}")
+            except Exception as e:
+                print(f"✗ Failed to delete knowledge base {kb_id}: {e}")
 
             # Delete S3 bucket (empty it first)
             if s3_bucket:
@@ -1192,7 +1199,7 @@ def main():
             print("⚠️  No embedding models found, repositories will be created without default embedding model")
 
         models = []
-        # # 1. Create Bedrock model
+        # 1. Create Bedrock models
         models.extend(
             [
                 create_bedrock_model(
@@ -1226,18 +1233,10 @@ def main():
                     [],
                     skip_create=args.skip_create,
                 ),
-                create_bedrock_model(
-                    lisa_client,
-                    "nova-canvas",
-                    "bedrock/amazon.nova-canvas-v1:0",
-                    "imagegen",
-                    [],
-                    skip_create=args.skip_create,
-                ),
             ]
         )
 
-        # # 2. Create self-hosted model
+        # 2. Create self-hosted model
         models.extend(
             [
                 create_self_hosted_model(
@@ -1258,7 +1257,7 @@ def main():
             ]
         )
 
-        # # 3. Create self-hosted embedded model
+        # 3. Create self-hosted embedded model
         models.extend(
             [
                 create_self_hosted_embedded_model(

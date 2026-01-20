@@ -53,7 +53,6 @@ export const WelcomeScreen = ({
                         modelSelectRef?.current?.focus();
                     }}
                     show={true}
-                    dataTestId='start-chatting-button'
                 />
 
                 <ButtonBadge
@@ -65,7 +64,6 @@ export const WelcomeScreen = ({
                         openModal('promptTemplate');
                     }}
                     show={config?.configuration?.enabledComponents?.showPromptTemplateLibrary}
-                    dataTestId='select-persona-button'
                 />
 
                 <ButtonBadge
@@ -77,7 +75,6 @@ export const WelcomeScreen = ({
                         openModal('promptTemplate');
                     }}
                     show={config?.configuration?.enabledComponents?.showPromptTemplateLibrary}
-                    dataTestId='select-directive-button'
                 />
 
                 <ButtonBadge
@@ -85,7 +82,6 @@ export const WelcomeScreen = ({
                     icon={faFileLines}
                     onClick={() => openModal('documentSummarization')}
                     show={true}
-                    dataTestId='summarize-doc-button'
                 />
 
                 <ButtonBadge
@@ -93,7 +89,6 @@ export const WelcomeScreen = ({
                     icon={faCodeCompare}
                     onClick={() => navigate('/model-comparison')}
                     show={config?.configuration?.enabledComponents?.enableModelComparisonUtility}
-                    dataTestId='compare-models-button'
                 />
             </div>
         </div>

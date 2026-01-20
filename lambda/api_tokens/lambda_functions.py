@@ -13,19 +13,17 @@
 #   limitations under the License.
 
 """APIGW endpoints for managing API tokens."""
+import logging
 import os
 from typing import Annotated, Union
 
 import boto3
-from fastapi import FastAPI, HTTPException, Path, Request
-from fastapi.encoders import jsonable_encoder
-from fastapi.exceptions import RequestValidationError
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import HTTPException, Path, Request
 from fastapi.responses import JSONResponse
 from mangum import Mangum
 from utilities.auth import get_user_context, is_api_user
 from utilities.common_functions import retry_config
-from utilities.fastapi_middleware.aws_api_gateway_middleware import AWSAPIGatewayMiddleware
+from utilities.fastapi_factory import create_fastapi_app
 
 from .domain_objects import (
     CreateTokenAdminRequest,
@@ -35,7 +33,7 @@ from .domain_objects import (
     ListTokensResponse,
     TokenInfo,
 )
-from .exception import ForbiddenError, TokenAlreadyExistsError, TokenNotFoundError, UnauthorizedError
+from .exception import TokenAlreadyExistsError, TokenNotFoundError
 from .handler import (
     CreateTokenAdminHandler,
     CreateTokenUserHandler,
@@ -44,17 +42,9 @@ from .handler import (
     ListTokensHandler,
 )
 
-app = FastAPI(redirect_slashes=False, lifespan="off", docs_url="/docs", openapi_url="/openapi.json")
-app.add_middleware(AWSAPIGatewayMiddleware)
+logger = logging.getLogger(__name__)
 
-# Enable CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app = create_fastapi_app()
 
 # Initialize boto3 resources
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
@@ -65,26 +55,6 @@ token_table = dynamodb.Table(os.environ["TOKEN_TABLE_NAME"])
 async def token_not_found_handler(request: Request, exc: TokenNotFoundError) -> JSONResponse:
     """Handle exception when token cannot be found and translate to a 404 error."""
     return JSONResponse(status_code=404, content={"message": str(exc)})
-
-
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
-    """Handle exception when request fails validation and translate to a 422 error."""
-    return JSONResponse(
-        status_code=422, content={"detail": jsonable_encoder(exc.errors()), "type": "RequestValidationError"}
-    )
-
-
-@app.exception_handler(UnauthorizedError)
-async def unauthorized_handler(request: Request, exc: UnauthorizedError) -> JSONResponse:
-    """Handle unauthorized access attempts and translate to a 401 error."""
-    return JSONResponse(status_code=401, content={"message": str(exc)})
-
-
-@app.exception_handler(ForbiddenError)
-async def forbidden_handler(request: Request, exc: ForbiddenError) -> JSONResponse:
-    """Handle forbidden access attempts and translate to a 403 error."""
-    return JSONResponse(status_code=403, content={"message": str(exc)})
 
 
 @app.exception_handler(TokenAlreadyExistsError)

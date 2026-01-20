@@ -24,9 +24,8 @@ import { getModelIdentifier } from './utils';
 import { APP_MANAGEMENT_KEY, Ec2Metadata, EcsClusterConfig, EcsSourceType, PartialConfig } from '../../../lib/schema';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 
-// This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,
-// the container can have a hard time finding available RAM resources to start and the tasks will fail deployment
-const CONTAINER_MEMORY_BUFFER = 1024 * 5;
+// Default memory buffer if not specified in config (2GB)
+const DEFAULT_CONTAINER_MEMORY_BUFFER = 1024 * 2;
 
 /**
  * Properties for the EcsModel Construct.
@@ -72,7 +71,7 @@ export class EcsModel extends Construct {
                 amiHardwareType: AmiHardwareType.GPU,
                 autoScalingConfig: modelConfig.autoScalingConfig,
                 buildArgs: this.getBuildArguments(config, modelConfig),
-                containerMemoryBuffer: CONTAINER_MEMORY_BUFFER,
+                containerMemoryBuffer: modelConfig.containerMemoryBuffer ?? DEFAULT_CONTAINER_MEMORY_BUFFER,
                 instanceType: modelConfig.instanceType,
                 internetFacing: false,
                 loadBalancerConfig: modelConfig.loadBalancerConfig,

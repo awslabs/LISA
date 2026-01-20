@@ -20,6 +20,7 @@ import { AdjustmentType, AutoScalingGroup, BlockDeviceVolume, GroupMetrics, Moni
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { Metric } from 'aws-cdk-lib/aws-cloudwatch';
 import { InstanceType, ISecurityGroup, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
+import { Alias } from 'aws-cdk-lib/aws-kms';
 import {
     AmiHardwareType,
     AsgCapacityProvider,
@@ -236,6 +237,15 @@ export class ECSCluster extends Construct {
             updatePolicy: UpdatePolicy.rollingUpdate({})
         });
 
+        // Enable SNS topic encryption for ECS lifecycle hooks
+        // AppSec Finding #5: SNS topics must use server-side encryption
+        // Uses AWS managed key (alias/aws/sns) for lifecycle hook drain notifications
+        const snsEncryptionKey = Alias.fromAliasName(
+            this,
+            createCdkId([config.deploymentName, config.deploymentStage, 'SnsKey']),
+            'alias/aws/sns'
+        );
+
         const asgCapacityProvider = new AsgCapacityProvider(this, createCdkId([config.deploymentName, config.deploymentStage, 'AsgCapacityProvider']), {
             autoScalingGroup,
             // Managed scaling tracks cluster reservation to add/remove instances automatically
@@ -247,6 +257,9 @@ export class ECSCluster extends Construct {
             // disable managed scaling because we are going to setup rules to do it
             enableManagedScaling: false,
             enableManagedTerminationProtection: false,
+
+            // Encrypt SNS topic used for lifecycle hook notifications
+            topicEncryptionKey: snsEncryptionKey,
         });
         cluster.addAsgCapacityProvider(asgCapacityProvider);
 
@@ -385,13 +398,16 @@ export class ECSCluster extends Construct {
         asgSecurityGroup.addIngressRule(securityGroup, Port.allTcp());
 
         // Add listener
+        // AppSec TLS Configuration: Use TLS 1.2/1.3 policy with forward secrecy (ECDHE cipher suites only)
+        // SslPolicy.TLS13_RES maps to ELBSecurityPolicy-TLS13-1-2-2021-06
+        // This policy excludes RSA key exchange cipher suites to meet tlscheckerv2 compliance requirements
         const listenerProps: BaseApplicationListenerProps = {
             port: ecsConfig.loadBalancerConfig.sslCertIamArn ? 443 : 80,
             open: ecsConfig.internetFacing,
             certificates: ecsConfig.loadBalancerConfig.sslCertIamArn
                 ? [{ certificateArn: ecsConfig.loadBalancerConfig.sslCertIamArn }]
                 : undefined,
-            sslPolicy: ecsConfig.loadBalancerConfig.sslCertIamArn ? SslPolicy.RECOMMENDED_TLS : SslPolicy.RECOMMENDED,
+            sslPolicy: ecsConfig.loadBalancerConfig.sslCertIamArn ? SslPolicy.TLS13_RES : undefined,
         };
 
         const listener = loadBalancer.addListener(

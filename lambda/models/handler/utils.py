@@ -14,6 +14,7 @@
 
 """Common utility functions across all API handlers."""
 
+import logging
 from typing import Any
 
 from utilities.auth import user_has_group_access

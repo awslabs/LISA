@@ -1123,10 +1123,20 @@ async def test_validation_exception_handler():
     """Test RequestValidationError handler."""
     import json
 
-    from api_tokens.lambda_functions import validation_exception_handler
+    from api_tokens.lambda_functions import app
     from fastapi.exceptions import RequestValidationError
 
     mock_request = MagicMock()
+
+    # Get the validation handler from the app's exception handlers
+    # The handler is registered by create_fastapi_app()
+    validation_handler = None
+    for exc_class, handler in app.exception_handlers.items():
+        if exc_class == RequestValidationError:
+            validation_handler = handler
+            break
+
+    assert validation_handler is not None, "RequestValidationError handler not found"
 
     # Create a validation error
     exc = RequestValidationError(
@@ -1139,7 +1149,7 @@ async def test_validation_exception_handler():
         ]
     )
 
-    response = await validation_exception_handler(mock_request, exc)
+    response = await validation_handler(mock_request, exc)
     assert response.status_code == 422
     body = json.loads(response.body)
     assert "detail" in body

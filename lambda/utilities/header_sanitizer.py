@@ -15,7 +15,7 @@
 """Utility for sanitizing HTTP headers before logging to prevent log injection attacks."""
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ def get_real_client_ip(event: dict[str, Any]) -> str:
     try:
         # API Gateway provides the real source IP in requestContext.identity.sourceIp
         # This value is set by AWS and cannot be manipulated by the client
-        source_ip = event.get("requestContext", {}).get("identity", {}).get("sourceIp")
+        source_ip: str | None = event.get("requestContext", {}).get("identity", {}).get("sourceIp")
         if source_ip:
             return source_ip
 

@@ -18,7 +18,7 @@ import json
 import logging
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, Union
+from typing import Any
 
 logger = logging.getLogger(__name__)
 

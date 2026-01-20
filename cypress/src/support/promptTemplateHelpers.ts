@@ -38,15 +38,7 @@ export type PromptTemplateConfig = {
  * Check if a prompt template exists in the prompt templates list
  * @returns Cypress.Chainable<boolean>
  */
-<<<<<<< HEAD
-<<<<<<< HEAD
 export function promptTemplateExists (templateTitle: string): Cypress.Chainable<boolean> {
-=======
-export function promptTemplateExists(templateTitle: string): Cypress.Chainable<boolean> {
->>>>>>> 2ec63a5d (Fix e2e tests)
-=======
-export function promptTemplateExists (templateTitle: string): Cypress.Chainable<boolean> {
->>>>>>> 5bc884ee (pre)
     return cy.get('body').then(($body) => {
         return $body.text().includes(templateTitle);
     });
@@ -197,15 +189,7 @@ export function deletePromptTemplateIfExists (templateTitle: string) {
 /**
  * Send a message that's already in the input field by clicking the send button
  */
-<<<<<<< HEAD
-<<<<<<< HEAD
 export function sendMessageWithButton () {
-=======
-export function sendMessageWithButton() {
->>>>>>> 2ec63a5d (Fix e2e tests)
-=======
-export function sendMessageWithButton () {
->>>>>>> 5bc884ee (pre)
     cy.get('button[aria-label="Send message"]')
         .should('be.visible')
         .and('not.be.disabled')
@@ -217,15 +201,7 @@ export function sendMessageWithButton () {
  * @param templateTitle - The title of the template to select
  * @param templateType - The type of template (Persona or Directive)
  */
-<<<<<<< HEAD
-<<<<<<< HEAD
 export function selectPromptTemplateInChat (templateTitle: string, templateType: PromptTemplateType = PromptTemplateType.Directive) {
-=======
-export function selectPromptTemplateInChat(templateTitle: string, templateType: PromptTemplateType = PromptTemplateType.Directive) {
->>>>>>> 2ec63a5d (Fix e2e tests)
-=======
-export function selectPromptTemplateInChat (templateTitle: string, templateType: PromptTemplateType = PromptTemplateType.Directive) {
->>>>>>> 5bc884ee (pre)
     // Use the Welcome Screen buttons (Select Persona / Select Directive)
     // These are visible when there's no chat history
     const isPersona = templateType === PromptTemplateType.Persona;

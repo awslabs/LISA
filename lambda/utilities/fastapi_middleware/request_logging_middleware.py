@@ -17,7 +17,7 @@
 import json
 import logging
 import time
-from typing import Any, Dict
+from typing import Any
 
 from starlette.middleware.base import BaseHTTPMiddleware, Request, RequestResponseEndpoint, Response
 from utilities.header_sanitizer import sanitize_headers

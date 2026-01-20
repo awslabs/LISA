@@ -17,7 +17,6 @@
 import html
 import logging
 import re
-from typing import Optional
 
 from fastapi import status
 from fastapi.responses import JSONResponse

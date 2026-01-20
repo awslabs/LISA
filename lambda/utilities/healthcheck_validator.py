@@ -13,7 +13,6 @@
 #   limitations under the License.
 
 """Validator for ECS healthcheck command format."""
-from typing import Union
 
 
 def validate_healthcheck_command(command: str | list[str]) -> None:

@@ -25,7 +25,7 @@ class RepositoryMixin(BaseMixin):
         """List all available repositories.
 
         Returns:
-            List[Dict]: List of repository configurations
+            List[dict]: List of repository configurations
 
         Raises:
             Exception: If the request fails
@@ -44,7 +44,7 @@ class RepositoryMixin(BaseMixin):
             rag_config: Configuration for the RAG repository
 
         Returns:
-            Dict: Created repository information
+            dict: Created repository information
 
         Raises:
             Exception: If the request fails
@@ -62,7 +62,7 @@ class RepositoryMixin(BaseMixin):
             rag_config: RAG configuration for the PGVector repository (will be wrapped in ragConfig)
 
         Returns:
-            Dict: Created repository information
+            dict: Created repository information
         """
         return self.create_repository(rag_config)  # type: ignore[arg-type]
 
@@ -84,7 +84,7 @@ class RepositoryMixin(BaseMixin):
             allowed_groups: List of groups allowed access
 
         Returns:
-            Dict: Created repository information
+            dict: Created repository information
         """
         rag_config = {
             "repositoryId": repository_id,
@@ -110,16 +110,16 @@ class RepositoryMixin(BaseMixin):
 
         return self.create_repository(rag_config)  # type: ignore[arg-type]
 
-    def create_bedrock_kb_repository(self, rag_config: Dict) -> Dict:
+    def create_bedrock_kb_repository(self, rag_config: dict) -> dict:
         """Create a Bedrock Knowledge Base repository configuration.
 
         Args:
             rag_config: RAG configuration for the Bedrock KB repository
 
         Returns:
-            Dict: Created repository information
+            dict: Created repository information
         """
-        return self.create_repository(rag_config)
+        return self.create_repository(rag_config)  # type: ignore[arg-type]
 
     def delete_repository(self, repository_id: str) -> bool:
         """Delete a repository.
@@ -143,7 +143,7 @@ class RepositoryMixin(BaseMixin):
         """Get the status of RAG repositories.
 
         Returns:
-            Dict: Repository status information
+            dict: Repository status information
 
         Raises:
             Exception: If the request fails

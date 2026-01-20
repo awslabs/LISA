@@ -17,13 +17,6 @@
 import json
 
 import pytest
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-
->>>>>>> 4e53cd7f (Added input validation, security headers, and logging to FastAPI lambdas and apiWrappers)
-=======
->>>>>>> 5bc884ee (pre)
 from utilities.event_parser import (
     get_bearer_token,
     get_id_token,

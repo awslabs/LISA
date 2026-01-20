@@ -16,9 +16,9 @@
 
 import functools
 import logging
-from contextvars import ContextVar
-from typing import Any, Dict, TypeVar, Union
 from collections.abc import Callable
+from contextvars import ContextVar
+from typing import Any, TypeVar
 
 from utilities.event_parser import sanitize_event_for_logging
 from utilities.input_validation import validate_input

@@ -18,14 +18,6 @@ import json
 from datetime import datetime
 from decimal import Decimal
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-import pytest
-
->>>>>>> 4e53cd7f (Added input validation, security headers, and logging to FastAPI lambdas and apiWrappers)
-=======
->>>>>>> 5bc884ee (pre)
 from utilities.response_builder import DecimalEncoder, generate_exception_response, generate_html_response
 
 

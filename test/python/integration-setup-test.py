@@ -105,7 +105,7 @@ def setup_authentication(deployment_name: str, deployment_stage: str) -> dict[st
         deployment_name: The LISA deployment name
 
     Returns:
-        Dict[str, str]: Authentication headers
+        dict[str, str]: Authentication headers
     """
     print(f"🔑 Setting up authentication for deployment: {deployment_name}")
 
@@ -559,7 +559,6 @@ def create_opensearch_repository(
         raise
 
 
-<<<<<<< HEAD
 def create_bedrock_kb_repository(
     lisa_client: LisaApi,
     knowledge_base_id: str,
@@ -568,7 +567,7 @@ def create_bedrock_kb_repository(
     s3_bucket: str,
     embedding_model_id: str = None,
     skip_create: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a Bedrock Knowledge Base repository using LISA SDK.
 
     Args:
@@ -581,7 +580,7 @@ def create_bedrock_kb_repository(
         skip_create: Skip creation if True
 
     Returns:
-        Dict containing repositoryId
+        dict containing repositoryId
     """
     repository_id = "bedrock-kb-rag"
 
@@ -637,7 +636,7 @@ def create_bedrock_knowledge_base(
     s3_bucket_name: str = BEDROCK_KB_S3_BUCKET,
     embedding_model_arn: str = None,
     skip_create: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a Bedrock Knowledge Base with S3 data source.
 
     Args:
@@ -649,7 +648,7 @@ def create_bedrock_knowledge_base(
         skip_create: Skip creation if True
 
     Returns:
-        Dict containing knowledgeBaseId, dataSourceId, and s3Bucket
+        dict containing knowledgeBaseId, dataSourceId, and s3Bucket
     """
     if skip_create:
         print(f"\n⏭️  Skipping creation of Bedrock Knowledge Base '{kb_name}' (skip_create=True)")
@@ -1047,10 +1046,7 @@ def create_bedrock_knowledge_base(
         raise
 
 
-def cleanup_resources(lisa_client: LisaApi, created_resources: Dict[str, list]):
-=======
 def cleanup_resources(lisa_client: LisaApi, created_resources: dict[str, list]):
->>>>>>> 8ee43c3c (Run python upgrade and fix)
     """Clean up created resources."""
     print("\n🧹 Cleaning up created resources...")
 

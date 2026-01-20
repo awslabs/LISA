@@ -14,7 +14,7 @@
 
 """Generic dictionary manipulation utilities."""
 
-from typing import Any, Optional
+from typing import Any
 
 
 def merge_fields(source: dict, target: dict, fields: list[str]) -> dict:

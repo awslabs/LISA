@@ -16,7 +16,7 @@
 
 import copy
 import json
-from typing import Any, Dict, Optional
+from typing import Any
 
 from utilities.header_sanitizer import sanitize_headers
 
@@ -153,7 +153,7 @@ def get_bearer_token(event: dict) -> str | None:
     """
     headers = event.get("headers") or {}
     # Headers may vary in casing
-    auth_header = headers.get("Authorization") or headers.get("authorization")
+    auth_header: str | None = headers.get("Authorization") or headers.get("authorization")
     if not auth_header:
         return None
 
@@ -161,7 +161,8 @@ def get_bearer_token(event: dict) -> str | None:
         return None
 
     # Return the token after "Bearer "
-    return auth_header.split(" ", 1)[1].strip()
+    token: str = auth_header.split(" ", 1)[1].strip()
+    return token
 
 
 def get_id_token(event: dict) -> str:

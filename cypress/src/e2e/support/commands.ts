@@ -89,9 +89,6 @@ Cypress.Commands.add('loginAs', (role = 'user') => {
     // Temporarily suppress exceptions during login flow
     cy.on('uncaught:exception', () => false);
 
-    // Use spec filename in session key to isolate sessions per spec
-    // const specName = Cypress.spec.name;
-
     cy.session(
         `cognito-${role}`,
         () => {

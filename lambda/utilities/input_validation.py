@@ -16,8 +16,8 @@
 
 import functools
 import logging
-from typing import Any, Dict, TypeVar, Union
 from collections.abc import Callable
+from typing import Any, TypeVar
 
 from utilities.response_builder import generate_html_response
 
@@ -179,7 +179,8 @@ def validate_input(max_request_size: int = DEFAULT_MAX_REQUEST_SIZE) -> Callable
                 )
 
             # All validations passed, call the wrapped function
-            return f(event, context)
+            result: dict[str, str | int | dict[str, str]] = f(event, context)
+            return result
 
         return wrapper  # type: ignore [return-value]
 

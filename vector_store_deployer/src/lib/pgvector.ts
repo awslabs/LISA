@@ -129,8 +129,7 @@ export class PGVectorStoreStack extends PipelineStack {
                 rdsSecret = pgvectorDb.secret!;
 
                 if (!useIamAuth) {
-                    // Password auth: grant connect as postgres user
-                    pgvectorDb.grantConnect(lambdaRole);
+                    // Password auth: only need secret access (grantConnect requires IAM auth)
                     rdsConfig.passwordSecretId = rdsSecret.secretName;
                 } else {
                     // IAM auth: grant connect with role name

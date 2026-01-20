@@ -208,8 +208,7 @@ export class LisaServeApplicationConstruct extends Construct {
             litellmDbConnectionInfoPs.grantRead(serveRole);
 
             if (!useIamAuth) {
-                // Password auth: grant connect and secret read access
-                litellmDb.grantConnect(serveRole);
+                // Password auth: grant secret read access only (grantConnect requires IAM auth)
                 litellmDbSecret.grantRead(serveRole);
             } else {
                 // IAM auth: grant connect with role name and create IAM user

@@ -591,8 +591,7 @@ export class LisaRagConstruct extends Construct {
                     });
 
                     if (!useIamAuth) {
-                        // Password auth: grant connect as postgres user
-                        pgvector_db.grantConnect(lambdaRole);
+                        // Password auth: secret read access granted below (grantConnect requires IAM auth)
                     } else {
                         // IAM auth: grant connect with role name
                         pgvector_db.grantConnect(lambdaRole, lambdaRole.roleName);

@@ -227,7 +227,6 @@ export class PGVectorStoreStack extends PipelineStack {
                 DB_NAME: rdsConfig.dbName,
                 DB_USER: rdsConfig.username,
                 IAM_NAME: user,
-                DELETE_SECRET_AFTER_SETUP: 'true',
             },
             role: iamAuthLambdaRole,
             layers: [commonLayer],

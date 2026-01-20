@@ -382,7 +382,6 @@ export class LisaServeApplicationConstruct extends Construct {
                 DB_NAME: config.restApiConfig.rdsConfig.dbName,
                 DB_USER: config.restApiConfig.rdsConfig.username,
                 IAM_NAME: user,
-                DELETE_SECRET_AFTER_SETUP: 'true',
             },
             role: iamAuthLambdaRole,
             layers: [commonLayer],

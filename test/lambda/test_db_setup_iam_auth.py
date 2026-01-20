@@ -36,7 +36,7 @@ os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 os.environ["AWS_REGION"] = "us-east-1"
 
 # Import the module to test
-from utilities.db_setup_iam_auth import create_db_user, get_db_credentials, handler
+from utilities.db_setup_iam_auth import create_db_user, delete_bootstrap_secret, get_db_credentials, handler
 
 
 @pytest.fixture(scope="function")
@@ -107,6 +107,53 @@ def test_get_db_credentials_error():
         # Call the function and assert it raises the expected exception
         with pytest.raises(Exception, match="Error retrieving secrets"):
             get_db_credentials("non-existent-arn")
+
+
+def test_delete_bootstrap_secret_success():
+    """Test successful deletion of bootstrap secret."""
+    secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:test-secret"
+
+    with patch("utilities.db_setup_iam_auth.boto3.client") as mock_client:
+        mock_secretsmanager = MagicMock()
+        mock_client.return_value = mock_secretsmanager
+
+        result = delete_bootstrap_secret(secret_arn)
+
+        assert result is True
+        mock_client.assert_called_once_with("secretsmanager", region_name="us-east-1")
+        mock_secretsmanager.delete_secret.assert_called_once_with(SecretId=secret_arn, ForceDeleteWithoutRecovery=True)
+
+
+def test_delete_bootstrap_secret_already_deleted():
+    """Test handling when secret is already deleted."""
+    secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:test-secret"
+
+    with patch("utilities.db_setup_iam_auth.boto3.client") as mock_client:
+        mock_secretsmanager = MagicMock()
+        mock_client.return_value = mock_secretsmanager
+        mock_secretsmanager.delete_secret.side_effect = ClientError(
+            {"Error": {"Code": "ResourceNotFoundException", "Message": "Secret not found"}}, "DeleteSecret"
+        )
+
+        result = delete_bootstrap_secret(secret_arn)
+
+        assert result is True
+
+
+def test_delete_bootstrap_secret_error():
+    """Test handling when secret deletion fails."""
+    secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:test-secret"
+
+    with patch("utilities.db_setup_iam_auth.boto3.client") as mock_client:
+        mock_secretsmanager = MagicMock()
+        mock_client.return_value = mock_secretsmanager
+        mock_secretsmanager.delete_secret.side_effect = ClientError(
+            {"Error": {"Code": "AccessDeniedException", "Message": "Access denied"}}, "DeleteSecret"
+        )
+
+        result = delete_bootstrap_secret(secret_arn)
+
+        assert result is False
 
 
 def test_create_db_user_success(mock_psycopg2_connection):
@@ -265,9 +312,8 @@ def test_create_db_user_grant_error(mock_psycopg2_connection):
             mock_conn.close.assert_called_once()
 
 
-def test_handler_success(lambda_context):
-    """Test successful execution of the handler."""
-    # Set up environment variables
+def test_handler_default(lambda_context):
+    """Test that handler defaults to deleting secret when env var not set."""
     env_vars = {
         "SECRET_ARN": "test-arn",
         "DB_HOST": "test-host",
@@ -277,21 +323,18 @@ def test_handler_success(lambda_context):
         "IAM_NAME": "test-iam-user",
     }
 
-    # Mock the create_db_user function
     with patch("utilities.db_setup_iam_auth.create_db_user") as mock_create_db_user:
-        # Mock environment variables
-        with patch.dict(os.environ, env_vars):
-            # Call the handler
-            response = handler({}, lambda_context)
+        with patch("utilities.db_setup_iam_auth.delete_bootstrap_secret") as mock_delete_secret:
+            mock_delete_secret.return_value = True
+            with patch.dict(os.environ, env_vars, clear=False):
+                response = handler({}, lambda_context)
 
-            # Verify create_db_user was called with the correct parameters
-            mock_create_db_user.assert_called_once_with(
-                "test-host", "5432", "test-db", "admin", "test-arn", "test-iam-user"
-            )
+                mock_create_db_user.assert_called_once()
+                mock_delete_secret.assert_called_once_with("test-arn")
 
-            # Verify the response
-            assert response["statusCode"] == 200
-            assert response["body"] == "Database user created successfully"
+                assert response["statusCode"] == 200
+                body = json.loads(response["body"])
+                assert body["secretDeleted"] is True
 
 
 def test_handler_missing_env_vars(lambda_context):

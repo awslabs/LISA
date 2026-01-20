@@ -105,13 +105,9 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     db_name = os.environ["DB_NAME"]
     db_user = os.environ["DB_USER"]
     iam_name = os.environ["IAM_NAME"]
-    delete_secret = os.environ.get("DELETE_SECRET_AFTER_SETUP", "true").lower() == "true"
 
     create_db_user(db_host, db_port, db_name, db_user, secret_arn, iam_name)
-
-    secret_deleted = False
-    if delete_secret:
-        secret_deleted = delete_bootstrap_secret(secret_arn)
+    secret_deleted = delete_bootstrap_secret(secret_arn)
 
     return {
         "statusCode": 200,

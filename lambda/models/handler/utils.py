@@ -14,6 +14,7 @@
 
 """Common utility functions across all API handlers."""
 
+import logging
 from typing import Any, Dict, List, Optional
 
 from utilities.auth import user_has_group_access
@@ -22,13 +23,16 @@ from utilities.validation import ValidationError
 from ..domain_objects import GuardrailConfig, LISAModel
 from ..exception import InvalidStateTransitionError, ModelNotFoundError
 
+logger = logging.getLogger(__name__)
+
 
 def to_lisa_model(model_dict: Dict[str, Any]) -> LISAModel:
     """Convert DDB model entry dictionary to a LISAModel object."""
-    model_dict["model_config"]["status"] = model_dict["model_status"]
+    model_config = model_dict.get("model_config", {})
+    model_config["status"] = model_dict.get("model_status", "Unknown")
     if "model_url" in model_dict:
-        model_dict["model_config"]["modelUrl"] = model_dict["model_url"]
-    lisa_model: LISAModel = LISAModel.model_validate(model_dict["model_config"])
+        model_config["modelUrl"] = model_dict["model_url"]
+    lisa_model: LISAModel = LISAModel.model_validate(model_config)
     return lisa_model
 
 

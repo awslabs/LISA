@@ -54,7 +54,11 @@ export abstract class PipelineStack extends Stack {
         // Process each pipeline configuration
         ragConfig.pipelines?.forEach((pipelineConfig, index) => {
             const bucketActions = ['s3:GetObject'];
-            const hash = crypto.randomBytes(6).toString('hex');
+            // Generate a deterministic hash based on collection identity for consistent naming
+            // This ensures the same hash is used for both CDK construct IDs and rule names
+            const collectionId = pipelineConfig.collectionId ?? pipelineConfig.embeddingModel;
+            const collectionName = `${ragConfig.repositoryId}-${collectionId}`;
+            const hash = crypto.createHash('sha256').update(collectionName).digest('hex').substring(0, 6);
 
             // Add EventBridge Rules based on trigger type specified in the pipeline configuration
             // Create rules based on trigger type
@@ -113,8 +117,9 @@ export abstract class PipelineStack extends Stack {
 
     /**
      * Creates an EventBridge rule for S3 event-based triggers
+     * @param collectionHash - Deterministic hash based on collection identity, used for both construct ID and rule name
      */
-    private createEventLambdaRule (config: PartialConfig, ingestionLambda: IFunction, repositoryId: string, pipelineConfig: PipelineConfig, eventTypes: string[], eventName: string, disambiguator: string): Rule {
+    private createEventLambdaRule (config: PartialConfig, ingestionLambda: IFunction, repositoryId: string, pipelineConfig: PipelineConfig, eventTypes: string[], eventName: string, collectionHash: string): Rule {
         const detail: any = {
             bucket: {
                 name: [pipelineConfig.s3Bucket]
@@ -159,14 +164,16 @@ export abstract class PipelineStack extends Stack {
         };
 
         const collectionId = pipelineConfig.collectionId ?? pipelineConfig.embeddingModel;
-        const collectionName = `${repositoryId}-${collectionId}`;
         // Create a new EventBridge rule for the S3 event pattern
         // Rule name must be <= 64 chars. Keep it descriptive but short
         // Format: {deployment}-{stage}-{repoId}-S3{action}-{shortHash}
-        // Use short hash of collection name for uniqueness when repo IDs collide
-        const collectionHash = crypto.createHash('sha256').update(collectionName).digest('hex').substring(0, 6);
-        const ruleName = `${config.deploymentName}-${config.deploymentStage}-${repositoryId}-S3${eventName}-${collectionHash}`.substring(0, 64);
-        return new Rule(this, `${repositoryId}-S3Event${eventName}Rule-${disambiguator}`, {
+        // Use the same deterministic hash for both construct ID and rule name to ensure consistency across deployments
+        // Ensure hash is always preserved by truncating the prefix, not the suffix
+        const suffix = `-S3${eventName}-${collectionHash}`;
+        const prefix = `${config.deploymentName}-${config.deploymentStage}-${repositoryId}`;
+        const maxPrefixLen = 64 - suffix.length;
+        const ruleName = `${prefix.substring(0, maxPrefixLen)}${suffix}`;
+        return new Rule(this, `${repositoryId}-S3Event${eventName}Rule-${collectionHash}`, {
             ruleName,
             eventPattern,
             // Define the state machine target with input transformation
@@ -194,12 +201,18 @@ export abstract class PipelineStack extends Stack {
 
     /**
      * Creates an EventBridge rule for daily scheduled triggers
+     * @param collectionHash - Deterministic hash based on collection identity, used for both construct ID and rule name
      */
-    private createDailyLambdaRule (config: PartialConfig, ingestionLambda: IFunction, ragConfig: RagRepositoryDeploymentConfig, pipelineConfig: PipelineConfig, disambiguator: string): Rule {
+    private createDailyLambdaRule (config: PartialConfig, ingestionLambda: IFunction, ragConfig: RagRepositoryDeploymentConfig, pipelineConfig: PipelineConfig, collectionHash: string): Rule {
         // Rule name must be <= 64 chars
         // Format: {deployment}-{stage}-{repoId}-DailyIngest-{hash}
-        const ruleName = `${config.deploymentName}-${config.deploymentStage}-${ragConfig.repositoryId}-DailyIngest-${disambiguator}`.substring(0, 64);
-        return new Rule(this, `${ragConfig.repositoryId}-S3DailyIngestRule-${disambiguator}`, {
+        // Use the same deterministic hash for both construct ID and rule name to ensure consistency across deployments
+        // Ensure hash is always preserved by truncating the prefix, not the suffix
+        const suffix = `-DailyIngest-${collectionHash}`;
+        const prefix = `${config.deploymentName}-${config.deploymentStage}-${ragConfig.repositoryId}`;
+        const maxPrefixLen = 64 - suffix.length;
+        const ruleName = `${prefix.substring(0, maxPrefixLen)}${suffix}`;
+        return new Rule(this, `${ragConfig.repositoryId}-S3DailyIngestRule-${collectionHash}`, {
             ruleName,
             // Schedule the rule to run daily at midnight
             schedule: Schedule.cron({

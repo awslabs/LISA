@@ -403,11 +403,14 @@ export const VALID_INSTANCE_KEYS = Ec2Metadata.getValidInstanceKeys() as [string
 const ContainerHealthCheckConfigSchema = z.object({
     command: z.array(z.string()).default(['CMD-SHELL', 'exit 0']).describe('The command to run for health checks'),
     interval: z.number().default(10).describe('The time interval between health checks, in seconds.'),
-    startPeriod: z.number().default(30).describe('The time to wait before starting the first health check, in seconds.'),
+    startPeriod: z.number().default(300).describe('The time to wait before starting the first health check, in seconds. Default 600s (10 min) to allow for large model loading.'),
     timeout: z.number().default(5).describe('The maximum time allowed for each health check to complete, in seconds'),
-    retries: z.number().default(2).describe('The number of times to retry a failed health check before considering the container as unhealthy.'),
+    retries: z.number().default(3).describe('The number of times to retry a failed health check before considering the container as unhealthy.'),
 })
     .describe('Configuration for container health checks');
+
+export { ContainerHealthCheckConfigSchema };
+export type ContainerHealthCheckConfig = z.infer<typeof ContainerHealthCheckConfigSchema>;
 
 export const ImageTarballAsset = z.object({
     path: z.string(),
@@ -467,7 +470,7 @@ export const ContainerConfigSchema = z.object({
 
 export type ContainerConfig = z.infer<typeof ContainerConfigSchema>;
 
-const HealthCheckConfigSchema = z.object({
+export const LoadBalancerHealthCheckConfigSchema = z.object({
     path: z.string().describe('Path for the health check.'),
     interval: z.number().default(30).describe('Interval in seconds between health checks.'),
     timeout: z.number().default(10).describe('Timeout in seconds for each health check.'),
@@ -476,16 +479,18 @@ const HealthCheckConfigSchema = z.object({
 })
     .describe('Health check configuration for the load balancer.');
 
+export type LoadBalancerHealthCheckConfig = z.infer<typeof LoadBalancerHealthCheckConfigSchema>;
+
 export const LoadBalancerConfigSchema = z.object({
     sslCertIamArn: z.string().nullish().default(null).describe('SSL certificate IAM ARN for load balancer.'),
-    healthCheckConfig: HealthCheckConfigSchema,
+    healthCheckConfig: LoadBalancerHealthCheckConfigSchema,
     domainName: z.string().nullish().default(null).describe('Domain name to use instead of the load balancer\'s default DNS name.'),
 })
     .describe('Configuration for load balancer settings.');
 
 export const MetricConfigSchema = z.object({
-    albMetricName: z.string().describe('Name of the ALB metric.'),
-    targetValue: z.number().describe('Target value for the metric.'),
+    albMetricName: z.string().default('RequestCountPerTarget').describe('Name of the ALB metric.'),
+    targetValue: z.number().default(30).describe('Target value for the metric.'),
     duration: z.number().default(60).describe('Duration in seconds for metric evaluation.'),
     estimatedInstanceWarmup: z.number().min(0).default(180).describe('Estimated warm-up time in seconds until a newly launched instance can send metrics to CloudWatch.'),
 })
@@ -625,6 +630,8 @@ export const EcsClusterConfigSchema = z
         autoScalingConfig: AutoScalingConfigSchema,
         loadBalancerConfig: LoadBalancerConfigSchema,
         localModelCode: z.string().default('/opt/model-code'),
+        containerMemoryBuffer: z.number().default(1024 * 2)
+            .describe('Memory in MiB to reserve for the host OS/ECS agent. Container gets (instance memory - buffer). Default: 2048 MiB'),
         modelHosting: z
             .string()
             .default('ecs')

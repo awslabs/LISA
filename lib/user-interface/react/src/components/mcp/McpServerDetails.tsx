@@ -46,10 +46,13 @@ export function McpServerDetails () {
     const dispatch = useAppDispatch();
     const [getMcpServerQuery, {isUninitialized, data, isFetching, isSuccess}] = useLazyGetMcpServerQuery();
     const {data: userPreferences} = useGetUserPreferencesQuery();
-    const [preferences, setPreferences] = useState<UserPreferences>(undefined);
     const userName = useAppSelector(selectCurrentUsername);
     const [updatePreferences, {isSuccess: isUpdatingSuccess, isError: isUpdatingError, error: updateError}] = useUpdateUserPreferencesMutation();
     const notificationService = useNotificationService(dispatch);
+
+    // Derive preferences from userPreferences or defaults
+    const preferences = userPreferences || {...DefaultUserPreferences, user: userName};
+    const [localPreferences, setLocalPreferences] = useState<UserPreferences>(preferences);
 
     // create success notification
     useEffect(() => {
@@ -66,16 +69,8 @@ export function McpServerDetails () {
         }
     }, [isUpdatingError, updateError, notificationService]);
 
-    useEffect(() => {
-        if (userPreferences) {
-            setPreferences(userPreferences);
-        } else {
-            setPreferences({...DefaultUserPreferences, user: userName});
-        }
-    }, [userPreferences, userName]);
-
     const toggleTool = (toolName: string, enabled: boolean) => {
-        const existingMcpPrefs = preferences.preferences.mcp ?? {enabledServers: [], overrideAllApprovals: false};
+        const existingMcpPrefs = localPreferences.preferences.mcp ?? {enabledServers: [], overrideAllApprovals: false};
         const mcpPrefs: McpPreferences = {
             ...existingMcpPrefs,
             enabledServers: [...existingMcpPrefs.enabledServers]
@@ -104,15 +99,15 @@ export function McpServerDetails () {
     };
 
     const updatePrefs = (mcpPrefs: McpPreferences) => {
-        const updated = {...preferences,
-            preferences: {...preferences.preferences,
+        const updated = {...localPreferences,
+            preferences: {...localPreferences.preferences,
                 mcp: {
-                    ...preferences.preferences.mcp,
+                    ...localPreferences.preferences.mcp,
                     ...mcpPrefs
                 }
             }
         };
-        setPreferences(updated);
+        setLocalPreferences(updated);
         updatePreferences(updated);
     };
 
@@ -185,7 +180,7 @@ export function McpServerDetails () {
             pagination={<Pagination {...paginationProps} />}
             items={items}
             columnDefinitions={[
-                { header: 'Use tool', cell: (item) => <Toggle checked={!preferences?.preferences?.mcp?.enabledServers.find((server) => server.id === mcpServerId)?.disabledTools.includes(item.name)} onChange={({detail}) => toggleTool(item.name, detail.checked)}/>},
+                { header: 'Use tool', cell: (item) => <Toggle checked={!localPreferences?.preferences?.mcp?.enabledServers.find((server) => server.id === mcpServerId)?.disabledTools.includes(item.name)} onChange={({detail}) => toggleTool(item.name, detail.checked)}/>},
                 { header: 'Name', cell: (item) => item.name},
                 { header: 'Description', cell: (item) => item.description},
             ]}

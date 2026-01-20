@@ -78,7 +78,6 @@ from models.lambda_functions import (
     model_not_found_handler,
     update_model,
     user_error_handler,
-    validation_exception_handler,
 )
 from moto import mock_aws
 
@@ -715,8 +714,6 @@ def test_update_model_validation(
 @pytest.mark.asyncio
 async def test_exception_handlers():
     """Test exception handlers."""
-    from fastapi.encoders import jsonable_encoder
-    from fastapi.exceptions import RequestValidationError
 
     # Setup mock request
     request = MagicMock()
@@ -727,14 +724,9 @@ async def test_exception_handlers():
     assert response.status_code == 404
     assert json.loads(response.body)["detail"] == "Model not found"
 
-    # Test RequestValidationError handler
-    mock_errors = [{"loc": ["body", "modelId"], "msg": "field required", "type": "value_error.missing"}]
-    exc = MagicMock(spec=RequestValidationError)
-    exc.errors.return_value = mock_errors
-    response = await validation_exception_handler(request, exc)
-    assert response.status_code == 422
-    assert json.loads(response.body)["detail"] == jsonable_encoder(mock_errors)
-    assert json.loads(response.body)["type"] == "RequestValidationError"
+    # Note: RequestValidationError handler is now tested through the FastAPI app
+    # It's defined in the fastapi_factory and automatically registered
+    # Test it through integration tests instead of unit tests
 
     # Test user error handler with ModelAlreadyExistsError
     exc = ModelAlreadyExistsError("Model already exists")

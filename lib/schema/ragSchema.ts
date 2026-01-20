@@ -148,12 +148,13 @@ export type OpenSearchConfig =
 
 export const RdsInstanceConfig = z.object({
     username: z.string().default('postgres').describe('The username used for database connection.'),
-    passwordSecretId: z.string().optional().describe('The SecretsManager Secret ID that stores the existing database password.'),
+    passwordSecretId: z.string().optional().describe('The SecretsManager Secret ID that stores the existing database password. Only used when iamRdsAuth is false.'),
     dbHost: z.string().optional().describe('The database hostname for the existing database instance.'),
     dbName: z.string().default('postgres').describe('The name of the database for the database instance.'),
     dbPort: z.number().default(5432).describe('The port of the existing database instance or the port to be opened on the database instance.'),
 }).describe('Configuration schema for RDS Instances needed for LiteLLM scaling or PGVector RAG operations.\n \n ' +
-    'The optional fields can be omitted to create a new database instance, otherwise fill in all fields to use an existing database instance.');
+    'The optional fields can be omitted to create a new database instance, otherwise fill in all fields to use an existing database instance. ' +
+    'By default, IAM authentication is used. Set iamRdsAuth to false in config to use password-based authentication.');
 
 export type RdsConfig = z.infer<typeof RdsInstanceConfig>;
 

@@ -74,7 +74,10 @@ export class PGVectorStoreStack extends PipelineStack {
 
         // Check if PGVector type and RDS configuration are provided in ragConfig
         if (type === RagRepositoryType.PGVECTOR && rdsConfig) {
-            let rdsPasswordSecret: ISecret;
+            // Determine authentication method - default to IAM auth (iamRdsAuth = true)
+            const useIamAuth = config.iamRdsAuth ?? true;
+
+            let rdsSecret: ISecret;
             let rdsConnectionInfo: StringParameter;
 
             // Get Security Group ID for PGVector
@@ -86,23 +89,25 @@ export class PGVectorStoreStack extends PipelineStack {
                 SecurityGroupFactory.addIngress(pgSecurityGroup, SecurityGroupEnum.PG_VECTOR_SG, vpc, rdsConfig.dbPort, subnetSelection?.subnets);
             }
 
-            // if dbHost and passwordSecretId are defined, then connect to DB with existing params
-            // Check if existing DB connection details are available
-            if (rdsConfig && rdsConfig.passwordSecretId) {
+            // Check if existing DB connection details are available (dbHost and passwordSecretId provided)
+            if (rdsConfig && rdsConfig.dbHost && rdsConfig.passwordSecretId) {
                 // Use existing DB connection details
                 rdsConnectionInfo = new StringParameter(this, createCdkId([repositoryId, 'StringParameter']), {
                     parameterName: `${config.deploymentPrefix}/LisaServeRagConnectionInfo/${repositoryId}`,
                     stringValue: JSON.stringify({
-                        ...(config.iamRdsAuth ? {} : rdsConfig),
+                        username: rdsConfig.username,
                         dbHost: rdsConfig.dbHost,
                         dbName: rdsConfig.dbName,
                         dbPort: rdsConfig.dbPort,
-                        type: RagRepositoryType.PGVECTOR }),
+                        type: RagRepositoryType.PGVECTOR,
+                        // Include passwordSecretId only when using password auth
+                        ...(!useIamAuth ? { passwordSecretId: rdsConfig.passwordSecretId } : {})
+                    }),
                     description: 'Connection info for LISA Serve PGVector database',
                 });
-                rdsPasswordSecret = Secret.fromSecretNameV2(
+                rdsSecret = Secret.fromSecretNameV2(
                     this,
-                    createCdkId([deploymentName!, repositoryId, 'RagRDSPwdSecret']),
+                    createCdkId([deploymentName!, repositoryId, 'RagRDSSecret']),
                     rdsConfig.passwordSecretId!,
                 );
             } else {
@@ -113,28 +118,26 @@ export class PGVectorStoreStack extends PipelineStack {
                     engine: DatabaseInstanceEngine.POSTGRES,
                     vpc: vpc,
                     vpcSubnets: subnetSelection,
-                    // TODO add instance type?
-                    // TODO: Specify the RDS instance type
                     credentials: dbCreds,
-                    iamAuthentication: true,
+                    iamAuthentication: useIamAuth, // Enable IAM auth when iamRdsAuth is true
                     securityGroups: [pgSecurityGroup],
                     removalPolicy: RemovalPolicy.DESTROY,
                     databaseName: rdsConfig.dbName,
                     port: rdsConfig.dbPort
                 });
 
-                rdsPasswordSecret = pgvectorDb.secret!;
+                rdsSecret = pgvectorDb.secret!;
 
-                if (config.iamRdsAuth) {
-                    // grant the role permissions to connect as the IAM role itself
-                    pgvectorDb.grantConnect(lambdaRole, lambdaRole.roleName);
-                } else {
-                    // grant the role permissions to connect as the postgres user
+                if (!useIamAuth) {
+                    // Password auth: grant connect as postgres user
                     pgvectorDb.grantConnect(lambdaRole);
-                    rdsConfig.passwordSecretId = rdsPasswordSecret.secretName;
+                    rdsConfig.passwordSecretId = rdsSecret.secretName;
+                } else {
+                    // IAM auth: grant connect with role name
+                    pgvectorDb.grantConnect(lambdaRole, lambdaRole.roleName);
                 }
 
-                // Store password secret ID in ragConfig
+                // Store DB connection details
                 rdsConfig.dbHost = pgvectorDb.dbInstanceEndpointAddress;
                 rdsConfig.dbPort = Number(pgvectorDb.dbInstanceEndpointPort);
 
@@ -142,20 +145,24 @@ export class PGVectorStoreStack extends PipelineStack {
                 rdsConnectionInfo = new StringParameter(this, createCdkId([repositoryId, 'StringParameter']), {
                     parameterName: `${config.deploymentPrefix}/LisaServeRagConnectionInfo/${repositoryId}`,
                     stringValue: JSON.stringify({
-                        ...(config.iamRdsAuth ? {} : { passwordSecretId: rdsPasswordSecret.secretName }),
                         username: username,
                         dbHost: pgvectorDb.dbInstanceEndpointAddress,
                         dbName: rdsConfig.dbName,
                         dbPort: pgvectorDb.dbInstanceEndpointPort,
-                        type: RagRepositoryType.PGVECTOR
+                        type: RagRepositoryType.PGVECTOR,
+                        // Include passwordSecretId only when using password auth
+                        ...(!useIamAuth ? { passwordSecretId: rdsSecret.secretName } : {})
                     }),
                     description: 'Connection info for LISA Serve PGVector database',
                 });
             }
 
-            if (config.iamRdsAuth) {
-                // Create the lambda for generating DB users for IAM auth
-                const createDbUserLambda = this.getIAMAuthLambda(config, repositoryId, rdsConfig, rdsPasswordSecret, lambdaRole.roleName, vpc, [pgSecurityGroup], subnetSelection);
+            if (!useIamAuth) {
+                // Password auth: grant secret read access
+                rdsSecret.grantRead(lambdaRole);
+            } else {
+                // IAM auth: create the lambda for generating DB users
+                const createDbUserLambda = this.getIAMAuthLambda(config, repositoryId, rdsConfig, rdsSecret, lambdaRole.roleName, vpc, [pgSecurityGroup], subnetSelection);
 
                 const customResourceRole = new Role(this, createCdkId(['CustomResourceRole', ragConfig.repositoryId]), {
                     assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
@@ -173,7 +180,7 @@ export class PGVectorStoreStack extends PipelineStack {
                 });
                 createDbUserLambda.grantInvoke(customResourceRole);
 
-                // run updateInstanceKmsConditionsLambda every deploy
+                // Run the IAM user bootstrap Lambda on every deploy
                 new AwsCustomResource(this, createCdkId([repositoryId, 'CreateDbUserCustomResource']), {
                     onCreate: {
                         service: 'Lambda',
@@ -186,11 +193,9 @@ export class PGVectorStoreStack extends PipelineStack {
                     },
                     role: customResourceRole
                 });
-            } else {
-                rdsPasswordSecret.grantRead(lambdaRole);
             }
 
-            // Grant read permissions for secrets to Lambda role
+            // Grant read permissions for connection info to Lambda role
             rdsConnectionInfo.grantRead(lambdaRole);
 
             this.createPipelineRules(config, ragConfig);
@@ -204,6 +209,8 @@ export class PGVectorStoreStack extends PipelineStack {
         });
 
         secret.grantRead(iamAuthLambdaRole);
+        // Grant permission to delete the bootstrap secret after IAM user creation
+        secret.grantWrite(iamAuthLambdaRole);
 
         const commonLayer = this.getLambdaLayer(repositoryId, config);
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
@@ -214,14 +221,15 @@ export class PGVectorStoreStack extends PipelineStack {
             code: Code.fromAsset(lambdaPath),
             timeout: Duration.minutes(2),
             environment: {
-                SECRET_ARN: secret.secretArn, // ARN of the RDS secret
+                SECRET_ARN: secret.secretArn,
                 DB_HOST: rdsConfig.dbHost!,
-                DB_PORT: String(rdsConfig.dbPort), // Default PostgreSQL port
-                DB_NAME: rdsConfig.dbName, // Database name
-                DB_USER: rdsConfig.username, // Admin user for RDS
-                IAM_NAME: user, // IAM role for Lambda execution
+                DB_PORT: String(rdsConfig.dbPort),
+                DB_NAME: rdsConfig.dbName,
+                DB_USER: rdsConfig.username,
+                IAM_NAME: user,
+                DELETE_SECRET_AFTER_SETUP: 'true',
             },
-            role: iamAuthLambdaRole, // Lambda execution role
+            role: iamAuthLambdaRole,
             layers: [commonLayer],
             vpc,
             securityGroups,

@@ -537,27 +537,30 @@ export class LisaRagConstruct extends Construct {
                 openSearchEndpointPs.node.addDependency(openSearchDomain);
                 openSearchEndpointPs.grantRead(lambdaRole);
             } else if (ragConfig.type === RagRepositoryType.PGVECTOR && ragConfig.rdsConfig) {
-                let rdsPasswordSecret: ISecret;
+                // Determine authentication method - default to IAM auth (iamRdsAuth = true)
+                const useIamAuth = config.iamRdsAuth ?? true;
+
+                let rdsSecret: ISecret;
                 let rdsConnectionInfoPs: StringParameter;
-                // if dbHost and passwordSecretId are defined, then connect to DB with existing params
-                if (!!ragConfig.rdsConfig.dbHost && !!ragConfig.rdsConfig.passwordSecretId) {
+
+                // if dbHost and passwordSecretId are defined, connect to existing DB
+                if (ragConfig.rdsConfig.dbHost && ragConfig.rdsConfig.passwordSecretId) {
                     rdsConnectionInfoPs = new StringParameter(this.scope, createCdkId([connectionParamName, ragConfig.repositoryId, 'StringParameter']), {
                         parameterName: `${config.deploymentPrefix}/${connectionParamName}/${ragConfig.repositoryId}`,
                         stringValue: JSON.stringify({
-                            ...(config.iamRdsAuth ? {} : {
-                                passwordSecretId: ragConfig.rdsConfig?.passwordSecretId
-                            }),
                             username: ragConfig.rdsConfig?.username,
                             dbHost: ragConfig.rdsConfig?.dbHost,
                             dbName: ragConfig.rdsConfig?.dbName,
                             dbPort: ragConfig.rdsConfig?.dbPort,
-                            type: RagRepositoryType.PGVECTOR
+                            type: RagRepositoryType.PGVECTOR,
+                            // Include passwordSecretId only when using password auth
+                            ...(!useIamAuth ? { passwordSecretId: ragConfig.rdsConfig?.passwordSecretId } : {})
                         }),
                         description: 'Connection info for LISA Serve PGVector database',
                     });
-                    rdsPasswordSecret = Secret.fromSecretNameV2(
+                    rdsSecret = Secret.fromSecretNameV2(
                         this.scope,
-                        createCdkId([config.deploymentName, ragConfig.repositoryId, 'RagRDSPwdSecret']),
+                        createCdkId([config.deploymentName, ragConfig.repositoryId, 'RagRDSSecret']),
                         ragConfig.rdsConfig.passwordSecretId,
                     );
                 } else {
@@ -568,11 +571,11 @@ export class LisaRagConstruct extends Construct {
                         vpc: vpc.vpc,
                         subnetGroup: vpc.subnetGroup,
                         credentials: dbCreds,
-                        iamAuthentication: true,
+                        iamAuthentication: useIamAuth, // Enable IAM auth when iamRdsAuth is true
                         securityGroups: [securityGroups.pgvector],
                         removalPolicy: RemovalPolicy.DESTROY,
                     });
-                    rdsPasswordSecret = pgvector_db.secret!;
+                    rdsSecret = pgvector_db.secret!;
                     rdsConnectionInfoPs = new StringParameter(this.scope, createCdkId([connectionParamName, ragConfig.repositoryId, 'StringParameter']), {
                         parameterName: `${config.deploymentPrefix}/${connectionParamName}/${ragConfig.repositoryId}`,
                         stringValue: JSON.stringify({
@@ -581,30 +584,34 @@ export class LisaRagConstruct extends Construct {
                             dbPort: ragConfig.rdsConfig.dbPort,
                             type: RagRepositoryType.PGVECTOR,
                             username: username,
-                            ...(config.iamRdsAuth ? {} : { passwordSecretId: rdsPasswordSecret.secretName }),
+                            // Include passwordSecretId only when using password auth
+                            ...(!useIamAuth ? { passwordSecretId: rdsSecret.secretName } : {})
                         }),
                         description: 'Connection info for LISA Serve PGVector database',
                     });
 
-                    if (config.iamRdsAuth) {
-                        // grant the role permissions to connect as the IAM role itself
-                        pgvector_db.grantConnect(lambdaRole, lambdaRole.roleName);
-                    } else {
-                        // grant the role permissions to connect as the postgres user
+                    if (!useIamAuth) {
+                        // Password auth: grant connect as postgres user
                         pgvector_db.grantConnect(lambdaRole);
+                    } else {
+                        // IAM auth: grant connect with role name
+                        pgvector_db.grantConnect(lambdaRole, lambdaRole.roleName);
                     }
                 }
 
-                if (config.iamRdsAuth) {
-                    // Create the lambda for generating DB users for IAM auth
-                    const createDbUserLambda = this.getIAMAuthLambda(config, ragConfig.repositoryId, ragConfig.rdsConfig!, rdsPasswordSecret, lambdaRole.roleName, vpc.vpc, [securityGroups.pgvector], vpc.subnetSelection);
+                if (!useIamAuth) {
+                    // Password auth: grant secret read access
+                    rdsSecret.grantRead(lambdaRole);
+                } else {
+                    // IAM auth: create the lambda for generating DB users
+                    const createDbUserLambda = this.getIAMAuthLambda(config, ragConfig.repositoryId, ragConfig.rdsConfig!, rdsSecret, lambdaRole.roleName, vpc.vpc, [securityGroups.pgvector], vpc.subnetSelection);
 
                     const customResourceRole = new Role(this.scope, createCdkId(['CustomResourceRole', ragConfig.repositoryId]), {
                         assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
                     });
                     createDbUserLambda.grantInvoke(customResourceRole);
 
-                    // run updateInstanceKmsConditionsLambda every deploy
+                    // Run the IAM user bootstrap Lambda on every deploy
                     new AwsCustomResource(this.scope, createCdkId([ragConfig.repositoryId, 'CreateDbUserCustomResource']), {
                         onCreate: {
                             service: 'Lambda',
@@ -626,8 +633,6 @@ export class LisaRagConstruct extends Construct {
                         },
                         role: customResourceRole
                     });
-                } else {
-                    rdsPasswordSecret.grantRead(lambdaRole);
                 }
 
                 rdsConnectionInfoPs.grantRead(lambdaRole);
@@ -739,6 +744,8 @@ export class LisaRagConstruct extends Construct {
         });
 
         secret.grantRead(iamAuthLambdaRole);
+        // Grant permission to delete the bootstrap secret after IAM user creation
+        secret.grantWrite(iamAuthLambdaRole);
 
         const commonLayer = this.getLambdaLayer(repositoryId, config);
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
@@ -749,14 +756,15 @@ export class LisaRagConstruct extends Construct {
             code: Code.fromAsset(lambdaPath),
             timeout: Duration.minutes(2),
             environment: {
-                SECRET_ARN: secret.secretArn, // ARN of the RDS secret
+                SECRET_ARN: secret.secretArn,
                 DB_HOST: rdsConfig.dbHost!,
-                DB_PORT: String(rdsConfig.dbPort), // Default PostgreSQL port
-                DB_NAME: rdsConfig.dbName, // Database name
-                DB_USER: rdsConfig.username, // Admin user for RDS
-                IAM_NAME: user, // IAM role for Lambda execution
+                DB_PORT: String(rdsConfig.dbPort),
+                DB_NAME: rdsConfig.dbName,
+                DB_USER: rdsConfig.username,
+                IAM_NAME: user,
+                DELETE_SECRET_AFTER_SETUP: 'true',
             },
-            role: iamAuthLambdaRole, // Lambda execution role
+            role: iamAuthLambdaRole,
             layers: [commonLayer],
             vpc,
             securityGroups,

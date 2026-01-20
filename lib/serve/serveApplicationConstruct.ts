@@ -70,6 +70,9 @@ export class LisaServeApplicationConstruct extends Construct {
         super(scope, id);
         const { config, vpc, securityGroups } = props;
 
+        // Determine authentication method - default to IAM auth (iamRdsAuth = true)
+        const useIamAuth = config.iamRdsAuth ?? true;
+
         // TokenTable is now created in API Base, reference it from SSM parameter
         // API Base stack must be deployed before Serve stack (dependency is set in stages.ts)
         const tokenTableNameParameter = StringParameter.fromStringParameterName(
@@ -128,6 +131,8 @@ export class LisaServeApplicationConstruct extends Construct {
         }
 
         const username = config.restApiConfig.rdsConfig.username;
+
+        // Create credentials for database setup
         const dbCreds = Credentials.fromGeneratedSecret(username);
 
         // DB is a Single AZ instance for cost + inability to make non-Aurora multi-AZ cluster in CDK
@@ -138,15 +143,16 @@ export class LisaServeApplicationConstruct extends Construct {
             vpc: vpc.vpc,
             subnetGroup: vpc.subnetGroup,
             credentials: dbCreds,
-            iamAuthentication: true,
+            iamAuthentication: useIamAuth, // Enable IAM auth when iamRdsAuth is true
             securityGroups: [litellmDbSg],
             removalPolicy: config.removalPolicy,
         });
 
-        const litellmDbPasswordSecret = litellmDb.secret!;
+        // Secret is used for password auth or for IAM user bootstrap
+        const litellmDbSecret = litellmDb.secret!;
 
-        // Add rotation policy for the database password secret (only if not using IAM auth)
-        if (!config.iamRdsAuth) {
+        // Add rotation policy for the database password secret (only if using password auth)
+        if (!useIamAuth) {
             // Allow the rotation Lambda to connect to the database
             securityGroups.forEach((sg) => {
                 litellmDbSg.addIngressRule(
@@ -156,7 +162,7 @@ export class LisaServeApplicationConstruct extends Construct {
                 );
             });
 
-            litellmDbPasswordSecret.addRotationSchedule('DatabasePasswordRotationSchedule', {
+            litellmDbSecret.addRotationSchedule('DatabasePasswordRotationSchedule', {
                 automaticallyAfter: Duration.days(30),
                 hostedRotation: HostedRotation.postgreSqlSingleUser({
                     functionName: `${config.deploymentName}-Litellm-Rotation-Function`,
@@ -174,18 +180,10 @@ export class LisaServeApplicationConstruct extends Construct {
                 dbHost: litellmDb.dbInstanceEndpointAddress,
                 dbName: config.restApiConfig.rdsConfig.dbName,
                 dbPort: config.restApiConfig.rdsConfig.dbPort,
-                // only include passwordSecretId if authenticating with username/password
-                ...(config.iamRdsAuth ? {} : { passwordSecretId: litellmDbPasswordSecret.secretName })
+                // Include passwordSecretId only when using password auth
+                ...(!useIamAuth ? { passwordSecretId: litellmDbSecret.secretName } : {})
             }),
         });
-        console.log('storing llmdbconninfop', JSON.stringify({
-            username: username,
-            dbHost: litellmDb.dbInstanceEndpointAddress,
-            dbName: config.restApiConfig.rdsConfig.dbName,
-            dbPort: config.restApiConfig.rdsConfig.dbPort,
-            // only include passwordSecretId if authenticating with username/password
-            ...(config.iamRdsAuth ? {} : { passwordSecretId: litellmDbPasswordSecret.secretName })
-        }));
 
         // update the rdsConfig with the endpoint address
         config.restApiConfig.rdsConfig.dbHost = litellmDb.dbInstanceEndpointAddress;
@@ -208,18 +206,24 @@ export class LisaServeApplicationConstruct extends Construct {
         if (serveRole) {
             // Grant access to REST API task role only
             litellmDbConnectionInfoPs.grantRead(serveRole);
-            if (config.iamRdsAuth) {
+
+            if (!useIamAuth) {
+                // Password auth: grant connect and secret read access
+                litellmDb.grantConnect(serveRole);
+                litellmDbSecret.grantRead(serveRole);
+            } else {
+                // IAM auth: grant connect with role name and create IAM user
                 litellmDb.grantConnect(serveRole, serveRole.roleName);
 
                 // Create the lambda for generating DB users for IAM auth
-                const createDbUserLambda = this.getIAMAuthLambda(scope, config, litellmDbPasswordSecret, serveRole.roleName, vpc, [litellmDbSg]);
+                const createDbUserLambda = this.getIAMAuthLambda(scope, config, litellmDbSecret, serveRole.roleName, vpc, [litellmDbSg]);
 
                 const customResourceRole = new Role(scope, 'LISAServeCustomResourceRole', {
                     assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
                 });
                 createDbUserLambda.grantInvoke(customResourceRole);
 
-                // run updateInstanceKmsConditionsLambda every deploy
+                // Run the IAM user bootstrap Lambda on every deploy
                 new AwsCustomResource(scope, 'LISAServeCreateDbUserCustomResource', {
                     onCreate: {
                         service: 'Lambda',
@@ -232,10 +236,8 @@ export class LisaServeApplicationConstruct extends Construct {
                     },
                     role: customResourceRole
                 });
-            } else {
-                litellmDb.grantConnect(serveRole);
-                litellmDbPasswordSecret.grantRead(serveRole);
             }
+
             this.modelsPs.grantRead(serveRole);
         }
 
@@ -361,6 +363,8 @@ export class LisaServeApplicationConstruct extends Construct {
         });
 
         secret.grantRead(iamAuthLambdaRole);
+        // Grant permission to delete the bootstrap secret after IAM user creation
+        secret.grantWrite(iamAuthLambdaRole);
 
         const commonLayer = this.getLambdaLayer(scope, config);
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
@@ -372,14 +376,15 @@ export class LisaServeApplicationConstruct extends Construct {
             code: Code.fromAsset(lambdaPath),
             timeout: Duration.minutes(2),
             environment: {
-                SECRET_ARN: secret.secretArn, // ARN of the RDS secret
+                SECRET_ARN: secret.secretArn,
                 DB_HOST: config.restApiConfig.rdsConfig.dbHost!,
-                DB_PORT: String(config.restApiConfig.rdsConfig.dbPort), // Default PostgreSQL port
-                DB_NAME: config.restApiConfig.rdsConfig.dbName, // Database name
-                DB_USER: config.restApiConfig.rdsConfig.username, // Admin user for RDS
-                IAM_NAME: user, // IAM role for Lambda execution
+                DB_PORT: String(config.restApiConfig.rdsConfig.dbPort),
+                DB_NAME: config.restApiConfig.rdsConfig.dbName,
+                DB_USER: config.restApiConfig.rdsConfig.username,
+                IAM_NAME: user,
+                DELETE_SECRET_AFTER_SETUP: 'true',
             },
-            role: iamAuthLambdaRole, // Lambda execution role
+            role: iamAuthLambdaRole,
             layers: [commonLayer],
             vpc: vpc.vpc,
             vpcSubnets: vpc.subnetSelection,

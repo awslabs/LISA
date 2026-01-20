@@ -12,6 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 import json
+import logging
 import os
 from typing import Any
 
@@ -19,9 +20,11 @@ import boto3
 import psycopg2
 from botocore.exceptions import ClientError
 
+logger = logging.getLogger(__name__)
+
 
 def get_db_credentials(secret_arn: str) -> Any:
-    """Retrieve database credentials from Secrets Manager"""
+    """Retrieve database credentials from Secrets Manager."""
     client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"])
 
     try:
@@ -30,29 +33,44 @@ def get_db_credentials(secret_arn: str) -> Any:
         raise Exception(f"Error retrieving secrets: {e}")
 
     secret = response["SecretString"]
-    secret_dict = json.loads(secret)  # Converting string to dictionary
+    secret_dict = json.loads(secret)
     return secret_dict
 
 
+def delete_bootstrap_secret(secret_arn: str) -> bool:
+    """Delete the bootstrap password secret from Secrets Manager.
+
+    Returns True if secret was deleted, False if deletion was skipped or failed.
+    """
+    client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"])
+
+    try:
+        client.delete_secret(SecretId=secret_arn, ForceDeleteWithoutRecovery=True)
+        logger.info(f"Successfully deleted bootstrap secret: {secret_arn}")
+        return True
+    except ClientError as e:
+        error_code = e.response.get("Error", {}).get("Code", "")
+        if error_code == "ResourceNotFoundException":
+            logger.info(f"Bootstrap secret already deleted: {secret_arn}")
+            return True
+        logger.error(f"Failed to delete bootstrap secret: {e}")
+        return False
+
+
 def create_db_user(db_host: str, db_port: str, db_name: str, db_user: str, secret_arn: str, iam_name: str) -> None:
-    """Create a PostgreSQL user for IAM authentication"""
-    # Get credentials from Secrets Manager
+    """Create a PostgreSQL user for IAM authentication."""
     credentials = get_db_credentials(secret_arn)
 
-    # Connect to the database as the admin user
     conn = psycopg2.connect(dbname=db_name, user=db_user, password=credentials["password"], host=db_host, port=db_port)
     cursor = conn.cursor()
 
-    # Attempt to create the database user for IAM authentication
     try:
         cursor.execute(f'CREATE USER "{iam_name}"')
         conn.commit()
     except psycopg2.Error as e:
-        # Log but ignore the error if the user already exists
-        if e.pgcode not in ["23505", "42710"]:  # Unique violation error code
+        if e.pgcode not in ["23505", "42710"]:
             raise Exception(f"Error creating user: {e}")
 
-    # Other SQL commands to configure user privileges
     sql_commands = [
         f'GRANT rds_iam to "{iam_name}"',
         f'GRANT USAGE, CREATE ON SCHEMA public TO "{iam_name}"',
@@ -76,16 +94,31 @@ def create_db_user(db_host: str, db_port: str, db_name: str, db_user: str, secre
 
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """Lambda handler"""
-    # Extract parameters from the environment and event
+    """Lambda handler for IAM database user setup.
+
+    Creates an IAM-authenticated PostgreSQL user and optionally deletes the
+    bootstrap password secret afterward.
+    """
     secret_arn = os.environ["SECRET_ARN"]
     db_host = os.environ["DB_HOST"]
     db_port = os.environ["DB_PORT"]
     db_name = os.environ["DB_NAME"]
     db_user = os.environ["DB_USER"]
     iam_name = os.environ["IAM_NAME"]
+    delete_secret = os.environ.get("DELETE_SECRET_AFTER_SETUP", "true").lower() == "true"
 
-    # Call function to create DB user
     create_db_user(db_host, db_port, db_name, db_user, secret_arn, iam_name)
 
-    return {"statusCode": 200, "body": "Database user created successfully"}
+    secret_deleted = False
+    if delete_secret:
+        secret_deleted = delete_bootstrap_secret(secret_arn)
+
+    return {
+        "statusCode": 200,
+        "body": json.dumps(
+            {
+                "message": "Database user created successfully",
+                "secretDeleted": secret_deleted,
+            }
+        ),
+    }

@@ -86,14 +86,16 @@ def generate_config(filepath: str) -> None:
 
 
 def get_database_credentials(db_params: dict[str, str]) -> Tuple:
-    """Get database password from Secrets Manager or using IAM auth."""
-
+    """Get database credentials using password auth or IAM auth based on config."""
+    # Check if using password auth (passwordSecretId present) or IAM auth
     if "passwordSecretId" in db_params:
+        # Password auth: get credentials from Secrets Manager
         secrets_client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"])
         secret_response = secrets_client.get_secret_value(SecretId=db_params["passwordSecretId"])
         secret = json.loads(secret_response["SecretString"])
         return (db_params["username"], secret["password"])
     else:
+        # IAM auth: generate auth token
         iam_name = get_lambda_role_name()
         return (iam_name, generate_auth_token(db_params["dbHost"], db_params["dbPort"], iam_name))
 

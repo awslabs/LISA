@@ -22,6 +22,13 @@ RUN apt-get update && apt-get install -y \
     xz-utils \
     && rm -rf /var/lib/apt/lists/*
 
+# Create non-root user for running the application
+# Note: rclone FUSE mount still requires root, but mcpworkbench app runs as lisa
+RUN groupadd -r lisa && useradd -r -g lisa -d /workspace -s /sbin/nologin lisa
+
+# Configure FUSE to allow non-root users to access mounts created by root
+RUN echo "user_allow_other" >> /etc/fuse.conf
+
 # Install s6-overlay
 ADD $S6_OVERLAY_NOARCH_SOURCE /tmp/
 ADD $S6_OVERLAY_ARCH_SOURCE /tmp/
@@ -52,6 +59,9 @@ RUN chmod +x /etc/services.d/mcpworkbench/run
 # Create tools directory
 RUN mkdir -p /workspace/tools
 
+# Set ownership of workspace to non-root user
+RUN chown -R lisa:lisa /workspace
+
 # Set default environment variables
 ENV TOOLS_DIR=/workspace/tools
 ENV HOST=0.0.0.0
@@ -62,4 +72,8 @@ ENV LOG_LEVEL=info
 
 EXPOSE 8000
 
+# Note: s6-overlay init must run as root to manage services,
+# but individual services drop privileges appropriately:
+# - rclone mount runs as root (required for FUSE)
+# - mcpworkbench app runs as lisa (non-root)
 ENTRYPOINT ["/init"]

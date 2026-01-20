@@ -32,6 +32,7 @@ from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
 from pydantic.functional_validators import AfterValidator, field_validator, model_validator
 from typing_extensions import Self
 from utilities.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, MIN_PAGE_SIZE
+from utilities.healthcheck_validator import validate_healthcheck_command
 from utilities.time import now, utc_now
 from utilities.validation import (
     validate_all_fields_defined,
@@ -376,6 +377,13 @@ class ContainerHealthCheckConfig(BaseModel):
     startPeriod: PositiveInt
     timeout: PositiveInt
     retries: PositiveInt
+
+    @field_validator("command")
+    @classmethod
+    def validate_command(cls, command: Union[str, List[str]]) -> Union[str, List[str]]:
+        """Validates healthcheck command format for ECS compatibility."""
+        validate_healthcheck_command(command)
+        return command
 
 
 class ContainerConfigImage(BaseModel):

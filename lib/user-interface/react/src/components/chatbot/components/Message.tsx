@@ -314,7 +314,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
 
     return (
         (message.type === MessageTypes.HUMAN || message.type === MessageTypes.AI || message.type === MessageTypes.TOOL) &&
-        <div className='mt-2' style={{ overflow: 'hidden' }} data-testid='chat-message'>
+        <div className='mt-2' style={{ overflow: 'hidden' }} data-testid={`chat-message-${message.type}`}>
             <ImageViewer setVisible={setShowImageViewer} visible={showImageViewer} selectedImage={selectedImage} metadata={selectedMetadata} />
             {(isRunning && !callingToolName) && (
                 <ChatBubble
@@ -331,7 +331,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                     }
                     actions={showUsage ? <UsageInfo usage={message.usage} /> : undefined}
                 >
-                    <Box color='text-status-inactive'>
+                    <Box color='text-status-inactive' data-testid='generating-response-box'>
                         Generating response
                     </Box>
                 </ChatBubble>

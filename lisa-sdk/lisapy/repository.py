@@ -111,6 +111,17 @@ class RepositoryMixin(BaseMixin):
 
         return self.create_repository(rag_config)
 
+    def create_bedrock_kb_repository(self, rag_config: Dict) -> Dict:
+        """Create a Bedrock Knowledge Base repository configuration.
+
+        Args:
+            rag_config: RAG configuration for the Bedrock KB repository
+
+        Returns:
+            Dict: Created repository information
+        """
+        return self.create_repository(rag_config)
+
     def delete_repository(self, repository_id: str) -> bool:
         """Delete a repository.
 

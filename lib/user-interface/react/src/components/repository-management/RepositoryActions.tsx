@@ -161,6 +161,7 @@ function RepositoryActionButton (dispatch: ThunkDispatch<any, any, Action>, noti
 
     return (
         <ButtonDropdown
+            data-testid='repository-actions-button'
             items={items}
             variant='primary'
             disabled={!selectedRepo}

@@ -92,6 +92,11 @@ export const useChatGeneration = ({
     const modelSupportsReasoning = selectedModel?.features?.find((feature) => feature.name === ModelFeatures.REASONING) ? true : false;
 
     const createOpenAiClient = useCallback((streaming: boolean) => {
+        const { reasoning_effort, ...modelKwargsWithoutReasoning } = chatConfiguration.sessionConfiguration?.modelArgs || {};
+        const modelKwargs = reasoning_effort === 'none'
+            ? modelKwargsWithoutReasoning
+            : chatConfiguration.sessionConfiguration?.modelArgs || {};
+
         const modelConfig = {
             modelName: selectedModel?.modelId,
             // Use auth token as API key - LangChain will pass it in the Authorization header
@@ -102,9 +107,7 @@ export const useChatGeneration = ({
             },
             streaming,
             maxTokens: chatConfiguration.sessionConfiguration?.max_tokens,
-            modelKwargs: {
-                ...chatConfiguration.sessionConfiguration?.modelArgs,
-            }
+            modelKwargs
         };
 
         return new ChatOpenAI(modelConfig);
@@ -247,7 +250,7 @@ export const useChatGeneration = ({
                     }));
 
                     try {
-                        const stream = await llmClient.stream(messages, { tools: modelSupportsTools ? openAiTools : undefined, ...(modelSupportsReasoning ? { reasoning: { effort: chatConfiguration.sessionConfiguration.modelArgs.reasoning_effort } } : {}) });
+                        const stream = await llmClient.stream(messages, { tools: modelSupportsTools ? openAiTools : undefined });
                         const resp: string[] = [];
                         const toolCallsAccumulator: { [index: number]: any } = {};
                         let reasoningContentAccumulator = '';
@@ -506,7 +509,7 @@ export const useChatGeneration = ({
                         throw exception;
                     }
                 } else {
-                    const response = await llmClient.invoke(messages, { tools: modelSupportsTools ? openAiTools : undefined, ...(modelSupportsReasoning ? { reasoning: { effort: chatConfiguration.sessionConfiguration.modelArgs.reasoning_effort } } : {}) });
+                    const response = await llmClient.invoke(messages, { tools: modelSupportsTools ? openAiTools : undefined });
                     const rawContent = response.content as string;
                     const usage = (response.response_metadata as any)?.tokenUsage;
 
@@ -516,7 +519,6 @@ export const useChatGeneration = ({
                     // Get reasoning content from API (preferred)
                     let reasoningContent = (response as any).additional_kwargs?.reasoning_content;
                     const reasoningSignature = (response as any).additional_kwargs?.thinking_signature;
-
                     // Parse thinking blocks from content (only if model supports reasoning)
                     let cleanedContent = rawContent;
                     if (modelSupportsReasoning) {

@@ -36,6 +36,7 @@ export type ISessionConfiguration = {
     markdownDisplay: boolean
     streaming: boolean,
     showMetadata: boolean,
+    showReasoningContent: boolean,
     max_tokens: number,
     chatHistoryBufferSize: number,
     ragTopK: number,
@@ -70,6 +71,7 @@ export const baseConfig: IChatConfiguration = {
     sessionConfiguration: {
         streaming: false,
         markdownDisplay: true,
+        showReasoningContent: true,
         showMetadata: false,
         max_tokens: null,
         chatHistoryBufferSize: 7,

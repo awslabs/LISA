@@ -383,7 +383,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                         }
                         actions={showUsage ? <UsageInfo usage={message.usage} /> : undefined}
                     >
-                        {message?.reasoningContent && (
+                        {message?.reasoningContent && chatConfiguration.sessionConfiguration.showReasoningContent && (
                             <Box margin={{ bottom: 's' }}>
                                 <ExpandableSection
                                     variant='footer'
@@ -393,8 +393,14 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                         setReasoningExpanded(detail.expanded);
                                     }}
                                 >
-                                    <div style={{ position: 'relative' }}>
-                                        <div style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', zIndex: 10 }}>
+                                    <SpaceBetween direction='vertical' size='s'>
+                                        <Grid gridDefinition={[{ colspan: 11 }, { colspan: 1 }]}>
+                                            <Box color='text-status-inactive' variant='small' padding={{ right: 'xl' }}>
+                                                <SpaceBetween direction='vertical' size='s'>
+                                                    <div style={{ whiteSpace: 'pre-line' }}>{message.reasoningContent}</div>
+                                                    <hr/>
+                                                </SpaceBetween>
+                                            </Box>
                                             <ButtonGroup
                                                 onItemClick={({ detail }) => {
                                                     if (detail.id === 'copy-reasoning') {
@@ -418,11 +424,8 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                                 ]}
                                                 variant='icon'
                                             />
-                                        </div>
-                                        <Box color='text-status-inactive' variant='small' padding={{ right: 'xxxl' }}>
-                                            <div style={{ whiteSpace: 'pre-line' }}>{message.reasoningContent}</div>
-                                        </Box>
-                                    </div>
+                                        </Grid>
+                                    </SpaceBetween>
                                 </ExpandableSection>
                             </Box>
                         )}

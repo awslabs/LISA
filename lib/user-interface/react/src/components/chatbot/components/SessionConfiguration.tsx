@@ -174,6 +174,14 @@ export const SessionConfiguration = ({
                                 options={reasoningEffortOptions}
                             />
                         </FormField>}
+                    {selectedModel?.features?.find((feature) => feature.name === ModelFeatures.REASONING) &&
+                        <Toggle
+                            onChange={({ detail }) => updateSessionConfiguration('showReasoningContent', detail.checked)}
+                            checked={chatConfiguration.sessionConfiguration.showReasoningContent}
+                            disabled={isRunning}
+                        >
+                            Show Reasoning Content
+                        </Toggle>}
                 </Grid>
                 {systemConfig && systemConfig.configuration.enabledComponents.editKwargs && !isImageModel &&
                     <Container

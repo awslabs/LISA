@@ -25,7 +25,7 @@ import { IConfiguration } from '@/shared/model/configuration.model';
 import { ButtonDropdownProps } from '@cloudscape-design/components';
 import ColorSchemeContext from '@/shared/color-scheme.provider';
 import { OidcConfig } from '@/config/oidc.config';
-import { getBrandingAssetPath } from '../shared/branding';
+import { getBrandingAssetPath } from '../shared/util/branding';
 
 applyDensity(Density.Comfortable);
 

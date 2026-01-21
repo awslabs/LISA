@@ -20,7 +20,7 @@ import { useAuth } from 'react-oidc-context';
 
 import { Alert, Box, Button, Modal } from '@cloudscape-design/components';
 import { purgeStore } from '../config/store';
-import { getBrandingAssetPath } from '../shared/branding';
+import { getBrandingAssetPath } from '../shared/util/branding';
 
 export function Home ({ setNav }) {
     const navigate = useNavigate();

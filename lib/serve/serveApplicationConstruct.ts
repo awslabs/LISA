@@ -18,26 +18,21 @@ import { ITable, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
-import { Code, Function, IFunction, ILayerVersion, LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { FastApiContainer } from '../api-base/fastApiContainer';
 import { ECSCluster } from '../api-base/ecsCluster';
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
-import { APP_MANAGEMENT_KEY, BaseProps, Config } from '../schema';
+import { APP_MANAGEMENT_KEY, BaseProps } from '../schema';
 import {
     Effect,
     Policy,
-    PolicyDocument,
     PolicyStatement,
-    Role,
-    ServicePrincipal,
 } from 'aws-cdk-lib/aws-iam';
-import { HostedRotation, ISecret } from 'aws-cdk-lib/aws-secretsmanager';
+import { HostedRotation } from 'aws-cdk-lib/aws-secretsmanager';
 import { SecurityGroupEnum } from '../core/iam/SecurityGroups';
 import { SecurityGroupFactory } from '../networking/vpc/security-group-factory';
-import { LAMBDA_PATH, REST_API_PATH } from '../util';
-import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
-import { getPythonRuntime } from '../api-base/utils';
+import { REST_API_PATH } from '../util';
+import { AwsCustomResource, AwsCustomResourcePolicy, PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
 import { ISecurityGroup, Port } from 'aws-cdk-lib/aws-ec2';
 import { ECSTasks } from '../api-base/ecsCluster';
 import { GuardrailsTable } from '../models/guardrails-table';
@@ -153,6 +148,11 @@ export class LisaServeApplicationConstruct extends Construct {
 
         // Add rotation policy for the database password secret (only if using password auth)
         if (!useIamAuth) {
+            // WARNING: If switching from IAM auth (iamRdsAuth=true) back to password auth (iamRdsAuth=false),
+            // the deployment will fail because the master password secret was deleted during IAM auth setup.
+            // This is a one-way migration - once IAM auth is enabled, you cannot switch back to password auth
+            // without recreating the database.
+
             // Allow the rotation Lambda to connect to the database
             securityGroups.forEach((sg) => {
                 litellmDbSg.addIngressRule(
@@ -214,27 +214,44 @@ export class LisaServeApplicationConstruct extends Construct {
                 // IAM auth: grant connect with role name and create IAM user
                 litellmDb.grantConnect(serveRole, serveRole.roleName);
 
-                // Create the lambda for generating DB users for IAM auth
-                const createDbUserLambda = this.getIAMAuthLambda(scope, config, litellmDbSecret, serveRole.roleName, vpc, [litellmDbSg]);
+                // Use the shared IAM auth setup Lambda from API Base stack
+                const iamAuthSetupFnArn = StringParameter.valueForStringParameter(
+                    scope,
+                    `${config.deploymentPrefix}/iamAuthSetupFnArn`
+                );
 
-                const customResourceRole = new Role(scope, 'LISAServeCustomResourceRole', {
-                    assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
-                });
-                createDbUserLambda.grantInvoke(customResourceRole);
-
-                // Run the IAM user bootstrap Lambda on every deploy
-                new AwsCustomResource(scope, 'LISAServeCreateDbUserCustomResource', {
+                // Run the shared IAM auth setup Lambda on create
+                // This only runs once when switching to IAM auth - the lambda creates the IAM user and deletes the bootstrap secret
+                // Pass parameters via payload since the Lambda is shared
+                // Use Stack.of(scope).toJsonString() to properly resolve CDK tokens in the payload
+                const createDbUserResource = new AwsCustomResource(scope, 'LISAServeCreateDbUserCustomResource', {
                     onCreate: {
                         service: 'Lambda',
                         action: 'invoke',
                         physicalResourceId: PhysicalResourceId.of('LISAServeCreateDbUserCustomResource'),
                         parameters: {
-                            FunctionName: createDbUserLambda.functionName,
-                            Payload: '{}'
+                            FunctionName: iamAuthSetupFnArn,
+                            Payload: Stack.of(scope).toJsonString({
+                                secretArn: litellmDbSecret.secretArn,
+                                dbHost: config.restApiConfig.rdsConfig.dbHost,
+                                dbPort: config.restApiConfig.rdsConfig.dbPort,
+                                dbName: config.restApiConfig.rdsConfig.dbName,
+                                dbUser: config.restApiConfig.rdsConfig.username,
+                                iamName: serveRole.roleName,
+                            })
                         },
                     },
-                    role: customResourceRole
+                    policy: AwsCustomResourcePolicy.fromStatements([
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: ['lambda:InvokeFunction'],
+                            resources: [iamAuthSetupFnArn],
+                        })
+                    ]),
                 });
+
+                // Ensure the RDS instance is fully available before running IAM auth setup
+                createDbUserResource.node.addDependency(litellmDb);
             }
 
             this.modelsPs.grantRead(serveRole);
@@ -343,59 +360,5 @@ export class LisaServeApplicationConstruct extends Construct {
             }
         }
     };
-
-    getIAMAuthLambda (scope: Stack, config: Config, secret: ISecret, user: string, vpc: Vpc, securityGroups: ISecurityGroup[]): IFunction {
-        // Create the IAM role for updating the database to allow IAM authentication
-        const iamAuthLambdaRole = new Role(scope, createCdkId(['LISAServe', 'IAMAuthLambdaRole']), {
-            assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
-            inlinePolicies: {
-                'EC2NetworkInterfaces': new PolicyDocument({
-                    statements: [
-                        new PolicyStatement({
-                            effect: Effect.ALLOW,
-                            actions: ['ec2:CreateNetworkInterface', 'ec2:DescribeNetworkInterfaces', 'ec2:DeleteNetworkInterface'],
-                            resources: ['*'],
-                        }),
-                    ],
-                }),
-            }
-        });
-
-        secret.grantRead(iamAuthLambdaRole);
-        // Grant permission to delete the bootstrap secret after IAM user creation
-        secret.grantWrite(iamAuthLambdaRole);
-
-        const commonLayer = this.getLambdaLayer(scope, config);
-        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
-
-        // Create the Lambda function that will create the database user
-        return new Function(scope, 'LISAServeCreateDbUserLambda', {
-            runtime: getPythonRuntime(),
-            handler: 'utilities.db_setup_iam_auth.handler',
-            code: Code.fromAsset(lambdaPath),
-            timeout: Duration.minutes(2),
-            environment: {
-                SECRET_ARN: secret.secretArn,
-                DB_HOST: config.restApiConfig.rdsConfig.dbHost!,
-                DB_PORT: String(config.restApiConfig.rdsConfig.dbPort),
-                DB_NAME: config.restApiConfig.rdsConfig.dbName,
-                DB_USER: config.restApiConfig.rdsConfig.username,
-                IAM_NAME: user,
-            },
-            role: iamAuthLambdaRole,
-            layers: [commonLayer],
-            vpc: vpc.vpc,
-            vpcSubnets: vpc.subnetSelection,
-            securityGroups: securityGroups,
-        });
-    }
-
-    getLambdaLayer (scope: Stack, config: Config): ILayerVersion {
-        return LayerVersion.fromLayerVersionArn(
-            scope,
-            'LISAServeCommonLayerVersion',
-            StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/layerVersion/common`),
-        );
-    }
 
 }

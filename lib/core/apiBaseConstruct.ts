@@ -24,7 +24,7 @@ import { Duration, Stack, StackProps } from 'aws-cdk-lib';
 import { ITable, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
-import { Code, Function, } from 'aws-cdk-lib/aws-lambda';
+import { Code, Function, IFunction, LayerVersion } from 'aws-cdk-lib/aws-lambda';
 
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
@@ -60,6 +60,7 @@ export class LisaApiBaseConstruct extends Construct {
     public readonly restApiUrl: string;
     public readonly tokenTable?: ITable;
     public readonly managementKeySecretName: string;
+    public readonly iamAuthSetupFn: IFunction;
 
     constructor (scope: Stack, id: string, props: LisaApiBaseProps) {
         super(scope, id);
@@ -106,6 +107,10 @@ export class LisaApiBaseConstruct extends Construct {
 
         const { managementKeySecretName } = this.createManagementKeySecret(scope, config, vpc, securityGroups);
         this.managementKeySecretName = managementKeySecretName;
+
+        // Create shared IAM auth setup Lambda for PGVector databases
+        // This Lambda is used by Serve, RAG, and vector_store_deployer stacks
+        this.iamAuthSetupFn = this.createIamAuthSetupLambda(scope, config, vpc, securityGroups);
 
         const deployOptions: StageOptions = {
             stageName: config.deploymentStage,
@@ -217,5 +222,57 @@ export class LisaApiBaseConstruct extends Construct {
         });
 
         return { managementKeySecretName };
+    }
+
+    /**
+     * Creates a shared Lambda for IAM authentication setup on PGVector databases.
+     * This Lambda creates IAM database users and deletes bootstrap secrets.
+     * It's shared across Serve, RAG, and vector_store_deployer stacks.
+     */
+    private createIamAuthSetupLambda (scope: Stack, config: Config, vpc: Vpc, securityGroups: ISecurityGroup[]): IFunction {
+        // Create IAM role for the Lambda
+        const iamAuthSetupRole = new Role(scope, 'IamAuthSetupRole', {
+            assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
+            managedPolicies: [
+                ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaVPCAccessExecutionRole'),
+            ],
+        });
+
+        // Grant permissions to read/delete secrets (specific secrets will be passed via event)
+        iamAuthSetupRole.addToPolicy(new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: ['secretsmanager:GetSecretValue', 'secretsmanager:DeleteSecret'],
+            resources: [`arn:${config.partition}:secretsmanager:${config.region}:${config.accountNumber}:secret:*`],
+        }));
+
+        // Get common layer for psycopg2
+        const commonLayer = LayerVersion.fromLayerVersionArn(
+            scope,
+            'IamAuthCommonLayer',
+            StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/layerVersion/common`),
+        );
+
+        const iamAuthSetupFn = new Function(scope, 'IamAuthSetupFn', {
+            functionName: createCdkId([config.deploymentName, config.deploymentStage, 'iam_auth_setup']),
+            runtime: getPythonRuntime(),
+            handler: 'utilities.db_setup_iam_auth.handler',
+            code: Code.fromAsset(config.lambdaPath || LAMBDA_PATH),
+            timeout: Duration.minutes(2),
+            memorySize: 256,
+            role: iamAuthSetupRole,
+            vpc: vpc.vpc,
+            vpcSubnets: vpc.subnetSelection,
+            securityGroups: securityGroups,
+            layers: [commonLayer],
+        });
+
+        // Store the IAM auth setup Lambda ARN in SSM for other stacks to use
+        new StringParameter(scope, 'IamAuthSetupFnArnParam', {
+            parameterName: `${config.deploymentPrefix}/iamAuthSetupFnArn`,
+            stringValue: iamAuthSetupFn.functionArn,
+            description: 'ARN of the shared IAM auth setup Lambda for PGVector databases',
+        });
+
+        return iamAuthSetupFn;
     }
 }

@@ -91,7 +91,17 @@ def get_database_credentials(db_params: dict[str, str]) -> Tuple:
     if "passwordSecretId" in db_params:
         # Password auth: get credentials from Secrets Manager
         secrets_client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"])
-        secret_response = secrets_client.get_secret_value(SecretId=db_params["passwordSecretId"])
+        try:
+            secret_response = secrets_client.get_secret_value(SecretId=db_params["passwordSecretId"])
+        except secrets_client.exceptions.ResourceNotFoundException:
+            raise RuntimeError(
+                f"Database password secret '{db_params['passwordSecretId']}' not found. "
+                "This typically occurs when switching from IAM authentication (iamRdsAuth=true) "
+                "back to password authentication (iamRdsAuth=false). The master password is "
+                "permanently deleted when IAM auth is enabled. To resolve this, either: "
+                "1) Set iamRdsAuth=true in your config, or "
+                "2) Recreate the database by deleting and redeploying the stack."
+            )
         secret = json.loads(secret_response["SecretString"])
         return (db_params["username"], secret["password"])
     else:

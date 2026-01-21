@@ -928,7 +928,8 @@ export const RawConfigObject = z.object({
     bootstrapRolePrefix: z.string().optional().describe('Prefix for CDK bootstrap role names. Useful when roles have custom prefixes like My_User_Roles_. Leave empty for standard role names.'),
     litellmConfig: LiteLLMConfig,
     convertInlinePoliciesToManaged: z.boolean().optional().default(false).describe('Convert inline policies to managed policies'),
-    iamRdsAuth: z.boolean().optional().default(true).describe('Enable IAM authentication for RDS. When true (default), IAM authentication is used. When false, password-based authentication is used.'),
+    iamRdsAuth: z.boolean().optional().default(true)
+        .describe('Enable IAM authentication for RDS. When true (default), IAM authentication is used and the bootstrap password is deleted after setup. When false, password-based authentication is used. WARNING: Switching from true to false after deployment is not supported - the master password is permanently deleted when IAM auth is enabled. This is a one-way migration.'),
 });
 
 export const RawConfigSchema = RawConfigObject

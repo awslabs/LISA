@@ -39,6 +39,7 @@ declare global {
             RAG_ENABLED: boolean;
             HOSTED_MCP_ENABLED: boolean;
             API_BASE_URL: string;
+            USE_CUSTOM_BRANDING: boolean;
         };
         gitInfo?: {
             revisionTag?: string;

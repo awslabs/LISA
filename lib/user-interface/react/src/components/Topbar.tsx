@@ -19,13 +19,13 @@ import { useAuth } from 'react-oidc-context';
 import { useHref, useNavigate } from 'react-router-dom';
 import { applyDensity, Density, Mode } from '@cloudscape-design/global-styles';
 import TopNavigation, { TopNavigationProps } from '@cloudscape-design/components/top-navigation';
-import { getBaseURI } from './utils';
 import { purgeStore, useAppSelector } from '@/config/store';
 import { selectCurrentUserIsAdmin, selectCurrentUserIsApiUser, selectCurrentUsername } from '../shared/reducers/user.reducer';
 import { IConfiguration } from '@/shared/model/configuration.model';
 import { ButtonDropdownProps } from '@cloudscape-design/components';
 import ColorSchemeContext from '@/shared/color-scheme.provider';
 import { OidcConfig } from '@/config/oidc.config';
+import { getBrandingAssetPath } from '../shared/branding';
 
 applyDensity(Density.Comfortable);
 
@@ -85,7 +85,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
             identity={{
                 href: useHref('/'),
                 logo: {
-                    src: `${getBaseURI()}logo.svg`,
+                    src: getBrandingAssetPath('logo'),
                     alt: 'AWS LISA Sample',
                 },
             }}

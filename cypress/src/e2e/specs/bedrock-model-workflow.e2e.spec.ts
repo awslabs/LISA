@@ -25,7 +25,8 @@ import { runBedrockModelWorkflowTests } from '../../shared/specs/bedrock-model-w
 
 describe('Bedrock Model Workflow (E2E)', () => {
     before(() => {
-        cy.clearAllSessionStorage();
+        // Clear Cypress session cache to allow fresh login
+        Cypress.session.clearAllSavedSessions();
     });
 
     beforeEach(() => {

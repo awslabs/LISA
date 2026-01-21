@@ -2,7 +2,7 @@
 # Integration setup test script that deploys resources to LISA
 # Uses the existing authentication setup from integration-test.sh
 
-PROJECT_DIR="$(pwd)"
+PROJECT_DIR="$(pwd)/../../"
 
 # Read config values with defaults for missing fields
 PROFILE=$(cat ${PROJECT_DIR}/config-custom.yaml | yq -r '.profile // "default"')

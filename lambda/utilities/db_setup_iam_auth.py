@@ -136,11 +136,23 @@ def create_db_user(db_host: str, db_port: str, db_name: str, db_user: str, secre
 
     cursor = conn.cursor()
 
+    # Create vector extension (requires superuser privileges from bootstrap user)
+    try:
+        logger.info("Creating vector extension if not exists")
+        cursor.execute("CREATE EXTENSION IF NOT EXISTS vector")
+        conn.commit()
+        logger.info("Vector extension created or already exists")
+    except psycopg2.Error as e:
+        conn.rollback()
+        logger.error(f"Error creating vector extension: {e}")
+        raise Exception(f"Error creating vector extension: {e}")
+
     try:
         logger.info(f"Creating database user: {iam_name}")
         cursor.execute(f'CREATE USER "{iam_name}"')
         conn.commit()
     except psycopg2.Error as e:
+        conn.rollback()  # Must rollback failed transaction before executing more commands
         if e.pgcode not in ["23505", "42710"]:
             logger.error(f"Error creating user: {e}")
             raise Exception(f"Error creating user: {e}")

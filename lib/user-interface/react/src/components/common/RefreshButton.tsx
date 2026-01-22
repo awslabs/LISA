@@ -23,14 +23,14 @@ export type RefreshButtonProps = {
     ariaLabel?: string;
 };
 
-export function RefreshButton({ isLoading, onClick, ariaLabel = 'Refresh' }: RefreshButtonProps): ReactElement {
+export function RefreshButton ({ isLoading, onClick, ariaLabel = 'Refresh' }: RefreshButtonProps): ReactElement {
     return (
         <Button
             onClick={onClick}
             disabled={isLoading}
             ariaLabel={ariaLabel}
         >
-            {isLoading ? <Spinner size="normal" /> : <Icon name="refresh" />}
+            {isLoading ? <Spinner size='normal' /> : <Icon name='refresh' />}
         </Button>
     );
 }

@@ -216,6 +216,24 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     />
                 </FormField>
                 <FormField
+                    label='Reasoning'
+                    description='Enable reasoning output capabilities for the model.'
+                    errorText={props.formErrors?.features}
+                >
+                    <Toggle
+                        onChange={({ detail }) => {
+                            if (detail.checked && props.item.features.find((feature) => feature.name === ModelFeatures.REASONING) === undefined) {
+                                props.setFields({'features': props.item.features.concat({name: ModelFeatures.REASONING, overview: ''})});
+                            } else if (!detail.checked && props.item.features.find((feature) => feature.name === ModelFeatures.REASONING) !== undefined) {
+                                props.setFields({'features': props.item.features.filter((feature) => feature.name !== ModelFeatures.REASONING)});
+                            }
+                        }}
+                        disabled={isEmbeddingModel || isImageModel}
+                        onBlur={() => props.touchFields(['features'])}
+                        checked={props.item.features.find((feature) => feature.name === ModelFeatures.REASONING) !== undefined}
+                    />
+                </FormField>
+                <FormField
                     label='Image Input'
                     description='Enable multimodal capabilities to process and analyze image inputs alongside text.'
                     errorText={props.formErrors?.features}

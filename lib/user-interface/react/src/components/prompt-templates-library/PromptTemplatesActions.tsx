@@ -15,7 +15,8 @@
  */
 
 import React, { ReactElement, useEffect } from 'react';
-import { Button, ButtonDropdown, Icon, SpaceBetween } from '@cloudscape-design/components';
+import { Button, ButtonDropdown, SpaceBetween } from '@cloudscape-design/components';
+import { RefreshButton } from '@/components/common/RefreshButton';
 import { useAppDispatch, useAppSelector } from '../../config/store';
 import { useNotificationService } from '../../shared/util/hooks';
 import { INotificationService } from '../../shared/notification/notification.service';
@@ -30,6 +31,7 @@ export type PromptTemplatesActionsProps = {
     selectedItems: readonly PromptTemplate[];
     setSelectedItems: (items: PromptTemplate[]) => void;
     showPublic: boolean;
+    isFetching: boolean;
 };
 
 export function PromptTemplatesActions (props: PromptTemplatesActionsProps): ReactElement {
@@ -41,15 +43,14 @@ export function PromptTemplatesActions (props: PromptTemplatesActionsProps): Rea
 
     return (
         <SpaceBetween direction='horizontal' size='xs'>
-            <Button
+            <RefreshButton
+                isLoading={props.isFetching}
                 onClick={() => {
                     props.setSelectedItems([]);
                     dispatch(promptTemplateApi.util.invalidateTags(['promptTemplates']));
                 }}
-                ariaLabel={'Refresh models cards'}
-            >
-                <Icon name='refresh' />
-            </Button>
+                ariaLabel='Refresh prompt templates'
+            />
             {PromptTemplatesActionButton(dispatch, notificationService, props, {isUserAdmin, username})}
             <Button variant='primary' onClick={() => {
                 navigate('./new');

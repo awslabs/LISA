@@ -296,16 +296,16 @@ def create_self_hosted_embedded_model(
             "image": {"baseImage": base_image, "type": "asset"},
             "sharedMemorySize": 2048,
             "healthCheckConfig": {
-                "command": ["CMD-SHELL", "exit 0"],
+                "command": ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"],
                 "interval": 10,
                 "startPeriod": 300,  # 10 minutes to allow for model loading
                 "timeout": 5,
                 "retries": 3,
             },
             "environment": {
-                "MAX_TOTAL_TOKENS": "32768",
-                "MAX_INPUT_LENGTH": "16384",
-                "MAX_BATCH_TOKENS": "8192",
+                "MAX_TOTAL_TOKENS": "16384",
+                "MAX_INPUT_LENGTH": "8192",
+                "MAX_BATCH_TOKENS": "4096",
                 "MAX_CONCURRENT_REQUESTS": "512",
                 "MAX_CLIENT_BATCH_SIZE": "1024",
                 "POOLING": "mean",
@@ -396,7 +396,7 @@ def create_self_hosted_model(
             "image": {"baseImage": base_image, "type": "asset"},
             "sharedMemorySize": 2048,
             "healthCheckConfig": {
-                "command": ["CMD-SHELL", "exit 0"],
+                "command": ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"],
                 "interval": 10,
                 "startPeriod": 300,  # 10 minutes to allow for model loading
                 "timeout": 5,

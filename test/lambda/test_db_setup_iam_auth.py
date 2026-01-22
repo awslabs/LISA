@@ -94,19 +94,32 @@ def test_get_db_credentials_success():
         mock_secretsmanager.get_secret_value.assert_called_once_with(SecretId=secret_arn)
 
 
-def test_get_db_credentials_error():
-    """Test error handling when Secrets Manager fails."""
-    # Use patch to force a ClientError
-    with patch("boto3.client") as mock_boto3_client:
-        mock_client = MagicMock()
-        mock_client.get_secret_value.side_effect = ClientError(
+def test_get_db_credentials_not_found():
+    """Test handling when secret is not found (returns None)."""
+    with patch("utilities.db_setup_iam_auth.boto3.client") as mock_client:
+        mock_secretsmanager = MagicMock()
+        mock_client.return_value = mock_secretsmanager
+        mock_secretsmanager.get_secret_value.side_effect = ClientError(
             {"Error": {"Code": "ResourceNotFoundException", "Message": "Secret not found"}}, "GetSecretValue"
         )
-        mock_boto3_client.return_value = mock_client
 
-        # Call the function and assert it raises the expected exception
+        # ResourceNotFoundException returns None (secret already deleted)
+        result = get_db_credentials("non-existent-arn")
+        assert result is None
+
+
+def test_get_db_credentials_error():
+    """Test error handling when Secrets Manager fails with non-ResourceNotFound error."""
+    with patch("utilities.db_setup_iam_auth.boto3.client") as mock_client:
+        mock_secretsmanager = MagicMock()
+        mock_client.return_value = mock_secretsmanager
+        mock_secretsmanager.get_secret_value.side_effect = ClientError(
+            {"Error": {"Code": "AccessDeniedException", "Message": "Access denied"}}, "GetSecretValue"
+        )
+
+        # Other errors should raise an exception
         with pytest.raises(Exception, match="Error retrieving secrets"):
-            get_db_credentials("non-existent-arn")
+            get_db_credentials("test-arn")
 
 
 def test_delete_bootstrap_secret_success():
@@ -223,11 +236,12 @@ def test_create_db_user_existing_user(mock_psycopg2_connection):
     mock_conn, mock_cursor = mock_psycopg2_connection
 
     class PsycopgError(psycopg2.Error):
-        pgcode = "23505"  # Permission denied
+        pgcode = "23505"  # Unique violation
 
-    # Configure the cursor to raise a unique violation error on the first execute call
+    # Configure the cursor: vector extension succeeds, CREATE USER raises unique violation, rest succeed
+    # Order: CREATE EXTENSION (success), CREATE USER (unique violation), then GRANT commands (success)
     unique_violation_error = PsycopgError("unique violation")
-    mock_cursor.execute.side_effect = [unique_violation_error] + [None] * 10  # First call raises, rest succeed
+    mock_cursor.execute.side_effect = [None, unique_violation_error] + [None] * 10
 
     # Mock the psycopg2.connect function
     with patch("psycopg2.connect", return_value=mock_conn):
@@ -252,14 +266,15 @@ def test_create_db_user_existing_user(mock_psycopg2_connection):
 
 
 def test_create_db_user_error(mock_psycopg2_connection):
-    """Test error handling for other PostgreSQL errors."""
+    """Test error handling for other PostgreSQL errors during CREATE USER."""
     mock_conn, mock_cursor = mock_psycopg2_connection
 
-    # Configure the cursor to raise a non-unique violation error
+    # Configure the cursor to raise a non-unique violation error on CREATE USER
     class PsycopgError(psycopg2.Error):
         pgcode = "42P01"  # Table does not exist
 
-    mock_cursor.execute.side_effect = PsycopgError("relation does not exist")
+    # Vector extension succeeds, CREATE USER fails with non-unique-violation error
+    mock_cursor.execute.side_effect = [None, PsycopgError("relation does not exist")]
 
     # Mock the psycopg2.connect function
     with patch("psycopg2.connect", return_value=mock_conn):
@@ -283,12 +298,12 @@ def test_create_db_user_grant_error(mock_psycopg2_connection):
     """Test error handling when granting privileges fails."""
     mock_conn, mock_cursor = mock_psycopg2_connection
 
-    # Configure the cursor to raise an error on the second execute call (first GRANT command)
+    # Configure the cursor to raise an error on the GRANT command
     class PsycopgError(psycopg2.Error):
         pgcode = "42501"  # Permission denied
 
-    # First call succeeds (CREATE USER), second call fails (GRANT)
-    mock_cursor.execute.side_effect = [None, PsycopgError("permission denied")]
+    # Order: CREATE EXTENSION (success), CREATE USER (success), first GRANT (fails)
+    mock_cursor.execute.side_effect = [None, None, PsycopgError("permission denied")]
 
     # Mock the psycopg2.connect function
     with patch("psycopg2.connect", return_value=mock_conn):
@@ -312,68 +327,75 @@ def test_create_db_user_grant_error(mock_psycopg2_connection):
             mock_conn.close.assert_called_once()
 
 
-def test_handler_default(lambda_context):
-    """Test that handler defaults to deleting secret when env var not set."""
-    env_vars = {
-        "SECRET_ARN": "test-arn",
-        "DB_HOST": "test-host",
-        "DB_PORT": "5432",
-        "DB_NAME": "test-db",
-        "DB_USER": "admin",
-        "IAM_NAME": "test-iam-user",
+def test_handler_success(lambda_context):
+    """Test successful handler execution with event payload."""
+    event = {
+        "secretArn": "test-arn",
+        "dbHost": "test-host",
+        "dbPort": "5432",
+        "dbName": "test-db",
+        "dbUser": "admin",
+        "iamName": "test-iam-user",
     }
 
     with patch("utilities.db_setup_iam_auth.create_db_user") as mock_create_db_user:
+        mock_create_db_user.return_value = True
         with patch("utilities.db_setup_iam_auth.delete_bootstrap_secret") as mock_delete_secret:
             mock_delete_secret.return_value = True
-            with patch.dict(os.environ, env_vars, clear=False):
-                response = handler({}, lambda_context)
 
-                mock_create_db_user.assert_called_once()
-                mock_delete_secret.assert_called_once_with("test-arn")
+            response = handler(event, lambda_context)
 
-                assert response["statusCode"] == 200
-                body = json.loads(response["body"])
-                assert body["secretDeleted"] is True
+            mock_create_db_user.assert_called_once_with(
+                "test-host", "5432", "test-db", "admin", "test-arn", "test-iam-user"
+            )
+            mock_delete_secret.assert_called_once_with("test-arn")
+
+            assert response["statusCode"] == 200
+            body = json.loads(response["body"])
+            assert body["userCreated"] is True
+            assert body["secretDeleted"] is True
 
 
-def test_handler_missing_env_vars(lambda_context):
-    """Test handler with missing environment variables."""
-    # Set up incomplete environment variables
-    env_vars = {
-        "SECRET_ARN": "test-arn",
-        # Missing DB_HOST
-        "DB_PORT": "5432",
-        "DB_NAME": "test-db",
-        "DB_USER": "admin",
-        "IAM_NAME": "test-iam-user",
+def test_handler_missing_fields(lambda_context):
+    """Test handler with missing required fields in event payload."""
+    # Missing dbHost field
+    event = {
+        "secretArn": "test-arn",
+        # Missing dbHost
+        "dbPort": "5432",
+        "dbName": "test-db",
+        "dbUser": "admin",
+        "iamName": "test-iam-user",
     }
 
-    # Mock environment variables
-    with patch.dict(os.environ, env_vars, clear=True):
-        # Call the handler and expect a KeyError
-        with pytest.raises(KeyError):
-            handler({}, lambda_context)
+    response = handler(event, lambda_context)
+
+    # Handler returns 400 for invalid payload
+    assert response["statusCode"] == 400
+    body = json.loads(response["body"])
+    assert "error" in body
+    assert "dbHost" in body["error"]
 
 
 def test_handler_create_db_user_error(lambda_context):
     """Test handler when create_db_user raises an exception."""
-    # Set up environment variables
-    env_vars = {
-        "SECRET_ARN": "test-arn",
-        "DB_HOST": "test-host",
-        "DB_PORT": "5432",
-        "DB_NAME": "test-db",
-        "DB_USER": "admin",
-        "IAM_NAME": "test-iam-user",
+    event = {
+        "secretArn": "test-arn",
+        "dbHost": "test-host",
+        "dbPort": "5432",
+        "dbName": "test-db",
+        "dbUser": "admin",
+        "iamName": "test-iam-user",
     }
 
     # Mock the create_db_user function to raise an exception
     with patch("utilities.db_setup_iam_auth.create_db_user") as mock_create_db_user:
         mock_create_db_user.side_effect = Exception("Database connection failed")
 
-        # Mock environment variables
-        with patch.dict(os.environ, env_vars):
-            # Call the handler and expect the exception to propagate
-            with pytest.raises(Exception, match="Database connection failed"):
-                handler({}, lambda_context)
+        # Handler catches exceptions and returns 500
+        response = handler(event, lambda_context)
+
+        assert response["statusCode"] == 500
+        body = json.loads(response["body"])
+        assert "error" in body
+        assert "Database connection failed" in body["error"]

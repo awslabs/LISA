@@ -83,6 +83,8 @@ export const sessionApi = createApi({
                             toolCalls: elem.toolCalls,
                             usage: elem.usage,
                             guardrailTriggered: elem.guardrailTriggered,
+                            reasoningContent: elem.reasoningContent,
+                            reasoningSignature: elem.reasoningSignature,
                         };
                         return message;
                     }),

@@ -15,6 +15,7 @@
  */
 
 import { Button, Container, Grid, SpaceBetween, List, Header, Box, Input, FormField, TextFilter, Pagination, Link, TextContent, Spinner } from '@cloudscape-design/components';
+import { RefreshButton } from '@/components/common/RefreshButton';
 import AceEditor from 'react-ace';
 import {Editor} from 'ace-builds';
 
@@ -363,9 +364,8 @@ export function McpWorkbenchManagementComponent (): ReactElement {
                             variant='h3'
                             actions={
                                 <SpaceBetween direction='horizontal' size='xxs'>
-                                    <Button
-                                        iconName='refresh'
-                                        variant='normal'
+                                    <RefreshButton
+                                        isLoading={isLoadingTools}
                                         onClick={() => {
                                             // Invalidate cache - this will automatically trigger refetch of active queries
                                             dispatch(mcpToolsApi.util.invalidateTags(['mcpTools']));

@@ -60,6 +60,53 @@ const parseThinkingBlocks = (content: string): { cleanedContent: string; thinkin
     return { cleanedContent, thinkingContent };
 };
 
+/**
+ * Calculates response time in seconds from a start timestamp.
+ */
+const calculateResponseTime = (startTime: number): number => {
+    return parseFloat(((performance.now() - startTime) / 1000).toFixed(2));
+};
+
+/**
+ * Processes content to extract reasoning/thinking blocks when model supports reasoning.
+ * Returns cleaned content and reasoning content (preferring API-provided reasoning over parsed).
+ */
+const processReasoningContent = (
+    rawContent: string,
+    apiReasoningContent: string | undefined,
+    modelSupportsReasoning: boolean
+): { cleanedContent: string; reasoningContent: string | undefined } => {
+    if (!modelSupportsReasoning) {
+        return { cleanedContent: rawContent, reasoningContent: apiReasoningContent };
+    }
+
+    const parsed = parseThinkingBlocks(rawContent);
+    const reasoningContent = apiReasoningContent || parsed.thinkingContent || undefined;
+    return { cleanedContent: parsed.cleanedContent, reasoningContent };
+};
+
+/**
+ * Parses accumulated tool call data into final tool call objects.
+ */
+const finalizeToolCalls = (toolCallsAccumulator: { [index: number]: any }): any[] => {
+    return Object.values(toolCallsAccumulator).map((toolCall: any) => {
+        let parsedArgs = {};
+        try {
+            if (toolCall.args && typeof toolCall.args === 'string') {
+                parsedArgs = JSON.parse(toolCall.args.trim());
+            }
+        } catch {
+            parsedArgs = {};
+        }
+        return {
+            id: toolCall.id,
+            name: toolCall.name,
+            args: parsedArgs,
+            type: toolCall.type
+        };
+    }).filter((toolCall) => toolCall.name);
+};
+
 // Custom hook for chat generation
 export const useChatGeneration = ({
     chatConfiguration,
@@ -158,8 +205,7 @@ export const useChatGeneration = ({
                         type: 'image_url'
                     }));
 
-                    // Calculate response time
-                    const responseTime = (performance.now() - startTime) / 1000;
+                    const responseTime = calculateResponseTime(startTime);
 
                     // Save the response to the chat history
                     setSession((prev) => ({
@@ -173,7 +219,7 @@ export const useChatGeneration = ({
                                 imageGenerationParams: imageGenParams
                             },
                             usage: {
-                                responseTime: parseFloat(responseTime.toFixed(2))
+                                responseTime
                             }
                         })],
                     }));
@@ -291,20 +337,14 @@ export const useChatGeneration = ({
 
                             // Parse thinking blocks from accumulated content (only if model supports reasoning)
                             // Only parse complete blocks (wait for closing tag)
-                            let cleanedContent = rawContentAccumulator;
-                            if (modelSupportsReasoning) {
-                                const parsed = parseThinkingBlocks(rawContentAccumulator);
-                                cleanedContent = parsed.cleanedContent;
-                                // If we found thinking content and API didn't provide it, use parsed content
-                                // Update reasoning content as complete thinking blocks are found
-                                if (parsed.thinkingContent) {
-                                    if (!reasoningContentAccumulator) {
-                                        reasoningContentAccumulator = parsed.thinkingContent;
-                                    } else if (parsed.thinkingContent.length > reasoningContentAccumulator.length) {
-                                        // If parsed content is longer, it means we got a complete block, update it
-                                        reasoningContentAccumulator = parsed.thinkingContent;
-                                    }
-                                }
+                            const { cleanedContent, reasoningContent: parsedReasoning } = processReasoningContent(
+                                rawContentAccumulator,
+                                reasoningContentAccumulator || undefined,
+                                modelSupportsReasoning
+                            );
+                            // Update reasoning content if parsed content is longer (complete block found)
+                            if (parsedReasoning && (!reasoningContentAccumulator || parsedReasoning.length > reasoningContentAccumulator.length)) {
+                                reasoningContentAccumulator = parsedReasoning;
                             }
 
                             // Get tool calls from LangChain streaming chunks
@@ -417,23 +457,7 @@ export const useChatGeneration = ({
                         }
 
                         // Finalize tool calls with complete JSON parsing
-                        const finalToolCalls = Object.values(toolCallsAccumulator).map((toolCall: any) => {
-                            let parsedArgs = {};
-                            try {
-                                if (toolCall.args && typeof toolCall.args === 'string') {
-                                    parsedArgs = JSON.parse(toolCall.args.trim());
-                                }
-                            } catch {
-                                parsedArgs = {};
-                            }
-
-                            return {
-                                id: toolCall.id,
-                                name: toolCall.name,
-                                args: parsedArgs,
-                                type: toolCall.type
-                            };
-                        }).filter((toolCall) => toolCall.name);
+                        const finalToolCalls = finalizeToolCalls(toolCallsAccumulator);
 
                         // Update with final parsed tool calls
                         if (finalToolCalls.length > 0) {
@@ -454,21 +478,15 @@ export const useChatGeneration = ({
                             });
                         }
 
-                        // Final parse of thinking blocks from complete response (only if model supports reasoning)
+                        // Final parse of thinking blocks from complete response
                         const finalRawContent = resp.join('');
-                        let finalCleanedContent = finalRawContent;
-                        let finalReasoningContent = reasoningContentAccumulator;
-                        if (modelSupportsReasoning) {
-                            const parsed = parseThinkingBlocks(finalRawContent);
-                            finalCleanedContent = parsed.cleanedContent;
-                            // Use parsed thinking content if we didn't get it from API
-                            if (parsed.thinkingContent && !finalReasoningContent) {
-                                finalReasoningContent = parsed.thinkingContent;
-                            }
-                        }
+                        const { cleanedContent: finalCleanedContent, reasoningContent: finalReasoningContent } = processReasoningContent(
+                            finalRawContent,
+                            reasoningContentAccumulator || undefined,
+                            modelSupportsReasoning
+                        );
 
-                        // Calculate response time and update the final message with usage info
-                        const responseTime = (performance.now() - startTime) / 1000;
+                        const responseTime = calculateResponseTime(startTime);
                         setSession((prev) => {
                             const lastMessage = prev.history[prev.history.length - 1];
                             if (lastMessage?.type === MessageTypes.AI) {
@@ -478,10 +496,10 @@ export const useChatGeneration = ({
                                         content: finalCleanedContent,
                                         usage: {
                                             ...lastMessage.usage,
-                                            responseTime: parseFloat(responseTime.toFixed(2))
+                                            responseTime
                                         },
                                         guardrailTriggered: guardrailTriggered,
-                                        reasoningContent: finalReasoningContent || undefined,
+                                        reasoningContent: finalReasoningContent,
                                         reasoningSignature: reasoningSignatureAccumulator,
                                     })
                                 ];
@@ -516,22 +534,16 @@ export const useChatGeneration = ({
                     // Check if guardrail was triggered
                     const isGuardrailTriggered = (response as any)?.id === 'guardrail-response';
 
-                    // Get reasoning content from API (preferred)
-                    let reasoningContent = (response as any).additional_kwargs?.reasoning_content;
+                    // Get reasoning content from API (preferred) and parse thinking blocks
+                    const apiReasoningContent = (response as any).additional_kwargs?.reasoning_content;
                     const reasoningSignature = (response as any).additional_kwargs?.thinking_signature;
-                    // Parse thinking blocks from content (only if model supports reasoning)
-                    let cleanedContent = rawContent;
-                    if (modelSupportsReasoning) {
-                        const parsed = parseThinkingBlocks(rawContent);
-                        cleanedContent = parsed.cleanedContent;
-                        // If we found thinking content and API didn't provide it, use parsed content
-                        if (parsed.thinkingContent && !reasoningContent) {
-                            reasoningContent = parsed.thinkingContent;
-                        }
-                    }
+                    const { cleanedContent, reasoningContent } = processReasoningContent(
+                        rawContent,
+                        apiReasoningContent,
+                        modelSupportsReasoning
+                    );
 
-                    // Calculate response time
-                    const responseTime = (performance.now() - startTime) / 1000;
+                    const responseTime = calculateResponseTime(startTime);
 
                     await memory.saveContext({ input: params.input }, { output: cleanedContent });
 
@@ -543,11 +555,11 @@ export const useChatGeneration = ({
                         toolCalls: [...(response.tool_calls ?? [])],
                         usage: {
                             ...usage,
-                            responseTime: parseFloat(responseTime.toFixed(2))
+                            responseTime
                         },
                         guardrailTriggered: isGuardrailTriggered,
-                        reasoningContent: reasoningContent,
-                        reasoningSignature: reasoningSignature
+                        reasoningContent,
+                        reasoningSignature
                     });
 
                     setSession((prev) => {

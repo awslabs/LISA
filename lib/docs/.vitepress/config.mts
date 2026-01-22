@@ -27,6 +27,7 @@ const navLinks = [
           { text: 'What is LISA', link: '/admin/getting-started#what-is-lisa' },
           { text: 'Major Features', link: '/admin/getting-started#major-features' },
           { text: 'Key Features & Benefits', link: '/admin/getting-started#key-features-benefits' },
+          { text: 'Access Control', link: '/admin/getting-started#access-control' },
         ]
       },
       {

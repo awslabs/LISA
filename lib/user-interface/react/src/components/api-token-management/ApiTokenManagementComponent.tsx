@@ -262,6 +262,7 @@ export function ApiTokenManagementComponent ({ currentUserOnly = false }: ApiTok
                                 setCreateWizardVisible={setCreateWizardVisible}
                                 onRefresh={refetch}
                                 disableCreate={userHasToken}
+                                isFetching={isFetching}
                             />
                         }
                     >

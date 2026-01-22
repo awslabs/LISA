@@ -36,6 +36,7 @@ export type ISessionConfiguration = {
     markdownDisplay: boolean
     streaming: boolean,
     showMetadata: boolean,
+    showReasoningContent: boolean,
     max_tokens: number,
     chatHistoryBufferSize: number,
     ragTopK: number,
@@ -47,6 +48,7 @@ export type ISessionConfiguration = {
         temperature: number;
         seed: number;
         stop: string[];
+        reasoning_effort: 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | null;
     },
     imageGenerationArgs: {
         size: string,
@@ -69,6 +71,7 @@ export const baseConfig: IChatConfiguration = {
     sessionConfiguration: {
         streaming: false,
         markdownDisplay: true,
+        showReasoningContent: true,
         showMetadata: false,
         max_tokens: null,
         chatHistoryBufferSize: 7,
@@ -81,6 +84,7 @@ export const baseConfig: IChatConfiguration = {
             temperature: null,
             seed: null,
             stop: [],
+            reasoning_effort: null,
         },
         imageGenerationArgs: {
             size: '1024x1024',

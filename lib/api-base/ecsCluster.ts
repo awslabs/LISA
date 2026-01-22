@@ -217,7 +217,7 @@ export class ECSCluster extends Construct {
             vpc: vpc.vpc,
             vpcSubnets: vpc.subnetSelection,
             instanceType: new InstanceType(ecsConfig.instanceType),
-            machineImage: EcsOptimizedImage.amazonLinux2(ecsConfig.amiHardwareType),
+            machineImage: EcsOptimizedImage.amazonLinux2023(ecsConfig.amiHardwareType),
             minCapacity: ecsConfig.autoScalingConfig.minCapacity,
             maxCapacity: ecsConfig.autoScalingConfig.maxCapacity,
             cooldown: Duration.seconds(ecsConfig.autoScalingConfig.cooldown),

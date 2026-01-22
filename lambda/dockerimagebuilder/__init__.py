@@ -125,7 +125,13 @@ def handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: ignore [
             "UserData": rendered_userdata,
             "IamInstanceProfile": {"Arn": os.environ["LISA_INSTANCE_PROFILE"]},
             "BlockDeviceMappings": [
-                {"DeviceName": "/dev/xvda", "Ebs": {"VolumeSize": int(os.environ["LISA_IMAGEBUILDER_VOLUME_SIZE"])}}
+                {
+                    "DeviceName": "/dev/xvda",
+                    "Ebs": {
+                        "VolumeSize": int(os.environ["LISA_IMAGEBUILDER_VOLUME_SIZE"]),
+                        "Encrypted": True,
+                    },
+                }
             ],
             "TagSpecifications": [
                 {

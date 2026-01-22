@@ -164,7 +164,7 @@ export const RagRepositoryMetadata = MetadataSchema.extend({
     customFields: z.record(z.string(), z.any()).optional().describe('Custom metadata fields for the repository.'),
 });
 
-const BaseRagRepositoryConfigSchema = z.object({
+export const BaseRagRepositoryConfigSchema = z.object({
     repositoryId: z.string()
         .nonempty()
         .regex(/^[a-z0-9-]{3,20}/, 'Only lowercase alphanumeric characters and \'-\' are supported.')

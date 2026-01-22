@@ -15,7 +15,8 @@
 */
 
 import { ReactElement, useEffect } from 'react';
-import { Button, ButtonDropdown, Icon, SpaceBetween } from '@cloudscape-design/components';
+import { Button, ButtonDropdown, SpaceBetween } from '@cloudscape-design/components';
+import { RefreshButton } from '@/components/common/RefreshButton';
 import { useAppDispatch } from '@/config/store';
 import {
     HostedMcpServer,
@@ -32,6 +33,7 @@ type McpManagementActionsProps = {
     onCreate: () => void;
     onEdit: (server: HostedMcpServer) => void;
     refetch: () => void;
+    isFetching: boolean;
 };
 
 const DELETABLE_STATUSES = new Set<HostedMcpServerStatus | undefined>([
@@ -40,7 +42,7 @@ const DELETABLE_STATUSES = new Set<HostedMcpServerStatus | undefined>([
     HostedMcpServerStatus.Failed,
 ]);
 
-export function McpManagementActions ({ selectedItems, setSelectedItems, refetch, onCreate, onEdit }: McpManagementActionsProps): ReactElement {
+export function McpManagementActions ({ selectedItems, setSelectedItems, refetch, onCreate, onEdit, isFetching }: McpManagementActionsProps): ReactElement {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
 
@@ -124,15 +126,14 @@ export function McpManagementActions ({ selectedItems, setSelectedItems, refetch
     return (
         <>
             <SpaceBetween direction='horizontal' size='xs'>
-                <Button
-                    ariaLabel='Refresh MCP servers'
+                <RefreshButton
+                    isLoading={isFetching}
                     onClick={() => {
                         setSelectedItems([]);
                         refetch();
                     }}
-                >
-                    <Icon name='refresh' />
-                </Button>
+                    ariaLabel='Refresh MCP servers'
+                />
                 <ButtonDropdown
                     items={items}
                     disabled={items.every((item) => item.disabled)}

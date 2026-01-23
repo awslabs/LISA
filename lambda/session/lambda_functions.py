@@ -29,6 +29,7 @@ from cachetools import cached, TTLCache
 from utilities.auth import get_user_context, get_username
 from utilities.common_functions import api_wrapper, get_session_id, retry_config
 from utilities.encoders import convert_decimal
+from utilities.input_validation import MAX_LARGE_REQUEST_SIZE
 from utilities.session_encryption import decrypt_session_fields, migrate_session_to_encrypted, SessionEncryptionError
 from utilities.time import iso_string
 
@@ -395,7 +396,7 @@ def delete_user_sessions(event: dict, context: dict) -> Dict[str, bool]:
     return {"deleted": True}
 
 
-@api_wrapper
+@api_wrapper(max_request_size=MAX_LARGE_REQUEST_SIZE)
 def attach_image_to_session(event: dict, context: dict) -> dict:
     """Append the message to the record in DynamoDB."""
     try:
@@ -465,7 +466,7 @@ def rename_session(event: dict, context: dict) -> dict:
         return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
 
 
-@api_wrapper
+@api_wrapper(max_request_size=MAX_LARGE_REQUEST_SIZE)
 def put_session(event: dict, context: dict) -> dict:
     """Append the message to the record in DynamoDB."""
     try:

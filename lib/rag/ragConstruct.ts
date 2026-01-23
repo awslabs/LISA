@@ -362,7 +362,7 @@ export class LisaRagConstruct extends Construct {
             value: ragRepositoryConfigTable.tableArn
         });
 
-        // Create SSM parameter for vector store table name so other stacks can optionally reference it
+        // Create SSM parameter for vector store table name so other stacks can optionally reference it.
         new StringParameter(scope, createCdkId(['RagVectorStoreTableName', 'Parameter']), {
             parameterName: `${config.deploymentPrefix}/ragVectorStoreTableName`,
             stringValue: ragRepositoryConfigTable.tableName,

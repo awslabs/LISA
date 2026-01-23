@@ -370,7 +370,7 @@ export class LisaRagConstruct extends Construct {
             description: 'RAG Vector Store (Repository Config) DynamoDB table name',
         });
 
-        // Create SSM parameter for collections table name so other stacks can optionally reference it
+        // Create SSM parameter for collections table name so other stacks can optionally reference it.
         new StringParameter(scope, createCdkId(['RagCollectionsTableName', 'Parameter']), {
             parameterName: `${config.deploymentPrefix}/ragCollectionsTableName`,
             stringValue: collectionsTable.tableName,

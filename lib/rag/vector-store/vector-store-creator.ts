@@ -88,24 +88,66 @@ export class VectorStoreCreatorStack extends Construct {
         }));
 
         // IAM: manage roles created within the dynamic stacks and allow passing to services
+        //
+        // Security Strategy (Findings #1, #8, #13 - IAM Privilege Escalation Prevention):
+        //
+        // 1. Self-Targeting Prevention: Use ArnNotEquals condition to prevent the VectorStoreCreator
+        //    role from modifying itself via AttachRolePolicy, DetachRolePolicy, PutRolePolicy, or
+        //    DeleteRolePolicy actions. This prevents privilege escalation where the role could grant
+        //    itself additional permissions.
+        //
+        // 2. Resource Pattern Restriction: Limit role creation and management actions to roles that
+        //    follow the vector store naming pattern. This ensures the role can only manage roles
+        //    created by the vector store deployer, not arbitrary IAM roles in the account.
+        //
+        // 3. CDK Bootstrap Role Assumption: AssumeRole is restricted to CDK bootstrap roles only,
+        //    preventing assumption of roles with privilege escalation risks.
+        //
+        // Note: Tag-based conditions were considered but not used due to lack of support in all
+        // AWS regions. ARN pattern matching provides equivalent security with broader compatibility.
+        //
+        // Restrict permission mutation actions to prevent self-targeting (Security Finding #1, #8, #13)
         cdkRole.addToPolicy(new iam.PolicyStatement({
             actions: [
-                'iam:CreateRole',
-                'iam:DeleteRole',
                 'iam:AttachRolePolicy',
                 'iam:DetachRolePolicy',
                 'iam:PutRolePolicy',
                 'iam:DeleteRolePolicy',
-                'iam:TagRole',
-                'iam:UntagRole',
+            ],
+            resources: ['*'],
+            conditions: {
+                ArnNotEquals: {
+                    // Prevent the role from modifying itself
+                    'iam:ResourceArn': cdkRole.roleArn
+                }
+            }
+        }));
+
+        // IAM: manage roles created by vector store deployer (restricted to naming pattern)
+        cdkRole.addToPolicy(new iam.PolicyStatement({
+            actions: [
+                'iam:CreateRole',
+                'iam:DeleteRole',
                 'iam:GetRole',
                 'iam:GetRolePolicy',
                 'iam:ListRolePolicies',
                 'iam:ListAttachedRolePolicies',
-                'iam:ListRoleTags',
+                'iam:TagRole',
+                'iam:UntagRole',
                 'iam:UpdateAssumeRolePolicy',
-                'iam:ListRoles'
+                'iam:ListRoleTags',
             ],
+            resources: [
+                // Roles created by vector store deployer follow this pattern:
+                // ${appName}-${deploymentName}-${deploymentStage}-vector-store-${repositoryId}-*
+                `arn:${config.partition}:iam::${config.accountNumber}:role/${config.appName}-${config.deploymentName}-${config.deploymentStage}-vector*`,
+                `arn:${config.partition}:iam::${config.accountNumber}:role/${config.deploymentName}-${config.appName}-${config.deploymentStage}-vector*`,
+            ],
+        }));
+
+        // IAM: ListRoles requires wildcard resource (read-only operation)
+        cdkRole.addToPolicy(new iam.PolicyStatement({
+            actions: ['iam:ListRoles'],
             resources: ['*'],
         }));
 
@@ -146,6 +188,7 @@ export class VectorStoreCreatorStack extends Construct {
                 'deploymentName',
                 'deploymentStage',
                 'deploymentPrefix',
+                'iamRdsAuth',
                 'partition',
                 'region',
                 'removalPolicy',

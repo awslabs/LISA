@@ -287,109 +287,127 @@ export function Sessions ({ newSession }) {
 
             {!isSessionsLoading && (
                 <div className='pt-2'>
-                    <SpaceBetween size='s'>
-                        {(() => {
-                            const timeGroups = Object.entries(groupedSessions);
+                    {filteredSessions.length === 0 ? (
+                        <Box textAlign='center' padding='l'>
+                            <SpaceBetween size='s' direction='vertical'>
+                                <Box color='text-status-inactive'>No sessions</Box>
+                                {searchQuery && (
+                                    <Box variant='small' color='text-status-inactive'>
+                                        Try adjusting your search query
+                                    </Box>
+                                )}
+                                {!searchQuery && (
+                                    <Box variant='small' color='text-status-inactive'>
+                                        Start a new conversation to create your first session
+                                    </Box>
+                                )}
+                            </SpaceBetween>
+                        </Box>
+                    ) : (
+                        <SpaceBetween size='s'>
+                            {(() => {
+                                const timeGroups = Object.entries(groupedSessions);
 
-                            return timeGroups.map(([timeGroup, sessions]) => {
-                                if (sessions.length === 0) return null;
+                                return timeGroups.map(([timeGroup, sessions]) => {
+                                    if (sessions.length === 0) return null;
 
-                                return (
-                                    <ExpandableSection
-                                        key={timeGroup}
-                                        headerText={timeGroup}
-                                        defaultExpanded={timeGroup === 'Last Day' || timeGroup === 'Last 7 Days'}
-                                    >
-                                        <SpaceBetween size='xxs'>
-                                            {sessions.map((item) => (
-                                                <Box key={item.sessionId} padding='xxs'>
-                                                    <Grid gridDefinition={[{ colspan: 10 }, { colspan: 2 }]}>
-                                                        <Box>
-                                                            <Link onClick={() => navigate(`/ai-assistant/${item.sessionId}`)}>
-                                                                <Box
-                                                                    color={item.sessionId === currentSessionId ? 'text-status-info' : 'text-status-inactive'}
-                                                                    fontWeight={item.sessionId === currentSessionId ? 'bold' : 'normal'}
-                                                                >
-                                                                    {getSessionDisplay(item, 40)}
-                                                                </Box>
-                                                            </Link>
-                                                        </Box>
-                                                        <Box>
-                                                            <ButtonDropdown
-                                                                items={[
-                                                                    { id: 'rename-session', text: 'Rename Session', iconName: 'edit' },
-                                                                    { id: 'delete-session', text: 'Delete Session', iconName: 'delete-marker' },
-                                                                    { id: 'download-session', text: 'Download Session', iconName: 'download' },
-                                                                    { id: 'export-images', text: 'Export AI Images', iconName: 'folder' },
-                                                                ]}
-                                                                ariaLabel='Control instance'
-                                                                variant='icon'
-                                                                onItemClick={(e) => {
-                                                                    if (e.detail.id === 'delete-session') {
-                                                                        dispatch(
-                                                                            setConfirmationModal({
-                                                                                action: 'Delete',
-                                                                                resourceName: 'Session',
-                                                                                onConfirm: () => {
-                                                                                    setSessionBeingDeleted(item.sessionId);
-                                                                                    deleteById(item.sessionId);
-                                                                                },
-                                                                                description: `This will delete the Session: ${item.sessionId}.`
-                                                                            })
-                                                                        );
-                                                                    } else if (e.detail.id === 'download-session') {
-                                                                        getSessionById(item.sessionId).then((resp) => {
-                                                                            const sess: LisaChatSession = resp.data;
-                                                                            const file = new Blob([JSON.stringify(sess, null, 2)], { type: 'application/json' });
-                                                                            downloadFile(URL.createObjectURL(file), `${sess.sessionId}.json`);
-                                                                        });
-                                                                    } else if (e.detail.id === 'export-images') {
-                                                                        getSessionById(item.sessionId).then(async (resp) => {
-                                                                            const sess: LisaChatSession = resp.data;
-                                                                            const images = sess.history.filter((msg) => msg.type === 'ai' && messageContainsImage(msg.content))
-                                                                                .flatMap((msg) => {
-                                                                                    if (Array.isArray(msg.content)) {
-                                                                                        return msg.content
-                                                                                            .filter((contentItem: any) => contentItem.type === 'image_url' && contentItem.image_url?.url)
-                                                                                            .map((contentItem: any) => contentItem.image_url.url as string);
-                                                                                    }
-                                                                                    return [];
-                                                                                });
+                                    return (
+                                        <ExpandableSection
+                                            key={timeGroup}
+                                            headerText={timeGroup}
+                                            defaultExpanded={timeGroup === 'Last Day' || timeGroup === 'Last 7 Days'}
+                                        >
+                                            <SpaceBetween size='xxs'>
+                                                {sessions.map((item) => (
+                                                    <Box key={item.sessionId} padding='xxs'>
+                                                        <Grid gridDefinition={[{ colspan: 10 }, { colspan: 2 }]}>
+                                                            <Box>
+                                                                <Link onClick={() => navigate(`/ai-assistant/${item.sessionId}`)}>
+                                                                    <Box
+                                                                        color={item.sessionId === currentSessionId ? 'text-status-info' : 'text-status-inactive'}
+                                                                        fontWeight={item.sessionId === currentSessionId ? 'bold' : 'normal'}
+                                                                    >
+                                                                        {getSessionDisplay(item, 40)}
+                                                                    </Box>
+                                                                </Link>
+                                                            </Box>
+                                                            <Box>
+                                                                <ButtonDropdown
+                                                                    items={[
+                                                                        { id: 'rename-session', text: 'Rename Session', iconName: 'edit' },
+                                                                        { id: 'delete-session', text: 'Delete Session', iconName: 'delete-marker' },
+                                                                        { id: 'download-session', text: 'Download Session', iconName: 'download' },
+                                                                        { id: 'export-images', text: 'Export AI Images', iconName: 'folder' },
+                                                                    ]}
+                                                                    ariaLabel='Control instance'
+                                                                    variant='icon'
+                                                                    onItemClick={(e) => {
+                                                                        if (e.detail.id === 'delete-session') {
+                                                                            dispatch(
+                                                                                setConfirmationModal({
+                                                                                    action: 'Delete',
+                                                                                    resourceName: 'Session',
+                                                                                    onConfirm: () => {
+                                                                                        setSessionBeingDeleted(item.sessionId);
+                                                                                        deleteById(item.sessionId);
+                                                                                    },
+                                                                                    description: `This will delete the Session: ${item.sessionId}.`
+                                                                                })
+                                                                            );
+                                                                        } else if (e.detail.id === 'download-session') {
+                                                                            getSessionById(item.sessionId).then((resp) => {
+                                                                                const sess: LisaChatSession = resp.data;
+                                                                                const file = new Blob([JSON.stringify(sess, null, 2)], { type: 'application/json' });
+                                                                                downloadFile(URL.createObjectURL(file), `${sess.sessionId}.json`);
+                                                                            });
+                                                                        } else if (e.detail.id === 'export-images') {
+                                                                            getSessionById(item.sessionId).then(async (resp) => {
+                                                                                const sess: LisaChatSession = resp.data;
+                                                                                const images = sess.history.filter((msg) => msg.type === 'ai' && messageContainsImage(msg.content))
+                                                                                    .flatMap((msg) => {
+                                                                                        if (Array.isArray(msg.content)) {
+                                                                                            return msg.content
+                                                                                                .filter((contentItem: any) => contentItem.type === 'image_url' && contentItem.image_url?.url)
+                                                                                                .map((contentItem: any) => contentItem.image_url.url as string);
+                                                                                        }
+                                                                                        return [];
+                                                                                    });
 
-                                                                            if (images.length === 0) {
-                                                                                notificationService.generateNotification('No images found to export', 'info');
-                                                                            } else {
-                                                                                const zip = new JSZip();
-                                                                                const imagePromises = images.map(async (imageUrl, index) => {
-                                                                                    try {
-                                                                                        const blob = await fetchImage(imageUrl);
-                                                                                        zip.file(`image_${index + 1}.png`, blob, { binary: true });
-                                                                                    } catch (error) {
-                                                                                        console.error(`Error processing image ${index + 1}:`, error);
-                                                                                    }
-                                                                                });
+                                                                                if (images.length === 0) {
+                                                                                    notificationService.generateNotification('No images found to export', 'info');
+                                                                                } else {
+                                                                                    const zip = new JSZip();
+                                                                                    const imagePromises = images.map(async (imageUrl, index) => {
+                                                                                        try {
+                                                                                            const blob = await fetchImage(imageUrl);
+                                                                                            zip.file(`image_${index + 1}.png`, blob, { binary: true });
+                                                                                        } catch (error) {
+                                                                                            console.error(`Error processing image ${index + 1}:`, error);
+                                                                                        }
+                                                                                    });
 
-                                                                                // Wait for all images to be processed
-                                                                                await Promise.all(imagePromises);
-                                                                                const content = await zip.generateAsync({ type: 'blob' });
-                                                                                downloadFile(URL.createObjectURL(content), `${sess.sessionId}-images.zip`);
-                                                                            }
-                                                                        });
-                                                                    } else if (e.detail.id === 'rename-session') {
-                                                                        handleRenameSession(item);
-                                                                    }
-                                                                }}
-                                                            />
-                                                        </Box>
-                                                    </Grid>
-                                                </Box>
-                                            ))}
-                                        </SpaceBetween>
-                                    </ExpandableSection>
-                                );
-                            });
-                        })()}
-                    </SpaceBetween>
+                                                                                    // Wait for all images to be processed
+                                                                                    await Promise.all(imagePromises);
+                                                                                    const content = await zip.generateAsync({ type: 'blob' });
+                                                                                    downloadFile(URL.createObjectURL(content), `${sess.sessionId}-images.zip`);
+                                                                                }
+                                                                            });
+                                                                        } else if (e.detail.id === 'rename-session') {
+                                                                            handleRenameSession(item);
+                                                                        }
+                                                                    }}
+                                                                />
+                                                            </Box>
+                                                        </Grid>
+                                                    </Box>
+                                                ))}
+                                            </SpaceBetween>
+                                        </ExpandableSection>
+                                    );
+                                });
+                            })()}
+                        </SpaceBetween>
+                    )}
                 </div>
             )}
 

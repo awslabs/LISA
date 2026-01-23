@@ -70,8 +70,19 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
     const [showImageViewer, setShowImageViewer] = useState(false);
     const [selectedImage, setSelectedImage] = useState(undefined);
     const [selectedMetadata, setSelectedMetadata] = useState(undefined);
+    const [reasoningExpanded, setReasoningExpanded] = useState(true);
     const { colorScheme } = useContext(ColorSchemeContext);
     const isDarkMode = colorScheme === Mode.Dark;
+    const hasMessageContent = message?.content && typeof message.content === 'string' && message.content.trim() && message.content.trim() !== '\u00A0';
+
+    // Auto-expand reasoning when it first appears, then auto-collapse when message content starts arriving
+    useEffect(() => {
+        if (hasMessageContent) {
+            setReasoningExpanded(false);
+        } else if (!hasMessageContent && message?.reasoningContent) {
+            setReasoningExpanded(true);
+        }
+    }, [hasMessageContent, message?.reasoningContent]);
 
     useEffect(() => {
         if (resend) {
@@ -314,7 +325,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
 
     return (
         (message.type === MessageTypes.HUMAN || message.type === MessageTypes.AI || message.type === MessageTypes.TOOL) &&
-        <div className='mt-2' style={{ overflow: 'hidden' }}>
+        <div className='mt-2' style={{ overflow: 'hidden' }} data-testid={`chat-message-${message.type}`}>
             <ImageViewer setVisible={setShowImageViewer} visible={showImageViewer} selectedImage={selectedImage} metadata={selectedMetadata} />
             {(isRunning && !callingToolName) && (
                 <ChatBubble
@@ -331,7 +342,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                     }
                     actions={showUsage ? <UsageInfo usage={message.usage} /> : undefined}
                 >
-                    <Box color='text-status-inactive'>
+                    <Box color='text-status-inactive' data-testid='generating-response-box'>
                         Generating response
                     </Box>
                 </ChatBubble>
@@ -356,7 +367,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                     </Box>
                 </ChatBubble>
             )}
-            {message?.type === 'ai' && !isRunning && !callingToolName && message?.content && (
+            {message?.type === 'ai' && !isRunning && !callingToolName && (message?.content || message?.reasoningContent) && (
                 <SpaceBetween direction='horizontal' size='m'>
                     <ChatBubble
                         ariaLabel='Generative AI assistant'
@@ -372,7 +383,53 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                         }
                         actions={showUsage ? <UsageInfo usage={message.usage} /> : undefined}
                     >
-                        {renderContent(message.content, message.metadata)}
+                        {message?.reasoningContent && chatConfiguration.sessionConfiguration.showReasoningContent && (
+                            <Box margin={{ bottom: 's' }}>
+                                <ExpandableSection
+                                    variant='footer'
+                                    headerText='Reasoning'
+                                    expanded={reasoningExpanded}
+                                    onChange={({ detail }) => {
+                                        setReasoningExpanded(detail.expanded);
+                                    }}
+                                >
+                                    <SpaceBetween direction='vertical' size='s'>
+                                        <Grid gridDefinition={[{ colspan: 11 }, { colspan: 1 }]}>
+                                            <Box color='text-status-inactive' variant='small' padding={{ right: 'xl' }}>
+                                                <SpaceBetween direction='vertical' size='s'>
+                                                    <div style={{ whiteSpace: 'pre-line' }}>{message.reasoningContent}</div>
+                                                    <hr/>
+                                                </SpaceBetween>
+                                            </Box>
+                                            <ButtonGroup
+                                                onItemClick={({ detail }) => {
+                                                    if (detail.id === 'copy-reasoning') {
+                                                        navigator.clipboard.writeText(message.reasoningContent || '');
+                                                    }
+                                                }}
+                                                ariaLabel='Copy reasoning content'
+                                                dropdownExpandToViewport
+                                                items={[
+                                                    {
+                                                        type: 'icon-button',
+                                                        id: 'copy-reasoning',
+                                                        iconName: 'copy',
+                                                        text: 'Copy Reasoning',
+                                                        popoverFeedback: (
+                                                            <StatusIndicator type='success'>
+                                                                Reasoning copied
+                                                            </StatusIndicator>
+                                                        )
+                                                    }
+                                                ]}
+                                                variant='icon'
+                                            />
+                                        </Grid>
+                                    </SpaceBetween>
+                                </ExpandableSection>
+                            </Box>
+                        )}
+                        {message?.content && (typeof message.content === 'string' ? (message.content.trim() && message.content.trim() !== '\u00A0') : true) && renderContent(message.content, message.metadata)}
                         {showMetadata && !isStreaming &&
                             <ExpandableSection
                                 variant='footer'

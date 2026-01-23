@@ -16,6 +16,12 @@
 import { z } from 'zod';
 import { AttributeEditorSchema } from '../form/environment-variables';
 import { IChatConfiguration } from './chat.configurations.model';
+import {
+    ContainerHealthCheckConfigSchema,
+    LoadBalancerHealthCheckConfigSchema,
+    MetricConfigSchema,
+} from '#root/lib/schema';
+
 
 export enum ModelStatus {
     Creating = 'Creating',
@@ -240,32 +246,18 @@ export type IModelUpdateRequest = {
     guardrailsConfig?: IGuardrailsConfig;
 };
 
-const containerHealthCheckConfigSchema = z.object({
-    command: z.array(z.string()).default(['CMD-SHELL', 'exit 0']),
-    interval: z.number().default(10),
-    startPeriod: z.number().default(30),
-    timeout: z.number().default(5),
-    retries: z.number().default(3),
-});
-
-
 const containerConfigImageSchema = z.object({
     baseImage: z.string().default(''),
     type: z.string().default('asset'),
 });
 
-export const metricConfigSchema = z.object({
-    albMetricName: z.string().default('RequestCountPerTarget'),
-    targetValue: z.number().default(30),
-    duration: z.number().default(60),
-    estimatedInstanceWarmup: z.number().default(330),
-});
+// Re-export for convenience
+export { ContainerHealthCheckConfigSchema as containerHealthCheckConfigSchema };
 
-export const loadBalancerHealthCheckConfigSchema = z.object({
+export const loadBalancerHealthCheckConfigSchema = LoadBalancerHealthCheckConfigSchema.extend({
     path: z.string().default('/health'),
     interval: z.number().default(60),
     timeout: z.number().default(30),
-    healthyThresholdCount: z.number().default(2),
     unhealthyThresholdCount: z.number().default(10),
 });
 
@@ -368,7 +360,7 @@ export const autoScalingConfigSchema = z.object({
     desiredCapacity: z.number().optional(),
     cooldown: z.number().min(1).default(420),
     defaultInstanceWarmup: z.number().default(180),
-    metricConfig: metricConfigSchema.default(metricConfigSchema.parse({})),
+    metricConfig: MetricConfigSchema.default(MetricConfigSchema.parse({})),
     scheduling: scheduleConfigSchema.optional(),
 }).superRefine((value, context) => {
     // ensure the desired capacity stays between minCapacity/maxCapacity if not empty
@@ -400,11 +392,11 @@ export const guardrailsConfigSchema = z.record(z.string(), guardrailConfigSchema
 export const containerConfigSchema = z.object({
     image: containerConfigImageSchema.default(containerConfigImageSchema.parse({})),
     sharedMemorySize: z.number().min(0).default(2048),
-    healthCheckConfig: containerHealthCheckConfigSchema.default(containerHealthCheckConfigSchema.parse({})),
+    healthCheckConfig: ContainerHealthCheckConfigSchema.default(ContainerHealthCheckConfigSchema.parse({})),
     environment: AttributeEditorSchema,
 });
 
-export const ModelRequestSchema = z.object({
+export const ModelRequestBaseSchema = z.object({
     modelId: z.string()
         .regex(/^[a-z\d-]+$/, {message: 'Only lowercase alphanumeric characters and hyphens allowed'})
         .regex(/^[a-z0-9].*[a-z0-9]$/, {message: 'Must start and end with a lowercase alphanumeric character.'})
@@ -427,7 +419,10 @@ export const ModelRequestSchema = z.object({
     loadBalancerConfig: loadBalancerConfigSchema.default(loadBalancerConfigSchema.parse({})),
     allowedGroups: z.array(z.string()).default([]),
     guardrailsConfig: guardrailsConfigSchema.optional(),
-}).superRefine((value, context) => {
+});
+
+// Full schema with refinements - use this for validation
+export const ModelRequestSchema = ModelRequestBaseSchema.superRefine((value, context) => {
     if (value.lisaHostedModel) {
         const instanceTypeValidator = z.string().min(1, {message: 'Required for LISA hosted models.'});
         const instanceTypeResult = instanceTypeValidator.safeParse(value.instanceType);

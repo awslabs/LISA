@@ -82,8 +82,10 @@ export const PromptTemplateModal = ({
         }
     }, [showModal, dispatch]);
 
+    const modalTestId = 'prompt-template-modal';
     return (
         <Modal
+            data-testid={modalTestId}
             onDismiss={() => {
                 setShowModal(false);
                 setUserPrompt('');
@@ -104,6 +106,7 @@ export const PromptTemplateModal = ({
                             Cancel
                         </Button>
                         <Button
+                            data-testid='use-prompt-button'
                             variant='primary'
                             onClick={() => {
                                 if (isPersona) {
@@ -144,9 +147,15 @@ export const PromptTemplateModal = ({
                                     setSuggestText(detail.value);
                                 }}
                                 onSelect={({detail}) => {
-                                    const item = allItems.find((item) => item.id === detail.selectedOption?.id);
-                                    setPromptTemplateText(item.body);
-                                    setStartingPrompt(item.body);
+                                    // Try to find by id first, then fall back to matching by title/value
+                                    let item = allItems.find((item) => item.id === detail.selectedOption?.id);
+                                    if (!item && detail.selectedOption?.value) {
+                                        item = allItems.find((item) => item.title === detail.selectedOption.value);
+                                    }
+                                    if (item) {
+                                        setPromptTemplateText(item.body);
+                                        setStartingPrompt(item.body);
+                                    }
                                 }}
                                 loadingText={'Loading Prompts'}
                                 options={options}

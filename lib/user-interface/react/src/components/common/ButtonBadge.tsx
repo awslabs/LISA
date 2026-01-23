@@ -17,12 +17,13 @@
 import { Button, SpaceBetween, TextContent } from '@cloudscape-design/components';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { IconDefinition } from '@fortawesome/fontawesome-svg-core';
+import kebabCase from 'lodash/kebabCase';
 
 type ButtonBadgeProps = {
     text: string;
     icon: IconDefinition;
     onClick: () => void;
-    show?: boolean;
+    show?: boolean
 };
 
 export const ButtonBadge = ({ text, icon, onClick, show }: ButtonBadgeProps) => {
@@ -30,8 +31,10 @@ export const ButtonBadge = ({ text, icon, onClick, show }: ButtonBadgeProps) => 
         return null;
     }
 
+    const testId = `${kebabCase(text)}-button`;
+
     return (
-        <Button variant='normal' onClick={onClick}>
+        <Button variant='normal' onClick={onClick} data-testid={testId}>
             <SpaceBetween direction='horizontal' size='xs'>
                 <FontAwesomeIcon icon={icon} />
                 <TextContent>{text}</TextContent>

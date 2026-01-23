@@ -26,6 +26,16 @@ export type RepositoryConfig = {
 };
 
 /**
+ * Check if a repository exists in the repository management list
+ * @returns Cypress.Chainable<boolean>
+ */
+export function repositoryExists (repositoryId: string): Cypress.Chainable<boolean> {
+    return cy.get('body').then(($body) => {
+        return $body.text().includes(repositoryId);
+    });
+}
+
+/**
  * Navigate to the repository management page
  */
 export function navigateToRepositoryManagement () {
@@ -118,7 +128,10 @@ export function selectDataSource (index: number = 0) {
  * Skip to the create step in the repository wizard
  */
 export function skipToCreateRepository () {
-    cy.contains('button', 'Skip to Create').should('be.visible').click();
+    cy.contains('button', 'Skip to Create')
+        .scrollIntoView()
+        .should('be.visible')
+        .click();
 }
 
 /**

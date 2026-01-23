@@ -21,7 +21,6 @@ import {
     ButtonDropdown,
     ButtonDropdownProps,
     Checkbox,
-    Icon,
     SpaceBetween,
 } from '@cloudscape-design/components';
 import { useAppDispatch } from '@/config/store';
@@ -33,8 +32,10 @@ import {
     ragApi,
     useUpdateRagRepositoryMutation,
     useDeleteRagRepositoryMutation,
+    useListRagRepositoriesQuery,
 } from '@/shared/reducers/rag.reducer';
 import { RagRepositoryConfig } from '#root/lib/schema';
+import { RefreshButton } from '@/components/common/RefreshButton';
 
 export type RepositoryActionProps = {
     selectedItems: ReadonlyArray<RagRepositoryConfig>;
@@ -47,18 +48,22 @@ function RepositoryActions (props: RepositoryActionProps): ReactElement {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
     const { setEdit, setNewRepositoryModalVisible, setSelectedItems } = props;
+    const { isFetching } = useListRagRepositoriesQuery(undefined, {
+        refetchOnMountOrArgChange: 30
+    });
+
+    const handleRefresh = () => {
+        setSelectedItems([]);
+        dispatch(ragApi.util.invalidateTags(['repositories']));
+    };
+
     return (
         <SpaceBetween direction='horizontal' size='xs'>
-            <Button
-                onClick={() => {
-                    setSelectedItems([]);
-                    // Invalidate cache - this will automatically trigger refetch of active queries
-                    dispatch(ragApi.util.invalidateTags(['repositories']));
-                }}
-                ariaLabel={'Refresh repository table'}
-            >
-                <Icon name='refresh' />
-            </Button>
+            <RefreshButton
+                isLoading={isFetching}
+                onClick={handleRefresh}
+                ariaLabel='Refresh repository table'
+            />
             {RepositoryActionButton(dispatch, notificationService, props)}
             <Button variant='primary' onClick={() => {
                 setEdit(false);
@@ -161,6 +166,7 @@ function RepositoryActionButton (dispatch: ThunkDispatch<any, any, Action>, noti
 
     return (
         <ButtonDropdown
+            data-testid='repository-actions-button'
             items={items}
             variant='primary'
             disabled={!selectedRepo}

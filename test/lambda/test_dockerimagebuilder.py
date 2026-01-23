@@ -51,7 +51,7 @@ def lambda_context():
 
 def test_handler_success(lambda_context):
     """Test successful handler execution."""
-    event = {"base_image": "python:3.13-slim", "layer_to_add": "test-layer"}
+    event = {"base_image": "public.ecr.aws/docker/library/python:3.13-slim", "layer_to_add": "test-layer"}
 
     # Mock boto3 resources and clients
     mock_ec2_resource = MagicMock()
@@ -89,7 +89,7 @@ def test_handler_success(lambda_context):
         assert call_args["InstanceType"] == "m5.large"
         assert call_args["SubnetId"] == "subnet-12345678"
         assert "UserData" in call_args
-        assert "python:3.13-slim" in call_args["UserData"]
+        assert "public.ecr.aws/docker/library/python:3.13-slim" in call_args["UserData"]
         assert "test-layer" in call_args["UserData"]
 
 
@@ -99,7 +99,7 @@ def test_handler_without_subnet_id(lambda_context):
     original_subnet_id = os.environ.pop("LISA_SUBNET_ID", None)
 
     try:
-        event = {"base_image": "python:3.13-slim", "layer_to_add": "test-layer"}
+        event = {"base_image": "public.ecr.aws/docker/library/python:3.13-slim", "layer_to_add": "test-layer"}
 
         # Mock boto3 resources and clients
         mock_ec2_resource = MagicMock()
@@ -134,7 +134,7 @@ def test_handler_without_subnet_id(lambda_context):
 
 def test_handler_client_error(lambda_context):
     """Test handler with ClientError."""
-    event = {"base_image": "python:3.13-slim", "layer_to_add": "test-layer"}
+    event = {"base_image": "public.ecr.aws/docker/library/python:3.13-slim", "layer_to_add": "test-layer"}
 
     # Mock boto3 resources and clients
     mock_ec2_resource = MagicMock()
@@ -159,7 +159,7 @@ def test_handler_client_error(lambda_context):
 
 def test_handler_ssm_error(lambda_context):
     """Test handler with SSM ClientError."""
-    event = {"base_image": "python:3.13-slim", "layer_to_add": "test-layer"}
+    event = {"base_image": "public.ecr.aws/docker/library/python:3.13-slim", "layer_to_add": "test-layer"}
 
     # Mock boto3 resources and clients
     mock_ec2_resource = MagicMock()
@@ -182,7 +182,7 @@ def test_handler_ssm_error(lambda_context):
 
 def test_user_data_template_rendering(lambda_context):
     """Test that user data template is properly rendered."""
-    event = {"base_image": "python:3.13-slim", "layer_to_add": "test-layer"}
+    event = {"base_image": "public.ecr.aws/docker/library/python:3.13-slim", "layer_to_add": "test-layer"}
 
     # Mock boto3 resources and clients
     mock_ec2_resource = MagicMock()
@@ -209,7 +209,7 @@ def test_user_data_template_rendering(lambda_context):
         assert "us-east-1" in user_data  # AWS_REGION
         assert "test-bucket" in user_data  # BUCKET_NAME
         assert "test-layer" in user_data  # LAYER_TO_ADD
-        assert "python:3.13-slim" in user_data  # BASE_IMAGE
+        assert "public.ecr.aws/docker/library/python:3.13-slim" in user_data  # BASE_IMAGE
         assert "https://example.com/mounts3.deb" in user_data  # MOUNTS3_DEB_URL
         assert "123456789012.dkr.ecr.us-east-1.amazonaws.com/test-repo" in user_data  # ECR_URI
         assert result["image_tag"] in user_data  # IMAGE_ID

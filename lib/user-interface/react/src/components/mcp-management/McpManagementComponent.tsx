@@ -178,6 +178,7 @@ export function McpManagementComponent (): ReactElement {
                                 refetch={refetch}
                                 onCreate={handleCreate}
                                 onEdit={handleEdit}
+                                isFetching={isFetching}
                             />
                         }
                         description='Host MCP servers within LISA MCP infrastructure.'

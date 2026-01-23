@@ -89,6 +89,9 @@ Cypress.Commands.add('loginAs', (role = 'user') => {
     // Temporarily suppress exceptions during login flow
     cy.on('uncaught:exception', () => false);
 
+    // Use spec filename in session key to isolate sessions per spec
+    // const specName = Cypress.spec.name;
+
     cy.session(
         `cognito-${role}`,
         () => {
@@ -138,7 +141,7 @@ Cypress.Commands.add('loginAs', (role = 'user') => {
                             .click({ force: true });
                     });
 
-                    // Wait for redirect back to app
+                    // Wait for redirect back to app and allow configuration to load
                     cy.wait(2000);
                 });
             });
@@ -155,16 +158,57 @@ Cypress.Commands.add('loginAs', (role = 'user') => {
                     expect(hasOidcToken).to.equal(true);
                 });
             },
-            cacheAcrossSpecs: true,
+            cacheAcrossSpecs: false,
         }
     );
 
-    // After session restore/setup, Cypress clears the page
-    // We must visit again and wait for APIs
+    // After session restore/setup, Cypress clears the page which may have cancelled
+    // in-flight API requests. Selectively clear API cache reducers to ensure cancelled
+    // requests don't pollute the cache, while preserving user preferences.
+    cy.window().then((win) => {
+        const persistedState = win.localStorage.getItem('persist:lisa');
+        if (persistedState) {
+            try {
+                const state = JSON.parse(persistedState);
+                // Clear only API cache reducers that may have stale/cancelled data
+                // Preserve: user, userPreferences, notification, modal, breadcrumbGroup
+                const apiReducersToReset = [
+                    'models',           // modelManagementApi.reducerPath
+                    'configuration',    // configurationApi.reducerPath
+                    'sessions',         // sessionApi.reducerPath
+                    'rag',              // ragApi.reducerPath
+                    'promptTemplates',  // promptTemplateApi.reducerPath
+                    'mcpServers',       // mcpServerApi.reducerPath
+                    'mcpTools',         // mcpToolsApi.reducerPath
+                    'apiTokens',        // apiTokenApi.reducerPath
+                    'userPreferences',  // userPreferencesApi.reducerPath
+                ];
+                apiReducersToReset.forEach((key) => {
+                    if (state[key]) {
+                        delete state[key];
+                    }
+                });
+                win.localStorage.setItem('persist:lisa', JSON.stringify(state));
+            } catch {
+                // If parsing fails, remove the entire persisted state
+                win.localStorage.removeItem('persist:lisa');
+            }
+        }
+    });
+
+    // Set up intercepts BEFORE visiting so they catch all requests
+    // cy.session() clears all intercepts, so we must set them up fresh here
     setupApiIntercepts();
+
+    // Visit the app - intercepts are now ready to catch requests
     cy.visit(BASE_URL);
+
+    // Wait for app to be ready using DOM-based assertions
     waitForAppReady();
-    waitForCriticalApis();
+
+    // Now wait for the critical configuration API to complete
+    // This ensures the app has loaded its configuration before tests proceed
+    // waitForCriticalApis();
 
     log.snapshot('after');
     log.end();

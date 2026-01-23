@@ -19,6 +19,7 @@ import { CfnOutput, Duration, RemovalPolicy } from 'aws-cdk-lib';
 import { BlockDeviceVolume, GroupMetrics, Monitoring } from 'aws-cdk-lib/aws-autoscaling';
 import { Metric, Stats } from 'aws-cdk-lib/aws-cloudwatch';
 import { InstanceType, ISecurityGroup, IVpc, SubnetSelection } from 'aws-cdk-lib/aws-ec2';
+import { Alias } from 'aws-cdk-lib/aws-kms';
 import {
     Cluster,
     ContainerDefinition,
@@ -94,11 +95,18 @@ export class ECSCluster extends Construct {
             containerInsightsV2: !config.region?.includes('iso') ? ContainerInsights.ENABLED : ContainerInsights.DISABLED,
         });
 
-        // Create auto scaling group
+        // SNS encryption key for ECS lifecycle hooks (AppSec Finding #5)
+        const snsEncryptionKey = Alias.fromAliasName(
+            this,
+            createCdkId([identifier, 'SnsKey']),
+            'alias/aws/sns'
+        );
+
+        // Create auto scaling group with SNS topic encryption for lifecycle hooks
         const autoScalingGroup = cluster.addCapacity(createCdkId([identifier, 'ASG']), {
             vpcSubnets: subnetSelection,
             instanceType: new InstanceType(ecsConfig.instanceType),
-            machineImage: EcsOptimizedImage.amazonLinux2(ecsConfig.amiHardwareType),
+            machineImage: EcsOptimizedImage.amazonLinux2023(ecsConfig.amiHardwareType),
             minCapacity: ecsConfig.autoScalingConfig.minCapacity,
             maxCapacity: ecsConfig.autoScalingConfig.maxCapacity,
             cooldown: Duration.seconds(ecsConfig.autoScalingConfig.cooldown),
@@ -114,6 +122,7 @@ export class ECSCluster extends Construct {
                     }),
                 },
             ],
+            topicEncryptionKey: snsEncryptionKey,
         });
 
         new CfnOutput(this, 'autoScalingGroup', {
@@ -273,6 +282,10 @@ export class ECSCluster extends Construct {
             });
 
             // Add listener
+            // Note: This ALB is internal (internetFacing: false) and uses HTTP only.
+            // If HTTPS is enabled in the future, use SslPolicy.TLS13_RES for AppSec compliance.
+            // SslPolicy.TLS13_RES maps to ELBSecurityPolicy-TLS13-1-2-2021-06
+            // This policy provides forward secrecy with ECDHE cipher suites and excludes RSA key exchange.
             const listenerProps: BaseApplicationListenerProps = {
                 port: 80,
                 open: false,
@@ -298,7 +311,13 @@ export class ECSCluster extends Construct {
                 },
                 port: 80,
                 targets: [service],
+                // Slow start gives new targets time to warm up before receiving full traffic
+                slowStart: Duration.seconds(60),
             });
+
+            // Configure target group for LLM workloads which may have long response times
+            // This prevents 504 Gateway Timeout errors during model inference
+            targetGroup.setAttribute('deregistration_delay.timeout_seconds', '30');
 
             // ALB metric for ASG to use for auto scaling EC2 instances
             // TODO: Update this to step scaling for embedding models??

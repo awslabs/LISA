@@ -113,6 +113,15 @@ export class DeleteStoreStateMachine extends Construct {
                 ':status': tasks.DynamoAttributeValue.fromString('$.checkResult.status'),
             },
         });
+
+        // Fail state to mark the state machine execution as failed
+        const failExecution = new sfn.Fail(this, 'FailExecution', {
+            cause: 'Vector store deletion failed',
+            error: 'DeletionFailed',
+        });
+
+        // Chain failure status update to fail state
+        updateFailureStatus.next(failExecution);
         // Task to update the status of the vector store entry to 'COMPLETED' on successful deployment
         const updateDeleteStatus = new tasks.DynamoUpdateItem(this, 'UpdateDeleteStatus', {
             table: ragVectorStoreTable,

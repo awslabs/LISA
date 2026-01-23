@@ -16,7 +16,7 @@
 
 import _ from 'lodash';
 import { Modal, Wizard } from '@cloudscape-design/components';
-import { IModel, IModelRequest, ModelRequestSchema } from '../../../shared/model/model-management.model';
+import { IModel, IModelRequest, ModelRequestSchema, ModelRequestBaseSchema } from '../../../shared/model/model-management.model';
 import { ReactElement, useEffect, useMemo, useState } from 'react';
 import { scrollToInvalid, useValidationReducer } from '../../../shared/validation';
 import { BaseModelConfig } from './BaseModelConfig';
@@ -67,7 +67,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         deleteScheduleMutation,
         { isSuccess: isScheduleDeleteSuccess, isError: isScheduleDeleteError, error: scheduleDeleteError, isLoading: isScheduleDeleting, reset: resetScheduleDelete },
     ] = useDeleteScheduleMutation();
-    const initialForm = ModelRequestSchema.partial().parse({});
+    const initialForm = ModelRequestBaseSchema.partial().parse({});
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
 

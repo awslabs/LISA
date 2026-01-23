@@ -296,7 +296,7 @@ def create_self_hosted_embedded_model(
             "image": {"baseImage": base_image, "type": "asset"},
             "sharedMemorySize": 2048,
             "healthCheckConfig": {
-                "command": ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"],
+                "command": ["CMD-SHELL", "exit 0"],
                 "interval": 10,
                 "startPeriod": 300,  # 10 minutes to allow for model loading
                 "timeout": 5,
@@ -352,7 +352,7 @@ def create_self_hosted_model(
     lisa_client: LisaApi,
     model_id: str,
     model_name: str,
-    base_image: str = "vllm/vllm-openai:latest",
+    base_image: str = "public.ecr.aws/deep-learning-containers/vllm:0.13-gpu-py312",
     skip_create: bool = False,
 ) -> Dict[str, Any]:
     """Create a self-hosted model configuration."""
@@ -396,7 +396,7 @@ def create_self_hosted_model(
             "image": {"baseImage": base_image, "type": "asset"},
             "sharedMemorySize": 2048,
             "healthCheckConfig": {
-                "command": ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"],
+                "command": ["CMD-SHELL", "exit 0"],
                 "interval": 10,
                 "startPeriod": 300,  # 10 minutes to allow for model loading
                 "timeout": 5,

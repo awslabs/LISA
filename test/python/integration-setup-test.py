@@ -303,9 +303,9 @@ def create_self_hosted_embedded_model(
                 "retries": 3,
             },
             "environment": {
-                "MAX_TOTAL_TOKENS": "32768",
-                "MAX_INPUT_LENGTH": "16384",
-                "MAX_BATCH_TOKENS": "8192",
+                "MAX_TOTAL_TOKENS": "16384",
+                "MAX_INPUT_LENGTH": "8192",
+                "MAX_BATCH_TOKENS": "4096",
                 "MAX_CONCURRENT_REQUESTS": "512",
                 "MAX_CLIENT_BATCH_SIZE": "1024",
                 "POOLING": "mean",
@@ -352,7 +352,7 @@ def create_self_hosted_model(
     lisa_client: LisaApi,
     model_id: str,
     model_name: str,
-    base_image: str = "vllm/vllm-openai:latest",
+    base_image: str = "public.ecr.aws/deep-learning-containers/vllm:0.13-gpu-py312",
     skip_create: bool = False,
 ) -> dict[str, Any]:
     """Create a self-hosted model configuration."""

@@ -188,6 +188,7 @@ export class VectorStoreCreatorStack extends Construct {
                 'deploymentName',
                 'deploymentStage',
                 'deploymentPrefix',
+                'iamRdsAuth',
                 'partition',
                 'region',
                 'removalPolicy',

@@ -120,6 +120,7 @@ export function ModelManagementComponent (): ReactElement {
                                 currentDefaultModel={config?.[0]?.configuration?.global?.defaultModel}
                                 currentConfig={config}
                                 refetch={refetch}
+                                isFetching={fetchingModels}
                             />
                         }
                     >

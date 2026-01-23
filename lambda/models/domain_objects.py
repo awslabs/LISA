@@ -1315,12 +1315,14 @@ class RdsInstanceConfig(BaseModel):
     """Configuration schema for RDS Instances needed for LiteLLM scaling or PGVector RAG operations.
 
     The optional fields can be omitted to create a new database instance, otherwise fill in all fields
-    to use an existing database instance.
+    to use an existing database instance. By default, IAM authentication is used. Set iamRdsAuth
+    to false in config to use password-based authentication.
     """
 
     username: str = Field(default="postgres", description="The username used for database connection.")
     passwordSecretId: str | None = Field(
-        default=None, description="The SecretsManager Secret ID that stores the existing database password."
+        default=None,
+        description="The SecretsManager Secret ID that stores the existing database password.",
     )
     dbHost: str | None = Field(default=None, description="The database hostname for the existing database instance.")
     dbName: str = Field(default="postgres", description="The name of the database for the database instance.")

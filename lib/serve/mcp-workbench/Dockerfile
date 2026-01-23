@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=python:3.13-slim
+ARG BASE_IMAGE=public.ecr.aws/docker/library/python:3.13-slim
 FROM ${BASE_IMAGE}
 
 ARG RCLONE_VERSION=v1.71.0

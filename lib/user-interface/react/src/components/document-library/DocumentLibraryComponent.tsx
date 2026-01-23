@@ -17,11 +17,9 @@
 import * as React from 'react';
 import { ReactElement, useState } from 'react';
 import {
-    Button,
     ButtonDropdownProps,
     CollectionPreferences,
     Header,
-    Icon,
     Pagination,
     TextFilter,
 } from '@cloudscape-design/components';
@@ -44,6 +42,7 @@ import { RagDocument } from '../types';
 import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
 import { useLocalStorage } from '../../shared/hooks/use-local-storage';
 import { downloadFile } from '../../shared/util/downloader';
+import { RefreshButton } from '@/components/common/RefreshButton';
 
 type DocumentLibraryComponentProps = {
     repositoryId?: string;
@@ -88,7 +87,7 @@ export function DocumentLibraryComponent ({ repositoryId, collectionId }: Docume
         { skip: !repositoryId || !collectionId }
     );
 
-    const { data: paginatedDocs, isLoading } = useListRagDocumentsQuery(
+    const { data: paginatedDocs, isLoading, isFetching } = useListRagDocumentsQuery(
         {
             repositoryId,
             collectionId,
@@ -203,15 +202,14 @@ export function DocumentLibraryComponent ({ repositoryId, collectionId }: Docume
                             direction='horizontal'
                             size='xs'
                         >
-                            <Button
+                            <RefreshButton
+                                isLoading={isFetching}
                                 onClick={() => {
                                     actions.setSelectedItems([]);
                                     dispatch(ragApi.util.invalidateTags(['docs']));
                                 }}
-                                ariaLabel={'Refresh documents'}
-                            >
-                                <Icon name='refresh' />
-                            </Button>
+                                ariaLabel='Refresh documents'
+                            />
                             <ButtonDropdown
                                 items={actionItems}
                                 loading={isDeleteLoading || isDownloading}

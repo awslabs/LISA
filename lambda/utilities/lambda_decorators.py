@@ -21,7 +21,7 @@ from contextvars import ContextVar
 from typing import Any, TypeVar
 
 from utilities.event_parser import sanitize_event_for_logging
-from utilities.input_validation import validate_input
+from utilities.input_validation import DEFAULT_MAX_REQUEST_SIZE, validate_input
 from utilities.response_builder import generate_exception_response, generate_html_response
 
 logger = logging.getLogger(__name__)
@@ -32,7 +32,11 @@ ctx_context: ContextVar[Any] = ContextVar("lamdbacontext")
 F = TypeVar("F", bound=Callable[..., Any])
 
 
-def api_wrapper(f: F) -> F:
+def api_wrapper(
+    _func: F | None = None,
+    *,
+    max_request_size: int = DEFAULT_MAX_REQUEST_SIZE,
+) -> F | Callable[[F], F]:
     """
     Wrap Lambda function with comprehensive API Gateway integration.
 
@@ -42,14 +46,21 @@ def api_wrapper(f: F) -> F:
     - Exception handling with appropriate status codes
     - Security headers in responses
 
+    Can be used with or without parameters:
+    - @api_wrapper
+    - @api_wrapper()
+    - @api_wrapper(max_request_size=10 * 1024 * 1024)
+
     Parameters
     ----------
-    f : F
-        The Lambda handler function to wrap.
+    _func : F | None
+        The Lambda handler function (used when decorator is applied without parentheses).
+    max_request_size : int
+        Maximum allowed request body size in bytes (default: 1MB).
 
     Returns
     -------
-    F
+    F | Callable[[F], F]
         The wrapped function with API Gateway integration.
 
     Example
@@ -72,13 +83,38 @@ def api_wrapper(f: F) -> F:
         sanitized_event = sanitize_event_for_logging(event)
         logger.info(f"Lambda {lambda_func_name}({code_func_name}) invoked with {sanitized_event}")
 
-        try:
-            result = f(event, context)
-            return generate_html_response(200, result)
-        except Exception as e:
-            return generate_exception_response(e)
 
-    return wrapper  # type: ignore [return-value]
+    >>> @api_wrapper(max_request_size=10 * 1024 * 1024)
+    ... def upload_image(event: dict, context: dict) -> dict:
+    ...     # Handle large payload
+    ...     return {"status": "uploaded"}
+    """
+
+    def decorator(f: F) -> F:
+        @functools.wraps(f)
+        @validate_input(max_request_size=max_request_size)
+        def wrapper(event: dict, context: dict) -> Dict[str, Union[str, int, Dict[str, str]]]:
+            """Execute Lambda handler with API Gateway integration."""
+            ctx_context.set(context)
+            code_func_name = f.__name__
+            lambda_func_name = context.function_name  # type: ignore [attr-defined]
+
+            # Log request with sanitized event data
+            sanitized_event = sanitize_event_for_logging(event)
+            logger.info(f"Lambda {lambda_func_name}({code_func_name}) invoked with {sanitized_event}")
+
+            try:
+                result = f(event, context)
+                return generate_html_response(200, result)
+            except Exception as e:
+                return generate_exception_response(e)
+
+        return wrapper  # type: ignore [return-value]
+
+    # Handle both @api_wrapper and @api_wrapper() syntax
+    if _func is not None:
+        return decorator(_func)
+    return decorator
 
 
 def authorization_wrapper(f: F) -> F:

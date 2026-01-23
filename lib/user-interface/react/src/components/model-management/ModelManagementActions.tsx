@@ -15,7 +15,8 @@
  */
 
 import { ReactElement, useEffect } from 'react';
-import { Button, ButtonDropdown, Icon, SpaceBetween } from '@cloudscape-design/components';
+import { Button, ButtonDropdown, SpaceBetween } from '@cloudscape-design/components';
+import { RefreshButton } from '@/components/common/RefreshButton';
 import { useAppDispatch, useAppSelector } from '@/config/store';
 import { IModel, ModelStatus } from '@/shared/model/model-management.model';
 import { useNotificationService } from '@/shared/util/hooks';
@@ -36,6 +37,7 @@ export type ModelActionProps = {
     currentDefaultModel?: string;
     currentConfig?: any;
     refetch?: () => void;
+    isFetching?: boolean;
 };
 
 function ModelActions (props: ModelActionProps): ReactElement {
@@ -44,15 +46,14 @@ function ModelActions (props: ModelActionProps): ReactElement {
 
     return (
         <SpaceBetween direction='horizontal' size='xs'>
-            <Button
+            <RefreshButton
+                isLoading={props.isFetching ?? false}
                 onClick={() => {
                     props.setSelectedItems([]);
                     props.refetch?.();
                 }}
-                ariaLabel={'Refresh models cards'}
-            >
-                <Icon name='refresh' />
-            </Button>
+                ariaLabel='Refresh models cards'
+            />
 
             {ModelActionButton(dispatch, notificationService, props)}
             <Button

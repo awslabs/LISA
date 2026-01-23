@@ -29,6 +29,84 @@ import { ChatMemory } from '@/shared/util/chat-memory';
 import { useAppDispatch } from '@/config/store';
 import { sessionApi } from '@/shared/reducers/session.reducer';
 
+/**
+ * Parses <thinking>...</thinking> blocks from content and extracts them.
+ * Only extracts complete blocks (with both opening and closing tags).
+ * Returns the cleaned content (with thinking blocks removed) and the extracted thinking content.
+ */
+const parseThinkingBlocks = (content: string): { cleanedContent: string; thinkingContent: string } => {
+    if (!content || typeof content !== 'string') {
+        return { cleanedContent: content, thinkingContent: '' };
+    }
+
+    // Match complete <thinking>...</thinking> blocks (case-insensitive)
+    const thinkingRegex = /<thinking>([\s\S]*?)<\/thinking>/gi;
+    const thinkingBlocks: string[] = [];
+    let match;
+
+    // Extract all complete thinking blocks
+    while ((match = thinkingRegex.exec(content)) !== null) {
+        if (match[1]) {
+            thinkingBlocks.push(match[1].trim());
+        }
+    }
+
+    // Remove all complete thinking blocks from content
+    const cleanedContent = content.replace(thinkingRegex, '').trim();
+
+    // Combine all thinking blocks with newlines
+    const thinkingContent = thinkingBlocks.join('\n\n');
+
+    return { cleanedContent, thinkingContent };
+};
+
+/**
+ * Calculates response time in seconds from a start timestamp.
+ */
+const calculateResponseTime = (startTime: number): number => {
+    return parseFloat(((performance.now() - startTime) / 1000).toFixed(2));
+};
+
+/**
+ * Processes content to extract reasoning/thinking blocks when model supports reasoning.
+ * Returns cleaned content and reasoning content (preferring API-provided reasoning over parsed).
+ */
+const processReasoningContent = (
+    rawContent: string,
+    apiReasoningContent: string | undefined,
+    modelSupportsReasoning: boolean
+): { cleanedContent: string; reasoningContent: string | undefined } => {
+    if (!modelSupportsReasoning) {
+        return { cleanedContent: rawContent, reasoningContent: apiReasoningContent };
+    }
+
+    const parsed = parseThinkingBlocks(rawContent);
+    const reasoningContent = apiReasoningContent || parsed.thinkingContent || undefined;
+    return { cleanedContent: parsed.cleanedContent, reasoningContent };
+};
+
+/**
+ * Parses accumulated tool call data into final tool call objects.
+ */
+const finalizeToolCalls = (toolCallsAccumulator: { [index: number]: any }): any[] => {
+    return Object.values(toolCallsAccumulator).map((toolCall: any) => {
+        let parsedArgs = {};
+        try {
+            if (toolCall.args && typeof toolCall.args === 'string') {
+                parsedArgs = JSON.parse(toolCall.args.trim());
+            }
+        } catch {
+            parsedArgs = {};
+        }
+        return {
+            id: toolCall.id,
+            name: toolCall.name,
+            args: parsedArgs,
+            type: toolCall.type
+        };
+    }).filter((toolCall) => toolCall.name);
+};
+
 // Custom hook for chat generation
 export const useChatGeneration = ({
     chatConfiguration,
@@ -58,8 +136,14 @@ export const useChatGeneration = ({
     const [isStreaming, setIsStreaming] = useState(false);
     const stopRequested = useRef(false);
     const modelSupportsTools = selectedModel?.features?.filter((feature) => feature.name === ModelFeatures.TOOL_CALLS)?.length && true;
+    const modelSupportsReasoning = selectedModel?.features?.find((feature) => feature.name === ModelFeatures.REASONING) ? true : false;
 
     const createOpenAiClient = useCallback((streaming: boolean) => {
+        const { reasoning_effort, ...modelKwargsWithoutReasoning } = chatConfiguration.sessionConfiguration?.modelArgs || {};
+        const modelKwargs = reasoning_effort === 'none'
+            ? modelKwargsWithoutReasoning
+            : chatConfiguration.sessionConfiguration?.modelArgs || {};
+
         const modelConfig = {
             modelName: selectedModel?.modelId,
             // Use auth token as API key - LangChain will pass it in the Authorization header
@@ -70,9 +154,7 @@ export const useChatGeneration = ({
             },
             streaming,
             maxTokens: chatConfiguration.sessionConfiguration?.max_tokens,
-            modelKwargs: {
-                ...chatConfiguration.sessionConfiguration?.modelArgs,
-            }
+            modelKwargs
         };
 
         return new ChatOpenAI(modelConfig);
@@ -123,8 +205,7 @@ export const useChatGeneration = ({
                         type: 'image_url'
                     }));
 
-                    // Calculate response time
-                    const responseTime = (performance.now() - startTime) / 1000;
+                    const responseTime = calculateResponseTime(startTime);
 
                     // Save the response to the chat history
                     setSession((prev) => ({
@@ -138,7 +219,7 @@ export const useChatGeneration = ({
                                 imageGenerationParams: imageGenParams
                             },
                             usage: {
-                                responseTime: parseFloat(responseTime.toFixed(2))
+                                responseTime
                             }
                         })],
                     }));
@@ -181,6 +262,16 @@ export const useChatGeneration = ({
                                 arguments: JSON.stringify(toolCall.args)
                             }
                         }));
+                        if (modelSupportsReasoning) {
+                            if (msg.reasoningContent) {
+                                const thinkingBlock: any = {
+                                    type: 'thinking',
+                                    thinking: msg.reasoningContent
+                                };
+                                thinkingBlock.signature = msg.reasoningSignature;
+                                baseMessage.content.unshift(thinkingBlock);
+                            }
+                        }
                     }
 
                     return baseMessage;
@@ -208,6 +299,9 @@ export const useChatGeneration = ({
                         const stream = await llmClient.stream(messages, { tools: modelSupportsTools ? openAiTools : undefined });
                         const resp: string[] = [];
                         const toolCallsAccumulator: { [index: number]: any } = {};
+                        let reasoningContentAccumulator = '';
+                        let reasoningSignatureAccumulator = '';
+                        let rawContentAccumulator = ''; // Accumulate raw content to parse thinking blocks
 
                         let guardrailTriggered = false;
 
@@ -220,11 +314,37 @@ export const useChatGeneration = ({
 
                             const content = chunk.content as string;
 
+                            // Accumulate raw content for thinking block parsing
+                            if (content) {
+                                rawContentAccumulator += content;
+                            }
+
                             // Check if this chunk indicates a guardrail was triggered
                             const isGuardrailTriggered = (chunk as any).id === 'guardrail-response';
 
                             if (isGuardrailTriggered) {
                                 guardrailTriggered = true;
+                            }
+
+                            // Accumulate reasoning content from additional_kwargs
+                            if ((chunk as any).additional_kwargs?.reasoning_content) {
+                                reasoningContentAccumulator += (chunk as any).additional_kwargs.reasoning_content;
+                            }
+
+                            if ((chunk as any).additional_kwargs?.thinking_signature) {
+                                reasoningSignatureAccumulator += (chunk as any).additional_kwargs.thinking_signature;
+                            }
+
+                            // Parse thinking blocks from accumulated content (only if model supports reasoning)
+                            // Only parse complete blocks (wait for closing tag)
+                            const { cleanedContent, reasoningContent: parsedReasoning } = processReasoningContent(
+                                rawContentAccumulator,
+                                reasoningContentAccumulator || undefined,
+                                modelSupportsReasoning
+                            );
+                            // Update reasoning content if parsed content is longer (complete block found)
+                            if (parsedReasoning && (!reasoningContentAccumulator || parsedReasoning.length > reasoningContentAccumulator.length)) {
+                                reasoningContentAccumulator = parsedReasoning;
                             }
 
                             // Get tool calls from LangChain streaming chunks
@@ -317,13 +437,18 @@ export const useChatGeneration = ({
 
                             setSession((prev) => {
                                 const lastMessage = prev.history[prev.history.length - 1];
+                                // Use cleaned content (with thinking blocks removed) for display
+                                const newContent = cleanedContent;
+                                const finalContent = (reasoningContentAccumulator && !newContent.trim()) ? '\u00A0' : newContent;
                                 return {
                                     ...prev,
                                     history: [...prev.history.slice(0, -1),
                                         new LisaChatMessage({
                                             ...lastMessage,
-                                            content: lastMessage.content + content,
-                                            toolCalls: currentToolCalls
+                                            content: finalContent,
+                                            toolCalls: currentToolCalls,
+                                            reasoningContent: reasoningContentAccumulator || undefined,
+                                            reasoningSignature: reasoningSignatureAccumulator,
                                         })
                                     ],
                                 };
@@ -332,23 +457,7 @@ export const useChatGeneration = ({
                         }
 
                         // Finalize tool calls with complete JSON parsing
-                        const finalToolCalls = Object.values(toolCallsAccumulator).map((toolCall: any) => {
-                            let parsedArgs = {};
-                            try {
-                                if (toolCall.args && typeof toolCall.args === 'string') {
-                                    parsedArgs = JSON.parse(toolCall.args.trim());
-                                }
-                            } catch {
-                                parsedArgs = {};
-                            }
-
-                            return {
-                                id: toolCall.id,
-                                name: toolCall.name,
-                                args: parsedArgs,
-                                type: toolCall.type
-                            };
-                        }).filter((toolCall) => toolCall.name);
+                        const finalToolCalls = finalizeToolCalls(toolCallsAccumulator);
 
                         // Update with final parsed tool calls
                         if (finalToolCalls.length > 0) {
@@ -369,19 +478,29 @@ export const useChatGeneration = ({
                             });
                         }
 
-                        // Calculate response time and update the final message with usage info
-                        const responseTime = (performance.now() - startTime) / 1000;
+                        // Final parse of thinking blocks from complete response
+                        const finalRawContent = resp.join('');
+                        const { cleanedContent: finalCleanedContent, reasoningContent: finalReasoningContent } = processReasoningContent(
+                            finalRawContent,
+                            reasoningContentAccumulator || undefined,
+                            modelSupportsReasoning
+                        );
+
+                        const responseTime = calculateResponseTime(startTime);
                         setSession((prev) => {
                             const lastMessage = prev.history[prev.history.length - 1];
                             if (lastMessage?.type === MessageTypes.AI) {
                                 let updatedHistory = [...prev.history.slice(0, -1),
                                     new LisaChatMessage({
                                         ...lastMessage,
+                                        content: finalCleanedContent,
                                         usage: {
                                             ...lastMessage.usage,
-                                            responseTime: parseFloat(responseTime.toFixed(2))
+                                            responseTime
                                         },
-                                        guardrailTriggered: guardrailTriggered
+                                        guardrailTriggered: guardrailTriggered,
+                                        reasoningContent: finalReasoningContent,
+                                        reasoningSignature: reasoningSignatureAccumulator,
                                     })
                                 ];
 
@@ -398,7 +517,7 @@ export const useChatGeneration = ({
                             return prev;
                         });
 
-                        await memory.saveContext({ input: params.input }, { output: resp.join('') });
+                        await memory.saveContext({ input: params.input }, { output: finalCleanedContent });
                         setIsStreaming(false);
                     } catch (exception) {
                         setSession((prev) => ({
@@ -409,28 +528,38 @@ export const useChatGeneration = ({
                     }
                 } else {
                     const response = await llmClient.invoke(messages, { tools: modelSupportsTools ? openAiTools : undefined });
-                    const content = response.content as string;
+                    const rawContent = response.content as string;
                     const usage = (response.response_metadata as any)?.tokenUsage;
 
                     // Check if guardrail was triggered
                     const isGuardrailTriggered = (response as any)?.id === 'guardrail-response';
 
-                    // Calculate response time
-                    const responseTime = (performance.now() - startTime) / 1000;
+                    // Get reasoning content from API (preferred) and parse thinking blocks
+                    const apiReasoningContent = (response as any).additional_kwargs?.reasoning_content;
+                    const reasoningSignature = (response as any).additional_kwargs?.thinking_signature;
+                    const { cleanedContent, reasoningContent } = processReasoningContent(
+                        rawContent,
+                        apiReasoningContent,
+                        modelSupportsReasoning
+                    );
 
-                    await memory.saveContext({ input: params.input }, { output: content });
+                    const responseTime = calculateResponseTime(startTime);
 
-                    // Create the AI message
+                    await memory.saveContext({ input: params.input }, { output: cleanedContent });
+
+                    // Create the AI message with cleaned content (thinking blocks removed)
                     const aiMessage = new LisaChatMessage({
                         type: 'ai',
-                        content,
+                        content: cleanedContent,
                         metadata,
                         toolCalls: [...(response.tool_calls ?? [])],
                         usage: {
                             ...usage,
-                            responseTime: parseFloat(responseTime.toFixed(2))
+                            responseTime
                         },
-                        guardrailTriggered: isGuardrailTriggered
+                        guardrailTriggered: isGuardrailTriggered,
+                        reasoningContent,
+                        reasoningSignature
                     });
 
                     setSession((prev) => {

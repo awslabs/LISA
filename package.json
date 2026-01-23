@@ -108,7 +108,7 @@
     "cdk-nag": "^2.37.55",
     "constructs": "^10.4.3",
     "js-yaml": "^4.1.1",
-    "lodash": "^4.17.21",
+    "lodash": "^4.17.23",
     "source-map-support": "^0.5.21",
     "util": "^0.12.5",
     "zod": "^4.1.13"

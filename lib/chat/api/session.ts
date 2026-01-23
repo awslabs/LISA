@@ -28,7 +28,7 @@ import { BaseProps } from '../../schema';
 import { createLambdaRole } from '../../core/utils';
 import { Vpc } from '../../networking/vpc';
 import { LAMBDA_PATH } from '../../util';
-import { Bucket, HttpMethods } from 'aws-cdk-lib/aws-s3';
+import { Bucket, BucketEncryption, HttpMethods } from 'aws-cdk-lib/aws-s3';
 import { RemovalPolicy } from 'aws-cdk-lib';
 
 /**
@@ -133,7 +133,8 @@ export class SessionApi extends Construct {
                 },
             ],
             serverAccessLogsBucket: bucketAccessLogsBucket,
-            serverAccessLogsPrefix: 'logs/generated-images-bucket/'
+            serverAccessLogsPrefix: 'logs/generated-images-bucket/',
+            encryption: BucketEncryption.S3_MANAGED
         });
 
         const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {

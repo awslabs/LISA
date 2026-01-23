@@ -26,6 +26,8 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 # Default maximum request size: 1MB
 DEFAULT_MAX_REQUEST_SIZE = 1024 * 1024
+# Max API Gateway size - use for image uploads / chat sessions
+MAX_LARGE_REQUEST_SIZE = 10 * 1024 * 1024
 
 
 def contains_null_bytes(data: str) -> bool:

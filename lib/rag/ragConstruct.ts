@@ -17,7 +17,7 @@ import { CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { ILayerVersion, LayerVersion } from 'aws-cdk-lib/aws-lambda';
-import { Bucket, HttpMethods } from 'aws-cdk-lib/aws-s3';
+import { Bucket, BucketEncryption, HttpMethods } from 'aws-cdk-lib/aws-s3';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { AttributeType, BillingMode, StreamViewType, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -106,7 +106,8 @@ export class LisaRagConstruct extends Construct {
                 },
             ],
             serverAccessLogsBucket: bucketAccessLogsBucket,
-            serverAccessLogsPrefix: 'logs/rag-bucket/'
+            serverAccessLogsPrefix: 'logs/rag-bucket/',
+            encryption: BucketEncryption.S3_MANAGED
         });
 
         const ragTableName = createCdkId([config.deploymentName, 'RagDocumentTable']);
@@ -369,7 +370,7 @@ export class LisaRagConstruct extends Construct {
             description: 'RAG Vector Store (Repository Config) DynamoDB table name',
         });
 
-        // Create SSM parameter for collections table name so other stacks can optionally reference it
+        // Create SSM parameter for collections table name so other stacks can optionally reference it.
         new StringParameter(scope, createCdkId(['RagCollectionsTableName', 'Parameter']), {
             parameterName: `${config.deploymentPrefix}/ragCollectionsTableName`,
             stringValue: collectionsTable.tableName,

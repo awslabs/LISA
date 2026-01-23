@@ -58,3 +58,4 @@ dev:
       baseImage: openai/vllm:latest
   litellmConfig:
     db_key: sk-012345 #pragma: allowlist secret
+  iamRdsAuth: true

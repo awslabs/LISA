@@ -126,6 +126,15 @@ export class CreateStoreStateMachine extends Construct {
             },
         });
 
+        // Fail state to mark the state machine execution as failed
+        const failExecution = new sfn.Fail(this, 'FailExecution', {
+            cause: 'Vector store deployment failed',
+            error: 'DeploymentFailed',
+        });
+
+        // Chain failure status update to fail state
+        updateFailureStatus.next(failExecution);
+
         // Check if this is a Bedrock KB repository to create default collections
         const skipCollectionCreation = new sfn.Pass(this, 'SkipCollectionCreation');
 

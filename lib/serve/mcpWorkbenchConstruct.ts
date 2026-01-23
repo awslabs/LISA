@@ -31,6 +31,7 @@ import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import { ECSCluster, ECSTasks } from '../api-base/ecsCluster';
 import { Ec2Service } from 'aws-cdk-lib/aws-ecs';
+import { BucketEncryption } from 'aws-cdk-lib/aws-s3';
 
 export type McpWorkbenchConstructProps = {
     restApiId: string;
@@ -188,7 +189,8 @@ export class McpWorkbenchConstruct extends Construct {
             enforceSSL: true,
             serverAccessLogsBucket: bucketAccessLogsBucket,
             serverAccessLogsPrefix: 'logs/mcpworkbench-bucket/',
-            eventBridgeEnabled: true
+            eventBridgeEnabled: true,
+            encryption: BucketEncryption.S3_MANAGED
         });
     }
 

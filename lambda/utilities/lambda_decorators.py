@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 ctx_context: ContextVar[Any] = ContextVar("lamdbacontext")
 
 # Type for Lambda handler functions - can return dict, list, or any JSON-serializable type
-LambdaHandler = Callable[[dict[Any, Any], dict[Any, Any]], Any]
+LambdaHandler = Callable[[dict[Any, Any], Any], Any]
 
 
 @overload
@@ -96,11 +96,11 @@ def api_wrapper(
     def decorator(f: LambdaHandler) -> LambdaHandler:
         @functools.wraps(f)
         @validate_input(max_request_size=max_request_size)
-        def wrapper(event: dict[Any, Any], context: dict[Any, Any]) -> dict[Any, Any]:
+        def wrapper(event: dict[Any, Any], context: Any) -> dict[Any, Any]:
             """Execute Lambda handler with API Gateway integration."""
             ctx_context.set(context)
             code_func_name = f.__name__
-            lambda_func_name = context.get("function_name", "unknown")
+            lambda_func_name = getattr(context, "function_name", "unknown")
 
             # Log request with sanitized event data
             sanitized_event = sanitize_event_for_logging(event)
@@ -146,7 +146,7 @@ def authorization_wrapper(f: LambdaHandler) -> LambdaHandler:
     """
 
     @functools.wraps(f)
-    def wrapper(event: dict[Any, Any], context: dict[Any, Any]) -> Any:
+    def wrapper(event: dict[Any, Any], context: Any) -> Any:
         """Execute Lambda authorizer with context setup."""
         ctx_context.set(context)
         return f(event, context)

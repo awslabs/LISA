@@ -49,7 +49,7 @@ where = ["src"]
 [tool.pytest.ini_options]
 minversion = "7.0"
 addopts = "-ra -q --tb=short"
-testpaths = ["tests"]
+testpaths = ["../../test/mcp-workbench"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]

@@ -17,7 +17,7 @@
 import logging
 import os
 from datetime import timedelta
-from typing import Dict, Optional
+from typing import Any
 
 import boto3
 from models.domain_objects import IngestionJob, IngestionStatus
@@ -27,14 +27,14 @@ from utilities.time import utc_now
 logger = logging.getLogger(__name__)
 
 
-def _get_ingestion_job_table():
+def _get_ingestion_job_table() -> Any:
     """Lazy initialization of DynamoDB table."""
     dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
     return dynamodb.Table(os.environ["LISA_INGESTION_JOB_TABLE_NAME"])
 
 
 class IngestionJobListResponse:
-    def __init__(self, jobs: list[IngestionJob], continuation_token: Optional[str]):
+    def __init__(self, jobs: list[IngestionJob], continuation_token: str | None):
         self.jobs = jobs
         self.continuation_token = continuation_token
 
@@ -52,25 +52,25 @@ class RepositoryError(Exception):
 
 
 class IngestionJobRepository:
-    def __init__(self):
-        self._ddb_client = None
-        self._table_name = None
-        self._batch_client = None
+    def __init__(self) -> None:
+        self._ddb_client: Any = None
+        self._table_name: str | None = None
+        self._batch_client: Any = None
 
     @property
-    def ddb_client(self):
+    def ddb_client(self) -> Any:
         if self._ddb_client is None:
             self._ddb_client = boto3.client("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
         return self._ddb_client
 
     @property
-    def table_name(self):
+    def table_name(self) -> str:
         if self._table_name is None:
             self._table_name = os.environ["LISA_INGESTION_JOB_TABLE_NAME"]
         return self._table_name
 
     @property
-    def batch_client(self):
+    def batch_client(self) -> Any:
         if self._batch_client is None:
             self._batch_client = boto3.client("batch", region_name=os.environ["AWS_REGION"], config=retry_config)
         return self._batch_client
@@ -94,7 +94,7 @@ class IngestionJobRepository:
         items = response.get("Items", [])
         return [IngestionJob(**item) for item in items]
 
-    def find_by_document(self, document_id: str) -> Optional[IngestionJob]:
+    def find_by_document(self, document_id: str) -> IngestionJob | None:
         response = _get_ingestion_job_table().query(
             IndexName="documentId",
             KeyConditionExpression="document_id = :document_id",
@@ -129,8 +129,8 @@ class IngestionJobRepository:
         is_admin: bool,
         time_limit_hours: int = 1,
         page_size: int = 10,
-        last_evaluated_key: Optional[Dict[str, str]] = None,
-    ) -> tuple[list[IngestionJob], Optional[Dict[str, str]]]:
+        last_evaluated_key: dict[str, str] | None = None,
+    ) -> tuple[list[IngestionJob], dict[str, str] | None]:
         """List ingestion jobs filtered by repository, user permissions, and time limit with pagination.
 
         Args:
@@ -164,7 +164,9 @@ class IngestionJobRepository:
             # Add username filter for non-admin users
             if not is_admin:
                 query_params["FilterExpression"] = "username = :username"
-                query_params["ExpressionAttributeValues"].update({":username": username, ":system_username": "system"})
+                expr_attr_values = query_params["ExpressionAttributeValues"]
+                if isinstance(expr_attr_values, dict):
+                    expr_attr_values.update({":username": username, ":system_username": "system"})
 
             # Add pagination token if provided
             if last_evaluated_key:
@@ -188,7 +190,7 @@ class IngestionJobRepository:
 
         return jobs, last_evaluated_key_response
 
-    def get_batch_job_status(self, job_id: str) -> Optional[str]:
+    def get_batch_job_status(self, job_id: str) -> str | None:
         """Get the status of a batch job by job ID.
 
         Args:
@@ -199,10 +201,10 @@ class IngestionJobRepository:
         """
         response = self.batch_client.describe_jobs(jobs=[job_id])
         if response.get("jobs"):
-            return response["jobs"][0].get("status")
+            return response["jobs"][0].get("status")  # type: ignore[no-any-return]
         return None
 
-    def find_batch_job_for_document(self, document_id: str, job_queue: str) -> Optional[Dict]:
+    def find_batch_job_for_document(self, document_id: str, job_queue: str) -> dict | None:
         """Find the batch job associated with a document ingestion.
 
         Args:

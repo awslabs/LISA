@@ -16,12 +16,12 @@
 
 import copy
 import json
-from typing import Any, Dict, Optional
+from typing import Any
 
 from utilities.header_sanitizer import sanitize_headers
 
 
-def sanitize_event_for_logging(event: Dict[str, Any]) -> str:
+def sanitize_event_for_logging(event: dict[str, Any]) -> str:
     """
     Sanitize Lambda event before logging.
 
@@ -131,7 +131,7 @@ def get_principal_id(event: dict) -> str:
     return principal
 
 
-def get_bearer_token(event: dict) -> Optional[str]:
+def get_bearer_token(event: dict) -> str | None:
     """
     Extract Bearer token from Authorization header in Lambda event.
 
@@ -153,7 +153,7 @@ def get_bearer_token(event: dict) -> Optional[str]:
     """
     headers = event.get("headers") or {}
     # Headers may vary in casing
-    auth_header = headers.get("Authorization") or headers.get("authorization")
+    auth_header: str | None = headers.get("Authorization") or headers.get("authorization")
     if not auth_header:
         return None
 
@@ -161,7 +161,8 @@ def get_bearer_token(event: dict) -> Optional[str]:
         return None
 
     # Return the token after "Bearer "
-    return auth_header.split(" ", 1)[1].strip()
+    token: str = auth_header.split(" ", 1)[1].strip()
+    return token
 
 
 def get_id_token(event: dict) -> str:

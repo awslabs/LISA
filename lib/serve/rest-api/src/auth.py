@@ -22,7 +22,7 @@ import threading
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import boto3
 import jwt
@@ -33,8 +33,7 @@ from fastapi import HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from loguru import logger
 from starlette.status import HTTP_401_UNAUTHORIZED
-
-from .utils.decorators import singleton
+from utils.decorators import singleton
 
 TOKEN_EXPIRATION_NAME = "tokenExpiration"  # nosec B105
 TOKEN_TABLE_NAME = "TOKEN_TABLE_NAME"  # nosec B105
@@ -71,12 +70,13 @@ if not jwt.algorithms.has_crypto:
     raise RuntimeError("No crypto support for JWT.")
 
 
-def get_oidc_metadata(cert_path: Optional[str] = None) -> Dict[str, Any]:
+def get_oidc_metadata(cert_path: str | None = None) -> dict[str, Any]:
     """Get OIDC endpoints and metadata from authority."""
     authority = os.environ.get("AUTHORITY")
     resp = requests.get(f"{authority}/.well-known/openid-configuration", verify=cert_path or True, timeout=30)
     resp.raise_for_status()
-    return resp.json()  # type: ignore
+    result: dict[str, Any] = resp.json()
+    return result
 
 
 def get_jwks_client() -> jwt.PyJWKClient:
@@ -96,11 +96,11 @@ def get_jwks_client() -> jwt.PyJWKClient:
 
 def id_token_is_valid(
     id_token: str, client_id: str, authority: str, jwks_client: jwt.PyJWKClient
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Check whether an ID token is valid and return decoded data."""
     try:
         signing_key = jwks_client.get_signing_key_from_jwt(id_token)
-        data: Dict[str, Any] = jwt.decode(
+        data: dict[str, Any] = jwt.decode(
             id_token,
             signing_key.key,
             algorithms=["RS256"],
@@ -133,7 +133,7 @@ def is_user_in_group(jwt_data: dict[str, Any], group: str, jwt_groups_property: 
     return group in current_node
 
 
-def extract_user_groups_from_jwt(jwt_data: Optional[Dict[str, Any]]) -> list[str]:
+def extract_user_groups_from_jwt(jwt_data: dict[str, Any] | None) -> list[str]:
     """
     Extract user groups from JWT data using the JWT_GROUPS_PROP environment variable.
 
@@ -160,7 +160,7 @@ def extract_user_groups_from_jwt(jwt_data: Optional[Dict[str, Any]]) -> list[str
 
     # Traverse the property path to find groups
     props = jwt_groups_property.split(".")
-    current_node = jwt_data
+    current_node: Any = jwt_data
 
     for prop in props:
         if isinstance(current_node, dict) and prop in current_node:
@@ -171,13 +171,14 @@ def extract_user_groups_from_jwt(jwt_data: Optional[Dict[str, Any]]) -> list[str
 
     # current_node should now be the groups list
     if isinstance(current_node, list):
-        return current_node
+        groups: list[str] = current_node
+        return groups
     else:
         logger.warning(f"Expected list of groups but got {type(current_node)}")
         return []
 
 
-def get_authorization_token(headers: Dict[str, str], header_name: str = AuthHeaders.AUTHORIZATION) -> str:
+def get_authorization_token(headers: dict[str, str], header_name: str = AuthHeaders.AUTHORIZATION) -> str:
     """Get Bearer token from Authorization headers if it exists."""
     if header_name in headers:
         return headers.get(header_name, "").removeprefix("Bearer").strip()
@@ -187,19 +188,19 @@ def get_authorization_token(headers: Dict[str, str], header_name: str = AuthHead
 class OIDCHTTPBearer(HTTPBearer):
     """OIDC based bearer token authenticator."""
 
-    def __init__(self, authority: Optional[str] = None, client_id: Optional[str] = None, **kwargs: Dict[str, Any]):
+    def __init__(self, authority: str | None = None, client_id: str | None = None, **kwargs: dict[str, Any]):
         super().__init__(**kwargs)
         self.authority = authority or os.environ.get("AUTHORITY", "")
         self.client_id = client_id or os.environ.get("CLIENT_ID", "")
         self.jwks_client = get_jwks_client()
 
-    async def id_token_is_valid(self, request: Request) -> Optional[Dict[str, Any]]:
+    async def id_token_is_valid(self, request: Request) -> dict[str, Any] | None:
         """Check whether an ID token is valid and return decoded data."""
         http_auth_creds = await super().__call__(request)
         id_token = http_auth_creds.credentials
         try:
             signing_key = self.jwks_client.get_signing_key_from_jwt(id_token)
-            data: Dict[str, Any] = jwt.decode(
+            data: dict[str, Any] = jwt.decode(
                 id_token,
                 signing_key.key,
                 algorithms=["RS256"],
@@ -237,7 +238,7 @@ class ApiTokenAuthorizer:
         ddb_response = self._token_table.get_item(Key={"token": token_hash}, ReturnConsumedCapacity="NONE")
         return ddb_response.get("Item", None)
 
-    async def is_valid_api_token(self, headers: Dict[str, str]) -> Optional[Dict[str, Any]]:
+    async def is_valid_api_token(self, headers: dict[str, str]) -> dict[str, Any] | None:
         """Return token info if API Token from request headers is valid, else None."""
 
         for header_name in AuthHeaders.values():
@@ -268,7 +269,8 @@ class ApiTokenAuthorizer:
                         continue
 
                     # Token is valid - return the token info
-                    return token_info
+                    result: dict[str, Any] = dict(token_info)
+                    return result
 
         return None
 
@@ -277,11 +279,11 @@ class ManagementTokenAuthorizer:
     """Class for checking Management tokens against a SecretsManager secret."""
 
     def __init__(self) -> None:
-        self._cache = TTLCache(maxsize=1, ttl=300)
+        self._cache: TTLCache = TTLCache(maxsize=1, ttl=300)
         self._cache_lock = threading.RLock()
         self._local = threading.local()
 
-    def _get_secrets_client(self):
+    def _get_secrets_client(self) -> Any:
         """Get thread-local secrets manager client."""
         if not hasattr(self._local, "secrets_manager"):
             self._local.secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"])
@@ -293,10 +295,11 @@ class ManagementTokenAuthorizer:
 
         with self._cache_lock:
             if cache_key in self._cache:
-                return self._cache[cache_key]
+                cached_tokens: list[str] = self._cache[cache_key]
+                return cached_tokens
 
         logger.info("Updating management tokens cache")
-        secret_tokens = []
+        secret_tokens: list[str] = []
         secret_id = os.environ.get("MANAGEMENT_KEY_NAME")
         secrets_manager = self._get_secrets_client()
 
@@ -315,7 +318,7 @@ class ManagementTokenAuthorizer:
 
         return secret_tokens
 
-    async def is_valid_api_token(self, headers: Dict[str, str]) -> bool:
+    async def is_valid_api_token(self, headers: dict[str, str]) -> bool:
         """Return if API Token from request headers is valid if found."""
         secret_tokens = await asyncio.to_thread(self.get_management_tokens)
         token = get_authorization_token(headers)
@@ -337,11 +340,11 @@ class Authorizer:
         self.management_token_authorizer = ManagementTokenAuthorizer()
         self.oidc_authorizer = OIDCHTTPBearer(authority=self.authority, client_id=self.client_id)
 
-    async def __call__(self, request: Request) -> Optional[HTTPAuthorizationCredentials]:
+    async def __call__(self, request: Request) -> HTTPAuthorizationCredentials | None:
         jwt_data = await self.authenticate_request(request)
         return jwt_data
 
-    async def authenticate_request(self, request: Request) -> Optional[Dict[str, Any]]:
+    async def authenticate_request(self, request: Request) -> dict[str, Any] | None:
         """Authenticate request and return JWT data if valid, else None. Invalid requests throw an exception"""
 
         logger.trace(f"Authenticating request: {request.method} {request.url.path}")
@@ -356,7 +359,7 @@ class Authorizer:
 
         # Then try management tokens
         logger.trace("Try Management Auth Token...")
-        if await self.management_token_authorizer.is_valid_api_token(request.headers):
+        if await self.management_token_authorizer.is_valid_api_token(dict(request.headers)):
             logger.trace("Valid Management token")
             return None
 
@@ -383,9 +386,7 @@ class Authorizer:
         else:
             logger.warning(log_msg)
 
-    async def can_access(
-        self, request: Request, require_admin: bool, jwt_data: Optional[Dict[str, Any]] = None
-    ) -> bool:
+    async def can_access(self, request: Request, require_admin: bool, jwt_data: dict[str, Any] | None = None) -> bool:
         """Return whether the user is authorized to access the endpoint."""
         endpoint = f"{request.method} {request.url.path}"
 
@@ -439,7 +440,7 @@ class Authorizer:
         self._log_access_attempt(request, auth_method, user_id, endpoint, has_access, reason)
         return has_access
 
-    def _set_token_context(self, request: Request, token_info: Dict[str, Any]) -> None:
+    def _set_token_context(self, request: Request, token_info: dict[str, Any]) -> None:
         """Store token info in request state for later access."""
         request.state.api_token_info = token_info
         request.state.username = token_info.get("username", "api-token")

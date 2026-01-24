@@ -29,7 +29,7 @@ import json
 import os
 import sys
 import time
-from typing import Any, Dict
+from typing import Any
 
 import boto3
 
@@ -98,14 +98,14 @@ def create_api_token(deployment_name: str, api_key: str) -> str:
         raise
 
 
-def setup_authentication(deployment_name: str, deployment_stage: str) -> Dict[str, str]:
+def setup_authentication(deployment_name: str, deployment_stage: str) -> dict[str, str]:
     """Set up authentication for LISA API calls.
 
     Args:
         deployment_name: The LISA deployment name
 
     Returns:
-        Dict[str, str]: Authentication headers
+        dict[str, str]: Authentication headers
     """
     print(f"🔑 Setting up authentication for deployment: {deployment_name}")
 
@@ -207,7 +207,7 @@ def create_bedrock_model(
     model_type: str = "textgen",
     features: any = None,
     skip_create: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a Bedrock model configuration."""
 
     # Skip creation if flag is set
@@ -263,7 +263,7 @@ def create_self_hosted_embedded_model(
     model_name: str,
     base_image: str = "ghcr.io/huggingface/text-embeddings-inference:latest",
     skip_create: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a self-hosted embedded model configuration."""
 
     # Skip creation if flag is set
@@ -354,7 +354,7 @@ def create_self_hosted_model(
     model_name: str,
     base_image: str = "public.ecr.aws/deep-learning-containers/vllm:0.13-gpu-py312",
     skip_create: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a self-hosted model configuration."""
 
     # Skip creation if flag is set
@@ -448,7 +448,7 @@ def create_self_hosted_model(
 
 def create_pgvector_repository(
     lisa_client: LisaApi, embedding_model_id: str = None, skip_create: bool = False
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a PGVector repository."""
     repository_id = "pgv-rag"
 
@@ -501,7 +501,7 @@ def create_pgvector_repository(
 
 def create_opensearch_repository(
     lisa_client: LisaApi, embedding_model_id: str = None, skip_create: bool = False
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create an OpenSearch repository."""
     repository_id = "os-rag"
 
@@ -567,7 +567,7 @@ def create_bedrock_kb_repository(
     s3_bucket: str,
     embedding_model_id: str = None,
     skip_create: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a Bedrock Knowledge Base repository using LISA SDK.
 
     Args:
@@ -580,7 +580,7 @@ def create_bedrock_kb_repository(
         skip_create: Skip creation if True
 
     Returns:
-        Dict containing repositoryId
+        dict containing repositoryId
     """
     repository_id = "bedrock-kb-rag"
 
@@ -636,7 +636,7 @@ def create_bedrock_knowledge_base(
     s3_bucket_name: str = BEDROCK_KB_S3_BUCKET,
     embedding_model_arn: str = None,
     skip_create: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a Bedrock Knowledge Base with S3 data source.
 
     Args:
@@ -648,7 +648,7 @@ def create_bedrock_knowledge_base(
         skip_create: Skip creation if True
 
     Returns:
-        Dict containing knowledgeBaseId, dataSourceId, and s3Bucket
+        dict containing knowledgeBaseId, dataSourceId, and s3Bucket
     """
     if skip_create:
         print(f"\n⏭️  Skipping creation of Bedrock Knowledge Base '{kb_name}' (skip_create=True)")
@@ -1046,7 +1046,7 @@ def create_bedrock_knowledge_base(
         raise
 
 
-def cleanup_resources(lisa_client: LisaApi, created_resources: Dict[str, list]):
+def cleanup_resources(lisa_client: LisaApi, created_resources: dict[str, list]):
     """Clean up created resources."""
     print("\n🧹 Cleaning up created resources...")
 

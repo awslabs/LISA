@@ -13,14 +13,14 @@
 #   limitations under the License.
 
 """Model registry."""
-from typing import Any, Dict
+from typing import Any
 
 
 class ModelRegistry:
     """Registry for model providers."""
 
     def __init__(self) -> None:
-        self.registry: Dict[str, Any] = {}
+        self.registry: dict[str, Any] = {}
 
     def register(self, *, provider: str, adapter: Any, validator: Any) -> None:
         """Register the adapter and validator for the model provider.
@@ -38,7 +38,7 @@ class ModelRegistry:
         """
         self.registry[provider] = {"adapter": adapter, "validator": validator}
 
-    def get_assets(self, provider: str) -> Dict[str, Any]:
+    def get_assets(self, provider: str) -> dict[str, Any]:
         """Get model registry entry."""
         try:
             model_assets = self.registry[provider]

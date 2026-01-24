@@ -19,7 +19,7 @@ import json
 import logging
 import os
 from decimal import Decimal
-from typing import Any, Dict, Optional
+from typing import Any
 
 import boto3
 from botocore.exceptions import ClientError
@@ -64,7 +64,7 @@ def _get_kms_key_arn() -> str:
     return key_arn
 
 
-def _generate_data_key(key_arn: str, encryption_context: Optional[Dict[str, str]] = None) -> tuple[bytes, bytes]:
+def _generate_data_key(key_arn: str, encryption_context: dict[str, str] | None = None) -> tuple[bytes, bytes]:
     """
     Generate a data key from KMS.
 
@@ -85,7 +85,7 @@ def _generate_data_key(key_arn: str, encryption_context: Optional[Dict[str, str]
         raise SessionEncryptionError(f"Failed to generate data key: {e}")
 
 
-def _decrypt_data_key(encrypted_data_key: bytes, encryption_context: Optional[Dict[str, str]] = None) -> bytes:
+def _decrypt_data_key(encrypted_data_key: bytes, encryption_context: dict[str, str] | None = None) -> bytes:
     """
     Decrypt a data key using KMS.
 
@@ -104,7 +104,7 @@ def _decrypt_data_key(encrypted_data_key: bytes, encryption_context: Optional[Di
         raise SessionEncryptionError(f"Failed to decrypt data key: {e}")
 
 
-def _create_encryption_context(user_id: str, session_id: str) -> Dict[str, str]:
+def _create_encryption_context(user_id: str, session_id: str) -> dict[str, str]:
     """
     Create encryption context for KMS operations.
 
@@ -226,7 +226,7 @@ def is_encrypted_data(data: str) -> bool:
         return False
 
 
-def migrate_session_to_encrypted(session_data: Dict[str, Any], user_id: str, session_id: str) -> Dict[str, Any]:
+def migrate_session_to_encrypted(session_data: dict[str, Any], user_id: str, session_id: str) -> dict[str, Any]:
     """
     Migrate a session from unencrypted to encrypted format.
 
@@ -264,7 +264,7 @@ def migrate_session_to_encrypted(session_data: Dict[str, Any], user_id: str, ses
         raise SessionEncryptionError(f"Failed to migrate session to encrypted: {e}")
 
 
-def decrypt_session_fields(session_data: Dict[str, Any], user_id: str, session_id: str) -> Dict[str, Any]:
+def decrypt_session_fields(session_data: dict[str, Any], user_id: str, session_id: str) -> dict[str, Any]:
     """
     Decrypt encrypted fields in session data.
 

@@ -13,7 +13,7 @@
 #   limitations under the License.
 
 """Inference handler."""
-from typing import Any, Dict
+from typing import Any
 
 import torch
 from InstructorEmbedding import INSTRUCTOR
@@ -36,7 +36,7 @@ def model_fn(model_dir: str) -> INSTRUCTOR:
     return model
 
 
-def predict_fn(data: Dict[str, Any], model: INSTRUCTOR) -> Any:
+def predict_fn(data: dict[str, Any], model: INSTRUCTOR) -> Any:
     """Get embeddings."""
     instruction = data["instruction"]
     text = data["text"]

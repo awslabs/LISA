@@ -16,7 +16,6 @@
 
 import logging
 import threading
-from typing import Dict, List, Optional
 
 from .base_tool import ToolInfo
 
@@ -26,9 +25,9 @@ logger = logging.getLogger(__name__)
 class ToolRegistry:
     """Thread-safe registry for managing discovered tools."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the tool registry."""
-        self._tools: Dict[str, ToolInfo] = {}
+        self._tools: dict[str, ToolInfo] = {}
         self._lock = threading.RLock()
 
     def register_tool(self, tool_info: ToolInfo) -> None:
@@ -42,7 +41,7 @@ class ToolRegistry:
             self._tools[tool_info.name] = tool_info
             logger.info(f"Registered tool: {tool_info.name}")
 
-    def register_tools(self, tools: List[ToolInfo]) -> None:
+    def register_tools(self, tools: list[ToolInfo]) -> None:
         """
         Register multiple tools in the registry.
 
@@ -71,7 +70,7 @@ class ToolRegistry:
                 return True
             return False
 
-    def get_tool(self, tool_name: str) -> Optional[ToolInfo]:
+    def get_tool(self, tool_name: str) -> ToolInfo | None:
         """
         Get a tool by name.
 
@@ -84,7 +83,7 @@ class ToolRegistry:
         with self._lock:
             return self._tools.get(tool_name)
 
-    def list_tools(self) -> List[ToolInfo]:
+    def list_tools(self) -> list[ToolInfo]:
         """
         Get a list of all registered tools.
 
@@ -94,7 +93,7 @@ class ToolRegistry:
         with self._lock:
             return list(self._tools.values())
 
-    def list_tool_names(self) -> List[str]:
+    def list_tool_names(self) -> list[str]:
         """
         Get a list of all registered tool names.
 
@@ -110,7 +109,7 @@ class ToolRegistry:
             self._tools.clear()
             logger.info("Cleared all tools from registry")
 
-    def update_registry(self, new_tools: List[ToolInfo]) -> None:
+    def update_registry(self, new_tools: list[ToolInfo]) -> None:
         """
         Update the registry with a new set of tools.
         This replaces all existing tools.

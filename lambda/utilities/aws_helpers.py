@@ -18,7 +18,7 @@ import logging
 import os
 import tempfile
 from functools import cache
-from typing import Any, cast, Union
+from typing import Any, cast
 
 import boto3
 from botocore.config import Config
@@ -41,7 +41,7 @@ _cert_file = None
 
 
 @cache
-def get_cert_path(iam_client: Any) -> Union[str, bool]:
+def get_cert_path(iam_client: Any) -> str | bool:
     """
     Get certificate path for SSL validation against LISA Serve endpoint.
 

@@ -27,7 +27,7 @@ import logging
 import os
 import sys
 import time
-from typing import Callable, Dict, Optional
+from collections.abc import Callable
 
 import boto3
 
@@ -39,9 +39,7 @@ from lisapy.api import LisaApi
 logger = logging.getLogger(__name__)
 
 
-def get_management_key(
-    deployment_name: str, region: Optional[str] = None, deployment_stage: Optional[str] = None
-) -> str:
+def get_management_key(deployment_name: str, region: str | None = None, deployment_stage: str | None = None) -> str:
     """Retrieve management key from AWS Secrets Manager.
 
     Args:
@@ -88,7 +86,7 @@ def get_management_key(
     raise Exception(f"Could not find management key. Tried: {', '.join(secret_patterns)}")
 
 
-def create_api_token(deployment_name: str, api_key: str, region: Optional[str] = None, ttl_seconds: int = 3600) -> str:
+def create_api_token(deployment_name: str, api_key: str, region: str | None = None, ttl_seconds: int = 3600) -> str:
     """Create an API token in DynamoDB with expiration.
 
     Args:
@@ -125,8 +123,8 @@ def create_api_token(deployment_name: str, api_key: str, region: Optional[str] =
 
 
 def setup_authentication(
-    deployment_name: str, region: Optional[str] = None, deployment_stage: Optional[str] = None
-) -> Dict[str, str]:
+    deployment_name: str, region: str | None = None, deployment_stage: str | None = None
+) -> dict[str, str]:
     """Set up authentication for LISA API calls.
 
     Args:
@@ -161,10 +159,10 @@ def setup_authentication(
 def create_lisa_client(
     api_url: str,
     deployment_name: str,
-    region: Optional[str] = None,
+    region: str | None = None,
     verify_ssl: bool = True,
     timeout: int = 10,
-    deployment_stage: Optional[str] = None,
+    deployment_stage: str | None = None,
 ) -> LisaApi:
     """Create and configure a LISA API client.
 
@@ -235,7 +233,7 @@ def wait_for_resource_ready(
     return False
 
 
-def get_dynamodb_table(table_name: str, region: Optional[str] = None):
+def get_dynamodb_table(table_name: str, region: str | None = None):
     """Get a DynamoDB table resource.
 
     Args:
@@ -257,7 +255,7 @@ def get_dynamodb_table(table_name: str, region: Optional[str] = None):
         raise
 
 
-def get_s3_client(region: Optional[str] = None):
+def get_s3_client(region: str | None = None):
     """Get an S3 client.
 
     Args:
@@ -279,8 +277,8 @@ def get_s3_client(region: Optional[str] = None):
 def verify_document_in_dynamodb(
     document_id: str,
     table_name: str,
-    expected_collection_id: Optional[str] = None,
-    region: Optional[str] = None,
+    expected_collection_id: str | None = None,
+    region: str | None = None,
 ) -> bool:
     """Verify a document exists in DynamoDB.
 
@@ -327,7 +325,7 @@ def verify_document_in_dynamodb(
         raise
 
 
-def verify_document_in_s3(s3_uri: str, region: Optional[str] = None) -> bool:
+def verify_document_in_s3(s3_uri: str, region: str | None = None) -> bool:
     """Verify a document exists in S3.
 
     Args:
@@ -360,7 +358,7 @@ def verify_document_in_s3(s3_uri: str, region: Optional[str] = None) -> bool:
         raise
 
 
-def verify_document_not_in_s3(s3_uri: str, region: Optional[str] = None) -> bool:
+def verify_document_not_in_s3(s3_uri: str, region: str | None = None) -> bool:
     """Verify a document does NOT exist in S3.
 
     Args:
@@ -393,7 +391,7 @@ def verify_document_not_in_s3(s3_uri: str, region: Optional[str] = None) -> bool
         raise
 
 
-def get_table_names_from_env(deployment_name: str) -> Dict[str, str]:
+def get_table_names_from_env(deployment_name: str) -> dict[str, str]:
     """Get DynamoDB table names from environment or construct from deployment name.
 
     Args:

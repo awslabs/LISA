@@ -3,7 +3,9 @@
 	createTypeScriptEnvironment installTypeScriptRequirements \
 	deploy destroy \
 	clean cleanTypeScript cleanPython cleanCfn cleanMisc \
-	help dockerCheck dockerLogin listStacks modelCheck buildNpmModules
+	help dockerCheck dockerLogin listStacks modelCheck buildNpmModules \
+	test test-coverage test-lambda test-mcp-workbench test-sdk test-rest-api test-sdk-integ test-integ test-rag-integ test-metadata-integ \
+	lock-poetry validate-deps
 
 #################################################################################
 # GLOBALS                                                                       #
@@ -138,6 +140,7 @@ installPythonRequirements:
 	CC=/usr/bin/gcc10-gcc CXX=/usr/bin/gcc10-g++ pip3 install pip --upgrade
 	CC=/usr/bin/gcc10-gcc CXX=/usr/bin/gcc10-g++ pip3 install --prefer-binary -r requirements-dev.txt
 	CC=/usr/bin/gcc10-gcc CXX=/usr/bin/gcc10-g++ pip3 install -e lisa-sdk
+	CC=/usr/bin/gcc10-gcc CXX=/usr/bin/gcc10-g++ pip3 install -e lib/serve/mcp-workbench
 
 ## Set up TypeScript interpreter environment
 createTypeScriptEnvironment:
@@ -366,14 +369,104 @@ help:
 	}' \
 	| more $(shell test $(shell uname) = Darwin && echo '--no-init --raw-control-chars')
 
-## Run Python tests with coverage report
+## Run all Python unit tests (non-integration) with coverage report
 test-coverage:
-	pytest --verbose \
+	@echo "Running lambda tests with coverage..."
+	@pytest test/lambda --verbose \
           --cov lambda \
           --cov-report term-missing \
           --cov-report html:build/coverage \
           --cov-report xml:build/coverage/coverage.xml \
           --cov-fail-under 83
+	@echo ""
+	@echo "Running MCP Workbench tests with coverage..."
+	@pytest test/mcp-workbench --verbose \
+          --cov lib/serve/mcp-workbench/src \
+          --cov-report term-missing \
+          --cov-report html:build/coverage-mcp \
+          --cov-report xml:build/coverage-mcp/coverage.xml \
+          --cov-append \
+          --cov-fail-under 83
+	@echo ""
+	@echo "Running SDK tests with coverage..."
+	@pytest test/sdk --verbose \
+          --cov lisa-sdk/lisapy \
+          --cov-report term-missing \
+          --cov-report html:build/coverage-sdk \
+          --cov-report xml:build/coverage-sdk/coverage.xml \
+          --cov-append \
+          --cov-fail-under 80
+	@echo ""
+	@echo "Running REST API tests with coverage..."
+	@pytest test/rest-api --verbose \
+          --cov lib/serve/rest-api/src \
+          --cov-config lib/serve/rest-api/.coveragerc \
+          --cov-report term-missing \
+          --cov-report html:build/coverage-rest-api \
+          --cov-report xml:build/coverage-rest-api/coverage.xml \
+          --cov-append \
+          --cov-fail-under 80
+
+
+## Run all Python unit tests (non-integration) without coverage
+test:
+	@echo "Running lambda tests..."
+	@pytest test/lambda --verbose
+	@echo ""
+	@echo "Running MCP Workbench tests..."
+	@pytest test/mcp-workbench --verbose
+	@echo ""
+	@echo "Running SDK tests..."
+	@pytest test/sdk --verbose
+	@echo ""
+	@echo "Running REST API tests..."
+	@pytest test/rest-api --verbose
+
+## Run lambda tests only
+test-lambda:
+	pytest test/lambda --verbose
+
+## Run MCP Workbench tests only
+test-mcp-workbench:
+	pytest test/mcp-workbench --verbose
+
+## Run LISA SDK unit tests only
+test-sdk:
+	pytest test/sdk --verbose
+
+## Run REST API unit tests only
+test-rest-api:
+	pytest test/rest-api --verbose
+
+## Run LISA SDK integration tests (requires deployed LISA environment)
+test-sdk-integ:
+	@echo "Running LISA SDK integration tests..."
+	@echo "Note: These tests require a deployed LISA environment with:"
+	@echo "  - --api or --url argument for API endpoint"
+	@echo "  - --region, --deployment, --profile arguments"
+	@echo "  - AWS credentials configured"
+	@echo ""
+	@echo "Example: pytest test/integration/sdk --api https://your-api.com --region us-west-2"
+	@echo ""
+	pytest test/integration/sdk --verbose
+
+## Run integration tests (Python-based)
+test-integ:
+	pytest test/python --verbose
+
+## Run RAG integration tests (requires deployed LISA environment)
+test-rag-integ:
+	@echo "Running RAG integration tests..."
+	@echo "Note: These tests require a deployed LISA environment with:"
+	@echo "  - LISA_API_URL environment variable set"
+	@echo "  - LISA_DEPLOYMENT_NAME environment variable set"
+	@echo "  - AWS credentials configured"
+	@echo ""
+	pytest test/integration --verbose
+
+## Run repository metadata preservation integration tests
+test-metadata-integ:
+	pytest test/integration/test_repository_update_metadata_preservation.py --verbose
 
 ## Regenerate all Poetry lock files
 lock-poetry:

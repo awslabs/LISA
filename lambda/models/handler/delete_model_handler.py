@@ -35,7 +35,7 @@ ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"])
 class DeleteModelHandler(BaseApiHandler):
     """Handler class for DeleteModel requests."""
 
-    def __call__(self, model_id: str) -> DeleteModelResponse:  # type: ignore
+    def __call__(self, model_id: str) -> DeleteModelResponse:
         """Kick off state machine to delete infrastructure and remove model reference from LiteLLM."""
         table_item = self._model_table.get_item(Key={"model_id": model_id}).get("Item", None)
         if not table_item:
@@ -108,7 +108,7 @@ class DeleteModelHandler(BaseApiHandler):
             response = ssm_client.get_parameter(Name=parameter_name)
             table_name = response["Parameter"]["Value"]
             logger.debug(f"Retrieved RAG vector store table name from SSM: {table_name}")
-            return table_name
+            return table_name  # type: ignore[no-any-return]
         except ClientError as e:
             if e.response["Error"]["Code"] == "ParameterNotFound":
                 logger.debug(f"SSM parameter {parameter_name} not found - RAG not deployed")
@@ -131,7 +131,7 @@ class DeleteModelHandler(BaseApiHandler):
             response = ssm_client.get_parameter(Name=parameter_name)
             table_name = response["Parameter"]["Value"]
             logger.debug(f"Retrieved RAG collections table name from SSM: {table_name}")
-            return table_name
+            return table_name  # type: ignore[no-any-return]
         except ClientError as e:
             if e.response["Error"]["Code"] == "ParameterNotFound":
                 logger.debug(f"SSM parameter {parameter_name} not found - RAG not deployed")

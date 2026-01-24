@@ -14,11 +14,11 @@
 
 import logging
 import os
-from typing import List
+from typing import Any
 
 import boto3
 import requests
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 from utilities.auth import get_management_key
 from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint, retry_config
 from utilities.validation import validate_model_name, ValidationError
@@ -36,6 +36,8 @@ class RagEmbeddings(BaseModel):
     Handles document embeddings through LiteLLM using management credentials.
     """
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     model_name: str
     token: str
     lisa_api_endpoint: str
@@ -48,7 +50,7 @@ class RagEmbeddings(BaseModel):
         validate_model_name(v)
         return v
 
-    def __init__(self, model_name: str, id_token: str | None = None, **data) -> None:
+    def __init__(self, model_name: str, id_token: str | None = None, **data: Any) -> None:
         # Prepare initialization data
         init_data = {"model_name": model_name, **data}
         try:
@@ -69,10 +71,7 @@ class RagEmbeddings(BaseModel):
             logger.error("Failed to initialize pipeline embeddings", exc_info=True)
             raise
 
-    class Config:
-        arbitrary_types_allowed = True
-
-    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """
         Generate embeddings for a list of documents.
 
@@ -149,7 +148,7 @@ class RagEmbeddings(BaseModel):
             logger.error(f"Failed to get embeddings: {str(e)}", exc_info=True)
             raise
 
-    def embed_query(self, text: str) -> List[float]:
+    def embed_query(self, text: str) -> list[float]:
         if not text or not isinstance(text, str):
             raise ValidationError("Invalid query text")
 

@@ -18,7 +18,7 @@ import logging
 import os
 import time
 from decimal import Decimal
-from typing import Any, Dict
+from typing import Any
 
 import boto3
 from botocore.exceptions import ClientError
@@ -33,15 +33,15 @@ table = dynamodb.Table(os.environ["CONFIG_TABLE_NAME"])
 
 
 @api_wrapper
-def get_configuration(event: dict, context: dict) -> Dict[str, Any]:
+def get_configuration(event: dict, context: dict) -> dict[str, Any]:
     """List configuration entries by configScope from DynamoDB."""
     config_scope = event["queryStringParameters"]["configScope"]
 
-    return _get_configurations(config_scope)
+    return _get_configurations(config_scope)  # type: ignore[return-value]
 
 
 def _get_configurations(config_scope: str) -> list[dict[str, Any]]:
-    response = {}
+    response: dict[str, Any] = {}
     try:
         response = table.query(
             KeyConditionExpression="#s = :configScope",
@@ -55,11 +55,12 @@ def _get_configurations(config_scope: str) -> list[dict[str, Any]]:
         else:
             logger.exception("Error fetching session")
 
-    return response.get("Items", [])  # type: ignore [no-any-return]
+    items = response.get("Items", [])
+    return items if isinstance(items, list) else []
 
 
 @api_wrapper
-def update_configuration(event: dict, context: dict) -> None:
+def update_configuration(event: dict, context: dict) -> dict[str, str]:
     """Update configuration in DynamoDB."""
     # from https://stackoverflow.com/a/71446846
     body = json.loads(event["body"], parse_float=Decimal)
@@ -74,9 +75,12 @@ def update_configuration(event: dict, context: dict) -> None:
         table.put_item(Item=body)
     except ClientError:
         logger.exception("Error updating session in DynamoDB")
+        raise
+
+    return {"status": "ok"}
 
 
-def check_show_mcp_workbench(body, old_configuration):
+def check_show_mcp_workbench(body: dict[str, Any], old_configuration: dict[str, Any]) -> None:
     old_show_mcp_value = get_property_path(old_configuration, "configuration.enabledComponents.showMcpWorkbench")
     new_show_mcp_value = get_property_path(body, "configuration.enabledComponents.showMcpWorkbench")
 

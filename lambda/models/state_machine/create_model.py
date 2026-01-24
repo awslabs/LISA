@@ -19,7 +19,7 @@ import logging
 import os
 from copy import deepcopy
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any
 from zoneinfo import ZoneInfo
 
 import boto3
@@ -81,7 +81,7 @@ def get_container_path(inference_container_type: InferenceContainer) -> str:
     return path_mapping[inference_container_type]
 
 
-def adjust_initial_capacity_for_schedule(prepared_event: Dict[str, Any]) -> None:
+def adjust_initial_capacity_for_schedule(prepared_event: dict[str, Any]) -> None:
     """Adjust Auto Scaling Group initial capacity based on schedule configuration"""
     try:
         # Check if scheduling is configured
@@ -172,22 +172,20 @@ def adjust_initial_capacity_for_schedule(prepared_event: Dict[str, Any]) -> None
         logger.info("Using original capacity settings due to scheduling error")
 
 
-def handle_set_model_to_creating(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_set_model_to_creating(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Set DDB entry to CREATING status."""
     logger.info(f"Setting model to CREATING status: {event.get('modelId')}")
     output_dict = deepcopy(event)
     request = CreateModelRequest.model_validate(event)
 
     is_lisa_managed = all(
-        (
-            bool(request_param)
-            for request_param in (
-                request.autoScalingConfig,
-                request.containerConfig,
-                request.inferenceContainer,
-                request.instanceType,
-                request.loadBalancerConfig,
-            )
+        bool(request_param)
+        for request_param in (
+            request.autoScalingConfig,
+            request.containerConfig,
+            request.inferenceContainer,
+            request.instanceType,
+            request.loadBalancerConfig,
         )
     )
 
@@ -213,7 +211,7 @@ def handle_set_model_to_creating(event: Dict[str, Any], context: Any) -> Dict[st
     return output_dict
 
 
-def handle_start_copy_docker_image(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_start_copy_docker_image(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Start process for copying Docker image into local AWS account."""
     logger.info(f"Starting Docker image copy for model: {event.get('modelId')}")
     output_dict = deepcopy(event)
@@ -282,7 +280,7 @@ def handle_start_copy_docker_image(event: Dict[str, Any], context: Any) -> Dict[
     return output_dict
 
 
-def handle_poll_docker_image_available(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_poll_docker_image_available(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Check that Docker image is available in account or not."""
     output_dict = deepcopy(event)
 
@@ -320,7 +318,7 @@ def handle_poll_docker_image_available(event: Dict[str, Any], context: Any) -> D
     return output_dict
 
 
-def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_start_create_stack(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Start model infrastructure creation."""
     output_dict = deepcopy(event)
     request = CreateModelRequest.model_validate(event)
@@ -448,7 +446,7 @@ def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, 
     return output_dict
 
 
-def handle_poll_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_poll_create_stack(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Check that model infrastructure creation has completed or not."""
     output_dict = deepcopy(event)
     stack = cfnClient.describe_stacks(StackName=event["stack_name"])["Stacks"][0]
@@ -486,7 +484,7 @@ def handle_poll_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, A
         )
 
 
-def handle_add_model_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_add_model_to_litellm(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Add model to LiteLLM once it is created."""
     output_dict = deepcopy(event)
     is_lisa_managed = event["create_infra"]
@@ -562,7 +560,7 @@ def handle_add_model_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str
     return output_dict
 
 
-def handle_add_guardrails_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_add_guardrails_to_litellm(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Add guardrails to LiteLLM and store them in DynamoDB."""
     logger.info(f"Adding guardrails to LiteLLM for model: {event.get('modelId')}")
     output_dict = deepcopy(event)
@@ -664,7 +662,7 @@ def handle_add_guardrails_to_litellm(event: Dict[str, Any], context: Any) -> Dic
     return output_dict
 
 
-def handle_failure(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_failure(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Handle failures from state machine.
 

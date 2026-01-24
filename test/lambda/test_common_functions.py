@@ -290,6 +290,40 @@ def test_api_wrapper_exception():
     assert "An unexpected error occurred" in response["body"]
 
 
+def test_api_wrapper_with_custom_max_request_size():
+    """Test api_wrapper with custom max_request_size parameter."""
+
+    @api_wrapper(max_request_size=10 * 1024 * 1024)  # 10MB
+    def test_function(event, context):
+        return {"result": "success"}
+
+    mock_context = SimpleNamespace(function_name="test-func", aws_request_id="req-123")
+    # Create a large body that exceeds default 1MB but is under 10MB
+    large_body = "x" * (2 * 1024 * 1024)  # 2MB
+    event = {"headers": {}, "httpMethod": "POST", "path": "/test", "body": large_body}
+
+    response = test_function(event, mock_context)
+
+    assert response["statusCode"] == 200
+    assert "success" in response["body"]
+
+
+def test_api_wrapper_with_parentheses_no_args():
+    """Test api_wrapper() with parentheses but no arguments."""
+
+    @api_wrapper()
+    def test_function(event, context):
+        return {"result": "success"}
+
+    mock_context = SimpleNamespace(function_name="test-func", aws_request_id="req-123")
+    event = {"headers": {}, "httpMethod": "GET", "path": "/test"}
+
+    response = test_function(event, mock_context)
+
+    assert response["statusCode"] == 200
+    assert "success" in response["body"]
+
+
 # =====================
 # Test authorization_wrapper
 # =====================

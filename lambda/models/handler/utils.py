@@ -15,7 +15,7 @@
 """Common utility functions across all API handlers."""
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from utilities.auth import user_has_group_access
 from utilities.validation import ValidationError
@@ -26,7 +26,7 @@ from ..exception import InvalidStateTransitionError, ModelNotFoundError
 logger = logging.getLogger(__name__)
 
 
-def to_lisa_model(model_dict: Dict[str, Any]) -> LISAModel:
+def to_lisa_model(model_dict: dict[str, Any]) -> LISAModel:
     """Convert DDB model entry dictionary to a LISAModel object."""
     model_config = model_dict.get("model_config", {})
     model_config["status"] = model_dict.get("model_status", "Unknown")
@@ -37,8 +37,8 @@ def to_lisa_model(model_dict: Dict[str, Any]) -> LISAModel:
 
 
 def get_model_and_validate_access(
-    model_table, model_id: str, user_groups: Optional[List[str]] = None, is_admin: bool = False
-) -> Dict[str, Any]:
+    model_table: Any, model_id: str, user_groups: list[str] | None = None, is_admin: bool = False
+) -> dict[str, Any]:
     """
     Get model from DynamoDB and validate user access
 
@@ -70,16 +70,16 @@ def get_model_and_validate_access(
         if not user_has_group_access(user_groups, allowed_groups):
             raise ValidationError(f"Access denied to access model {model_id}")
 
-    return model_item
+    return model_item  # type: ignore[no-any-return]
 
 
 def get_model_and_validate_status(
-    model_table,
+    model_table: Any,
     model_id: str,
-    allowed_statuses: List[str] = None,
-    user_groups: Optional[List[str]] = None,
+    allowed_statuses: list[str] | None = None,
+    user_groups: list[str] | None = None,
     is_admin: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get model from DynamoDB, validate user access, and check model status
 
@@ -115,12 +115,12 @@ def get_model_and_validate_status(
     return model_item
 
 
-def create_guardrail_config(item: Dict[str, Any]) -> GuardrailConfig:
+def create_guardrail_config(item: dict[str, Any]) -> GuardrailConfig:
     """Create a GuardrailConfig object from a DynamoDB guardrail item."""
     return GuardrailConfig(**item)
 
 
-def attach_guardrails_to_model(model: LISAModel, guardrail_items: List[Dict[str, Any]]) -> None:
+def attach_guardrails_to_model(model: LISAModel, guardrail_items: list[dict[str, Any]]) -> None:
     """Build guardrails config from DDB items and attach to model."""
     if not guardrail_items:
         return
@@ -130,17 +130,17 @@ def attach_guardrails_to_model(model: LISAModel, guardrail_items: List[Dict[str,
     }
 
 
-def fetch_guardrails_for_model(guardrails_table, model_id: str) -> List[Dict[str, Any]]:
+def fetch_guardrails_for_model(guardrails_table: Any, model_id: str) -> list[dict[str, Any]]:
     """Query guardrails table for a specific model ID."""
     guardrails_response = guardrails_table.query(
         IndexName="ModelIdIndex",
         KeyConditionExpression="modelId = :modelId",
         ExpressionAttributeValues={":modelId": model_id},
     )
-    return guardrails_response.get("Items", [])
+    return guardrails_response.get("Items", [])  # type: ignore[no-any-return]
 
 
-def fetch_all_guardrails(guardrails_table) -> List[Dict[str, Any]]:
+def fetch_all_guardrails(guardrails_table: Any) -> list[dict[str, Any]]:
     """Scan all guardrails from the table with pagination."""
     all_guardrails = []
     guardrails_response = guardrails_table.scan()
@@ -155,9 +155,9 @@ def fetch_all_guardrails(guardrails_table) -> List[Dict[str, Any]]:
     return all_guardrails
 
 
-def group_guardrails_by_model(guardrail_items: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+def group_guardrails_by_model(guardrail_items: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     """Group guardrail items by modelId."""
-    guardrails_by_model: Dict[str, List[Dict[str, Any]]] = {}
+    guardrails_by_model: dict[str, list[dict[str, Any]]] = {}
     for item in guardrail_items:
         model_id = item["modelId"]
         if model_id not in guardrails_by_model:

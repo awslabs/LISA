@@ -16,7 +16,8 @@
 
 import logging
 import time
-from typing import Any, Generator, Union
+from collections.abc import Generator
+from typing import Any
 
 import boto3
 import pytest
@@ -65,7 +66,7 @@ def headers(api_key: str) -> dict:
 
 
 @pytest.fixture(scope="session")
-def verify(pytestconfig: pytest.Config) -> Union[bool, Any]:
+def verify(pytestconfig: pytest.Config) -> bool | Any:
     """Get the verify argument."""
     if pytestconfig.getoption("verify") == "false":
         return False
@@ -121,10 +122,10 @@ def api_token(pytestconfig: pytest.Config, api_key: str) -> Generator:
 
 
 @pytest.fixture(scope="session")
-def lisa_api(api: str, verify: Union[bool, str], headers: dict) -> LisaApi:
+def lisa_api(api: str, verify: bool | str, headers: dict) -> LisaApi:
     return LisaApi(url=api, verify=verify, headers=headers)
 
 
 @pytest.fixture(scope="session")
-def lisa_llm(url: str, verify: Union[bool, str], headers: dict) -> LisaLlm:
+def lisa_llm(url: str, verify: bool | str, headers: dict) -> LisaLlm:
     return LisaLlm(url=url, verify=verify, headers=headers)

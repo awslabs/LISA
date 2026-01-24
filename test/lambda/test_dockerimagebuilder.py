@@ -77,7 +77,7 @@ def test_handler_success(lambda_context):
 
         # Verify SSM call
         mock_ssm_client.get_parameter.assert_called_once_with(
-            Name="/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
+            Name="/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
         )
 
         # Verify EC2 instance creation

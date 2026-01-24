@@ -31,7 +31,6 @@ import os
 import sys
 import tempfile
 import time
-from typing import Dict
 
 import pytest
 
@@ -141,7 +140,7 @@ class TestRagCollectionsIntegration:
         return os.getenv("TEST_EMBEDDING_MODEL", "titan-embed")
 
     @pytest.fixture(scope="class")
-    def test_collection(self, lisa_client: LisaApi, test_repository_id: str, test_embedding_model: str) -> Dict:
+    def test_collection(self, lisa_client: LisaApi, test_repository_id: str, test_embedding_model: str) -> dict:
         """Create a test collection for integration tests.
 
         Args:
@@ -213,7 +212,7 @@ class TestRagCollectionsIntegration:
         except Exception as e:
             logger.warning(f"Failed to cleanup test document file: {e}")
 
-    def test_01_create_collection(self, lisa_client: LisaApi, test_repository_id: str, test_collection: Dict):
+    def test_01_create_collection(self, lisa_client: LisaApi, test_repository_id: str, test_collection: dict):
         """Test 1: Verify collection was created via fixture.
 
         Verifies:
@@ -241,7 +240,7 @@ class TestRagCollectionsIntegration:
         self,
         lisa_client: LisaApi,
         test_repository_id: str,
-        test_collection: Dict,
+        test_collection: dict,
         test_embedding_model: str,
         test_document_file: str,
     ):
@@ -318,7 +317,7 @@ class TestRagCollectionsIntegration:
         self,
         lisa_client: LisaApi,
         test_repository_id: str,
-        test_collection: Dict,
+        test_collection: dict,
     ):
         """Test 3: Perform similarity search on collection.
 
@@ -376,7 +375,7 @@ class TestRagCollectionsIntegration:
         self,
         lisa_client: LisaApi,
         test_repository_id: str,
-        test_collection: Dict,
+        test_collection: dict,
     ):
         """Test 4: Delete document and verify cleanup.
 
@@ -445,7 +444,7 @@ class TestRagCollectionsIntegration:
     def test_05_get_user_collections(
         self,
         lisa_client: LisaApi,
-        test_collection: Dict,
+        test_collection: dict,
     ):
         """Test 5: Get user collections.
 

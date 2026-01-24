@@ -96,6 +96,9 @@ echo "   - Workers: $THREADS"
 echo "   - Timeout: 600 seconds"
 echo "   - Log level: $GUNICORN_LOG_LEVEL"
 
+# Set PYTHONPATH to include src directory so imports work correctly
+export PYTHONPATH="/app/src:${PYTHONPATH:-}"
+
 exec gunicorn -k uvicorn.workers.UvicornWorker -t 600 -w "$THREADS" -b "$HOST:$PORT" \
     --log-level "$GUNICORN_LOG_LEVEL" \
     "src.main:app"

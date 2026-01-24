@@ -17,8 +17,9 @@
 import logging
 import os
 import re
+from collections.abc import Callable
 from copy import deepcopy
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 import boto3
 from boto3.dynamodb.conditions import Attr
@@ -42,11 +43,11 @@ application_autoscaling_client = boto3.client(
 MAX_POLLS = 30
 
 
-def _get_mcp_connections_table_name(deployment_prefix: str) -> Optional[str]:
+def _get_mcp_connections_table_name(deployment_prefix: str) -> str | None:
     """Get MCP connections table name from SSM parameter if chat is deployed."""
     try:
         response = ssm_client.get_parameter(Name=f"{deployment_prefix}/table/mcpServersTable")
-        return response["Parameter"]["Value"]
+        return response["Parameter"]["Value"]  # type: ignore[no-any-return]
     except ssm_client.exceptions.ParameterNotFound:
         logger.info("MCP connections table SSM parameter not found, chat may not be deployed")
         return None
@@ -60,15 +61,15 @@ def _normalize_server_identifier(server_id: str) -> str:
     return re.sub(r"[^a-zA-Z0-9]", "", server_id)
 
 
-def _update_simple_field(server_config: Dict[str, Any], field_name: str, value: Any, server_id: str) -> None:
+def _update_simple_field(server_config: dict[str, Any], field_name: str, value: Any, server_id: str) -> None:
     """Update a simple field in server_config."""
     logger.info(f"Setting {field_name} to '{value}' for server '{server_id}'")
     server_config[field_name] = value
 
 
 def _update_container_config(
-    server_config: Dict[str, Any], container_config: Dict[str, Any], server_id: str
-) -> Dict[str, Any]:
+    server_config: dict[str, Any], container_config: dict[str, Any], server_id: str
+) -> dict[str, Any]:
     """Handle container config update.
 
     Returns:
@@ -137,7 +138,7 @@ def _update_container_config(
     return container_metadata
 
 
-def _get_metadata_update_handlers(server_config: Dict[str, Any], server_id: str) -> Dict[str, Callable[..., Any]]:
+def _get_metadata_update_handlers(server_config: dict[str, Any], server_id: str) -> dict[str, Callable[..., Any]]:
     """Return a dictionary mapping field names to their update handlers."""
     return {
         "description": lambda value: _update_simple_field(server_config, "description", value, server_id),
@@ -155,8 +156,8 @@ def _get_metadata_update_handlers(server_config: Dict[str, Any], server_id: str)
 
 
 def _process_metadata_updates(
-    server_config: Dict[str, Any], update_payload: Dict[str, Any], server_id: str
-) -> tuple[bool, Dict[str, Any]]:
+    server_config: dict[str, Any], update_payload: dict[str, Any], server_id: str
+) -> tuple[bool, dict[str, Any]]:
     """
     Process metadata updates.
 
@@ -234,7 +235,7 @@ def _update_mcp_connections_table_status(server_id: str, status: str) -> None:
 
 
 def _update_mcp_connections_table_metadata(
-    server_id: str, description: Optional[str] = None, groups: Optional[List[str]] = None
+    server_id: str, description: str | None = None, groups: list[str] | None = None
 ) -> None:
     """Update MCP Connections table metadata (description, groups) for a server."""
     deployment_prefix = os.environ.get("DEPLOYMENT_PREFIX", "")
@@ -252,7 +253,7 @@ def _update_mcp_connections_table_metadata(
         return
 
     # Format groups with "group:" prefix if not already present
-    formatted_groups: Optional[List[str]] = None
+    formatted_groups: list[str] | None = None
     if groups is not None:
         formatted_groups = []
         for group in groups:
@@ -268,8 +269,8 @@ def _update_mcp_connections_table_metadata(
 
         for item in response.get("Items", []):
             update_expression_parts = []
-            expr_attr_names: Dict[str, str] = {}
-            expr_attr_values: Dict[str, Any] = {}
+            expr_attr_names: dict[str, str] = {}
+            expr_attr_values: dict[str, Any] = {}
 
             if description is not None:
                 update_expression_parts.append("#d = :desc")
@@ -299,7 +300,7 @@ def _update_mcp_connections_table_metadata(
         # Don't fail the update if connection table update fails
 
 
-def handle_job_intake(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_job_intake(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Handle initial UpdateMcpServer job submission.
 
@@ -484,12 +485,12 @@ def handle_job_intake(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
                 # Use updated values if provided, otherwise use current values from server_config
                 if updated_min_capacity is not None:
-                    update_params["MinCapacity"] = updated_min_capacity
+                    update_params["MinCapacity"] = updated_min_capacity  # type: ignore[assignment]
                 else:
                     update_params["MinCapacity"] = server_config["autoScalingConfig"].get("minCapacity", 1)
 
                 if updated_max_capacity is not None:
-                    update_params["MaxCapacity"] = updated_max_capacity
+                    update_params["MaxCapacity"] = updated_max_capacity  # type: ignore[assignment]
                 else:
                     update_params["MaxCapacity"] = server_config["autoScalingConfig"].get("maxCapacity", 1)
 
@@ -615,11 +616,11 @@ def get_ecs_resources_from_stack(stack_name: str) -> tuple[str, str, str]:
 
 def create_updated_task_definition(
     task_definition_arn: str,
-    updated_env_vars: Optional[Dict[str, str]] = None,
-    env_vars_to_delete: Optional[List[str]] = None,
-    updated_cpu: Optional[int] = None,
-    updated_memory: Optional[int] = None,
-    updated_health_check: Optional[Dict[str, Any]] = None,
+    updated_env_vars: dict[str, str] | None = None,
+    env_vars_to_delete: list[str] | None = None,
+    updated_cpu: int | None = None,
+    updated_memory: int | None = None,
+    updated_health_check: dict[str, Any] | None = None,
 ) -> str:
     """Create new task definition revision with updated configuration.
 
@@ -741,7 +742,7 @@ def update_ecs_service(cluster_arn: str, service_arn: str, task_definition_arn: 
         raise RuntimeError(f"Failed to update ECS service: {str(e)}")
 
 
-def handle_ecs_update(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_ecs_update(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Update ECS task definition with new environment variables and update service.
 
@@ -807,7 +808,7 @@ def handle_ecs_update(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     return output_dict
 
 
-def handle_poll_ecs_deployment(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_poll_ecs_deployment(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Monitor ECS service deployment progress.
 
@@ -901,7 +902,7 @@ def handle_poll_ecs_deployment(event: Dict[str, Any], context: Any) -> Dict[str,
     return output_dict
 
 
-def handle_poll_capacity(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_poll_capacity(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Poll ECS service to confirm if the capacity is done updating.
 
@@ -948,7 +949,7 @@ def handle_poll_capacity(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     return output_dict
 
 
-def handle_finish_update(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_finish_update(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Finalize update in DDB.
 
@@ -964,7 +965,7 @@ def handle_finish_update(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     stack_name = event["stack_name"]
 
     ddb_update_expression = "SET #status = :ms, last_modified = :lm"
-    ddb_update_values: Dict[str, Any] = {
+    ddb_update_values: dict[str, Any] = {
         ":lm": now(),
     }
     ExpressionAttributeNames = {"#status": "status"}

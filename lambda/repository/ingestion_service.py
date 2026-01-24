@@ -13,7 +13,7 @@
 #   limitations under the License.
 import logging
 import os
-from typing import Any, Dict, Optional
+from typing import Any
 
 import boto3
 from models.domain_objects import Enum, FixedChunkingStrategy, IngestDocumentRequest, IngestionJob, IngestionType
@@ -48,12 +48,12 @@ class DocumentIngestionService:
     def create_ingestion_job(
         self,
         repository: dict,
-        collection: Optional[dict],
+        collection: dict | None,
         request: IngestDocumentRequest,
         query_params: dict,
         s3_path: str,
         username: str,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
         ingestion_type: IngestionType = IngestionType.MANUAL,
     ) -> IngestionJob:
 
@@ -113,9 +113,9 @@ class DocumentIngestionService:
     def _merge_metadata_for_ingestion(
         self,
         repository: dict,
-        collection: Optional[dict],
-        document_metadata: Optional[Dict[str, Any]] = None,
-    ) -> Optional[Dict[str, Any]]:
+        collection: dict | None,
+        document_metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
         """
         Merge metadata from repository, collection, and document sources for ingestion jobs.
 
@@ -133,7 +133,7 @@ class DocumentIngestionService:
         Returns:
             Merged metadata dictionary or None if no metadata sources exist
         """
-        merged_metadata: Dict[str, Any] = {}
+        merged_metadata: dict[str, Any] = {}
 
         # 1. Merge repository metadata (lowest precedence)
         repo_metadata = repository.get("metadata")

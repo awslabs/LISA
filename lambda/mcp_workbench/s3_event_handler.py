@@ -17,7 +17,7 @@
 import json
 import logging
 import os
-from typing import Any, Dict
+from typing import Any
 
 import boto3
 from botocore.exceptions import ClientError
@@ -32,7 +32,7 @@ ecs_client = boto3.client("ecs", region_name=os.environ["AWS_REGION"], config=re
 ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
 
 
-def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Handle S3 events from EventBridge and trigger MCP Workbench service redeployment.
 
@@ -144,7 +144,7 @@ def get_service_name() -> str:
         raise
 
 
-def force_service_deployment(cluster_name: str, service_name: str) -> Dict[str, Any]:
+def force_service_deployment(cluster_name: str, service_name: str) -> dict[str, Any]:
     """
     Force a new deployment of the specified ECS service.
     """
@@ -155,7 +155,7 @@ def force_service_deployment(cluster_name: str, service_name: str) -> Dict[str, 
         response = ecs_client.update_service(cluster=cluster_name, service=service_name, forceNewDeployment=True)
 
         logger.info(f"Successfully triggered new deployment for service '{service_name}'")
-        return response
+        return dict(response)  # Convert to dict to satisfy return type
 
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "Unknown")
@@ -174,7 +174,7 @@ def force_service_deployment(cluster_name: str, service_name: str) -> Dict[str, 
         raise
 
 
-def validate_s3_event(event: Dict[str, Any]) -> bool:
+def validate_s3_event(event: dict[str, Any]) -> bool:
     """
     Validate that the event is a proper S3 event from EventBridge.
     """

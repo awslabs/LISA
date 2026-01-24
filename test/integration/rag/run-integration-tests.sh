@@ -165,7 +165,7 @@ fi
 
 # Run pytest with -x flag to stop on first failure
 cd "${PROJECT_DIR}"
-python3 -m pytest test/lambda/rag/test_rag_collections_integration.py -v -s -x
+python3 -m pytest test/integration/rag/test_rag_collections_integration.py -v -s -x
 
 echo ""
 echo "✓ Integration tests completed"

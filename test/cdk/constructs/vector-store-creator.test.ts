@@ -14,23 +14,77 @@
   limitations under the License.
 */
 
-import { Stack } from 'aws-cdk-lib';
+import { App, Stack } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
-import MockApp from '../mocks/MockApp';
+import { VectorStoreCreatorStack } from '../../../lib/rag/vector-store/vector-store-creator';
 import ConfigParser from '../mocks/ConfigParser';
+import { Vpc } from '../../../lib/networking/vpc';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as ssm from 'aws-cdk-lib/aws-ssm';
+
+// Use existing mock directory for Lambda code asset
+const TEST_MOCK_DIR = './test/cdk/mocks/layers';
 
 describe('VectorStoreCreator IAM Self-Targeting Prevention', () => {
-    let stacks: Stack[];
+    let app: App;
+    let stack: Stack;
     let template: Template;
 
     beforeAll(() => {
-        const config = ConfigParser.parseConfig(['config-test.yaml', 'assets.yaml']);
-        stacks = MockApp.create(config).stacks;
+        const config = ConfigParser.parseConfig();
+        // Override the deployer path to use existing mock directory
+        config.vectorStoreDeployerPath = TEST_MOCK_DIR;
+        app = new App();
+        stack = new Stack(app, 'TestStack', {
+            env: {
+                account: '012345678901',
+                region: config.region,
+            },
+        });
 
-        // Find the RAG stack which contains VectorStoreCreator
-        const ragStack = stacks.find((stack) => stack.stackName.includes('RAG'));
-        expect(ragStack).toBeDefined();
-        template = Template.fromStack(ragStack!);
+        // Create mock VPC
+        const vpc = new Vpc(stack, 'TestVpc', { config });
+
+        // Create mock DynamoDB table output
+        const mockTable = new dynamodb.Table(stack, 'MockRagVectorStoreTable', {
+            partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
+        });
+
+        // Create mock SSM parameter for RAG Lambda execution role
+        new ssm.StringParameter(stack, 'MockRagLambdaExecutionRole', {
+            parameterName: `${config.deploymentPrefix}/roles/LisaRAGLambdaExecutionRole`,
+            stringValue: 'arn:aws:iam::012345678901:role/mock-rag-lambda-execution-role',
+        });
+
+        // Create mock SSM parameter for CDK layer
+        new ssm.StringParameter(stack, 'MockCdkLayer', {
+            parameterName: `${config.deploymentPrefix}/layerVersion/cdk`,
+            stringValue: `arn:aws:lambda:${config.region}:012345678901:layer:mock-cdk-layer:1`,
+        });
+
+        // Create mock layers
+        const mockLayer = lambda.LayerVersion.fromLayerVersionArn(
+            stack,
+            'MockLayer',
+            `arn:aws:lambda:${config.region}:012345678901:layer:mock-layer:1`
+        );
+
+        // Create VectorStoreCreatorStack
+        new VectorStoreCreatorStack(stack, 'VectorStoreCreator', {
+            config,
+            ragVectorStoreTable: {
+                value: mockTable.tableArn,
+            } as any,
+            vpc,
+            baseEnvironment: {
+                LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER: '/test/create-state-machine',
+                LISA_RAG_DELETE_STATE_MACHINE_ARN_PARAMETER: '/test/delete-state-machine',
+            },
+            layers: [mockLayer],
+        });
+
+        template = Template.fromStack(stack);
     });
 
     describe('IAM Policy Self-Targeting Prevention', () => {

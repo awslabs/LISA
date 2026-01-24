@@ -18,14 +18,14 @@ import json
 import os
 import re
 from collections.abc import Iterator
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import boto3
 from fastapi.responses import JSONResponse
 from loguru import logger
 
 
-async def get_model_guardrails(model_id: str) -> List[Dict[str, Any]]:
+async def get_model_guardrails(model_id: str) -> list[dict[str, Any]]:
     """
     Query the guardrails DynamoDB table for guardrails associated with a model.
 
@@ -52,14 +52,14 @@ async def get_model_guardrails(model_id: str) -> List[Dict[str, Any]]:
 
         guardrails = response.get("Items", [])
         logger.debug(f"Found {len(guardrails)} guardrails for model {model_id}")
-        return guardrails
+        return guardrails  # type: ignore[no-any-return]
 
     except Exception as e:
         logger.error(f"Error fetching guardrails for model {model_id}: {e}")
         return []
 
 
-def get_applicable_guardrails(user_groups: List[str], guardrails: List[Dict[str, Any]], model_id: str) -> List[str]:
+def get_applicable_guardrails(user_groups: list[str], guardrails: list[dict[str, Any]], model_id: str) -> list[str]:
     """
     Determine which guardrails apply to a user based on group membership.
 
@@ -131,7 +131,7 @@ def is_guardrail_violation(error_msg: str) -> bool:
     return "Violated guardrail policy" in error_msg
 
 
-def extract_guardrail_response(error_msg: str) -> Optional[str]:
+def extract_guardrail_response(error_msg: str) -> str | None:
     """
     Extract the bedrock_guardrail_response from an error message.
 

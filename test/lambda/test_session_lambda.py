@@ -47,33 +47,40 @@ os.environ["SESSION_ENCRYPTION_KEY_ARN"] = "arn:aws:kms:us-east-1:123456789012:k
 retry_config = Config(retries=dict(max_attempts=3), defaults_mode="standard")
 
 
-def mock_api_wrapper(func):
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            result = func(*args, **kwargs)
-            if isinstance(result, dict) and "statusCode" in result:
-                return result
-            return {
-                "statusCode": 200,
-                "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
-                "body": json.dumps(result, default=str),
-            }
-        except ValueError as e:
-            return {
-                "statusCode": 400,
-                "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
-                "body": json.dumps({"error": str(e)}),
-            }
-        except Exception as e:
-            logging.error(f"Error in {func.__name__}: {str(e)}")
-            return {
-                "statusCode": 500,
-                "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
-                "body": json.dumps({"error": str(e)}),
-            }
+def mock_api_wrapper(_func=None, **kwargs):
+    """Mock api_wrapper that accepts any kwargs."""
 
-    return wrapper
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kw):
+            try:
+                result = func(*args, **kw)
+                if isinstance(result, dict) and "statusCode" in result:
+                    return result
+                return {
+                    "statusCode": 200,
+                    "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
+                    "body": json.dumps(result, default=str),
+                }
+            except ValueError as e:
+                return {
+                    "statusCode": 400,
+                    "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
+                    "body": json.dumps({"error": str(e)}),
+                }
+            except Exception as e:
+                logging.error(f"Error in {func.__name__}: {str(e)}")
+                return {
+                    "statusCode": 500,
+                    "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
+                    "body": json.dumps({"error": str(e)}),
+                }
+
+        return wrapper
+
+    if _func is not None:
+        return decorator(_func)
+    return decorator
 
 
 @pytest.fixture(scope="function")

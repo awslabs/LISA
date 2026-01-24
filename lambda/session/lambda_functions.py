@@ -20,15 +20,16 @@ import os
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import boto3
 import create_env_variables  # noqa: F401
 from botocore.exceptions import ClientError
-from cachetools import cached, TTLCache
+from cachetools import cached, TTLCache  # type: ignore[import-untyped,unused-ignore]
 from utilities.auth import get_user_context, get_username
 from utilities.common_functions import api_wrapper, get_session_id, retry_config
 from utilities.encoders import convert_decimal
+from utilities.input_validation import MAX_LARGE_REQUEST_SIZE
 from utilities.session_encryption import decrypt_session_fields, migrate_session_to_encrypted, SessionEncryptionError
 from utilities.time import iso_string
 
@@ -50,7 +51,7 @@ config_table = dynamodb.Table(os.environ["CONFIG_TABLE_NAME"])
 executor = ThreadPoolExecutor(max_workers=10)
 
 # Cache for configuration values to avoid repeated database queries
-cache = TTLCache(maxsize=1, ttl=300)  # 5 minutes
+cache: TTLCache = TTLCache(maxsize=1, ttl=300)  # 5 minutes
 
 
 @cached(cache=cache)
@@ -81,7 +82,7 @@ def _is_session_encryption_enabled() -> bool:
             enabled_components = configuration.get("enabledComponents", {})
             encrypt_session = enabled_components.get("encryptSession", False)  # Default to False
             logger.info(f"Retrieved session encryption setting from global config: {encrypt_session}")
-            return encrypt_session
+            return encrypt_session  # type: ignore[no-any-return]
         else:
             logger.warning("No global configuration found, defaulting session encryption to disabled")
             return False
@@ -119,7 +120,7 @@ def _get_current_model_config(model_id: str) -> Any:
         return {}
 
 
-def _update_session_with_current_model_config(session_config: Dict[str, Any]) -> Dict[str, Any]:
+def _update_session_with_current_model_config(session_config: dict[str, Any]) -> dict[str, Any]:
     """Update session configuration with the most recent model configuration.
 
     Parameters
@@ -176,7 +177,7 @@ def _update_session_with_current_model_config(session_config: Dict[str, Any]) ->
     return updated_config
 
 
-def _get_all_user_sessions(user_id: str) -> List[Dict[str, Any]]:
+def _get_all_user_sessions(user_id: str) -> list[dict[str, Any]]:
     """Get all sessions for a user from DynamoDB.
 
     Parameters
@@ -205,7 +206,7 @@ def _get_all_user_sessions(user_id: str) -> List[Dict[str, Any]]:
     return response.get("Items", [])  # type: ignore [no-any-return]
 
 
-def _delete_user_session(session_id: str, user_id: str) -> Dict[str, bool]:
+def _delete_user_session(session_id: str, user_id: str) -> dict[str, bool]:
     """Delete a session from DynamoDB.
 
     Parameters
@@ -248,7 +249,7 @@ def _generate_presigned_image_url(key: str) -> str:
     return url
 
 
-def _map_session(session: dict, user_id: Optional[str] = None) -> Dict[str, Any]:
+def _map_session(session: dict, user_id: str | None = None) -> dict[str, Any]:
     return {
         "sessionId": session.get("sessionId", None),
         "name": session.get("name", None),
@@ -262,7 +263,7 @@ def _map_session(session: dict, user_id: Optional[str] = None) -> Dict[str, Any]
     }
 
 
-def _find_first_human_message(session: dict, user_id: Optional[str] = None) -> str:
+def _find_first_human_message(session: dict, user_id: str | None = None) -> str:
     # Check if session is encrypted
     if session.get("is_encrypted", False):
         # For encrypted sessions, decrypt to get the first message
@@ -300,7 +301,7 @@ def _find_first_human_message(session: dict, user_id: Optional[str] = None) -> s
 
 
 @api_wrapper
-def list_sessions(event: dict, context: dict) -> List[Dict[str, Any]]:
+def list_sessions(event: dict, context: dict) -> list[dict[str, Any]]:
     """List sessions by user ID from DynamoDB."""
     user_id = get_username(event)
 
@@ -310,7 +311,7 @@ def list_sessions(event: dict, context: dict) -> List[Dict[str, Any]]:
     return list(executor.map(lambda session: _map_session(session, user_id), sessions))
 
 
-def _process_image(task: Tuple[dict, str]) -> None:
+def _process_image(task: tuple[dict, str]) -> None:
     msg, key = task
     try:
         image_url = _generate_presigned_image_url(key)
@@ -359,7 +360,7 @@ def get_session(event: dict, context: dict) -> dict:
         # Create a list of tasks for parallel processing
         tasks = []
         for message in resp.get("history", []):
-            if isinstance(message.get("content", None), List):
+            if isinstance(message.get("content", None), list):
                 for item in message.get("content", None):
                     if item.get("type", None) == "image_url":
                         s3_key = item.get("image_url", {}).get("s3_key", None)
@@ -383,7 +384,7 @@ def delete_session(event: dict, context: dict) -> dict:
 
 
 @api_wrapper
-def delete_user_sessions(event: dict, context: dict) -> Dict[str, bool]:
+def delete_user_sessions(event: dict, context: dict) -> dict[str, bool]:
     """Delete sessions by user ID from DyanmoDB."""
     user_id = get_username(event)
 
@@ -395,7 +396,7 @@ def delete_user_sessions(event: dict, context: dict) -> Dict[str, bool]:
     return {"deleted": True}
 
 
-@api_wrapper
+@api_wrapper(max_request_size=MAX_LARGE_REQUEST_SIZE)
 def attach_image_to_session(event: dict, context: dict) -> dict:
     """Append the message to the record in DynamoDB."""
     try:
@@ -465,7 +466,7 @@ def rename_session(event: dict, context: dict) -> dict:
         return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
 
 
-@api_wrapper
+@api_wrapper(max_request_size=MAX_LARGE_REQUEST_SIZE)
 def put_session(event: dict, context: dict) -> dict:
     """Append the message to the record in DynamoDB."""
     try:

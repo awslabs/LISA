@@ -12,7 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 from pydantic import BaseModel, Field
 from requests import Session
@@ -28,9 +28,9 @@ from .session import SessionMixin
 
 class LisaApi(BaseModel, RepositoryMixin, ModelMixin, ConfigMixin, DocsMixin, RagMixin, SessionMixin, CollectionMixin):
     url: str = Field(..., description="REST API url for LiteLLM")
-    headers: Optional[Dict[str, str]] = Field(None, description="Headers for request.")
-    cookies: Optional[Dict[str, str]] = Field(None, description="Cookies for request.")
-    verify: Optional[Union[str, bool]] = Field(None, description="Whether to verify SSL certificates.")
+    headers: dict[str, str] | None = Field(None, description="Headers for request.")
+    cookies: dict[str, str] | None = Field(None, description="Cookies for request.")
+    verify: str | bool | None = Field(None, description="Whether to verify SSL certificates.")
     timeout: int = Field(10, description="Timeout in minutes request.")
     _session: Session
 
@@ -39,8 +39,8 @@ class LisaApi(BaseModel, RepositoryMixin, ModelMixin, ConfigMixin, DocsMixin, Ra
 
         self._session = Session()
         if self.headers:
-            self._session.headers = self.headers  # type: ignore
+            self._session.headers.update(self.headers)
         if self.verify is not None:
             self._session.verify = self.verify
         if self.cookies:
-            self._session.cookies = self.cookies  # type: ignore
+            self._session.cookies.update(self.cookies)

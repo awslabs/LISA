@@ -15,7 +15,7 @@
 """APIGW endpoints for managing API tokens."""
 import logging
 import os
-from typing import Annotated, Union
+from typing import Annotated
 
 import boto3
 from fastapi import HTTPException, Path, Request
@@ -59,7 +59,7 @@ async def token_not_found_handler(request: Request, exc: TokenNotFoundError) -> 
 
 @app.exception_handler(TokenAlreadyExistsError)
 @app.exception_handler(ValueError)
-async def user_error_handler(request: Request, exc: Union[TokenAlreadyExistsError, ValueError]) -> JSONResponse:
+async def user_error_handler(request: Request, exc: TokenAlreadyExistsError | ValueError) -> JSONResponse:
     """Handle errors when customer requests options that cannot be processed."""
     return JSONResponse(status_code=400, content={"message": str(exc)})
 

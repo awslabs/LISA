@@ -17,7 +17,6 @@ dependencies = [
 name = "lisapy"
 version = "6.1.1"
 description = "A simple SDK to help you interact with LISA. LISA is an LLM hosting solution for AWS dedicated clouds or ADCs."
-authors = ["Steve Goley <sgoley@amazon.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
@@ -49,5 +48,5 @@ markers = [
     "asyncio: Async tests",
 ]
 testpaths = [
-    "tests/"
+    "../test/sdk/"
 ]

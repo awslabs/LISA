@@ -15,9 +15,10 @@
 """Pytest configuration and shared fixtures."""
 
 import asyncio
+import sys
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 import pytest
 from mcpworkbench.config.models import CORSConfig, ServerConfig
@@ -25,15 +26,32 @@ from mcpworkbench.core.tool_discovery import ToolDiscovery
 from mcpworkbench.core.tool_registry import ToolRegistry
 
 
-@pytest.fixture
-def temp_tools_dir() -> Generator[Path, None, None]:
+@pytest.fixture(scope="function", autouse=True)
+def isolate_modules():
+    """Isolate sys.modules for each test to prevent cross-test contamination."""
+    # Get all mcpworkbench_tools modules before test
+    tools_modules_before = {k for k in sys.modules.keys() if k.startswith("mcpworkbench_tools")}
+
+    yield
+
+    # Clean up any mcpworkbench_tools modules added during the test
+    tools_modules_after = {k for k in sys.modules.keys() if k.startswith("mcpworkbench_tools")}
+    new_modules = tools_modules_after - tools_modules_before
+
+    for module_name in new_modules:
+        if module_name in sys.modules:
+            del sys.modules[module_name]
+
+
+@pytest.fixture(scope="function")
+def temp_tools_dir() -> Generator[Path]:
     """Create a temporary directory for test tools."""
     with tempfile.TemporaryDirectory() as temp_dir:
         tools_dir = Path(temp_dir)
         yield tools_dir
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def sample_function_tool_content() -> str:
     """Sample function-based tool content."""
     return """
@@ -42,13 +60,6 @@ from mcpworkbench.core.annotations import mcp_tool
 @mcp_tool(
     name="echo_test",
     description="Echo back the input text for testing",
-    parameters={
-        "type": "object",
-        "properties": {
-            "message": {"type": "string", "description": "Message to echo"}
-        },
-        "required": ["message"]
-    }
 )
 def echo_message(message: str):
     return {"echoed": message, "length": len(message)}
@@ -56,21 +67,13 @@ def echo_message(message: str):
 @mcp_tool(
     name="add_test",
     description="Add two numbers together for testing",
-    parameters={
-        "type": "object",
-        "properties": {
-            "a": {"type": "number", "description": "First number"},
-            "b": {"type": "number", "description": "Second number"}
-        },
-        "required": ["a", "b"]
-    }
 )
 async def add_numbers(a: float, b: float):
     return {"a": a, "b": b, "sum": a + b}
 """
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def sample_class_tool_content() -> str:
     """Sample class-based tool content."""
     return '''
@@ -115,7 +118,7 @@ class TestGreetingTool(BaseTool):
 '''
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def populated_tools_dir(
     temp_tools_dir: Path, sample_function_tool_content: str, sample_class_tool_content: str
 ) -> Path:
@@ -129,7 +132,7 @@ def populated_tools_dir(
     return temp_tools_dir
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def sample_config() -> ServerConfig:
     """Sample server configuration for testing."""
     return ServerConfig(
@@ -143,13 +146,13 @@ def sample_config() -> ServerConfig:
     )
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def tool_discovery(populated_tools_dir: Path) -> ToolDiscovery:
     """Create a tool discovery instance with populated tools directory."""
     return ToolDiscovery(str(populated_tools_dir))
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def tool_registry() -> ToolRegistry:
     """Create a fresh tool registry instance."""
     return ToolRegistry()

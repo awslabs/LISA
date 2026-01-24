@@ -12,20 +12,20 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, tzinfo
 
 
-def now(tz=timezone.utc) -> int:
+def now(tz: tzinfo = timezone.utc) -> int:
     """Return UTC epoch milliseconds."""
     return int(datetime.now(tz).timestamp() * 1000)
 
 
-def now_seconds(tz=timezone.utc) -> int:
+def now_seconds(tz: tzinfo = timezone.utc) -> int:
     """Return UTC epoch seconds."""
     return int(datetime.now(tz).timestamp())
 
 
-def iso_string(tz=timezone.utc) -> str:
+def iso_string(tz: tzinfo = timezone.utc) -> str:
     """Return ISO datetime string with UTC offset."""
     return datetime.now(tz).isoformat()
 

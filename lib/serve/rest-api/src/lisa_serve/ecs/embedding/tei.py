@@ -13,7 +13,7 @@
 #   limitations under the License.
 
 """Model adapter and kwargs validator for ECS embedding instructor model endpoints."""
-from typing import Any, Dict, Union
+from typing import Any
 
 from aiohttp import ClientSession
 from loguru import logger
@@ -55,7 +55,7 @@ class EcsEmbeddingTeiAdapter(EmbeddingModelAdapter):
 
         self.endpoint_url = endpoint_url.rstrip("/")
 
-    async def embed_query(self, *, text: Union[str, list[str]], model_kwargs: Dict[str, Any]) -> EmbedQueryResponse:  # type: ignore # noqa: E501
+    async def embed_query(self, *, text: str | list[str], model_kwargs: dict[str, Any]) -> EmbedQueryResponse:  # type: ignore # noqa: E501
         """Embed data.
 
         Parameters

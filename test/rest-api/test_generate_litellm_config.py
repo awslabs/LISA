@@ -67,45 +67,21 @@ def test_get_database_credentials_with_secret():
         mock_secrets.get_secret_value.assert_called_once_with(SecretId="test-secret-id")
 
 
-def test_get_database_credentials_with_iam():
-    """Test getting database credentials using IAM auth."""
-    db_params = {"dbHost": "db.example.com", "dbPort": "5432", "dbName": "testdb"}
-
-    with patch("generate_litellm_config.get_lambda_role_name") as mock_role:
-        with patch("generate_litellm_config.generate_auth_token") as mock_token:
-            mock_role.return_value = "MyLambdaRole"
-            mock_token.return_value = "iam-auth-token"
-
-            username, password = get_database_credentials(db_params)
-
-            assert username == "MyLambdaRole"
-            assert password == "iam-auth-token"
-            mock_token.assert_called_once_with("db.example.com", "5432", "MyLambdaRole")
-
-
-def test_get_database_credentials_prefers_secret():
-    """Test that Secrets Manager is preferred over IAM auth."""
+def test_get_database_credentials_secret_not_found():
+    """Test error handling when secret is not found."""
     db_params = {
         "username": "testuser",
-        "passwordSecretId": "test-secret-id",
+        "passwordSecretId": "missing-secret-id",
         "dbHost": "db.example.com",
         "dbPort": "5432",
         "dbName": "testdb",
     }
 
     with patch("generate_litellm_config.boto3.client") as mock_boto:
-        with patch("generate_litellm_config.get_lambda_role_name") as mock_role:
-            with patch("generate_litellm_config.generate_auth_token") as mock_token:
-                mock_secrets = MagicMock()
-                mock_secrets.get_secret_value.return_value = {
-                    "SecretString": json.dumps({"password": "secret-password"})
-                }
-                mock_boto.return_value = mock_secrets
+        mock_secrets = MagicMock()
+        mock_secrets.exceptions.ResourceNotFoundException = Exception
+        mock_secrets.get_secret_value.side_effect = Exception("Secret not found")
+        mock_boto.return_value = mock_secrets
 
-                username, password = get_database_credentials(db_params)
-
-                # Should use Secrets Manager, not IAM
-                assert username == "testuser"
-                assert password == "secret-password"
-                mock_role.assert_not_called()
-                mock_token.assert_not_called()
+        with pytest.raises(Exception):
+            get_database_credentials(db_params)

@@ -36,6 +36,7 @@ import { AwsCustomResource, AwsCustomResourcePolicy, PhysicalResourceId } from '
 import { ISecurityGroup, Port } from 'aws-cdk-lib/aws-ec2';
 import { ECSTasks } from '../api-base/ecsCluster';
 import { GuardrailsTable } from '../models/guardrails-table';
+import { Role } from 'aws-cdk-lib/aws-iam';
 
 export type LisaServeApplicationProps = {
     vpc: Vpc;
@@ -139,6 +140,7 @@ export class LisaServeApplicationConstruct extends Construct {
             subnetGroup: vpc.subnetGroup,
             credentials: dbCreds,
             iamAuthentication: useIamAuth, // Enable IAM auth when iamRdsAuth is true
+            databaseName: config.restApiConfig.rdsConfig.dbName, // Specify database name to match config
             securityGroups: [litellmDbSg],
             removalPolicy: config.removalPolicy,
         });
@@ -211,8 +213,20 @@ export class LisaServeApplicationConstruct extends Construct {
                 // Password auth: grant secret read access only (grantConnect requires IAM auth)
                 litellmDbSecret.grantRead(serveRole);
             } else {
-                // IAM auth: grant connect with role name and create IAM user
-                litellmDb.grantConnect(serveRole, serveRole.roleName);
+                // IAM auth: manually grant rds-db:connect permission
+                // Note: We do NOT use litellmDb.grantConnect() due to CDK bug #11851
+                // The grantConnect method generates incorrect ARN format (uses rds: instead of rds-db:)
+                // Per AWS docs: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html
+                // The correct format is: arn:aws:rds-db:region:account-id:dbuser:DbiResourceId/db-user-name
+                serveRole.addToPrincipalPolicy(new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: ['rds-db:connect'],
+                    resources: [
+                        // Use wildcard for DbiResourceId since it's not available in CloudFormation
+                        // Format: arn:aws:rds-db:region:account:dbuser:*/username
+                        `arn:${config.partition}:rds-db:${config.region}:${config.accountNumber}:dbuser:*/${serveRole.roleName}`
+                    ]
+                }));
 
                 // Use the shared IAM auth setup Lambda from API Base stack
                 const iamAuthSetupFnArn = StringParameter.valueForStringParameter(
@@ -220,27 +234,46 @@ export class LisaServeApplicationConstruct extends Construct {
                     `${config.deploymentPrefix}/iamAuthSetupFnArn`
                 );
 
-                // Run the shared IAM auth setup Lambda on create
-                // This only runs once when switching to IAM auth - the lambda creates the IAM user and deletes the bootstrap secret
+                // Get the IAM auth setup Lambda role ARN from SSM to grant it permissions
+                const iamAuthSetupRoleArn = StringParameter.valueForStringParameter(
+                    scope,
+                    `${config.deploymentPrefix}/iamAuthSetupRoleArn`
+                );
+
+                // Import the IAM auth setup role to grant it secret permissions
+                const iamAuthSetupRole = Role.fromRoleArn(
+                    scope,
+                    'IamAuthSetupRoleRef',
+                    iamAuthSetupRoleArn
+                );
+
+                // Grant the IAM auth setup Lambda role permission to read the bootstrap secret
+                litellmDbSecret.grantRead(iamAuthSetupRole);
+
+                // Run the shared IAM auth setup Lambda on create and update
+                // This runs when switching to IAM auth or updating the configuration
                 // Pass parameters via payload since the Lambda is shared
                 // Use Stack.of(scope).toJsonString() to properly resolve CDK tokens in the payload
-                const createDbUserResource = new AwsCustomResource(scope, 'LISAServeCreateDbUserCustomResource', {
-                    onCreate: {
-                        service: 'Lambda',
-                        action: 'invoke',
-                        physicalResourceId: PhysicalResourceId.of('LISAServeCreateDbUserCustomResource'),
-                        parameters: {
-                            FunctionName: iamAuthSetupFnArn,
-                            Payload: Stack.of(scope).toJsonString({
-                                secretArn: litellmDbSecret.secretArn,
-                                dbHost: config.restApiConfig.rdsConfig.dbHost,
-                                dbPort: config.restApiConfig.rdsConfig.dbPort,
-                                dbName: config.restApiConfig.rdsConfig.dbName,
-                                dbUser: config.restApiConfig.rdsConfig.username,
-                                iamName: serveRole.roleName,
-                            })
-                        },
+                const lambdaInvokeParams = {
+                    service: 'Lambda',
+                    action: 'invoke',
+                    physicalResourceId: PhysicalResourceId.of('LISAServeCreateDbUserCustomResource'),
+                    parameters: {
+                        FunctionName: iamAuthSetupFnArn,
+                        Payload: Stack.of(scope).toJsonString({
+                            secretArn: litellmDbSecret.secretArn,
+                            dbHost: config.restApiConfig.rdsConfig.dbHost,
+                            dbPort: config.restApiConfig.rdsConfig.dbPort,
+                            dbName: config.restApiConfig.rdsConfig.dbName,
+                            dbUser: config.restApiConfig.rdsConfig.username,
+                            iamName: serveRole.roleName,
+                        })
                     },
+                };
+
+                const createDbUserResource = new AwsCustomResource(scope, 'LISAServeCreateDbUserCustomResource', {
+                    onCreate: lambdaInvokeParams,
+                    onUpdate: lambdaInvokeParams,  // Also run on updates to ensure IAM user is created
                     policy: AwsCustomResourcePolicy.fromStatements([
                         new PolicyStatement({
                             effect: Effect.ALLOW,
@@ -252,6 +285,9 @@ export class LisaServeApplicationConstruct extends Construct {
 
                 // Ensure the RDS instance is fully available before running IAM auth setup
                 createDbUserResource.node.addDependency(litellmDb);
+
+                // Ensure the ECS service waits for IAM user setup to complete
+                restApi.node.addDependency(createDbUserResource);
             }
 
             this.modelsPs.grantRead(serveRole);

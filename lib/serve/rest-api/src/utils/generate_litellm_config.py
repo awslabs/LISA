@@ -20,7 +20,7 @@ import os
 import boto3
 import click
 import yaml
-from rds_auth import generate_auth_token, get_lambda_role_name
+from rds_auth import get_lambda_role_name
 
 
 @click.command()
@@ -61,21 +61,50 @@ def generate_config(filepath: str) -> None:
     db_param_response = ssm_client.get_parameter(Name=os.environ["LITELLM_DB_INFO_PS_NAME"])
     db_params = json.loads(db_param_response["Parameter"]["Value"])
 
-    username, password = get_database_credentials(db_params)
-    connection_str = (
-        f"postgresql://{username}:{password}@{db_params['dbHost']}:{db_params['dbPort']}" f"/{db_params['dbName']}"
-    )
+    # Check if using IAM auth (no passwordSecretId) or password auth
+    use_iam_auth = "passwordSecretId" not in db_params
 
-    if "general_settings" not in config_contents:
-        config_contents["general_settings"] = {}
+    if use_iam_auth:
+        # For IAM auth, set environment variables for LiteLLM's native IAM token refresh
+        # LiteLLM will automatically generate and refresh IAM auth tokens when these are set
+        iam_name = get_lambda_role_name()
+        os.environ["DATABASE_HOST"] = db_params["dbHost"]
+        os.environ["DATABASE_NAME"] = db_params["dbName"]
+        os.environ["DATABASE_PORT"] = str(db_params["dbPort"])
+        os.environ["DATABASE_USER"] = iam_name
+        os.environ["IAM_TOKEN_DB_AUTH"] = "true"
+        print(f"IAM auth enabled for database user: {iam_name}")
+        print(f"Database: {db_params['dbHost']}:{db_params['dbPort']}/{db_params['dbName']}")
+    else:
+        # Password auth: build connection string with password from Secrets Manager
+        username, password = get_database_credentials(db_params)
+        connection_str = (
+            f"postgresql://{username}:{password}@{db_params['dbHost']}:{db_params['dbPort']}"
+            f"/{db_params['dbName']}"
+        )
 
-    config_contents["general_settings"].update(
-        {
-            "store_model_in_db": True,
-            "database_url": connection_str,
-            "master_key": config_contents["db_key"],
-        }
-    )
+        if "general_settings" not in config_contents:
+            config_contents["general_settings"] = {}
+
+        config_contents["general_settings"].update(
+            {
+                "store_model_in_db": True,
+                "database_url": connection_str,
+                "master_key": config_contents["db_key"],
+            }
+        )
+
+    # For IAM auth, we still need general_settings but without database_url
+    # LiteLLM will use the DATABASE_* env vars instead
+    if use_iam_auth:
+        if "general_settings" not in config_contents:
+            config_contents["general_settings"] = {}
+        config_contents["general_settings"].update(
+            {
+                "store_model_in_db": True,
+                "master_key": config_contents["db_key"],
+            }
+        )
 
     print(f"Generated config_contents file: \n{json.dumps(config_contents, indent=2)}")
 
@@ -85,28 +114,21 @@ def generate_config(filepath: str) -> None:
 
 
 def get_database_credentials(db_params: dict[str, str]) -> tuple:
-    """Get database credentials using password auth or IAM auth based on config."""
-    # Check if using password auth (passwordSecretId present) or IAM auth
-    if "passwordSecretId" in db_params:
-        # Password auth: get credentials from Secrets Manager
-        secrets_client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"])
-        try:
-            secret_response = secrets_client.get_secret_value(SecretId=db_params["passwordSecretId"])
-        except secrets_client.exceptions.ResourceNotFoundException:
-            raise RuntimeError(
-                f"Database password secret '{db_params['passwordSecretId']}' not found. "
-                "This typically occurs when switching from IAM authentication (iamRdsAuth=true) "
-                "back to password authentication (iamRdsAuth=false). The master password is "
-                "permanently deleted when IAM auth is enabled. To resolve this, either: "
-                "1) Set iamRdsAuth=true in your config, or "
-                "2) Recreate the database by deleting and redeploying the stack."
-            )
-        secret = json.loads(secret_response["SecretString"])
-        return (db_params["username"], secret["password"])
-    else:
-        # IAM auth: generate auth token
-        iam_name = get_lambda_role_name()
-        return (iam_name, generate_auth_token(db_params["dbHost"], db_params["dbPort"], iam_name))
+    """Get database credentials using password auth from Secrets Manager."""
+    secrets_client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"])
+    try:
+        secret_response = secrets_client.get_secret_value(SecretId=db_params["passwordSecretId"])
+    except secrets_client.exceptions.ResourceNotFoundException:
+        raise RuntimeError(
+            f"Database password secret '{db_params['passwordSecretId']}' not found. "
+            "This typically occurs when switching from IAM authentication (iamRdsAuth=true) "
+            "back to password authentication (iamRdsAuth=false). The master password is "
+            "permanently deleted when IAM auth is enabled. To resolve this, either: "
+            "1) Set iamRdsAuth=true in your config, or "
+            "2) Recreate the database by deleting and redeploying the stack."
+        )
+    secret = json.loads(secret_response["SecretString"])
+    return (db_params["username"], secret["password"])
 
 
 if __name__ == "__main__":

@@ -85,7 +85,7 @@ def adjust_initial_capacity_for_schedule(prepared_event: dict[str, Any]) -> None
     """Adjust Auto Scaling Group initial capacity based on schedule configuration"""
     try:
         # Check if scheduling is configured
-        auto_scaling_config = prepared_event.get("autoScalingConfig", {})
+        auto_scaling_config = prepared_event.get("autoScalingConfig", {}) or {}
         scheduling_config = auto_scaling_config.get("scheduling")
 
         if (
@@ -361,7 +361,7 @@ def handle_start_create_stack(event: dict[str, Any], context: Any) -> dict[str, 
         }
 
     # Remove scheduling configuration from autoScalingConfig before sending to ECS deployer
-    if "autoScalingConfig" in prepared_event and "scheduling" in prepared_event["autoScalingConfig"]:
+    if prepared_event.get("autoScalingConfig") and "scheduling" in prepared_event["autoScalingConfig"]:
         del prepared_event["autoScalingConfig"]["scheduling"]
 
     # Log the complete payload being sent (excluding large environment variables)
@@ -545,7 +545,7 @@ def handle_add_model_to_litellm(event: dict[str, Any], context: Any) -> dict[str
     )
 
     # If scheduling is configured, sync model status to ensure it reflects actual ASG state
-    scheduling_config = event.get("autoScalingConfig", {}).get("scheduling")
+    scheduling_config = (event.get("autoScalingConfig", {}) or {}).get("scheduling")
     auto_scaling_group = event.get("autoScalingGroup")
 
     if scheduling_config and auto_scaling_group:

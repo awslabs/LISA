@@ -594,8 +594,20 @@ export class LisaRagConstruct extends Construct {
                     if (!useIamAuth) {
                         // Password auth: secret read access granted below (grantConnect requires IAM auth)
                     } else {
-                        // IAM auth: grant connect with role name
-                        pgvector_db.grantConnect(lambdaRole, lambdaRole.roleName);
+                        // IAM auth: manually grant rds-db:connect permission
+                        // Note: We do NOT use pgvector_db.grantConnect() due to CDK bug #11851
+                        // The grantConnect method generates incorrect ARN format (uses rds: instead of rds-db:)
+                        // Per AWS docs: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html
+                        // The correct format is: arn:aws:rds-db:region:account-id:dbuser:DbiResourceId/db-user-name
+                        lambdaRole.addToPrincipalPolicy(new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: ['rds-db:connect'],
+                            resources: [
+                                // Use wildcard for DbiResourceId since it's not available in CloudFormation
+                                // Format: arn:aws:rds-db:region:account:dbuser:*/username
+                                `arn:${config.partition}:rds-db:${config.region}:${config.accountNumber}:dbuser:*/${lambdaRole.roleName}`
+                            ]
+                        }));
                     }
 
                     // Update ragConfig with the endpoint address for use in AwsCustomResource
@@ -612,27 +624,45 @@ export class LisaRagConstruct extends Construct {
                         `${config.deploymentPrefix}/iamAuthSetupFnArn`
                     );
 
-                    // Run the shared IAM auth setup Lambda on create
-                    // This only runs once when switching to IAM auth - the lambda creates the IAM user and deletes the bootstrap secret
+                    // Get the IAM auth setup Lambda role ARN from SSM to grant it permissions
+                    const iamAuthSetupRoleArn = StringParameter.valueForStringParameter(
+                        this.scope,
+                        `${config.deploymentPrefix}/iamAuthSetupRoleArn`
+                    );
+
+                    // Import the IAM auth setup role to grant it secret permissions
+                    const iamAuthSetupRole = Role.fromRoleArn(
+                        this.scope,
+                        createCdkId([ragConfig.repositoryId, 'IamAuthSetupRoleRef']),
+                        iamAuthSetupRoleArn
+                    );
+
+                    // Grant the IAM auth setup Lambda role permission to read the bootstrap secret
+                    rdsSecret.grantRead(iamAuthSetupRole);
+
+                    // Run the shared IAM auth setup Lambda on create and update
                     // Pass parameters via payload since the Lambda is shared
                     // Use Stack.of(this.scope).toJsonString() to properly resolve CDK tokens in the payload
-                    const createDbUserResource = new AwsCustomResource(this.scope, createCdkId([ragConfig.repositoryId, 'CreateDbUserCustomResource']), {
-                        onCreate: {
-                            service: 'Lambda',
-                            action: 'invoke',
-                            physicalResourceId: PhysicalResourceId.of(createCdkId([ragConfig.repositoryId, 'CreateDbUserCustomResource'])),
-                            parameters: {
-                                FunctionName: iamAuthSetupFnArn,
-                                Payload: Stack.of(this.scope).toJsonString({
-                                    secretArn: rdsSecret.secretArn,
-                                    dbHost: ragConfig.rdsConfig!.dbHost,
-                                    dbPort: ragConfig.rdsConfig!.dbPort,
-                                    dbName: ragConfig.rdsConfig!.dbName,
-                                    dbUser: ragConfig.rdsConfig!.username,
-                                    iamName: lambdaRole.roleName,
-                                })
-                            },
+                    const lambdaInvokeParams = {
+                        service: 'Lambda',
+                        action: 'invoke',
+                        physicalResourceId: PhysicalResourceId.of(createCdkId([ragConfig.repositoryId, 'CreateDbUserCustomResource'])),
+                        parameters: {
+                            FunctionName: iamAuthSetupFnArn,
+                            Payload: Stack.of(this.scope).toJsonString({
+                                secretArn: rdsSecret.secretArn,
+                                dbHost: ragConfig.rdsConfig!.dbHost,
+                                dbPort: ragConfig.rdsConfig!.dbPort,
+                                dbName: ragConfig.rdsConfig!.dbName,
+                                dbUser: ragConfig.rdsConfig!.username,
+                                iamName: lambdaRole.roleName,
+                            })
                         },
+                    };
+
+                    const createDbUserResource = new AwsCustomResource(this.scope, createCdkId([ragConfig.repositoryId, 'CreateDbUserCustomResource']), {
+                        onCreate: lambdaInvokeParams,
+                        onUpdate: lambdaInvokeParams,  // Also run on updates to ensure IAM user is created
                         policy: customResources.AwsCustomResourcePolicy.fromStatements([
                             new PolicyStatement({
                                 effect: Effect.ALLOW,

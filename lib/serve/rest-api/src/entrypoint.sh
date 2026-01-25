@@ -62,6 +62,8 @@ export LITELLM_DISABLE_HEALTH_CHECK_LOGS=${LITELLM_DISABLE_HEALTH_CHECK_LOGS:-fa
 export PRISMA_LOG_LEVEL=${PRISMA_LOG_LEVEL}
 
 # Start LiteLLM in the background with better error handling
+# Note: For IAM RDS authentication, LiteLLM handles token refresh natively
+# when IAM_TOKEN_DB_AUTH=true is set (configured in generate_litellm_config.py)
 echo "🚀 Starting LiteLLM server..."
 echo "   - Config file: litellm_config.yaml"
 echo "   - Port: 4000 (internal)"

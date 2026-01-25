@@ -131,8 +131,20 @@ export class PGVectorStoreStack extends PipelineStack {
                     // Password auth: only need secret access (grantConnect requires IAM auth)
                     rdsConfig.passwordSecretId = rdsSecret.secretName;
                 } else {
-                    // IAM auth: grant connect with role name
-                    pgvectorDb.grantConnect(lambdaRole, lambdaRole.roleName);
+                    // IAM auth: manually grant rds-db:connect permission
+                    // Note: We do NOT use pgvectorDb.grantConnect() due to CDK bug #11851
+                    // The grantConnect method generates incorrect ARN format (uses rds: instead of rds-db:)
+                    // Per AWS docs: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html
+                    // The correct format is: arn:aws:rds-db:region:account-id:dbuser:DbiResourceId/db-user-name
+                    lambdaRole.addToPrincipalPolicy(new PolicyStatement({
+                        effect: Effect.ALLOW,
+                        actions: ['rds-db:connect'],
+                        resources: [
+                            // Use wildcard for DbiResourceId since it's not available in CloudFormation
+                            // Format: arn:aws:rds-db:region:account:dbuser:*/username
+                            `arn:${config.partition}:rds-db:${config.region}:${config.accountNumber}:dbuser:*/${lambdaRole.roleName}`
+                        ]
+                    }));
                 }
 
                 // Store DB connection details
@@ -166,26 +178,45 @@ export class PGVectorStoreStack extends PipelineStack {
                     `${config.deploymentPrefix}/iamAuthSetupFnArn`
                 );
 
-                // Run the shared IAM auth setup Lambda on create
+                // Get the IAM auth setup Lambda role ARN from SSM to grant it permissions
+                const iamAuthSetupRoleArn = StringParameter.valueForStringParameter(
+                    this,
+                    `${config.deploymentPrefix}/iamAuthSetupRoleArn`
+                );
+
+                // Import the IAM auth setup role to grant it secret permissions
+                const iamAuthSetupRole = Role.fromRoleArn(
+                    this,
+                    createCdkId([repositoryId, 'IamAuthSetupRoleRef']),
+                    iamAuthSetupRoleArn
+                );
+
+                // Grant the IAM auth setup Lambda role permission to read the bootstrap secret
+                rdsSecret.grantRead(iamAuthSetupRole);
+
+                // Run the shared IAM auth setup Lambda on create and update
                 // Pass parameters via payload since the Lambda is shared across repositories
                 // Use Stack.of(this).toJsonString() to properly resolve CDK tokens in the payload
-                const createDbUserResource = new AwsCustomResource(this, createCdkId([repositoryId, 'CreateDbUserCustomResource']), {
-                    onCreate: {
-                        service: 'Lambda',
-                        action: 'invoke',
-                        physicalResourceId: PhysicalResourceId.of(createCdkId([repositoryId, 'CreateDbUserCustomResource'])),
-                        parameters: {
-                            FunctionName: iamAuthSetupFnArn,
-                            Payload: Stack.of(this).toJsonString({
-                                secretArn: rdsSecret.secretArn,
-                                dbHost: rdsConfig.dbHost,
-                                dbPort: rdsConfig.dbPort,
-                                dbName: rdsConfig.dbName,
-                                dbUser: rdsConfig.username,
-                                iamName: lambdaRole.roleName,
-                            })
-                        },
+                const lambdaInvokeParams = {
+                    service: 'Lambda',
+                    action: 'invoke',
+                    physicalResourceId: PhysicalResourceId.of(createCdkId([repositoryId, 'CreateDbUserCustomResource'])),
+                    parameters: {
+                        FunctionName: iamAuthSetupFnArn,
+                        Payload: Stack.of(this).toJsonString({
+                            secretArn: rdsSecret.secretArn,
+                            dbHost: rdsConfig.dbHost,
+                            dbPort: rdsConfig.dbPort,
+                            dbName: rdsConfig.dbName,
+                            dbUser: rdsConfig.username,
+                            iamName: lambdaRole.roleName,
+                        })
                     },
+                };
+
+                const createDbUserResource = new AwsCustomResource(this, createCdkId([repositoryId, 'CreateDbUserCustomResource']), {
+                    onCreate: lambdaInvokeParams,
+                    onUpdate: lambdaInvokeParams,  // Also run on updates to ensure IAM user is created
                     policy: AwsCustomResourcePolicy.fromStatements([
                         new PolicyStatement({
                             effect: Effect.ALLOW,

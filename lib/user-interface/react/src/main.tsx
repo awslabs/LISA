@@ -22,6 +22,13 @@ import AppConfigured from './components/app-configured';
 
 import '@cloudscape-design/global-styles/index.css';
 import getStore from './config/store';
+import { applyTheme } from '@cloudscape-design/components/theming';
+
+// Conditionally apply custom theme if branding is enabled
+if (window.env?.USE_CUSTOM_BRANDING) {
+    const { brandTheme } = await import('./theme');
+    applyTheme({ theme: brandTheme });
+}
 
 declare global {
     // eslint-disable-next-line @typescript-eslint/consistent-type-definitions

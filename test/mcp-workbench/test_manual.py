@@ -39,13 +39,6 @@ from mcpworkbench.core.annotations import mcp_tool
 @mcp_tool(
     name="echo",
     description="Echo back the input text",
-    parameters={
-        "type": "object",
-        "properties": {
-            "message": {"type": "string", "description": "Message to echo"}
-        },
-        "required": ["message"]
-    }
 )
 def echo_message(message: str):
     return {"echoed": message, "length": len(message)}
@@ -53,14 +46,6 @@ def echo_message(message: str):
 @mcp_tool(
     name="add_numbers",
     description="Add two numbers together",
-    parameters={
-        "type": "object",
-        "properties": {
-            "a": {"type": "number", "description": "First number"},
-            "b": {"type": "number", "description": "Second number"}
-        },
-        "required": ["a", "b"]
-    }
 )
 async def add_numbers(a: float, b: float):
     return {"a": a, "b": b, "sum": a + b}

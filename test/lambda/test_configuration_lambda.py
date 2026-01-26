@@ -399,11 +399,12 @@ def test_update_configuration_client_error(lambda_context):
         # Call the function
         response = update_configuration(event, lambda_context)
 
-        # Verify response
-        assert response["statusCode"] == 200  # The function still returns 200 even with errors
-        # The ClientError is caught and logged, but the function returns None
-        # Our mock_api_wrapper wraps this as a 200 response with an empty body
-        assert response["body"] == "null"
+        # Verify response - InternalServerError should result in 500 status code
+        # (The status code comes from the ResponseMetadata in the ClientError)
+        assert response["statusCode"] >= 400  # Should be an error status code
+        # The error message should be in the body
+        body = response["body"]
+        assert "error" in body.lower() or "internal" in body.lower()
 
 
 def test_update_configuration_complex_data(config_table, lambda_context):

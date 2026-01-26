@@ -16,7 +16,8 @@
 
 import functools
 import logging
-from typing import Any, Callable, Dict, TypeVar, Union
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 from utilities.response_builder import generate_html_response
 
@@ -26,6 +27,8 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 # Default maximum request size: 1MB
 DEFAULT_MAX_REQUEST_SIZE = 1024 * 1024
+# Max API Gateway size - use for image uploads / chat sessions
+MAX_LARGE_REQUEST_SIZE = 10 * 1024 * 1024
 
 
 def contains_null_bytes(data: str) -> bool:
@@ -62,7 +65,7 @@ def validate_input(max_request_size: int = DEFAULT_MAX_REQUEST_SIZE) -> Callable
 
     def decorator(f: F) -> F:
         @functools.wraps(f)
-        def wrapper(event: dict, context: dict) -> Dict[str, Union[str, int, Dict[str, str]]]:
+        def wrapper(event: dict, context: dict) -> dict[str, str | int | dict[str, str]]:
             """
             Validate Lambda event input.
 
@@ -178,7 +181,8 @@ def validate_input(max_request_size: int = DEFAULT_MAX_REQUEST_SIZE) -> Callable
                 )
 
             # All validations passed, call the wrapped function
-            return f(event, context)
+            result: dict[str, str | int | dict[str, str]] = f(event, context)
+            return result
 
         return wrapper  # type: ignore [return-value]
 

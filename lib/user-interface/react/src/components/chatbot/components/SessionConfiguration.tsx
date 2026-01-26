@@ -31,6 +31,7 @@ import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { IModel, ModelType } from '@/shared/model/model-management.model';
 import { IConfiguration } from '@/shared/model/configuration.model';
 import { LisaChatSession } from '@/components/types';
+import { ModelFeatures } from '@/components/types';
 
 export type SessionConfigurationProps = {
     title?: string;
@@ -93,6 +94,14 @@ export const SessionConfiguration = ({
         };
     });
 
+    const reasoningEffortOptions = [
+        { value: 'none', label: 'None' },
+        { value: 'minimal', label: 'Minimal' },
+        { value: 'low', label: 'Low' },
+        { value: 'medium', label: 'Medium' },
+        { value: 'high', label: 'High' },
+        { value: 'xhigh', label: 'X-High' },
+    ];
     const isImageModel = selectedModel?.modelType === ModelType.imagegen;
 
     return (
@@ -104,7 +113,7 @@ export const SessionConfiguration = ({
             size='large'
         >
             <SpaceBetween direction='vertical' size='l'>
-                <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }, { colspan: 6 }, { colspan: 6 }, { colspan: 6 }]}>
+                <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }, { colspan: 6 }, { colspan: 6 }, { colspan: 6 }, { colspan: 6 }]}>
                     <Toggle
                         onChange={({ detail }) => updateSessionConfiguration('streaming', detail.checked)}
                         checked={chatConfiguration.sessionConfiguration.streaming}
@@ -152,6 +161,27 @@ export const SessionConfiguration = ({
                                 options={oneThroughTenOptions}
                             />
                         </FormField>}
+                    {selectedModel?.features?.find((feature) => feature.name === ModelFeatures.REASONING) &&
+                        <FormField label='Reasoning Effort'>
+                            <Select
+                                disabled={isRunning}
+                                filteringType='auto'
+                                selectedOption={{
+                                    value: chatConfiguration.sessionConfiguration.modelArgs.reasoning_effort,
+                                    label: chatConfiguration.sessionConfiguration.modelArgs.reasoning_effort,
+                                }}
+                                onChange={({ detail }) => updateSessionConfiguration('modelArgs', {...chatConfiguration.sessionConfiguration.modelArgs, reasoning_effort: detail.selectedOption.value })}
+                                options={reasoningEffortOptions}
+                            />
+                        </FormField>}
+                    {selectedModel?.features?.find((feature) => feature.name === ModelFeatures.REASONING) &&
+                        <Toggle
+                            onChange={({ detail }) => updateSessionConfiguration('showReasoningContent', detail.checked)}
+                            checked={chatConfiguration.sessionConfiguration.showReasoningContent}
+                            disabled={isRunning}
+                        >
+                            Show Reasoning Content
+                        </Toggle>}
                 </Grid>
                 {systemConfig && systemConfig.configuration.enabledComponents.editKwargs && !isImageModel &&
                     <Container

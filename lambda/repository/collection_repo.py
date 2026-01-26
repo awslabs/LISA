@@ -16,7 +16,7 @@
 
 import logging
 import os
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import boto3
 from boto3.dynamodb.conditions import Attr, Key
@@ -38,7 +38,7 @@ class CollectionRepositoryError(Exception):
 class CollectionRepository:
     """Collection repository for DynamoDB operations."""
 
-    def __init__(self, table_name: Optional[str] = None) -> None:
+    def __init__(self, table_name: str | None = None) -> None:
         """
         Initialize the Collection Repository.
 
@@ -96,7 +96,7 @@ class CollectionRepository:
             logger.error(f"Unexpected error creating collection: {e}")
             raise CollectionRepositoryError(f"Unexpected error creating collection: {str(e)}")
 
-    def find_by_id(self, collection_id: str, repository_id: str) -> Optional[RagCollectionConfig]:
+    def find_by_id(self, collection_id: str, repository_id: str) -> RagCollectionConfig | None:
         """
         Find a collection by its ID and repository ID.
 
@@ -133,8 +133,8 @@ class CollectionRepository:
         self,
         collection_id: str,
         repository_id: str,
-        updates: Dict[str, Any],
-        expected_version: Optional[str] = None,
+        updates: dict[str, Any],
+        expected_version: str | None = None,
     ) -> RagCollectionConfig:
         """
         Update a collection with optimistic locking.
@@ -250,12 +250,12 @@ class CollectionRepository:
         self,
         repository_id: str,
         page_size: int = 20,
-        last_evaluated_key: Optional[Dict[str, str]] = None,
-        filter_text: Optional[str] = None,
-        status_filter: Optional[CollectionStatus] = None,
+        last_evaluated_key: dict[str, str] | None = None,
+        filter_text: str | None = None,
+        status_filter: CollectionStatus | None = None,
         sort_by: CollectionSortBy = CollectionSortBy.CREATED_AT,
         sort_order: SortOrder = SortOrder.DESC,
-    ) -> Tuple[List[RagCollectionConfig], Optional[Dict[str, str]]]:
+    ) -> tuple[list[RagCollectionConfig], dict[str, str] | None]:
         """
         List collections for a repository with pagination, filtering, and sorting.
 
@@ -332,7 +332,7 @@ class CollectionRepository:
             logger.error(f"Failed to list collections for repository {repository_id}: {e}")
             raise CollectionRepositoryError(f"Failed to list collections: {str(e)}")
 
-    def count_by_repository(self, repository_id: str, status: Optional[CollectionStatus] = None) -> int:
+    def count_by_repository(self, repository_id: str, status: CollectionStatus | None = None) -> int:
         """
         Count collections in a repository.
 
@@ -362,13 +362,13 @@ class CollectionRepository:
 
             count = response.get("Count", 0)
             logger.info(f"Counted {count} collections for repository {repository_id}")
-            return count
+            return count  # type: ignore[no-any-return]
 
         except Exception as e:
             logger.error(f"Failed to count collections for repository {repository_id}: {e}")
             raise CollectionRepositoryError(f"Failed to count collections: {str(e)}")
 
-    def find_by_name(self, repository_id: str, collection_name: str) -> Optional[RagCollectionConfig]:
+    def find_by_name(self, repository_id: str, collection_name: str) -> RagCollectionConfig | None:
         """
         Find a collection by repository ID and name.
 
@@ -402,7 +402,7 @@ class CollectionRepository:
             logger.error(f"Failed to find collection by name '{collection_name}': {e}")
             raise CollectionRepositoryError(f"Failed to find collection by name: {str(e)}")
 
-    def find_collections_using_model(self, model_id: str) -> List[Dict[str, str]]:
+    def find_collections_using_model(self, model_id: str) -> list[dict[str, str]]:
         """
         Find all collections that use a specific embedding model.
         Excludes collections with status indicating they are deleted or archived.

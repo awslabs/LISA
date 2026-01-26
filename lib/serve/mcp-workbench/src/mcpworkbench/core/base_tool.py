@@ -26,8 +26,9 @@
 #   limitations under the License."""Base tool class and related data structures."""
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from enum import Enum
-from typing import Any, Callable, Optional, Union
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -49,15 +50,13 @@ class ToolInfo(BaseModel):
     module_name: str = Field(..., description="Python module name")
 
     # For class-based tools
-    class_name: Optional[str] = Field(default=None, description="Class name for class-based tools")
+    class_name: str | None = Field(default=None, description="Class name for class-based tools")
 
     # For function-based tools
-    function_name: Optional[str] = Field(default=None, description="Function name for function-based tools")
+    function_name: str | None = Field(default=None, description="Function name for function-based tools")
 
     # Tool instance or function reference (not serialized)
-    tool_instance: Optional[Union[Any, Callable]] = Field(
-        default=None, exclude=True, description="Tool instance or function"
-    )
+    tool_instance: Any | Callable | None = Field(default=None, exclude=True, description="Tool instance or function")
 
 
 class BaseTool(ABC):

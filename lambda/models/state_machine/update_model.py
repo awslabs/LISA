@@ -17,8 +17,9 @@
 import json
 import logging
 import os
+from collections.abc import Callable
 from copy import deepcopy
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 import boto3
 from models.clients.litellm_client import LiteLLMClient
@@ -50,15 +51,15 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
-def _update_simple_field(model_config: Dict[str, Any], field_name: str, value: Any, model_id: str) -> None:
+def _update_simple_field(model_config: dict[str, Any], field_name: str, value: Any, model_id: str) -> None:
     """Update a simple field in model_config."""
     logger.info(f"Setting {field_name} to '{value}' for model '{model_id}'")
     model_config[field_name] = value
 
 
 def _update_container_config(
-    model_config: Dict[str, Any], container_config: Dict[str, Any], model_id: str
-) -> Dict[str, Any]:
+    model_config: dict[str, Any], container_config: dict[str, Any], model_id: str
+) -> dict[str, Any]:
     """Handle container config update.
 
     Returns:
@@ -119,7 +120,7 @@ def _update_container_config(
     return container_metadata
 
 
-def _get_metadata_update_handlers(model_config: Dict[str, Any], model_id: str) -> Dict[str, Callable[..., Any]]:
+def _get_metadata_update_handlers(model_config: dict[str, Any], model_id: str) -> dict[str, Callable[..., Any]]:
     """Return a dictionary mapping field names to their update handlers."""
     return {
         "modelType": lambda value: _update_simple_field(model_config, "modelType", value, model_id),
@@ -132,8 +133,8 @@ def _get_metadata_update_handlers(model_config: Dict[str, Any], model_id: str) -
 
 
 def _process_metadata_updates(
-    model_config: Dict[str, Any], update_payload: Dict[str, Any], model_id: str
-) -> tuple[bool, Dict[str, Any]]:
+    model_config: dict[str, Any], update_payload: dict[str, Any], model_id: str
+) -> tuple[bool, dict[str, Any]]:
     """
     Process metadata updates.
 
@@ -163,7 +164,7 @@ def _process_metadata_updates(
     return has_updates, update_metadata
 
 
-def handle_job_intake(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_job_intake(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Handle initial UpdateModel job submission.
 
@@ -338,7 +339,7 @@ def handle_job_intake(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     return output_dict
 
 
-def handle_poll_capacity(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_poll_capacity(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Poll autoscaling and target group to confirm if the capacity is done updating.
 
@@ -369,7 +370,7 @@ def handle_poll_capacity(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     return output_dict
 
 
-def handle_finish_update(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_finish_update(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Finalize update in DDB.
 
@@ -401,7 +402,7 @@ def handle_finish_update(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     litellm_params["api_base"] = model_url
 
     ddb_update_expression = "SET model_status = :ms, last_modified_date = :lm"
-    ddb_update_values: Dict[str, Any] = {
+    ddb_update_values: dict[str, Any] = {
         ":lm": now(),
     }
 
@@ -441,7 +442,7 @@ def handle_finish_update(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     return output_dict
 
 
-def handle_update_guardrails(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_update_guardrails(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Update guardrails for a model in LiteLLM and DynamoDB.
 
@@ -734,9 +735,9 @@ def get_ecs_resources_from_stack(stack_name: str) -> tuple[str, str, str]:
 
 def create_updated_task_definition(
     task_definition_arn: str,
-    updated_env_vars: Dict[str, str],
-    env_vars_to_delete: Optional[List[str]] = None,
-    updated_container_config: Optional[Dict[str, Any]] = None,
+    updated_env_vars: dict[str, str],
+    env_vars_to_delete: list[str] | None = None,
+    updated_container_config: dict[str, Any] | None = None,
 ) -> str:
     """Create new task definition revision with updated environment variables and container config.
 
@@ -861,7 +862,7 @@ def update_ecs_service(cluster_arn: str, service_arn: str, task_definition_arn: 
         raise RuntimeError(f"Failed to update ECS service: {str(e)}")
 
 
-def handle_ecs_update(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_ecs_update(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Update ECS task definition with new environment variables and update service.
 
@@ -923,7 +924,7 @@ def handle_ecs_update(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     return output_dict
 
 
-def handle_poll_ecs_deployment(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_poll_ecs_deployment(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Monitor ECS service deployment progress.
 

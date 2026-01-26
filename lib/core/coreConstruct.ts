@@ -22,7 +22,7 @@ import { BaseProps } from '../schema';
 import { RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 
 import { COMMON_LAYER_PATH, FASTAPI_LAYER_PATH, AUTHORIZER_LAYER_PATH, CDK_LAYER_PATH } from '../util';
-import { Bucket } from 'aws-cdk-lib/aws-s3';
+import { BlockPublicAccess, Bucket, BucketEncryption, ObjectOwnership } from 'aws-cdk-lib/aws-s3';
 import { getNodeRuntime } from '../api-base/utils';
 
 export const ARCHITECTURE = lambda.Architecture.X86_64;
@@ -47,6 +47,9 @@ export class CoreConstruct extends Construct {
             autoDeleteObjects: config.removalPolicy === RemovalPolicy.DESTROY,
             bucketName: ([config.deploymentName, config.accountNumber, config.deploymentStage, 'bucket', 'access', 'logs'].join('-')).toLowerCase(),
             enforceSSL: true,
+            encryption: BucketEncryption.S3_MANAGED,
+            blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+            objectOwnership: ObjectOwnership.BUCKET_OWNER_PREFERRED,
         });
 
         new StringParameter(scope, 'LISABucketAccessLogsBucket', {

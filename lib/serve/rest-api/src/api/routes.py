@@ -17,11 +17,10 @@
 import logging
 import os
 
+from api.endpoints.v2 import litellm_passthrough
+from auth import Authorizer
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
-
-from ..auth import Authorizer
-from .endpoints.v2 import litellm_passthrough
 
 logger = logging.getLogger(__name__)
 

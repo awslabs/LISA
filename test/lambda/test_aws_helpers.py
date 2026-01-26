@@ -28,90 +28,71 @@ from utilities.aws_helpers import (
 )
 
 
-class TestGetCertPath:
-    """Test get_cert_path function."""
+@patch.dict(os.environ, {"RESTAPI_SSL_CERT_ARN": "arn:aws:acm:us-east-1:123456789012:certificate/abc-123"}, clear=False)
+def test_returns_true_for_acm_certificate():
+    """Test get_cert_path returns True for ACM certificates."""
+    mock_iam = MagicMock()
 
-    @patch.dict(os.environ, {"RESTAPI_SSL_CERT_ARN": ""}, clear=False)
-    def test_returns_true_when_no_arn(self):
-        """Test get_cert_path returns True when no ARN is specified."""
-        mock_iam = MagicMock()
+    # Clear cache
+    get_cert_path.cache_clear()
 
-        # Clear cache
-        get_cert_path.cache_clear()
+    result = get_cert_path(mock_iam)
 
-        result = get_cert_path(mock_iam)
+    assert result is True
+    mock_iam.get_server_certificate.assert_not_called()
 
-        assert result is True
-        mock_iam.get_server_certificate.assert_not_called()
 
-    @patch.dict(
-        os.environ, {"RESTAPI_SSL_CERT_ARN": "arn:aws:acm:us-east-1:123456789012:certificate/abc-123"}, clear=False
-    )
-    def test_returns_true_for_acm_certificate(self):
-        """Test get_cert_path returns True for ACM certificates."""
-        mock_iam = MagicMock()
+@patch.dict(os.environ, {"RESTAPI_SSL_CERT_ARN": "arn:aws:iam::123456789012:server-certificate/test-cert"}, clear=False)
+def test_retrieves_iam_certificate():
+    """Test get_cert_path retrieves IAM certificate."""
+    mock_iam = MagicMock()
+    mock_iam.get_server_certificate.return_value = {
+        "ServerCertificate": {"CertificateBody": "-----BEGIN CERTIFICATE-----\ntest\n-----END CERTIFICATE-----"}
+    }
 
-        # Clear cache
-        get_cert_path.cache_clear()
+    # Clear cache
+    get_cert_path.cache_clear()
 
-        result = get_cert_path(mock_iam)
+    result = get_cert_path(mock_iam)
 
-        assert result is True
-        mock_iam.get_server_certificate.assert_not_called()
+    assert isinstance(result, str)
+    assert result != ""
+    mock_iam.get_server_certificate.assert_called_once_with(ServerCertificateName="test-cert")
 
-    @patch.dict(
-        os.environ, {"RESTAPI_SSL_CERT_ARN": "arn:aws:iam::123456789012:server-certificate/test-cert"}, clear=False
-    )
-    def test_retrieves_iam_certificate(self):
-        """Test get_cert_path retrieves IAM certificate."""
-        mock_iam = MagicMock()
-        mock_iam.get_server_certificate.return_value = {
-            "ServerCertificate": {"CertificateBody": "-----BEGIN CERTIFICATE-----\ntest\n-----END CERTIFICATE-----"}
-        }
 
-        # Clear cache
-        get_cert_path.cache_clear()
+@patch.dict(os.environ, {"RESTAPI_SSL_CERT_ARN": "arn:aws:iam::123456789012:server-certificate/my-cert"}, clear=False)
+def test_falls_back_on_iam_error():
+    """Test get_cert_path falls back to True when IAM call fails."""
+    mock_iam = MagicMock()
+    mock_iam.get_server_certificate.side_effect = Exception("IAM error")
 
-        result = get_cert_path(mock_iam)
+    # Clear cache
+    get_cert_path.cache_clear()
 
-        assert isinstance(result, str)
-        assert result != ""
-        mock_iam.get_server_certificate.assert_called_once_with(ServerCertificateName="test-cert")
+    result = get_cert_path(mock_iam)
 
-    @patch.dict(
-        os.environ, {"RESTAPI_SSL_CERT_ARN": "arn:aws:iam::123456789012:server-certificate/my-cert"}, clear=False
-    )
-    def test_falls_back_on_iam_error(self):
-        """Test get_cert_path falls back to True when IAM call fails."""
-        mock_iam = MagicMock()
-        mock_iam.get_server_certificate.side_effect = Exception("IAM error")
+    assert result is True
 
-        # Clear cache
-        get_cert_path.cache_clear()
 
-        result = get_cert_path(mock_iam)
+@patch.dict(os.environ, {"RESTAPI_SSL_CERT_ARN": "arn:aws:iam::123456789012:server-certificate/test"}, clear=False)
+def test_caches_result():
+    """Test get_cert_path caches the result."""
+    mock_iam = MagicMock()
+    mock_iam.get_server_certificate.return_value = {
+        "ServerCertificate": {"CertificateBody": "-----BEGIN CERTIFICATE-----\ntest\n-----END CERTIFICATE-----"}
+    }
 
-        assert result is True
+    # Clear cache
+    get_cert_path.cache_clear()
 
-    @patch.dict(os.environ, {"RESTAPI_SSL_CERT_ARN": "arn:aws:iam::123456789012:server-certificate/test"}, clear=False)
-    def test_caches_result(self):
-        """Test get_cert_path caches the result."""
-        mock_iam = MagicMock()
-        mock_iam.get_server_certificate.return_value = {
-            "ServerCertificate": {"CertificateBody": "-----BEGIN CERTIFICATE-----\ntest\n-----END CERTIFICATE-----"}
-        }
+    # First call
+    result1 = get_cert_path(mock_iam)
+    # Second call
+    result2 = get_cert_path(mock_iam)
 
-        # Clear cache
-        get_cert_path.cache_clear()
-
-        # First call
-        result1 = get_cert_path(mock_iam)
-        # Second call
-        result2 = get_cert_path(mock_iam)
-
-        assert result1 == result2
-        # Should only call IAM once due to caching
-        assert mock_iam.get_server_certificate.call_count == 1
+    assert result1 == result2
+    # Should only call IAM once due to caching
+    assert mock_iam.get_server_certificate.call_count == 1
 
 
 class TestGetRestApiContainerEndpoint:

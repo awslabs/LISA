@@ -14,17 +14,32 @@
 
 """Embedding route handlers."""
 import logging
-from typing import Any, Dict
+from typing import Any
 
-from ..utils.request_utils import validate_and_prepare_llm_request
-from ..utils.resources import RestApiResource
+from utils.request_utils import RegistryProtocol, validate_and_prepare_llm_request
+from utils.resources import RestApiResource
 
 logger = logging.getLogger(__name__)
 
 
-async def handle_embeddings(request_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Handle for embeddings endpoint."""
-    model, model_kwargs, text = await validate_and_prepare_llm_request(request_data, RestApiResource.EMBEDDINGS)
+async def handle_embeddings(request_data: dict[str, Any], registry: RegistryProtocol | None = None) -> dict[str, Any]:
+    """Handle for embeddings endpoint.
+
+    Parameters
+    ----------
+    request_data : dict[str, Any]
+        Request data
+    registry : RegistryProtocol | None
+        Optional registry for dependency injection (testing)
+
+    Returns
+    -------
+    dict[str, Any]
+        Embeddings response
+    """
+    model, model_kwargs, text = await validate_and_prepare_llm_request(
+        request_data, RestApiResource.EMBEDDINGS, registry
+    )
     response = await model.embed_query(text=text, model_kwargs=model_kwargs)
 
     return response.dict()  # type: ignore

@@ -25,7 +25,8 @@ New code should import from the specific utility modules:
 - dict_helpers: merge_fields, get_property_path, get_item
 """
 import logging
-from typing import Any, Callable, TypeVar
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 # Re-export from organized modules for backward compatibility
 from utilities.aws_helpers import (

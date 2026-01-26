@@ -13,7 +13,7 @@
 #   limitations under the License.
 
 import logging
-from typing import Optional
+from typing import Any
 from uuid import uuid4
 
 from boto3.dynamodb.conditions import Key
@@ -37,10 +37,10 @@ logger = logging.getLogger(__name__)
 class CreateTokenAdminHandler:
     """Admin creates token for any user or system"""
 
-    def __init__(self, token_table):
+    def __init__(self, token_table: Any) -> None:
         self.token_table = token_table
 
-    def _get_user_token(self, username: str) -> Optional[dict]:
+    def _get_user_token(self, username: str) -> dict | None:
         """Query for existing token by username using GSI"""
         response = self.token_table.query(
             IndexName="username-index", KeyConditionExpression=Key("username").eq(username), Limit=1
@@ -48,7 +48,9 @@ class CreateTokenAdminHandler:
         items = response.get("Items", [])
         return items[0] if items else None
 
-    def __call__(self, username: str, request: CreateTokenAdminRequest, created_by: str, is_admin: bool):
+    def __call__(
+        self, username: str, request: CreateTokenAdminRequest, created_by: str, is_admin: bool
+    ) -> CreateTokenResponse:
         # Authorization: Only admins can create tokens for other users
         if not is_admin:
             raise UnauthorizedError("Only admins can create tokens for other users")
@@ -97,10 +99,10 @@ class CreateTokenAdminHandler:
 class CreateTokenUserHandler:
     """User creates their own token"""
 
-    def __init__(self, token_table):
+    def __init__(self, token_table: Any) -> None:
         self.token_table = token_table
 
-    def _get_user_token(self, username: str) -> Optional[dict]:
+    def _get_user_token(self, username: str) -> dict | None:
         """Query for existing token by username using GSI"""
         response = self.token_table.query(
             IndexName="username-index", KeyConditionExpression=Key("username").eq(username), Limit=1
@@ -110,7 +112,7 @@ class CreateTokenUserHandler:
 
     def __call__(
         self, request: CreateTokenUserRequest, username: str, user_groups: list[str], is_admin: bool, is_api_user: bool
-    ):
+    ) -> CreateTokenResponse:
         # Authorization: User must be admin or in apiGroup
         if not is_admin and not is_api_user:
             raise ForbiddenError("User must be in the API group to create tokens")
@@ -156,7 +158,7 @@ class CreateTokenUserHandler:
 class ListTokensHandler:
     """List tokens - admins see all, users see only their own"""
 
-    def __init__(self, token_table):
+    def __init__(self, token_table: Any) -> None:
         self.token_table = token_table
 
     def __call__(self, username: str, is_admin: bool) -> ListTokensResponse:
@@ -203,7 +205,7 @@ class ListTokensHandler:
 class GetTokenHandler:
     """Get specific token details"""
 
-    def __init__(self, token_table):
+    def __init__(self, token_table: Any) -> None:
         self.token_table = token_table
 
     def __call__(self, token_uuid: str, username: str, is_admin: bool) -> TokenInfo:
@@ -263,7 +265,7 @@ class GetTokenHandler:
 class DeleteTokenHandler:
     """Delete token - handles both modern and legacy tokens"""
 
-    def __init__(self, token_table):
+    def __init__(self, token_table: Any) -> None:
         self.token_table = token_table
 
     def __call__(self, token_uuid: str, username: str, is_admin: bool) -> DeleteTokenResponse:

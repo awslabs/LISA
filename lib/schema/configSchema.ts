@@ -729,12 +729,12 @@ const FastApiContainerConfigSchema = z.object({
         })
         .refine(
             (config) => {
-                return !config.dbHost && !config.passwordSecretId;
+                return !config.dbHost;
             },
             {
                 message:
                     'We do not allow using an existing DB for LiteLLM because of its requirement in internal model management ' +
-                    'APIs. Please do not define the dbHost or passwordSecretId fields for the FastAPI container DB config.',
+                    'APIs. Please do not define the dbHost field for the FastAPI container DB config.',
             },
         ),
 }).describe('Configuration schema for REST API.');
@@ -878,7 +878,7 @@ export const RawConfigObject = z.object({
         indexUrl: '',
         trustedHost: '',
     }).describe('Pypi configuration.'),
-    baseImage: z.string().default('python:3.13-slim').describe('Base image used for LISA serve components'),
+    baseImage: z.string().default('public.ecr.aws/docker/library/python:3.13-slim').describe('Base image used for LISA serve components'),
     nodejsImage: z.string().default('public.ecr.aws/lambda/nodejs:24').describe('Base image used for LISA NodeJS lambda deployments'),
     condaUrl: z.string().default('').describe('Conda URL configuration'),
     certificateAuthorityBundle: z.string().default('').describe('Certificate Authority Bundle file'),
@@ -929,7 +929,8 @@ export const RawConfigObject = z.object({
     bootstrapRolePrefix: z.string().optional().describe('Prefix for CDK bootstrap role names. Useful when roles have custom prefixes like My_User_Roles_. Leave empty for standard role names.'),
     litellmConfig: LiteLLMConfig,
     convertInlinePoliciesToManaged: z.boolean().optional().default(false).describe('Convert inline policies to managed policies'),
-    iamRdsAuth: z.boolean().optional().default(false).describe('Enable IAM authentication for RDS'),
+    iamRdsAuth: z.boolean().optional().default(true)
+        .describe('Enable IAM authentication for RDS. When true (default), IAM authentication is used and the bootstrap password is deleted after setup. When false, password-based authentication is used. WARNING: Switching from true to false after deployment is not supported - the master password is permanently deleted when IAM auth is enabled. This is a one-way migration.'),
 });
 
 export const RawConfigSchema = RawConfigObject

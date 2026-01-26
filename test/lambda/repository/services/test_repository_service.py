@@ -15,7 +15,7 @@
 """Tests for repository service base class."""
 
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pytest
 
@@ -37,14 +37,14 @@ class ConcreteRepositoryService(RepositoryService):
     def should_create_default_collection(self) -> bool:
         return True
 
-    def get_collection_id_from_config(self, pipeline_config: Dict[str, Any]) -> str:
+    def get_collection_id_from_config(self, pipeline_config: dict[str, Any]) -> str:
         return pipeline_config.get("collectionId", "default-collection")
 
     def ingest_document(
         self,
         job: IngestionJob,
-        texts: List[str],
-        metadatas: List[Dict[str, Any]],
+        texts: list[str],
+        metadatas: list[dict[str, Any]],
     ) -> RagDocument:
         return RagDocument(
             repository_id=job.repository_id,
@@ -61,7 +61,7 @@ class ConcreteRepositoryService(RepositoryService):
         self,
         document: RagDocument,
         s3_client: Any,
-        bedrock_agent_client: Optional[Any] = None,
+        bedrock_agent_client: Any | None = None,
     ) -> None:
         pass
 
@@ -69,7 +69,7 @@ class ConcreteRepositoryService(RepositoryService):
         self,
         collection_id: str,
         s3_client: Any,
-        bedrock_agent_client: Optional[Any] = None,
+        bedrock_agent_client: Any | None = None,
     ) -> None:
         pass
 
@@ -78,17 +78,17 @@ class ConcreteRepositoryService(RepositoryService):
         query: str,
         collection_id: str,
         top_k: int,
-        bedrock_agent_client: Optional[Any] = None,
-    ) -> List[Dict[str, Any]]:
+        bedrock_agent_client: Any | None = None,
+    ) -> list[dict[str, Any]]:
         return []
 
     def validate_document_source(self, s3_path: str) -> str:
         return s3_path
 
-    def get_vector_store_client(self, collection_id: str, embeddings: Any) -> Optional[Any]:
+    def get_vector_store_client(self, collection_id: str, embeddings: Any) -> Any | None:
         return None
 
-    def create_default_collection(self) -> Optional[RagCollectionConfig]:
+    def create_default_collection(self) -> RagCollectionConfig | None:
         return None
 
 

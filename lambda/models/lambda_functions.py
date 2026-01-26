@@ -15,7 +15,7 @@
 """APIGW endpoints for managing models."""
 import logging
 import os
-from typing import Annotated, Union
+from typing import Annotated
 from urllib.parse import urlparse
 
 import boto3
@@ -92,7 +92,7 @@ async def model_not_found_handler(request: Request, exc: ModelNotFoundError) -> 
 @app.exception_handler(ModelAlreadyExistsError)
 @app.exception_handler(ValueError)
 async def user_error_handler(
-    request: Request, exc: Union[InvalidStateTransitionError, ModelAlreadyExistsError, ValueError]
+    request: Request, exc: InvalidStateTransitionError | ModelAlreadyExistsError | ValueError
 ) -> JSONResponse:
     """Handle errors when customer requests options that cannot be processed."""
     return JSONResponse(status_code=400, content={"detail": str(exc)})

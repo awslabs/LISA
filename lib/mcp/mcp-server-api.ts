@@ -31,7 +31,7 @@ import { McpServerDeployer } from './mcp-server-deployer';
 import { CreateMcpServerStateMachine } from './state-machine/create-mcp-server';
 import { DeleteMcpServerStateMachine } from './state-machine/delete-mcp-server';
 import { UpdateMcpServerStateMachine } from './state-machine/update-mcp-server';
-import { Bucket, HttpMethods } from 'aws-cdk-lib/aws-s3';
+import { Bucket, BucketEncryption, HttpMethods } from 'aws-cdk-lib/aws-s3';
 import { RemovalPolicy } from 'aws-cdk-lib';
 
 type McpServerApiProps = {
@@ -101,7 +101,8 @@ export class McpServerApi extends Construct {
                 },
             ],
             serverAccessLogsBucket: bucketAccessLogsBucket,
-            serverAccessLogsPrefix: 'logs/mcp-hosting-bucket/'
+            serverAccessLogsPrefix: 'logs/mcp-hosting-bucket/',
+            encryption: BucketEncryption.S3_MANAGED
         });
 
         // Get reference to REST API first (will be reused)

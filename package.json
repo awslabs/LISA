@@ -61,6 +61,7 @@
     "test": "jest && npm run test -ws",
     "cdk": "cdk",
     "prepare": "husky || true",
+    "postinstall": "patch-package",
     "dev": "cd lib/user-interface/react/ && npm run dev",
     "prepublishOnly": "npm run build && npm run copy-dist -ws",
     "migrate-properties": "node ./scripts/migrate-properties.mjs",
@@ -102,6 +103,7 @@
     "zod2md": "^0.2.4"
   },
   "dependencies": {
+    "@aws-sdk/util-dynamodb": "^3.948.0",
     "aws-cdk-lib": "^2.232.1",
     "aws-sdk": "^2.1693.0",
     "cdk-ecr-deployment": "^4.0.5",

@@ -68,16 +68,6 @@ def generate_config(filepath: str) -> None:
     param_response = ssm_client.get_parameter(Name=os.environ["REGISTERED_MODELS_PS_NAME"])
     registered_models = json.loads(param_response["Parameter"]["Value"])
     # Generate model definitions for each of the LISA-deployed models
-    # litellm_model_params = [_build_model_config(model) for model in registered_models]
-
-    # # Log embedding model configurations for debugging
-    # for model_config in litellm_model_params:
-    #     model_name = model_config.get("model_name", "")
-    #     litellm_model = model_config.get("litellm_params", {}).get("model", "")
-    #     if "embed" in model_name.lower() or "embed" in litellm_model.lower():
-    #         print(f"Embedding model config: {model_name} -> {litellm_model}")
-    #         print(f"  Full config: {model_config}")
-
     litellm_model_params = [
         {
             "model_name": model["modelId"],  # Use user-provided name if one given, otherwise it is the model name.
@@ -116,15 +106,6 @@ def generate_config(filepath: str) -> None:
         config_contents["general_settings"] = {}
 
     if use_iam_auth:
-        # For IAM auth, LiteLLM uses DATABASE_* environment variables set by CDK
-        # LiteLLM automatically generates and refreshes IAM auth tokens when IAM_TOKEN_DB_AUTH=true
-        # We do NOT set database_url in the config - LiteLLM builds it from env vars
-        print("IAM auth enabled via environment variables")
-        print(f"  DATABASE_HOST: {os.environ.get('DATABASE_HOST', 'not set')}")
-        print(f"  DATABASE_NAME: {os.environ.get('DATABASE_NAME', 'not set')}")
-        print(f"  DATABASE_PORT: {os.environ.get('DATABASE_PORT', 'not set')}")
-        print(f"  DATABASE_USER: {os.environ.get('DATABASE_USER', 'not set')}")
-
         config_contents["general_settings"].update(
             {
                 "store_model_in_db": True,

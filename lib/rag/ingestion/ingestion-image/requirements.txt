@@ -6,7 +6,6 @@ numpy>=2.1.0
 
 # AWS SDK - Version constrained by litellm[proxy]==1.81.3 in rest-api
 # Standardized to boto3==1.40.76 for compatibility across all components
-# Note: aioboto3/aiobotocore removed due to tight botocore version constraints
 boto3==1.40.76
 
 aiohttp==3.13.2

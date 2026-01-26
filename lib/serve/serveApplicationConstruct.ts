@@ -309,6 +309,16 @@ export class LisaServeApplicationConstruct extends Construct {
                 const queueUrl = StringParameter.valueForStringParameter(scope, props.metricsQueueUrl);
                 container.addEnvironment('USAGE_METRICS_QUEUE_URL', queueUrl);
             }
+
+            // Add IAM auth environment variables for LiteLLM's native token refresh
+            // When these are set, LiteLLM automatically generates and refreshes IAM auth tokens
+            if (useIamAuth && serveRole) {
+                container.addEnvironment('IAM_TOKEN_DB_AUTH', 'true');
+                container.addEnvironment('DATABASE_HOST', litellmDb.dbInstanceEndpointAddress);
+                container.addEnvironment('DATABASE_NAME', config.restApiConfig.rdsConfig.dbName);
+                container.addEnvironment('DATABASE_PORT', config.restApiConfig.rdsConfig.dbPort.toString());
+                container.addEnvironment('DATABASE_USER', serveRole.roleName);
+            }
         }
         restApi.node.addDependency(this.modelsPs);
         restApi.node.addDependency(litellmDbConnectionInfoPs);

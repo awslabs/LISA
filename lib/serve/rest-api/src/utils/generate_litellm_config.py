@@ -20,7 +20,6 @@ import os
 import boto3
 import click
 import yaml
-from rds_auth import get_lambda_role_name
 
 
 @click.command()
@@ -61,20 +60,29 @@ def generate_config(filepath: str) -> None:
     db_param_response = ssm_client.get_parameter(Name=os.environ["LITELLM_DB_INFO_PS_NAME"])
     db_params = json.loads(db_param_response["Parameter"]["Value"])
 
-    # Check if using IAM auth (no passwordSecretId) or password auth
-    use_iam_auth = "passwordSecretId" not in db_params
+    # Check if using IAM auth - either via environment variable (preferred) or SSM parameter
+    # IAM_TOKEN_DB_AUTH is set by CDK when iamRdsAuth=true
+    use_iam_auth = os.environ.get("IAM_TOKEN_DB_AUTH", "").lower() == "true" or "passwordSecretId" not in db_params
+
+    if "general_settings" not in config_contents:
+        config_contents["general_settings"] = {}
 
     if use_iam_auth:
-        # For IAM auth, set environment variables for LiteLLM's native IAM token refresh
-        # LiteLLM will automatically generate and refresh IAM auth tokens when these are set
-        iam_name = get_lambda_role_name()
-        os.environ["DATABASE_HOST"] = db_params["dbHost"]
-        os.environ["DATABASE_NAME"] = db_params["dbName"]
-        os.environ["DATABASE_PORT"] = str(db_params["dbPort"])
-        os.environ["DATABASE_USER"] = iam_name
-        os.environ["IAM_TOKEN_DB_AUTH"] = "true"
-        print(f"IAM auth enabled for database user: {iam_name}")
-        print(f"Database: {db_params['dbHost']}:{db_params['dbPort']}/{db_params['dbName']}")
+        # For IAM auth, LiteLLM uses DATABASE_* environment variables set by CDK
+        # LiteLLM automatically generates and refreshes IAM auth tokens when IAM_TOKEN_DB_AUTH=true
+        # We do NOT set database_url in the config - LiteLLM builds it from env vars
+        print(f"IAM auth enabled via environment variables")
+        print(f"  DATABASE_HOST: {os.environ.get('DATABASE_HOST', 'not set')}")
+        print(f"  DATABASE_NAME: {os.environ.get('DATABASE_NAME', 'not set')}")
+        print(f"  DATABASE_PORT: {os.environ.get('DATABASE_PORT', 'not set')}")
+        print(f"  DATABASE_USER: {os.environ.get('DATABASE_USER', 'not set')}")
+
+        config_contents["general_settings"].update(
+            {
+                "store_model_in_db": True,
+                "master_key": config_contents["db_key"],
+            }
+        )
     else:
         # Password auth: build connection string with password from Secrets Manager
         username, password = get_database_credentials(db_params)
@@ -83,25 +91,10 @@ def generate_config(filepath: str) -> None:
             f"/{db_params['dbName']}"
         )
 
-        if "general_settings" not in config_contents:
-            config_contents["general_settings"] = {}
-
         config_contents["general_settings"].update(
             {
                 "store_model_in_db": True,
                 "database_url": connection_str,
-                "master_key": config_contents["db_key"],
-            }
-        )
-
-    # For IAM auth, we still need general_settings but without database_url
-    # LiteLLM will use the DATABASE_* env vars instead
-    if use_iam_auth:
-        if "general_settings" not in config_contents:
-            config_contents["general_settings"] = {}
-        config_contents["general_settings"].update(
-            {
-                "store_model_in_db": True,
                 "master_key": config_contents["db_key"],
             }
         )

@@ -48,7 +48,7 @@ if [ "${DEBUG}" = "true" ]; then
     GUNICORN_LOG_LEVEL="debug"
     PRISMA_LOG_LEVEL="info,query"
 else
-    LOG_LEVEL="INFO"
+    LOG_LEVEL="${LITELLM_LOG_LEVEL:-INFO}"
     GUNICORN_LOG_LEVEL="info"
     PRISMA_LOG_LEVEL="warn"
 fi
@@ -56,14 +56,40 @@ fi
 # Configure LiteLLM logging
 export LITELLM_LOG=${LOG_LEVEL}
 export LITELLM_JSON_LOGS=${LITELLM_JSON_LOGS:-false}
-export LITELLM_DISABLE_HEALTH_CHECK_LOGS=${LITELLM_DISABLE_HEALTH_CHECK_LOGS:-false}
+export LITELLM_DISABLE_HEALTH_CHECK_LOGS=${LITELLM_DISABLE_HEALTH_CHECK_LOGS:-true}
 
 # Configure Prisma logging
 export PRISMA_LOG_LEVEL=${PRISMA_LOG_LEVEL}
 
+# Wait for database to be reachable before starting LiteLLM
+# This prevents startup errors from race conditions
+if [ -n "$DATABASE_HOST" ] && [ -n "$DATABASE_PORT" ]; then
+    echo "🔍 Checking database connectivity..."
+    echo "   - Host: $DATABASE_HOST"
+    echo "   - Port: $DATABASE_PORT"
+    
+    MAX_RETRIES=30
+    RETRY_INTERVAL=2
+    retry_count=0
+    
+    while [ $retry_count -lt $MAX_RETRIES ]; do
+        if timeout 5 bash -c "echo > /dev/tcp/$DATABASE_HOST/$DATABASE_PORT" 2>/dev/null; then
+            echo "✅ Database is reachable"
+            break
+        fi
+        retry_count=$((retry_count + 1))
+        echo "   - Waiting for database... (attempt $retry_count/$MAX_RETRIES)"
+        sleep $RETRY_INTERVAL
+    done
+    
+    if [ $retry_count -eq $MAX_RETRIES ]; then
+        echo "⚠️  Database not reachable after $MAX_RETRIES attempts, proceeding anyway..."
+    fi
+fi
+
 # Start LiteLLM in the background with better error handling
 # Note: For IAM RDS authentication, LiteLLM handles token refresh natively
-# when IAM_TOKEN_DB_AUTH=true is set (configured in generate_litellm_config.py)
+# when IAM_TOKEN_DB_AUTH=true is set (configured via CDK environment variables)
 echo "🚀 Starting LiteLLM server..."
 echo "   - Config file: litellm_config.yaml"
 echo "   - Port: 4000 (internal)"
@@ -71,8 +97,15 @@ echo "   - Database: Prisma with auto-push enabled"
 echo "   - Debug mode: ${DEBUG:-false}"
 echo "   - Log level: $LOG_LEVEL"
 echo "   - Prisma log level: $PRISMA_LOG_LEVEL"
+if [ "$IAM_TOKEN_DB_AUTH" = "true" ]; then
+    echo "   - IAM Auth: enabled (tokens auto-refresh)"
+    echo "   - Database User: $DATABASE_USER"
+fi
 
 # Start LiteLLM and capture its PID
+# Note: Transient DB connection errors may appear during IAM token refresh cycles
+# These are expected with LiteLLM < 1.81 and the service recovers automatically
+# Set LITELLM_LOG_LEVEL=INFO to see all logs, or DEBUG for verbose output
 litellm -c litellm_config.yaml --use_prisma_db_push > litellm.log 2>&1 &
 LITELLM_PID=$!
 

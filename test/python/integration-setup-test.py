@@ -308,13 +308,20 @@ def create_self_hosted_embedded_model(
                 "retries": 3,
             },
             "environment": {
-                "MAX_TOTAL_TOKENS": "16384",
-                "MAX_INPUT_LENGTH": "8192",
-                "MAX_BATCH_TOKENS": "4096",
-                "MAX_CONCURRENT_REQUESTS": "512",
-                "MAX_CLIENT_BATCH_SIZE": "1024",
-                "POOLING": "mean",
-                "AUTO_TRUNCATE": "true",
+                # TEI Performance Configuration for g5.xlarge (1x A10G GPU, 24GB VRAM)
+                # Based on: https://huggingface.co/docs/text-embeddings-inference/cli_arguments
+                # Batching - CRITICAL for GPU utilization and throughput
+                # MAX_BATCH_TOKENS should be as high as possible until GPU is compute-bound
+                "MAX_BATCH_TOKENS": "16384",  # Max tokens per batch (default: 16384)
+                # Concurrency - control backpressure
+                "MAX_CONCURRENT_REQUESTS": "512",  # Max concurrent requests (default: 512)
+                "MAX_CLIENT_BATCH_SIZE": "256",  # Max inputs per client request (default: 32)
+                # Pooling method for embeddings
+                "POOLING": "mean",  # Options: cls, mean, splade, last-token
+                # Input handling
+                "AUTO_TRUNCATE": "true",  # Automatically truncate long inputs
+                # Precision - use float16 for faster inference on GPU
+                "DTYPE": "float16",
             },
         },
         "inferenceContainer": "tei",
@@ -408,11 +415,22 @@ def create_self_hosted_model(
                 "retries": 3,
             },
             "environment": {
-                # MAX_TOTAL_TOKENS is mapped to VLLM_MAX_MODEL_LEN in entrypoint.sh
-                "MAX_TOTAL_TOKENS": "16384",
-                "MAX_INPUT_LENGTH": "8192",
-                "MAX_BATCH_TOKENS": "4096",
-                "MAX_CONCURRENT_REQUESTS": "128",
+                # vLLM Performance Configuration for g5.xlarge (1x A10G GPU, 24GB VRAM)
+                # These environment variables are read natively by vLLM
+                # See: https://docs.vllm.ai/en/latest/configuration/env_vars/
+                # Context length - maximum sequence length the model can handle
+                "VLLM_MAX_MODEL_LEN": "16384",
+                # GPU memory utilization - use 90% of GPU VRAM for model/KV cache
+                "VLLM_GPU_MEMORY_UTILIZATION": "0.90",
+                # Batching - max tokens processed per iteration (affects throughput)
+                "VLLM_MAX_NUM_BATCHED_TOKENS": "8192",
+                # Concurrency - max number of sequences processed in parallel
+                "VLLM_MAX_NUM_SEQS": "128",
+                # Performance optimizations
+                "VLLM_ENABLE_PREFIX_CACHING": "true",  # Cache common prefixes for faster inference
+                "VLLM_ENABLE_CHUNKED_PREFILL": "true",  # Better memory efficiency during prefill
+                # Precision - let vLLM auto-detect based on model config
+                "VLLM_DTYPE": "auto",
             },
         },
         "inferenceContainer": "vllm",
@@ -1177,7 +1195,7 @@ def main():
     parser.add_argument("--deployment-name", required=True, help="LISA deployment name for authentication")
     parser.add_argument("--deployment-stage", required=True, help="LISA deployment stage for authentication")
     parser.add_argument("--deployment-prefix", required=True, help="LISA deployment prefix")
-    parser.add_argument("--verify", default="false", help="Verify SSL certificates")
+    parser.add_argument("--verify", default="true", help="Verify SSL certificates (default: true)")
     parser.add_argument("--profile", help="AWS profile to use")
     parser.add_argument("--cleanup", action="store_true", help="Clean up resources (delete models and repositories)")
     parser.add_argument(

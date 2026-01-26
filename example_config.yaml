@@ -77,7 +77,7 @@ ragRepositories: []
 #       passwordSecretId: # password ID as stored in SecretsManager (only needed if iamRdsAuth: false). Example: "rds!db-aa88493d-be8d-4a3f-96dc-c668165f7826"
 #       dbHost: # Host name of database. Example hostname from RDS: "my-db-name.291b2f03.us-east-1.rds.amazonaws.com"
 #       dbName: postgres
-# iamRdsAuth: true  # Set to false to use password-based authentication instead of IAM auth (default: true)
+# iamRdsAuth: true  # Set to false to use password-based authentication instead of IAM auth (default: false)
 # You can optionally provide a list of models and the deployment process will ensure they exist in your model bucket and try to download them if they don't exist
 # ecsModels:
 #  - modelName: mistralai/Mistral-7B-Instruct-v0.2

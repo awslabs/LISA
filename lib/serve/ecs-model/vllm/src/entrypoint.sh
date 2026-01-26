@@ -176,7 +176,71 @@ if [[ -n "${VLLM_TENSOR_PARALLEL_SIZE}" ]] && [[ ${VLLM_TENSOR_PARALLEL_SIZE} -g
 fi
 
 # Start the webserver
-# vLLM natively reads VLLM_* environment variables for configuration
+# vLLM reads some VLLM_* environment variables natively, but many require CLI args
+# Map environment variables to CLI arguments for full control
+
+echo "Building vLLM CLI arguments from environment variables..."
+
+# GPU memory utilization (0.0-1.0)
+if [[ -n "${VLLM_GPU_MEMORY_UTILIZATION}" ]]; then
+    ADDITIONAL_ARGS="${ADDITIONAL_ARGS} --gpu-memory-utilization ${VLLM_GPU_MEMORY_UTILIZATION}"
+    echo "  --gpu-memory-utilization ${VLLM_GPU_MEMORY_UTILIZATION}"
+fi
+
+# Max model length (context window)
+if [[ -n "${VLLM_MAX_MODEL_LEN}" ]]; then
+    ADDITIONAL_ARGS="${ADDITIONAL_ARGS} --max-model-len ${VLLM_MAX_MODEL_LEN}"
+    echo "  --max-model-len ${VLLM_MAX_MODEL_LEN}"
+fi
+
+# Max number of batched tokens per iteration
+if [[ -n "${VLLM_MAX_NUM_BATCHED_TOKENS}" ]]; then
+    ADDITIONAL_ARGS="${ADDITIONAL_ARGS} --max-num-batched-tokens ${VLLM_MAX_NUM_BATCHED_TOKENS}"
+    echo "  --max-num-batched-tokens ${VLLM_MAX_NUM_BATCHED_TOKENS}"
+fi
+
+# Max number of sequences (concurrent requests)
+if [[ -n "${VLLM_MAX_NUM_SEQS}" ]]; then
+    ADDITIONAL_ARGS="${ADDITIONAL_ARGS} --max-num-seqs ${VLLM_MAX_NUM_SEQS}"
+    echo "  --max-num-seqs ${VLLM_MAX_NUM_SEQS}"
+fi
+
+# Enable prefix caching
+if [[ "${VLLM_ENABLE_PREFIX_CACHING}" == "true" ]]; then
+    ADDITIONAL_ARGS="${ADDITIONAL_ARGS} --enable-prefix-caching"
+    echo "  --enable-prefix-caching"
+fi
+
+# Enable chunked prefill
+if [[ "${VLLM_ENABLE_CHUNKED_PREFILL}" == "true" ]]; then
+    ADDITIONAL_ARGS="${ADDITIONAL_ARGS} --enable-chunked-prefill"
+    echo "  --enable-chunked-prefill"
+fi
+
+# Data type (auto, half, float16, bfloat16, float, float32)
+if [[ -n "${VLLM_DTYPE}" ]]; then
+    ADDITIONAL_ARGS="${ADDITIONAL_ARGS} --dtype ${VLLM_DTYPE}"
+    echo "  --dtype ${VLLM_DTYPE}"
+fi
+
+# Tensor parallel size (for multi-GPU)
+if [[ -n "${VLLM_TENSOR_PARALLEL_SIZE}" ]]; then
+    ADDITIONAL_ARGS="${ADDITIONAL_ARGS} --tensor-parallel-size ${VLLM_TENSOR_PARALLEL_SIZE}"
+    echo "  --tensor-parallel-size ${VLLM_TENSOR_PARALLEL_SIZE}"
+fi
+
+# Quantization method
+if [[ -n "${VLLM_QUANTIZATION}" ]]; then
+    ADDITIONAL_ARGS="${ADDITIONAL_ARGS} --quantization ${VLLM_QUANTIZATION}"
+    echo "  --quantization ${VLLM_QUANTIZATION}"
+fi
+
+# Trust remote code (for custom models)
+if [[ "${VLLM_TRUST_REMOTE_CODE}" == "true" ]]; then
+    ADDITIONAL_ARGS="${ADDITIONAL_ARGS} --trust-remote-code"
+    echo "  --trust-remote-code"
+fi
+
 echo "Starting vLLM with args: ${ADDITIONAL_ARGS}"
 echo "vLLM environment variables:"
 env | grep -E "^(VLLM_|MAX_TOTAL_TOKENS)=" || echo "No vLLM environment variables set"

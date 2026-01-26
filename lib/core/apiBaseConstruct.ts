@@ -273,6 +273,13 @@ export class LisaApiBaseConstruct extends Construct {
             description: 'ARN of the shared IAM auth setup Lambda for PGVector databases',
         });
 
+        // Store the IAM auth setup Lambda role ARN in SSM for granting secret permissions
+        new StringParameter(scope, 'IamAuthSetupRoleArnParam', {
+            parameterName: `${config.deploymentPrefix}/iamAuthSetupRoleArn`,
+            stringValue: iamAuthSetupRole.roleArn,
+            description: 'ARN of the IAM auth setup Lambda role for granting secret permissions',
+        });
+
         return iamAuthSetupFn;
     }
 }

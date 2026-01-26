@@ -63,6 +63,7 @@ export class DockerImageBuilder extends Construct {
             encryption: BucketEncryption.S3_MANAGED,
             blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
             serverAccessLogsBucket: bucketAccessLogsBucket,
+            serverAccessLogsPrefix: 'logs/docker-image-builder-bucket/',
         });
         const ecsModelPath = ECS_MODEL_PATH;
         new BucketDeployment(this, createCdkId([stackName, 'docker-image-builder-ec2-dplmnt']), {

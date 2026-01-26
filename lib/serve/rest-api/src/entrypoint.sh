@@ -67,11 +67,11 @@ if [ -n "$DATABASE_HOST" ] && [ -n "$DATABASE_PORT" ]; then
     echo "🔍 Checking database connectivity..."
     echo "   - Host: $DATABASE_HOST"
     echo "   - Port: $DATABASE_PORT"
-    
+
     MAX_RETRIES=30
     RETRY_INTERVAL=2
     retry_count=0
-    
+
     while [ $retry_count -lt $MAX_RETRIES ]; do
         if timeout 5 bash -c "echo > /dev/tcp/$DATABASE_HOST/$DATABASE_PORT" 2>/dev/null; then
             echo "✅ Database is reachable"
@@ -81,7 +81,7 @@ if [ -n "$DATABASE_HOST" ] && [ -n "$DATABASE_PORT" ]; then
         echo "   - Waiting for database... (attempt $retry_count/$MAX_RETRIES)"
         sleep $RETRY_INTERVAL
     done
-    
+
     if [ $retry_count -eq $MAX_RETRIES ]; then
         echo "⚠️  Database not reachable after $MAX_RETRIES attempts, proceeding anyway..."
     fi

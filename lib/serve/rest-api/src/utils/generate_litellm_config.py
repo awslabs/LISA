@@ -71,7 +71,7 @@ def generate_config(filepath: str) -> None:
         # For IAM auth, LiteLLM uses DATABASE_* environment variables set by CDK
         # LiteLLM automatically generates and refreshes IAM auth tokens when IAM_TOKEN_DB_AUTH=true
         # We do NOT set database_url in the config - LiteLLM builds it from env vars
-        print(f"IAM auth enabled via environment variables")
+        print("IAM auth enabled via environment variables")
         print(f"  DATABASE_HOST: {os.environ.get('DATABASE_HOST', 'not set')}")
         print(f"  DATABASE_NAME: {os.environ.get('DATABASE_NAME', 'not set')}")
         print(f"  DATABASE_PORT: {os.environ.get('DATABASE_PORT', 'not set')}")
@@ -87,8 +87,7 @@ def generate_config(filepath: str) -> None:
         # Password auth: build connection string with password from Secrets Manager
         username, password = get_database_credentials(db_params)
         connection_str = (
-            f"postgresql://{username}:{password}@{db_params['dbHost']}:{db_params['dbPort']}"
-            f"/{db_params['dbName']}"
+            f"postgresql://{username}:{password}@{db_params['dbHost']}:{db_params['dbPort']}" f"/{db_params['dbName']}"
         )
 
         config_contents["general_settings"].update(

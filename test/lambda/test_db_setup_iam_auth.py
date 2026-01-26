@@ -240,8 +240,9 @@ def test_create_db_user_existing_user(mock_psycopg2_connection):
 
     # Configure the cursor: vector extension succeeds, CREATE USER raises unique violation, rest succeed
     # Order: CREATE EXTENSION (success), CREATE USER (unique violation), then GRANT commands (success)
+    # There are 14 GRANT/ALTER commands after CREATE USER
     unique_violation_error = PsycopgError("unique violation")
-    mock_cursor.execute.side_effect = [None, unique_violation_error] + [None] * 10
+    mock_cursor.execute.side_effect = [None, unique_violation_error] + [None] * 14
 
     # Mock the psycopg2.connect function
     with patch("psycopg2.connect", return_value=mock_conn):
@@ -340,20 +341,18 @@ def test_handler_success(lambda_context):
 
     with patch("utilities.db_setup_iam_auth.create_db_user") as mock_create_db_user:
         mock_create_db_user.return_value = True
-        with patch("utilities.db_setup_iam_auth.delete_bootstrap_secret") as mock_delete_secret:
-            mock_delete_secret.return_value = True
 
-            response = handler(event, lambda_context)
+        response = handler(event, lambda_context)
 
-            mock_create_db_user.assert_called_once_with(
-                "test-host", "5432", "test-db", "admin", "test-arn", "test-iam-user"
-            )
-            mock_delete_secret.assert_called_once_with("test-arn")
+        mock_create_db_user.assert_called_once_with(
+            "test-host", "5432", "test-db", "admin", "test-arn", "test-iam-user"
+        )
 
-            assert response["statusCode"] == 200
-            body = json.loads(response["body"])
-            assert body["userCreated"] is True
-            assert body["secretDeleted"] is True
+        assert response["statusCode"] == 200
+        body = json.loads(response["body"])
+        assert body["userCreated"] is True
+        # Secret is now retained for CloudFormation compatibility
+        assert body["secretDeleted"] is False
 
 
 def test_handler_missing_fields(lambda_context):

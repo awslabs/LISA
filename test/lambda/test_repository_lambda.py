@@ -1112,16 +1112,20 @@ def test_pipeline_embeddings_embed_documents():
 
     with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
         "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings.requests.post") as mock_post:
+    ) as mock_cert, patch("repository.embeddings._get_http_session") as mock_get_session:
 
         mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
+
+        # Mock the session and its post method
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
 
         # Mock successful API response
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"data": [{"embedding": [0.1, 0.2, 0.3]}, {"embedding": [0.4, 0.5, 0.6]}]}
-        mock_post.return_value = mock_response
+        mock_session.post.return_value = mock_response
 
         embeddings = RagEmbeddings("test-model", "test-token")
         result = embeddings.embed_documents(["text1", "text2"])
@@ -1155,11 +1159,14 @@ def test_pipeline_embeddings_embed_documents_api_error():
 
     with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
         "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings.requests.post") as mock_post:
+    ) as mock_cert, patch("repository.embeddings._get_http_session") as mock_get_session:
 
         mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
-        mock_post.side_effect = Exception("API request failed")
+
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+        mock_session.post.side_effect = Exception("API request failed")
 
         embeddings = RagEmbeddings("test-model", "test-token")
 
@@ -1173,11 +1180,14 @@ def test_pipeline_embeddings_embed_documents_timeout():
 
     with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
         "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings.requests.post") as mock_post:
+    ) as mock_cert, patch("repository.embeddings._get_http_session") as mock_get_session:
 
         mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
-        mock_post.side_effect = requests.Timeout("Request timed out")
+
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+        mock_session.post.side_effect = requests.Timeout("Request timed out")
 
         embeddings = RagEmbeddings("test-model", "test-token")
 
@@ -1191,10 +1201,13 @@ def test_pipeline_embeddings_embed_documents_different_formats():
 
     with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
         "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings.requests.post") as mock_post:
+    ) as mock_cert, patch("repository.embeddings._get_http_session") as mock_get_session:
 
         mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
+
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
 
         embeddings = RagEmbeddings("test-model", "test-token")
 
@@ -1202,7 +1215,7 @@ def test_pipeline_embeddings_embed_documents_different_formats():
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"data": [{"embedding": [0.1, 0.2]}, {"embedding": [0.3, 0.4]}]}
-        mock_post.return_value = mock_response
+        mock_session.post.return_value = mock_response
         result = embeddings.embed_documents(["text1", "text2"])
         assert len(result) == 2
 
@@ -1218,15 +1231,18 @@ def test_pipeline_embeddings_embed_documents_no_embeddings():
 
     with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
         "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings.requests.post") as mock_post:
+    ) as mock_cert, patch("repository.embeddings._get_http_session") as mock_get_session:
 
         mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
 
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"message": "No embeddings"}
-        mock_post.return_value = mock_response
+        mock_session.post.return_value = mock_response
 
         embeddings = RagEmbeddings("test-model", "test-token")
 
@@ -1240,15 +1256,18 @@ def test_pipeline_embeddings_embed_documents_mismatch():
 
     with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
         "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings.requests.post") as mock_post:
+    ) as mock_cert, patch("repository.embeddings._get_http_session") as mock_get_session:
 
         mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
 
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"data": [{"embedding": [0.1, 0.2]}]}  # Only 1 embedding for 2 texts
-        mock_post.return_value = mock_response
+        mock_session.post.return_value = mock_response
 
         embeddings = RagEmbeddings("test-model", "test-token")
 
@@ -1262,15 +1281,18 @@ def test_pipeline_embeddings_embed_query():
 
     with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
         "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings.requests.post") as mock_post:
+    ) as mock_cert, patch("repository.embeddings._get_http_session") as mock_get_session:
 
         mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
 
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"data": [{"embedding": [0.1, 0.2, 0.3]}]}
-        mock_post.return_value = mock_response
+        mock_session.post.return_value = mock_response
 
         embeddings = RagEmbeddings("test-model", "test-token")
         result = embeddings.embed_query("test query")

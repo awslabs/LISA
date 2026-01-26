@@ -19,6 +19,8 @@ from typing import Any
 import boto3
 import requests
 from pydantic import BaseModel, ConfigDict, field_validator
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from utilities.auth import get_management_key
 from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint, retry_config
 from utilities.validation import validate_model_name, ValidationError
@@ -29,6 +31,31 @@ secrets_client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGI
 iam_client = boto3.client("iam", region_name=os.environ["AWS_REGION"], config=retry_config)
 
 lisa_api_endpoint = ""
+
+# Module-level session with connection pooling for better performance
+# This reuses TCP connections across multiple embedding requests
+_http_session: requests.Session | None = None
+
+
+def _get_http_session() -> requests.Session:
+    """Get or create a shared HTTP session with connection pooling."""
+    global _http_session
+    if _http_session is None:
+        _http_session = requests.Session()
+        # Configure retry strategy for transient failures
+        retry_strategy = Retry(
+            total=2,
+            backoff_factor=0.5,
+            status_forcelist=[502, 503, 504],
+        )
+        adapter = HTTPAdapter(
+            pool_connections=10,  # Number of connection pools
+            pool_maxsize=20,  # Max connections per pool
+            max_retries=retry_strategy,
+        )
+        _http_session.mount("http://", adapter)
+        _http_session.mount("https://", adapter)
+    return _http_session
 
 
 class RagEmbeddings(BaseModel):
@@ -91,8 +118,12 @@ class RagEmbeddings(BaseModel):
         logger.info(f"Embedding {len(texts)} documents using {self.model_name}")
         try:
             url = f"{self.base_url}/embeddings"
-            request_data = {"input": texts, "model": self.model_name}
-            response = requests.post(
+            # Use encoding_format="float" to ensure embeddings are returned as float arrays
+            request_data = {"input": texts, "model": self.model_name, "encoding_format": "float"}
+
+            # Use shared session with connection pooling for better performance
+            session = _get_http_session()
+            response = session.post(
                 url,
                 json=request_data,
                 headers={"Authorization": f"Bearer {self.token}", "Content-Type": "application/json"},
@@ -102,6 +133,7 @@ class RagEmbeddings(BaseModel):
 
             if response.status_code != 200:
                 logger.error(f"Embedding request failed with status {response.status_code}")
+                logger.error(f"Embedding error response body: {response.text}")
                 raise Exception(f"Embedding request failed with status {response.status_code}")
 
             result = response.json()

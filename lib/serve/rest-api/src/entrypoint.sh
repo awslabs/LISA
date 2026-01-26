@@ -106,7 +106,10 @@ fi
 # Note: Transient DB connection errors may appear during IAM token refresh cycles
 # These are expected with LiteLLM < 1.81 and the service recovers automatically
 # Set LITELLM_LOG_LEVEL=INFO to see all logs, or DEBUG for verbose output
-litellm -c litellm_config.yaml --use_prisma_db_push > litellm.log 2>&1 &
+# Use --num_workers to increase parallelism for embedding requests
+LITELLM_WORKERS=${LITELLM_WORKERS:-4}
+echo "   - LiteLLM workers: $LITELLM_WORKERS"
+litellm -c litellm_config.yaml --use_prisma_db_push --num_workers "$LITELLM_WORKERS" > litellm.log 2>&1 &
 LITELLM_PID=$!
 
 echo "   - LiteLLM PID: $LITELLM_PID"

@@ -22,6 +22,40 @@ import click
 import yaml
 
 
+def _is_embedding_model(model: dict) -> bool:
+    """Check if a model is an embedding model based on naming conventions."""
+    model_name = model.get("modelName", "").lower()
+    model_id = model.get("modelId", "").lower()
+    return "embed" in model_name or "embed" in model_id
+
+
+def _build_model_config(model: dict) -> dict:
+    """Build LiteLLM model configuration for a registered model."""
+    model_name = model["modelName"]
+    is_embedding = _is_embedding_model(model)
+
+    # Use hosted_vllm provider for embedding models to avoid encoding_format issues
+    # LiteLLM 1.80+ has issues with openai/ provider sending invalid encoding_format to vLLM
+    if is_embedding:
+        provider_prefix = "hosted_vllm"
+    else:
+        provider_prefix = "openai"
+
+    litellm_params = {
+        "model": f"{provider_prefix}/{model_name}",
+        "api_base": model["endpointUrl"] + "/v1",  # Local containers require the /v1 for OpenAI API routing.
+    }
+
+    # For embedding models, also add drop_params as a safety measure
+    if is_embedding:
+        litellm_params["drop_params"] = True
+
+    return {
+        "model_name": model["modelId"],  # Use user-provided name if one given, otherwise it is the model name.
+        "litellm_params": litellm_params,
+    }
+
+
 @click.command()
 @click.option("-f", "--filepath", type=click.Path(exists=True, file_okay=True, dir_okay=False, writable=True))
 def generate_config(filepath: str) -> None:
@@ -34,6 +68,16 @@ def generate_config(filepath: str) -> None:
     param_response = ssm_client.get_parameter(Name=os.environ["REGISTERED_MODELS_PS_NAME"])
     registered_models = json.loads(param_response["Parameter"]["Value"])
     # Generate model definitions for each of the LISA-deployed models
+    # litellm_model_params = [_build_model_config(model) for model in registered_models]
+
+    # # Log embedding model configurations for debugging
+    # for model_config in litellm_model_params:
+    #     model_name = model_config.get("model_name", "")
+    #     litellm_model = model_config.get("litellm_params", {}).get("model", "")
+    #     if "embed" in model_name.lower() or "embed" in litellm_model.lower():
+    #         print(f"Embedding model config: {model_name} -> {litellm_model}")
+    #         print(f"  Full config: {model_config}")
+
     litellm_model_params = [
         {
             "model_name": model["modelId"],  # Use user-provided name if one given, otherwise it is the model name.
@@ -53,6 +97,10 @@ def generate_config(filepath: str) -> None:
         {
             "drop_params": True,  # drop unrecognized param instead of failing the request on it
             "request_timeout": 600,
+            # Performance optimizations for embeddings
+            "num_retries": 2,  # Reduce retries for faster failure detection
+            "retry_after": 1,  # Shorter retry delay
+            "embedding_cache": True,  # Enable embedding caching (if Redis configured)
         }
     )
 

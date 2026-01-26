@@ -78,7 +78,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
             external: false,
             href: '/mcp-connections',
         } as ButtonDropdownProps.Item] : [])
-    ];
+    ].sort((a,b) => a.text.localeCompare(b.text));
 
     return (
         <TopNavigation

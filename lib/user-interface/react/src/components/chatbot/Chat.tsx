@@ -102,7 +102,7 @@ export default function Chat ({ sessionId }) {
 
     const allModels = useMemo(() =>
         (allModelsRaw || []).filter((model) =>
-            (model.modelType === ModelType.textgen || model.modelType === ModelType.imagegen) &&
+            (model.modelType === ModelType.textgen || model.modelType === ModelType.imagegen || model.modelType === ModelType.videogen) &&
             model.status === ModelStatus.InService
         ),
     [allModelsRaw]

@@ -103,6 +103,7 @@ export const SessionConfiguration = ({
         { value: 'xhigh', label: 'X-High' },
     ];
     const isImageModel = selectedModel?.modelType === ModelType.imagegen;
+    const isVideoModel = selectedModel?.modelType === ModelType.videogen;
 
     return (
         <Modal
@@ -135,7 +136,7 @@ export const SessionConfiguration = ({
                         >
                             Show Message Metadata
                         </Toggle>}
-                    {systemConfig && systemConfig.configuration.enabledComponents.editChatHistoryBuffer && !isImageModel && !modelOnly &&
+                    {systemConfig && systemConfig.configuration.enabledComponents.editChatHistoryBuffer && !isImageModel && !isVideoModel && !modelOnly &&
                         <FormField label='Chat History Buffer Size'>
                             <Select
                                 disabled={isRunning}
@@ -148,7 +149,7 @@ export const SessionConfiguration = ({
                                 options={oneThroughTenOptions}
                             />
                         </FormField>}
-                    {systemConfig && systemConfig.configuration.enabledComponents.editNumOfRagDocument && !isImageModel && !modelOnly &&
+                    {systemConfig && systemConfig.configuration.enabledComponents.editNumOfRagDocument && !isImageModel && !isVideoModel && !modelOnly &&
                         <FormField label='Matching RAG Excerpts'>
                             <Select
                                 disabled={isRunning}
@@ -183,7 +184,7 @@ export const SessionConfiguration = ({
                             Show Reasoning Content
                         </Toggle>}
                 </Grid>
-                {systemConfig && systemConfig.configuration.enabledComponents.editKwargs && !isImageModel &&
+                {systemConfig && systemConfig.configuration.enabledComponents.editKwargs && !isImageModel && !isVideoModel &&
                     <Container
                         header={
                             <Header

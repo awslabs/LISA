@@ -43,6 +43,7 @@ export type SecurityGroups<T> = {
 export enum ModelType {
     TEXTGEN = 'textgen',
     EMBEDDING = 'embedding',
+    VIDEOGEN = 'videogen',
 }
 
 /**
@@ -641,15 +642,16 @@ export const EcsClusterConfigSchema = z
     })
     .refine(
         (data) => {
-            // 'textgen' type must have boolean streaming, 'embedding' type must have null streaming
+            // 'textgen' type must have boolean streaming, 'embedding' and 'videogen' types must have null streaming
             const isValidForTextgen = data.modelType === 'textgen' && typeof data.streaming === 'boolean';
             const isValidForEmbedding = data.modelType === 'embedding' && data.streaming === null;
+            const isValidForVideogen = data.modelType === 'videogen' && data.streaming === null;
 
-            return isValidForTextgen || isValidForEmbedding;
+            return isValidForTextgen || isValidForEmbedding || isValidForVideogen;
         },
         {
             message: `For 'textgen' models, 'streaming' must be true or false.
-            For 'embedding' models, 'streaming' must not be set.`,
+            For 'embedding' and 'videogen' models, 'streaming' must not be set.`,
             path: ['streaming'],
         },
     );

@@ -75,9 +75,13 @@ export const useModels = (
     const isImageGenerationMode = (selectedModel: IModel | undefined) =>
         selectedModel?.modelType === ModelType.imagegen;
 
+    const isVideoGenerationMode = (selectedModel: IModel | undefined) =>
+        selectedModel?.modelType === ModelType.videogen;
+
     return {
         modelsOptions,
         handleModelChange,
         isImageGenerationMode,
+        isVideoGenerationMode,
     };
 };

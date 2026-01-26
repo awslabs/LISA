@@ -14,6 +14,7 @@
 
 """Model invocation routes."""
 
+import fnmatch
 import json
 import logging
 import os
@@ -66,6 +67,15 @@ OPENAI_ROUTES = (
     "v1/audio/speech",
     "audio/transcriptions",
     "v1/audio/transcriptions",
+    # Video routes (using wildcards for IDs)
+    "videos",
+    "v1/videos",
+    "videos/*",
+    "v1/videos/*",
+    "videos/*/content",
+    "v1/videos/*/content",
+    "videos/*/remix",
+    "v1/videos/*/remix",
     # Health check routes
     "health",
     "health/readiness",
@@ -87,6 +97,33 @@ secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REG
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def is_openai_route(api_path: str) -> bool:
+    # First check for exact matches (most common case)
+    if api_path in OPENAI_ROUTES:
+        return True
+
+    # Only check wildcard patterns if the path contains "video" (since only video routes have wildcards)
+    # This avoids expensive pattern matching for non-video routes
+    if "video" not in api_path:
+        return False
+
+    wildcard_patterns = [pattern for pattern in OPENAI_ROUTES if "*" in pattern]
+    wildcard_patterns.sort(key=len, reverse=True)
+
+    for route_pattern in wildcard_patterns:
+        if fnmatch.fnmatch(api_path, route_pattern):
+            # For patterns like "videos/*" (not "videos/*/something"), ensure we don't match
+            # paths with additional segments (e.g., "videos/123/content" should not match "videos/*")
+            if route_pattern.endswith("/*") and not route_pattern.endswith("/*/"):
+                pattern_segments = route_pattern.count("/")
+                path_segments = api_path.count("/")
+                if path_segments != pattern_segments:
+                    continue
+            return True
+
+    return False
 
 
 async def apply_guardrails_to_request(params: dict, model_id: str, jwt_data: dict) -> None:
@@ -258,7 +295,7 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     headers = dict(request.headers.items())
 
     authorizer = Authorizer()
-    require_admin = api_path not in OPENAI_ROUTES
+    require_admin = not is_openai_route(api_path)
     jwt_data = await authorizer.authenticate_request(request)
     if not await authorizer.can_access(request, require_admin):
         raise HTTPException(

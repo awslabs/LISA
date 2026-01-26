@@ -48,7 +48,7 @@ if [ "${DEBUG}" = "true" ]; then
     GUNICORN_LOG_LEVEL="debug"
     PRISMA_LOG_LEVEL="info,query"
 else
-    LOG_LEVEL="${LITELLM_LOG_LEVEL:-INFO}"
+    LOG_LEVEL="${LITELLM_LOG_LEVEL:-WARNING}"
     GUNICORN_LOG_LEVEL="info"
     PRISMA_LOG_LEVEL="warn"
 fi

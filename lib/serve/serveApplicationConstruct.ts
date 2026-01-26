@@ -66,8 +66,8 @@ export class LisaServeApplicationConstruct extends Construct {
         super(scope, id);
         const { config, vpc, securityGroups } = props;
 
-        // Determine authentication method - default to IAM auth (iamRdsAuth = true)
-        const useIamAuth = config.iamRdsAuth ?? true;
+        // Determine authentication method - default to IAM auth (iamRdsAuth = false)
+        const useIamAuth = config.iamRdsAuth ?? false;
 
         // TokenTable is now created in API Base, reference it from SSM parameter
         // API Base stack must be deployed before Serve stack (dependency is set in stages.ts)

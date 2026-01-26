@@ -537,8 +537,8 @@ export class LisaRagConstruct extends Construct {
                 openSearchEndpointPs.node.addDependency(openSearchDomain);
                 openSearchEndpointPs.grantRead(lambdaRole);
             } else if (ragConfig.type === RagRepositoryType.PGVECTOR && ragConfig.rdsConfig) {
-                // Determine authentication method - default to IAM auth (iamRdsAuth = true)
-                const useIamAuth = config.iamRdsAuth ?? true;
+                // Determine authentication method - default to IAM auth (iamRdsAuth = false)
+                const useIamAuth = config.iamRdsAuth ?? false;
 
                 let rdsSecret: ISecret;
                 let rdsConnectionInfoPs: StringParameter;
@@ -572,7 +572,7 @@ export class LisaRagConstruct extends Construct {
                         vpc: vpc.vpc,
                         subnetGroup: vpc.subnetGroup,
                         credentials: dbCreds,
-                        iamAuthentication: useIamAuth, // Enable IAM auth when iamRdsAuth is true
+                        iamAuthentication: useIamAuth, // Enable IAM auth when iamRdsAuth is false
                         securityGroups: [securityGroups.pgvector],
                         removalPolicy: RemovalPolicy.DESTROY,
                     });

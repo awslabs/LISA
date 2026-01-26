@@ -71,8 +71,8 @@ export class PGVectorStoreStack extends PipelineStack {
 
         // Check if PGVector type and RDS configuration are provided in ragConfig
         if (type === RagRepositoryType.PGVECTOR && rdsConfig) {
-            // Determine authentication method - default to IAM auth (iamRdsAuth = true)
-            const useIamAuth = config.iamRdsAuth ?? true;
+            // Determine authentication method - default to IAM auth (iamRdsAuth = false)
+            const useIamAuth = config.iamRdsAuth ?? false;
 
             let rdsSecret: ISecret;
             let rdsConnectionInfo: StringParameter;

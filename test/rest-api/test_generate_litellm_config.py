@@ -32,7 +32,7 @@ os.environ["LITELLM_DB_INFO_PS_NAME"] = "/test/db"
 # Add REST API to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "lib/serve/rest-api/src/utils"))
 
-from generate_litellm_config import get_database_credentials
+from generate_litellm_config import _build_model_config, _is_embedding_model, get_database_credentials
 
 
 @pytest.fixture
@@ -67,45 +67,82 @@ def test_get_database_credentials_with_secret():
         mock_secrets.get_secret_value.assert_called_once_with(SecretId="test-secret-id")
 
 
-def test_get_database_credentials_with_iam():
-    """Test getting database credentials using IAM auth."""
-    db_params = {"dbHost": "db.example.com", "dbPort": "5432", "dbName": "testdb"}
-
-    with patch("generate_litellm_config.get_lambda_role_name") as mock_role:
-        with patch("generate_litellm_config.generate_auth_token") as mock_token:
-            mock_role.return_value = "MyLambdaRole"
-            mock_token.return_value = "iam-auth-token"
-
-            username, password = get_database_credentials(db_params)
-
-            assert username == "MyLambdaRole"
-            assert password == "iam-auth-token"
-            mock_token.assert_called_once_with("db.example.com", "5432", "MyLambdaRole")
-
-
-def test_get_database_credentials_prefers_secret():
-    """Test that Secrets Manager is preferred over IAM auth."""
+def test_get_database_credentials_secret_not_found():
+    """Test error handling when secret is not found."""
     db_params = {
         "username": "testuser",
-        "passwordSecretId": "test-secret-id",
+        "passwordSecretId": "missing-secret-id",
         "dbHost": "db.example.com",
         "dbPort": "5432",
         "dbName": "testdb",
     }
 
     with patch("generate_litellm_config.boto3.client") as mock_boto:
-        with patch("generate_litellm_config.get_lambda_role_name") as mock_role:
-            with patch("generate_litellm_config.generate_auth_token") as mock_token:
-                mock_secrets = MagicMock()
-                mock_secrets.get_secret_value.return_value = {
-                    "SecretString": json.dumps({"password": "secret-password"})
-                }
-                mock_boto.return_value = mock_secrets
+        mock_secrets = MagicMock()
+        mock_secrets.exceptions.ResourceNotFoundException = Exception
+        mock_secrets.get_secret_value.side_effect = Exception("Secret not found")
+        mock_boto.return_value = mock_secrets
 
-                username, password = get_database_credentials(db_params)
+        with pytest.raises(Exception):
+            get_database_credentials(db_params)
 
-                # Should use Secrets Manager, not IAM
-                assert username == "testuser"
-                assert password == "secret-password"
-                mock_role.assert_not_called()
-                mock_token.assert_not_called()
+
+class TestIsEmbeddingModel:
+    """Tests for _is_embedding_model helper function."""
+
+    def test_embedding_in_model_name(self):
+        """Test detection when 'embed' is in modelName."""
+        model = {"modelName": "qwen3-embed-06b", "modelId": "my-model"}
+        assert _is_embedding_model(model) is True
+
+    def test_embedding_in_model_id(self):
+        """Test detection when 'embed' is in modelId."""
+        model = {"modelName": "some-model", "modelId": "text-embedding-model"}
+        assert _is_embedding_model(model) is True
+
+    def test_embedding_case_insensitive(self):
+        """Test that detection is case-insensitive."""
+        model = {"modelName": "EMBEDDING-MODEL", "modelId": "test"}
+        assert _is_embedding_model(model) is True
+
+    def test_non_embedding_model(self):
+        """Test that non-embedding models return False."""
+        model = {"modelName": "llama-3-70b", "modelId": "my-llama"}
+        assert _is_embedding_model(model) is False
+
+    def test_missing_fields(self):
+        """Test handling of missing fields."""
+        model = {}
+        assert _is_embedding_model(model) is False
+
+
+class TestBuildModelConfig:
+    """Tests for _build_model_config helper function."""
+
+    def test_regular_model_config(self):
+        """Test config generation for a regular (non-embedding) model."""
+        model = {
+            "modelId": "my-llama",
+            "modelName": "llama-3-70b",
+            "endpointUrl": "http://localhost:8000",
+        }
+        config = _build_model_config(model)
+
+        assert config["model_name"] == "my-llama"
+        assert config["litellm_params"]["model"] == "openai/llama-3-70b"
+        assert config["litellm_params"]["api_base"] == "http://localhost:8000/v1"
+        assert "additional_drop_params" not in config["litellm_params"]
+
+    def test_embedding_model_config(self):
+        """Test config generation for an embedding model uses hosted_vllm provider."""
+        model = {
+            "modelId": "qwen3-embed-06b",
+            "modelName": "qwen3-embed-06b",
+            "endpointUrl": "http://localhost:8001",
+        }
+        config = _build_model_config(model)
+
+        assert config["model_name"] == "qwen3-embed-06b"
+        assert config["litellm_params"]["model"] == "hosted_vllm/qwen3-embed-06b"
+        assert config["litellm_params"]["api_base"] == "http://localhost:8001/v1"
+        assert config["litellm_params"]["drop_params"] is True

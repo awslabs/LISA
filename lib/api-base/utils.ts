@@ -94,7 +94,10 @@ export function registerAPIEndpoint (
     let handler;
 
     if (funcDef.existingFunction) {
-        handler = Function.fromFunctionArn(scope, functionId, funcDef.existingFunction);
+        handler = Function.fromFunctionAttributes(scope, functionId, {
+            functionArn: funcDef.existingFunction,
+            sameEnvironment: true,
+        });
 
         // create a CFN L1 primitive because `handler.addPermission` doesn't behave as expected
         // https://stackoverflow.com/questions/71075361/aws-cdk-lambda-resource-based-policy-for-a-function-with-an-alias

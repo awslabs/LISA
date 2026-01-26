@@ -105,7 +105,7 @@ def main(
         file_config = load_config_from_file(str(config))
 
     # Prepare CLI overrides
-    cli_overrides = {}
+    cli_overrides: dict[str, str | list[str]] = {}
 
     if tools_dir:
         cli_overrides["tools_dir"] = str(tools_dir)
@@ -122,7 +122,7 @@ def main(
     if cors_origins:
         cleaned_origins = re.sub(r'^([\s"]+)?(.+?)([\s"]*)?$', r"\2", cors_origins)
         origins_list: list[str] = [origin.strip() for origin in cleaned_origins.split(",")]
-        cli_overrides["cors_origins"] = ",".join(origins_list)
+        cli_overrides["cors_origins"] = origins_list
 
     # Merge configurations
     merged_config = merge_config(file_config, cli_overrides)

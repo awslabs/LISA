@@ -283,7 +283,6 @@ export class ECSCluster extends Construct {
             ],
             evaluationPeriods: 5,
             adjustmentType: AdjustmentType.CHANGE_IN_CAPACITY,
-            cooldown: Duration.seconds(300)
         });
 
         autoScalingGroup.scaleOnMetric(createCdkId(['ASG', identifier, 'ScaleOut']), {
@@ -294,7 +293,6 @@ export class ECSCluster extends Construct {
             ],
             evaluationPeriods: 2,
             adjustmentType: AdjustmentType.CHANGE_IN_CAPACITY,
-            cooldown: Duration.seconds(120)
         });
 
         // Tag Auto Scaling Group for schedule management
@@ -597,7 +595,12 @@ export class ECSCluster extends Construct {
             circuitBreaker: !this.config.region.includes('iso') ? { rollback: true } : undefined,
             capacityProviderStrategies: [
                 { capacityProvider: this.asgCapacityProvider.capacityProviderName, weight: 1 }
-            ]
+            ],
+            // Speed up deployments by allowing more aggressive rollout
+            minHealthyPercent: 50,  // Allow 50% of tasks to be replaced at once
+            maxHealthyPercent: 200, // Allow up to 2x desired count during deployment
+            // Reduce health check grace period for faster failure detection
+            healthCheckGracePeriod: Duration.seconds(60)
         };
 
         const service = new Ec2Service(this, createCdkId([this.config.deploymentName, taskName, 'Ec2Svc']), serviceProps);

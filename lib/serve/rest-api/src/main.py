@@ -18,7 +18,7 @@ import os
 import sys
 from contextlib import asynccontextmanager
 
-from aiobotocore.session import get_session
+import boto3
 from api.routes import router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -63,9 +63,10 @@ async def lifespan(app: FastAPI):  # type: ignore
 
     try:
         verify_path = os.getenv("SSL_CERT_FILE") or None
-        session = get_session()
-        async with session.create_client("ssm", region_name=os.environ["AWS_REGION"], verify=verify_path) as client:
-            response = await client.get_parameter(Name=os.environ["REGISTERED_MODELS_PS_NAME"])
+        # Use synchronous boto3 client - this runs once at startup so async isn't needed
+        # This avoids aiobotocore dependency which has version conflicts with litellm's boto3
+        ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], verify=verify_path)
+        response = ssm_client.get_parameter(Name=os.environ["REGISTERED_MODELS_PS_NAME"])
 
         registered_models = json.loads(response["Parameter"]["Value"])
 

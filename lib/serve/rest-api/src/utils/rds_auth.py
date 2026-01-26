@@ -11,17 +11,13 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
+
+"""RDS authentication utilities."""
+
 import os
 from typing import cast
-from urllib.parse import quote_plus
 
 import boto3
-
-
-def generate_auth_token(host: str, port: str, user: str) -> str:
-    rds = boto3.client("rds", region_name=os.environ["AWS_REGION"])
-    token = rds.generate_db_auth_token(DBHostname=host, Port=port, DBUsername=user)
-    return quote_plus(token)
 
 
 def _get_lambda_role_arn() -> str:
@@ -34,7 +30,7 @@ def _get_lambda_role_arn() -> str:
     """
     sts = boto3.client("sts", region_name=os.environ["AWS_REGION"])
     identity = sts.get_caller_identity()
-    return cast(str, identity["Arn"])  # This will include the role name
+    return cast(str, identity["Arn"])
 
 
 def get_lambda_role_name() -> str:
@@ -47,4 +43,4 @@ def get_lambda_role_name() -> str:
     """
     arn = _get_lambda_role_arn()
     parts = arn.split(":assumed-role/")[1].split("/")
-    return parts[0]  # This is the role name
+    return parts[0]

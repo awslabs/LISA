@@ -178,7 +178,7 @@ export const useChatGeneration = ({
                     const videoGenParams = {
                         prompt: params.input,
                         model: selectedModel.modelId,
-                        seconds: "2",
+                        seconds: "4",
                         size: "720x1280"
                     };
 

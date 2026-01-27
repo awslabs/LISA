@@ -313,7 +313,25 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     if http_method == "GET" or http_method == "DELETE":
 
         response = requests_request(method=http_method, url=litellm_path, headers=headers)
-        return JSONResponse(response.json(), status_code=response.status_code)
+        
+        # Check content type to handle binary responses (e.g., video content)
+        content_type = response.headers.get("content-type", "").lower()
+        
+        # If it's JSON, parse and return as JSON
+        if "application/json" in content_type or "text/json" in content_type:
+            try:
+                return JSONResponse(response.json(), status_code=response.status_code)
+            except (ValueError, json.JSONDecodeError):
+                # If JSON parsing fails, fall through to return raw content
+                pass
+        
+        # For binary content (video, image, etc.) or non-JSON, return raw response
+        return Response(
+            content=response.content,
+            status_code=response.status_code,
+            headers=dict(response.headers),
+            media_type=content_type if content_type else None
+        )
     # not a GET or DELETE request, so expect a JSON payload as part of the request
     params = await request.json()
 

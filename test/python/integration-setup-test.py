@@ -221,7 +221,12 @@ def create_bedrock_model(
         return {"modelId": model_id}
 
     if features is None:
-        features = [{"name": "summarization", "overview": ""}, {"name": "imageInput", "overview": ""}]
+        features = [
+            {"name": "summarization", "overview": ""},
+            {"name": "imageInput", "overview": ""},
+            {"name": "reasoning", "overview": ""},
+            {"name": "toolCalls", "overview": ""},
+        ]
 
     print(f"\n🚀 Creating Bedrock model '{model_id}'...")
 
@@ -303,13 +308,20 @@ def create_self_hosted_embedded_model(
                 "retries": 3,
             },
             "environment": {
-                "MAX_TOTAL_TOKENS": "16384",
-                "MAX_INPUT_LENGTH": "8192",
-                "MAX_BATCH_TOKENS": "4096",
-                "MAX_CONCURRENT_REQUESTS": "512",
-                "MAX_CLIENT_BATCH_SIZE": "1024",
-                "POOLING": "mean",
-                "AUTO_TRUNCATE": "true",
+                # TEI Performance Configuration for g5.xlarge (1x A10G GPU, 24GB VRAM)
+                # Based on: https://huggingface.co/docs/text-embeddings-inference/cli_arguments
+                # Batching - CRITICAL for GPU utilization and throughput
+                # MAX_BATCH_TOKENS should be as high as possible until GPU is compute-bound
+                "MAX_BATCH_TOKENS": "16384",  # Max tokens per batch (default: 16384)
+                # Concurrency - control backpressure
+                "MAX_CONCURRENT_REQUESTS": "512",  # Max concurrent requests (default: 512)
+                "MAX_CLIENT_BATCH_SIZE": "256",  # Max inputs per client request (default: 32)
+                # Pooling method for embeddings
+                "POOLING": "mean",  # Options: cls, mean, splade, last-token
+                # Input handling
+                "AUTO_TRUNCATE": "true",  # Automatically truncate long inputs
+                # Precision - use float16 for faster inference on GPU
+                "DTYPE": "float16",
             },
         },
         "inferenceContainer": "tei",
@@ -403,11 +415,22 @@ def create_self_hosted_model(
                 "retries": 3,
             },
             "environment": {
-                # MAX_TOTAL_TOKENS is mapped to VLLM_MAX_MODEL_LEN in entrypoint.sh
-                "MAX_TOTAL_TOKENS": "16384",
-                "MAX_INPUT_LENGTH": "8192",
-                "MAX_BATCH_TOKENS": "4096",
-                "MAX_CONCURRENT_REQUESTS": "128",
+                # vLLM Performance Configuration for g5.xlarge (1x A10G GPU, 24GB VRAM)
+                # These environment variables are read natively by vLLM
+                # See: https://docs.vllm.ai/en/latest/configuration/env_vars/
+                # Context length - maximum sequence length the model can handle
+                "VLLM_MAX_MODEL_LEN": "16384",
+                # GPU memory utilization - use 90% of GPU VRAM for model/KV cache
+                "VLLM_GPU_MEMORY_UTILIZATION": "0.90",
+                # Batching - max tokens processed per iteration (affects throughput)
+                "VLLM_MAX_NUM_BATCHED_TOKENS": "8192",
+                # Concurrency - max number of sequences processed in parallel
+                "VLLM_MAX_NUM_SEQS": "128",
+                # Performance optimizations
+                "VLLM_ENABLE_PREFIX_CACHING": "true",  # Cache common prefixes for faster inference
+                "VLLM_ENABLE_CHUNKED_PREFILL": "true",  # Better memory efficiency during prefill
+                # Precision - let vLLM auto-detect based on model config
+                "VLLM_DTYPE": "auto",
             },
         },
         "inferenceContainer": "vllm",
@@ -426,7 +449,12 @@ def create_self_hosted_model(
         "modelDescription": None,
         "modelType": "textgen",
         "streaming": True,
-        "features": [{"name": "summarization", "overview": ""}, {"name": "imageInput", "overview": ""}],
+        "features": [
+            {"name": "summarization", "overview": ""},
+            {"name": "imageInput", "overview": ""},
+            {"name": "reasoning", "overview": ""},
+            {"name": "toolCalls", "overview": ""},
+        ],
         "allowedGroups": None,
     }
 
@@ -1046,25 +1074,74 @@ def create_bedrock_knowledge_base(
         raise
 
 
+def cleanup_all_models(lisa_client: LisaApi) -> None:
+    """Clean up all models by listing and deleting each one.
+
+    Args:
+        lisa_client: LISA API client
+    """
+    print("\n🧹 Cleaning up all models...")
+
+    try:
+        models = lisa_client.list_models()
+        if not models:
+            print("  No models found to delete")
+            return
+
+        print(f"  Found {len(models)} models to delete")
+        for model in models:
+            model_id = model.get("modelId")
+            if model_id:
+                try:
+                    lisa_client.delete_model(model_id)
+                    print(f"✓ Deleted model: {model_id}")
+                except Exception as e:
+                    print(f"✗ Failed to delete model {model_id}: {e}")
+    except Exception as e:
+        print(f"✗ Failed to list models for cleanup: {e}")
+
+
+def cleanup_all_repositories(lisa_client: LisaApi) -> None:
+    """Clean up all repositories by listing and deleting each one.
+
+    Args:
+        lisa_client: LISA API client
+    """
+    print("\n🧹 Cleaning up all repositories...")
+
+    try:
+        repositories = lisa_client.list_repositories()
+        if not repositories:
+            print("  No repositories found to delete")
+            return
+
+        print(f"  Found {len(repositories)} repositories to delete")
+        for repo in repositories:
+            repo_id = repo.get("repositoryId")
+            if repo_id:
+                try:
+                    lisa_client.delete_repository(repo_id)
+                    print(f"✓ Deleted repository: {repo_id}")
+                except Exception as e:
+                    print(f"✗ Failed to delete repository {repo_id}: {e}")
+    except Exception as e:
+        print(f"✗ Failed to list repositories for cleanup: {e}")
+
+
 def cleanup_resources(lisa_client: LisaApi, created_resources: dict[str, list]):
-    """Clean up created resources."""
-    print("\n🧹 Cleaning up created resources...")
+    """Clean up created resources including Bedrock Knowledge Bases.
 
-    # Clean up models
-    for model_id in created_resources.get("models", []):
-        try:
-            lisa_client.delete_model(model_id)
-            print(f"✓ Deleted model: {model_id}")
-        except Exception as e:
-            print(f"✗ Failed to delete model {model_id}: {e}")
+    Args:
+        lisa_client: LISA API client
+        created_resources: Dictionary containing lists of created resource IDs
+    """
+    print("\n🧹 Cleaning up resources...")
 
-    # Clean up repositories
-    for repo_id in created_resources.get("repositories", []):
-        try:
-            lisa_client.delete_repository(repo_id)
-            print(f"✓ Deleted repository: {repo_id}")
-        except Exception as e:
-            print(f"✗ Failed to delete repository {repo_id}: {e}")
+    # Clean up all models
+    cleanup_all_models(lisa_client)
+
+    # Clean up all repositories
+    cleanup_all_repositories(lisa_client)
 
     # Clean up Bedrock Knowledge Bases
     for kb_info in created_resources.get("knowledge_bases", []):
@@ -1118,7 +1195,7 @@ def main():
     parser.add_argument("--deployment-name", required=True, help="LISA deployment name for authentication")
     parser.add_argument("--deployment-stage", required=True, help="LISA deployment stage for authentication")
     parser.add_argument("--deployment-prefix", required=True, help="LISA deployment prefix")
-    parser.add_argument("--verify", default="false", help="Verify SSL certificates")
+    parser.add_argument("--verify", default="true", help="Verify SSL certificates (default: true)")
     parser.add_argument("--profile", help="AWS profile to use")
     parser.add_argument("--cleanup", action="store_true", help="Clean up resources (delete models and repositories)")
     parser.add_argument(
@@ -1149,29 +1226,11 @@ def main():
 
         created_resources = {"models": [], "repositories": [], "knowledge_bases": []}
 
-        # If cleanup-only mode, skip all creation and just populate resource IDs
-        if args.cleanup and args.skip_create:
-            print("\n🧹 Cleanup-only mode: Collecting resource IDs for deletion...")
+        # If cleanup mode, skip all model and repository creation and perform cleanup
+        if args.cleanup:
+            print("\n🧹 Cleanup mode: Skipping resource creation and performing cleanup...")
 
-            # Define all resource IDs that would be created
-            created_resources["models"] = [
-                "nova-lite",
-                "nova-canvas",
-                "haiku-45",
-                "sonnet-45",
-                "titan-embed",
-                "mistral-7b-instruct-03",
-                "llama-32-1b-instruct",
-                "gpt-oss-20b",
-                DEFAULT_EMBEDDING_MODEL_ID,
-                "qwen3-embed-06b",
-                "baai-embed-15",
-            ]
-            created_resources["repositories"] = [
-                "pgv-rag",
-                "os-rag",
-                "bedrock-kb-rag",
-            ]
+            # Populate knowledge base info for cleanup
             created_resources["knowledge_bases"] = [
                 {
                     "knowledgeBaseId": "bedrock-kb-e2e-test-id",
@@ -1180,10 +1239,7 @@ def main():
                 }
             ]
 
-            print(f"  Models to delete: {created_resources['models']}")
-            print(f"  Repositories to delete: {created_resources['repositories']}")
-
-            # Skip to cleanup
+            # Perform cleanup (will list and delete all models and repositories)
             cleanup_resources(lisa_client, created_resources)
             print("\n🧹 Cleanup completed!")
             print("\n✅ Integration setup test completed successfully!")
@@ -1344,13 +1400,8 @@ def main():
             else:
                 print("\n⚠️  Some resources may not be ready yet")
 
-        # Clean up if requested
-        if args.cleanup:
-            cleanup_resources(lisa_client, created_resources)
-            print("\n🧹 Cleanup completed!")
-        else:
-            print("\n💡 To clean up resources later, run this script with --cleanup flag")
-            print("   Or manually delete the resources through the LISA UI")
+        print("\n💡 To clean up resources later, run this script with --cleanup flag")
+        print("   Or manually delete the resources through the LISA UI")
 
         print("\n✅ Integration setup test completed successfully!")
         return 0

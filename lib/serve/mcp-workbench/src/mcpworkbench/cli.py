@@ -105,7 +105,7 @@ def main(
         file_config = load_config_from_file(str(config))
 
     # Prepare CLI overrides
-    cli_overrides = {}
+    cli_overrides: dict[str, str | list[str]] = {}
 
     if tools_dir:
         cli_overrides["tools_dir"] = str(tools_dir)

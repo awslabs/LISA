@@ -112,7 +112,7 @@ def delete_bootstrap_secret(secret_arn: str) -> bool:
 def create_db_user(db_host: str, db_port: str, db_name: str, db_user: str, secret_arn: str, iam_name: str) -> bool:
     """Create a PostgreSQL user for IAM authentication.
 
-    Returns True if user was created/updated, False if skipped (secret already deleted).
+    Returns True if user was created/updated, False if skipped (secret not found).
     """
     logger.info(f"Starting IAM user creation for: {iam_name}")
     logger.info(f"Database connection details - host: {db_host}, port: {db_port}, dbname: {db_name}, user: {db_user}")
@@ -120,7 +120,8 @@ def create_db_user(db_host: str, db_port: str, db_name: str, db_user: str, secre
     credentials = get_db_credentials(secret_arn)
 
     if credentials is None:
-        logger.info("Bootstrap secret already deleted - IAM user was previously created")
+        logger.info("Bootstrap secret not found - IAM user was likely already created in a previous run")
+        logger.info("Skipping user creation to avoid errors. If permissions need updating, manually run SQL grants.")
         return False
 
     logger.info("Successfully retrieved bootstrap credentials from Secrets Manager")
@@ -160,14 +161,24 @@ def create_db_user(db_host: str, db_port: str, db_name: str, db_user: str, secre
 
     sql_commands = [
         f'GRANT rds_iam to "{iam_name}"',
+        # Schema-level permissions
         f'GRANT USAGE, CREATE ON SCHEMA public TO "{iam_name}"',
+        f'GRANT ALL ON SCHEMA public TO "{iam_name}"',
+        # Existing object permissions
         f'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO "{iam_name}"',
         f'GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO "{iam_name}"',
         f'GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO "{iam_name}"',
         f'GRANT ALL PRIVILEGES ON ALL PROCEDURES IN SCHEMA public TO "{iam_name}"',
+        # Default privileges for future objects
         f'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO "{iam_name}"',
+        f'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON SEQUENCES TO "{iam_name}"',
+        f'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON FUNCTIONS TO "{iam_name}"',
+        # Database-level permissions
         f'GRANT CONNECT ON DATABASE "{db_name}" TO "{iam_name}"',
+        f'GRANT CREATE ON DATABASE "{db_name}" TO "{iam_name}"',
         f'GRANT ALL PRIVILEGES ON DATABASE "{db_name}" TO "{iam_name}"',
+        # RDS-specific admin role (provides elevated privileges without SUPERUSER)
+        f'GRANT rds_superuser TO "{iam_name}"',
     ]
     try:
         for command in sql_commands:
@@ -188,8 +199,9 @@ def create_db_user(db_host: str, db_port: str, db_name: str, db_user: str, secre
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Lambda handler for IAM database user setup.
 
-    Creates an IAM-authenticated PostgreSQL user and deletes the bootstrap
-    password secret afterward. Idempotent - safe to run on repeated deploys.
+    Creates an IAM-authenticated PostgreSQL user. The bootstrap secret is kept
+    for CloudFormation compatibility (not deleted) even though it won't be used
+    for authentication after IAM auth is enabled.
     """
     logger.info(f"IAM auth setup Lambda invoked with event: {json.dumps(event)}")
 
@@ -213,12 +225,9 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             request.iam_name,
         )
 
-        if user_created:
-            logger.info("IAM user created successfully, deleting bootstrap secret")
-            secret_deleted = delete_bootstrap_secret(request.secret_arn)
-        else:
-            logger.info("IAM user was previously created (bootstrap secret already deleted)")
-            secret_deleted = True  # Already deleted on previous run
+        # Note: We no longer delete the bootstrap secret to maintain CloudFormation compatibility
+        # The secret remains but is not used for authentication when IAM auth is enabled
+        logger.info("IAM user setup complete. Bootstrap secret retained for CloudFormation compatibility.")
 
         result = {
             "statusCode": 200,
@@ -226,7 +235,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 {
                     "message": "Database user setup complete",
                     "userCreated": user_created,
-                    "secretDeleted": secret_deleted,
+                    "secretDeleted": False,  # Secret is retained
                 }
             ),
         }

@@ -85,7 +85,7 @@ def adjust_initial_capacity_for_schedule(prepared_event: dict[str, Any]) -> None
     """Adjust Auto Scaling Group initial capacity based on schedule configuration"""
     try:
         # Check if scheduling is configured
-        auto_scaling_config = prepared_event.get("autoScalingConfig", {})
+        auto_scaling_config = prepared_event.get("autoScalingConfig", {}) or {}
         scheduling_config = auto_scaling_config.get("scheduling")
 
         if (
@@ -361,7 +361,7 @@ def handle_start_create_stack(event: dict[str, Any], context: Any) -> dict[str, 
         }
 
     # Remove scheduling configuration from autoScalingConfig before sending to ECS deployer
-    if "autoScalingConfig" in prepared_event and "scheduling" in prepared_event["autoScalingConfig"]:
+    if prepared_event.get("autoScalingConfig") and "scheduling" in prepared_event["autoScalingConfig"]:
         del prepared_event["autoScalingConfig"]["scheduling"]
 
     # Log the complete payload being sent (excluding large environment variables)
@@ -484,6 +484,84 @@ def handle_poll_create_stack(event: dict[str, Any], context: Any) -> dict[str, A
         )
 
 
+autoscaling_client = boto3.client("autoscaling", region_name=os.environ["AWS_REGION"], config=retry_config)
+
+
+def handle_poll_model_ready(event: dict[str, Any], context: Any) -> dict[str, Any]:
+    """
+    Poll ASG to confirm model instances are healthy before marking as InService.
+
+    This handler checks that the Auto Scaling Group has healthy instances running
+    before proceeding to add the model to LiteLLM. This ensures the model is actually
+    ready to serve requests, not just that the infrastructure was created.
+    """
+    output_dict = deepcopy(event)
+    model_id = event.get("modelId", "unknown")
+    asg_name = event.get("autoScalingGroup")
+
+    if not asg_name:
+        logger.warning(f"No ASG name found for model {model_id}, skipping capacity check")
+        output_dict["continue_polling_capacity"] = False
+        output_dict["remaining_capacity_polls"] = 0
+        return output_dict
+
+    logger.info(f"Polling capacity for model {model_id}, ASG: {asg_name}")
+
+    try:
+        asg_info = autoscaling_client.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])[
+            "AutoScalingGroups"
+        ][0]
+
+        desired_capacity = asg_info["DesiredCapacity"]
+        instances = asg_info.get("Instances", [])
+        num_healthy_instances = sum(
+            1
+            for instance in instances
+            if instance.get("HealthStatus") == "Healthy" and instance.get("LifecycleState") == "InService"
+        )
+
+        logger.info(
+            f"ASG {asg_name}: desired={desired_capacity}, healthy_in_service={num_healthy_instances}, "
+            f"total_instances={len(instances)}"
+        )
+
+        # Initialize or decrement remaining polls
+        remaining_polls = event.get("remaining_capacity_polls", 60) - 1  # ~30 minutes at 30s intervals
+        output_dict["remaining_capacity_polls"] = remaining_polls
+
+        if remaining_polls <= 0:
+            logger.error(f"Model '{model_id}' did not start healthy instances in expected amount of time.")
+            # Continue anyway - the model will be added to LiteLLM but may not be ready
+            # This allows the user to see the model and troubleshoot
+            output_dict["continue_polling_capacity"] = False
+            output_dict["capacity_timeout"] = True
+            return output_dict
+
+        # Check if we have the desired number of healthy instances
+        # For scheduled models that start with 0 capacity, we consider them ready
+        if desired_capacity == 0:
+            logger.info(f"Model {model_id} has desired capacity of 0 (scheduled), marking as ready")
+            output_dict["continue_polling_capacity"] = False
+        elif num_healthy_instances >= desired_capacity:
+            logger.info(f"Model {model_id} has {num_healthy_instances}/{desired_capacity} healthy instances, ready!")
+            output_dict["continue_polling_capacity"] = False
+        else:
+            logger.info(
+                f"Model {model_id} waiting for instances: {num_healthy_instances}/{desired_capacity} healthy. "
+                f"Polls remaining: {remaining_polls}"
+            )
+            output_dict["continue_polling_capacity"] = True
+
+    except Exception as e:
+        logger.error(f"Error checking ASG status for model {model_id}: {e}")
+        # On error, continue polling if we have polls remaining
+        remaining_polls = event.get("remaining_capacity_polls", 60) - 1
+        output_dict["remaining_capacity_polls"] = remaining_polls
+        output_dict["continue_polling_capacity"] = remaining_polls > 0
+
+    return output_dict
+
+
 def handle_add_model_to_litellm(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Add model to LiteLLM once it is created."""
     output_dict = deepcopy(event)
@@ -556,8 +634,7 @@ def handle_add_model_to_litellm(event: dict[str, Any], context: Any) -> dict[str
     )
 
     # If scheduling is configured, sync model status to ensure it reflects actual ASG state
-    auto_scaling_config = event.get("autoScalingConfig") or {}
-    scheduling_config = auto_scaling_config.get("scheduling") if isinstance(auto_scaling_config, dict) else None
+    scheduling_config = (event.get("autoScalingConfig", {}) or {}).get("scheduling")
     auto_scaling_group = event.get("autoScalingGroup")
 
     if scheduling_config and auto_scaling_group:

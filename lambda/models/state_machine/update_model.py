@@ -918,6 +918,7 @@ def handle_ecs_update(event: dict[str, Any], context: Any) -> dict[str, Any]:
         update_ecs_service(cluster_arn, service_arn, new_task_def_arn)
 
         # Set up tracking for deployment monitoring
+        output_dict["old_task_definition_arn"] = task_definition_arn  # Save old task def for cleanup
         output_dict["new_task_definition_arn"] = new_task_def_arn
         output_dict["ecs_service_arn"] = service_arn
         output_dict["ecs_cluster_arn"] = cluster_arn
@@ -938,8 +939,9 @@ def handle_poll_ecs_deployment(event: dict[str, Any], context: Any) -> dict[str,
 
     This handler will:
     1. Check if ECS service deployment is complete
-    2. Return boolean for continued polling if needed
-    3. Handle deployment failures
+    2. Verify that tasks are actually running and healthy
+    3. Return boolean for continued polling if needed
+    4. Handle deployment failures
     """
     output_dict = deepcopy(event)
     model_id = event["model_id"]
@@ -977,16 +979,49 @@ def handle_poll_ecs_deployment(event: dict[str, Any], context: Any) -> dict[str,
                 and task_def.startswith(new_task_def_arn.split(":")[0])
             ):
                 primary_deployment = deployment
+                running_count = deployment.get("runningCount", 0)
+                desired_count = deployment.get("desiredCount", 0)
+                pending_count = deployment.get("pendingCount", 0)
+                rollout_state = deployment.get("rolloutState", "N/A")
+
                 logger.info(
                     f"Found matching deployment: status={deployment['status']}, "
-                    f"rolloutState={deployment.get('rolloutState', 'N/A')}"
+                    f"rolloutState={rollout_state}, "
+                    f"running={running_count}, desired={desired_count}, pending={pending_count}"
                 )
-                if deployment["status"] != "PRIMARY" or deployment.get("rolloutState") != "COMPLETED":
+
+                # For daemon services, desiredCount may be 0 or match the number of instances
+                # We need to check that:
+                # 1. Deployment is PRIMARY
+                # 2. rolloutState is COMPLETED (or IN_PROGRESS for daemon services)
+                # 3. There are no pending tasks
+                # 4. Running count matches desired count (or running > 0 for daemon services)
+                if deployment["status"] != "PRIMARY":
                     is_deployment_stable = False
-                    logger.info(
-                        f"Deployment not yet stable: status={deployment['status']}, "
-                        f"rolloutState={deployment.get('rolloutState', 'N/A')}"
-                    )
+                    logger.info(f"Deployment not PRIMARY: status={deployment['status']}")
+                elif rollout_state == "FAILED":
+                    logger.error(f"Deployment FAILED for model '{model_id}'")
+                    output_dict["ecs_polling_error"] = f"ECS deployment failed for model '{model_id}'"
+                    output_dict["should_continue_ecs_polling"] = False
+                    return output_dict
+                elif pending_count > 0:
+                    is_deployment_stable = False
+                    logger.info(f"Deployment has pending tasks: {pending_count}")
+                elif running_count == 0:
+                    is_deployment_stable = False
+                    logger.info("Deployment has no running tasks yet")
+                elif rollout_state not in ["COMPLETED", None]:
+                    # For daemon services, rolloutState might not be COMPLETED immediately
+                    # but if we have running tasks and no pending, we can consider it stable
+                    if running_count > 0 and pending_count == 0:
+                        logger.info(
+                            f"Deployment has running tasks ({running_count}) with no pending, "
+                            f"considering stable despite rolloutState={rollout_state}"
+                        )
+                        is_deployment_stable = True
+                    else:
+                        is_deployment_stable = False
+                        logger.info(f"Deployment rolloutState not COMPLETED: {rollout_state}")
                 else:
                     logger.info("Deployment is stable and completed")
                 break
@@ -1013,6 +1048,16 @@ def handle_poll_ecs_deployment(event: dict[str, Any], context: Any) -> dict[str,
 
         if is_deployment_stable:
             logger.info(f"ECS deployment completed successfully for model '{model_id}'")
+
+            # Deregister old task definition to keep things clean
+            old_task_def_arn = event.get("old_task_definition_arn")
+            if old_task_def_arn:
+                try:
+                    ecs_client.deregister_task_definition(taskDefinition=old_task_def_arn)
+                    logger.info(f"Deregistered old task definition: {old_task_def_arn}")
+                except Exception as deregister_error:
+                    # Log but don't fail - deregistration is cleanup, not critical
+                    logger.warning(f"Failed to deregister old task definition {old_task_def_arn}: {deregister_error}")
         else:
             logger.info(f"ECS deployment still in progress for model '{model_id}', remaining polls: {remaining_polls}")
 

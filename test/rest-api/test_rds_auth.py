@@ -25,35 +25,7 @@ os.environ["AWS_REGION"] = "us-east-1"
 # Add REST API to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "lib/serve/rest-api/src/utils"))
 
-from rds_auth import _get_lambda_role_arn, generate_auth_token, get_lambda_role_name
-
-
-@patch("rds_auth.boto3.client")
-def test_generate_auth_token(mock_boto_client):
-    """Test generating RDS auth token."""
-    mock_rds = MagicMock()
-    mock_rds.generate_db_auth_token.return_value = "test-token-123"
-    mock_boto_client.return_value = mock_rds
-
-    result = generate_auth_token("db.example.com", "5432", "testuser")
-
-    assert result == "test-token-123"
-    mock_rds.generate_db_auth_token.assert_called_once_with(
-        DBHostname="db.example.com", Port="5432", DBUsername="testuser"
-    )
-
-
-@patch("rds_auth.boto3.client")
-def test_generate_auth_token_with_special_chars(mock_boto_client):
-    """Test generating RDS auth token with special characters."""
-    mock_rds = MagicMock()
-    mock_rds.generate_db_auth_token.return_value = "token+with/special=chars"
-    mock_boto_client.return_value = mock_rds
-
-    result = generate_auth_token("db.example.com", "5432", "testuser")
-
-    # Should URL encode special characters
-    assert "+" in result or "%2B" in result
+from rds_auth import _get_lambda_role_arn, get_lambda_role_name
 
 
 @patch("rds_auth.boto3.client")

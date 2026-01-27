@@ -138,7 +138,7 @@ export default function Chat ({ sessionId }) {
     // Ref to track if we're processing tool calls to prevent infinite loops
     const isProcessingToolCalls = useRef(false);
     const lastProcessedMessageIndex = useRef(-1);
-    const startToolChainRef = useRef<(session: LisaChatSession) => Promise<void>>();
+    const startToolChainRef = useRef<((session: LisaChatSession) => Promise<void>) | undefined>(undefined);
 
     // Memoize enabled servers to prevent infinite re-renders
     const enabledServers = useMemo(() => {
@@ -254,6 +254,7 @@ export default function Chat ({ sessionId }) {
 
     // Derived states
     const isImageGenerationMode = selectedModel?.modelType === ModelType.imagegen;
+    const isVideoGenerationMode = selectedModel?.modelType === ModelType.videogen;
 
     // Format MCP tools for OpenAI when they change
     useEffect(() => {
@@ -290,6 +291,7 @@ export default function Chat ({ sessionId }) {
         chatConfiguration,
         selectedModel,
         isImageGenerationMode,
+        isVideoGenerationMode,
         session,
         setSession,
         metadata,
@@ -402,8 +404,12 @@ export default function Chat ({ sessionId }) {
                                         });
                                         if ('data' in resp) {
                                             const image: LisaAttachImageResponse = resp.data;
-                                            content.image_url.url = image.body.image_url.url;
-                                            content.image_url.s3_key = image.body.image_url.s3_key;
+                                            if (content.image_url && image.body.image_url) {
+                                                content.image_url.url = image.body.image_url.url;
+                                                if ('s3_key' in image.body.image_url) {
+                                                    content.image_url.s3_key = image.body.image_url.s3_key;
+                                                }
+                                            }
                                         }
                                     }
                                 })

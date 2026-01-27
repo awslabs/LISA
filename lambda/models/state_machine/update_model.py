@@ -23,7 +23,7 @@ from typing import Any
 
 import boto3
 from models.clients.litellm_client import LiteLLMClient
-from models.domain_objects import GuardrailsTableEntry, ModelStatus
+from models.domain_objects import GuardrailsTableEntry, ModelStatus, ModelType
 from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint, retry_config
 from utilities.time import now
 
@@ -388,6 +388,10 @@ def handle_finish_update(event: dict[str, Any], context: Any) -> dict[str, Any]:
         ConsistentRead=True,
     )["Item"]
     model_url = ddb_item["model_url"]
+    
+    # Check if this is a video generation model
+    model_type = ddb_item.get("model_config", {}).get("modelType", "").upper()
+    is_video_model = model_type == ModelType.VIDEOGEN.value.upper()
 
     # Parse the JSON string from environment variable
     litellm_config_str = os.environ.get("LITELLM_CONFIG_OBJ", json.dumps({}))
@@ -396,6 +400,10 @@ def handle_finish_update(event: dict[str, Any], context: Any) -> dict[str, Any]:
         litellm_params = litellm_params.get("litellm_settings", {})
     except json.JSONDecodeError:
         # Fallback to default if JSON parsing fails
+        litellm_params = {}
+
+    # For video generation models, use empty litellm_settings to avoid drop_params error
+    if is_video_model:
         litellm_params = {}
 
     litellm_params["model"] = f"openai/{ddb_item['model_config']['modelName']}"

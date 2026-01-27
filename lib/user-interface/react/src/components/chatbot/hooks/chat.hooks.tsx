@@ -112,6 +112,7 @@ export const useChatGeneration = ({
     chatConfiguration,
     selectedModel,
     isImageGenerationMode,
+    isVideoGenerationMode,
     session,
     setSession,
     metadata,
@@ -123,6 +124,7 @@ export const useChatGeneration = ({
     chatConfiguration: IChatConfiguration;
     selectedModel: IModel;
     isImageGenerationMode: boolean;
+    isVideoGenerationMode: boolean;
     session: LisaChatSession;
     setSession: React.Dispatch<React.SetStateAction<LisaChatSession>>;
     metadata: LisaChatMessageMetadata;
@@ -169,8 +171,207 @@ export const useChatGeneration = ({
         const isNewSession = session.history.length === 0;
 
         try {
-            // Handle image generation mode specifically
-            if (isImageGenerationMode) {
+            // Handle video generation mode specifically
+            if (isVideoGenerationMode) {
+                try {
+                    // Create video generation request
+                    const videoGenParams = {
+                        prompt: params.input,
+                        model: selectedModel.modelId,
+                        seconds: "2",
+                        size: "720x1280"
+                    };
+
+                    // Make API call to create video generation request
+                    const createResponse = await fetch(`${RESTAPI_URI}/${RESTAPI_VERSION}/serve/videos`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${auth.user?.id_token}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(videoGenParams),
+                    });
+
+                    const createData = await createResponse.json();
+
+                    if (!createResponse.ok) {
+                        throw new Error(`Video generation failed: ${JSON.stringify(createData.error?.message || createData)}`);
+                    }
+
+                    const videoId = createData.id || createData.video_id;
+                    if (!videoId) {
+                        throw new Error('Video generation response missing video ID');
+                    }
+
+                    // Create initial message with loading state
+                    setSession((prev) => ({
+                        ...prev,
+                        history: [...prev.history, new LisaChatMessage({
+                            type: 'ai',
+                            content: 'Generating video...',
+                            metadata: {
+                                ...metadata,
+                                videoGeneration: true,
+                                videoGenerationParams: videoGenParams,
+                                videoId: videoId,
+                                videoStatus: 'processing'
+                            },
+                        })],
+                    }));
+
+                    // Poll for video status
+                    const pollInterval = 2000; // Poll every 2 seconds
+                    const maxPollAttempts = 300; // Max 10 minutes (300 * 2s)
+                    let pollAttempts = 0;
+                    let videoReady = false;
+                    let videoContent = null;
+
+                    while (!videoReady && pollAttempts < maxPollAttempts && !stopRequested.current) {
+                        await new Promise(resolve => setTimeout(resolve, pollInterval));
+                        pollAttempts++;
+
+                        try {
+                            const statusResponse = await fetch(`${RESTAPI_URI}/${RESTAPI_VERSION}/serve/videos/${videoId}`, {
+                                method: 'GET',
+                                headers: {
+                                    'Authorization': `Bearer ${auth.user?.id_token}`,
+                                    'custom-llm-provider': 'openai',
+                                },
+                            });
+
+                            const statusData = await statusResponse.json();
+
+                            if (!statusResponse.ok) {
+                                throw new Error(`Status check failed: ${JSON.stringify(statusData.error?.message || statusData)}`);
+                            }
+
+                            const status = statusData.status || statusData.state;
+                            
+                            // Update status in message
+                            setSession((prev) => {
+                                const lastMessage = prev.history[prev.history.length - 1];
+                                if (lastMessage?.metadata?.videoId === videoId) {
+                                    return {
+                                        ...prev,
+                                        history: [...prev.history.slice(0, -1),
+                                            new LisaChatMessage({
+                                                ...lastMessage,
+                                                content: status === 'completed' || status === 'ready' 
+                                                    ? 'Video ready!' 
+                                                    : `Generating video... (${status})`,
+                                                metadata: {
+                                                    ...lastMessage.metadata,
+                                                    videoStatus: status
+                                                }
+                                            })
+                                        ],
+                                    };
+                                }
+                                return prev;
+                            });
+
+                            if (status === 'completed' || status === 'ready' || status === 'succeeded') {
+                                videoReady = true;
+                                
+                                // Fetch video content
+                                const contentResponse = await fetch(`${RESTAPI_URI}/${RESTAPI_VERSION}/serve/videos/${videoId}/content`, {
+                                    method: 'GET',
+                                    headers: {
+                                        'Authorization': `Bearer ${auth.user?.id_token}`,
+                                        'custom-llm-provider': 'openai',
+                                    },
+                                });
+
+                                if (!contentResponse.ok) {
+                                    throw new Error(`Failed to fetch video content: ${contentResponse.statusText}`);
+                                }
+
+                                // Get video content - could be URL, base64, or blob
+                                const contentType = contentResponse.headers.get('content-type');
+                                if (contentType?.startsWith('application/json')) {
+                                    const contentData = await contentResponse.json();
+                                    videoContent = contentData.url || contentData.content || contentData.data;
+                                } else if (contentType?.startsWith('video/')) {
+                                    // Video blob - convert to data URL
+                                    const blob = await contentResponse.blob();
+                                    videoContent = await new Promise((resolve) => {
+                                        const reader = new FileReader();
+                                        reader.onloadend = () => resolve(reader.result);
+                                        reader.readAsDataURL(blob);
+                                    });
+                                } else {
+                                    // Try as text/URL
+                                    videoContent = await contentResponse.text();
+                                }
+                            } else if (status === 'failed' || status === 'error') {
+                                throw new Error(`Video generation failed: ${statusData.error?.message || 'Unknown error'}`);
+                            }
+                        } catch (pollError) {
+                            // If polling fails, log but continue polling unless it's a clear failure
+                            if (pollAttempts >= 5) {
+                                throw pollError;
+                            }
+                        }
+                    }
+
+                    if (stopRequested.current) {
+                        notificationService.generateNotification('Video generation stopped by user', 'info');
+                        setSession((prev) => ({
+                            ...prev,
+                            history: prev.history.slice(0, -1),
+                        }));
+                        setIsRunning(false);
+                        return;
+                    }
+
+                    if (!videoReady) {
+                        throw new Error('Video generation timed out');
+                    }
+
+                    if (!videoContent) {
+                        throw new Error('Video content not available');
+                    }
+
+                    const responseTime = calculateResponseTime(startTime);
+
+                    // Update message with video content
+                    setSession((prev) => {
+                        const lastMessage = prev.history[prev.history.length - 1];
+                        if (lastMessage?.metadata?.videoId === videoId) {
+                            return {
+                                ...prev,
+                                history: [...prev.history.slice(0, -1),
+                                    new LisaChatMessage({
+                                        ...lastMessage,
+                                        content: typeof videoContent === 'string' && videoContent.startsWith('data:video')
+                                            ? [{ type: 'video_url', video_url: { url: videoContent } }]
+                                            : typeof videoContent === 'string'
+                                                ? [{ type: 'text', text: videoContent }]
+                                                : videoContent,
+                                        metadata: {
+                                            ...lastMessage.metadata,
+                                            videoStatus: 'completed'
+                                        },
+                                        usage: {
+                                            responseTime
+                                        }
+                                    })
+                                ],
+                            };
+                        }
+                        return prev;
+                    });
+
+                    await memory.saveContext({ input: params.input }, { output: videoContent });
+                } catch (error) {
+                    notificationService.generateNotification('Video generation failed', 'error', undefined, error.message ? <p>{error.message}</p> : undefined);
+                    setSession((prev) => ({
+                        ...prev,
+                        history: prev.history.slice(0, -1),
+                    }));
+                    setIsRunning(false);
+                }
+            } else if (isImageGenerationMode) {
                 try {
                     // Create image generation request
                     const imageGenParams = {

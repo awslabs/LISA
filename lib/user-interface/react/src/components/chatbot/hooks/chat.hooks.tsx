@@ -273,7 +273,7 @@ export const useChatGeneration = ({
                             if (status === 'completed' || status === 'ready' || status === 'succeeded') {
                                 videoReady = true;
                                 
-                                // Fetch video content
+                                // Fetch video content (stored in S3 with presigned URL)
                                 const contentResponse = await fetch(`${RESTAPI_URI}/${RESTAPI_VERSION}/serve/videos/${videoId}/content`, {
                                     method: 'GET',
                                     headers: {
@@ -286,22 +286,12 @@ export const useChatGeneration = ({
                                     throw new Error(`Failed to fetch video content: ${contentResponse.statusText}`);
                                 }
 
-                                // Get video content - could be URL, base64, or blob
-                                const contentType = contentResponse.headers.get('content-type');
-                                if (contentType?.startsWith('application/json')) {
-                                    const contentData = await contentResponse.json();
-                                    videoContent = contentData.url || contentData.content || contentData.data;
-                                } else if (contentType?.startsWith('video/')) {
-                                    // Video blob - convert to data URL
-                                    const blob = await contentResponse.blob();
-                                    videoContent = await new Promise((resolve) => {
-                                        const reader = new FileReader();
-                                        reader.onloadend = () => resolve(reader.result);
-                                        reader.readAsDataURL(blob);
-                                    });
-                                } else {
-                                    // Try as text/URL
-                                    videoContent = await contentResponse.text();
+                                // Response should be JSON with presigned URL
+                                const contentData = await contentResponse.json();
+                                videoContent = contentData.url || contentData.content || contentData.data;
+                                
+                                if (!videoContent) {
+                                    throw new Error('Video URL not found in response');
                                 }
                             } else if (status === 'failed' || status === 'error') {
                                 throw new Error(`Video generation failed: ${statusData.error?.message || 'Unknown error'}`);
@@ -334,7 +324,7 @@ export const useChatGeneration = ({
 
                     const responseTime = calculateResponseTime(startTime);
 
-                    // Update message with video content
+                    // Update message with video content (presigned URL)
                     setSession((prev) => {
                         const lastMessage = prev.history[prev.history.length - 1];
                         if (lastMessage?.metadata?.videoId === videoId) {
@@ -343,11 +333,10 @@ export const useChatGeneration = ({
                                 history: [...prev.history.slice(0, -1),
                                     new LisaChatMessage({
                                         ...lastMessage,
-                                        content: typeof videoContent === 'string' && videoContent.startsWith('data:video')
-                                            ? [{ type: 'video_url', video_url: { url: videoContent } }]
-                                            : typeof videoContent === 'string'
-                                                ? [{ type: 'text', text: videoContent }]
-                                                : videoContent,
+                                        content: [{ 
+                                            type: 'video_url', 
+                                            video_url: { url: videoContent } 
+                                        }],
                                         metadata: {
                                             ...lastMessage.metadata,
                                             videoStatus: 'completed'

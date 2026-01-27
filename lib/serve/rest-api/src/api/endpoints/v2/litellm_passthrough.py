@@ -18,6 +18,7 @@ import fnmatch
 import json
 import logging
 import os
+import uuid
 from collections.abc import Iterator
 
 import boto3
@@ -93,10 +94,28 @@ OPENAI_ROUTES = (
 LITELLM_KEY = os.environ["LITELLM_KEY"]
 
 secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"])
+s3_client = boto3.client("s3", region_name=os.environ["AWS_REGION"])
+s3_bucket_name = os.environ.get("GENERATED_IMAGES_S3_BUCKET_NAME", "")
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def _generate_presigned_video_url(key: str) -> str:
+    """Generate a presigned URL for video content stored in S3."""
+    url: str = s3_client.generate_presigned_url(
+        "get_object",
+        Params={
+            "Bucket": s3_bucket_name,
+            "Key": key,
+            "ResponseContentType": "video/mp4",
+            "ResponseCacheControl": "no-cache",
+            "ResponseContentDisposition": "inline",
+        },
+        ExpiresIn=3600,  # URL expires in 1 hour
+    )
+    return url
 
 
 def is_openai_route(api_path: str) -> bool:
@@ -325,7 +344,47 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
                 # If JSON parsing fails, fall through to return raw content
                 pass
         
-        # For binary content (video, image, etc.) or non-JSON, return raw response
+        # For video content, store in S3 and return presigned URL
+        if "video/" in content_type and "/content" in api_path and response.status_code == 200:
+            try:
+                # Extract video ID from path (e.g., videos/video_abc123/content -> video_abc123)
+                path_parts = api_path.split("/")
+                video_id = path_parts[-2] if len(path_parts) >= 2 else str(uuid.uuid4())
+                
+                # Generate a unique S3 key for the video
+                file_extension = ".mp4"  # Default to mp4
+                if "video/webm" in content_type:
+                    file_extension = ".webm"
+                elif "video/quicktime" in content_type:
+                    file_extension = ".mov"
+                
+                s3_key = f"videos/{video_id}{file_extension}"
+                
+                # Upload video to S3
+                s3_client.put_object(
+                    Bucket=s3_bucket_name,
+                    Key=s3_key,
+                    Body=response.content,
+                    ContentType=content_type,
+                )
+                
+                # Generate presigned URL
+                presigned_url = _generate_presigned_video_url(s3_key)
+                
+                # Return JSON response with presigned URL
+                return JSONResponse(
+                    {
+                        "url": presigned_url,
+                        "s3_key": s3_key,
+                        "content_type": content_type,
+                    },
+                    status_code=200
+                )
+            except Exception as e:
+                logger.error(f"Error storing video to S3: {e}")
+                # Fall through to return raw content if S3 storage fails
+        
+        # For other binary content (image, etc.) or non-JSON, return raw response
         return Response(
             content=response.content,
             status_code=response.status_code,

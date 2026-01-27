@@ -137,6 +137,12 @@ export class SessionApi extends Construct {
             encryption: BucketEncryption.S3_MANAGED
         });
 
+        // Store bucket name in SSM for cross-stack access (e.g., REST API)
+        new StringParameter(this, 'GeneratedImagesBucketNameParameter', {
+            parameterName: `${config.deploymentPrefix}/generatedImagesBucketName`,
+            stringValue: imagesBucket.bucketName,
+        });
+
         const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
             restApiId: restApiId,
             rootResourceId: rootResourceId,

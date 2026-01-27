@@ -304,6 +304,38 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                 }}
                             />
                         </Grid>;
+                } else if (item.type === 'video_url' && item.video_url?.url) {
+                    return (
+                        <Grid key={`${index}-Grid`} gridDefinition={[{ colspan: 11 }, { colspan: 1 }]}>
+                            <video 
+                                key={`${index}-Video`} 
+                                controls 
+                                style={{ maxWidth: '100%', maxHeight: '30em', marginTop: '8px' }}
+                            >
+                                <source src={item.video_url.url} type="video/mp4" />
+                                Your browser does not support the video tag.
+                            </video>
+                            <ButtonDropdown
+                                items={[
+                                    { id: 'download-video', text: 'Download Video', iconName: 'download' },
+                                    { id: 'regenerate', text: 'Regenerate Video', iconName: 'refresh' }
+                                ]}
+                                ariaLabel='Video actions'
+                                variant='icon'
+                                onItemClick={async (e) => {
+                                    if (e.detail.id === 'download-video') {
+                                        const videoUrl = item.video_url.url;
+                                        const videoBlob = await fetch(videoUrl).then(r => r.blob());
+                                        const filename = `${metadata?.videoGenerationParams?.prompt || 'video'}.mp4`;
+                                        downloadFile(URL.createObjectURL(videoBlob), filename);
+                                    } else if (e.detail.id === 'regenerate') {
+                                        setUserPrompt(metadata?.videoGenerationParams?.prompt ?? '');
+                                        setResend(true);
+                                    }
+                                }}
+                            />
+                        </Grid>
+                    );
                 }
                 return null;
             });

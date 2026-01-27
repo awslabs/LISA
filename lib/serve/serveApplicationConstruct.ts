@@ -303,6 +303,13 @@ export class LisaServeApplicationConstruct extends Construct {
             container.addEnvironment('REGISTERED_MODELS_PS_NAME', this.modelsPs.parameterName);
             container.addEnvironment('LITELLM_DB_INFO_PS_NAME', litellmDbConnectionInfoPs.parameterName);
             container.addEnvironment('GUARDRAILS_TABLE_NAME', guardrailsTableName);
+            
+            // Add generated images bucket name for video/image content storage
+            const imagesBucketName = StringParameter.valueForStringParameter(
+                scope,
+                `${config.deploymentPrefix}/generatedImagesBucketName`
+            );
+            container.addEnvironment('GENERATED_IMAGES_S3_BUCKET_NAME', imagesBucketName);
             // Add metrics queue URL if provided
             if (props.metricsQueueUrl) {
                 // Get the queue URL from SSM parameter
@@ -379,6 +386,15 @@ export class LisaServeApplicationConstruct extends Construct {
             litellmDbConnectionInfoPs.grantRead(restRole);
             restRole.attachInlinePolicy(invocation_permissions);
             restRole.attachInlinePolicy(guardrails_permissions);
+            
+            // Grant S3 bucket permissions for video/image content storage
+            restRole.addToPrincipalPolicy(
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: ['s3:PutObject', 's3:GetObject', 's3:DeleteObject'],
+                    resources: [`arn:${config.partition}:s3:::${imagesBucketName}/*`]
+                })
+            );
 
             // Grant SQS send permissions if metrics queue URL is provided
             if (props.metricsQueueUrl) {

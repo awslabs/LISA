@@ -33,6 +33,7 @@ import {
     LinuxParameters,
     LogDriver,
     MountPoint,
+    NetworkMode,
     Protocol,
     Volume,
 } from 'aws-cdk-lib/aws-ecs';
@@ -217,6 +218,7 @@ export class ECSCluster extends Construct {
             // Create ECS task definition
             const ec2TaskDefinition = new Ec2TaskDefinition(this, createCdkId([roleId, 'Ec2TaskDefinition']), {
                 family: createCdkId([config.deploymentName, roleId], 32, 2),
+                networkMode: NetworkMode.BRIDGE,
                 volumes: volumes,
                 taskRole,
                 ...(executionRoleName && { executionRole: Role.fromRoleName(this, createCdkId([config.deploymentName, roleId, 'EX']), executionRoleName) }),

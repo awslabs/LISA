@@ -203,7 +203,7 @@ download_binary_and_run_installer() {
     local _checksum_value
 
     # destructure selected archive info into locals
-    case "$_artifact_name" in 
+    case "$_artifact_name" in
         "uv-aarch64-apple-darwin.tar.gz")
             _arch="aarch64-apple-darwin"
             _zip_ext=".tar.gz"
@@ -529,7 +529,7 @@ replace_home() {
 json_binary_aliases() {
     local _arch="$1"
 
-    case "$_arch" in 
+    case "$_arch" in
     "aarch64-apple-darwin")
         echo '{}'
         ;;
@@ -612,7 +612,7 @@ aliases_for_binary() {
     local _bin="$1"
     local _arch="$2"
 
-    case "$_arch" in 
+    case "$_arch" in
     "aarch64-apple-darwin")
         case "$_bin" in
         *)
@@ -793,7 +793,7 @@ select_archive_for_arch() {
 
     # try each archive, checking runtime conditions like libc versions
     # accepting the first one that matches, as it's the best match
-    case "$_true_arch" in 
+    case "$_true_arch" in
         "aarch64-apple-darwin")
             _archive="uv-aarch64-apple-darwin.tar.gz"
             if [ -n "$_archive" ]; then

@@ -27,6 +27,7 @@ from typing import Any
 import boto3
 import jwt
 import requests
+from auth_provider import get_authorization_provider
 from cachetools import TTLCache
 from cachetools.keys import hashkey
 from fastapi import HTTPException, Request
@@ -34,7 +35,6 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from loguru import logger
 from starlette.status import HTTP_401_UNAUTHORIZED
 from utils.decorators import singleton
-from auth_provider import get_authorization_provider
 
 TOKEN_EXPIRATION_NAME = "tokenExpiration"  # nosec B105
 TOKEN_TABLE_NAME = "TOKEN_TABLE_NAME"  # nosec B105

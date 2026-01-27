@@ -71,7 +71,6 @@ export class PromptTemplateApi extends Construct {
             },
             removalPolicy: config.removalPolicy,
             billingMode: BillingMode.PAY_PER_REQUEST,
-            pointInTimeRecovery: true
         });
 
         const byOwnerIndexName = 'byOwner';

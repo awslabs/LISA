@@ -352,7 +352,6 @@ export class LisaRagConstruct extends Construct {
             },
             removalPolicy: config.removalPolicy,
             billingMode: BillingMode.PAY_PER_REQUEST,
-            pointInTimeRecovery: true,
             timeToLiveAttribute: 'ttl',
             stream: StreamViewType.NEW_AND_OLD_IMAGES,
             encryption: TableEncryption.AWS_MANAGED,

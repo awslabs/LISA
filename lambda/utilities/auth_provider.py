@@ -12,30 +12,10 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""Authorization provider abstraction for pluggable auth implementations.
-
-This module provides a plugin architecture for authorization providers. External
-packages can register custom providers by calling `register_authorization_provider()`.
-
-Plugin Registration:
-    Plugins should register themselves on import. For Lambda layers, create a module
-    that registers the provider when imported:
-
-    ```python
-    # my_auth_plugin/__init__.py
-    from utilities.auth_provider import register_authorization_provider
-    from .my_provider import MyAuthorizationProvider
-
-    register_authorization_provider('my_provider', MyAuthorizationProvider, default=True)
-    ```
-
-    Then ensure the plugin is imported at Lambda startup (e.g., via a Lambda layer
-    that's automatically loaded).
-"""
+"""Authorization provider abstraction for pluggable auth implementations."""
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import Type
 
 logger = logging.getLogger(__name__)
 
@@ -44,12 +24,7 @@ class AuthorizationProvider(ABC):
     """Abstract base class for authorization providers.
 
     This abstraction allows swapping between different authorization backends
-    (e.g., OIDC group-based, custom auth) without changing the consuming code.
-
-    To create a custom provider:
-    1. Subclass AuthorizationProvider
-    2. Implement check_admin_access() and check_app_access()
-    3. Register with register_authorization_provider()
+    (e.g., OIDC group-based, BRASS bindle lock) without changing the consuming code.
     """
 
     @abstractmethod
@@ -165,157 +140,37 @@ class OIDCAuthorizationProvider(AuthorizationProvider):
             return False
 
         has_access = self.user_group in groups
-        logger.info(f"User {username} app access check: groups={groups}, user_group={self.user_group}, result={has_access}")
+        logger.info(
+            f"User {username} app access check: groups={groups}, user_group={self.user_group}, result={has_access}"
+        )
         return has_access
 
 
-# ============================================================================
-# Plugin Registry
-# ============================================================================
-
-# Registry of available authorization providers
-_provider_registry: dict[str, Type[AuthorizationProvider]] = {}
-
-# The default provider name to use when AUTH_PROVIDER env var is not set
-_default_provider_name: str = "oidc"
-
-# Cached singleton instance of the current authorization provider
+# Singleton instance for the authorization provider
 _auth_provider: AuthorizationProvider | None = None
-
-
-def register_authorization_provider(
-    name: str,
-    provider_class: Type[AuthorizationProvider],
-    default: bool = False
-) -> None:
-    """Register an authorization provider plugin.
-
-    This function allows external packages (e.g., Lambda layers) to register
-    custom authorization providers. Providers registered with default=True
-    will be used unless overridden by the AUTH_PROVIDER environment variable.
-
-    Parameters
-    ----------
-    name : str
-        Unique name for the provider (e.g., 'oidc', 'brass', 'custom')
-    provider_class : Type[AuthorizationProvider]
-        The provider class (not an instance) to register
-    default : bool
-        If True, this provider becomes the default. Later registrations
-        with default=True will override earlier ones.
-
-    Example
-    -------
-    ```python
-    from utilities.auth_provider import (
-        AuthorizationProvider,
-        register_authorization_provider
-    )
-
-    class MyCustomProvider(AuthorizationProvider):
-        def check_admin_access(self, username, groups=None):
-            # Custom implementation
-            return True
-
-        def check_app_access(self, username, groups=None):
-            # Custom implementation
-            return True
-
-    # Register as the default provider
-    register_authorization_provider('custom', MyCustomProvider, default=True)
-    ```
-    """
-    global _default_provider_name, _auth_provider
-
-    _provider_registry[name] = provider_class
-    logger.info(f"Registered authorization provider: {name}")
-
-    if default:
-        _default_provider_name = name
-        # Clear cached instance so next get_authorization_provider() uses new default
-        _auth_provider = None
-        logger.info(f"Set default authorization provider to: {name}")
-
-
-def get_registered_providers() -> list[str]:
-    """Get list of registered provider names.
-
-    Returns
-    -------
-    list[str]
-        Names of all registered authorization providers
-    """
-    return list(_provider_registry.keys())
 
 
 def get_authorization_provider() -> AuthorizationProvider:
     """Get the configured authorization provider instance.
 
-    The provider is selected in this order:
-    1. AUTH_PROVIDER environment variable (if set and registered)
-    2. The default provider (set via register_authorization_provider with default=True)
-    3. Falls back to 'oidc' if nothing else is configured
-
     Returns
     -------
     AuthorizationProvider
-        The authorization provider instance
-
-    Raises
-    ------
-    ValueError
-        If the requested provider is not registered
+        The authorization provider instance (OIDC-based for LISA)
     """
     global _auth_provider
-
     if _auth_provider is None:
-        # Determine which provider to use
-        provider_name = os.environ.get("AUTH_PROVIDER", _default_provider_name)
-
-        if provider_name not in _provider_registry:
-            available = ", ".join(_provider_registry.keys()) or "none"
-            raise ValueError(
-                f"Authorization provider '{provider_name}' is not registered. "
-                f"Available providers: {available}"
-            )
-
-        provider_class = _provider_registry[provider_name]
-        _auth_provider = provider_class()
-        logger.info(f"Initialized authorization provider: {provider_name}")
-
+        _auth_provider = OIDCAuthorizationProvider()
     return _auth_provider
 
 
 def set_authorization_provider(provider: AuthorizationProvider) -> None:
-    """Set a custom authorization provider instance directly.
-
-    This bypasses the registry and sets the provider instance directly.
-    Useful for testing or when you need a pre-configured instance.
+    """Set a custom authorization provider (useful for testing).
 
     Parameters
     ----------
     provider : AuthorizationProvider
-        The authorization provider instance to use
+        The authorization provider to use
     """
     global _auth_provider
     _auth_provider = provider
-    logger.info(f"Set authorization provider instance: {type(provider).__name__}")
-
-
-def reset_authorization_provider() -> None:
-    """Reset the cached authorization provider.
-
-    Forces the next call to get_authorization_provider() to create a new instance.
-    Useful for testing or when configuration changes.
-    """
-    global _auth_provider
-    _auth_provider = None
-    logger.debug("Reset authorization provider cache")
-
-
-# ============================================================================
-# Register built-in providers
-# ============================================================================
-
-# Register OIDC as the default built-in provider
-register_authorization_provider("oidc", OIDCAuthorizationProvider, default=True)

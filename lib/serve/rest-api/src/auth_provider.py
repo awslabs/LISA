@@ -155,7 +155,9 @@ class OIDCAuthorizationProvider(AuthorizationProvider):
             return False
 
         has_access = self.user_group in groups
-        logger.info(f"User {username} app access check: groups={groups}, user_group={self.user_group}, result={has_access}")
+        logger.info(
+            f"User {username} app access check: groups={groups}, user_group={self.user_group}, result={has_access}"
+        )
         return has_access
 
     def check_admin_access_jwt(self, jwt_data: dict[str, Any], jwt_groups_property: str) -> bool:

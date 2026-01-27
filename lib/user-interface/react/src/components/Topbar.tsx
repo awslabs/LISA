@@ -15,7 +15,7 @@
 */
 
 import { ReactElement, useContext } from 'react';
-import { useAuth } from 'react-oidc-context';
+import { useAuth } from '../auth/useAuth';
 import { useHref, useNavigate } from 'react-router-dom';
 import { applyDensity, Density, Mode } from '@cloudscape-design/global-styles';
 import TopNavigation, { TopNavigationProps } from '@cloudscape-design/components/top-navigation';

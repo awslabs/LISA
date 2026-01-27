@@ -33,7 +33,7 @@ import {
 import { useAppDispatch } from '@/config/store';
 import { useNotificationService } from '@/shared/util/hooks';
 import { useEffect, useState, useMemo } from 'react';
-import { useAuth } from 'react-oidc-context';
+import { useAuth } from '../../../auth/useAuth';
 import { IConfiguration } from '@/shared/model/configuration.model';
 import { useNavigate } from 'react-router-dom';
 import { fetchImage, getSessionDisplay, messageContainsImage } from '@/components/utils';

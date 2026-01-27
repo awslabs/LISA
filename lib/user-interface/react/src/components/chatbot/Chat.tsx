@@ -15,7 +15,7 @@
  */
 
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { useAuth } from 'react-oidc-context';
+import { useAuth } from '../../auth/useAuth';
 import Form from '@cloudscape-design/components/form';
 import Box from '@cloudscape-design/components/box';
 import SpaceBetween from '@cloudscape-design/components/space-between';

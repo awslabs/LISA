@@ -16,7 +16,7 @@
 
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useAuth } from 'react-oidc-context';
+import { useAuth } from '../../../auth/useAuth';
 
 import { useMemory } from './useMemory.hooks';
 import { LisaChatSession } from '@/components/types';
@@ -24,7 +24,7 @@ import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { IModel } from '@/shared/model/model-management.model';
 import { ChatMemory } from '@/shared/util/chat-memory';
 
-vi.mock('react-oidc-context');
+vi.mock('../../../auth/useAuth');
 
 const createMockSession = (overrides?: Partial<LisaChatSession>): LisaChatSession => ({
     sessionId: 'test-session-id',

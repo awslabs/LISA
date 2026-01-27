@@ -24,6 +24,8 @@ import boto3
 from botocore.config import Config
 from utilities.exceptions import HTTPException
 
+from .auth_provider import get_authorization_provider
+
 logger = logging.getLogger(__name__)
 
 retry_config = Config(
@@ -50,11 +52,12 @@ def get_groups(event: Any) -> list[str]:
 
 
 def is_admin(event: dict) -> bool:
-    """Get admin status from event."""
-    admin_group = os.environ.get("ADMIN_GROUP", "")
+    """Get admin status from event using the configured authorization provider."""
+    username = get_username(event)
     groups = get_groups(event)
-    logger.info(f"User groups: {groups} and admin: {admin_group}")
-    return admin_group in groups
+    auth_provider = get_authorization_provider()
+    result = auth_provider.check_admin_access(username, groups)
+    return result
 
 
 def get_user_context(event: dict[str, Any]) -> tuple[str, bool, list[str]]:

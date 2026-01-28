@@ -46,3 +46,15 @@ export function getBrandingAssetPath (asset: 'favicon' | 'logo' | 'login'): stri
             return `${basePath}login.png`;
     }
 }
+
+/**
+ * Gets the custom display name for branding.
+ * If a custom display name is configured,
+ * returns that name. Otherwise returns 'LISA' as the default.
+ * @returns The display name to use throughout the application
+ */
+export function getDisplayName (): string {
+    const customDisplayName = (window.env as any)?.CUSTOM_DISPLAY_NAME;
+    
+    return customDisplayName ? customDisplayName : 'LISA';
+}

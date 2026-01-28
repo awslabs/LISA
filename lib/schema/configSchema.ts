@@ -865,6 +865,7 @@ export const RawConfigObject = z.object({
     deployDocs: z.boolean().default(true).describe('Whether to deploy docs stacks.'),
     deployUi: z.boolean().default(true).describe('Whether to deploy UI stacks.'),
     useCustomBranding: z.boolean().default(false).describe('Whether to use custom branding assets in the UI.'),
+    customDisplayName: z.string().describe('Custom display name to replace "LISA" branding in titles and descriptions. Requires "useCustomBranding" to be enabled.'),
     deployMetrics: z.boolean().default(true).describe('Whether to deploy Metrics stack.'),
     deployMcp: z.boolean().default(true).describe('Whether to deploy LISA MCP stack.'),
     deployServe: z.boolean().default(true).describe('Whether to deploy LISA Serve stack.'),

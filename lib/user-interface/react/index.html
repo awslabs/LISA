@@ -4,16 +4,22 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/ico" href="%BASE_URL%branding/base/favicon.ico" id="favicon" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AWS LISA AI Chat Assistant</title>
+    <title id="page-title">AWS LISA AI Chat Assistant</title>
     <script src="%BASE_URL%env.js"></script>
     <script src="%BASE_URL%git-info.js"></script>
     <script type="module">
-      // Set favicon based on environment variable and base URL
+      // Set favicon and title
       (function() {
         const baseUrl = import.meta.env.BASE_URL || '/';
         const normalizedBase = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
         const brandingDir = window.env?.USE_CUSTOM_BRANDING ? 'custom' : 'base';
         document.getElementById('favicon').href = `${normalizedBase}branding/${brandingDir}/favicon.ico`;
+        
+        // Set page title based on custom display name
+        const displayName = window.env?.CUSTOM_DISPLAY_NAME 
+          ? window.env.CUSTOM_DISPLAY_NAME 
+          : 'LISA';
+        document.getElementById('page-title').textContent = `${displayName} AI Chat Assistant`;
       })();
     </script>
   </head>

@@ -25,6 +25,7 @@ import { Grid, SpaceBetween } from '@cloudscape-design/components';
 import { useGetInstancesQuery } from '../../../shared/reducers/model-management.reducer';
 import { ModelFeatures } from '@/components/types';
 import { UserGroupsInput } from '@/shared/form/UserGroupsInput';
+import { getDisplayName } from '../../../shared/util/branding';
 
 export type BaseModelConfigCustomProps = {
     isEdit: boolean
@@ -39,7 +40,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
         <SpaceBetween size={'s'}>
             <FormField
                 label='Hosting Type'
-                description='Choose whether to host the model on LISA infrastructure or use a third-party provider.'
+                description={`Choose whether to host the model on ${getDisplayName()} infrastructure or use a third-party provider.`}
                 errorText={props.formErrors?.lisaHostedModel}
             >
                 <Select

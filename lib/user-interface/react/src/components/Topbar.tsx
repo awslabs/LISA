@@ -120,6 +120,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                             navigate(event.detail.href);
                         },
                         items: [
+                            { id: 'version-info', text: `LISA v${window.gitInfo?.revisionTag}`, disabled: true },
                             {
                                 id: 'configuration',
                                 type: 'button',
@@ -209,7 +210,6 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                     },
                     iconName: 'user-profile',
                     items: [
-                        { id: 'version-info', text: `LISA v${window.gitInfo?.revisionTag}`, disabled: true },
                         ...(configs?.configuration.enabledComponents?.enableUserApiTokens && (isUserAdmin || isApiUser) ? [{
                             id: 'api-token',
                             text: 'API Token',

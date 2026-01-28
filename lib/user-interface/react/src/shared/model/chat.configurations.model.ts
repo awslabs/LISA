@@ -54,7 +54,8 @@ export type ISessionConfiguration = {
         size: string,
         numberOfImages: number,
         quality: string,
-    }
+    },
+    remixVideoId?: string;
 };
 
 export type GenerateLLMRequestParams = {

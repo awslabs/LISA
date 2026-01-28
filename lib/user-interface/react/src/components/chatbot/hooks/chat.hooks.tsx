@@ -174,6 +174,10 @@ export const useChatGeneration = ({
             // Handle video generation mode specifically
             if (isVideoGenerationMode) {
                 try {
+                    // Check if this is a remix operation
+                    const remixVideoId = chatConfiguration.sessionConfiguration?.remixVideoId;
+                    const isRemix = !!remixVideoId;
+
                     // Create video generation request
                     const videoGenParams = {
                         prompt: params.input,
@@ -182,8 +186,12 @@ export const useChatGeneration = ({
                         size: "720x1280"
                     };
 
-                    // Make API call to create video generation request
-                    const createResponse = await fetch(`${RESTAPI_URI}/${RESTAPI_VERSION}/serve/videos`, {
+                    // Make API call to create video generation or remix request
+                    const videoEndpoint = isRemix
+                        ? `${RESTAPI_URI}/${RESTAPI_VERSION}/serve/videos/${remixVideoId}/remix`
+                        : `${RESTAPI_URI}/${RESTAPI_VERSION}/serve/videos`;
+
+                    const createResponse = await fetch(videoEndpoint, {
                         method: 'POST',
                         headers: {
                             'Authorization': `Bearer ${auth.user?.id_token}`,
@@ -246,7 +254,7 @@ export const useChatGeneration = ({
                             }
 
                             const status = statusData.status || statusData.state;
-                            
+
                             // Update status in message
                             setSession((prev) => {
                                 const lastMessage = prev.history[prev.history.length - 1];
@@ -256,8 +264,8 @@ export const useChatGeneration = ({
                                         history: [...prev.history.slice(0, -1),
                                             new LisaChatMessage({
                                                 ...lastMessage,
-                                                content: status === 'completed' || status === 'ready' 
-                                                    ? 'Video ready!' 
+                                                content: status === 'completed' || status === 'ready'
+                                                    ? 'Video ready!'
                                                     : `Generating video... (${status})`,
                                                 metadata: {
                                                     ...lastMessage.metadata,
@@ -272,7 +280,7 @@ export const useChatGeneration = ({
 
                             if (status === 'completed' || status === 'ready' || status === 'succeeded') {
                                 videoReady = true;
-                                
+
                                 // Fetch video content (stored in S3 with presigned URL)
                                 const contentResponse = await fetch(`${RESTAPI_URI}/${RESTAPI_VERSION}/serve/videos/${videoId}/content`, {
                                     method: 'GET',
@@ -289,7 +297,7 @@ export const useChatGeneration = ({
                                 // Response should be JSON with presigned URL
                                 const contentData = await contentResponse.json();
                                 videoContent = contentData.url || contentData.content || contentData.data;
-                                
+
                                 if (!videoContent) {
                                     throw new Error('Video URL not found in response');
                                 }
@@ -324,7 +332,7 @@ export const useChatGeneration = ({
 
                     const responseTime = calculateResponseTime(startTime);
 
-                    // Update message with video content (presigned URL)
+                    // Update message with video content (presigned URL) and video_id
                     setSession((prev) => {
                         const lastMessage = prev.history[prev.history.length - 1];
                         if (lastMessage?.metadata?.videoId === videoId) {
@@ -333,9 +341,12 @@ export const useChatGeneration = ({
                                 history: [...prev.history.slice(0, -1),
                                     new LisaChatMessage({
                                         ...lastMessage,
-                                        content: [{ 
-                                            type: 'video_url', 
-                                            video_url: { url: videoContent } 
+                                        content: [{
+                                            type: 'video_url',
+                                            video_url: {
+                                                url: videoContent,
+                                                video_id: videoId
+                                            }
                                         }],
                                         metadata: {
                                             ...lastMessage.metadata,

@@ -561,13 +561,13 @@ export default function Chat ({ sessionId }) {
             history: prev.history.concat(new LisaChatMessage({
                 type: 'human',
                 content: userPrompt,
-                metadata: isImageGenerationMode ? { imageGeneration: true } : {},
+                metadata: isImageGenerationMode ? { imageGeneration: true } : isVideoGenerationMode ? { videoGeneration: true } : {},
             }))
         }));
 
         const messages = [];
 
-        if (session.history.length === 0 && !isImageGenerationMode) {
+        if (session.history.length === 0 && !isImageGenerationMode && !isVideoGenerationMode) {
             messages.push(new LisaChatMessage({
                 type: 'system',
                 content: chatConfiguration.promptConfiguration.promptTemplate,
@@ -577,13 +577,13 @@ export default function Chat ({ sessionId }) {
 
         // Fetch RAG documents once if needed
         let ragDocs = null;
-        if (useRag && !isImageGenerationMode) {
+        if (useRag && !isImageGenerationMode && !isVideoGenerationMode) {
             ragDocs = await fetchRelevantDocuments(userPrompt);
         }
 
         // Use extracted message builder utilities
         const messageContent = await buildMessageContent({
-            isImageGenerationMode,
+            isImageGenerationMode: isImageGenerationMode || isVideoGenerationMode,
             fileContext,
             useRag,
             userPrompt,
@@ -591,7 +591,7 @@ export default function Chat ({ sessionId }) {
         });
 
         const messageMetadata = await buildMessageMetadata({
-            isImageGenerationMode,
+            isImageGenerationMode: isImageGenerationMode || isVideoGenerationMode,
             useRag,
             chatConfiguration,
             ragDocs,
@@ -621,7 +621,7 @@ export default function Chat ({ sessionId }) {
 
         setDirtySession(true);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [userPrompt, useRag, fileContext, chatConfiguration, generateResponse, isImageGenerationMode, fetchRelevantDocuments, notificationService]);
+    }, [userPrompt, useRag, fileContext, chatConfiguration, generateResponse, isImageGenerationMode, isVideoGenerationMode, fetchRelevantDocuments, notificationService]);
 
     // Ref to track if we're processing a keyboard event
     const isKeyboardEventRef = useRef(false);
@@ -792,7 +792,7 @@ export default function Chat ({ sessionId }) {
                     // eslint-disable-next-line react-hooks/exhaustive-deps
                     }, [session.history, chatConfiguration, loadingSession])}
 
-                    {!loadingSession && (isRunning || callingToolName) && !isStreaming && <Message
+                    {!loadingSession && (isRunning || callingToolName) && !isStreaming && !isImageGenerationMode && !isVideoGenerationMode && <Message
                         isRunning={isRunning}
                         callingToolName={callingToolName}
                         markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay}

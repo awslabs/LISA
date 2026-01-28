@@ -388,7 +388,7 @@ def handle_finish_update(event: dict[str, Any], context: Any) -> dict[str, Any]:
         ConsistentRead=True,
     )["Item"]
     model_url = ddb_item["model_url"]
-    
+
     # Check if this is a video generation model
     model_type = ddb_item.get("model_config", {}).get("modelType", "").upper()
     is_video_model = model_type == ModelType.VIDEOGEN.value.upper()

@@ -305,12 +305,12 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                             />
                         </Grid>;
                 } else if (item.type === 'video_url' && item.video_url?.url) {
+                    const videoId = item.video_url.video_id;
                     return (
-                        <Grid key={`${index}-Grid`} gridDefinition={[{ colspan: 11 }, { colspan: 1 }]}>
-                            <video 
-                                key={`${index}-Video`} 
-                                controls 
-                                style={{ maxWidth: '100%', maxHeight: '30em', marginTop: '8px' }}
+                        <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginTop: '8px', maxWidth: '100%' }}>
+                            <video
+                                controls
+                                style={{ flex: 1, maxHeight: '30em', minWidth: 0 }}
                             >
                                 <source src={item.video_url.url} type="video/mp4" />
                                 Your browser does not support the video tag.
@@ -318,7 +318,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                             <ButtonDropdown
                                 items={[
                                     { id: 'download-video', text: 'Download Video', iconName: 'download' },
-                                    { id: 'regenerate', text: 'Regenerate Video', iconName: 'refresh' }
+                                    { id: 'remix-video', text: 'Remix Video', iconName: 'refresh' }
                                 ]}
                                 ariaLabel='Video actions'
                                 variant='icon'
@@ -328,13 +328,22 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                         const videoBlob = await fetch(videoUrl).then(r => r.blob());
                                         const filename = `${metadata?.videoGenerationParams?.prompt || 'video'}.mp4`;
                                         downloadFile(URL.createObjectURL(videoBlob), filename);
-                                    } else if (e.detail.id === 'regenerate') {
-                                        setUserPrompt(metadata?.videoGenerationParams?.prompt ?? '');
+                                    } else if (e.detail.id === 'remix-video' && videoId) {
+                                        // Call the remix endpoint to create a new variation
+                                        setUserPrompt(`Remix video: ${metadata?.videoGenerationParams?.prompt ?? ''}`);
+                                        // Store the video_id for the remix call
+                                        setChatConfiguration(
+                                            merge({}, chatConfiguration, {
+                                                sessionConfiguration: {
+                                                    remixVideoId: videoId
+                                                }
+                                            })
+                                        );
                                         setResend(true);
                                     }
                                 }}
                             />
-                        </Grid>
+                        </div>
                     );
                 }
                 return null;
@@ -359,7 +368,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
         (message.type === MessageTypes.HUMAN || message.type === MessageTypes.AI || message.type === MessageTypes.TOOL) &&
         <div className='mt-2' style={{ overflow: 'hidden' }} data-testid={`chat-message-${message.type}`}>
             <ImageViewer setVisible={setShowImageViewer} visible={showImageViewer} selectedImage={selectedImage} metadata={selectedMetadata} />
-            {(isRunning && !callingToolName) && (
+            {(isRunning && !callingToolName && !message?.metadata?.videoGeneration) && (
                 <ChatBubble
                     ariaLabel='Generative AI assistant'
                     type='incoming'

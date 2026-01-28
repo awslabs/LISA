@@ -386,7 +386,7 @@ export class LisaServeApplicationConstruct extends Construct {
             litellmDbConnectionInfoPs.grantRead(restRole);
             restRole.attachInlinePolicy(invocation_permissions);
             restRole.attachInlinePolicy(guardrails_permissions);
-            
+
             // Grant S3 bucket permissions for video/image content storage
             restRole.addToPrincipalPolicy(
                 new PolicyStatement({

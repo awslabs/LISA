@@ -332,10 +332,10 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     if http_method == "GET" or http_method == "DELETE":
 
         response = requests_request(method=http_method, url=litellm_path, headers=headers)
-        
+
         # Check content type to handle binary responses (e.g., video content)
         content_type = response.headers.get("content-type", "").lower()
-        
+
         # If it's JSON, parse and return as JSON
         if "application/json" in content_type or "text/json" in content_type:
             try:
@@ -343,23 +343,23 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
             except (ValueError, json.JSONDecodeError):
                 # If JSON parsing fails, fall through to return raw content
                 pass
-        
+
         # For video content, store in S3 and return presigned URL
         if "video/" in content_type and "/content" in api_path and response.status_code == 200:
             try:
                 # Extract video ID from path (e.g., videos/video_abc123/content -> video_abc123)
                 path_parts = api_path.split("/")
                 video_id = path_parts[-2] if len(path_parts) >= 2 else str(uuid.uuid4())
-                
+
                 # Generate a unique S3 key for the video
                 file_extension = ".mp4"  # Default to mp4
                 if "video/webm" in content_type:
                     file_extension = ".webm"
                 elif "video/quicktime" in content_type:
                     file_extension = ".mov"
-                
+
                 s3_key = f"videos/{video_id}{file_extension}"
-                
+
                 # Upload video to S3
                 s3_client.put_object(
                     Bucket=s3_bucket_name,
@@ -367,10 +367,10 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
                     Body=response.content,
                     ContentType=content_type,
                 )
-                
+
                 # Generate presigned URL
                 presigned_url = _generate_presigned_video_url(s3_key)
-                
+
                 # Return JSON response with presigned URL
                 return JSONResponse(
                     {
@@ -378,18 +378,18 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
                         "s3_key": s3_key,
                         "content_type": content_type,
                     },
-                    status_code=200
+                    status_code=200,
                 )
             except Exception as e:
                 logger.error(f"Error storing video to S3: {e}")
                 # Fall through to return raw content if S3 storage fails
-        
+
         # For other binary content (image, etc.) or non-JSON, return raw response
         return Response(
             content=response.content,
             status_code=response.status_code,
             headers=dict(response.headers),
-            media_type=content_type if content_type else None
+            media_type=content_type if content_type else None,
         )
     # not a GET or DELETE request, so expect a JSON payload as part of the request
     params = await request.json()

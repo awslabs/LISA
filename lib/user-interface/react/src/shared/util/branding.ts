@@ -55,6 +55,6 @@ export function getBrandingAssetPath (asset: 'favicon' | 'logo' | 'login'): stri
  */
 export function getDisplayName (): string {
     const customDisplayName = (window.env as any)?.CUSTOM_DISPLAY_NAME;
-    
+
     return customDisplayName ? customDisplayName : 'LISA';
 }

@@ -14,10 +14,10 @@
         const normalizedBase = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
         const brandingDir = window.env?.USE_CUSTOM_BRANDING ? 'custom' : 'base';
         document.getElementById('favicon').href = `${normalizedBase}branding/${brandingDir}/favicon.ico`;
-        
+
         // Set page title based on custom display name
-        const displayName = window.env?.CUSTOM_DISPLAY_NAME 
-          ? window.env.CUSTOM_DISPLAY_NAME 
+        const displayName = window.env?.CUSTOM_DISPLAY_NAME
+          ? window.env.CUSTOM_DISPLAY_NAME
           : 'LISA';
         document.getElementById('page-title').textContent = `${displayName} AI Chat Assistant`;
       })();

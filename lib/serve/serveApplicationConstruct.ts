@@ -296,6 +296,12 @@ export class LisaServeApplicationConstruct extends Construct {
         // Use the guardrails table name from the construct we just created
         const guardrailsTableName = this.guardrailsTable.tableName;
 
+        // Get generated images bucket name for video/image content storage
+        const imagesBucketName = StringParameter.valueForStringParameter(
+            scope,
+            `${config.deploymentPrefix}/generatedImagesBucketName`
+        );
+
         // Add parameter as container environment variable for both RestAPI and RagAPI
         const container = restApi.apiCluster.containers[ECSTasks.REST];
         if (container) {
@@ -303,12 +309,6 @@ export class LisaServeApplicationConstruct extends Construct {
             container.addEnvironment('REGISTERED_MODELS_PS_NAME', this.modelsPs.parameterName);
             container.addEnvironment('LITELLM_DB_INFO_PS_NAME', litellmDbConnectionInfoPs.parameterName);
             container.addEnvironment('GUARDRAILS_TABLE_NAME', guardrailsTableName);
-            
-            // Add generated images bucket name for video/image content storage
-            const imagesBucketName = StringParameter.valueForStringParameter(
-                scope,
-                `${config.deploymentPrefix}/generatedImagesBucketName`
-            );
             container.addEnvironment('GENERATED_IMAGES_S3_BUCKET_NAME', imagesBucketName);
             // Add metrics queue URL if provided
             if (props.metricsQueueUrl) {

@@ -45,7 +45,7 @@ export type McpWorkbenchConstructProps = {
 export class McpWorkbenchConstruct extends Construct {
     public readonly workbenchBucket: s3.Bucket;
 
-    constructor (scope: Construct, id: string, props: McpWorkbenchConstructProps) {
+    constructor(scope: Construct, id: string, props: McpWorkbenchConstructProps) {
         super(scope, id);
 
         const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc, apiCluster } = props;
@@ -72,10 +72,13 @@ export class McpWorkbenchConstruct extends Construct {
 
         const workbenchBucket = this.createWorkbenchBucket(scope, config);
         this.createWorkbenchApi(restApi, config, vpc, securityGroups, workbenchBucket, lambdaLayers, authorizer);
-        this.createWorkbenchService(apiCluster, config, vpc);
+        
+        if (config.deployMcpWorkbench) {
+            this.createWorkbenchService(apiCluster, config, vpc);
+        }
     }
 
-    private createWorkbenchApi (restApi: IRestApi, config: Config, vpc: Vpc, securityGroups: ISecurityGroup[], workbenchBucket: s3.Bucket, lambdaLayers: lambda.ILayerVersion[], authorizer?: IAuthorizer) {
+    private createWorkbenchApi(restApi: IRestApi, config: Config, vpc: Vpc, securityGroups: ISecurityGroup[], workbenchBucket: s3.Bucket, lambdaLayers: lambda.ILayerVersion[], authorizer?: IAuthorizer) {
 
         const env = {
             ADMIN_GROUP: config.authConfig?.adminGroup || '',
@@ -177,7 +180,7 @@ export class McpWorkbenchConstruct extends Construct {
         });
     }
 
-    private createWorkbenchBucket (scope: Construct, config: Config): s3.Bucket {
+    private createWorkbenchBucket(scope: Construct, config: Config): s3.Bucket {
         const bucketAccessLogsBucket = s3.Bucket.fromBucketArn(scope, 'BucketAccessLogsBucket',
             ssm.StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/bucket/bucket-access-logs`),
         );
@@ -194,7 +197,7 @@ export class McpWorkbenchConstruct extends Construct {
         });
     }
 
-    private createWorkbenchService (apiCluster: ECSCluster, config: Config, vpc: Vpc) {
+    private createWorkbenchService(apiCluster: ECSCluster, config: Config, vpc: Vpc) {
 
         const mcpWorkbenchImage = config.mcpWorkbenchConfig || {
             baseImage: config.baseImage,
@@ -236,7 +239,7 @@ export class McpWorkbenchConstruct extends Construct {
         this.createS3EventHandler(config, service, vpc);
     }
 
-    private createS3EventHandler (config: any, workbenchService: Ec2Service, vpc: Vpc) {
+    private createS3EventHandler(config: any, workbenchService: Ec2Service, vpc: Vpc) {
         const s3EventHandlerRole = new iam.Role(this, 'S3EventHandlerRole', {
             assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
             managedPolicies: [

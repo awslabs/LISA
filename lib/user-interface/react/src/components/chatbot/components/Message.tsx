@@ -312,7 +312,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                 controls
                                 style={{ flex: 1, maxHeight: '30em', minWidth: 0 }}
                             >
-                                <source src={item.video_url.url} type="video/mp4" />
+                                <source src={item.video_url.url} type='video/mp4' />
                                 Your browser does not support the video tag.
                             </video>
                             <ButtonDropdown
@@ -325,7 +325,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                 onItemClick={async (e) => {
                                     if (e.detail.id === 'download-video') {
                                         const videoUrl = item.video_url.url;
-                                        const videoBlob = await fetch(videoUrl).then(r => r.blob());
+                                        const videoBlob = await fetch(videoUrl).then((r) => r.blob());
                                         const filename = `${metadata?.videoGenerationParams?.prompt || 'video'}.mp4`;
                                         downloadFile(URL.createObjectURL(videoBlob), filename);
                                     } else if (e.detail.id === 'remix-video' && videoId) {

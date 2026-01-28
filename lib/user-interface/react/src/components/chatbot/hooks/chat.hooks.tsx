@@ -182,8 +182,8 @@ export const useChatGeneration = ({
                     const videoGenParams = {
                         prompt: params.input,
                         model: selectedModel.modelId,
-                        seconds: "4",
-                        size: "720x1280"
+                        seconds: '4',
+                        size: '720x1280'
                     };
 
                     // Make API call to create video generation or remix request
@@ -235,7 +235,7 @@ export const useChatGeneration = ({
                     let videoContent = null;
 
                     while (!videoReady && pollAttempts < maxPollAttempts && !stopRequested.current) {
-                        await new Promise(resolve => setTimeout(resolve, pollInterval));
+                        await new Promise((resolve) => setTimeout(resolve, pollInterval));
                         pollAttempts++;
 
                         try {

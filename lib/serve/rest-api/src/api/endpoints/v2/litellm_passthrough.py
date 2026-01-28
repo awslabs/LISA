@@ -420,8 +420,9 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
                     data[field_name] = field_value
 
             # Create new headers without Content-Type (requests library will set it with correct boundary)
+            # Use LITELLM_KEY instead of the user's token (consistent with rest of the code)
             forward_headers = {
-                "Authorization": headers.get("authorization") or headers.get("Authorization") or f"Bearer {LITELLM_KEY}"
+                "Authorization": f"Bearer {LITELLM_KEY}"
             }
 
             # Forward multipart request to LiteLLM

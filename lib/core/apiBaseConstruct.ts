@@ -20,7 +20,7 @@ import { Authorizer, Cors, EndpointType, RestApi, StageOptions } from 'aws-cdk-l
 import { AttributeType, BillingMode, ProjectionType, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 
 import { CustomAuthorizer } from '../api-base/authorizer';
-import { Duration, Stack, StackProps } from 'aws-cdk-lib';
+import { Duration, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { ITable, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
@@ -42,6 +42,7 @@ import { LAMBDA_PATH } from '../util';
 import { getPythonRuntime } from '../api-base/utils';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { EventBus } from 'aws-cdk-lib/aws-events';
+import { Bucket, BucketEncryption, HttpMethods } from 'aws-cdk-lib/aws-s3';
 
 export type LisaApiBaseProps = {
     vpc: Vpc;
@@ -61,11 +62,43 @@ export class LisaApiBaseConstruct extends Construct {
     public readonly tokenTable?: ITable;
     public readonly managementKeySecretName: string;
     public readonly iamAuthSetupFn: IFunction;
+    public readonly imagesBucket: Bucket;
 
     constructor (scope: Stack, id: string, props: LisaApiBaseProps) {
         super(scope, id);
 
         const { config, vpc, securityGroups } = props;
+
+        // Get bucket access logs bucket
+        const bucketAccessLogsBucket = Bucket.fromBucketArn(scope, 'BucketAccessLogsBucket',
+            StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/bucket/bucket-access-logs`)
+        );
+
+        // Create Images S3 bucket for generated images and videos
+        // This is created in API Base stack so it's available to both Chat and Serve stacks
+        this.imagesBucket = new Bucket(scope, 'GeneratedImagesBucket', {
+            removalPolicy: config.removalPolicy,
+            autoDeleteObjects: config.removalPolicy === RemovalPolicy.DESTROY,
+            enforceSSL: true,
+            cors: [
+                {
+                    allowedMethods: [HttpMethods.GET, HttpMethods.POST],
+                    allowedHeaders: ['*'],
+                    allowedOrigins: ['*'],
+                    exposedHeaders: ['Access-Control-Allow-Origin'],
+                },
+            ],
+            serverAccessLogsBucket: bucketAccessLogsBucket,
+            serverAccessLogsPrefix: 'logs/generated-images-bucket/',
+            encryption: BucketEncryption.S3_MANAGED
+        });
+
+        // Store bucket name in SSM for cross-stack access
+        new StringParameter(scope, 'GeneratedImagesBucketNameParameter', {
+            parameterName: `${config.deploymentPrefix}/generatedImagesBucketName`,
+            stringValue: this.imagesBucket.bucketName,
+            description: 'S3 bucket name for generated images and videos',
+        });
 
         // TokenTable is now managed in API Base so it's independent of Serve
         // Create the table - if it already exists from previous Serve deployment,

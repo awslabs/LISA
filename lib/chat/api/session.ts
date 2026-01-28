@@ -28,8 +28,6 @@ import { BaseProps } from '../../schema';
 import { createLambdaRole } from '../../core/utils';
 import { Vpc } from '../../networking/vpc';
 import { LAMBDA_PATH } from '../../util';
-import { Bucket, BucketEncryption, HttpMethods } from 'aws-cdk-lib/aws-s3';
-import { RemovalPolicy } from 'aws-cdk-lib';
 
 /**
  * Properties for SessionApi Construct.
@@ -115,33 +113,11 @@ export class SessionApi extends Construct {
             stringValue: sessionEncryptionKey.keyArn,
         });
 
-        const bucketAccessLogsBucket = Bucket.fromBucketArn(scope, 'BucketAccessLogsBucket',
-            StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/bucket/bucket-access-logs`)
+        // Get Images S3 bucket name from API Base stack (created there for cross-stack access)
+        const imagesBucketName = StringParameter.valueForStringParameter(
+            this,
+            `${config.deploymentPrefix}/generatedImagesBucketName`
         );
-
-        // Create Images S3 bucket
-        const imagesBucket = new Bucket(scope, 'GeneratedImagesBucket', {
-            removalPolicy: config.removalPolicy,
-            autoDeleteObjects: config.removalPolicy === RemovalPolicy.DESTROY,
-            enforceSSL: true,
-            cors: [
-                {
-                    allowedMethods: [HttpMethods.GET, HttpMethods.POST],
-                    allowedHeaders: ['*'],
-                    allowedOrigins: ['*'],
-                    exposedHeaders: ['Access-Control-Allow-Origin'],
-                },
-            ],
-            serverAccessLogsBucket: bucketAccessLogsBucket,
-            serverAccessLogsPrefix: 'logs/generated-images-bucket/',
-            encryption: BucketEncryption.S3_MANAGED
-        });
-
-        // Store bucket name in SSM for cross-stack access (e.g., REST API)
-        new StringParameter(this, 'GeneratedImagesBucketNameParameter', {
-            parameterName: `${config.deploymentPrefix}/generatedImagesBucketName`,
-            stringValue: imagesBucket.bucketName,
-        });
 
         const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
             restApiId: restApiId,
@@ -157,7 +133,7 @@ export class SessionApi extends Construct {
         const env = {
             SESSIONS_TABLE_NAME: sessionTable.tableName,
             SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
-            GENERATED_IMAGES_S3_BUCKET_NAME: imagesBucket.bucketName,
+            GENERATED_IMAGES_S3_BUCKET_NAME: imagesBucketName,
             MODEL_TABLE_NAME: modelTableName,
             CONFIG_TABLE_NAME: configTable.tableName,
             SESSION_ENCRYPTION_KEY_ARN: sessionEncryptionKey.keyArn,
@@ -295,13 +271,34 @@ export class SessionApi extends Construct {
             );
             if (f.method === 'POST' || f.method === 'PUT') {
                 sessionTable.grantWriteData(lambdaFunction);
-                imagesBucket.grantReadWrite(lambdaFunction);
+                // Grant S3 read/write permissions for image/video operations
+                lambdaRole.addToPrincipalPolicy(
+                    new PolicyStatement({
+                        effect: Effect.ALLOW,
+                        actions: ['s3:PutObject', 's3:GetObject'],
+                        resources: [`arn:${config.partition}:s3:::${imagesBucketName}/*`]
+                    })
+                );
             } else if (f.method === 'GET') {
                 sessionTable.grantReadData(lambdaFunction);
-                imagesBucket.grantRead(lambdaFunction);
+                // Grant S3 read permissions
+                lambdaRole.addToPrincipalPolicy(
+                    new PolicyStatement({
+                        effect: Effect.ALLOW,
+                        actions: ['s3:GetObject'],
+                        resources: [`arn:${config.partition}:s3:::${imagesBucketName}/*`]
+                    })
+                );
             } else if (f.method === 'DELETE') {
                 sessionTable.grantReadWriteData(lambdaFunction);
-                imagesBucket.grantDelete(lambdaFunction);
+                // Grant S3 delete permissions
+                lambdaRole.addToPrincipalPolicy(
+                    new PolicyStatement({
+                        effect: Effect.ALLOW,
+                        actions: ['s3:DeleteObject'],
+                        resources: [`arn:${config.partition}:s3:::${imagesBucketName}/*`]
+                    })
+                );
             }
         });
     }

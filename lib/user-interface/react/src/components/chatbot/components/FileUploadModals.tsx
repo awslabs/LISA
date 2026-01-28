@@ -37,7 +37,7 @@ import {
 } from '@/shared/reducers/rag.reducer';
 import { uploadToS3Request } from '@/components/utils';
 import { ChunkingStrategy, ChunkingStrategyType, RagRepositoryType } from '#root/lib/schema';
-import { IModel } from '@/shared/model/model-management.model';
+import { IModel, ModelType } from '@/shared/model/model-management.model';
 import { JobStatusTable } from '@/components/chatbot/components/JobStatusTable';
 import { ChunkingConfigForm } from '@/shared/form/ChunkingConfigForm';
 import { MetadataForm } from '@/shared/form/MetadataForm';
@@ -100,7 +100,7 @@ export const ContextUploadModal = ({
     const [selectedFiles, setSelectedFiles] = useState<File[] | undefined>([]);
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
-    const modelSupportsImages = selectedModel?.features?.filter((feature) => feature.name === 'imageInput')?.length && true;
+    const modelSupportsImages = selectedModel?.features?.filter((feature) => feature.name === 'imageInput')?.length || selectedModel?.modelType === ModelType.videogen && true;
 
     function handleError (error: string) {
         notificationService.generateNotification(error, 'error');

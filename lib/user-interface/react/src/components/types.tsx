@@ -68,6 +68,7 @@ export type LisaChatMessageMetadata = {
     videoGenerationParams?: VideoGenerationParams;
     videoId?: string;
     videoStatus?: string;
+    hasFileContext?: boolean;
 };
 /**
  * Usage information from OpenAI API responses

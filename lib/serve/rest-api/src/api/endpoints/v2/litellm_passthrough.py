@@ -102,14 +102,14 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _generate_presigned_video_url(key: str) -> str:
+def _generate_presigned_video_url(key: str, content_type: str = "video/mp4") -> str:
     """Generate a presigned URL for video content stored in S3."""
     url: str = s3_client.generate_presigned_url(
         "get_object",
         Params={
             "Bucket": s3_bucket_name,
             "Key": key,
-            "ResponseContentType": "video/mp4",
+            "ResponseContentType": content_type,
             "ResponseCacheControl": "no-cache",
             "ResponseContentDisposition": "inline",
         },
@@ -391,7 +391,47 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
             headers=dict(response.headers),
             media_type=content_type if content_type else None,
         )
-    # not a GET or DELETE request, so expect a JSON payload as part of the request
+
+    # Check if request is multipart/form-data (used for video generation with image references)
+    content_type = request.headers.get("content-type", "").lower()
+    is_multipart = "multipart/form-data" in content_type
+    is_video_endpoint = "video" in api_path.lower()
+
+    # Handle multipart/form-data requests (video generation with image references)
+    if is_multipart and is_video_endpoint:
+        try:
+            # Parse the form data
+            form = await request.form()
+
+            # Build files dict for requests library
+            files = {}
+            data = {}
+
+            for field_name, field_value in form.items():
+                # Check if it's a file field
+                if hasattr(field_value, "read"):
+                    # It's a file - read the content and prepare for upload
+                    file_content = await field_value.read()
+                    filename = getattr(field_value, "filename", "file")
+                    content_type = getattr(field_value, "content_type", "application/octet-stream")
+                    files[field_name] = (filename, file_content, content_type)
+                else:
+                    # It's a regular form field
+                    data[field_name] = field_value
+
+            # Forward multipart request to LiteLLM
+            response = requests_request(method=http_method, url=litellm_path, data=data, files=files, headers=headers)
+
+            if response.status_code != 200:
+                logger.error(f"LiteLLM error response: {response.text}")
+
+            return JSONResponse(response.json(), status_code=response.status_code)
+
+        except Exception as e:
+            logger.error(f"Error processing multipart request: {e}")
+            raise HTTPException(status_code=400, detail=f"Error processing multipart request: {str(e)}")
+
+    # Handle JSON requests (default behavior)
     params = await request.json()
 
     # Apply guardrails for chat/completions requests

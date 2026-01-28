@@ -35,7 +35,7 @@ import 'katex/dist/katex.min.css';
 import styles from './Message.module.css';
 
 import { MessageContent } from '@langchain/core/messages';
-import { base64ToBlob, fetchImage, getDisplayableMessage, messageContainsImage } from '@/components/utils';
+import { base64ToBlob, fetchImage, getDisplayableMessage, messageContainsImage, messageContainsVideo } from '@/components/utils';
 import React, { useEffect, useState, useMemo } from 'react';
 import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { downloadFile } from '@/shared/util/downloader';
@@ -482,7 +482,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                 }} style={isDarkMode ? darkStyles : defaultStyles} />
                             </ExpandableSection>}
                     </ChatBubble>
-                    {!isStreaming && !messageContainsImage(message.content) && <div
+                    {!isStreaming && !messageContainsImage(message.content) && !messageContainsVideo(message.content) && <div
                         style={{ display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
                         <ButtonGroup
                             onItemClick={({ detail }) =>

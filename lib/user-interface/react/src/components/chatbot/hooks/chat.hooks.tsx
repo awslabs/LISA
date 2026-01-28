@@ -119,7 +119,8 @@ export const useChatGeneration = ({
     memory,
     openAiTools,
     auth,
-    notificationService
+    notificationService,
+    fileContext
 }: {
     chatConfiguration: IChatConfiguration;
     selectedModel: IModel;
@@ -132,6 +133,7 @@ export const useChatGeneration = ({
     openAiTools: any;
     auth: any;
     notificationService: any;
+    fileContext?: string;
 }) => {
     const dispatch = useAppDispatch();
     const [isRunning, setIsRunning] = useState(false);
@@ -179,25 +181,87 @@ export const useChatGeneration = ({
                     const isRemix = !!remixVideoId;
 
                     // Create video generation request
-                    const videoGenParams = {
+                    const videoGenParams: any = {
                         prompt: params.input,
                         model: selectedModel.modelId,
-                        seconds: '4',
-                        size: '720x1280'
+                        seconds: chatConfiguration.sessionConfiguration.videoGenerationArgs.seconds,
+                        size: chatConfiguration.sessionConfiguration.videoGenerationArgs.size
                     };
+
+                    // Handle file context
+                    let hasImageReference = false;
+                    let imageBlob: Blob | null = null;
+
+                    if (fileContext) {
+                        // Check if it's an image context (base64 data URL)
+                        if (fileContext.startsWith('File context: data:image')) {
+                            const imageData = fileContext.replace('File context: ', '');
+                            // Extract mime type and base64 data
+                            const matches = imageData.match(/^data:(image\/[^;]+);base64,(.+)$/);
+                            if (matches) {
+                                const mimeType = matches[1];
+                                const base64Data = matches[2];
+
+                                // Convert base64 to Blob for multipart/form-data upload
+                                // OpenAI requires input_reference as a file, not base64 string
+                                const binaryString = atob(base64Data);
+                                const bytes = new Uint8Array(binaryString.length);
+                                for (let i = 0; i < binaryString.length; i++) {
+                                    bytes[i] = binaryString.charCodeAt(i);
+                                }
+                                imageBlob = new Blob([bytes], { type: mimeType });
+                                hasImageReference = true;
+                            }
+                        } else {
+                            // Text file context - prepend to prompt
+                            videoGenParams.prompt = `${fileContext}\n\n${videoGenParams.prompt}`;
+                        }
+                    }
 
                     // Make API call to create video generation or remix request
                     const videoEndpoint = isRemix
                         ? `${RESTAPI_URI}/${RESTAPI_VERSION}/serve/videos/${remixVideoId}/remix`
                         : `${RESTAPI_URI}/${RESTAPI_VERSION}/serve/videos`;
 
-                    const createResponse = await fetch(videoEndpoint, {
-                        method: 'POST',
-                        headers: {
+                    // Use FormData if we have an image reference (only for non-remix requests)
+                    // Remix doesn't support input_reference, so always use JSON for remix
+                    let requestBody: FormData | string;
+                    let requestHeaders: HeadersInit;
+
+                    if (hasImageReference && imageBlob && !isRemix) {
+                        // Use multipart/form-data for image reference
+                        const formData = new FormData();
+                        formData.append('prompt', videoGenParams.prompt);
+                        formData.append('model', videoGenParams.model);
+                        formData.append('seconds', videoGenParams.seconds);
+                        formData.append('size', videoGenParams.size);
+
+                        // Determine file extension from mime type
+                        const mimeType = imageBlob.type;
+                        let extension = '.jpg';
+                        if (mimeType.includes('png')) extension = '.png';
+                        else if (mimeType.includes('webp')) extension = '.webp';
+
+                        formData.append('input_reference', imageBlob, `reference${extension}`);
+
+                        requestBody = formData;
+                        requestHeaders = {
+                            'Authorization': `Bearer ${auth.user?.id_token}`,
+                            // Don't set Content-Type - browser will set it with boundary
+                        };
+                    } else {
+                        // Use JSON for remix or when no image reference
+                        requestBody = JSON.stringify(videoGenParams);
+                        requestHeaders = {
                             'Authorization': `Bearer ${auth.user?.id_token}`,
                             'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(videoGenParams),
+                        };
+                    }
+
+                    const createResponse = await fetch(videoEndpoint, {
+                        method: 'POST',
+                        headers: requestHeaders,
+                        body: requestBody,
                     });
 
                     const createData = await createResponse.json();
@@ -222,7 +286,8 @@ export const useChatGeneration = ({
                                 videoGeneration: true,
                                 videoGenerationParams: videoGenParams,
                                 videoId: videoId,
-                                videoStatus: 'processing'
+                                videoStatus: 'processing',
+                                hasFileContext: !!fileContext
                             },
                         })],
                     }));
@@ -294,11 +359,14 @@ export const useChatGeneration = ({
                                     throw new Error(`Failed to fetch video content: ${contentResponse.statusText}`);
                                 }
 
-                                // Response should be JSON with presigned URL
+                                // Response should be JSON with presigned URL and S3 key
                                 const contentData = await contentResponse.json();
-                                videoContent = contentData.url || contentData.content || contentData.data;
+                                videoContent = {
+                                    url: contentData.url || contentData.content || contentData.data,
+                                    s3_key: contentData.s3_key
+                                };
 
-                                if (!videoContent) {
+                                if (!videoContent.url) {
                                     throw new Error('Video URL not found in response');
                                 }
                             } else if (status === 'failed' || status === 'error') {
@@ -332,7 +400,7 @@ export const useChatGeneration = ({
 
                     const responseTime = calculateResponseTime(startTime);
 
-                    // Update message with video content (presigned URL) and video_id
+                    // Update message with video content (presigned URL, S3 key) and video_id
                     setSession((prev) => {
                         const lastMessage = prev.history[prev.history.length - 1];
                         if (lastMessage?.metadata?.videoId === videoId) {
@@ -344,7 +412,8 @@ export const useChatGeneration = ({
                                         content: [{
                                             type: 'video_url',
                                             video_url: {
-                                                url: videoContent,
+                                                url: videoContent.url,
+                                                s3_key: videoContent.s3_key,
                                                 video_id: videoId
                                             }
                                         }],

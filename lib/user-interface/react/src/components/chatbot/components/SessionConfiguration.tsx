@@ -508,6 +508,47 @@ export const SessionConfiguration = ({
                         </FormField>
                     </Container>
                 )}
+                {isVideoModel && (
+                    <Container
+                        header={
+                            <Header variant='h2' description='Configuration options for video generation'>
+                                Video Generation Options
+                            </Header>
+                        }
+                    >
+                        <FormField label='Video Duration'>
+                            <Select
+                                selectedOption={{ value: chatConfiguration.sessionConfiguration.videoGenerationArgs.seconds }}
+                                onChange={({ detail }) => {
+                                    updateSessionConfiguration('videoGenerationArgs', {
+                                        ...chatConfiguration.sessionConfiguration.videoGenerationArgs,
+                                        seconds: detail.selectedOption.value,
+                                    });
+                                }}
+                                options={[
+                                    { label: '4 seconds', value: '4' },
+                                    { label: '8 seconds', value: '8' },
+                                    { label: '12 seconds', value: '12' },
+                                ]}
+                            />
+                        </FormField>
+                        <FormField label='Video Size'>
+                            <Select
+                                selectedOption={{ value: chatConfiguration.sessionConfiguration.videoGenerationArgs.size }}
+                                onChange={({ detail }) => {
+                                    updateSessionConfiguration('videoGenerationArgs', {
+                                        ...chatConfiguration.sessionConfiguration.videoGenerationArgs,
+                                        size: detail.selectedOption.value,
+                                    });
+                                }}
+                                options={[
+                                    { label: '720x1280 (Portrait)', value: '720x1280' },
+                                    { label: '1280x720 (Landscape)', value: '1280x720' },
+                                ]}
+                            />
+                        </FormField>
+                    </Container>
+                )}
             </SpaceBetween>
         </Modal>
     );

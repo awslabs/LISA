@@ -298,6 +298,7 @@ export default function Chat ({ sessionId }) {
         memory,
         openAiTools: config?.configuration?.enabledComponents?.mcpConnections ? openAiTools : undefined,
         auth,
+        fileContext,
         notificationService
     });
 
@@ -827,7 +828,7 @@ export default function Chat ({ sessionId }) {
                                 ]}
                             >
                                 <FormField
-                                    label={isImageGenerationMode ? <StatusIndicator type='info'>Image Generation Mode</StatusIndicator> : undefined}
+                                    label={isImageGenerationMode || isVideoGenerationMode ? <StatusIndicator type='info'>{isImageGenerationMode ? 'Image Generation Mode' : 'Video Generation Mode'}</StatusIndicator> : undefined}
                                 >
                                     <Autosuggest
                                         disabled={isRunning || session.history.length > 0}
@@ -844,7 +845,7 @@ export default function Chat ({ sessionId }) {
                                         controlId='model-selection-autosuggest'
                                     />
                                 </FormField>
-                                {window.env.RAG_ENABLED && !isImageGenerationMode && (
+                                {window.env.RAG_ENABLED && !isImageGenerationMode && !isVideoGenerationMode && (
                                     <RagControls
                                         isRunning={isRunning}
                                         setUseRag={setUseRag}
@@ -875,7 +876,7 @@ export default function Chat ({ sessionId }) {
                                         <ButtonGroup
                                             ariaLabel='Chat actions'
                                             onItemClick={handleButtonClick}
-                                            items={getButtonItems(config, useRag, isImageGenerationMode)}
+                                            items={getButtonItems(config, useRag, isImageGenerationMode, isVideoGenerationMode)}
                                             variant='icon'
                                             dropdownExpandToViewport={true}
                                         />

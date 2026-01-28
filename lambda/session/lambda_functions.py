@@ -249,6 +249,20 @@ def _generate_presigned_image_url(key: str) -> str:
     return url
 
 
+def _generate_presigned_video_url(key: str) -> str:
+    url: str = s3_client.generate_presigned_url(
+        "get_object",
+        Params={
+            "Bucket": s3_bucket_name,
+            "Key": key,
+            "ResponseContentType": "video/mp4",
+            "ResponseCacheControl": "no-cache",
+            "ResponseContentDisposition": "inline",
+        },
+    )
+    return url
+
+
 def _map_session(session: dict, user_id: str | None = None) -> dict[str, Any]:
     return {
         "sessionId": session.get("sessionId", None),
@@ -317,7 +331,16 @@ def _process_image(task: tuple[dict, str]) -> None:
         image_url = _generate_presigned_image_url(key)
         msg["image_url"]["url"] = image_url
     except Exception as e:
-        print(f"Error uploading to S3: {e}")
+        print(f"Error generating presigned image URL: {e}")
+
+
+def _process_video(task: tuple[dict, str]) -> None:
+    msg, key = task
+    try:
+        video_url = _generate_presigned_video_url(key)
+        msg["video_url"]["url"] = video_url
+    except Exception as e:
+        print(f"Error generating presigned video URL: {e}")
 
 
 @api_wrapper
@@ -358,16 +381,22 @@ def get_session(event: dict, context: dict) -> dict:
                 resp["configuration"] = configuration
 
         # Create a list of tasks for parallel processing
-        tasks = []
+        image_tasks = []
+        video_tasks = []
         for message in resp.get("history", []):
             if isinstance(message.get("content", None), list):
                 for item in message.get("content", None):
                     if item.get("type", None) == "image_url":
                         s3_key = item.get("image_url", {}).get("s3_key", None)
                         if s3_key:
-                            tasks.append((item, s3_key))
+                            image_tasks.append((item, s3_key))
+                    elif item.get("type", None) == "video_url":
+                        s3_key = item.get("video_url", {}).get("s3_key", None)
+                        if s3_key:
+                            video_tasks.append((item, s3_key))
 
-        list(executor.map(_process_image, tasks))
+        list(executor.map(_process_image, image_tasks))
+        list(executor.map(_process_video, video_tasks))
         return resp  # type: ignore [no-any-return]
     except ValueError as e:
         return {"statusCode": 400, "body": json.dumps({"error": str(e)})}

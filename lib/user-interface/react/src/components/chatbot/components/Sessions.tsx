@@ -36,7 +36,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { IConfiguration } from '@/shared/model/configuration.model';
 import { useNavigate } from 'react-router-dom';
-import { fetchImage, getSessionDisplay, messageContainsImage } from '@/components/utils';
+import { getSessionDisplay, messageContainsImage, messageContainsVideo } from '@/components/utils';
 import { LisaChatSession } from '@/components/types';
 import Box from '@cloudscape-design/components/box';
 import JSZip from 'jszip';
@@ -337,7 +337,7 @@ export function Sessions ({ newSession }) {
                                                                         { id: 'rename-session', text: 'Rename Session', iconName: 'edit' },
                                                                         { id: 'delete-session', text: 'Delete Session', iconName: 'delete-marker' },
                                                                         { id: 'download-session', text: 'Download Session', iconName: 'download' },
-                                                                        { id: 'export-images', text: 'Export AI Images', iconName: 'folder' },
+                                                                        { id: 'export-media', text: 'Export AI Media', iconName: 'folder' },
                                                                     ]}
                                                                     ariaLabel='Control instance'
                                                                     variant='icon'
@@ -360,36 +360,49 @@ export function Sessions ({ newSession }) {
                                                                                 const file = new Blob([JSON.stringify(sess, null, 2)], { type: 'application/json' });
                                                                                 downloadFile(URL.createObjectURL(file), `${sess.sessionId}.json`);
                                                                             });
-                                                                        } else if (e.detail.id === 'export-images') {
+                                                                        } else if (e.detail.id === 'export-media') {
                                                                             getSessionById(item.sessionId).then(async (resp) => {
                                                                                 const sess: LisaChatSession = resp.data;
-                                                                                const images = sess.history.filter((msg) => msg.type === 'ai' && messageContainsImage(msg.content))
+                                                                                // Extract media with type information to distinguish images from videos
+                                                                                const media = sess.history.filter((msg) => msg.type === 'ai' && (messageContainsImage(msg.content) || messageContainsVideo(msg.content)))
                                                                                     .flatMap((msg) => {
                                                                                         if (Array.isArray(msg.content)) {
                                                                                             return msg.content
-                                                                                                .filter((contentItem: any) => contentItem.type === 'image_url' && contentItem.image_url?.url)
-                                                                                                .map((contentItem: any) => contentItem.image_url.url as string);
+                                                                                                .filter((contentItem: any) => (contentItem.type === 'image_url' && contentItem.image_url?.url) || (contentItem.type === 'video_url' && contentItem.video_url?.url))
+                                                                                                .map((contentItem: any) => ({
+                                                                                                    url: contentItem.type === 'image_url' ? contentItem.image_url.url as string : contentItem.video_url.url as string,
+                                                                                                    mediaType: contentItem.type === 'image_url' ? 'image' : 'video' as 'image' | 'video'
+                                                                                                }));
                                                                                         }
                                                                                         return [];
                                                                                     });
 
-                                                                                if (images.length === 0) {
-                                                                                    notificationService.generateNotification('No images found to export', 'info');
+                                                                                if (media.length === 0) {
+                                                                                    notificationService.generateNotification('No media found to export', 'info');
                                                                                 } else {
                                                                                     const zip = new JSZip();
-                                                                                    const imagePromises = images.map(async (imageUrl, index) => {
+                                                                                    let imageCount = 0;
+                                                                                    let videoCount = 0;
+                                                                                    const mediaPromises = media.map(async (mediaItem) => {
                                                                                         try {
-                                                                                            const blob = await fetchImage(imageUrl);
-                                                                                            zip.file(`image_${index + 1}.png`, blob, { binary: true });
+                                                                                            const response = await fetch(mediaItem.url);
+                                                                                            const blob = await response.blob();
+                                                                                            if (mediaItem.mediaType === 'image') {
+                                                                                                imageCount++;
+                                                                                                zip.file(`image_${imageCount}.png`, blob, { binary: true });
+                                                                                            } else {
+                                                                                                videoCount++;
+                                                                                                zip.file(`video_${videoCount}.mp4`, blob, { binary: true });
+                                                                                            }
                                                                                         } catch (error) {
-                                                                                            console.error(`Error processing image ${index + 1}:`, error);
+                                                                                            console.error(`Error processing ${mediaItem.mediaType}:`, error);
                                                                                         }
                                                                                     });
 
-                                                                                    // Wait for all images to be processed
-                                                                                    await Promise.all(imagePromises);
+                                                                                    // Wait for all media to be processed
+                                                                                    await Promise.all(mediaPromises);
                                                                                     const content = await zip.generateAsync({ type: 'blob' });
-                                                                                    downloadFile(URL.createObjectURL(content), `${sess.sessionId}-images.zip`);
+                                                                                    downloadFile(URL.createObjectURL(content), `${sess.sessionId}-media.zip`);
                                                                                 }
                                                                             });
                                                                         } else if (e.detail.id === 'rename-session') {

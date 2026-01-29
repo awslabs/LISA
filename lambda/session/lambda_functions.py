@@ -206,6 +206,32 @@ def _get_all_user_sessions(user_id: str) -> list[dict[str, Any]]:
     return response.get("Items", [])  # type: ignore [no-any-return]
 
 
+def _extract_video_s3_keys(session: dict) -> list[str]:
+    """Extract all video S3 keys from a session's history.
+
+    Parameters
+    ----------
+    session : dict
+        The session object containing history.
+
+    Returns
+    -------
+    list[str]
+        A list of S3 keys for videos in the session.
+    """
+    video_keys: list[str] = []
+    for message in session.get("history", []):
+        content = message.get("content")
+        if isinstance(content, list):
+            for item in content:
+                if isinstance(item, dict) and item.get("type") == "video_url":
+                    video_url = item.get("video_url", {})
+                    s3_key = video_url.get("s3_key")
+                    if s3_key:
+                        video_keys.append(s3_key)
+    return video_keys
+
+
 def _delete_user_session(session_id: str, user_id: str) -> dict[str, bool]:
     """Delete a session from DynamoDB.
 
@@ -223,9 +249,30 @@ def _delete_user_session(session_id: str, user_id: str) -> dict[str, bool]:
     """
     deleted = False
     try:
+        # First, get the session to extract any video S3 keys before deleting
+        response = table.get_item(Key={"sessionId": session_id, "userId": user_id})
+        session = response.get("Item", {})
+
+        # Extract video S3 keys from the session history
+        video_keys = _extract_video_s3_keys(session)
+
+        # Delete the session from DynamoDB
         table.delete_item(Key={"sessionId": session_id, "userId": user_id})
+
+        # Delete associated images from S3
         bucket = s3_resource.Bucket(s3_bucket_name)
         bucket.objects.filter(Prefix=f"images/{session_id}").delete()
+
+        # Delete associated videos from S3
+        if video_keys:
+            logger.info(f"Deleting {len(video_keys)} videos from S3 for session {session_id}")
+            for video_key in video_keys:
+                try:
+                    s3_client.delete_object(Bucket=s3_bucket_name, Key=video_key)
+                    logger.debug(f"Deleted video: {video_key}")
+                except ClientError as video_error:
+                    logger.warning(f"Failed to delete video {video_key}: {video_error}")
+
         deleted = True
     except ClientError as error:
         if error.response["Error"]["Code"] == "ResourceNotFoundException":

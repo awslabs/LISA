@@ -270,10 +270,11 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                             <ButtonDropdown
                                 items={[
                                     { id: 'download-image', text: 'Download Image', iconName: 'download' },
+                                    { id: 'share-image', text: 'Share Image Link', iconName: 'share' },
                                     { id: 'copy-image', text: 'Copy Image', iconName: 'copy' },
                                     { id: 'regenerate', text: 'Regenerate Image(s)', iconName: 'refresh' }
                                 ]}
-                                ariaLabel='Control instance'
+                                ariaLabel='Image actions'
                                 variant='icon'
                                 onItemClick={async (e) => {
                                     if (e.detail.id === 'download-image') {
@@ -281,6 +282,8 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                             await fetchImage(item.image_url.url)
                                             : base64ToBlob(item.image_url.url.split(',')[1], 'image/png');
                                         downloadFile(URL.createObjectURL(file), `${metadata?.imageGenerationParams?.prompt}.png`);
+                                    } else if (e.detail.id === 'share-image') {
+                                        navigator.clipboard.writeText(item.image_url.url);
                                     } else if (e.detail.id === 'copy-image') {
                                         const copy = new ClipboardItem({
                                             'image/png': item.image_url.url.startsWith('https://') ?
@@ -320,6 +323,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                             <ButtonDropdown
                                 items={[
                                     { id: 'download-video', text: 'Download Video', iconName: 'download' },
+                                    { id: 'share-video', text: 'Share Video Link', iconName: 'share' },
                                     { id: 'remix-video', text: 'Remix Video', iconName: 'refresh' }
                                 ]}
                                 ariaLabel='Video actions'
@@ -330,6 +334,8 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                         const videoBlob = await fetch(videoUrl).then((r) => r.blob());
                                         const filename = `${metadata?.videoGenerationParams?.prompt || 'video'}.mp4`;
                                         downloadFile(URL.createObjectURL(videoBlob), filename);
+                                    } else if (e.detail.id === 'share-video') {
+                                        navigator.clipboard.writeText(item.video_url.url);
                                     } else if (e.detail.id === 'remix-video' && videoId) {
                                         // Call the remix endpoint to create a new variation
                                         setUserPrompt(`Remix video: ${metadata?.videoGenerationParams?.prompt ?? ''}`);

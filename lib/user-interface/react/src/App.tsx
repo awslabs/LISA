@@ -194,14 +194,14 @@ function App () {
                                     </AdminRoute>
                                 }
                             />}
-                            <Route
+                            {window.env.RAG_ENABLED && <Route
                                 path='repository-management'
                                 element={
                                     <AdminRoute>
                                         <RepositoryManagement setNav={setNav} />
                                     </AdminRoute>
                                 }
-                            />
+                            />}
                             <Route
                                 path='api-token-management'
                                 element={

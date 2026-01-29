@@ -116,7 +116,7 @@ export class LisaApiBaseConstruct extends Construct {
         const apiGatewayCloudWatchRole = new Role(scope, 'ApiGatewayCloudWatchRole', {
             assumedBy: new ServicePrincipal('apigateway.amazonaws.com'),
             managedPolicies: [
-                ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonAPIGatewayPushToCloudWatchLogs'),
+                ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonAPIGatewayPushToCloudWatchLogs'), // pragma: allowlist secret
             ],
         });
 

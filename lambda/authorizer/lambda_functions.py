@@ -43,9 +43,6 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Handle authorization for REST API."""
     logger.info("REST API authorization handler started")
 
-    requested_resource = event["resource"]
-    request_method = event["httpMethod"]
-
     id_token = get_id_token(event)
 
     if not id_token:

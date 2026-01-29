@@ -22,6 +22,8 @@ from typing import Any
 
 import boto3
 from botocore.config import Config
+from fastapi import HTTPException as FastAPIHTTPException
+from fastapi import Request
 from utilities.exceptions import HTTPException
 
 from .auth_provider import get_authorization_provider
@@ -117,7 +119,6 @@ def require_admin(message: str = "User does not have permission to perform this 
         async def delete_model(model_id: str, request: Request) -> Response:
             ...
     """
-    from fastapi import HTTPException as FastAPIHTTPException
 
     def decorator(func: Callable) -> Callable:
         @wraps(func)
@@ -126,7 +127,6 @@ def require_admin(message: str = "User does not have permission to perform this 
             request = kwargs.get("request")
             if request is None:
                 # Check positional args for Request type
-                from fastapi import Request
 
                 for arg in args:
                     if isinstance(arg, Request):

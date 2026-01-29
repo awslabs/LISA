@@ -2044,7 +2044,7 @@ verify_checksum() {
                 return 0
             fi
             # Test if we have official b2sum with blake2s support
-            local _well_known_blake2s_checksum="93314a61f470985a40f8da62df10ba0546dc5216e1d45847bf1dbaa42a0e97af"
+            local _well_known_blake2s_checksum="93314a61f470985a40f8da62df10ba0546dc5216e1d45847bf1dbaa42a0e97af" # pragma: allowlist secret
             local _test_blake2s
             _test_blake2s="$(printf "can do blake2s" | b2sum -a blake2s | awk '{printf $1}')" || _test_blake2s=""
 

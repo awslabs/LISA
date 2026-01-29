@@ -607,6 +607,10 @@ export class ECSCluster extends Construct {
 
         const service = new Ec2Service(this, createCdkId([this.config.deploymentName, taskName, 'Ec2Svc']), serviceProps);
         service.node.addDependency(this.autoScalingGroup);
+        
+        // Ensure service is deleted before capacity provider during stack deletion
+        // This prevents "capacity provider is in use" errors
+        this.asgCapacityProvider.node.addDependency(service);
 
         // Store service reference
         this.services[taskName] = service;

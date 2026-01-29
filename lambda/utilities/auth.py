@@ -16,6 +16,7 @@ import json
 import logging
 import os
 import secrets
+import sys
 from collections.abc import Callable
 from functools import wraps
 from typing import Any
@@ -140,7 +141,10 @@ def require_admin(message: str = "User does not have permission to perform this 
 
             # Extract event from request scope
             event = request.scope.get("aws.event", {})
-            if not is_admin(event):
+            # Look up is_admin from the module to allow patching in tests
+            auth_module = sys.modules.get("utilities.auth")
+            is_admin_func = getattr(auth_module, "is_admin", is_admin) if auth_module else is_admin
+            if not is_admin_func(event):
                 raise FastAPIHTTPException(status_code=403, detail=message)
 
             return await func(*args, **kwargs)

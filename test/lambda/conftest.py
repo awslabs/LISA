@@ -108,11 +108,22 @@ def setup_auth_patches(request, mock_auth, aws_credentials):
         yield mock_auth
         return
 
+    # Reset the auth provider singleton to ensure clean state between tests
+    try:
+        import utilities.auth_provider as auth_provider_module
+
+        auth_provider_module._auth_provider = None
+    except ImportError:
+        pass
+
     patches = [
         patch("utilities.auth.get_username", mock_auth.get_username),
         patch("utilities.auth.get_groups", mock_auth.get_groups),
         patch("utilities.auth.is_admin", mock_auth.is_admin),
         patch("utilities.auth.get_user_context", mock_auth.get_user_context),
+        # Also patch where these functions are imported
+        patch("models.lambda_functions.is_admin", mock_auth.is_admin),
+        patch("models.lambda_functions.get_groups", mock_auth.get_groups),
     ]
 
     for p in patches:
@@ -124,6 +135,14 @@ def setup_auth_patches(request, mock_auth, aws_credentials):
         p.stop()
 
     mock_auth.reset()
+
+    # Reset the auth provider singleton after test
+    try:
+        import utilities.auth_provider as auth_provider_module
+
+        auth_provider_module._auth_provider = None
+    except ImportError:
+        pass
 
 
 @pytest.fixture

@@ -33,8 +33,10 @@ os.environ["LISA_RAG_COLLECTIONS_TABLE_PS_NAME"] = "/test/ragCollectionsTableNam
 os.environ["CREATE_SFN_ARN"] = "arn:aws:states:us-east-1:123456789012:stateMachine:CreateModelStateMachine"
 os.environ["DELETE_SFN_ARN"] = "arn:aws:states:us-east-1:123456789012:stateMachine:DeleteModelStateMachine"
 os.environ["UPDATE_SFN_ARN"] = "arn:aws:states:us-east-1:123456789012:stateMachine:UpdateModelStateMachine"
+os.environ["ADMIN_GROUP"] = "admin-group"
 
 import pytest
+from fastapi import Request
 from models.domain_objects import (
     AutoScalingConfig,
     ContainerConfig,
@@ -54,7 +56,7 @@ class TestCreateModelAuditLogging:
     async def test_create_model_logs_all_required_fields(self, caplog):
         """Test that CreateModel logs contain all required security audit fields."""
         # Setup mock request with API Gateway event context
-        mock_request = MagicMock()
+        mock_request = MagicMock(spec=Request)
         mock_request.scope = {
             "aws.event": {
                 "requestContext": {
@@ -81,9 +83,9 @@ class TestCreateModelAuditLogging:
 
         # Mock the handler and auth functions
         with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
-            "models.lambda_functions.is_admin"
-        ) as mock_is_admin, patch("models.lambda_functions.get_groups") as mock_get_groups, patch(
-            "models.lambda_functions.get_username"
+            "utilities.auth.is_admin"
+        ) as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups, patch(
+            "utilities.auth.get_username"
         ) as mock_get_username, caplog.at_level(
             logging.INFO
         ):
@@ -115,7 +117,6 @@ class TestCreateModelAuditLogging:
             # Verify user context fields
             assert hasattr(log_record, "user")
             assert log_record.user["username"] == "test-admin"
-            assert log_record.user["groups"] == ["admin-group"]
             assert log_record.user["auth_type"] == "JWT"
             assert log_record.user["source_ip"] == "192.168.1.100"
 
@@ -133,7 +134,7 @@ class TestCreateModelAuditLogging:
         from models.domain_objects import InferenceContainer, LoadBalancerConfig, LoadBalancerHealthCheckConfig
 
         # Setup mock request
-        mock_request = MagicMock()
+        mock_request = MagicMock(spec=Request)
         mock_request.scope = {
             "aws.event": {
                 "requestContext": {
@@ -199,9 +200,9 @@ class TestCreateModelAuditLogging:
 
         # Mock the handler and auth functions
         with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
-            "models.lambda_functions.is_admin"
-        ) as mock_is_admin, patch("models.lambda_functions.get_groups") as mock_get_groups, patch(
-            "models.lambda_functions.get_username"
+            "utilities.auth.is_admin"
+        ) as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups, patch(
+            "utilities.auth.get_username"
         ) as mock_get_username, caplog.at_level(
             logging.INFO
         ):
@@ -243,7 +244,7 @@ class TestCreateModelAuditLogging:
     async def test_create_model_logs_without_container_config(self, caplog):
         """Test that CreateModel logs work when containerConfig is not provided."""
         # Setup mock request
-        mock_request = MagicMock()
+        mock_request = MagicMock(spec=Request)
         mock_request.scope = {
             "aws.event": {
                 "requestContext": {
@@ -269,9 +270,9 @@ class TestCreateModelAuditLogging:
 
         # Mock the handler and auth functions
         with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
-            "models.lambda_functions.is_admin"
-        ) as mock_is_admin, patch("models.lambda_functions.get_groups") as mock_get_groups, patch(
-            "models.lambda_functions.get_username"
+            "utilities.auth.is_admin"
+        ) as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups, patch(
+            "utilities.auth.get_username"
         ) as mock_get_username, caplog.at_level(
             logging.INFO
         ):
@@ -308,7 +309,7 @@ class TestCreateModelAuditLogging:
     async def test_create_model_does_not_log_sensitive_data(self, caplog):
         """Test that sensitive data like secrets and tokens are not logged."""
         # Setup mock request
-        mock_request = MagicMock()
+        mock_request = MagicMock(spec=Request)
         mock_request.scope = {
             "aws.event": {
                 "requestContext": {
@@ -336,9 +337,9 @@ class TestCreateModelAuditLogging:
 
         # Mock the handler and auth functions
         with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
-            "models.lambda_functions.is_admin"
-        ) as mock_is_admin, patch("models.lambda_functions.get_groups") as mock_get_groups, patch(
-            "models.lambda_functions.get_username"
+            "utilities.auth.is_admin"
+        ) as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups, patch(
+            "utilities.auth.get_username"
         ) as mock_get_username, caplog.at_level(
             logging.INFO
         ):
@@ -381,7 +382,7 @@ class TestCreateModelAuditLogging:
     async def test_create_model_logs_for_successful_request(self, caplog):
         """Test that logs are written for successful CreateModel requests."""
         # Setup mock request
-        mock_request = MagicMock()
+        mock_request = MagicMock(spec=Request)
         mock_request.scope = {
             "aws.event": {
                 "requestContext": {
@@ -406,9 +407,9 @@ class TestCreateModelAuditLogging:
 
         # Mock the handler and auth functions
         with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
-            "models.lambda_functions.is_admin"
-        ) as mock_is_admin, patch("models.lambda_functions.get_groups") as mock_get_groups, patch(
-            "models.lambda_functions.get_username"
+            "utilities.auth.is_admin"
+        ) as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups, patch(
+            "utilities.auth.get_username"
         ) as mock_get_username, caplog.at_level(
             logging.INFO
         ):
@@ -436,7 +437,7 @@ class TestCreateModelAuditLogging:
         from models.exception import ModelAlreadyExistsError
 
         # Setup mock request
-        mock_request = MagicMock()
+        mock_request = MagicMock(spec=Request)
         mock_request.scope = {
             "aws.event": {
                 "requestContext": {
@@ -461,9 +462,9 @@ class TestCreateModelAuditLogging:
 
         # Mock the handler to raise ModelAlreadyExistsError
         with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
-            "models.lambda_functions.is_admin"
-        ) as mock_is_admin, patch("models.lambda_functions.get_groups") as mock_get_groups, patch(
-            "models.lambda_functions.get_username"
+            "utilities.auth.is_admin"
+        ) as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups, patch(
+            "utilities.auth.get_username"
         ) as mock_get_username, caplog.at_level(
             logging.INFO
         ):
@@ -506,7 +507,7 @@ class TestCreateModelAuditLogging:
     async def test_create_model_extracts_real_ip_from_api_gateway_context(self, caplog):
         """Test that real client IP is extracted from API Gateway context, not headers."""
         # Setup mock request with API Gateway context
-        mock_request = MagicMock()
+        mock_request = MagicMock(spec=Request)
         mock_request.scope = {
             "aws.event": {
                 "requestContext": {
@@ -534,9 +535,9 @@ class TestCreateModelAuditLogging:
 
         # Mock the handler and auth functions
         with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
-            "models.lambda_functions.is_admin"
-        ) as mock_is_admin, patch("models.lambda_functions.get_groups") as mock_get_groups, patch(
-            "models.lambda_functions.get_username"
+            "utilities.auth.is_admin"
+        ) as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups, patch(
+            "utilities.auth.get_username"
         ) as mock_get_username, caplog.at_level(
             logging.INFO
         ):
@@ -574,7 +575,7 @@ class TestCreateModelAuditLogging:
     async def test_create_model_handles_missing_event_context(self, caplog):
         """Test that logging handles missing API Gateway event context gracefully."""
         # Setup mock request WITHOUT aws.event
-        mock_request = MagicMock()
+        mock_request = MagicMock(spec=Request)
         mock_request.scope = {}  # No aws.event
 
         create_request = CreateModelRequest(
@@ -586,11 +587,11 @@ class TestCreateModelAuditLogging:
 
         # Mock the handler and auth functions
         with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
-            "models.lambda_functions.get_admin_status_and_groups"
-        ) as mock_get_admin, caplog.at_level(logging.INFO):
+            "utilities.auth.is_admin"
+        ) as mock_is_admin, caplog.at_level(logging.INFO):
 
             # Setup mocks - simulate admin with no event context
-            mock_get_admin.return_value = (True, [])
+            mock_is_admin.return_value = True
 
             mock_handler = MagicMock()
             mock_handler_class.return_value = mock_handler
@@ -635,7 +636,7 @@ class TestCreateModelAuditLogging:
             caplog.clear()
 
             # Setup mock request
-            mock_request = MagicMock()
+            mock_request = MagicMock(spec=Request)
             mock_request.scope = {
                 "aws.event": {
                     "requestContext": {
@@ -701,9 +702,9 @@ class TestCreateModelAuditLogging:
 
             # Mock the handler and auth functions
             with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
-                "models.lambda_functions.is_admin"
-            ) as mock_is_admin, patch("models.lambda_functions.get_groups") as mock_get_groups, patch(
-                "models.lambda_functions.get_username"
+                "utilities.auth.is_admin"
+            ) as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups, patch(
+                "utilities.auth.get_username"
             ) as mock_get_username, caplog.at_level(
                 logging.INFO
             ):

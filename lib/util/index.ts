@@ -15,5 +15,4 @@
 */
 
 export * from './codeFactory';
-export * from './lambdaLogRetentionAspect';
 export * from './paths';

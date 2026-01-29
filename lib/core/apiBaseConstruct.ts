@@ -20,7 +20,7 @@ import { Authorizer, CfnAccount, Cors, EndpointType, RestApi, StageOptions } fro
 import { AttributeType, BillingMode, ProjectionType, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 
 import { CustomAuthorizer } from '../api-base/authorizer';
-import { Duration, Stack, StackProps } from 'aws-cdk-lib';
+import { CfnResource, Duration, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { ITable, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
@@ -87,6 +87,10 @@ export class LisaApiBaseConstruct extends Construct {
             encryption: TableEncryption.AWS_MANAGED,
             removalPolicy: config.removalPolicy,
         });
+
+        // Set DeletionPolicy to RetainExceptOnCreate to allow CloudFormation to import existing tables
+        const cfnTokenTable = tokenTable.node.defaultChild as CfnResource;
+        cfnTokenTable.applyRemovalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
 
         // Add GSI for querying tokens by username
         tokenTable.addGlobalSecondaryIndex({

@@ -26,6 +26,7 @@ import { ButtonDropdownProps } from '@cloudscape-design/components';
 import ColorSchemeContext from '@/shared/color-scheme.provider';
 import { OidcConfig } from '@/config/oidc.config';
 import { getBrandingAssetPath } from '../shared/util/branding';
+import { getDisplayName } from '@/shared/util/branding';
 
 applyDensity(Density.Comfortable);
 
@@ -120,7 +121,6 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                             navigate(event.detail.href);
                         },
                         items: [
-                            { id: 'version-info', text: `LISA v${window.gitInfo?.revisionTag}`, disabled: true },
                             {
                                 id: 'configuration',
                                 type: 'button',
@@ -210,6 +210,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                     },
                     iconName: 'user-profile',
                     items: [
+                        { id: 'version-info', text: `${getDisplayName()} v${window.gitInfo?.revisionTag}`, disabled: true },
                         ...(configs?.configuration.enabledComponents?.enableUserApiTokens && (isUserAdmin || isApiUser) ? [{
                             id: 'api-token',
                             text: 'API Token',

@@ -26,8 +26,12 @@ import { applyTheme } from '@cloudscape-design/components/theming';
 
 // Conditionally apply custom theme if branding is enabled
 if (window.env?.USE_CUSTOM_BRANDING) {
-    const { brandTheme } = await import('./theme');
-    applyTheme({ theme: brandTheme });
+    try {
+        const { brandTheme } = await import('./theme');
+        applyTheme({ theme: brandTheme });
+    } catch (error) {
+        console.warn('Custom theme file not found, using default theme');
+    }
 }
 
 declare global {

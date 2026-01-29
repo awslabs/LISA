@@ -1,20 +1,20 @@
-# Private labeling
+# Custom Branding
 
-LISA supports comprehensive private labeling capabilities, allowing organizations to customize the user interface with their own logos and color schemes. This feature enables you to replace LISA branding with your organization's own branding while maintaining all functionality.
+LISA supports custom branding capabilities, allowing organizations to customize the user interface with their own logos and color schemes. This feature enables you to replace LISA branding with your organization's own branding while maintaining all functionality.
 
 ## Overview
 
-The private labeling feature provides three key customization areas:
+The custom branding feature provides three key customization areas:
 
 1. **Visual Assets** - Replace logos, favicons, and login images
-2. **Display Name** - Change "LISA" to your organization's product name
+2. **Display Name** - Change "LISA" brand name to your organization's product name
 3. **Theme Customization** - Modify colors, fonts, and visual styling
 
 ## Configuration
 
 ### Enable Custom Branding
 
-To enable private labeling, add these settings to your `config-custom.yaml`:
+To enable custom branding, add these settings to your `config-custom.yaml`:
 
 ```yaml
 useCustomBranding: true
@@ -70,13 +70,10 @@ lib/user-interface/react/public/branding/
 **Logo (`logo.svg`)**
 - Vector format for optimal rendering at any size
 - Used in the top navigation bar
-- Should work on both light and dark backgrounds
-- Recommended: Keep it horizontal/landscape oriented
 - Recommended: Display size: ~120-200px wide
 
 **Login Image (`login.png`)**
 - Displayed on the authentication page
-- Recommended: Square or vertical orientation
 
 ## Display Name Customization
 
@@ -101,20 +98,30 @@ With this configuration:
 
 ## Theme Customization
 
-Beyond assets and names, you can customize the visual theme by creating and modifying the `theme.ts` file.
+Beyond assets and names, you can customize the visual theme by creating a custom theme file that overrides the default styling.
 
 ### Theme File Location
 
-The `theme.ts` file should be created in the following path:
+LISA contains two theme files:
 
+**Base Theme (Default):**
 ```
 lib/user-interface/react/src/theme.ts
 ```
+This file contains a minimal theme with an empty token configuration and should not be modified directly.
 
-An example theme is provided at:
+This theme serves as a fallback if no custom theme is defined and will load the Cloudscape default theming.
+
+**Custom Theme (Optional):**
 ```
-lib/user-interface/react/src/example_theme.ts
+lib/user-interface/react/src/theme-custom.ts
 ```
+Create this file to define your custom theme. This file is gitignored, allowing you to maintain organization-specific branding without committing it to version control.
+
+When `useCustomBranding: true` is configured, LISA will automatically:
+1. Look for `theme-custom.ts` first
+2. Fall back to `theme.ts` if the custom file doesn't exist
+3. Use Cloudscape's default theme if neither contains customizations
 
 ### Customizable Theme Elements
 
@@ -145,49 +152,96 @@ The [Cloudscape theming system](https://cloudscape.design/foundation/visual-foun
 
 ### Theme Customization Process
 
-1. **Clone the Example Theme**
+1. **Create Custom Theme File**
+
+   Copy the example custom theme to create your own:
    ```bash
-   cp lib/user-interface/react/src/example_theme.ts lib/user-interface/react/src/theme.ts
+   cp lib/user-interface/react/src/theme-custom.ts.example \
+      lib/user-interface/react/src/theme-custom.ts
    ```
 
-2. **Update env.js:**
-   Add the following lines to the end of your `lib/user-interface/react/public/env.js` file
+2. **Edit Theme Variables**
+
+   Open `theme-custom.ts` and customize the theme variables at the top of the file:
+   ```typescript
+   // THEME VARIABLES - Edit these to customize the entire theme
+
+   // Typography
+   const FONT_FAMILY = 'YourFont, Arial, sans-serif';
+
+   // Colors
+   const LIGHT_BUTTON_PRIMARY_BACKGROUND = '#0066CC';
+   const LIGHT_TEXT_LINK = '#0066CC';
+   const LIGHT_TOPNAV_BACKGROUND = '#0066CC';
+   // ... customize any variables you need
+   ```
+
+3. **Configure Branding**
+
+   Enable custom branding in `config-custom.yaml`:
+   ```yaml
+   useCustomBranding: true
+   customDisplayName: "YourProductName"
+   ```
+
+4. **Test Locally (Optional)**
+
+   For local development testing:
+
+   a. Update `lib/user-interface/react/public/env.js`:
    ```js
    "USE_CUSTOM_BRANDING": true,
-   "USE_CUSTOM_DISPLAY_NAME": "YourProductName"
+   "CUSTOM_DISPLAY_NAME": "YourProductName"
    ```
 
-3. **Start the Local Development Server**
+   b. Start the development server:
    ```bash
    npm run dev
    ```
 
-4. **Edit Theme Variables:**
-   Open `theme.ts` and modify the variables at the top of the file:
-   ```typescript
-   // THEME VARIABLES - Edit these to customize
-   const FONT_FAMILY = 'YourFont, Arial, sans-serif';
-   const LIGHT_BUTTON_PRIMARY_BACKGROUND = '#0066CC';
-   const LIGHT_TEXT_LINK = '#0066CC';
-   // ... etc
+   c. The server will hot-reload as you edit `theme-custom.ts`
+
+5. **Deploy**
+
+   Deploy your changes:
+   ```bash
+   make deploy
    ```
 
-5. **Save Changes:** Upon saving changes the server should reload to show your modifications
-
-> [!TIP]
-> The above local development workflow works for testing logos and branding name modifications
+> [!NOTE]
+> During development, Vite automatically detects which theme files exist and loads the appropriate one. No build configuration changes are needed.
 
 ### Theme Application
 
-The theme is conditionally applied based on the `useCustomBranding` setting contained within `config-custom.yaml`:
+The theme is conditionally applied based on the `useCustomBranding` setting. LISA uses Vite's glob import feature to automatically detect and load the appropriate theme file:
 
 ```typescript
 // main.tsx
 if (window.env?.USE_CUSTOM_BRANDING) {
-    const { brandTheme } = await import('./theme');
-    applyTheme({ theme: brandTheme });
+    try {
+        // Vite will only include files that actually exist
+        const themeModules = import.meta.glob('./theme*.ts');
+
+        // Try custom first, fall back to base
+        const themeModule = themeModules['./theme-custom.ts']
+            ? await themeModules['./theme-custom.ts']()
+            : await themeModules['./theme.ts']();
+
+        const { brandTheme } = themeModule;
+        applyTheme({ theme: brandTheme });
+        console.log('Theme loaded:', themeModules['./theme-custom.ts'] ? 'custom' : 'base');
+    } catch (error) {
+        console.warn('No theme file found, using Cloudscape default theme');
+    }
 }
 ```
+
+**How it works:**
+1. When `USE_CUSTOM_BRANDING` is true, LISA scans for theme files
+2. If `theme-custom.ts` exists, it loads that file
+3. Otherwise, it falls back to `theme.ts` (the base theme)
+4. If neither file contains customizations, Cloudscape's default theme is used
+5. The console logs which theme was loaded for debugging
 
 ## Implementation Details
 
@@ -220,7 +274,7 @@ These utilities ensure:
 
 ## Deployment Workflow
 
-### Complete private labeling Setup
+### Complete Custom Branding Setup
 
 1. **Update Configuration**
    ```yaml
@@ -244,8 +298,12 @@ These utilities ensure:
 
 4. **Customize Theme (Optional)**
    ```bash
-   cp lib/user-interface/react/src/example_theme.ts lib/user-interface/react/src/theme.ts
-   # Edit theme.ts with your color scheme
+   # Create and edit theme-custom.ts with your color scheme
+   cp lib/user-interface/react/src/theme-custom.ts.example \
+      lib/user-interface/react/src/theme-custom.ts
+
+   # Edit the file to customize colors and styling
+   # lib/user-interface/react/src/theme-custom.ts
    ```
 
 5. **Deploy**
@@ -300,10 +358,20 @@ After deployment, verify your branding:
 
 **Solutions**:
 - Verify `useCustomBranding: true` (theme is only applied when branding is enabled)
-- Ensure `theme.ts` file exists (not just `example_theme.ts`)
+- Ensure `theme-custom.ts` exists in `lib/user-interface/react/src/`
+- Verify theme variables are properly defined in `theme-custom.ts`
+- Check browser console to see which theme was loaded (`custom` or `base`)
 - Rebuild the web application: `npm run build -w lisa-web`
-- Clear browser cache
+- Clear browser cache and hard refresh
 - Check browser console for errors
+
+**Issue**: Changes to theme-custom.ts not appearing
+
+**Solutions**:
+- Restart the development server (`npm run dev`)
+- Clear browser cache
+- Check for TypeScript errors in the theme file
+- Ensure the file is saved before refreshing
 
 ### Partial Branding
 
@@ -317,16 +385,18 @@ After deployment, verify your branding:
 
 ### Theme Colors are Incorrect
 
-**Issue**: Some components are not showing the color they were configured with in `theme.ts`
+**Issue**: Some components are not showing the color they were configured with in `theme-custom.ts`
 
 **Solutions**:
 - Restart the development server
 - Clear browser cache
-- Change the value of the component (e.g. `#0054E3` -> `#0054E2`). Reuse of the same values seems, to occasionally, be problematic in the Cloudscape theming system.
+- Change the value of the component (e.g. `#0054E3` -> `#0054E2`). Reuse of the same values can occasionally be problematic in the Cloudscape theming system.
+- Verify the correct token name is being used (refer to [Cloudscape theming docs](https://cloudscape.design/foundation/visual-foundation/theming/))
+- Check browser console for theme loading confirmation
 
 ## Example: Complete Setup
 
-Here's a complete example showing all aspects of private labeling:
+Here's a complete example showing all aspects of custom branding:
 
 ### config-custom.yaml
 ```yaml
@@ -335,7 +405,7 @@ region: us-east-1
 deploymentName: ACME-AI
 s3BucketModels: acme-ai-models
 
-# Private labeling configuration
+# Custom branding configuration
 useCustomBranding: true
 customDisplayName: "Acme"
 
@@ -357,7 +427,7 @@ lib/user-interface/react/public/branding/custom/
 
 ### Custom Theme
 ```typescript
-// lib/user-interface/react/src/theme.ts (excerpt)
+// lib/user-interface/react/src/theme-custom.ts (excerpt)
 const FONT_FAMILY = 'Roboto, Arial, sans-serif';
 const LIGHT_BUTTON_PRIMARY_BACKGROUND = '#0A3D62';  // Acme blue
 const LIGHT_TEXT_LINK = '#0A3D62';

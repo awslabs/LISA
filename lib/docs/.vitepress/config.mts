@@ -61,7 +61,7 @@ const navLinks = [
       { text: 'Usage & Features', link: '/config/usage' },
       { text: 'RAG Repository', link: '/config/repositories' },
       { text: 'Langfuse Tracing', link: '/config/langfuse-tracing'},
-      { text: 'Private Labeling', link: '/config/private-labeling' },
+      { text: 'Private Labeling', link: '/config/custom-branding' },
       {
         text: 'Configuration Schema',
         link: '/config/configuration',

@@ -253,6 +253,15 @@ def _delete_user_session(session_id: str, user_id: str) -> dict[str, bool]:
         response = table.get_item(Key={"sessionId": session_id, "userId": user_id})
         session = response.get("Item", {})
 
+        # Decrypt session if encrypted to access history for video keys
+        if session.get("is_encrypted", False):
+            try:
+                logger.info(f"Decrypting session {session_id} to extract video keys for deletion")
+                session = decrypt_session_fields(session, user_id, session_id)
+            except SessionEncryptionError as e:
+                logger.warning(f"Failed to decrypt session {session_id} for video cleanup: {e}")
+                # Continue with deletion even if decryption fails - videos may remain orphaned
+
         # Extract video S3 keys from the session history
         video_keys = _extract_video_s3_keys(session)
 

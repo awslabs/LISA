@@ -291,7 +291,15 @@ export class SessionApi extends Construct {
                 );
             } else if (f.method === 'DELETE') {
                 sessionTable.grantReadWriteData(lambdaFunction);
-                // Grant S3 delete permissions
+                // Grant S3 list permission on bucket for prefix-based listing
+                lambdaRole.addToPrincipalPolicy(
+                    new PolicyStatement({
+                        effect: Effect.ALLOW,
+                        actions: ['s3:ListBucket'],
+                        resources: [`arn:${config.partition}:s3:::${imagesBucketName}`]
+                    })
+                );
+                // Grant S3 delete permissions on objects
                 lambdaRole.addToPrincipalPolicy(
                     new PolicyStatement({
                         effect: Effect.ALLOW,

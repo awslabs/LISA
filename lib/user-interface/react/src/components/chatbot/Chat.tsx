@@ -697,7 +697,7 @@ export default function Chat ({ sessionId }) {
                 // eslint-disable-next-line react-hooks/exhaustive-deps
             />), conditionalDeps([modals.sessionConfiguration], [modals.sessionConfiguration], [modals.sessionConfiguration, chatConfiguration, setChatConfiguration, selectedModel, isRunning, openModal, closeModal, config, session, updateSession, ragConfig]))}
 
-            {useMemo(() => (<RagUploadModal
+            {window.env.RAG_ENABLED && useMemo(() => (<RagUploadModal
                 ragConfig={ragConfig}
                 showRagUploadModal={modals.ragUpload}
                 setShowRagUploadModal={(show) => show ? openModal('ragUpload') : closeModal('ragUpload')}

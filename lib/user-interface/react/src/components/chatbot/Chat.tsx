@@ -127,12 +127,18 @@ export default function Chat ({ sessionId }) {
     const [modelFilterValue, setModelFilterValue] = useState('');
     const [hasUserInteractedWithModel, setHasUserInteractedWithModel] = useState(false);
     const [mermaidRenderComplete, setMermaidRenderComplete] = useState(0);
+    const [videoLoadComplete, setVideoLoadComplete] = useState(0);
     const [dynamicMaxRows, setDynamicMaxRows] = useState(8);
     const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
 
     // Callback to handle Mermaid diagram rendering completion
     const handleMermaidRenderComplete = useCallback(() => {
         setMermaidRenderComplete((prev) => prev + 1);
+    }, []);
+
+    // Callback to handle video load completion (for auto-scroll)
+    const handleVideoLoadComplete = useCallback(() => {
+        setVideoLoadComplete((prev) => prev + 1);
     }, []);
 
     // Ref to track if we're processing tool calls to prevent infinite loops
@@ -494,7 +500,7 @@ export default function Chat ({ sessionId }) {
             // which was breaking AT_BOTTOM_THRESHOLD disabling auto-scroll without user input
             bottomRef.current.scrollIntoView({ behavior: 'auto' });
         }
-    }, [isStreaming, session, mermaidRenderComplete, shouldAutoScroll]);
+    }, [isStreaming, session, mermaidRenderComplete, videoLoadComplete, shouldAutoScroll]);
 
     // Scroll event listener to detect scroll position
     useEffect(() => {
@@ -789,6 +795,7 @@ export default function Chat ({ sessionId }) {
                             chatConfiguration={chatConfiguration}
                             setUserPrompt={setUserPrompt}
                             onMermaidRenderComplete={handleMermaidRenderComplete}
+                            onVideoLoadComplete={handleVideoLoadComplete}
                         />));
                     // eslint-disable-next-line react-hooks/exhaustive-deps
                     }, [session.history, chatConfiguration, loadingSession])}
@@ -803,6 +810,7 @@ export default function Chat ({ sessionId }) {
                         chatConfiguration={chatConfiguration}
                         setUserPrompt={setUserPrompt}
                         onMermaidRenderComplete={handleMermaidRenderComplete}
+                        onVideoLoadComplete={handleVideoLoadComplete}
                     />}
                     {!loadingSession && session.history.length === 0 && sessionId === undefined && (
                         <WelcomeScreen

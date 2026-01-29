@@ -61,9 +61,10 @@ type MessageProps = {
     chatConfiguration: IChatConfiguration;
     showUsage?: boolean;
     onMermaidRenderComplete?: () => void;
+    onVideoLoadComplete?: () => void;
 };
 
-export const Message = React.memo(({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration, callingToolName, showUsage = false, onMermaidRenderComplete }: MessageProps) => {
+export const Message = React.memo(({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration, callingToolName, showUsage = false, onMermaidRenderComplete, onVideoLoadComplete }: MessageProps) => {
     const currentUser = useAppSelector(selectCurrentUsername);
     const ragCitations = !isStreaming && message?.metadata?.ragDocuments ? message?.metadata.ragDocuments : undefined;
     const [resend, setResend] = useState(false);
@@ -311,6 +312,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                             <video
                                 controls
                                 style={{ flex: 1, maxHeight: '30em', minWidth: 0 }}
+                                onLoadedData={() => onVideoLoadComplete?.()}
                             >
                                 <source src={item.video_url.url} type='video/mp4' />
                                 Your browser does not support the video tag.

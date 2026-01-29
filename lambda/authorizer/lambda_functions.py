@@ -83,11 +83,9 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         username = find_jwt_username(jwt_data)
         user_groups = get_property_path(jwt_data, jwt_groups_property) or []
 
-        # Use is_admin function for admin check (allows mocking in tests)
-        is_admin_user = is_admin(jwt_data, admin_group, jwt_groups_property)
-
-        # Use auth provider for app access check
+        # Use auth provider for access checks (consistent with auth.py)
         auth_provider = get_authorization_provider()
+        is_admin_user = auth_provider.check_admin_access(username, user_groups)
         has_app_access = auth_provider.check_app_access(username, user_groups)
 
         if not is_admin_user and not has_app_access:
@@ -97,14 +95,6 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         groups = json.dumps(user_groups)
         allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=username)
         allow_policy["context"] = {"username": username, "groups": groups, "authType": "jwt"}
-
-        if requested_resource.startswith("/models") and not is_admin_user:
-            if event["path"].rstrip("/") != "/models":
-                logger.info(f"Deny access to {username} due to non-admin accessing /models api.")
-                return deny_policy
-        if requested_resource.startswith("/configuration") and request_method == "PUT" and not is_admin_user:
-            logger.info(f"Deny access to {username} due to non-admin trying to update configuration.")
-            return deny_policy
 
         logger.debug(f"Generated policy: {allow_policy}")
         logger.info(f"REST API authorization handler completed with 'Allow' for resource {event['methodArn']}")
@@ -219,16 +209,6 @@ def find_jwt_username(jwt_data: dict[str, str]) -> str:
         raise ValueError("No username found in JWT")
 
     return username
-
-
-def is_admin(jwt_data: dict[str, Any], admin_group: str, jwt_groups_property: str) -> bool:
-    """Check if the user is an admin based on JWT group membership.
-
-    This function is kept for backward compatibility and testing.
-    The actual admin check in lambda_handler uses the auth provider.
-    """
-    groups = get_property_path(jwt_data, jwt_groups_property) or []
-    return admin_group in groups
 
 
 @cached(cache=TTLCache(maxsize=1, ttl=300))

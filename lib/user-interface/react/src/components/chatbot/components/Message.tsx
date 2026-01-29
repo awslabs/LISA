@@ -61,9 +61,11 @@ type MessageProps = {
     chatConfiguration: IChatConfiguration;
     showUsage?: boolean;
     onMermaidRenderComplete?: () => void;
+    retryResponse?: () => Promise<void>
+    errorState?: boolean;
 };
 
-export const Message = React.memo(({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration, callingToolName, showUsage = false, onMermaidRenderComplete }: MessageProps) => {
+export const Message = React.memo(({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration, callingToolName, showUsage = false, onMermaidRenderComplete, retryResponse, errorState }: MessageProps) => {
     const currentUser = useAppSelector(selectCurrentUsername);
     const ragCitations = !isStreaming && message?.metadata?.ragDocuments ? message?.metadata.ragDocuments : undefined;
     const [resend, setResend] = useState(false);
@@ -487,9 +489,13 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                             </div>
                         </ChatBubble>
                         <ButtonGroup
-                            onItemClick={({ detail }) =>
-                                ['copy'].includes(detail.id) &&
-                                navigator.clipboard.writeText(getDisplayableMessage(message.content))
+                            onItemClick={async ({ detail }) => {
+                                if (detail.id === 'copy'){
+                                    navigator.clipboard.writeText(getDisplayableMessage(message.content));
+                                } else if (detail.id === 'retry'){
+                                    await retryResponse();
+                                }
+                            }
                             }
                             ariaLabel='Chat actions'
                             dropdownExpandToViewport
@@ -504,7 +510,19 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                             Input copied
                                         </StatusIndicator>
                                     )
-                                }
+                                },
+                                ...(errorState ? [
+                                    {
+                                        type: 'icon-button' as const,
+                                        id: 'retry' as const,
+                                        iconName: 'refresh' as const,
+                                        text: 'Retry Message' as const,
+                                        popoverFeedback: (
+                                            <StatusIndicator type='success'>
+                                                Retrying Message
+                                            </StatusIndicator>
+                                        )
+                                    }] : [])
                             ]}
                             variant='icon'
                         />

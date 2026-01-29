@@ -25,4 +25,3 @@ coverage
 *.sw?
 
 public/branding/custom/
-src/theme.ts

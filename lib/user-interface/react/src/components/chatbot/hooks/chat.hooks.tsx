@@ -226,7 +226,7 @@ export const useChatGeneration = ({
                     // Use FormData if we have an image reference (only for non-remix requests)
                     // Remix doesn't support input_reference, so always use JSON for remix
                     let requestBody: FormData | string;
-                    let requestHeaders: HeadersInit;
+                    let requestHeaders: Record<string, string>;
 
                     if (hasImageReference && imageBlob && !isRemix) {
                         // Use multipart/form-data for image reference

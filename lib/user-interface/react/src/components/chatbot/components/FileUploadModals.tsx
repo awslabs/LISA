@@ -357,12 +357,12 @@ export const RagUploadModal = ({
                         setFields={(values) => {
                             if (values.chunkingStrategy !== undefined) {
                                 setChunkingStrategy(values.chunkingStrategy);
-                            } else if (values['chunkingStrategy.size'] !== undefined) {
+                            } else if (values['chunkingStrategy.size'] !== undefined && chunkingStrategy?.type === ChunkingStrategyType.FIXED) {
                                 setChunkingStrategy({
                                     ...chunkingStrategy,
                                     size: values['chunkingStrategy.size'],
                                 });
-                            } else if (values['chunkingStrategy.overlap'] !== undefined) {
+                            } else if (values['chunkingStrategy.overlap'] !== undefined && chunkingStrategy?.type === ChunkingStrategyType.FIXED) {
                                 setChunkingStrategy({
                                     ...chunkingStrategy,
                                     overlap: values['chunkingStrategy.overlap'],

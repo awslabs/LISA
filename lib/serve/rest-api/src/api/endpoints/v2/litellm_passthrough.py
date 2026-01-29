@@ -421,12 +421,12 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
 
             # Create new headers without Content-Type (requests library will set it with correct boundary)
             # Use LITELLM_KEY instead of the user's token (consistent with rest of the code)
-            forward_headers = {
-                "Authorization": f"Bearer {LITELLM_KEY}"
-            }
+            forward_headers = {"Authorization": f"Bearer {LITELLM_KEY}"}
 
             # Forward multipart request to LiteLLM
-            response = requests_request(method=http_method, url=litellm_path, data=data, files=files, headers=forward_headers)
+            response = requests_request(
+                method=http_method, url=litellm_path, data=data, files=files, headers=forward_headers
+            )
 
             if response.status_code != 200:
                 logger.error(f"LiteLLM error response: {response.text}")

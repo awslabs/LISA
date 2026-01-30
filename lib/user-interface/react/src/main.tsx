@@ -61,7 +61,7 @@ declare global {
             HOSTED_MCP_ENABLED: boolean;
             API_BASE_URL: string;
             USE_CUSTOM_BRANDING: boolean;
-            CUSTOM_DISPLAY_NAME: boolean;
+            CUSTOM_DISPLAY_NAME: string;
         };
         gitInfo?: {
             revisionTag?: string;

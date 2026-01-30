@@ -317,7 +317,7 @@ export const useChatGeneration = ({
                                 method: 'GET',
                                 headers: {
                                     'Authorization': `Bearer ${auth.user?.id_token}`,
-                                    'custom-llm-provider': 'openai',
+                                    'x-litellm-model-id': selectedModel.modelId,
                                 },
                             });
 
@@ -360,7 +360,7 @@ export const useChatGeneration = ({
                                     method: 'GET',
                                     headers: {
                                         'Authorization': `Bearer ${auth.user?.id_token}`,
-                                        'custom-llm-provider': 'openai',
+                                        'x-litellm-model-id': selectedModel.modelId,
                                     },
                                 });
 

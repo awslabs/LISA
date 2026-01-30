@@ -1,18 +1,18 @@
 /**
- * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License").
- * You may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ 
+  Licensed under the Apache License, Version 2.0 (the "License").
+  You may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+ 
+      http://www.apache.org/licenses/LICENSE-2.0
+ 
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -24,67 +24,67 @@ import YAML from 'yaml';
 // Interfaces
 // ============================================================================
 
-interface ValidationResult {
+type ValidationResult = {
     isValid: boolean;
     error?: string;
-}
+};
 
-interface BooleanValidationResult {
+type BooleanValidationResult = {
     isValid: boolean;
     value?: boolean;
-}
+};
 
 type AwsPartition = 'aws' | 'aws-cn' | 'aws-us-gov' | 'aws-iso' | 'aws-iso-b' | 'aws-iso-e' | 'aws-iso-f';
 
-interface CoreConfig {
+type CoreConfig = {
     accountNumber: string;
     region: string;
     partition: AwsPartition;
     deploymentStage: string;
     deploymentName: string;
     s3BucketModels: string;
-}
+};
 
-interface AuthConfig {
+type AuthConfig = {
     authority: string;
     clientId: string;
     adminGroup?: string;
     jwtGroupsProperty?: string;
-}
+};
 
-interface ApiGatewayConfig {
+type ApiGatewayConfig = {
     domainName: string;
-}
+};
 
-interface RestApiConfig {
+type RestApiConfig = {
     sslCertIamArn?: string;
     domainName?: string;
     imageConfig?: ImageConfig;
-}
+};
 
-interface ImageConfig {
+type ImageConfig = {
     type: 'ecr';
     repositoryArn: string;
     tag: string;
-}
+};
 
-interface McpWorkbenchConfig {
+type McpWorkbenchConfig = {
     imageConfig: ImageConfig;
-}
+};
 
-interface BatchIngestionConfig {
+type BatchIngestionConfig = {
     imageConfig: ImageConfig;
-}
+};
 
-interface LambdaLayerAssets {
+type LambdaLayerAssets = {
     authorizerLayerPath: string;
     commonLayerPath: string;
     fastapiLayerPath: string;
     ragLayerPath: string;
     sdkLayerPath: string;
-}
+};
 
-interface PrebuiltAssetsConfig {
+type PrebuiltAssetsConfig = {
     lambdaLayerAssets: LambdaLayerAssets;
     lambdaPath: string;
     webAppAssetsPath: string;
@@ -95,9 +95,9 @@ interface PrebuiltAssetsConfig {
     restApiImageConfig: ImageConfig;
     mcpWorkbenchImageConfig: ImageConfig;
     batchIngestionImageConfig: ImageConfig;
-}
+};
 
-interface FeatureFlags {
+type FeatureFlags = {
     deployChat: boolean;
     deployMetrics: boolean;
     deployMcpWorkbench: boolean;
@@ -106,17 +106,17 @@ interface FeatureFlags {
     deployUi: boolean;
     deployMcp: boolean;
     deployServe: boolean;
-}
+};
 
 type InferenceContainer = 'vllm' | 'tei' | 'tgi';
 
-interface EcsModel {
+type EcsModel = {
     modelName: string;
     baseImage: string;
     inferenceContainer: InferenceContainer;
-}
+};
 
-interface LisaConfig {
+type LisaConfig = {
     accountNumber: string;
     region: string;
     partition: AwsPartition;
@@ -145,7 +145,7 @@ interface LisaConfig {
     deployUi: boolean;
     deployMcp: boolean;
     deployServe: boolean;
-}
+};
 
 // ============================================================================
 // Constants
@@ -155,7 +155,7 @@ const PREBUILT_ASSETS_BASE = './dist/layers';
 
 const VALID_REGIONS = new Set([
     'us-east-1', 'us-east-2', 'us-west-1', 'us-west-2',
-    'eu-west-1', 'eu-west-2', 'eu-west-3', 'eu-central-1', 'eu-north-1', "eu-isoe-west-1",
+    'eu-west-1', 'eu-west-2', 'eu-west-3', 'eu-central-1', 'eu-north-1', 'eu-isoe-west-1',
     'ap-northeast-1', 'ap-northeast-2', 'ap-northeast-3',
     'ap-southeast-1', 'ap-southeast-2', 'ap-south-1',
     'sa-east-1', 'ca-central-1',
@@ -180,7 +180,7 @@ const DEFAULT_BASE_IMAGES: Record<InferenceContainer, string> = {
 // ============================================================================
 
 class DefaultInputValidator {
-    validateAccountNumber(value: string): ValidationResult {
+    validateAccountNumber (value: string): ValidationResult {
         const cleaned = value.trim();
         if (!/^\d+$/.test(cleaned)) {
             return { isValid: false, error: 'Account number must contain only digits' };
@@ -191,7 +191,7 @@ class DefaultInputValidator {
         return { isValid: true };
     }
 
-    validateRegion(value: string): ValidationResult {
+    validateRegion (value: string): ValidationResult {
         const cleaned = value.trim().toLowerCase();
         if (VALID_REGIONS.has(cleaned)) {
             return { isValid: true };
@@ -203,14 +203,14 @@ class DefaultInputValidator {
         return { isValid: false, error: `'${value}' is not a recognized AWS region` };
     }
 
-    validateNonEmpty(value: string, fieldName: string): ValidationResult {
+    validateNonEmpty (value: string, fieldName: string): ValidationResult {
         if (!value.trim()) {
             return { isValid: false, error: `${fieldName} cannot be empty` };
         }
         return { isValid: true };
     }
 
-    validateBooleanInput(value: string): BooleanValidationResult {
+    validateBooleanInput (value: string): BooleanValidationResult {
         const cleaned = value.trim().toLowerCase();
         if (['yes', 'y', 'true', '1'].includes(cleaned)) {
             return { isValid: true, value: true };
@@ -221,7 +221,7 @@ class DefaultInputValidator {
         return { isValid: false };
     }
 
-    validateInferenceContainer(value: string): ValidationResult {
+    validateInferenceContainer (value: string): ValidationResult {
         const cleaned = value.trim().toLowerCase() as InferenceContainer;
         if (VALID_INFERENCE_CONTAINERS.includes(cleaned)) {
             return { isValid: true };
@@ -232,7 +232,7 @@ class DefaultInputValidator {
         };
     }
 
-    validatePartition(value: string): ValidationResult {
+    validatePartition (value: string): ValidationResult {
         const cleaned = value.trim().toLowerCase() as AwsPartition;
         if (VALID_PARTITIONS.includes(cleaned)) {
             return { isValid: true };
@@ -267,27 +267,27 @@ class ConfigBuilder {
         deployServe: true,
     };
 
-    setCoreConfig(config: CoreConfig): this {
+    setCoreConfig (config: CoreConfig): this {
         this.core = config;
         return this;
     }
 
-    setAuthConfig(config: AuthConfig | undefined): this {
+    setAuthConfig (config: AuthConfig | undefined): this {
         this.auth = config;
         return this;
     }
 
-    setApiGatewayConfig(config: ApiGatewayConfig | undefined): this {
+    setApiGatewayConfig (config: ApiGatewayConfig | undefined): this {
         this.apiGateway = config;
         return this;
     }
 
-    setRestApiConfig(config: RestApiConfig | undefined): this {
+    setRestApiConfig (config: RestApiConfig | undefined): this {
         this.restApi = config;
         return this;
     }
 
-    setPrebuiltAssets(usePrebuilt: boolean, partition?: AwsPartition, region?: string, accountNumber?: string): this {
+    setPrebuiltAssets (usePrebuilt: boolean, partition?: AwsPartition, region?: string, accountNumber?: string): this {
         if (usePrebuilt && partition && region && accountNumber) {
             this.prebuiltAssets = this.createPrebuiltAssetsConfig(partition, region, accountNumber);
         } else {
@@ -296,17 +296,17 @@ class ConfigBuilder {
         return this;
     }
 
-    setEcsModels(models: EcsModel[]): this {
+    setEcsModels (models: EcsModel[]): this {
         this.ecsModels = models;
         return this;
     }
 
-    setFeatureFlags(flags: FeatureFlags): this {
+    setFeatureFlags (flags: FeatureFlags): this {
         this.featureFlags = flags;
         return this;
     }
 
-    private createImageConfig(partition: AwsPartition, region: string, accountNumber: string, repositoryName: string): ImageConfig {
+    private createImageConfig (partition: AwsPartition, region: string, accountNumber: string, repositoryName: string): ImageConfig {
         return {
             type: 'ecr',
             repositoryArn: `arn:${partition}:ecr:${region}:${accountNumber}:repository/${repositoryName}`,
@@ -314,7 +314,7 @@ class ConfigBuilder {
         };
     }
 
-    private createPrebuiltAssetsConfig(partition: AwsPartition, region: string, accountNumber: string): PrebuiltAssetsConfig {
+    private createPrebuiltAssetsConfig (partition: AwsPartition, region: string, accountNumber: string): PrebuiltAssetsConfig {
         const base = PREBUILT_ASSETS_BASE;
         return {
             lambdaLayerAssets: {
@@ -336,7 +336,7 @@ class ConfigBuilder {
         };
     }
 
-    build(): LisaConfig {
+    build (): LisaConfig {
         if (!this.core) {
             throw new Error('Core configuration is required');
         }
@@ -397,13 +397,13 @@ class ConfigBuilder {
 // ============================================================================
 
 class YAMLSerializer {
-    serialize(config: Record<string, unknown>): string {
+    serialize (config: Record<string, unknown>): string {
         return YAML.stringify(config, {
             indent: 2,
         });
     }
 
-    deserialize(yamlContent: string): Record<string, unknown> {
+    deserialize (yamlContent: string): Record<string, unknown> {
         return YAML.parse(yamlContent) ?? {};
     }
 }
@@ -418,29 +418,29 @@ class ConfigFileHandler {
     private static readonly GENERATED_CONFIG_FILE = 'config-generated.yaml';
     private serializer: YAMLSerializer;
 
-    constructor(private basePath: string = process.cwd()) {
+    constructor (private basePath: string = process.cwd()) {
         this.serializer = new YAMLSerializer();
     }
 
-    configExists(): boolean {
+    configExists (): boolean {
         return fs.existsSync(path.join(this.basePath, ConfigFileHandler.DEFAULT_CONFIG_FILE));
     }
 
-    getOutputPath(createNew: boolean): string {
+    getOutputPath (createNew: boolean): string {
         if (createNew && this.configExists()) {
             return path.join(this.basePath, ConfigFileHandler.GENERATED_CONFIG_FILE);
         }
         return path.join(this.basePath, ConfigFileHandler.DEFAULT_CONFIG_FILE);
     }
 
-    getOutputFileName(createNew: boolean): string {
+    getOutputFileName (createNew: boolean): string {
         if (createNew && this.configExists()) {
             return ConfigFileHandler.GENERATED_CONFIG_FILE;
         }
         return ConfigFileHandler.DEFAULT_CONFIG_FILE;
     }
 
-    loadExistingConfig(): Record<string, unknown> {
+    loadExistingConfig (): Record<string, unknown> {
         const configPath = path.join(this.basePath, ConfigFileHandler.DEFAULT_CONFIG_FILE);
         if (!fs.existsSync(configPath)) {
             return {};
@@ -449,14 +449,14 @@ class ConfigFileHandler {
         return this.serializer.deserialize(content);
     }
 
-    mergeConfigs(
+    mergeConfigs (
         existing: Record<string, unknown>,
         newConfig: Record<string, unknown>
     ): Record<string, unknown> {
         return { ...existing, ...newConfig };
     }
 
-    writeConfig(config: Record<string, unknown>, outputPath: string): void {
+    writeConfig (config: Record<string, unknown>, outputPath: string): void {
         const yamlContent = this.serializer.serialize(config);
         fs.writeFileSync(outputPath, yamlContent, 'utf-8');
     }
@@ -471,16 +471,16 @@ class ConfigPrompter {
     private rl: readline.Interface;
     private validator: DefaultInputValidator;
 
-    constructor(validator: DefaultInputValidator) {
+    constructor (validator: DefaultInputValidator) {
         this.validator = validator;
         this.rl = readline.createInterface({ input, output });
     }
 
-    async close(): Promise<void> {
+    async close (): Promise<void> {
         this.rl.close();
     }
 
-    async promptWithValidation(
+    async promptWithValidation (
         prompt: string,
         validate: (value: string) => ValidationResult,
         defaultValue?: string
@@ -498,7 +498,7 @@ class ConfigPrompter {
         }
     }
 
-    async promptYesNo(prompt: string, defaultValue = true): Promise<boolean> {
+    async promptYesNo (prompt: string, defaultValue = true): Promise<boolean> {
         const defaultStr = defaultValue ? 'Y/n' : 'y/N';
         while (true) {
             const answer = await this.rl.question(`${prompt} [${defaultStr}]: `);
@@ -513,7 +513,7 @@ class ConfigPrompter {
         }
     }
 
-    async promptCoreConfig(): Promise<CoreConfig> {
+    async promptCoreConfig (): Promise<CoreConfig> {
         console.log('\n📋 Core Configuration\n');
 
         const accountNumber = await this.promptWithValidation(
@@ -555,12 +555,12 @@ class ConfigPrompter {
         };
     }
 
-    async promptPrebuiltAssets(): Promise<boolean> {
+    async promptPrebuiltAssets (): Promise<boolean> {
         console.log('\n📦 Prebuilt Assets\n');
         return await this.promptYesNo('Use prebuilt assets from @awslabs/lisa?', true);
     }
 
-    async promptAuthConfig(): Promise<AuthConfig | undefined> {
+    async promptAuthConfig (): Promise<AuthConfig | undefined> {
         console.log('\n🔐 Authentication Configuration\n');
 
         const configure = await this.promptYesNo('Configure Authentication?', false);
@@ -582,7 +582,7 @@ class ConfigPrompter {
         return { authority, clientId, adminGroup, jwtGroupsProperty };
     }
 
-    async promptApiGatewayConfig(): Promise<ApiGatewayConfig | undefined> {
+    async promptApiGatewayConfig (): Promise<ApiGatewayConfig | undefined> {
         console.log('\n🌐 API Gateway Configuration\n');
 
         const configure = await this.promptYesNo('Configure API Gateway custom domain?', false);
@@ -598,7 +598,7 @@ class ConfigPrompter {
         return { domainName };
     }
 
-    async promptRestApiConfig(): Promise<RestApiConfig | undefined> {
+    async promptRestApiConfig (): Promise<RestApiConfig | undefined> {
         console.log('\n🔧 REST API Configuration\n');
 
         const configure = await this.promptYesNo('Configure REST API settings?', false);
@@ -616,7 +616,7 @@ class ConfigPrompter {
         return { sslCertIamArn, domainName };
     }
 
-    async promptFeatureFlags(): Promise<FeatureFlags> {
+    async promptFeatureFlags (): Promise<FeatureFlags> {
         console.log('\n🚀 Feature Deployment Flags\n');
 
         const useDefaults = await this.promptYesNo('Use default feature flags (all enabled)?', true);
@@ -645,7 +645,7 @@ class ConfigPrompter {
         };
     }
 
-    async promptEcsModels(s3BucketModels: string): Promise<EcsModel[]> {
+    async promptEcsModels (s3BucketModels: string): Promise<EcsModel[]> {
         console.log('\n🤖 ECS Model Configuration\n');
         console.log(`Models will be deployed from S3 bucket: ${s3BucketModels}`);
         console.log('The model name corresponds to the path in S3 where the model is stored.');
@@ -676,7 +676,7 @@ class ConfigPrompter {
 
             const defaultImage = DEFAULT_BASE_IMAGES[inferenceContainer];
             const baseImage = await this.promptWithValidation(
-                `Base image`,
+                'Base image',
                 (v) => this.validator.validateNonEmpty(v, 'Base image'),
                 defaultImage
             );
@@ -694,7 +694,7 @@ class ConfigPrompter {
         return models;
     }
 
-    async promptFileHandling(configExists: boolean): Promise<boolean> {
+    async promptFileHandling (configExists: boolean): Promise<boolean> {
         if (!configExists) {
             return false; // Will create config-custom.yaml
         }
@@ -711,7 +711,7 @@ class ConfigPrompter {
 // Main Entry Point
 // ============================================================================
 
-async function main(): Promise<void> {
+async function main (): Promise<void> {
     console.log('╔════════════════════════════════════════════════════════════════╗');
     console.log('║           LISA Configuration Generator                         ║');
     console.log('║   Generate a config-custom.yaml for LISA deployment            ║');

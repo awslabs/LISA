@@ -62,7 +62,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     onBlur={() => props.touchFields(['lisaHostedModel'])}
                     options={[
                         { label: 'Third party', value: 'false' },
-                        { label: 'LISA hosted', value: 'true' }
+                        { label: `${getDisplayName()} hosted`, value: 'true' }
                     ]}
                     disabled={props.isEdit}
                 />

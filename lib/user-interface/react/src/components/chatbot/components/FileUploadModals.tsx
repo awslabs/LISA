@@ -88,6 +88,7 @@ export type ContextUploadProps = {
     setShowContextUploadModal: React.Dispatch<React.SetStateAction<boolean>>;
     fileContext: string;
     setFileContext: React.Dispatch<React.SetStateAction<string>>;
+    setFileContextName: React.Dispatch<React.SetStateAction<string>>;
     selectedModel: IModel;
 };
 
@@ -96,6 +97,7 @@ export const ContextUploadModal = ({
     setShowContextUploadModal,
     fileContext,
     setFileContext,
+    setFileContextName,
     selectedModel
 }: ContextUploadProps) => {
     const [selectedFiles, setSelectedFiles] = useState<File[] | undefined>([]);
@@ -127,6 +129,7 @@ export const ContextUploadModal = ({
         }
 
         setFileContext(`File context: ${fileContents}`);
+        setFileContextName(file.name);
         setSelectedFiles([file]);
         return true;
     }
@@ -160,6 +163,7 @@ export const ContextUploadModal = ({
                             onClick={() => {
                                 setShowContextUploadModal(false);
                                 setFileContext('');
+                                setFileContextName('');
                                 setSelectedFiles([]);
                             }}
                             disabled={!fileContext}

@@ -42,10 +42,11 @@ import Box from '@cloudscape-design/components/box';
 import JSZip from 'jszip';
 import { downloadFile } from '@/shared/util/downloader';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
+import styles from './Sessions.module.css';
 
 
 
-export function Sessions ({ newSession }) {
+export function Sessions({ newSession }) {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
     const auth = useAuth();
@@ -210,40 +211,33 @@ export function Sessions ({ newSession }) {
 
     return (
         <div className='p-5'>
-            <SpaceBetween size='s' direction='vertical'>
+            <SpaceBetween size='l' direction='vertical'>
                 <Header>
                     History
                 </Header>
-                <SpaceBetween direction='horizontal' size='xs'>
-                    <Popover
-                        size='large'
-                        position='bottom'
-                        dismissButton={false}
-                        triggerType='custom'
-                        content={
-                            <SpaceBetween size='s'>
-                                <Input
-                                    value={searchQuery}
-                                    onChange={({ detail }) => setSearchQuery(detail.value)}
-                                    placeholder='Search sessions by name...'
-                                    clearAriaLabel='Clear search'
-                                    type='search'
-                                    controlId='session-search-input'
-                                />
-                                {searchQuery && (
-                                    <Box variant='small' color='text-status-info'>
-                                        Found {filteredSessions.length} session{filteredSessions.length !== 1 ? 's' : ''}
-                                    </Box>
-                                )}
-                            </SpaceBetween>
+                    <Input
+                        value={searchQuery}
+                        onChange={({ detail }) => setSearchQuery(detail.value)}
+                        placeholder='Search sessions by name'
+                        clearAriaLabel='Clear search'
+                        type='search'
+                        style={
+                            {
+                                root: {
+                                    borderColor: {
+                                        focus: filteredSessions.length >= 1 ? '' : '#ff7a7a',
+                                        default: filteredSessions.length >= 1 ? '' : '#ff7a7a',
+                                    }
+                                }
+                            }
                         }
-                    >
-                        <Button
-                            iconName='search'
-                            variant='inline-icon'
-                            ariaLabel='Search sessions'
-                        />
-                    </Popover>
+                    />
+                    {searchQuery && (
+                        <Box variant='small' color={filteredSessions.length >= 1 ? 'text-status-info' :'text-status-error'}>
+                            Found {filteredSessions.length} session{filteredSessions.length !== 1 ? 's' : ''}
+                        </Box>
+                    )}
+                <SpaceBetween direction='horizontal' size='xs'>
                     <Button
                         iconName='add-plus'
                         variant='inline-icon'
@@ -260,7 +254,7 @@ export function Sessions ({ newSession }) {
                     {config?.configuration.enabledComponents.deleteSessionHistory &&
                         <Button
                             iconAlt='Delete sessions'
-                            iconName='delete-marker'
+                            iconName='remove'
                             variant='inline-icon'
                             onClick={() =>
                                 dispatch(
@@ -319,7 +313,11 @@ export function Sessions ({ newSession }) {
                                         >
                                             <SpaceBetween size='xxs'>
                                                 {sessions.map((item) => (
-                                                    <Box key={item.sessionId} padding='xxs'>
+                                                    <Box 
+                                                        key={item.sessionId} 
+                                                        padding='xxs'
+                                                        className={item.sessionId === currentSessionId ? styles.sessionItemActive : styles.sessionItem}
+                                                    >
                                                         <Grid gridDefinition={[{ colspan: 10 }, { colspan: 2 }]}>
                                                             <Box>
                                                                 <Link onClick={() => navigate(`/ai-assistant/${item.sessionId}`)}>

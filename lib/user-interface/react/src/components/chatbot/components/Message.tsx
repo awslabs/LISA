@@ -97,7 +97,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
 
     // Memoize the ReactMarkdown components to prevent re-creation on every render
     const markdownComponents = useMemo(() => ({
-        code ({ className, children, ...props }: any) {
+        code({ className, children, ...props }: any) {
             const match = /language-(\w+)/.exec(className || '');
             const codeString = String(children).replace(/\n$/, '');
 
@@ -449,7 +449,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                             <Box color='text-status-inactive' variant='small' padding={{ right: 'xl' }}>
                                                 <SpaceBetween direction='vertical' size='s'>
                                                     <div style={{ whiteSpace: 'pre-line' }}>{message.reasoningContent}</div>
-                                                    <hr/>
+                                                    <hr />
                                                 </SpaceBetween>
                                             </Box>
                                             <ButtonGroup
@@ -491,9 +491,6 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                     ...(message.usage && { usage: message.usage })
                                 }} style={isDarkMode ? darkStyles : defaultStyles} />
                             </ExpandableSection>}
-                    </ChatBubble>
-                    {!isStreaming && !messageContainsImage(message.content) && !messageContainsVideo(message.content) && <div
-                        style={{ display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
                         <ButtonGroup
                             onItemClick={({ detail }) =>
                                 ['copy'].includes(detail.id) &&
@@ -516,7 +513,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                             ]}
                             variant='icon'
                         />
-                    </div>}
+                    </ChatBubble>
                 </SpaceBetween>
             )}
             {message?.type === 'human' && (
@@ -525,6 +522,13 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                         <ChatBubble
                             ariaLabel={currentUser}
                             type='outgoing'
+                            style={{
+                                bubble: {
+                                    background: isDarkMode ? '#1f2934' : '#ebebf0',
+                                    borderColor: errorState ? '#ff7a7a' : '',
+                                    borderWidth: errorState ? '1px' : '',
+                                }
+                            }}
                             avatar={
                                 <Avatar
                                     ariaLabel={currentUser}
@@ -536,45 +540,45 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                             <div className='message-content' style={{ maxWidth: '60em' }}>
                                 {renderContent(message.content)}
                             </div>
-                        </ChatBubble>
-                        <ButtonGroup
-                            onItemClick={async ({ detail }) => {
-                                if (detail.id === 'copy'){
-                                    navigator.clipboard.writeText(getDisplayableMessage(message.content));
-                                } else if (detail.id === 'retry'){
-                                    await retryResponse();
+                            <ButtonGroup
+                                onItemClick={async ({ detail }) => {
+                                    if (detail.id === 'copy') {
+                                        navigator.clipboard.writeText(getDisplayableMessage(message.content));
+                                    } else if (detail.id === 'retry') {
+                                        await retryResponse();
+                                    }
                                 }
-                            }
-                            }
-                            ariaLabel='Chat actions'
-                            dropdownExpandToViewport
-                            items={[
-                                {
-                                    type: 'icon-button',
-                                    id: 'copy',
-                                    iconName: 'copy',
-                                    text: 'Copy Input',
-                                    popoverFeedback: (
-                                        <StatusIndicator type='success'>
-                                            Input copied
-                                        </StatusIndicator>
-                                    )
-                                },
-                                ...(errorState ? [
+                                }
+                                ariaLabel='Chat actions'
+                                dropdownExpandToViewport
+                                items={[
                                     {
-                                        type: 'icon-button' as const,
-                                        id: 'retry' as const,
-                                        iconName: 'refresh' as const,
-                                        text: 'Retry Message' as const,
+                                        type: 'icon-button',
+                                        id: 'copy',
+                                        iconName: 'copy',
+                                        text: 'Copy Input',
                                         popoverFeedback: (
                                             <StatusIndicator type='success'>
-                                                Retrying Message
+                                                Input copied
                                             </StatusIndicator>
                                         )
-                                    }] : [])
-                            ]}
-                            variant='icon'
-                        />
+                                    },
+                                    ...(errorState ? [
+                                        {
+                                            type: 'icon-button' as const,
+                                            id: 'retry' as const,
+                                            iconName: 'refresh' as const,
+                                            text: 'Retry Message' as const,
+                                            popoverFeedback: (
+                                                <StatusIndicator type='success'>
+                                                    Retrying Message
+                                                </StatusIndicator>
+                                            )
+                                        }] : [])
+                                ]}
+                                variant='icon'
+                            />
+                        </ChatBubble>
                     </div>
                 </SpaceBetween>
             )}

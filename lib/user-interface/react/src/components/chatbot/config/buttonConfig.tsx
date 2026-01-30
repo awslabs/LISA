@@ -23,14 +23,16 @@ export const getButtonItems = (
     config: IConfiguration,
     useRag: boolean,
     isImageGenerationMode: boolean,
-    isVideoGenerationMode: boolean
+    isVideoGenerationMode: boolean,
+    isConnected: boolean
 ): ButtonGroupProps.Item[] => {
     const baseItems: ButtonGroupProps.Item[] = [
         {
             type: 'icon-button',
             id: 'settings',
             iconName: 'settings',
-            text: 'Session configuration'
+            text: 'Session configuration',
+            disabled: !isConnected
         }
     ];
 
@@ -45,7 +47,7 @@ export const getButtonItems = (
             id: 'upload-to-rag',
             iconName: 'upload',
             text: 'Upload to RAG',
-            disabled: !useRag
+            disabled: !useRag || !isConnected
         });
     }
 
@@ -56,7 +58,8 @@ export const getButtonItems = (
             type: 'icon-button',
             id: 'add-file-to-context',
             iconName: 'insert-row',
-            text: 'Add file to context'
+            text: 'Add file to context',
+            disabled: !isConnected
         });
     }
 
@@ -66,7 +69,8 @@ export const getButtonItems = (
             type: 'icon-button',
             id: 'insert-prompt-template',
             iconName: 'contact',
-            text: 'Insert Prompt Template'
+            text: 'Insert Prompt Template',
+            disabled: !isConnected
         });
     }
 
@@ -76,7 +80,8 @@ export const getButtonItems = (
             type: 'icon-button',
             id: 'summarize-document',
             iconName: 'transcript',
-            text: 'Summarize Document'
+            text: 'Summarize Document',
+            disabled: !isConnected
         });
     }
 
@@ -86,6 +91,7 @@ export const getButtonItems = (
             type: 'menu-dropdown',
             id: 'more-actions',
             text: 'Additional Configuration',
+            disabled: !isConnected,
             items: [
                 {
                     id: 'edit-prompt-template',
@@ -101,7 +107,8 @@ export const getButtonItems = (
             type: 'icon-button',
             id: 'attach-reference-photo',
             iconName: 'video-on',
-            text: 'Add Reference Photo'
+            text: 'Add Reference Photo',
+            disabled: !isConnected
         });
     }
 

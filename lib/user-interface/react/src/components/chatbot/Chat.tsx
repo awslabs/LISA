@@ -26,6 +26,7 @@ import {
     Grid,
     PromptInput,
     Icon,
+    TokenGroup,
 } from '@cloudscape-design/components';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 
@@ -119,6 +120,7 @@ export default function Chat ({ sessionId }) {
     // State management
     const [userPrompt, setUserPrompt] = useState('');
     const [fileContext, setFileContext] = useState('');
+    const [fileContextName, setFileContextName] = useState('');
     const [dirtySession, setDirtySession] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
     const [useRag, setUseRag] = useState(false);
@@ -721,9 +723,10 @@ export default function Chat ({ sessionId }) {
                 setShowContextUploadModal={(show) => show ? openModal('contextUpload') : closeModal('contextUpload')}
                 fileContext={fileContext}
                 setFileContext={setFileContext}
+                setFileContextName={setFileContextName}
                 selectedModel={selectedModel}
                 // eslint-disable-next-line react-hooks/exhaustive-deps
-            />), conditionalDeps([modals.contextUpload], [modals.contextUpload], [modals.contextUpload, openModal, closeModal, fileContext, setFileContext, selectedModel]))}
+            />), conditionalDeps([modals.contextUpload], [modals.contextUpload], [modals.contextUpload, openModal, closeModal, fileContext, setFileContext, setFileContextName, selectedModel]))}
 
             {useMemo(() => (<PromptTemplateModal
                 session={session}
@@ -831,6 +834,19 @@ export default function Chat ({ sessionId }) {
                 <form onSubmit={(e) => e.preventDefault()}>
                     <Form>
                         <SpaceBetween size='m' direction='vertical'>
+                            {fileContext && (
+                                <TokenGroup
+                                    onDismiss={({ detail: { itemIndex } }) => {
+                                        if (itemIndex === 0) {
+                                            setFileContext('');
+                                            setFileContextName('');
+                                        }
+                                    }}
+                                    items={[
+                                        { label: fileContextName, dismissLabel: `Remove ${fileContextName}` }
+                                    ]}
+                                />
+                            )}
                             <Grid
                                 gridDefinition={[
                                     { colspan: { default: 4 } },
@@ -871,12 +887,21 @@ export default function Chat ({ sessionId }) {
                                 maxRows={dynamicMaxRows}
                                 minRows={2}
                                 spellcheck={true}
+                                style={
+                                    {
+                                        root: {
+                                            borderColor: {
+                                                disabled: isConnected ? ''  : '#ff7a7a'
+                                            }
+                                        }
+                                    }
+                                }
                                 placeholder={
                                     !selectedModel ? 'You must select a model before sending a message' :
                                         isImageGenerationMode ? 'Describe the image you want to generate...' :
                                             'Send a message'
                                 }
-                                disabled={!selectedModel || loadingSession}
+                                disabled={!selectedModel || loadingSession || !isConnected}
                                 onChange={({ detail }) => setUserPrompt(detail.value)}
                                 onAction={handleAction}
                                 onKeyDown={handleKeyPress}
@@ -886,7 +911,7 @@ export default function Chat ({ sessionId }) {
                                         <ButtonGroup
                                             ariaLabel='Chat actions'
                                             onItemClick={handleButtonClick}
-                                            items={getButtonItems(config, useRag, isImageGenerationMode, isVideoGenerationMode)}
+                                            items={getButtonItems(config, useRag, isImageGenerationMode, isVideoGenerationMode, isConnected)}
                                             variant='icon'
                                             dropdownExpandToViewport={true}
                                         />

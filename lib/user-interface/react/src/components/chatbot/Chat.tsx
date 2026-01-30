@@ -293,7 +293,7 @@ export default function Chat ({ sessionId }) {
         });
     }, [getRelevantDocuments, chatConfiguration.sessionConfiguration, ragConfig.repositoryId, ragConfig.collection, ragConfig.embeddingModel]);
 
-    const { isRunning, setIsRunning, isStreaming, generateResponse, stopGeneration } = useChatGeneration({
+    const { isRunning, setIsRunning, isStreaming, generateResponse, stopGeneration, retryResponse, errorState } = useChatGeneration({
         chatConfiguration,
         selectedModel,
         isImageGenerationMode,
@@ -796,6 +796,8 @@ export default function Chat ({ sessionId }) {
                             setUserPrompt={setUserPrompt}
                             onMermaidRenderComplete={handleMermaidRenderComplete}
                             onVideoLoadComplete={handleVideoLoadComplete}
+                            retryResponse={retryResponse}
+                            errorState={errorState && idx === session.history.length - 1 }
                         />));
                     // eslint-disable-next-line react-hooks/exhaustive-deps
                     }, [session.history, chatConfiguration, loadingSession])}

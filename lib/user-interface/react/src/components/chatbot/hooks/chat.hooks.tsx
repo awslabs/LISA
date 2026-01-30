@@ -138,6 +138,8 @@ export const useChatGeneration = ({
     const dispatch = useAppDispatch();
     const [isRunning, setIsRunning] = useState(false);
     const [isStreaming, setIsStreaming] = useState(false);
+    const [lastRequest, setLastRequest] = useState<null | GenerateLLMRequestParams>(null);
+    const [errorState, setErrorState] = useState(false);
     const stopRequested = useRef(false);
     const modelSupportsTools = selectedModel?.features?.filter((feature) => feature.name === ModelFeatures.TOOL_CALLS)?.length && true;
     const modelSupportsReasoning = selectedModel?.features?.find((feature) => feature.name === ModelFeatures.REASONING) ? true : false;
@@ -164,8 +166,15 @@ export const useChatGeneration = ({
         return new ChatOpenAI(modelConfig);
     }, [selectedModel, auth, chatConfiguration]);
 
+    const retryResponse = async () => {
+        if (!lastRequest) return;
+        await generateResponse(lastRequest);
+    };
+
     const generateResponse = async (params: GenerateLLMRequestParams) => {
         setIsRunning(true);
+        setErrorState(false);
+        setLastRequest(params);
         stopRequested.current = false;
         const startTime = performance.now(); // Start client timer
 
@@ -850,6 +859,7 @@ export const useChatGeneration = ({
         } catch (error) {
             notificationService.generateNotification('An error occurred while processing your request.', 'error', undefined, error.error?.message ? <p>{JSON.stringify(error.error.message)}</p> : undefined);
             setIsRunning(false);
+            setErrorState(true);
             throw error;
         } finally {
             setIsRunning(false);
@@ -870,5 +880,5 @@ export const useChatGeneration = ({
         stopRequested.current = true;
     }, []);
 
-    return { isRunning, setIsRunning, isStreaming, setIsStreaming, generateResponse, createOpenAiClient, stopGeneration };
+    return { isRunning, setIsRunning, isStreaming, setIsStreaming, generateResponse, createOpenAiClient, stopGeneration, retryResponse, errorState };
 };

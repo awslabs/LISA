@@ -335,9 +335,9 @@ export function Sessions ({ newSession }) {
                                                                 <ButtonDropdown
                                                                     items={[
                                                                         { id: 'rename-session', text: 'Rename Session', iconName: 'edit' },
-                                                                        { id: 'delete-session', text: 'Delete Session', iconName: 'delete-marker' },
                                                                         { id: 'download-session', text: 'Download Session', iconName: 'download' },
                                                                         { id: 'export-media', text: 'Export AI Media', iconName: 'folder' },
+                                                                        ...(config?.configuration.enabledComponents.deleteSessionHistory ? [{ id: 'delete-session', text: 'Delete Session', iconName: 'delete-marker' as const }] : [])
                                                                     ]}
                                                                     ariaLabel='Control instance'
                                                                     variant='icon'

@@ -87,7 +87,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                 href: useHref('/'),
                 logo: {
                     src: getBrandingAssetPath('logo'),
-                    alt: 'AWS LISA Sample',
+                    alt: `${getDisplayName()} logo`,
                 },
             }}
             utilities={[

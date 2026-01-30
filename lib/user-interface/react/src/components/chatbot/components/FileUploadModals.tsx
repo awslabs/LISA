@@ -37,7 +37,7 @@ import {
 } from '@/shared/reducers/rag.reducer';
 import { uploadToS3Request } from '@/components/utils';
 import { ChunkingStrategy, ChunkingStrategyType, RagRepositoryType } from '#root/lib/schema';
-import { IModel } from '@/shared/model/model-management.model';
+import { IModel, ModelType } from '@/shared/model/model-management.model';
 import { JobStatusTable } from '@/components/chatbot/components/JobStatusTable';
 import { ChunkingConfigForm } from '@/shared/form/ChunkingConfigForm';
 import { MetadataForm } from '@/shared/form/MetadataForm';
@@ -101,7 +101,7 @@ export const ContextUploadModal = ({
     const [selectedFiles, setSelectedFiles] = useState<File[] | undefined>([]);
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
-    const modelSupportsImages = selectedModel?.features?.filter((feature) => feature.name === 'imageInput')?.length && true;
+    const modelSupportsImages = !!(selectedModel?.features?.filter((feature) => feature.name === 'imageInput')?.length) || selectedModel?.modelType === ModelType.videogen;
 
     function handleError (error: string) {
         notificationService.generateNotification(error, 'error');
@@ -358,12 +358,12 @@ export const RagUploadModal = ({
                         setFields={(values) => {
                             if (values.chunkingStrategy !== undefined) {
                                 setChunkingStrategy(values.chunkingStrategy);
-                            } else if (values['chunkingStrategy.size'] !== undefined) {
+                            } else if (values['chunkingStrategy.size'] !== undefined && chunkingStrategy?.type === ChunkingStrategyType.FIXED) {
                                 setChunkingStrategy({
                                     ...chunkingStrategy,
                                     size: values['chunkingStrategy.size'],
                                 });
-                            } else if (values['chunkingStrategy.overlap'] !== undefined) {
+                            } else if (values['chunkingStrategy.overlap'] !== undefined && chunkingStrategy?.type === ChunkingStrategyType.FIXED) {
                                 setChunkingStrategy({
                                     ...chunkingStrategy,
                                     overlap: values['chunkingStrategy.overlap'],

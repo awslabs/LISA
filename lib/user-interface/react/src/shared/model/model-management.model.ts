@@ -37,7 +37,8 @@ export enum ModelStatus {
 export enum ModelType {
     textgen = 'textgen',
     embedding = 'embedding',
-    imagegen = 'imagegen'
+    imagegen = 'imagegen',
+    videogen = 'videogen'
 }
 
 export enum InferenceContainer {

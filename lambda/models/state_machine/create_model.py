@@ -25,7 +25,7 @@ from zoneinfo import ZoneInfo
 import boto3
 from botocore.config import Config
 from models.clients.litellm_client import LiteLLMClient
-from models.domain_objects import CreateModelRequest, GuardrailsTableEntry, InferenceContainer, ModelStatus
+from models.domain_objects import CreateModelRequest, GuardrailsTableEntry, InferenceContainer, ModelStatus, ModelType
 from models.exception import (
     MaxPollsExceededException,
     StackFailedToCreateException,
@@ -567,6 +567,10 @@ def handle_add_model_to_litellm(event: dict[str, Any], context: Any) -> dict[str
     output_dict = deepcopy(event)
     is_lisa_managed = event["create_infra"]
 
+    # Check if this is a video generation model
+    model_type = event.get("modelType", "").upper()
+    is_video_model = model_type == ModelType.VIDEOGEN.value.upper()
+
     # Parse the JSON string from environment variable
     litellm_config_str = os.environ.get("LITELLM_CONFIG_OBJ", json.dumps({}))
     try:
@@ -579,7 +583,14 @@ def handle_add_model_to_litellm(event: dict[str, Any], context: Any) -> dict[str
     # Only set api_key if it's present in the event
     if "apiKey" in event:
         litellm_params["api_key"] = event["apiKey"]  # pragma: allowlist-secret
-    litellm_params["drop_params"] = True  # drop unrecognized param instead of failing the request on it
+
+    # For video generation models, use empty litellm_settings to avoid drop_params error
+    if is_video_model:
+        litellm_params = {}
+        if "apiKey" in event:
+            litellm_params["api_key"] = event["apiKey"]  # pragma: allowlist-secret
+    else:
+        litellm_params["drop_params"] = True  # drop unrecognized param instead of failing the request on it
 
     if is_lisa_managed:
         # get load balancer from cloudformation stack

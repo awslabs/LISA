@@ -54,7 +54,12 @@ export type ISessionConfiguration = {
         size: string,
         numberOfImages: number,
         quality: string,
-    }
+    },
+    videoGenerationArgs: {
+        seconds: string,
+        size: string,
+    },
+    remixVideoId?: string;
 };
 
 export type GenerateLLMRequestParams = {
@@ -90,6 +95,10 @@ export const baseConfig: IChatConfiguration = {
             size: '1024x1024',
             numberOfImages: 1,
             quality: 'standard',
+        },
+        videoGenerationArgs: {
+            seconds: '4',
+            size: '720x1280',
         }
     }
 };

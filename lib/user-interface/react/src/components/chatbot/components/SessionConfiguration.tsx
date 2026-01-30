@@ -103,6 +103,7 @@ export const SessionConfiguration = ({
         { value: 'xhigh', label: 'X-High' },
     ];
     const isImageModel = selectedModel?.modelType === ModelType.imagegen;
+    const isVideoModel = selectedModel?.modelType === ModelType.videogen;
 
     return (
         <Modal
@@ -135,7 +136,7 @@ export const SessionConfiguration = ({
                         >
                             Show Message Metadata
                         </Toggle>}
-                    {systemConfig && systemConfig.configuration.enabledComponents.editChatHistoryBuffer && !isImageModel && !modelOnly &&
+                    {systemConfig && systemConfig.configuration.enabledComponents.editChatHistoryBuffer && !isImageModel && !isVideoModel && !modelOnly &&
                         <FormField label='Chat History Buffer Size'>
                             <Select
                                 disabled={isRunning}
@@ -148,7 +149,7 @@ export const SessionConfiguration = ({
                                 options={oneThroughTenOptions}
                             />
                         </FormField>}
-                    {systemConfig && systemConfig.configuration.enabledComponents.editNumOfRagDocument && !isImageModel && !modelOnly &&
+                    {systemConfig && systemConfig.configuration.enabledComponents.editNumOfRagDocument && !isImageModel && !isVideoModel && !modelOnly &&
                         <FormField label='Matching RAG Excerpts'>
                             <Select
                                 disabled={isRunning}
@@ -183,7 +184,7 @@ export const SessionConfiguration = ({
                             Show Reasoning Content
                         </Toggle>}
                 </Grid>
-                {systemConfig && systemConfig.configuration.enabledComponents.editKwargs && !isImageModel &&
+                {systemConfig && systemConfig.configuration.enabledComponents.editKwargs && !isImageModel && !isVideoModel &&
                     <Container
                         header={
                             <Header
@@ -503,6 +504,47 @@ export const SessionConfiguration = ({
                                         return { label: String(i), value: String(i) };
                                     })
                                 }
+                            />
+                        </FormField>
+                    </Container>
+                )}
+                {isVideoModel && (
+                    <Container
+                        header={
+                            <Header variant='h2' description='Configuration options for video generation'>
+                                Video Generation Options
+                            </Header>
+                        }
+                    >
+                        <FormField label='Video Duration'>
+                            <Select
+                                selectedOption={{ value: chatConfiguration.sessionConfiguration.videoGenerationArgs.seconds }}
+                                onChange={({ detail }) => {
+                                    updateSessionConfiguration('videoGenerationArgs', {
+                                        ...chatConfiguration.sessionConfiguration.videoGenerationArgs,
+                                        seconds: detail.selectedOption.value,
+                                    });
+                                }}
+                                options={[
+                                    { label: '4 seconds', value: '4' },
+                                    { label: '8 seconds', value: '8' },
+                                    { label: '12 seconds', value: '12' },
+                                ]}
+                            />
+                        </FormField>
+                        <FormField label='Video Size'>
+                            <Select
+                                selectedOption={{ value: chatConfiguration.sessionConfiguration.videoGenerationArgs.size }}
+                                onChange={({ detail }) => {
+                                    updateSessionConfiguration('videoGenerationArgs', {
+                                        ...chatConfiguration.sessionConfiguration.videoGenerationArgs,
+                                        size: detail.selectedOption.value,
+                                    });
+                                }}
+                                options={[
+                                    { label: '720x1280 (Portrait)', value: '720x1280' },
+                                    { label: '1280x720 (Landscape)', value: '1280x720' },
+                                ]}
                             />
                         </FormField>
                     </Container>

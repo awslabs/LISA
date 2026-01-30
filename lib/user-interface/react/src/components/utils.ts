@@ -108,6 +108,13 @@ export function messageContainsImage (content: MessageContent): boolean {
     return false;
 }
 
+export function messageContainsVideo (content: MessageContent): boolean {
+    if (Array.isArray(content)) {
+        return !!content.find((item) => item.type === 'video_url');
+    }
+    return false;
+}
+
 export function base64ToBlob (base64: string, mimeType: string): Blob {
     const byteCharacters = atob(base64);
     const byteNumbers = new Array(byteCharacters.length);

@@ -82,8 +82,15 @@ class ServerConfig(BaseModel):
             if not isinstance(config_data["cors_settings"], dict):
                 config_data["cors_settings"] = {}
 
-            # Set the origins
-            config_data["cors_settings"]["allow_origins"] = cors_origins
+            # Convert cors_origins to a list if it's a string (comma-separated)
+            if isinstance(cors_origins, str):
+                origins_list = [origin.strip() for origin in cors_origins.split(",") if origin.strip()]
+                config_data["cors_settings"]["allow_origins"] = origins_list
+            elif isinstance(cors_origins, list):
+                config_data["cors_settings"]["allow_origins"] = cors_origins
+            else:
+                # Fallback to default
+                config_data["cors_settings"]["allow_origins"] = ["*"]
 
         # Handle cors_settings
         if "cors_settings" in config_data and isinstance(config_data["cors_settings"], dict):

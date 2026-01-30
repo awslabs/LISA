@@ -569,7 +569,7 @@ def handle_add_model_to_litellm(event: dict[str, Any], context: Any) -> dict[str
 
     # Check if this is a video generation model
     model_type = event.get("modelType", "").upper()
-    is_video_model = model_type == ModelType.VIDEOGEN.value.upper()
+    is_video_model = model_type == ModelType.VIDEOGEN.upper()
 
     # Parse the JSON string from environment variable
     litellm_config_str = os.environ.get("LITELLM_CONFIG_OBJ", json.dumps({}))

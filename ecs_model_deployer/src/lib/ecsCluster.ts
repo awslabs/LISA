@@ -104,13 +104,13 @@ export class ECSCluster extends Construct {
         );
 
         // Create auto scaling group with SNS topic encryption for lifecycle hooks
+        // Note: cooldown is not set here because we use target tracking scaling which manages its own cooldown.
         const autoScalingGroup = cluster.addCapacity(createCdkId([identifier, 'ASG']), {
             vpcSubnets: subnetSelection,
             instanceType: new InstanceType(ecsConfig.instanceType),
             machineImage: EcsOptimizedImage.amazonLinux2023(ecsConfig.amiHardwareType),
             minCapacity: ecsConfig.autoScalingConfig.minCapacity,
             maxCapacity: ecsConfig.autoScalingConfig.maxCapacity,
-            cooldown: Duration.seconds(ecsConfig.autoScalingConfig.cooldown),
             groupMetrics: [GroupMetrics.all()],
             instanceMonitoring: Monitoring.DETAILED,
             newInstancesProtectedFromScaleIn: false,

@@ -215,6 +215,8 @@ export class ECSCluster extends Construct {
         });
 
         // Create auto-scaling group
+        // Note: cooldown is not set here because we use step scaling policies which don't support cooldown.
+        // Step scaling uses evaluation periods instead for controlling scaling behavior.
         const autoScalingGroup = new AutoScalingGroup(this, createCdkId([config.deploymentName, config.deploymentStage, 'ASG']), {
             vpc: vpc.vpc,
             vpcSubnets: vpc.subnetSelection,
@@ -222,7 +224,6 @@ export class ECSCluster extends Construct {
             machineImage: EcsOptimizedImage.amazonLinux2023(ecsConfig.amiHardwareType),
             minCapacity: ecsConfig.autoScalingConfig.minCapacity,
             maxCapacity: ecsConfig.autoScalingConfig.maxCapacity,
-            cooldown: Duration.seconds(ecsConfig.autoScalingConfig.cooldown),
             groupMetrics: [GroupMetrics.all()],
             instanceMonitoring: Monitoring.DETAILED,
             defaultInstanceWarmup: Duration.seconds(ecsConfig.autoScalingConfig.defaultInstanceWarmup),
@@ -607,10 +608,6 @@ export class ECSCluster extends Construct {
 
         const service = new Ec2Service(this, createCdkId([this.config.deploymentName, taskName, 'Ec2Svc']), serviceProps);
         service.node.addDependency(this.autoScalingGroup);
-        
-        // Ensure service is deleted before capacity provider during stack deletion
-        // This prevents "capacity provider is in use" errors
-        this.asgCapacityProvider.node.addDependency(service);
 
         // Store service reference
         this.services[taskName] = service;

@@ -16,9 +16,9 @@
   "dependencies": {},
   "devDependencies": {
     "@cdklabs/cdk-enterprise-iac": "^0.1.0",
-    "@types/node": "^24.10.2",
-    "aws-cdk": "^2.1033.0",
-    "aws-cdk-lib": "^2.232.1",
+    "@types/node": "^25.1.0",
+    "aws-cdk": "^2.1104.0",
+    "aws-cdk-lib": "^2.236.0",
     "esbuild": "^0.27.1",
     "zod": "^4.1.13"
   }

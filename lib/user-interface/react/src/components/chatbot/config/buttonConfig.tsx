@@ -22,7 +22,8 @@ import { PromptTemplateType } from '@/shared/reducers/prompt-templates.reducer';
 export const getButtonItems = (
     config: IConfiguration,
     useRag: boolean,
-    isImageGenerationMode: boolean
+    isImageGenerationMode: boolean,
+    isVideoGenerationMode: boolean
 ): ButtonGroupProps.Item[] => {
     const baseItems: ButtonGroupProps.Item[] = [
         {
@@ -38,7 +39,7 @@ export const getButtonItems = (
     // RAG Upload
     if (config?.configuration.enabledComponents.uploadRagDocs &&
         window.env.RAG_ENABLED &&
-        !isImageGenerationMode) {
+        !isImageGenerationMode && !isVideoGenerationMode) {
         conditionalItems.push({
             type: 'icon-button',
             id: 'upload-to-rag',
@@ -50,7 +51,7 @@ export const getButtonItems = (
 
     // Context Upload
     if (config?.configuration.enabledComponents.uploadContextDocs &&
-        !isImageGenerationMode) {
+        !isImageGenerationMode && !isVideoGenerationMode) {
         conditionalItems.push({
             type: 'icon-button',
             id: 'add-file-to-context',
@@ -70,7 +71,7 @@ export const getButtonItems = (
     }
 
     // Document Summarization
-    if (config?.configuration.enabledComponents.documentSummarization) {
+    if (config?.configuration.enabledComponents.documentSummarization && !isVideoGenerationMode && !isImageGenerationMode) {
         conditionalItems.push({
             type: 'icon-button',
             id: 'summarize-document',
@@ -80,7 +81,7 @@ export const getButtonItems = (
     }
 
     // Additional Configuration Dropdown
-    if (config?.configuration.enabledComponents.editPromptTemplate && !isImageGenerationMode) {
+    if (config?.configuration.enabledComponents.editPromptTemplate && !isImageGenerationMode && !isVideoGenerationMode) {
         conditionalItems.push({
             type: 'menu-dropdown',
             id: 'more-actions',
@@ -92,6 +93,15 @@ export const getButtonItems = (
                     text: 'Edit Persona'
                 },
             ]
+        });
+    }
+
+    if (isVideoGenerationMode) {
+        conditionalItems.push({
+            type: 'icon-button',
+            id: 'attach-reference-photo',
+            iconName: 'video-on',
+            text: 'Add Reference Photo'
         });
     }
 
@@ -124,6 +134,7 @@ export const useButtonActions = ({
                 setFilterPromptTemplateType(PromptTemplateType.Directive);
                 openModal('promptTemplate');
             },
+            'attach-reference-photo': () => openModal('contextUpload'),
         };
 
         const action = actions[detail.id];

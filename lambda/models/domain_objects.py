@@ -70,6 +70,7 @@ class ModelType(StrEnum):
 
     TEXTGEN = auto()
     IMAGEGEN = auto()
+    VIDEOGEN = auto()
     EMBEDDING = auto()
 
 

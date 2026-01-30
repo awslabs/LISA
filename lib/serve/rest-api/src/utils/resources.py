@@ -43,6 +43,7 @@ class ModelType(str, Enum):
 
     EMBEDDING = "embedding"
     TEXTGEN = "textgen"
+    VIDEOGEN = "videogen"
 
 
 class _BaseModelRequest(BaseModel):

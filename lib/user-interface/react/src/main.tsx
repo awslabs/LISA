@@ -39,7 +39,7 @@ if (window.env?.USE_CUSTOM_BRANDING) {
         const { brandTheme } = themeModule as { brandTheme: Theme };
         applyTheme({ theme: brandTheme });
         console.log('Theme loaded:', themeModules['./theme-custom.ts'] ? 'custom' : 'base');
-    } catch (error) {
+    } catch {
         console.warn('No theme file found, using Cloudscape default theme');
     }
 }

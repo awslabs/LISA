@@ -41,6 +41,7 @@ import { IModel, ModelType } from '@/shared/model/model-management.model';
 import { JobStatusTable } from '@/components/chatbot/components/JobStatusTable';
 import { ChunkingConfigForm } from '@/shared/form/ChunkingConfigForm';
 import { MetadataForm } from '@/shared/form/MetadataForm';
+import { getDisplayName } from '@/shared/util/branding';
 
 export const renameFile = (originalFile: File) => {
     // Add timestamp to filename for RAG uploads to not conflict with existing S3 files
@@ -174,7 +175,7 @@ export const ContextUploadModal = ({
                     <h4>File Context</h4>
                     <p>
                         <small>
-                            Upload files for LISA to use as context in this session. This additional context will be referenced to
+                            Upload files for {getDisplayName()} to use as context in this session. This additional context will be referenced to
                             answer your questions.
                         </small>
                     </p>
@@ -334,7 +335,7 @@ export const RagUploadModal = ({
                     <h4>Upload to RAG</h4>
                     <p>
                         <small>
-                            Upload files to the RAG repository leveraged by LISA. This will provide LISA with trusted information for
+                            Upload files to the RAG repository leveraged by {getDisplayName()}. This will provide {getDisplayName()} with trusted information for
                             answering prompts.
                         </small>
                     </p>

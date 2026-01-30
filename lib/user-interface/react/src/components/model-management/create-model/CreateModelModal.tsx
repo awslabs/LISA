@@ -32,6 +32,7 @@ import { getJsonDifference, normalizeError } from '../../../shared/util/validati
 import { setConfirmationModal } from '../../../shared/reducers/modal.reducer';
 import { ReviewChanges } from '../../../shared/modal/ReviewChanges';
 import { EcsRestartWarning } from '../EcsRestartWarning';
+import { getDisplayName } from '../../../shared/util/branding';
 
 export type CreateModelModalProps = {
     visible: boolean;
@@ -506,7 +507,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                         cancelButton: 'Cancel',
                         previousButton: 'Previous',
                         nextButton: 'Next',
-                        optional: 'LISA hosted models only'
+                        optional: `${getDisplayName()} hosted models only`
                     }}
                     onNavigate={(event) => {
                         switch (event.detail.reason) {

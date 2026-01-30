@@ -23,3 +23,6 @@ coverage
 *.njsproj
 *.sln
 *.sw?
+
+public/branding/custom/
+src/theme-custom.ts

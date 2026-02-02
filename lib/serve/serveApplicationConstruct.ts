@@ -134,13 +134,16 @@ export class LisaServeApplicationConstruct extends Construct {
         // DB is a Single AZ instance for cost + inability to make non-Aurora multi-AZ cluster in CDK
         // DB is not expected to be under any form of heavy load.
         // https://github.com/aws/aws-cdk/issues/25547
+        // NOTE: databaseName is intentionally NOT set here for backwards compatibility.
+        // Previous deployments created this RDS instance without a named database, so the
+        // default 'postgres' database is used. This means restApiConfig.rdsConfig.dbName
+        // is NOT respected for the LiteLLM database - it will always use 'postgres'.
         const litellmDb = new DatabaseInstance(scope, 'LiteLLMScalingDB', {
             engine: DatabaseInstanceEngine.POSTGRES,
             vpc: vpc.vpc,
             subnetGroup: vpc.subnetGroup,
             credentials: dbCreds,
             iamAuthentication: useIamAuth, // Enable IAM auth when iamRdsAuth is true
-            databaseName: config.restApiConfig.rdsConfig.dbName, // Specify database name to match config
             securityGroups: [litellmDbSg],
             removalPolicy: config.removalPolicy,
         });

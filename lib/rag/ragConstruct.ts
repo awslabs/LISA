@@ -123,6 +123,7 @@ export class LisaRagConstruct extends Construct {
             billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
             encryption: dynamodb.TableEncryption.AWS_MANAGED,
             removalPolicy: config.removalPolicy,
+            deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
         });
         docMetaTable.addGlobalSecondaryIndex({
             indexName: 'document_index',
@@ -150,6 +151,7 @@ export class LisaRagConstruct extends Construct {
             billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
             encryption: dynamodb.TableEncryption.AWS_MANAGED,
             removalPolicy: config.removalPolicy,
+            deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
         });
 
         // Create Collections table
@@ -166,6 +168,7 @@ export class LisaRagConstruct extends Construct {
             billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
             encryption: dynamodb.TableEncryption.AWS_MANAGED,
             removalPolicy: config.removalPolicy,
+            deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
             timeToLiveAttribute: 'ttl',
         });
 
@@ -351,6 +354,7 @@ export class LisaRagConstruct extends Construct {
                 type: AttributeType.STRING
             },
             removalPolicy: config.removalPolicy,
+            deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
             billingMode: BillingMode.PAY_PER_REQUEST,
             timeToLiveAttribute: 'ttl',
             stream: StreamViewType.NEW_AND_OLD_IMAGES,
@@ -507,7 +511,7 @@ export class LisaRagConstruct extends Construct {
                                 principals: [new AnyPrincipal()],
                             }),
                         ],
-                        removalPolicy: RemovalPolicy.DESTROY,
+                        removalPolicy: config.removalPolicy,
                         securityGroups: [securityGroups.opensearch],
                     });
                 }
@@ -573,7 +577,8 @@ export class LisaRagConstruct extends Construct {
                         credentials: dbCreds,
                         iamAuthentication: useIamAuth, // Enable IAM auth when iamRdsAuth is false
                         securityGroups: [securityGroups.pgvector],
-                        removalPolicy: RemovalPolicy.DESTROY,
+                        removalPolicy: config.removalPolicy,
+                        deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
                     });
                     rdsSecret = pgvector_db.secret!;
                     rdsConnectionInfoPs = new StringParameter(this.scope, createCdkId([connectionParamName, ragConfig.repositoryId, 'StringParameter']), {

@@ -86,6 +86,7 @@ export class LisaApiBaseConstruct extends Construct {
             billingMode: BillingMode.PAY_PER_REQUEST,
             encryption: TableEncryption.AWS_MANAGED,
             removalPolicy: config.removalPolicy,
+            deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
         });
 
         // Set DeletionPolicy to RetainExceptOnCreate to allow CloudFormation to import existing tables

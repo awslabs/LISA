@@ -29,6 +29,7 @@ import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resour
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { LAMBDA_PATH } from '../../util';
 import { McpApi } from './mcp';
+import { RemovalPolicy } from 'aws-cdk-lib';
 
 /**
  * Props for the ConfigurationApi construct
@@ -86,6 +87,7 @@ export class ConfigurationApi extends Construct {
             billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
             encryption: dynamodb.TableEncryption.AWS_MANAGED,
             removalPolicy: config.removalPolicy,
+            deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
         });
 
         const lambdaRole: IRole = createLambdaRole(this, config.deploymentName, 'ConfigurationApi', this.configTable.tableArn, config.roles?.LambdaConfigurationApiExecutionRole);

@@ -34,7 +34,7 @@ import { BaseProps } from '../schema';
 import { createLambdaRole } from '../core/utils';
 import { Vpc } from '../networking/vpc';
 import { LAMBDA_PATH } from '../util';
-import { Duration } from 'aws-cdk-lib';
+import { Duration, RemovalPolicy } from 'aws-cdk-lib';
 
 /**
  * Properties for MetricsApi Construct.
@@ -73,6 +73,7 @@ export class MetricsConstruct extends Construct {
             billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
             encryption: dynamodb.TableEncryption.AWS_MANAGED,
             removalPolicy: config.removalPolicy,
+            deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
         });
 
         // Store table name in SSM for cross-stack access

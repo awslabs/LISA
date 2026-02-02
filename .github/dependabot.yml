@@ -8,12 +8,10 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    reviewers:
-      - "awslabs/lisa-maintainers"
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 5
     rebase-strategy: "auto"
     groups:
       npm-dependencies:
@@ -28,12 +26,10 @@ updates:
       interval: "weekly"
       day: "tuesday"
       time: "09:00"
-    reviewers:
-      - "awslabs/lisa-maintainers"
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 5
     groups:
       python-dependencies:
         patterns:
@@ -47,12 +43,10 @@ updates:
       interval: "weekly"
       day: "tuesday"
       time: "09:00"
-    reviewers:
-      - "awslabs/lisa-maintainers"
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 5
     groups:
       python-dependencies:
         patterns:
@@ -66,12 +60,10 @@ updates:
       interval: "weekly"
       day: "tuesday"
       time: "09:00"
-    reviewers:
-      - "awslabs/lisa-maintainers"
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 5
     groups:
       python-dependencies:
         patterns:
@@ -85,12 +77,10 @@ updates:
       interval: "weekly"
       day: "tuesday"
       time: "09:00"
-    reviewers:
-      - "awslabs/lisa-maintainers"
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 5
     groups:
       python-dependencies:
         patterns:
@@ -104,12 +94,10 @@ updates:
       interval: "weekly"
       day: "tuesday"
       time: "09:00"
-    reviewers:
-      - "awslabs/lisa-maintainers"
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 5
     groups:
       python-dependencies:
         patterns:
@@ -123,12 +111,10 @@ updates:
       interval: "weekly"
       day: "tuesday"
       time: "09:00"
-    reviewers:
-      - "awslabs/lisa-maintainers"
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 5
     groups:
       python-dependencies:
         patterns:
@@ -142,12 +128,10 @@ updates:
       interval: "weekly"
       day: "tuesday"
       time: "09:00"
-    reviewers:
-      - "awslabs/lisa-maintainers"
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 5
     groups:
       python-dependencies:
         patterns:
@@ -161,12 +145,10 @@ updates:
       interval: "weekly"
       day: "wednesday"
       time: "09:00"
-    reviewers:
-      - "awslabs/lisa-maintainers"
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 5
     groups:
       github-actions:
         patterns:
@@ -180,12 +162,10 @@ updates:
       interval: "weekly"
       day: "thursday"
       time: "09:00"
-    reviewers:
-      - "awslabs/lisa-maintainers"
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 5
     groups:
       docker-dependencies:
         patterns:
@@ -199,12 +179,10 @@ updates:
       interval: "weekly"
       day: "thursday"
       time: "09:00"
-    reviewers:
-      - "awslabs/lisa-maintainers"
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 5
     groups:
       docker-dependencies:
         patterns:
@@ -218,12 +196,10 @@ updates:
       interval: "weekly"
       day: "thursday"
       time: "09:00"
-    reviewers:
-      - "awslabs/lisa-maintainers"
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 5
     groups:
       docker-dependencies:
         patterns:
@@ -237,12 +213,10 @@ updates:
       interval: "weekly"
       day: "thursday"
       time: "09:00"
-    reviewers:
-      - "awslabs/lisa-maintainers"
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 5
     groups:
       docker-dependencies:
         patterns:
@@ -256,12 +230,10 @@ updates:
       interval: "weekly"
       day: "thursday"
       time: "09:00"
-    reviewers:
-      - "awslabs/lisa-maintainers"
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 5
     groups:
       docker-dependencies:
         patterns:
@@ -275,12 +247,10 @@ updates:
       interval: "weekly"
       day: "thursday"
       time: "09:00"
-    reviewers:
-      - "awslabs/lisa-maintainers"
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 5
     groups:
       docker-dependencies:
         patterns:
@@ -294,12 +264,10 @@ updates:
       interval: "weekly"
       day: "thursday"
       time: "09:00"
-    reviewers:
-      - "awslabs/lisa-maintainers"
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 5
     groups:
       docker-dependencies:
         patterns:
@@ -313,12 +281,10 @@ updates:
       interval: "weekly"
       day: "thursday"
       time: "09:00"
-    reviewers:
-      - "awslabs/lisa-maintainers"
     commit-message:
       prefix: "chore"
       include: "scope"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 5
     groups:
       docker-dependencies:
         patterns:

@@ -1,0 +1,286 @@
+name: Consolidate Dependabot PRs
+
+on:
+  # Run on a schedule to check for Dependabot PRs to consolidate
+  schedule:
+    - cron: '0 12 * * 1-5'  # Weekdays at noon UTC
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      ecosystem:
+        description: 'Package ecosystem to consolidate (pip, npm, docker, github-actions, or all)'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - pip
+          - npm
+          - docker
+          - github-actions
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  consolidate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ecosystem: ${{ github.event.inputs.ecosystem == 'all' && fromJson('["pip", "npm", "docker", "github-actions"]') || fromJson(format('["{0}"]', github.event.inputs.ecosystem)) }}
+      fail-fast: false
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get Dependabot PRs for ${{ matrix.ecosystem }}
+        id: get-prs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const ecosystem = '${{ matrix.ecosystem }}';
+            
+            // Map ecosystem to dependabot label patterns
+            const labelPatterns = {
+              'pip': 'dependencies',
+              'npm': 'dependencies', 
+              'docker': 'dependencies',
+              'github-actions': 'dependencies'
+            };
+            
+            // Get open PRs from dependabot
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+            
+            // Filter for dependabot PRs matching this ecosystem
+            const dependabotPrs = prs.filter(pr => {
+              const isDependabot = pr.user.login === 'dependabot[bot]';
+              const titleLower = pr.title.toLowerCase();
+              
+              // Match based on PR title patterns
+              const ecosystemMatches = {
+                'pip': titleLower.includes('pip') || titleLower.includes('python') || (titleLower.includes('bump') && !titleLower.includes('npm') && !titleLower.includes('docker') && !titleLower.includes('actions')),
+                'npm': titleLower.includes('npm') || titleLower.includes('node'),
+                'docker': titleLower.includes('docker'),
+                'github-actions': titleLower.includes('actions/')
+              };
+              
+              // Also check commit message prefix for ecosystem
+              const branchName = pr.head.ref.toLowerCase();
+              const branchMatches = {
+                'pip': branchName.includes('pip'),
+                'npm': branchName.includes('npm'),
+                'docker': branchName.includes('docker'),
+                'github-actions': branchName.includes('github_actions') || branchName.includes('github-actions')
+              };
+              
+              return isDependabot && (ecosystemMatches[ecosystem] || branchMatches[ecosystem]);
+            });
+            
+            console.log(`Found ${dependabotPrs.length} ${ecosystem} Dependabot PRs`);
+            
+            if (dependabotPrs.length < 2) {
+              console.log('Not enough PRs to consolidate (need at least 2)');
+              return { prs: [], count: dependabotPrs.length };
+            }
+            
+            const prData = dependabotPrs.map(pr => ({
+              number: pr.number,
+              title: pr.title,
+              branch: pr.head.ref,
+              sha: pr.head.sha
+            }));
+            
+            console.log('PRs to consolidate:', JSON.stringify(prData, null, 2));
+            
+            return { prs: prData, count: prData.length };
+
+      - name: Check for existing consolidated PR
+        id: check-existing
+        if: fromJson(steps.get-prs.outputs.result).count >= 2
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const ecosystem = '${{ matrix.ecosystem }}';
+            const consolidatedBranch = `dependabot/consolidated/${ecosystem}`;
+            
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              head: `${context.repo.owner}:${consolidatedBranch}`
+            });
+            
+            if (prs.length > 0) {
+              console.log(`Found existing consolidated PR #${prs[0].number}`);
+              return { exists: true, number: prs[0].number, branch: consolidatedBranch };
+            }
+            
+            return { exists: false, branch: consolidatedBranch };
+
+      - name: Configure Git
+        if: fromJson(steps.get-prs.outputs.result).count >= 2
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create consolidated branch
+        id: consolidate
+        if: fromJson(steps.get-prs.outputs.result).count >= 2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_DATA: ${{ steps.get-prs.outputs.result }}
+          EXISTING_PR: ${{ steps.check-existing.outputs.result }}
+        run: |
+          ECOSYSTEM="${{ matrix.ecosystem }}"
+          CONSOLIDATED_BRANCH="dependabot/consolidated/${ECOSYSTEM}"
+          TARGET_BRANCH="develop"
+          
+          # Parse PR data
+          PR_BRANCHES=$(echo "$PR_DATA" | jq -r '.prs[].branch')
+          PR_COUNT=$(echo "$PR_DATA" | jq -r '.count')
+          
+          echo "Consolidating $PR_COUNT PRs for $ECOSYSTEM"
+          
+          # Fetch all branches
+          git fetch origin $TARGET_BRANCH
+          for branch in $PR_BRANCHES; do
+            git fetch origin "$branch" || echo "Warning: Could not fetch $branch"
+          done
+          
+          # Start from target branch
+          git checkout -B "$CONSOLIDATED_BRANCH" "origin/$TARGET_BRANCH"
+          
+          # Merge each dependabot branch
+          MERGED_COUNT=0
+          MERGED_TITLES=""
+          for branch in $PR_BRANCHES; do
+            echo "Merging $branch..."
+            if git merge --no-edit "origin/$branch" 2>/dev/null; then
+              MERGED_COUNT=$((MERGED_COUNT + 1))
+              TITLE=$(echo "$PR_DATA" | jq -r --arg b "$branch" '.prs[] | select(.branch == $b) | .title')
+              MERGED_TITLES="${MERGED_TITLES}- ${TITLE}\n"
+            else
+              echo "Conflict merging $branch, skipping..."
+              git merge --abort 2>/dev/null || true
+            fi
+          done
+          
+          if [ $MERGED_COUNT -lt 2 ]; then
+            echo "Not enough branches merged successfully (need at least 2)"
+            echo "merged=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # Push the consolidated branch
+          git push -f origin "$CONSOLIDATED_BRANCH"
+          
+          echo "merged=true" >> $GITHUB_OUTPUT
+          echo "branch=$CONSOLIDATED_BRANCH" >> $GITHUB_OUTPUT
+          echo "count=$MERGED_COUNT" >> $GITHUB_OUTPUT
+          echo -e "titles<<EOF\n${MERGED_TITLES}EOF" >> $GITHUB_OUTPUT
+
+      - name: Create or update consolidated PR
+        if: fromJson(steps.get-prs.outputs.result).count >= 2 && steps.consolidate.outputs.merged == 'true'
+        uses: actions/github-script@v7
+        env:
+          CONSOLIDATED_BRANCH: ${{ steps.consolidate.outputs.branch }}
+          MERGED_COUNT: ${{ steps.consolidate.outputs.count }}
+          MERGED_TITLES: ${{ steps.consolidate.outputs.titles }}
+          EXISTING_PR: ${{ steps.check-existing.outputs.result }}
+          PR_DATA: ${{ steps.get-prs.outputs.result }}
+        with:
+          script: |
+            const ecosystem = '${{ matrix.ecosystem }}';
+            const branch = process.env.CONSOLIDATED_BRANCH;
+            const count = process.env.MERGED_COUNT;
+            const titles = process.env.MERGED_TITLES;
+            const existingPr = JSON.parse(process.env.EXISTING_PR);
+            const prData = JSON.parse(process.env.PR_DATA);
+            
+            const title = `chore(deps): Consolidated ${ecosystem} dependency updates`;
+            const body = `## Consolidated Dependabot Updates
+            
+            This PR consolidates ${count} ${ecosystem} dependency updates into a single PR.
+            
+            ### Included Updates
+            ${titles}
+            
+            ### Original PRs
+            ${prData.prs.map(pr => `- #${pr.number}: ${pr.title}`).join('\n')}
+            
+            ---
+            *This PR was automatically created by the consolidate-dependabot workflow.*
+            `;
+            
+            if (existingPr.exists) {
+              // Update existing PR
+              await github.rest.pulls.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: existingPr.number,
+                title: title,
+                body: body
+              });
+              console.log(`Updated existing PR #${existingPr.number}`);
+            } else {
+              // Create new PR
+              const { data: newPr } = await github.rest.pulls.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                head: branch,
+                base: 'develop'
+              });
+              console.log(`Created new PR #${newPr.number}`);
+              
+              // Add labels
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: newPr.number,
+                labels: ['dependencies', 'consolidated']
+              });
+            }
+
+      - name: Close individual Dependabot PRs
+        if: fromJson(steps.get-prs.outputs.result).count >= 2 && steps.consolidate.outputs.merged == 'true'
+        uses: actions/github-script@v7
+        env:
+          PR_DATA: ${{ steps.get-prs.outputs.result }}
+        with:
+          script: |
+            const prData = JSON.parse(process.env.PR_DATA);
+            const ecosystem = '${{ matrix.ecosystem }}';
+            
+            for (const pr of prData.prs) {
+              try {
+                await github.rest.pulls.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: pr.number,
+                  state: 'closed'
+                });
+                
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body: `This PR has been consolidated into a single ${ecosystem} dependency update PR. See the consolidated PR for all updates.`
+                });
+                
+                console.log(`Closed PR #${pr.number}`);
+              } catch (error) {
+                console.log(`Failed to close PR #${pr.number}: ${error.message}`);
+              }
+            }

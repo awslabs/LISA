@@ -9,6 +9,10 @@ IS_LAYER=0
 TMP_DIR=$BUILD_DIR/tmp/
 PYPI_URL=
 PYTHON_VERSION=3.13
+PLATFORM="linux/amd64"
+
+# Container runtime: Use CDK_DOCKER env var (same as CDK), default to docker
+DOCKER_CMD="${CDK_DOCKER:-docker}"
 
 # Parse named parameters
 while [ $# -gt 0 ]; do
@@ -105,36 +109,21 @@ echo "Output file: $OUTPUT"
 echo "Build directory: $BUILD_DIR"
 echo "Temp directory: $TMP_DIR"
 echo "Python version: $PYTHON_VERSION"
+echo "Platform: $PLATFORM"
+echo "Container runtime: $DOCKER_CMD"
 
-# Use AL2023 container image for Lambda-compatible builds
+# Use AWS SAM build image for Lambda-compatible builds
 # This ensures native extensions are compiled for the correct platform
-# In Peru builds, use run-podman; locally fall back to docker
 PYTHON_IMAGE="public.ecr.aws/sam/build-python${PYTHON_VERSION}:latest"
 
-# Detect container runtime - prefer docker for reliability
-# run-podman requires PODMAN_HOME or /apollo/env/podman which may not exist on dev desktops
-if command -v docker &> /dev/null; then
-    CONTAINER_CMD="docker"
-elif command -v run-podman &> /dev/null && [[ -n "${PODMAN_HOME:-}" || -d "/apollo/env/podman" ]]; then
-    CONTAINER_CMD="run-podman"
-elif command -v podman &> /dev/null; then
-    CONTAINER_CMD="podman"
-else
-    echo "ERROR: No container runtime found. Cannot build Lambda layers with native extensions."
-    echo "For local builds, ensure Docker is installed."
-    echo "In Peru builds with run-podman, set PODMAN_HOME or ensure /apollo/env/podman exists."
-    exit 1
-fi
-
 install_requirements() {
-    echo "Installing requirements using container (AL2023)..."
+    echo "Installing requirements using container..."
     rm -rf "$TMP_DIR" 2>/dev/null || sudo rm -rf "$TMP_DIR" 2>/dev/null || true
     mkdir -p "$TMP_DIR"
 
     if [ -f "$SRC/requirements.txt" ]; then
         echo "Installing requirements from $SRC/requirements.txt"
         echo "Using container image: $PYTHON_IMAGE"
-        echo "Using container command: $CONTAINER_CMD"
 
         # Get absolute paths for container volume mounts
         ABS_SRC=$(cd "$SRC" && pwd)
@@ -144,8 +133,9 @@ install_requirements() {
         CURRENT_UID=$(id -u)
         CURRENT_GID=$(id -g)
 
-        # Run pip install inside AL2023 container, then fix ownership
-        $CONTAINER_CMD run --rm \
+        # Run pip install inside container with correct platform, then fix ownership
+        $DOCKER_CMD run --rm \
+            --platform "$PLATFORM" \
             -v "$ABS_SRC:/var/task/src:ro" \
             -v "$ABS_TMP:/var/task/output" \
             -e PYPI_URL="$PYPI_URL" \

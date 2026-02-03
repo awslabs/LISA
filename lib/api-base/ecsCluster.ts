@@ -618,7 +618,8 @@ export class ECSCluster extends Construct {
         const loadBalancerHealthCheckConfig = this.ecsConfig.loadBalancerConfig.healthCheckConfig;
 
         const targetGroup = this.listener.addTargets(createCdkId([this.identifier, taskName, 'TgtGrp']), {
-            targetGroupName: createCdkId([this.config.deploymentName, this.identifier, taskName], 32, 2).toLowerCase(),
+            // Note: targetGroupName intentionally omitted to allow CloudFormation to generate unique names.
+            // This enables seamless replacement when immutable properties (like TargetType) change.
             healthCheck: {
                 path: loadBalancerHealthCheckConfig.path,
                 interval: Duration.seconds(loadBalancerHealthCheckConfig.interval),

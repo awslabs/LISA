@@ -25,6 +25,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from lisa_serve.registry import registry
 from loguru import logger
 from middleware import process_request_middleware
+from middleware.input_validation import validate_input_middleware
 from services.model_registration import ModelRegistrationService
 from utils.cache_manager import set_registered_models_cache
 
@@ -99,6 +100,12 @@ app.add_middleware(
 ##############
 # MIDDLEWARE #
 ##############
+
+
+@app.middleware("http")
+async def validate_input(request, call_next):  # type: ignore
+    """Middleware for validating all HTTP request inputs."""
+    return await validate_input_middleware(request, call_next)
 
 
 @app.middleware("http")

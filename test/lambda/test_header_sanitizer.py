@@ -15,7 +15,6 @@
 """Unit tests for header_sanitizer module."""
 
 import pytest
-
 from utilities.header_sanitizer import (
     get_sanitized_headers_for_logging,
     sanitize_headers,
@@ -186,10 +185,10 @@ class TestGetSanitizedHeadersForLogging:
 
         # Whitelisted header preserved
         assert result["accept"] == "application/json"
-        
+
         # Server-controlled header replaced
         assert result["x-forwarded-for"] == "203.0.113.42"
-        
+
         # Non-whitelisted headers dropped
         assert "x-amzn-actiontrace" not in result
         assert "x-malicious-header" not in result

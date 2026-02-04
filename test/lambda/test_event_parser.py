@@ -41,14 +41,24 @@ class TestSanitizeEventForLogging:
 
     def test_normalizes_header_keys(self):
         """Test sanitize_event_for_logging normalizes header keys to lowercase."""
-        event = {"headers": {"Content-Type": "application/json", "X-Custom-Header": "value"}, "path": "/test"}
+        event = {
+            "headers": {"Content-Type": "application/json", "User-Agent": "test-agent"},
+            "path": "/test",
+            "requestContext": {
+                "identity": {"sourceIp": "203.0.113.42"},
+                "domainName": "api.example.com",
+                "stage": "prod",
+                "requestId": "test-request-123",
+            },
+        }
 
         sanitized = sanitize_event_for_logging(event)
         parsed = json.loads(sanitized)
 
         assert "content-type" in parsed["headers"]
-        assert "x-custom-header" in parsed["headers"]
+        assert "user-agent" in parsed["headers"]
         assert "Content-Type" not in parsed["headers"]
+        assert "User-Agent" not in parsed["headers"]
 
     def test_handles_multi_value_headers(self):
         """Test sanitize_event_for_logging handles multiValueHeaders."""

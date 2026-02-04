@@ -132,6 +132,7 @@ export default function Chat ({ sessionId }) {
     const [videoLoadComplete, setVideoLoadComplete] = useState(0);
     const [dynamicMaxRows, setDynamicMaxRows] = useState(8);
     const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+    const [updatingAutoApprovalForTool, setUpdatingAutoApprovalForTool] = useState<string | null>(null);
 
     // Callback to handle Mermaid diagram rendering completion
     const handleMermaidRenderComplete = useCallback(() => {
@@ -164,7 +165,7 @@ export default function Chat ({ sessionId }) {
 
     // Use the custom hook to manage multiple MCP connections
     const { tools: mcpTools, callTool, McpConnections, toolToServerMap } = useMultipleMcp(enabledServers, userPreferences?.preferences?.mcp);
-    const [updatePreferences] = useUpdateUserPreferencesMutation();
+    const [updatePreferences, {isSuccess: isUpdatingPreferencesSuccess, isError: isUpdatingPreferencesError, isLoading: isUpdatingPreferences}] = useUpdateUserPreferencesMutation();
 
     useEffect(() => {
         if (userPreferences) {
@@ -173,6 +174,22 @@ export default function Chat ({ sessionId }) {
             setPreferences({ ...DefaultUserPreferences, user: userName });
         }
     }, [userPreferences, userName]);
+
+    // Handle preferences update success
+    useEffect(() => {
+        if (isUpdatingPreferencesSuccess) {
+            notificationService.generateNotification('Successfully updated tool preferences', 'success');
+            setUpdatingAutoApprovalForTool(null);
+        }
+    }, [isUpdatingPreferencesSuccess, notificationService]);
+
+    // Handle preferences update error
+    useEffect(() => {
+        if (isUpdatingPreferencesError) {
+            notificationService.generateNotification('Error updating tool preferences', 'error');
+            setUpdatingAutoApprovalForTool(null);
+        }
+    }, [isUpdatingPreferencesError, notificationService]);
 
     useEffect(() => {
         const calculateMaxRows = () => {
@@ -333,13 +350,17 @@ export default function Chat ({ sessionId }) {
 
 
     const toggleToolAutoApproval = (toolName: string, enabled: boolean) => {
+        setUpdatingAutoApprovalForTool(toolName);
         const existingMcpPrefs = preferences.preferences.mcp ?? { enabledServers: [], overrideAllApprovals: false };
         const mcpPrefs: McpPreferences = {
             ...existingMcpPrefs,
             enabledServers: [...existingMcpPrefs.enabledServers]
         };
         const originalServer = mcpPrefs.enabledServers.find((server) => server.name === toolToServerMap.get(toolName));
-        if (!originalServer) return; // Early return if server not found
+        if (!originalServer) {
+            setUpdatingAutoApprovalForTool(null);
+            return; // Early return if server not found
+        }
         // Create a deep copy of the server object with its nested arrays
         const serverToUpdate = {
             ...originalServer,
@@ -758,14 +779,21 @@ export default function Chat ({ sessionId }) {
                                 <p><strong>Do you want to allow this tool execution?</strong></p>
                             </SpaceBetween>
                             <hr />
-                            <Checkbox
-                                onChange={({ detail }) =>
-                                    toggleToolAutoApproval(toolApprovalModal.tool.name, detail.checked)
-                                }
-                                checked={userPreferences?.preferences?.mcp?.enabledServers.find((server) => server.name === toolToServerMap.get(toolApprovalModal.tool.name))?.autoApprovedTools.includes(toolApprovalModal.tool.name)}
-                            >
-                                Auto-approve this tool in the future
-                            </Checkbox>
+                            {updatingAutoApprovalForTool === toolApprovalModal.tool.name ? (
+                                <Box>
+                                    <Spinner size="normal" /> Updating preferences...
+                                </Box>
+                            ) : (
+                                <Checkbox
+                                    onChange={({ detail }) =>
+                                        toggleToolAutoApproval(toolApprovalModal.tool.name, detail.checked)
+                                    }
+                                    checked={preferences?.preferences?.mcp?.enabledServers.find((server) => server.name === toolToServerMap.get(toolApprovalModal.tool.name))?.autoApprovedTools.includes(toolApprovalModal.tool.name)}
+                                    disabled={isUpdatingPreferences}
+                                >
+                                    Auto-approve this tool in the future
+                                </Checkbox>
+                            )}
                         </SpaceBetween>
                     }
                 />

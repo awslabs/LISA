@@ -20,6 +20,7 @@ import {
     Link,
     Pagination,
     SpaceBetween,
+    Spinner,
     Table,
     TextContent,
     Toggle
@@ -38,11 +39,11 @@ import { selectCurrentUserIsAdmin } from '@/shared/reducers/user.reducer';
 import {
     DefaultUserPreferences, McpPreferences,
     useGetUserPreferencesQuery,
-    UserPreferences, useUpdateUserPreferencesMutation
+    UserPreferences
 } from '@/shared/reducers/user-preferences.reducer';
-import { useNotificationService } from '@/shared/util/hooks';
 import { setBreadcrumbs } from '@/shared/reducers/breadcrumbs.reducer';
 import { formatDate } from '@/shared/util/formats';
+import { useMcpPreferencesUpdate } from './hooks/useMcpPreferencesUpdate';
 
 export function McpServerManagementComponent () {
     const navigate = useNavigate();
@@ -51,8 +52,11 @@ export function McpServerManagementComponent () {
     const {data: userPreferences} = useGetUserPreferencesQuery();
     const { data: {Items: allItems} = {Items: []}, isFetching } = useListMcpServersQuery(undefined, {});
     const [preferences, setPreferences] = useState<UserPreferences>(undefined);
-    const [updatePreferences, {isSuccess: isUpdatingSuccess, isError: isUpdatingError, error: updateError}] = useUpdateUserPreferencesMutation();
-    const notificationService = useNotificationService(dispatch);
+    
+    const { updatingItemId: updatingServerId, isUpdating, updateMcpPreferences } = useMcpPreferencesUpdate({
+        successMessage: 'Successfully updated server preferences',
+        errorMessage: 'Error updating server preferences'
+    });
 
     useEffect(() => {
         if (userPreferences) {
@@ -62,55 +66,47 @@ export function McpServerManagementComponent () {
         }
     }, [userPreferences]);
 
-    // create success notification
-    useEffect(() => {
-        if (isUpdatingSuccess) {
-            notificationService.generateNotification('Successfully updated server preferences', 'success');
-        }
-    }, [isUpdatingSuccess, notificationService]);
-
-    // create failure notification
-    useEffect(() => {
-        if (isUpdatingError) {
-            const errorMessage = 'data' in updateError ? (updateError.data?.message ?? updateError.data) : updateError.message;
-            notificationService.generateNotification(`Error updating server preferences: ${errorMessage}`, 'error');
-        }
-    }, [isUpdatingError, updateError, notificationService]);
-
     const toggleServer = (serverId: string, serverName: string, enabled: boolean) => {
-        const existingMcpPrefs = preferences.preferences.mcp ?? {enabledServers: [], overrideAllApprovals: false};
-        const mcpPrefs: McpPreferences = {
-            ...existingMcpPrefs,
-            enabledServers: [...existingMcpPrefs.enabledServers]
-        };
-        if (enabled){
-            mcpPrefs.enabledServers.push({id: serverId, name: serverName, enabled: true, disabledTools: [], autoApprovedTools: []});
-        } else {
-            mcpPrefs.enabledServers = mcpPrefs.enabledServers.filter((server) => server.id !== serverId);
-        }
-        updatePrefs(mcpPrefs);
+        updateMcpPreferences(
+            serverId,
+            preferences,
+            (existingMcpPrefs) => {
+                const enabledServers = [...existingMcpPrefs.enabledServers];
+                
+                if (enabled) {
+                    enabledServers.push({
+                        id: serverId,
+                        name: serverName,
+                        enabled: true,
+                        disabledTools: [],
+                        autoApprovedTools: []
+                    });
+                } else {
+                    return {
+                        ...existingMcpPrefs,
+                        enabledServers: enabledServers.filter((server) => server.id !== serverId)
+                    };
+                }
+                
+                return {
+                    ...existingMcpPrefs,
+                    enabledServers
+                };
+            },
+            setPreferences
+        );
     };
 
     const toggleAutopilotMode = () => {
-        const existingMcpPrefs = preferences.preferences.mcp ?? {enabledServers: [], overrideAllApprovals: false};
-        const mcpPrefs: McpPreferences = {
-            ...existingMcpPrefs,
-            overrideAllApprovals: !existingMcpPrefs.overrideAllApprovals
-        };
-        updatePrefs(mcpPrefs);
-    };
-
-    const updatePrefs = (mcpPrefs: McpPreferences) => {
-        const updated = {...preferences,
-            preferences: {...preferences.preferences,
-                mcp: {
-                    ...preferences.preferences.mcp,
-                    ...mcpPrefs
-                }
-            }
-        };
-        setPreferences(updated);
-        updatePreferences(updated);
+        updateMcpPreferences(
+            'autopilot',
+            preferences,
+            (existingMcpPrefs) => ({
+                ...existingMcpPrefs,
+                overrideAllApprovals: !existingMcpPrefs.overrideAllApprovals
+            }),
+            setPreferences
+        );
     };
 
     useEffect(() => {
@@ -173,7 +169,17 @@ export function McpServerManagementComponent () {
             pagination={<Pagination {...paginationProps} />}
             items={items}
             columnDefinitions={[
-                { header: 'Use server', cell: (item) => item.canUse ? <Toggle checked={preferences?.preferences?.mcp?.enabledServers.find((server) => server.id === item.id)?.enabled ?? false} onChange={({detail}) => toggleServer(item.id, item.name, detail.checked)}/> : <></>},
+                { header: 'Use server', cell: (item) => item.canUse ? (
+                    updatingServerId === item.id ? (
+                        <Spinner size="normal" />
+                    ) : (
+                        <Toggle 
+                            checked={preferences?.preferences?.mcp?.enabledServers.find((server) => server.id === item.id)?.enabled ?? false} 
+                            onChange={({detail}) => toggleServer(item.id, item.name, detail.checked)}
+                            disabled={isUpdating}
+                        />
+                    )
+                ) : <></>},
                 { header: 'Name', cell: (item) => <Link onClick={() => navigate(`./${item.id}`)}>{item.name}</Link>},
                 { header: 'Description', cell: (item) => item.description, id: 'description', sortingField: 'description'},
                 { header: 'URL', cell: (item) => item.url, id: 'url', sortingField: 'url'},

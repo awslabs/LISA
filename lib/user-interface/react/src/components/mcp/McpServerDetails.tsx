@@ -20,6 +20,7 @@ import {
     Header,
     Pagination,
     SpaceBetween,
+    Spinner,
     Table,
     TextContent, Toggle
 } from '@cloudscape-design/components';
@@ -34,12 +35,11 @@ import Box from '@cloudscape-design/components/box';
 import { setBreadcrumbs } from '@/shared/reducers/breadcrumbs.reducer';
 import { useAppDispatch, useAppSelector } from '@/config/store';
 import {
-    DefaultUserPreferences, McpPreferences,
-    useGetUserPreferencesQuery, UserPreferences,
-    useUpdateUserPreferencesMutation
+    DefaultUserPreferences,
+    useGetUserPreferencesQuery, UserPreferences
 } from '@/shared/reducers/user-preferences.reducer';
-import { useNotificationService } from '@/shared/util/hooks';
 import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
+import { useMcpPreferencesUpdate } from './hooks/useMcpPreferencesUpdate';
 
 export function McpServerDetails () {
     const { mcpServerId } = useParams();
@@ -47,68 +47,44 @@ export function McpServerDetails () {
     const [getMcpServerQuery, {isUninitialized, data, isFetching, isSuccess}] = useLazyGetMcpServerQuery();
     const {data: userPreferences} = useGetUserPreferencesQuery();
     const userName = useAppSelector(selectCurrentUsername);
-    const [updatePreferences, {isSuccess: isUpdatingSuccess, isError: isUpdatingError, error: updateError}] = useUpdateUserPreferencesMutation();
-    const notificationService = useNotificationService(dispatch);
+    
+    const { updatingItemId: updatingToolName, isUpdating, updateMcpPreferences } = useMcpPreferencesUpdate({
+        successMessage: 'Successfully updated tool preferences',
+        errorMessage: 'Error updating tool preferences'
+    });
 
     // Derive preferences from userPreferences or defaults
     const preferences = userPreferences || {...DefaultUserPreferences, user: userName};
     const [localPreferences, setLocalPreferences] = useState<UserPreferences>(preferences);
 
-    // create success notification
-    useEffect(() => {
-        if (isUpdatingSuccess) {
-            notificationService.generateNotification('Successfully updated tool preferences', 'success');
-        }
-    }, [isUpdatingSuccess, notificationService]);
-
-    // create failure notification
-    useEffect(() => {
-        if (isUpdatingError) {
-            const errorMessage = 'data' in updateError ? (updateError.data?.message ?? updateError.data) : updateError.message;
-            notificationService.generateNotification(`Error updating tool preferences: ${errorMessage}`, 'error');
-        }
-    }, [isUpdatingError, updateError, notificationService]);
-
     const toggleTool = (toolName: string, enabled: boolean) => {
-        const existingMcpPrefs = localPreferences.preferences.mcp ?? {enabledServers: [], overrideAllApprovals: false};
-        const mcpPrefs: McpPreferences = {
-            ...existingMcpPrefs,
-            enabledServers: [...existingMcpPrefs.enabledServers]
-        };
-
-        const originalServer = mcpPrefs.enabledServers.find((server) => server.id === mcpServerId);
-        if (!originalServer) return; // Early return if server not found
-
-        // Create a deep copy of the server object with its nested arrays
-        const serverToUpdate = {
-            ...originalServer,
-            disabledTools: [...originalServer.disabledTools],
-        };
-
-        if (enabled) {
-            serverToUpdate.disabledTools = serverToUpdate.disabledTools.filter((item) => item !== toolName);
-        } else {
-            serverToUpdate.disabledTools = [...serverToUpdate.disabledTools, toolName];
-        }
-
-        mcpPrefs.enabledServers = [
-            ...mcpPrefs.enabledServers.filter((server) => server.id !== mcpServerId),
-            serverToUpdate
-        ];
-        updatePrefs(mcpPrefs);
-    };
-
-    const updatePrefs = (mcpPrefs: McpPreferences) => {
-        const updated = {...localPreferences,
-            preferences: {...localPreferences.preferences,
-                mcp: {
-                    ...localPreferences.preferences.mcp,
-                    ...mcpPrefs
+        updateMcpPreferences(
+            toolName,
+            localPreferences,
+            (existingMcpPrefs) => {
+                const originalServer = existingMcpPrefs.enabledServers.find((server) => server.id === mcpServerId);
+                if (!originalServer) {
+                    return existingMcpPrefs; // Return unchanged if server not found
                 }
-            }
-        };
-        setLocalPreferences(updated);
-        updatePreferences(updated);
+
+                // Create a deep copy of the server with updated disabled tools
+                const serverToUpdate = {
+                    ...originalServer,
+                    disabledTools: enabled
+                        ? originalServer.disabledTools.filter((item) => item !== toolName)
+                        : [...originalServer.disabledTools, toolName]
+                };
+
+                return {
+                    ...existingMcpPrefs,
+                    enabledServers: [
+                        ...existingMcpPrefs.enabledServers.filter((server) => server.id !== mcpServerId),
+                        serverToUpdate
+                    ]
+                };
+            },
+            setLocalPreferences
+        );
     };
 
     if (isSuccess) {
@@ -180,7 +156,17 @@ export function McpServerDetails () {
             pagination={<Pagination {...paginationProps} />}
             items={items}
             columnDefinitions={[
-                { header: 'Use tool', cell: (item) => <Toggle checked={!localPreferences?.preferences?.mcp?.enabledServers.find((server) => server.id === mcpServerId)?.disabledTools.includes(item.name)} onChange={({detail}) => toggleTool(item.name, detail.checked)}/>},
+                { header: 'Use tool', cell: (item) => (
+                    updatingToolName === item.name ? (
+                        <Spinner size="normal" />
+                    ) : (
+                        <Toggle 
+                            checked={!localPreferences?.preferences?.mcp?.enabledServers.find((server) => server.id === mcpServerId)?.disabledTools.includes(item.name)} 
+                            onChange={({detail}) => toggleTool(item.name, detail.checked)}
+                            disabled={isUpdating}
+                        />
+                    )
+                )},
                 { header: 'Name', cell: (item) => item.name},
                 { header: 'Description', cell: (item) => item.description},
             ]}

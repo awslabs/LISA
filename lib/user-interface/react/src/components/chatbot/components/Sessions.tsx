@@ -226,7 +226,6 @@ export function Sessions({ newSession }) {
                                 root: {
                                     borderColor: {
                                         focus: filteredSessions.length >= 1 ? '' : '#ff7a7a',
-                                        default: filteredSessions.length >= 1 ? '' : '#ff7a7a',
                                     }
                                 }
                             }

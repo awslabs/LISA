@@ -13,6 +13,8 @@
 #   limitations under the License.
 
 """Middleware modules."""
+from .exception_handlers import register_exception_handlers
 from .request_middleware import process_request_middleware
+from .security_middleware import security_middleware
 
-__all__ = ["process_request_middleware"]
+__all__ = ["process_request_middleware", "register_exception_handlers", "security_middleware"]

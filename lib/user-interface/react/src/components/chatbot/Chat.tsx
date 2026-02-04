@@ -27,6 +27,7 @@ import {
     PromptInput,
     Icon,
     TokenGroup,
+    Flashbar,
 } from '@cloudscape-design/components';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 
@@ -231,6 +232,12 @@ export default function Chat ({ sessionId }) {
         chatConfiguration,
         setChatConfiguration
     );
+
+    // Check if the selected model has been deleted (exists in session but not in available models)
+    const isModelDeleted = useMemo(() => {
+        if (!selectedModel) return false;
+        return !allModels?.some((model) => model.modelId === selectedModel.modelId);
+    }, [selectedModel, allModels]);
 
     // Set default model if none is selected, default model is configured, and user hasn't interacted
     useEffect(() => {
@@ -800,6 +807,28 @@ export default function Chat ({ sessionId }) {
             )}
             <div ref={scrollContainerRef} className='overflow-y-auto h-[calc(100vh-20rem)] bottom-8'>
                 <SpaceBetween direction='vertical' size='l'>
+                    {/* Warning flashbar for deleted model */}
+                    {isModelDeleted && (
+                        <Box padding={{ horizontal: 'l' }}>
+                            <Flashbar
+                                items={[
+                                    {
+                                        type: 'warning',
+                                        dismissible: false,
+                                        content: (
+                                            <>
+                                                This session uses the model <strong>{selectedModel?.modelId}</strong> which is no longer available.
+                                                You can view the conversation history but cannot send new messages.
+                                                Please start a new session with a different model.
+                                            </>
+                                        ),
+                                        id: 'model-deleted-warning',
+                                    },
+                                ]}
+                            />
+                        </Box>
+                    )}
+
                     {loadingSession && (
                         <Box textAlign='center' padding='l'>
                             <SpaceBetween size='s' direction='vertical'>
@@ -926,10 +955,11 @@ export default function Chat ({ sessionId }) {
                                 }
                                 placeholder={
                                     !selectedModel ? 'You must select a model before sending a message' :
-                                        isImageGenerationMode ? 'Describe the image you want to generate...' :
-                                            'Send a message'
+                                        isModelDeleted ? 'The model used in this session is no longer available.' :
+                                            isImageGenerationMode ? 'Describe the image you want to generate...' :
+                                                'Send a message'
                                 }
-                                disabled={!selectedModel || loadingSession || !isConnected}
+                                disabled={!selectedModel || loadingSession || !isConnected || isModelDeleted}
                                 onChange={({ detail }) => setUserPrompt(detail.value)}
                                 onAction={handleAction}
                                 onKeyDown={handleKeyPress}
@@ -939,7 +969,7 @@ export default function Chat ({ sessionId }) {
                                         <ButtonGroup
                                             ariaLabel='Chat actions'
                                             onItemClick={handleButtonClick}
-                                            items={getButtonItems(config, useRag, isImageGenerationMode, isVideoGenerationMode, isConnected)}
+                                            items={getButtonItems(config, useRag, isImageGenerationMode, isVideoGenerationMode, isConnected, isModelDeleted)}
                                             variant='icon'
                                             dropdownExpandToViewport={true}
                                         />

@@ -24,7 +24,8 @@ export const getButtonItems = (
     useRag: boolean,
     isImageGenerationMode: boolean,
     isVideoGenerationMode: boolean,
-    isConnected: boolean
+    isConnected: boolean,
+    isModelDeleted: boolean = false
 ): ButtonGroupProps.Item[] => {
     const baseItems: ButtonGroupProps.Item[] = [
         {
@@ -32,7 +33,7 @@ export const getButtonItems = (
             id: 'settings',
             iconName: 'settings',
             text: 'Session configuration',
-            disabled: !isConnected
+            disabled: !isConnected || isModelDeleted
         }
     ];
 
@@ -47,7 +48,7 @@ export const getButtonItems = (
             id: 'upload-to-rag',
             iconName: 'upload',
             text: 'Upload to RAG',
-            disabled: !useRag || !isConnected
+            disabled: !useRag || !isConnected || isModelDeleted
         });
     }
 
@@ -59,7 +60,7 @@ export const getButtonItems = (
             id: 'add-file-to-context',
             iconName: 'insert-row',
             text: 'Add file to context',
-            disabled: !isConnected
+            disabled: !isConnected || isModelDeleted
         });
     }
 
@@ -70,7 +71,7 @@ export const getButtonItems = (
             id: 'insert-prompt-template',
             iconName: 'contact',
             text: 'Insert Prompt Template',
-            disabled: !isConnected
+            disabled: !isConnected || isModelDeleted
         });
     }
 
@@ -81,7 +82,7 @@ export const getButtonItems = (
             id: 'summarize-document',
             iconName: 'transcript',
             text: 'Summarize Document',
-            disabled: !isConnected
+            disabled: !isConnected || isModelDeleted
         });
     }
 
@@ -91,7 +92,7 @@ export const getButtonItems = (
             type: 'menu-dropdown',
             id: 'more-actions',
             text: 'Additional Configuration',
-            disabled: !isConnected,
+            disabled: !isConnected || isModelDeleted,
             items: [
                 {
                     id: 'edit-prompt-template',
@@ -108,7 +109,7 @@ export const getButtonItems = (
             id: 'attach-reference-photo',
             iconName: 'video-on',
             text: 'Add Reference Photo',
-            disabled: !isConnected
+            disabled: !isConnected || isModelDeleted
         });
     }
 

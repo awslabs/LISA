@@ -23,9 +23,10 @@
     "@aws-cdk/core:target-partitions": [
       "aws",
       "aws-cn",
-      "aws-gov",
+      "aws-us-gov",
       "aws-iso",
       "aws-iso-b",
+      "aws-iso-e",
       "aws-iso-f"
     ],
     "@aws-cdk-containers/ecs-service-extensions:enableDefaultLogDriver": true,

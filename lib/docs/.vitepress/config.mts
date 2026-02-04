@@ -66,6 +66,7 @@ const navLinks = [
         text: 'Configuration Schema',
         link: '/config/configuration',
         items: [
+          { text: 'Config Generator CLI', link: '/config/config-generator' },
           { text: 'VPC & Subnet Overrides', link: '/config/vpc-overrides' },
           { text: 'Security Group Overrides', link: '/config/security-group-overrides' },
           { text: 'Role Overrides', link: '/config/role-overrides' },

@@ -48,6 +48,7 @@ coverage
 # Deployment configuration file
 config.yaml
 config-custom.yaml
+config-generated.yaml
 /.coverage
 
 # Test Artifacts

@@ -161,7 +161,7 @@ const VALID_REGIONS = new Set([
     'sa-east-1', 'ca-central-1',
     'me-south-1', 'af-south-1',
     'us-gov-west-1', 'us-gov-east-1',
-    'us-iso-east-1', 'us-isob-east-1', 'us-isof-sout-1'
+    'us-iso-east-1', 'us-iso-west-1', 'us-isob-east-1', 'us-isob-west-1', 'us-isof-south-1', 'us-isof-east-1'
 ]);
 
 const VALID_INFERENCE_CONTAINERS: InferenceContainer[] = ['vllm', 'tei', 'tgi'];

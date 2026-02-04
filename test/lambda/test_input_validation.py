@@ -131,6 +131,34 @@ class TestValidateInputDecorator:
         assert body["error"] == "Bad Request"
         assert "path" in body["message"]
 
+    def test_null_byte_in_path_param_key(self, valid_event, mock_context):
+        """Test that null byte in path parameter key returns 400."""
+        valid_event["pathParameters"] = {"param\x00": "value"}
+
+        @validate_input()
+        def handler(event, context):
+            return {"success": True}
+
+        result = handler(valid_event, mock_context)
+        assert result["statusCode"] == 400
+        body = json.loads(result["body"])
+        assert body["error"] == "Bad Request"
+        assert "path parameters" in body["message"]
+
+    def test_null_byte_in_path_param_value(self, valid_event, mock_context):
+        """Test that null byte in path parameter value returns 400."""
+        valid_event["pathParameters"] = {"promptTemplateId": "value\x00with_null"}
+
+        @validate_input()
+        def handler(event, context):
+            return {"success": True}
+
+        result = handler(valid_event, mock_context)
+        assert result["statusCode"] == 400
+        body = json.loads(result["body"])
+        assert body["error"] == "Bad Request"
+        assert "path parameters" in body["message"]
+
     def test_null_byte_in_query_param_key(self, valid_event, mock_context):
         """Test that null byte in query parameter key returns 400."""
         valid_event["queryStringParameters"] = {"param\x00": "value"}
@@ -173,6 +201,17 @@ class TestValidateInputDecorator:
         body = json.loads(result["body"])
         assert body["error"] == "Bad Request"
         assert "request body" in body["message"]
+
+    def test_empty_path_parameters(self, valid_event, mock_context):
+        """Test that None path parameters are handled correctly."""
+        valid_event["pathParameters"] = None
+
+        @validate_input()
+        def handler(event, context):
+            return {"success": True}
+
+        result = handler(valid_event, mock_context)
+        assert result["success"] is True
 
     def test_empty_query_parameters(self, valid_event, mock_context):
         """Test that None query parameters are handled correctly."""

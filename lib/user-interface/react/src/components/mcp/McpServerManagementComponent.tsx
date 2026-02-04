@@ -37,7 +37,7 @@ import {
 import { useAppDispatch, useAppSelector } from '@/config/store';
 import { selectCurrentUserIsAdmin } from '@/shared/reducers/user.reducer';
 import {
-    DefaultUserPreferences, McpPreferences,
+    DefaultUserPreferences,
     useGetUserPreferencesQuery,
     UserPreferences
 } from '@/shared/reducers/user-preferences.reducer';
@@ -52,7 +52,7 @@ export function McpServerManagementComponent () {
     const {data: userPreferences} = useGetUserPreferencesQuery();
     const { data: {Items: allItems} = {Items: []}, isFetching } = useListMcpServersQuery(undefined, {});
     const [preferences, setPreferences] = useState<UserPreferences>(undefined);
-    
+
     const { updatingItemId: updatingServerId, isUpdating, updateMcpPreferences } = useMcpPreferencesUpdate({
         successMessage: 'Successfully updated server preferences',
         errorMessage: 'Error updating server preferences'
@@ -72,7 +72,7 @@ export function McpServerManagementComponent () {
             preferences,
             (existingMcpPrefs) => {
                 const enabledServers = [...existingMcpPrefs.enabledServers];
-                
+
                 if (enabled) {
                     enabledServers.push({
                         id: serverId,
@@ -87,7 +87,7 @@ export function McpServerManagementComponent () {
                         enabledServers: enabledServers.filter((server) => server.id !== serverId)
                     };
                 }
-                
+
                 return {
                     ...existingMcpPrefs,
                     enabledServers
@@ -171,10 +171,10 @@ export function McpServerManagementComponent () {
             columnDefinitions={[
                 { header: 'Use server', cell: (item) => item.canUse ? (
                     updatingServerId === item.id ? (
-                        <Spinner size="normal" />
+                        <Spinner size='normal' />
                     ) : (
-                        <Toggle 
-                            checked={preferences?.preferences?.mcp?.enabledServers.find((server) => server.id === item.id)?.enabled ?? false} 
+                        <Toggle
+                            checked={preferences?.preferences?.mcp?.enabledServers.find((server) => server.id === item.id)?.enabled ?? false}
                             onChange={({detail}) => toggleServer(item.id, item.name, detail.checked)}
                             disabled={isUpdating}
                         />

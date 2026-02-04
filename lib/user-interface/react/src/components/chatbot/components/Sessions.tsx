@@ -18,7 +18,7 @@ import SpaceBetween from '@cloudscape-design/components/space-between';
 import Link from '@cloudscape-design/components/link';
 import Header from '@cloudscape-design/components/header';
 import ExpandableSection from '@cloudscape-design/components/expandable-section';
-import { ButtonDropdown, Input, Popover, Modal, FormField, Grid } from '@cloudscape-design/components';
+import { ButtonDropdown, Input, Modal, FormField, Grid } from '@cloudscape-design/components';
 import Button from '@cloudscape-design/components/button';
 
 import { useLazyGetConfigurationQuery } from '@/shared/reducers/configuration.reducer';
@@ -36,7 +36,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '../../../auth/useAuth';
 import { IConfiguration } from '@/shared/model/configuration.model';
 import { useNavigate } from 'react-router-dom';
-import { getSessionDisplay, messageContainsImage, messageContainsVideo } from '@/components/utils';
+import { getDisplayableMessage, getSessionDisplay, messageContainsImage, messageContainsVideo } from '@/components/utils';
 import { LisaChatSession } from '@/components/types';
 import Box from '@cloudscape-design/components/box';
 import JSZip from 'jszip';
@@ -46,7 +46,7 @@ import styles from './Sessions.module.css';
 
 
 
-export function Sessions({ newSession }) {
+export function Sessions ({ newSession }) {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
     const auth = useAuth();
@@ -215,27 +215,27 @@ export function Sessions({ newSession }) {
                 <Header>
                     History
                 </Header>
-                    <Input
-                        value={searchQuery}
-                        onChange={({ detail }) => setSearchQuery(detail.value)}
-                        placeholder='Search sessions by name'
-                        clearAriaLabel='Clear search'
-                        type='search'
-                        style={
-                            {
-                                root: {
-                                    borderColor: {
-                                        focus: filteredSessions.length >= 1 ? '' : '#ff7a7a',
-                                    }
+                <Input
+                    value={searchQuery}
+                    onChange={({ detail }) => setSearchQuery(detail.value)}
+                    placeholder='Search sessions by name'
+                    clearAriaLabel='Clear search'
+                    type='search'
+                    style={
+                        {
+                            root: {
+                                borderColor: {
+                                    focus: filteredSessions.length >= 1 ? '' : '#ff7a7a',
                                 }
                             }
                         }
-                    />
-                    {searchQuery && (
-                        <Box variant='small' color={filteredSessions.length >= 1 ? 'text-status-info' :'text-status-error'}>
-                            Found {filteredSessions.length} session{filteredSessions.length !== 1 ? 's' : ''}
-                        </Box>
-                    )}
+                    }
+                />
+                {searchQuery && (
+                    <Box variant='small' color={filteredSessions.length >= 1 ? 'text-status-info' : 'text-status-error'}>
+                        Found {filteredSessions.length} session{filteredSessions.length !== 1 ? 's' : ''}
+                    </Box>
+                )}
                 <SpaceBetween direction='horizontal' size='xs'>
                     <Button
                         iconName='add-plus'
@@ -312,8 +312,8 @@ export function Sessions({ newSession }) {
                                         >
                                             <SpaceBetween size='xxs'>
                                                 {sessions.map((item) => (
-                                                    <Box 
-                                                        key={item.sessionId} 
+                                                    <Box
+                                                        key={item.sessionId}
                                                         padding='xxs'
                                                         className={item.sessionId === currentSessionId ? styles.sessionItemActive : styles.sessionItem}
                                                     >
@@ -348,7 +348,7 @@ export function Sessions({ newSession }) {
                                                                                         setSessionBeingDeleted(item.sessionId);
                                                                                         deleteById(item.sessionId);
                                                                                     },
-                                                                                    description: `This will delete the Session: ${item.sessionId}.`
+                                                                                    description: `This will delete the Session: ${item.name || getDisplayableMessage(item.firstHumanMessage)}.`
                                                                                 })
                                                                             );
                                                                         } else if (e.detail.id === 'download-session') {

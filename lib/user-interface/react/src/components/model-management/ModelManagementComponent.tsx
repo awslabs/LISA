@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-import { ReactElement, useEffect, useState } from 'react';
+import { ReactElement, useEffect, useMemo, useState } from 'react';
 import { Box, Cards, CollectionPreferences, Header, Pagination, TextFilter } from '@cloudscape-design/components';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import { useGetAllModelsQuery } from '../../shared/reducers/model-management.reducer';
@@ -37,16 +37,13 @@ export function ModelManagementComponent (): ReactElement {
         refetchOnFocus: false, // Prevent unnecessary refetches
         pollingInterval: shouldPoll ? 30000 : undefined // 30 seconds in milliseconds
     });
-    const [matchedModels, setMatchedModels] = useState<IModel[]>([]);
     const [searchText, setSearchText] = useState<string>('');
-    const [numberOfPages, setNumberOfPages] = useState<number>(1);
     const [currentPageIndex, setCurrentPageIndex] = useState<number>(1);
 
     const [selectedItems, setSelectedItems] = useState([]);
     const [preferences, setPreferences] = useLocalStorage('ModelManagerPreferences', DEFAULT_PREFERENCES);
     const [newModelModalVisible, setNewModelModelVisible] = useState(false);
     const [isEdit, setEdit] = useState(false);
-    const [count, setCount] = useState('');
 
     const {
         data: config,
@@ -69,24 +66,30 @@ export function ModelManagementComponent (): ReactElement {
         }
     }, [allModels, setShouldPoll]);
 
-    useEffect(() => {
-        let newPageCount = 0;
-        if (searchText) {
-            const filteredModels = allModels.filter((model) => JSON.stringify(model).toLowerCase().includes(searchText.toLowerCase()));
-            setMatchedModels(filteredModels.slice(preferences.pageSize * (currentPageIndex - 1), preferences.pageSize * currentPageIndex));
-            newPageCount = Math.ceil(filteredModels.length / preferences.pageSize);
-            setCount(filteredModels.length.toString());
-        } else {
-            setMatchedModels(allModels ? allModels.slice(preferences.pageSize * (currentPageIndex - 1), preferences.pageSize * currentPageIndex) : []);
-            newPageCount = Math.ceil(allModels ? (allModels.length / preferences.pageSize) : 1);
-            setCount(allModels ? allModels.length.toString() : '0');
-        }
+    // Compute filtered models based on search text
+    const filteredModels = useMemo(() => {
+        if (!allModels) return [];
+        if (!searchText) return allModels;
+        return allModels.filter((model) => JSON.stringify(model).toLowerCase().includes(searchText.toLowerCase()));
+    }, [allModels, searchText]);
 
-        if (newPageCount < numberOfPages) {
+    // Compute total count and number of pages
+    const count = useMemo(() => filteredModels.length.toString(), [filteredModels]);
+    const numberOfPages = useMemo(() => Math.ceil(filteredModels.length / preferences.pageSize) || 1, [filteredModels, preferences.pageSize]);
+
+    // Compute current page models
+    const matchedModels = useMemo(() => {
+        const startIndex = preferences.pageSize * (currentPageIndex - 1);
+        const endIndex = preferences.pageSize * currentPageIndex;
+        return filteredModels.slice(startIndex, endIndex);
+    }, [filteredModels, preferences.pageSize, currentPageIndex]);
+
+    // Reset to first page when filters change and current page becomes invalid
+    useEffect(() => {
+        if (currentPageIndex > numberOfPages && numberOfPages > 0) {
             setCurrentPageIndex(1);
         }
-        setNumberOfPages(newPageCount);
-    }, [allModels, searchText, preferences, currentPageIndex, numberOfPages]);
+    }, [currentPageIndex, numberOfPages]);
 
     return (
         <>

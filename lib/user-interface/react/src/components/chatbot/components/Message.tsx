@@ -35,7 +35,7 @@ import 'katex/dist/katex.min.css';
 import styles from './Message.module.css';
 
 import { MessageContent } from '@langchain/core/messages';
-import { base64ToBlob, fetchImage, getDisplayableMessage, messageContainsImage, messageContainsVideo } from '@/components/utils';
+import { base64ToBlob, fetchImage, getDisplayableMessage } from '@/components/utils';
 import React, { useEffect, useState, useMemo } from 'react';
 import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { downloadFile } from '@/shared/util/downloader';
@@ -97,7 +97,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
 
     // Memoize the ReactMarkdown components to prevent re-creation on every render
     const markdownComponents = useMemo(() => ({
-        code({ className, children, ...props }: any) {
+        code ({ className, children, ...props }: any) {
             const match = /language-(\w+)/.exec(className || '');
             const codeString = String(children).replace(/\n$/, '');
 

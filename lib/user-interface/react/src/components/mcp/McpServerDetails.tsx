@@ -25,7 +25,7 @@ import {
     TextContent, Toggle
 } from '@cloudscape-design/components';
 import 'react';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useCollection } from '@cloudscape-design/collection-hooks';
 import { useLazyGetMcpServerQuery } from '@/shared/reducers/mcp-server.reducer';
@@ -47,7 +47,7 @@ export function McpServerDetails () {
     const [getMcpServerQuery, {isUninitialized, data, isFetching, isSuccess}] = useLazyGetMcpServerQuery();
     const {data: userPreferences} = useGetUserPreferencesQuery();
     const userName = useAppSelector(selectCurrentUsername);
-    
+
     const { updatingItemId: updatingToolName, isUpdating, updateMcpPreferences } = useMcpPreferencesUpdate({
         successMessage: 'Successfully updated tool preferences',
         errorMessage: 'Error updating tool preferences'
@@ -158,10 +158,10 @@ export function McpServerDetails () {
             columnDefinitions={[
                 { header: 'Use tool', cell: (item) => (
                     updatingToolName === item.name ? (
-                        <Spinner size="normal" />
+                        <Spinner size='normal' />
                     ) : (
-                        <Toggle 
-                            checked={!localPreferences?.preferences?.mcp?.enabledServers.find((server) => server.id === mcpServerId)?.disabledTools.includes(item.name)} 
+                        <Toggle
+                            checked={!localPreferences?.preferences?.mcp?.enabledServers.find((server) => server.id === mcpServerId)?.disabledTools.includes(item.name)}
                             onChange={({detail}) => toggleTool(item.name, detail.checked)}
                             disabled={isUpdating}
                         />

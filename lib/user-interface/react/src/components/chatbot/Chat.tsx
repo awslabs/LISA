@@ -781,7 +781,7 @@ export default function Chat ({ sessionId }) {
                             <hr />
                             {updatingAutoApprovalForTool === toolApprovalModal.tool.name ? (
                                 <Box>
-                                    <Spinner size="normal" /> Updating preferences...
+                                    <Spinner size='normal' /> Updating preferences...
                                 </Box>
                             ) : (
                                 <Checkbox

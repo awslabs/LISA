@@ -49,7 +49,7 @@ function ConfirmationModal ({
 
     const headerText = title || [
         action,
-        resourceName ? `"${resourceName}"` : ''
+        resourceName ? `${resourceName}` : ''
     ].join(' ');
 
     return (

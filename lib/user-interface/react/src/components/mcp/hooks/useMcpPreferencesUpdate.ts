@@ -23,16 +23,16 @@ import {
 import { useNotificationService } from '@/shared/util/hooks';
 import { useAppDispatch } from '@/config/store';
 
-interface UseMcpPreferencesUpdateOptions {
+type UseMcpPreferencesUpdateOptions = {
     successMessage?: string;
     errorMessage?: string;
-}
+};
 
 /**
  * Custom hook to handle MCP preferences updates with loading states and notifications.
  * Provides optimistic UI updates and handles success/error notifications.
  */
-export function useMcpPreferencesUpdate(options: UseMcpPreferencesUpdateOptions = {}) {
+export function useMcpPreferencesUpdate (options: UseMcpPreferencesUpdateOptions = {}) {
     const {
         successMessage = 'Successfully updated preferences',
         errorMessage = 'Error updating preferences'
@@ -59,8 +59,8 @@ export function useMcpPreferencesUpdate(options: UseMcpPreferencesUpdateOptions 
     // Handle error notification
     useEffect(() => {
         if (isUpdatingError) {
-            const errorDetail = 'data' in updateError 
-                ? (updateError.data?.message ?? updateError.data) 
+            const errorDetail = 'data' in updateError
+                ? (updateError.data?.message ?? updateError.data)
                 : updateError.message;
             notificationService.generateNotification(
                 `${errorMessage}: ${errorDetail}`,
@@ -72,7 +72,7 @@ export function useMcpPreferencesUpdate(options: UseMcpPreferencesUpdateOptions 
 
     /**
      * Updates MCP preferences with optimistic UI state management.
-     * 
+     *
      * @param itemId - The ID of the item being updated (for spinner tracking)
      * @param preferences - Current user preferences
      * @param mcpPrefsBuilder - Function that builds the new MCP preferences

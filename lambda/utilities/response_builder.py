@@ -202,4 +202,4 @@ def generate_exception_response(e: Exception) -> dict[str, str | int | dict[str,
             )
         logger.exception(e)
 
-    return generate_html_response(status_code, error_message)  # type: ignore [arg-type]
+    return generate_html_response(status_code, error_message)

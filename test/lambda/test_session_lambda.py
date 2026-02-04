@@ -48,7 +48,8 @@ retry_config = Config(retries=dict(max_attempts=3), defaults_mode="standard")
 
 
 def mock_api_wrapper(_func=None, **kwargs):
-    """Mock api_wrapper that accepts any kwargs."""
+    """Mock api_wrapper that accepts any kwargs and uses real response builder."""
+    from utilities.response_builder import generate_exception_response, generate_html_response
 
     def decorator(func):
         @functools.wraps(func)
@@ -57,24 +58,12 @@ def mock_api_wrapper(_func=None, **kwargs):
                 result = func(*args, **kw)
                 if isinstance(result, dict) and "statusCode" in result:
                     return result
-                return {
-                    "statusCode": 200,
-                    "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
-                    "body": json.dumps(result, default=str),
-                }
+                return generate_html_response(200, result)
             except ValueError as e:
-                return {
-                    "statusCode": 400,
-                    "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
-                    "body": json.dumps({"error": str(e)}),
-                }
+                return generate_exception_response(e)
             except Exception as e:
                 logging.error(f"Error in {func.__name__}: {str(e)}")
-                return {
-                    "statusCode": 500,
-                    "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
-                    "body": json.dumps({"error": str(e)}),
-                }
+                return generate_exception_response(e)
 
         return wrapper
 

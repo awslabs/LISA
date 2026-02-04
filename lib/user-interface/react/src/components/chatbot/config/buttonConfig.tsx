@@ -96,7 +96,7 @@ export const getButtonItems = (
         });
     }
 
-    if (isVideoGenerationMode) {
+    if (isVideoGenerationMode || isImageGenerationMode) {
         conditionalItems.push({
             type: 'icon-button',
             id: 'attach-reference-photo',

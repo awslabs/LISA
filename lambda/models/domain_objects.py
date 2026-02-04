@@ -857,6 +857,18 @@ class PaginatedResponse(BaseModel):
     hasPreviousPage: bool = False
 
 
+class DeleteResponse(BaseModel):
+    """Generic response model for delete operations."""
+
+    deleted: bool = False
+
+
+class SuccessResponse(BaseModel):
+    """Generic response model for successful operations."""
+
+    message: str
+
+
 class ListJobsResponse(PaginatedResponse):
     """Response structure for listing ingestion jobs with pagination."""
 

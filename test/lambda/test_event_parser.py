@@ -41,14 +41,24 @@ class TestSanitizeEventForLogging:
 
     def test_normalizes_header_keys(self):
         """Test sanitize_event_for_logging normalizes header keys to lowercase."""
-        event = {"headers": {"Content-Type": "application/json", "X-Custom-Header": "value"}, "path": "/test"}
+        event = {
+            "headers": {"Content-Type": "application/json", "User-Agent": "test-agent"},
+            "path": "/test",
+            "requestContext": {
+                "identity": {"sourceIp": "203.0.113.42"},
+                "domainName": "api.example.com",
+                "stage": "prod",
+                "requestId": "test-request-123",
+            },
+        }
 
         sanitized = sanitize_event_for_logging(event)
         parsed = json.loads(sanitized)
 
         assert "content-type" in parsed["headers"]
-        assert "x-custom-header" in parsed["headers"]
+        assert "user-agent" in parsed["headers"]
         assert "Content-Type" not in parsed["headers"]
+        assert "User-Agent" not in parsed["headers"]
 
     def test_handles_multi_value_headers(self):
         """Test sanitize_event_for_logging handles multiValueHeaders."""
@@ -88,6 +98,94 @@ class TestSanitizeEventForLogging:
         sanitize_event_for_logging(event)
 
         assert event["headers"]["Authorization"] == original_auth
+
+    def test_removes_actiontrace_headers(self):
+        """Test sanitize_event_for_logging removes x-amzn-actiontrace headers."""
+        event = {
+            "headers": {
+                "accept": "application/json",
+                "x-amzn-actiontrace": "vof-test-injected-header-1770159407",
+                "x-amzn-actiontrace-caller": "malicious-caller",
+                "x-amzn-actiontrace-target-operation": "malicious-operation",
+                "user-agent": "curl/8.7.1",
+            },
+            "requestContext": {
+                "identity": {"sourceIp": "203.0.113.42"},
+                "domainName": "api.example.com",
+                "stage": "prod",
+                "requestId": "test-request-123",
+            },
+            "path": "/test",
+        }
+
+        sanitized = sanitize_event_for_logging(event)
+        parsed = json.loads(sanitized)
+
+        # Actiontrace headers should be removed
+        assert "x-amzn-actiontrace" not in parsed["headers"]
+        assert "x-amzn-actiontrace-caller" not in parsed["headers"]
+        assert "x-amzn-actiontrace-target-operation" not in parsed["headers"]
+
+        # Other headers should remain
+        assert parsed["headers"]["accept"] == "application/json"
+        assert parsed["headers"]["user-agent"] == "curl/8.7.1"
+
+    def test_removes_actiontrace_from_multi_value_headers(self):
+        """Test sanitize_event_for_logging removes actiontrace from multiValueHeaders."""
+        event = {
+            "headers": {"accept": "application/json"},
+            "multiValueHeaders": {
+                "accept": ["application/json"],
+                "x-amzn-actiontrace": ["vof-test-injected-header"],
+                "x-amzn-actiontrace-caller": ["malicious-caller"],
+                "user-agent": ["curl/8.7.1"],
+            },
+            "requestContext": {
+                "identity": {"sourceIp": "203.0.113.42"},
+                "domainName": "api.example.com",
+                "stage": "prod",
+                "requestId": "test-request-123",
+            },
+            "path": "/test",
+        }
+
+        sanitized = sanitize_event_for_logging(event)
+        parsed = json.loads(sanitized)
+
+        # Actiontrace headers should be removed from multiValueHeaders
+        assert "x-amzn-actiontrace" not in parsed["multiValueHeaders"]
+        assert "x-amzn-actiontrace-caller" not in parsed["multiValueHeaders"]
+
+        # Other headers should remain
+        assert "accept" in parsed["multiValueHeaders"]
+        assert "user-agent" in parsed["multiValueHeaders"]
+
+    def test_replaces_security_critical_headers(self):
+        """Test sanitize_event_for_logging replaces security-critical headers."""
+        event = {
+            "headers": {
+                "x-forwarded-for": "1.2.3.4, 5.6.7.8",
+                "x-forwarded-host": "malicious.example.com",
+                "accept": "application/json",
+            },
+            "requestContext": {
+                "identity": {"sourceIp": "203.0.113.42"},
+                "domainName": "api.example.com",
+                "stage": "prod",
+                "requestId": "test-request-123",
+            },
+            "path": "/test",
+        }
+
+        sanitized = sanitize_event_for_logging(event)
+        parsed = json.loads(sanitized)
+
+        # Security-critical headers should be replaced with server values
+        assert parsed["headers"]["x-forwarded-for"] == "203.0.113.42"
+        assert parsed["headers"]["x-forwarded-host"] == "api.example.com"
+
+        # Other headers should remain unchanged
+        assert parsed["headers"]["accept"] == "application/json"
 
 
 class TestGetSessionId:

@@ -47,7 +47,7 @@ export const ConfigSchema = RawConfigSchema.transform((rawConfig) => {
     } else if (rawConfig.region.includes('iso')) {
         awsRegionArn = 'aws-iso';
     } else if (rawConfig.region.includes('gov')) {
-        awsRegionArn = 'aws-gov';
+        awsRegionArn = 'aws-us-gov';
     } else {
         awsRegionArn = 'aws';
     }

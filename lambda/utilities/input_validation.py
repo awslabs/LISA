@@ -73,8 +73,9 @@ def validate_input(max_request_size: int = DEFAULT_MAX_REQUEST_SIZE) -> Callable
             1. HTTP method validation (returns 405 if invalid)
             2. Request size check (returns 413 if too large)
             3. Path validation (returns 400 if null bytes found)
-            4. Query parameter validation (returns 400 if null bytes found)
-            5. Request body validation (returns 400 if null bytes found)
+            4. Path parameter validation (returns 400 if null bytes found)
+            5. Query parameter validation (returns 400 if null bytes found)
+            6. Request body validation (returns 400 if null bytes found)
 
             Args:
                 event: Lambda event from API Gateway
@@ -142,7 +143,27 @@ def validate_input(max_request_size: int = DEFAULT_MAX_REQUEST_SIZE) -> Callable
                     },
                 )
 
-            # 4. Validate query parameters for null bytes
+            # 4. Validate path parameters for null bytes
+            path_params = event.get("pathParameters") or {}
+            for key, value in path_params.items():
+                if contains_null_bytes(key) or contains_null_bytes(str(value)):
+                    logger.warning(
+                        f"Null byte detected in path parameter: {key}",
+                        extra={
+                            "parameter_name": key,
+                            "path": path,
+                            "method": http_method,
+                        },
+                    )
+                    return generate_html_response(
+                        400,
+                        {
+                            "error": "Bad Request",
+                            "message": "Invalid characters detected in path parameters",
+                        },
+                    )
+
+            # 5. Validate query parameters for null bytes
             query_params = event.get("queryStringParameters") or {}
             for key, value in query_params.items():
                 if contains_null_bytes(key) or contains_null_bytes(str(value)):
@@ -162,7 +183,7 @@ def validate_input(max_request_size: int = DEFAULT_MAX_REQUEST_SIZE) -> Callable
                         },
                     )
 
-            # 5. Validate request body for null bytes
+            # 6. Validate request body for null bytes
             if body and contains_null_bytes(body):
                 logger.warning(
                     "Null byte detected in request body",

@@ -63,6 +63,8 @@ OPENAI_ROUTES = (
     # Create images
     "images/generations",
     "v1/images/generations",
+    "images/edits",
+    "v1/images/edits",
     # Audio routes
     "audio/speech",
     "v1/audio/speech",
@@ -392,13 +394,14 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
             media_type=content_type if content_type else None,
         )
 
-    # Check if request is multipart/form-data (used for video generation with image references)
+    # Check if request is multipart/form-data (used for video generation and image edits with reference images)
     content_type = request.headers.get("content-type", "").lower()
     is_multipart = "multipart/form-data" in content_type
     is_video_endpoint = "video" in api_path.lower()
+    is_image_endpoint = "image" in api_path.lower()
 
-    # Handle multipart/form-data requests (video generation with image references)
-    if is_multipart and is_video_endpoint:
+    # Handle multipart/form-data requests (video generation with image references, image edits)
+    if is_multipart and (is_video_endpoint or is_image_endpoint):
         try:
             # Parse the form data
             form = await request.form()

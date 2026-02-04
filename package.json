@@ -65,7 +65,8 @@
     "dev": "cd lib/user-interface/react/ && npm run dev",
     "prepublishOnly": "npm run build && npm run copy-dist -ws",
     "migrate-properties": "node ./scripts/migrate-properties.mjs",
-    "generateSchemaDocs": "npx zod2md -c ./lib/zod2md.config.ts && npx zod2md -c ./lib/zod2md.rag.ts"
+    "generateSchemaDocs": "npx zod2md -c ./lib/zod2md.config.ts && npx zod2md -c ./lib/zod2md.rag.ts",
+    "generate-config": "tsx scripts/generate-config.ts"
   },
   "devDependencies": {
     "@aws-cdk/aws-lambda-python-alpha": "2.232.1-alpha.0",

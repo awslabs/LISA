@@ -48,7 +48,7 @@ def get_real_client_ip(request: Request) -> str:
     try:
         # In ECS behind ALB, the client IP is available from the request
         if request.client and request.client.host:
-            return request.client.host
+            return str(request.client.host)
 
         logger.warning("No client IP found in request")
         return "unknown"

@@ -24,7 +24,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from lisa_serve.registry import registry
 from loguru import logger
-from middleware import process_request_middleware, register_exception_handlers, security_middleware, validate_input_middleware
+from middleware import (
+    process_request_middleware,
+    register_exception_handlers,
+    security_middleware,
+    validate_input_middleware,
+)
 from services.model_registration import ModelRegistrationService
 from utils.cache_manager import set_registered_models_cache
 

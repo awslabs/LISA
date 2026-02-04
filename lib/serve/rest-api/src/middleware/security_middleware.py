@@ -23,7 +23,7 @@ This middleware provides input validation and security checks for all incoming r
 
 import fnmatch
 import json
-from typing import Callable
+from collections.abc import Callable
 
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse

@@ -19,114 +19,83 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# Security-critical headers that should be replaced with server-controlled values
-SECURITY_CRITICAL_HEADERS = {
-    "x-forwarded-for",
-    "x-forwarded-host",
-    "x-forwarded-server",
-    "x-amzn-client-id",
-    "x-real-ip",
-    "forwarded",
+# Allowlist of headers that are safe and useful to log
+# This prevents log injection attacks by only logging known, trusted headers
+ALLOWED_HEADERS = {
+    "accept",
+    "accept-encoding",
+    "accept-language",
+    "content-type",
+    "content-length",
+    "host",
+    "user-agent",
+    "referer",
+    "origin",
+    # Note: authorization is handled separately and redacted
 }
 
-
-def get_real_client_ip(event: dict[str, Any]) -> str:
-    """
-    Extract the real client IP address from API Gateway event context.
-
-    This function retrieves the actual source IP from the API Gateway request context,
-    which cannot be spoofed by the client. User-provided headers like x-forwarded-for
-    should never be trusted for security-critical operations.
-
-    Args:
-        event: Lambda event from API Gateway containing requestContext
-
-    Returns:
-        Real client IP address from API Gateway, or "unknown" if not available
-    """
-    try:
-        # API Gateway provides the real source IP in requestContext.identity.sourceIp
-        # This value is set by AWS and cannot be manipulated by the client
-        source_ip: str | None = event.get("requestContext", {}).get("identity", {}).get("sourceIp")
-        if source_ip:
-            return source_ip
-
-        # Fallback: check if this is a direct Lambda invocation (testing)
-        logger.warning("No sourceIp found in API Gateway event context")
-        return "unknown"
-
-    except Exception as e:
-        logger.error(f"Error extracting real client IP: {e}")
-        return "unknown"
+# Headers that need server-controlled values for security
+# These will be replaced with values from API Gateway context
+HEADERS_WITH_SERVER_VALUES = {
+    "x-forwarded-for": lambda event: event.get("requestContext", {}).get("identity", {}).get("sourceIp", "unknown"),
+    "x-forwarded-host": lambda event: event.get("requestContext", {}).get("domainName", "unknown"),
+    "x-forwarded-proto": lambda event: "https",  # API Gateway always uses HTTPS
+}
 
 
 def sanitize_headers(headers: dict[str, Any], event: dict[str, Any]) -> dict[str, Any]:
     """
-    Sanitize HTTP headers by replacing user-controlled values with server-controlled values.
+    Sanitize HTTP headers using a allowlist approach.
 
-    This prevents attackers from manipulating security-critical headers in logs,
-    which could be used to hide their true source IP or manipulate audit trails.
+    Only headers in the ALLOWED_HEADERS set are logged. This prevents log injection
+    attacks by rejecting any unexpected or potentially malicious headers.
+
+    Security-critical headers like x-forwarded-for are replaced with server-controlled
+    values from API Gateway to prevent IP spoofing in logs.
 
     Args:
         headers: Original HTTP headers from the request
         event: Lambda event from API Gateway (used to extract real values)
 
     Returns:
-        Dictionary of sanitized headers with security-critical values replaced
+        Dictionary containing only allowlisted headers with sanitized values
 
     Example:
-        >>> headers = {"x-forwarded-for": "1.2.3.4, 5.6.7.8"}
+        >>> headers = {
+        ...     "accept": "application/json",
+        ...     "x-amzn-actiontrace": "injected-value",
+        ...     "x-forwarded-for": "1.2.3.4"
+        ... }
         >>> event = {"requestContext": {"identity": {"sourceIp": "9.10.11.12"}}}
         >>> sanitized = sanitize_headers(headers, event)
-        >>> sanitized["x-forwarded-for"]
-        "9.10.11.12"
+        >>> sanitized
+        {"accept": "application/json", "x-forwarded-for": "9.10.11.12"}
     """
     if not headers:
         return {}
 
-    # Create a copy to avoid modifying the original
-    sanitized = dict(headers)
+    sanitized = {}
 
-    # Get the real client IP from API Gateway
-    real_ip = get_real_client_ip(event)
+    # Process each header
+    for key, value in headers.items():
+        key_lower = key.lower()
 
-    # Replace security-critical headers with server-controlled values
-    for header_name in SECURITY_CRITICAL_HEADERS:
-        # Check both lowercase and original case (HTTP headers are case-insensitive)
-        header_lower = header_name.lower()
+        # Check if this header should have a server-controlled value
+        if key_lower in HEADERS_WITH_SERVER_VALUES:
+            server_value = HEADERS_WITH_SERVER_VALUES[key_lower](event)
+            sanitized[key_lower] = server_value
 
-        # Find the actual header key (may have different casing)
-        actual_key = None
-        for key in sanitized.keys():
-            if key.lower() == header_lower:
-                actual_key = key
-                break
+            # Log when we replace a user-provided value
+            if value != server_value:
+                logger.debug(f"Replaced header {key_lower}: user_value={value}, server_value={server_value}")
 
-        if actual_key:
-            # Store original value for debugging (with clear marker)
-            original_value = sanitized[actual_key]
+        # Check if this header is in the allowlist
+        elif key_lower in ALLOWED_HEADERS:
+            sanitized[key_lower] = value
 
-            # Replace with server-controlled value
-            if header_lower in ("x-forwarded-for", "x-real-ip"):
-                sanitized[actual_key] = real_ip
-            elif header_lower == "x-forwarded-host":
-                # Use the actual Host header from API Gateway
-                sanitized[actual_key] = event.get("requestContext", {}).get("domainName", "unknown")
-            elif header_lower == "x-forwarded-server":
-                # Use API Gateway stage
-                sanitized[actual_key] = event.get("requestContext", {}).get("stage", "unknown")
-            elif header_lower == "x-amzn-client-id":
-                # Use the validated request ID from API Gateway
-                sanitized[actual_key] = event.get("requestContext", {}).get("requestId", "unknown")
-            elif header_lower == "forwarded":
-                # Reconstruct Forwarded header with server values
-                sanitized[actual_key] = f"for={real_ip}"
-
-            # Log the sanitization for security monitoring
-            if original_value != sanitized[actual_key]:
-                logger.debug(
-                    f"Sanitized header {actual_key}: original={original_value}, sanitized={sanitized[actual_key]}"
-                )
+        # All other headers are silently dropped (not logged)
+        else:
+            logger.debug(f"Dropped non-allowlisted header: {key_lower}")
 
     return sanitized
 

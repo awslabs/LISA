@@ -13,7 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
-import { Duration, Stack, StackProps } from 'aws-cdk-lib';
+import { Duration, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { ITable, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -134,6 +134,10 @@ export class LisaServeApplicationConstruct extends Construct {
         // DB is a Single AZ instance for cost + inability to make non-Aurora multi-AZ cluster in CDK
         // DB is not expected to be under any form of heavy load.
         // https://github.com/aws/aws-cdk/issues/25547
+        // NOTE: databaseName is intentionally NOT set here for backwards compatibility.
+        // Previous deployments created this RDS instance without a named database, so the
+        // default 'postgres' database is used. This means restApiConfig.rdsConfig.dbName
+        // is NOT respected for the LiteLLM database - it will always use 'postgres'.
         const litellmDb = new DatabaseInstance(scope, 'LiteLLMScalingDB', {
             engine: DatabaseInstanceEngine.POSTGRES,
             vpc: vpc.vpc,
@@ -142,6 +146,7 @@ export class LisaServeApplicationConstruct extends Construct {
             iamAuthentication: useIamAuth, // Enable IAM auth when iamRdsAuth is true
             securityGroups: [litellmDbSg],
             removalPolicy: config.removalPolicy,
+            deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
         });
 
         // Secret is used for password auth or for IAM user bootstrap

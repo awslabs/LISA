@@ -2,7 +2,9 @@
   "app": "npm run deploy",
   "requireApproval": "never",
   "watch": {
-    "include": ["**"],
+    "include": [
+      "**"
+    ],
     "exclude": [
       "README.md",
       "cdk*.json",

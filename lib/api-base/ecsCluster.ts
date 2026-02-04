@@ -36,6 +36,7 @@ import {
     LinuxParameters,
     LogDriver,
     MountPoint,
+    NetworkMode,
     Protocol,
     Volume,
 } from 'aws-cdk-lib/aws-ecs';
@@ -140,6 +141,7 @@ export class ECSCluster extends Construct {
     ): { taskDefinition: Ec2TaskDefinition, container: ContainerDefinition } {
         const ec2TaskDefinition = new Ec2TaskDefinition(this, createCdkId([taskDefinitionName, 'Ec2TaskDefinition']), {
             family: createCdkId([config.deploymentName, taskDefinitionName], 32, 2),
+            networkMode: NetworkMode.AWS_VPC,
             volumes,
             ...(taskRole && { taskRole }),
             ...(executionRole && { executionRole }),
@@ -179,7 +181,7 @@ export class ECSCluster extends Construct {
             gpuCount: Ec2Metadata.get(ecsConfig.instanceType).gpuCount,
             memoryReservationMiB: taskDefinition.containerMemoryReservationMiB,
             memoryLimitMiB: ecsConfig.containerMemoryBuffer,
-            portMappings: [{ hostPort: 0, containerPort: taskDefinition.applicationTarget?.port ?? 8080, protocol: Protocol.TCP }],
+            portMappings: [{ containerPort: taskDefinition.applicationTarget?.port ?? 8080, protocol: Protocol.TCP }],
             healthCheck: containerHealthCheck,
             // Model containers need to run with privileged set to true
             privileged: taskDefinition.containerConfig.privileged ?? ecsConfig.amiHardwareType === AmiHardwareType.GPU,
@@ -213,6 +215,8 @@ export class ECSCluster extends Construct {
         });
 
         // Create auto-scaling group
+        // Note: cooldown is not set here because we use step scaling policies which don't support cooldown.
+        // Step scaling uses evaluation periods instead for controlling scaling behavior.
         const autoScalingGroup = new AutoScalingGroup(this, createCdkId([config.deploymentName, config.deploymentStage, 'ASG']), {
             vpc: vpc.vpc,
             vpcSubnets: vpc.subnetSelection,
@@ -220,7 +224,6 @@ export class ECSCluster extends Construct {
             machineImage: EcsOptimizedImage.amazonLinux2023(ecsConfig.amiHardwareType),
             minCapacity: ecsConfig.autoScalingConfig.minCapacity,
             maxCapacity: ecsConfig.autoScalingConfig.maxCapacity,
-            cooldown: Duration.seconds(ecsConfig.autoScalingConfig.cooldown),
             groupMetrics: [GroupMetrics.all()],
             instanceMonitoring: Monitoring.DETAILED,
             defaultInstanceWarmup: Duration.seconds(ecsConfig.autoScalingConfig.defaultInstanceWarmup),
@@ -615,7 +618,8 @@ export class ECSCluster extends Construct {
         const loadBalancerHealthCheckConfig = this.ecsConfig.loadBalancerConfig.healthCheckConfig;
 
         const targetGroup = this.listener.addTargets(createCdkId([this.identifier, taskName, 'TgtGrp']), {
-            targetGroupName: createCdkId([this.config.deploymentName, this.identifier, taskName], 32, 2).toLowerCase(),
+            // Note: targetGroupName intentionally omitted to allow CloudFormation to generate unique names.
+            // This enables seamless replacement when immutable properties (like TargetType) change.
             healthCheck: {
                 path: loadBalancerHealthCheckConfig.path,
                 interval: Duration.seconds(loadBalancerHealthCheckConfig.interval),

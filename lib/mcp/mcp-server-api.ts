@@ -31,7 +31,7 @@ import { McpServerDeployer } from './mcp-server-deployer';
 import { CreateMcpServerStateMachine } from './state-machine/create-mcp-server';
 import { DeleteMcpServerStateMachine } from './state-machine/delete-mcp-server';
 import { UpdateMcpServerStateMachine } from './state-machine/update-mcp-server';
-import { Bucket, BucketEncryption, HttpMethods } from 'aws-cdk-lib/aws-s3';
+import { BlockPublicAccess, Bucket, BucketEncryption, HttpMethods } from 'aws-cdk-lib/aws-s3';
 import { RemovalPolicy } from 'aws-cdk-lib';
 
 type McpServerApiProps = {
@@ -82,6 +82,7 @@ export class McpServerApi extends Construct {
             billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
             encryption: dynamodb.TableEncryption.AWS_MANAGED,
             removalPolicy: config.removalPolicy,
+            deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
         });
 
         const bucketAccessLogsBucket = Bucket.fromBucketArn(scope, 'BucketAccessLogsBucket',
@@ -92,6 +93,7 @@ export class McpServerApi extends Construct {
             removalPolicy: config.removalPolicy,
             autoDeleteObjects: config.removalPolicy === RemovalPolicy.DESTROY,
             enforceSSL: true,
+            blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
             cors: [
                 {
                     allowedMethods: [HttpMethods.GET, HttpMethods.POST],

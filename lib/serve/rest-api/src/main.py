@@ -24,7 +24,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from lisa_serve.registry import registry
 from loguru import logger
-from middleware import process_request_middleware
+from middleware import (
+    process_request_middleware,
+    register_exception_handlers,
+    security_middleware,
+    validate_input_middleware,
+)
 from services.model_registration import ModelRegistrationService
 from utils.cache_manager import set_registered_models_cache
 
@@ -83,6 +88,10 @@ async def lifespan(app: FastAPI):  # type: ignore
 
 
 app = FastAPI(lifespan=lifespan)
+
+# Register exception handlers first (before routes)
+register_exception_handlers(app)
+
 app.include_router(router)
 
 
@@ -102,6 +111,25 @@ app.add_middleware(
 
 
 @app.middleware("http")
+async def validate_input(request, call_next):  # type: ignore
+    """Middleware for validating all HTTP request inputs."""
+    return await validate_input_middleware(request, call_next)
+
+
+@app.middleware("http")
 async def process_request(request, call_next):  # type: ignore
-    """Middleware for processing all HTTP requests."""
+    """Middleware for processing all HTTP requests (logging)."""
     return await process_request_middleware(request, call_next)
+
+
+@app.middleware("http")
+async def security_check(request, call_next):  # type: ignore
+    """Security middleware for input validation.
+
+    This middleware runs FIRST (before request logging) to validate:
+    - HTTP method is allowed
+    - No null bytes in path, query, or body
+    - Request body is valid JSON for POST/PUT/PATCH
+    - Request size is within limits (model proxy endpoints are exempt)
+    """
+    return await security_middleware(request, call_next)

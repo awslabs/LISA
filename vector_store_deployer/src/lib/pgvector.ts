@@ -120,7 +120,8 @@ export class PGVectorStoreStack extends PipelineStack {
                     credentials: dbCreds,
                     iamAuthentication: useIamAuth, // Enable IAM auth when iamRdsAuth is true
                     securityGroups: [pgSecurityGroup],
-                    removalPolicy: RemovalPolicy.DESTROY,
+                    removalPolicy: config.removalPolicy,
+                    deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
                     databaseName: rdsConfig.dbName,
                     port: rdsConfig.dbPort
                 });

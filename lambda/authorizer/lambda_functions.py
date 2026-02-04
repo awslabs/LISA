@@ -26,6 +26,7 @@ import jwt
 import requests
 from botocore.exceptions import ClientError
 from cachetools import cached, TTLCache
+from utilities.auth_provider import get_authorization_provider
 from utilities.common_functions import authorization_wrapper, get_id_token, get_property_path, retry_config
 from utilities.time import now_seconds
 
@@ -42,9 +43,6 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Handle authorization for REST API."""
     logger.info("REST API authorization handler started")
 
-    requested_resource = event["resource"]
-    request_method = event["httpMethod"]
-
     id_token = get_id_token(event)
 
     if not id_token:
@@ -52,18 +50,16 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         logger.info(f"REST API authorization handler completed with 'Deny' for resource {event['methodArn']}")
         return generate_policy(effect="Deny", resource=event["methodArn"])
 
-    # TODO: investigate authority case sensitivity
     client_id = os.environ.get("CLIENT_ID", "")
     authority = os.environ.get("AUTHORITY", "")
     admin_group = os.environ.get("ADMIN_GROUP", "")
-    user_group = os.environ.get("USER_GROUP", "")
     jwt_groups_property = os.environ.get("JWT_GROUPS_PROP", "")
 
     deny_policy = generate_policy(effect="Deny", resource=event["methodArn"])
     groups: str
+
     if id_token in get_management_tokens():
         username = "lisa-management-token"
-        # Add management token to Admin groups
         groups = json.dumps([admin_group])
         allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=username)
         allow_policy["context"] = {"username": username, "groups": groups, "authType": "management"}
@@ -73,33 +69,30 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     if os.environ.get("TOKEN_TABLE_NAME", None):
         token_info = is_valid_api_token(id_token)
         if token_info:
-
             username = token_info.get("username", "api-token")
             groups = json.dumps(token_info.get("groups", []))
-
             allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=username)
             allow_policy["context"] = {"username": username, "groups": groups, "authType": "api_token"}
             logger.debug(f"Generated policy: {allow_policy}")
             return allow_policy
 
     if jwt_data := id_token_is_valid(id_token=id_token, client_id=client_id, authority=authority):
-        is_admin_user = is_admin(jwt_data, admin_group, jwt_groups_property)
-        is_in_user_group = is_user(jwt_data, user_group, jwt_groups_property) if user_group != "" else True
-        groups = json.dumps(get_property_path(jwt_data, jwt_groups_property) or [])
         username = find_jwt_username(jwt_data)
+        user_groups = get_property_path(jwt_data, jwt_groups_property) or []
+
+        # Use auth provider for access checks (consistent with auth.py)
+        auth_provider = get_authorization_provider()
+        is_admin_user = auth_provider.check_admin_access(username, user_groups)
+        has_app_access = auth_provider.check_app_access(username, user_groups)
+
+        if not is_admin_user and not has_app_access:
+            logger.info(f"User {username} denied access - no valid authorization found")
+            return deny_policy
+
+        groups = json.dumps(user_groups)
         allow_policy = generate_policy(effect="Allow", resource=event["methodArn"], username=username)
         allow_policy["context"] = {"username": username, "groups": groups, "authType": "jwt"}
 
-        if not is_in_user_group:
-            return deny_policy
-        if requested_resource.startswith("/models") and not is_admin_user:
-            # non-admin users can still list models
-            if event["path"].rstrip("/") != "/models":
-                logger.info(f"Deny access to {username} due to non-admin accessing /models api.")
-                return deny_policy
-        if requested_resource.startswith("/configuration") and request_method == "PUT" and not is_admin_user:
-            logger.info(f"Deny access to {username} due to non-admin trying to update configuration.")
-            return deny_policy
         logger.debug(f"Generated policy: {allow_policy}")
         logger.info(f"REST API authorization handler completed with 'Allow' for resource {event['methodArn']}")
         return allow_policy
@@ -127,28 +120,20 @@ def _get_token_info(token: str) -> Any:
 
 
 def is_valid_api_token(token: str) -> dict | None:
-    """
-    Validate API token and return token info if valid.
-    Returns: token_info
-    """
+    """Validate API token and return token info if valid."""
     if not token:
         return None
 
-    # Hash the provided token
     token_hash = hashlib.sha256(token.encode()).hexdigest()
-
-    # Look up hashed token in DynamoDB
     token_info = _get_token_info(token_hash)
 
     if not token_info:
         return None
 
-    # Reject legacy tokens without tokenUUID
     if not token_info.get("tokenUUID"):
         logger.warning("Legacy token detected - missing tokenUUID attribute. Token must be recreated.")
         return None
 
-    # Check expiration
     token_expiration = token_info.get(TOKEN_EXPIRATION_NAME)
     if not token_expiration:
         logger.warning("Token missing expiration field")
@@ -169,7 +154,6 @@ def id_token_is_valid(*, id_token: str, client_id: str, authority: str) -> dict[
         return None
     logger.info(f"{authority}/.well-known/openid-configuration")
 
-    # Here we will point to the sponsor bundle if available, defined in the create_env_variables import above
     cert_path = os.getenv("SSL_CERT_FILE", None)
     resp = requests.get(
         f"{authority}/.well-known/openid-configuration",
@@ -190,7 +174,7 @@ def id_token_is_valid(*, id_token: str, client_id: str, authority: str) -> dict[
         data: dict = jwt.decode(
             id_token,
             signing_key.key,
-            algorithms=["RS256", "RS512"],
+            algorithms=["RS256", "RS512", "ES384"],
             issuer=authority,
             audience=client_id,
             options={
@@ -208,17 +192,8 @@ def id_token_is_valid(*, id_token: str, client_id: str, authority: str) -> dict[
         return None
 
 
-def is_admin(jwt_data: dict[str, Any], admin_group: str, jwt_groups_property: str) -> bool:
-    """Check if the user is an admin."""
-    return admin_group in (get_property_path(jwt_data, jwt_groups_property) or [])
-
-
-def is_user(jwt_data: dict[str, Any], user_group: str, jwt_groups_property: str) -> bool:
-    return user_group in (get_property_path(jwt_data, jwt_groups_property) or [])
-
-
 def find_jwt_username(jwt_data: dict[str, str]) -> str:
-    """Find the username in the JWT. If the key 'username' doesn't exist, return 'sub', which will be a UUID"""
+    """Find the username in the JWT."""
     username = None
     if "username" in jwt_data:
         username = jwt_data.get("username")

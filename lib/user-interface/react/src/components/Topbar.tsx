@@ -15,7 +15,7 @@
 */
 
 import { ReactElement, useContext } from 'react';
-import { useAuth } from 'react-oidc-context';
+import { useAuth } from '../auth/useAuth';
 import { useHref, useNavigate } from 'react-router-dom';
 import { applyDensity, Density, Mode } from '@cloudscape-design/global-styles';
 import TopNavigation, { TopNavigationProps } from '@cloudscape-design/components/top-navigation';
@@ -139,7 +139,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                 external: false,
                                 href: '/model-management',
                             } as ButtonDropdownProps.Item,
-                            {
+                            ...(window.env.RAG_ENABLED ? [{
                                 id: 'repository-management',
                                 type: 'button',
                                 variant: 'link',
@@ -147,7 +147,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                 disableUtilityCollapse: false,
                                 external: false,
                                 href: '/repository-management',
-                            } as ButtonDropdownProps.Item,
+                            } as ButtonDropdownProps.Item] : []),
                             {
                                 id: 'api-token-management',
                                 type: 'button',

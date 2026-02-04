@@ -15,7 +15,7 @@
 */
 
 import { useCallback, useEffect, useState, useRef } from 'react';
-import { useAuth } from 'react-oidc-context';
+import { useAuth } from '../../../auth/useAuth';
 import { v4 as uuidv4 } from 'uuid';
 import { LisaChatSession } from '@/components/types';
 import { baseConfig, IChatConfiguration } from '@/shared/model/chat.configurations.model';

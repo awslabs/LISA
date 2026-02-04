@@ -79,7 +79,6 @@ export class CustomAuthorizer extends Construct {
         // Create Lambda authorizer
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         const authorizerLambda = new Function(this, 'AuthorizerLambda', {
-
             runtime: getPythonRuntime(),
             handler: 'authorizer.lambda_functions.lambda_handler',
             functionName: `${cdk.Stack.of(this).stackName}-lambda-authorizer`,

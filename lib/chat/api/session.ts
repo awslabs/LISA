@@ -24,7 +24,7 @@ import { Key } from 'aws-cdk-lib/aws-kms';
 import { Construct } from 'constructs';
 
 import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
-import { BaseProps } from '../../schema';
+import { BaseProps, RemovalPolicy } from '../../schema';
 import { createLambdaRole } from '../../core/utils';
 import { Vpc } from '../../networking/vpc';
 import { LAMBDA_PATH } from '../../util';
@@ -86,6 +86,7 @@ export class SessionApi extends Construct {
             billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
             encryption: dynamodb.TableEncryption.AWS_MANAGED,
             removalPolicy: config.removalPolicy,
+            deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
         });
         const byUserIdIndex = 'byUserId';
         sessionTable.addGlobalSecondaryIndex({

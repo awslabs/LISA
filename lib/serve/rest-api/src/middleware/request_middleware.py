@@ -21,6 +21,7 @@ from uuid import uuid4
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 from loguru import logger
+from utils.header_sanitizer import get_real_client_ip, get_sanitized_headers_from_request
 
 
 async def process_request_middleware(request: Request, call_next: Callable[[Request], Any]) -> Any:
@@ -42,10 +43,17 @@ async def process_request_middleware(request: Request, call_next: Callable[[Requ
     request_id = str(uuid4())  # Unique ID for this request
     tic = time.time()
 
-    with logger.contextualize(request_id=request_id, endpoint=request.url.path):
+    # Get real client IP for logging (sanitized)
+    client_ip = get_real_client_ip(request)
+
+    with logger.contextualize(request_id=request_id, endpoint=request.url.path, client_ip=client_ip):
         try:
             task_logger = logger.bind(event=event)
             task_logger.debug("Start task", status="START")
+
+            # Sanitize headers before any logging that might include them
+            # This prevents log injection attacks via user-controlled headers
+            _ = get_sanitized_headers_from_request(request)
 
             # Attempt to call the next request handler
             response = await call_next(request)

@@ -17,7 +17,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useAuth } from 'react-oidc-context';
+import { useAuth } from '../auth/useAuth';
 import { MemoryRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -26,8 +26,8 @@ import Topbar from './Topbar';
 import ColorSchemeContext from '@/shared/color-scheme.provider';
 import { Mode } from '@cloudscape-design/global-styles';
 
-// Mock react-oidc-context
-vi.mock('react-oidc-context');
+// Mock the auth abstraction
+vi.mock('../auth/useAuth');
 
 // Mock store functions
 vi.mock('@/config/store', () => ({

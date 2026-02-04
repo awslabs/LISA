@@ -15,7 +15,7 @@
  */
 
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { useAuth } from 'react-oidc-context';
+import { useAuth } from '../../auth/useAuth';
 import Form from '@cloudscape-design/components/form';
 import Box from '@cloudscape-design/components/box';
 import SpaceBetween from '@cloudscape-design/components/space-between';
@@ -733,11 +733,11 @@ export default function Chat ({ sessionId }) {
                 // eslint-disable-next-line react-hooks/exhaustive-deps
             />), conditionalDeps([modals.sessionConfiguration], [modals.sessionConfiguration], [modals.sessionConfiguration, chatConfiguration, setChatConfiguration, selectedModel, isRunning, openModal, closeModal, config, session, updateSession, ragConfig]))}
 
-            {useMemo(() => (<RagUploadModal
+            {useMemo(() => (window.env.RAG_ENABLED ? <RagUploadModal
                 ragConfig={ragConfig}
                 showRagUploadModal={modals.ragUpload}
                 setShowRagUploadModal={(show) => show ? openModal('ragUpload') : closeModal('ragUpload')}
-            />), [ragConfig, modals.ragUpload, openModal, closeModal])}
+            /> : null), [ragConfig, modals.ragUpload, openModal, closeModal])}
 
             {useMemo(() => (<ContextUploadModal
                 showContextUploadModal={modals.contextUpload}

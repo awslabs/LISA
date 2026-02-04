@@ -524,7 +524,7 @@ class ConfigPrompter {
             'AWS Region',
             (v) => this.validator.validateRegion(v)
         );
-        console.log('\nPartition options: aws, aws-cn, aws-gov, aws-iso, aws-iso-b, aws-iso-f');
+        console.log('\nPartition options: aws, aws-cn, aws-us-gov, aws-iso, aws-iso-b, aws-iso-f');
         const partition = await this.promptWithValidation(
             'AWS Partition',
             (v) => this.validator.validatePartition(v),

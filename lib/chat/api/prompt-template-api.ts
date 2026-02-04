@@ -26,6 +26,7 @@ import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { Vpc } from '../../networking/vpc';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { LAMBDA_PATH } from '../../util';
+import { RemovalPolicy } from 'aws-cdk-lib';
 
 /**
  * Properties required to initialize the PromptTemplateApi construct,
@@ -70,8 +71,8 @@ export class PromptTemplateApi extends Construct {
                 type: AttributeType.STRING
             },
             removalPolicy: config.removalPolicy,
+            deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
             billingMode: BillingMode.PAY_PER_REQUEST,
-            pointInTimeRecovery: true
         });
 
         const byOwnerIndexName = 'byOwner';

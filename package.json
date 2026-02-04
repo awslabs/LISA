@@ -59,7 +59,7 @@
     "clean": "npm run clean -ws && rm -rf dist node_modules cdk.out build lib/rag/layer/TIKTOKEN_CACHE lib/serve/rest-api/TIKTOKEN_CACHE",
     "watch": "tsc -w",
     "test": "jest && npm run test -ws",
-    "test:update-baselines": "jest --testPathPattern=snapshot.test.ts -- --updateBaselines",
+    "test:update-baselines": "jest --testPathPatterns=snapshot.test.ts -- --updateBaselines",
     "cdk": "cdk",
     "prepare": "husky || true",
     "postinstall": "patch-package",

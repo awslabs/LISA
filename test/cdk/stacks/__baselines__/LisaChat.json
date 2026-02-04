@@ -18,6 +18,7 @@
           }
         ],
         "BillingMode": "PAY_PER_REQUEST",
+        "DeletionProtectionEnabled": false,
         "GlobalSecondaryIndexes": [
           {
             "IndexName": "byOwner",
@@ -134,7 +135,7 @@
         "Action": "lambda:InvokeFunction",
         "FunctionName": {
           "Fn::GetAtt": [
-            "McpApiLisaChatmcpserverlist6AA9C7D0",
+            "McpApiLisaChatmcpserverlistmcpservers010AAA79",
             "Arn"
           ]
         },
@@ -163,7 +164,7 @@
         "Action": "lambda:InvokeFunction",
         "FunctionName": {
           "Fn::GetAtt": [
-            "McpApiLisaChatmcpserverlist6AA9C7D0",
+            "McpApiLisaChatmcpserverlistmcpservers010AAA79",
             "Arn"
           ]
         },
@@ -208,7 +209,7 @@
                 ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
                 {
                   "Fn::GetAtt": [
-                    "McpApiLisaChatmcpserverlist6AA9C7D0",
+                    "McpApiLisaChatmcpserverlistmcpservers010AAA79",
                     "Arn"
                   ]
                 },
@@ -894,12 +895,21 @@
         ]
       }
     },
-    "McpApiLisaChatmcpserverlist6AA9C7D0": {
+    "McpApiLisaChatmcpserverlistmcpserversLogGroup2613BE9C": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/LisaChat-mcp_server-list_mcp_servers",
+        "RetentionInDays": 30
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain"
+    },
+    "McpApiLisaChatmcpserverlistmcpservers010AAA79": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "60ef36de618f3c0976d6852620edaaebacfcdbdbcf79082154f7b89228a25147.zip"
+          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
         },
         "Description": "Lists available mcp servers for user",
         "Environment": {
@@ -911,8 +921,8 @@
             "MCP_SERVERS_BY_OWNER_INDEX_NAME": "byOwner"
           }
         },
-        "FunctionName": "LisaChat-mcp_server-list",
-        "Handler": "mcp_server.lambda_functions.list",
+        "FunctionName": "LisaChat-mcp_server-list_mcp_servers",
+        "Handler": "mcp_server.lambda_functions.list_mcp_servers",
         "Layers": [
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -921,6 +931,11 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "McpApiLisaChatmcpserverlistmcpserversLogGroup2613BE9C"
+          }
+        },
         "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
@@ -951,12 +966,21 @@
         "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F"
       ]
     },
+    "McpApiLisaChatmcpservergetLogGroup0A87E46C": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/LisaChat-mcp_server-get",
+        "RetentionInDays": 30
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain"
+    },
     "McpApiLisaChatmcpserverget2921E1D3": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "60ef36de618f3c0976d6852620edaaebacfcdbdbcf79082154f7b89228a25147.zip"
+          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
         },
         "Description": "Returns the selected mcp server",
         "Environment": {
@@ -978,6 +1002,11 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "McpApiLisaChatmcpservergetLogGroup0A87E46C"
+          }
+        },
         "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
@@ -1008,12 +1037,21 @@
         "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F"
       ]
     },
+    "McpApiLisaChatmcpservercreateLogGroupC67AA1D4": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/LisaChat-mcp_server-create",
+        "RetentionInDays": 30
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain"
+    },
     "McpApiLisaChatmcpservercreate8CAC0C43": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "60ef36de618f3c0976d6852620edaaebacfcdbdbcf79082154f7b89228a25147.zip"
+          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
         },
         "Description": "Creates the mcp server",
         "Environment": {
@@ -1035,6 +1073,11 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "McpApiLisaChatmcpservercreateLogGroupC67AA1D4"
+          }
+        },
         "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
@@ -1065,12 +1108,21 @@
         "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F"
       ]
     },
+    "McpApiLisaChatmcpserverdeleteLogGroup9A0F7FC6": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/LisaChat-mcp_server-delete",
+        "RetentionInDays": 30
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain"
+    },
     "McpApiLisaChatmcpserverdeleteB1B6EC65": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "60ef36de618f3c0976d6852620edaaebacfcdbdbcf79082154f7b89228a25147.zip"
+          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
         },
         "Description": "Deletes selected mcp server",
         "Environment": {
@@ -1092,6 +1144,11 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "McpApiLisaChatmcpserverdeleteLogGroup9A0F7FC6"
+          }
+        },
         "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
@@ -1122,12 +1179,21 @@
         "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F"
       ]
     },
+    "McpApiLisaChatmcpserverupdateLogGroup865539E4": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/LisaChat-mcp_server-update",
+        "RetentionInDays": 30
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain"
+    },
     "McpApiLisaChatmcpserverupdate2F094A10": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "60ef36de618f3c0976d6852620edaaebacfcdbdbcf79082154f7b89228a25147.zip"
+          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
         },
         "Description": "Creates or updates selected mcp server",
         "Environment": {
@@ -1149,6 +1215,11 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "McpApiLisaChatmcpserverupdateLogGroup865539E4"
+          }
+        },
         "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
@@ -1193,6 +1264,7 @@
           }
         ],
         "BillingMode": "PAY_PER_REQUEST",
+        "DeletionProtectionEnabled": false,
         "KeySchema": [
           {
             "AttributeName": "configScope",
@@ -1429,7 +1501,7 @@
               {
                 "Ref": "ConfigurationApiConfigurationTable4B2B7EE1"
               },
-              "\",\"Item\":{\"versionId\":{\"N\":\"0\"},\"changedBy\":{\"S\":\"System\"},\"configScope\":{\"S\":\"global\"},\"changeReason\":{\"S\":\"Initial deployment default config\"},\"createdAt\":{\"S\":\"1768238930\"},\"configuration\":{\"M\":{\"enabledComponents\":{\"M\":{\"deleteSessionHistory\":{\"BOOL\":\"True\"},\"viewMetaData\":{\"BOOL\":\"True\"},\"editKwargs\":{\"BOOL\":\"True\"},\"editPromptTemplate\":{\"BOOL\":\"True\"},\"editChatHistoryBuffer\":{\"BOOL\":\"True\"},\"editNumOfRagDocument\":{\"BOOL\":\"True\"},\"uploadRagDocs\":{\"BOOL\":\"True\"},\"uploadContextDocs\":{\"BOOL\":\"True\"},\"documentSummarization\":{\"BOOL\":\"True\"},\"showRagLibrary\":{\"BOOL\":\"True\"},\"showMcpWorkbench\":{\"BOOL\":\"False\"},\"showPromptTemplateLibrary\":{\"BOOL\":\"True\"},\"mcpConnections\":{\"BOOL\":\"True\"},\"modelLibrary\":{\"BOOL\":\"True\"},\"encryptSession\":{\"BOOL\":\"False\"}}},\"systemBanner\":{\"M\":{\"isEnabled\":{\"BOOL\":\"False\"},\"text\":{\"S\":\"\"},\"textColor\":{\"S\":\"\"},\"backgroundColor\":{\"S\":\"\"}}}}}}}}"
+              "\",\"Item\":{\"versionId\":{\"N\":\"0\"},\"changedBy\":{\"S\":\"System\"},\"configScope\":{\"S\":\"global\"},\"changeReason\":{\"S\":\"Initial deployment default config\"},\"createdAt\":{\"S\":\"1770184441\"},\"configuration\":{\"M\":{\"enabledComponents\":{\"M\":{\"deleteSessionHistory\":{\"BOOL\":\"True\"},\"viewMetaData\":{\"BOOL\":\"True\"},\"editKwargs\":{\"BOOL\":\"True\"},\"editPromptTemplate\":{\"BOOL\":\"True\"},\"editChatHistoryBuffer\":{\"BOOL\":\"True\"},\"editNumOfRagDocument\":{\"BOOL\":\"True\"},\"uploadRagDocs\":{\"BOOL\":\"True\"},\"uploadContextDocs\":{\"BOOL\":\"True\"},\"documentSummarization\":{\"BOOL\":\"True\"},\"showRagLibrary\":{\"BOOL\":\"True\"},\"showMcpWorkbench\":{\"BOOL\":\"True\"},\"showPromptTemplateLibrary\":{\"BOOL\":\"True\"},\"mcpConnections\":{\"BOOL\":\"True\"},\"modelLibrary\":{\"BOOL\":\"True\"},\"encryptSession\":{\"BOOL\":\"False\"}}},\"systemBanner\":{\"M\":{\"isEnabled\":{\"BOOL\":\"False\"},\"text\":{\"S\":\"\"},\"textColor\":{\"S\":\"\"},\"backgroundColor\":{\"S\":\"\"}}}}}}}}"
             ]
           ]
         },
@@ -1736,12 +1808,21 @@
         }
       }
     },
+    "ConfigurationApiLisaChatconfigurationgetconfigurationLogGroup3D3AF48B": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/LisaChat-configuration-get_configuration",
+        "RetentionInDays": 30
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain"
+    },
     "ConfigurationApiLisaChatconfigurationgetconfiguration19178EAF": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "60ef36de618f3c0976d6852620edaaebacfcdbdbcf79082154f7b89228a25147.zip"
+          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
         },
         "Description": "Get configuration",
         "Environment": {
@@ -1770,6 +1851,11 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "ConfigurationApiLisaChatconfigurationgetconfigurationLogGroup3D3AF48B"
+          }
+        },
         "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
@@ -1800,12 +1886,21 @@
         "ConfigurationApiLisaConfigurationApiLambdaExecutionRole52653FA6"
       ]
     },
+    "ConfigurationApiLisaChatconfigurationupdateconfigurationLogGroup5FF12164": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/LisaChat-configuration-update_configuration",
+        "RetentionInDays": 30
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain"
+    },
     "ConfigurationApiLisaChatconfigurationupdateconfigurationB328F68F": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "60ef36de618f3c0976d6852620edaaebacfcdbdbcf79082154f7b89228a25147.zip"
+          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
         },
         "Description": "Updates config data",
         "Environment": {
@@ -1834,6 +1929,11 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "ConfigurationApiLisaChatconfigurationupdateconfigurationLogGroup5FF12164"
+          }
+        },
         "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
@@ -1869,7 +1969,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "bc8ef58951f4c88e641dd23090e9d2e2e61c7530a07960e767522941e959b625.zip"
+          "S3Key": "a38f8a5114ae969de815d5c66b3ddbd646445697a789f7b16424b4ea541d4ff9.zip"
         },
         "Handler": "index.handler",
         "Role": {
@@ -1904,6 +2004,7 @@
           }
         ],
         "BillingMode": "PAY_PER_REQUEST",
+        "DeletionProtectionEnabled": false,
         "GlobalSecondaryIndexes": [
           {
             "IndexName": "byUserId",
@@ -3091,34 +3192,20 @@
               ]
             },
             {
-              "Action": [
-                "s3:GetObject*",
-                "s3:GetBucket*",
-                "s3:List*"
-              ],
+              "Action": "s3:GetObject",
               "Effect": "Allow",
-              "Resource": [
-                {
-                  "Fn::GetAtt": [
-                    "GeneratedImagesBucketC3465633",
-                    "Arn"
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:aws:s3:::",
+                    {
+                      "Ref": "SsmParameterValuedevtestlisalisageneratedImagesBucketNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+                    },
+                    "/*"
                   ]
-                },
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      {
-                        "Fn::GetAtt": [
-                          "GeneratedImagesBucketC3465633",
-                          "Arn"
-                        ]
-                      },
-                      "/*"
-                    ]
-                  ]
-                }
-              ]
+                ]
+              }
             },
             {
               "Action": [
@@ -3158,17 +3245,30 @@
               ]
             },
             {
-              "Action": "s3:DeleteObject*",
+              "Action": "s3:ListBucket",
               "Effect": "Allow",
               "Resource": {
                 "Fn::Join": [
                   "",
                   [
+                    "arn:aws:s3:::",
                     {
-                      "Fn::GetAtt": [
-                        "GeneratedImagesBucketC3465633",
-                        "Arn"
-                      ]
+                      "Ref": "SsmParameterValuedevtestlisalisageneratedImagesBucketNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+                    }
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": "s3:DeleteObject",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:aws:s3:::",
+                    {
+                      "Ref": "SsmParameterValuedevtestlisalisageneratedImagesBucketNameC96584B6F00A464EAD1953AFF4B05118Parameter"
                     },
                     "/*"
                   ]
@@ -3209,40 +3309,22 @@
             },
             {
               "Action": [
-                "s3:GetObject*",
-                "s3:GetBucket*",
-                "s3:List*",
-                "s3:DeleteObject*",
                 "s3:PutObject",
-                "s3:PutObjectLegalHold",
-                "s3:PutObjectRetention",
-                "s3:PutObjectTagging",
-                "s3:PutObjectVersionTagging",
-                "s3:Abort*"
+                "s3:GetObject"
               ],
               "Effect": "Allow",
-              "Resource": [
-                {
-                  "Fn::GetAtt": [
-                    "GeneratedImagesBucketC3465633",
-                    "Arn"
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:aws:s3:::",
+                    {
+                      "Ref": "SsmParameterValuedevtestlisalisageneratedImagesBucketNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+                    },
+                    "/*"
                   ]
-                },
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      {
-                        "Fn::GetAtt": [
-                          "GeneratedImagesBucketC3465633",
-                          "Arn"
-                        ]
-                      },
-                      "/*"
-                    ]
-                  ]
-                }
-              ]
+                ]
+              }
             }
           ],
           "Version": "2012-10-17"
@@ -3255,12 +3337,21 @@
         ]
       }
     },
+    "SessionApiLisaChatsessionlistsessionsLogGroupE7B49BED": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/LisaChat-session-list_sessions",
+        "RetentionInDays": 30
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain"
+    },
     "SessionApiLisaChatsessionlistsessionsB88A4A44": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "60ef36de618f3c0976d6852620edaaebacfcdbdbcf79082154f7b89228a25147.zip"
+          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
         },
         "Description": "Lists available sessions for user",
         "Environment": {
@@ -3270,7 +3361,7 @@
             },
             "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
             "GENERATED_IMAGES_S3_BUCKET_NAME": {
-              "Ref": "GeneratedImagesBucketC3465633"
+              "Ref": "SsmParameterValuedevtestlisalisageneratedImagesBucketNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "MODEL_TABLE_NAME": {
               "Ref": "SsmParameterValuedevtestlisalisamodelTableNameC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -3299,6 +3390,11 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "SessionApiLisaChatsessionlistsessionsLogGroupE7B49BED"
+          }
+        },
         "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
@@ -3329,12 +3425,21 @@
         "SessionApiLisaSessionApiLambdaExecutionRoleC453EA6B"
       ]
     },
+    "SessionApiLisaChatsessiongetsessionLogGroup3EA156AE": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/LisaChat-session-get_session",
+        "RetentionInDays": 30
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain"
+    },
     "SessionApiLisaChatsessiongetsessionBC2FF1E4": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "60ef36de618f3c0976d6852620edaaebacfcdbdbcf79082154f7b89228a25147.zip"
+          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
         },
         "Description": "Returns the selected session",
         "Environment": {
@@ -3344,7 +3449,7 @@
             },
             "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
             "GENERATED_IMAGES_S3_BUCKET_NAME": {
-              "Ref": "GeneratedImagesBucketC3465633"
+              "Ref": "SsmParameterValuedevtestlisalisageneratedImagesBucketNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "MODEL_TABLE_NAME": {
               "Ref": "SsmParameterValuedevtestlisalisamodelTableNameC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -3373,6 +3478,11 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "SessionApiLisaChatsessiongetsessionLogGroup3EA156AE"
+          }
+        },
         "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
@@ -3403,12 +3513,21 @@
         "SessionApiLisaSessionApiLambdaExecutionRoleC453EA6B"
       ]
     },
+    "SessionApiLisaChatsessiondeletesessionLogGroupEBA8C962": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/LisaChat-session-delete_session",
+        "RetentionInDays": 30
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain"
+    },
     "SessionApiLisaChatsessiondeletesession88A67D12": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "60ef36de618f3c0976d6852620edaaebacfcdbdbcf79082154f7b89228a25147.zip"
+          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
         },
         "Description": "Deletes selected session",
         "Environment": {
@@ -3418,7 +3537,7 @@
             },
             "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
             "GENERATED_IMAGES_S3_BUCKET_NAME": {
-              "Ref": "GeneratedImagesBucketC3465633"
+              "Ref": "SsmParameterValuedevtestlisalisageneratedImagesBucketNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "MODEL_TABLE_NAME": {
               "Ref": "SsmParameterValuedevtestlisalisamodelTableNameC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -3447,6 +3566,11 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "SessionApiLisaChatsessiondeletesessionLogGroupEBA8C962"
+          }
+        },
         "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
@@ -3477,12 +3601,21 @@
         "SessionApiLisaSessionApiLambdaExecutionRoleC453EA6B"
       ]
     },
+    "SessionApiLisaChatsessiondeleteusersessionsLogGroupB3E5989E": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/LisaChat-session-delete_user_sessions",
+        "RetentionInDays": 30
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain"
+    },
     "SessionApiLisaChatsessiondeleteusersessions7AADE5ED": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "60ef36de618f3c0976d6852620edaaebacfcdbdbcf79082154f7b89228a25147.zip"
+          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
         },
         "Description": "Deletes all sessions for selected user",
         "Environment": {
@@ -3492,7 +3625,7 @@
             },
             "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
             "GENERATED_IMAGES_S3_BUCKET_NAME": {
-              "Ref": "GeneratedImagesBucketC3465633"
+              "Ref": "SsmParameterValuedevtestlisalisageneratedImagesBucketNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "MODEL_TABLE_NAME": {
               "Ref": "SsmParameterValuedevtestlisalisamodelTableNameC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -3521,6 +3654,11 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "SessionApiLisaChatsessiondeleteusersessionsLogGroupB3E5989E"
+          }
+        },
         "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
@@ -3551,12 +3689,21 @@
         "SessionApiLisaSessionApiLambdaExecutionRoleC453EA6B"
       ]
     },
+    "SessionApiLisaChatsessionputsessionLogGroup10C3799A": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/LisaChat-session-put_session",
+        "RetentionInDays": 30
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain"
+    },
     "SessionApiLisaChatsessionputsession28059E77": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "60ef36de618f3c0976d6852620edaaebacfcdbdbcf79082154f7b89228a25147.zip"
+          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
         },
         "Description": "Creates or updates selected session",
         "Environment": {
@@ -3566,7 +3713,7 @@
             },
             "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
             "GENERATED_IMAGES_S3_BUCKET_NAME": {
-              "Ref": "GeneratedImagesBucketC3465633"
+              "Ref": "SsmParameterValuedevtestlisalisageneratedImagesBucketNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "MODEL_TABLE_NAME": {
               "Ref": "SsmParameterValuedevtestlisalisamodelTableNameC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -3595,6 +3742,11 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "SessionApiLisaChatsessionputsessionLogGroup10C3799A"
+          }
+        },
         "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
@@ -3625,12 +3777,21 @@
         "SessionApiLisaSessionApiLambdaExecutionRoleC453EA6B"
       ]
     },
+    "SessionApiLisaChatsessionrenamesessionLogGroupE1B9BEF4": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/LisaChat-session-rename_session",
+        "RetentionInDays": 30
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain"
+    },
     "SessionApiLisaChatsessionrenamesession93520CEA": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "60ef36de618f3c0976d6852620edaaebacfcdbdbcf79082154f7b89228a25147.zip"
+          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
         },
         "Description": "Updates session name",
         "Environment": {
@@ -3640,7 +3801,7 @@
             },
             "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
             "GENERATED_IMAGES_S3_BUCKET_NAME": {
-              "Ref": "GeneratedImagesBucketC3465633"
+              "Ref": "SsmParameterValuedevtestlisalisageneratedImagesBucketNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "MODEL_TABLE_NAME": {
               "Ref": "SsmParameterValuedevtestlisalisamodelTableNameC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -3669,6 +3830,11 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "SessionApiLisaChatsessionrenamesessionLogGroupE1B9BEF4"
+          }
+        },
         "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
@@ -3699,12 +3865,21 @@
         "SessionApiLisaSessionApiLambdaExecutionRoleC453EA6B"
       ]
     },
+    "SessionApiLisaChatsessionattachimagetosessionLogGroup558F4154": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/LisaChat-session-attach_image_to_session",
+        "RetentionInDays": 30
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain"
+    },
     "SessionApiLisaChatsessionattachimagetosessionA482E30C": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "60ef36de618f3c0976d6852620edaaebacfcdbdbcf79082154f7b89228a25147.zip"
+          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
         },
         "Description": "Attaches image to session",
         "Environment": {
@@ -3714,7 +3889,7 @@
             },
             "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
             "GENERATED_IMAGES_S3_BUCKET_NAME": {
-              "Ref": "GeneratedImagesBucketC3465633"
+              "Ref": "SsmParameterValuedevtestlisalisageneratedImagesBucketNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "MODEL_TABLE_NAME": {
               "Ref": "SsmParameterValuedevtestlisalisamodelTableNameC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -3743,6 +3918,11 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "SessionApiLisaChatsessionattachimagetosessionLogGroup558F4154"
+          }
+        },
         "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
@@ -3773,225 +3953,6 @@
         "SessionApiLisaSessionApiLambdaExecutionRoleC453EA6B"
       ]
     },
-    "GeneratedImagesBucketC3465633": {
-      "Type": "AWS::S3::Bucket",
-      "Properties": {
-        "CorsConfiguration": {
-          "CorsRules": [
-            {
-              "AllowedHeaders": [
-                "*"
-              ],
-              "AllowedMethods": [
-                "GET",
-                "POST"
-              ],
-              "AllowedOrigins": [
-                "*"
-              ],
-              "ExposedHeaders": [
-                "Access-Control-Allow-Origin"
-              ]
-            }
-          ]
-        },
-        "LoggingConfiguration": {
-          "DestinationBucketName": {
-            "Fn::Select": [
-              0,
-              {
-                "Fn::Split": [
-                  "/",
-                  {
-                    "Fn::Select": [
-                      5,
-                      {
-                        "Fn::Split": [
-                          ":",
-                          {
-                            "Ref": "SsmParameterValuedevtestlisalisabucketbucketaccesslogsC96584B6F00A464EAD1953AFF4B05118Parameter"
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          },
-          "LogFilePrefix": "logs/generated-images-bucket/"
-        },
-        "Tags": [
-          {
-            "Key": "aws-cdk:auto-delete-objects",
-            "Value": "true"
-          }
-        ]
-      },
-      "UpdateReplacePolicy": "Delete",
-      "DeletionPolicy": "Delete"
-    },
-    "GeneratedImagesBucketPolicyA72A6FC9": {
-      "Type": "AWS::S3::BucketPolicy",
-      "Properties": {
-        "Bucket": {
-          "Ref": "GeneratedImagesBucketC3465633"
-        },
-        "PolicyDocument": {
-          "Statement": [
-            {
-              "Action": "s3:*",
-              "Condition": {
-                "Bool": {
-                  "aws:SecureTransport": "false"
-                }
-              },
-              "Effect": "Deny",
-              "Principal": {
-                "AWS": "*"
-              },
-              "Resource": [
-                {
-                  "Fn::GetAtt": [
-                    "GeneratedImagesBucketC3465633",
-                    "Arn"
-                  ]
-                },
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      {
-                        "Fn::GetAtt": [
-                          "GeneratedImagesBucketC3465633",
-                          "Arn"
-                        ]
-                      },
-                      "/*"
-                    ]
-                  ]
-                }
-              ]
-            },
-            {
-              "Action": [
-                "s3:PutBucketPolicy",
-                "s3:GetBucket*",
-                "s3:List*",
-                "s3:DeleteObject*"
-              ],
-              "Effect": "Allow",
-              "Principal": {
-                "AWS": {
-                  "Fn::GetAtt": [
-                    "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
-                    "Arn"
-                  ]
-                }
-              },
-              "Resource": [
-                {
-                  "Fn::GetAtt": [
-                    "GeneratedImagesBucketC3465633",
-                    "Arn"
-                  ]
-                },
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      {
-                        "Fn::GetAtt": [
-                          "GeneratedImagesBucketC3465633",
-                          "Arn"
-                        ]
-                      },
-                      "/*"
-                    ]
-                  ]
-                }
-              ]
-            }
-          ],
-          "Version": "2012-10-17"
-        }
-      }
-    },
-    "GeneratedImagesBucketAutoDeleteObjectsCustomResource907225F0": {
-      "Type": "Custom::S3AutoDeleteObjects",
-      "Properties": {
-        "ServiceToken": {
-          "Fn::GetAtt": [
-            "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F",
-            "Arn"
-          ]
-        },
-        "BucketName": {
-          "Ref": "GeneratedImagesBucketC3465633"
-        }
-      },
-      "DependsOn": [
-        "GeneratedImagesBucketPolicyA72A6FC9"
-      ],
-      "UpdateReplacePolicy": "Delete",
-      "DeletionPolicy": "Delete"
-    },
-    "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092": {
-      "Type": "AWS::IAM::Role",
-      "Properties": {
-        "AssumeRolePolicyDocument": {
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Action": "sts:AssumeRole",
-              "Effect": "Allow",
-              "Principal": {
-                "Service": "lambda.amazonaws.com"
-              }
-            }
-          ]
-        },
-        "ManagedPolicyArns": [
-          {
-            "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-          }
-        ]
-      }
-    },
-    "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F": {
-      "Type": "AWS::Lambda::Function",
-      "Properties": {
-        "Code": {
-          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6.zip"
-        },
-        "Timeout": 900,
-        "MemorySize": 128,
-        "Handler": "index.handler",
-        "Role": {
-          "Fn::GetAtt": [
-            "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
-            "Arn"
-          ]
-        },
-        "Runtime": "nodejs22.x",
-        "Description": {
-          "Fn::Join": [
-            "",
-            [
-              "Lambda function for auto-deleting objects in ",
-              {
-                "Ref": "GeneratedImagesBucketC3465633"
-              },
-              " S3 bucket."
-            ]
-          ]
-        }
-      },
-      "DependsOn": [
-        "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092"
-      ]
-    },
     "PromptTemplateApiPromptTemplatesTable2B59FA4A": {
       "Type": "AWS::DynamoDB::Table",
       "Properties": {
@@ -4010,6 +3971,7 @@
           }
         ],
         "BillingMode": "PAY_PER_REQUEST",
+        "DeletionProtectionEnabled": false,
         "GlobalSecondaryIndexes": [
           {
             "IndexName": "byOwner",
@@ -4053,10 +4015,7 @@
             "AttributeName": "created",
             "KeyType": "RANGE"
           }
-        ],
-        "PointInTimeRecoverySpecification": {
-          "PointInTimeRecoveryEnabled": true
-        }
+        ]
       },
       "UpdateReplacePolicy": "Delete",
       "DeletionPolicy": "Delete"
@@ -4788,7 +4747,7 @@
         "Action": "lambda:InvokeFunction",
         "FunctionName": {
           "Fn::GetAtt": [
-            "PromptTemplateApiLisaChatprompttemplateslist70C16F55",
+            "PromptTemplateApiLisaChatprompttemplateslistprompt2B644A78",
             "Arn"
           ]
         },
@@ -4817,7 +4776,7 @@
         "Action": "lambda:InvokeFunction",
         "FunctionName": {
           "Fn::GetAtt": [
-            "PromptTemplateApiLisaChatprompttemplateslist70C16F55",
+            "PromptTemplateApiLisaChatprompttemplateslistprompt2B644A78",
             "Arn"
           ]
         },
@@ -4862,7 +4821,7 @@
                 ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
                 {
                   "Fn::GetAtt": [
-                    "PromptTemplateApiLisaChatprompttemplateslist70C16F55",
+                    "PromptTemplateApiLisaChatprompttemplateslistprompt2B644A78",
                     "Arn"
                   ]
                 },
@@ -4879,12 +4838,21 @@
         }
       }
     },
+    "PromptTemplateApiLisaChatprompttemplatescreateLogGroupA1C23D32": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/LisaChat-prompt_templates-create",
+        "RetentionInDays": 30
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain"
+    },
     "PromptTemplateApiLisaChatprompttemplatescreateC453FE00": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "60ef36de618f3c0976d6852620edaaebacfcdbdbcf79082154f7b89228a25147.zip"
+          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
         },
         "Description": "Creates prompt template",
         "Environment": {
@@ -4906,6 +4874,11 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "PromptTemplateApiLisaChatprompttemplatescreateLogGroupA1C23D32"
+          }
+        },
         "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
@@ -4936,12 +4909,21 @@
         "PromptTemplateApiLisaPromptTemplatesApiLambdaExecutionRole941C178E"
       ]
     },
+    "PromptTemplateApiLisaChatprompttemplatesgetLogGroup5C255A82": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/LisaChat-prompt_templates-get",
+        "RetentionInDays": 30
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain"
+    },
     "PromptTemplateApiLisaChatprompttemplatesgetA1792182": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "60ef36de618f3c0976d6852620edaaebacfcdbdbcf79082154f7b89228a25147.zip"
+          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
         },
         "Description": "Retrieves specific prompt template by ID",
         "Environment": {
@@ -4963,6 +4945,11 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "PromptTemplateApiLisaChatprompttemplatesgetLogGroup5C255A82"
+          }
+        },
         "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
@@ -4993,12 +4980,21 @@
         "PromptTemplateApiLisaPromptTemplatesApiLambdaExecutionRole941C178E"
       ]
     },
-    "PromptTemplateApiLisaChatprompttemplateslist70C16F55": {
+    "PromptTemplateApiLisaChatprompttemplateslistpromptLogGroup14083C7A": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/LisaChat-prompt_templates-list_prompt",
+        "RetentionInDays": 30
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain"
+    },
+    "PromptTemplateApiLisaChatprompttemplateslistprompt2B644A78": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "60ef36de618f3c0976d6852620edaaebacfcdbdbcf79082154f7b89228a25147.zip"
+          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
         },
         "Description": "Lists all available prompt templates",
         "Environment": {
@@ -5010,8 +5006,8 @@
             "PROMPT_TEMPLATES_BY_LATEST_INDEX_NAME": "byOwner"
           }
         },
-        "FunctionName": "LisaChat-prompt_templates-list",
-        "Handler": "prompt_templates.lambda_functions.list",
+        "FunctionName": "LisaChat-prompt_templates-list_prompt",
+        "Handler": "prompt_templates.lambda_functions.list_prompt",
         "Layers": [
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -5020,6 +5016,11 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "PromptTemplateApiLisaChatprompttemplateslistpromptLogGroup14083C7A"
+          }
+        },
         "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
@@ -5050,12 +5051,21 @@
         "PromptTemplateApiLisaPromptTemplatesApiLambdaExecutionRole941C178E"
       ]
     },
+    "PromptTemplateApiLisaChatprompttemplatesupdateLogGroup5E45BF11": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/LisaChat-prompt_templates-update",
+        "RetentionInDays": 30
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain"
+    },
     "PromptTemplateApiLisaChatprompttemplatesupdateDA9BD670": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "60ef36de618f3c0976d6852620edaaebacfcdbdbcf79082154f7b89228a25147.zip"
+          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
         },
         "Description": "Updates an existing prompt template",
         "Environment": {
@@ -5077,6 +5087,11 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "PromptTemplateApiLisaChatprompttemplatesupdateLogGroup5E45BF11"
+          }
+        },
         "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
@@ -5107,12 +5122,21 @@
         "PromptTemplateApiLisaPromptTemplatesApiLambdaExecutionRole941C178E"
       ]
     },
+    "PromptTemplateApiLisaChatprompttemplatesdeleteLogGroup16CD1FD1": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/LisaChat-prompt_templates-delete",
+        "RetentionInDays": 30
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain"
+    },
     "PromptTemplateApiLisaChatprompttemplatesdelete41FB2B92": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "60ef36de618f3c0976d6852620edaaebacfcdbdbcf79082154f7b89228a25147.zip"
+          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
         },
         "Description": "Deletes a specific prompt template by ID",
         "Environment": {
@@ -5134,6 +5158,11 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "PromptTemplateApiLisaChatprompttemplatesdeleteLogGroup16CD1FD1"
+          }
+        },
         "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
@@ -5174,6 +5203,7 @@
           }
         ],
         "BillingMode": "PAY_PER_REQUEST",
+        "DeletionProtectionEnabled": false,
         "KeySchema": [
           {
             "AttributeName": "user",
@@ -5577,12 +5607,21 @@
         ]
       }
     },
+    "UserPreferencesApiLisaChatuserpreferencesgetLogGroupFEC4FCE2": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/LisaChat-user_preferences-get",
+        "RetentionInDays": 30
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain"
+    },
     "UserPreferencesApiLisaChatuserpreferencesgetCAACC747": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "60ef36de618f3c0976d6852620edaaebacfcdbdbcf79082154f7b89228a25147.zip"
+          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
         },
         "Description": "Returns the preferences for the calling user",
         "Environment": {
@@ -5602,6 +5641,11 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "UserPreferencesApiLisaChatuserpreferencesgetLogGroupFEC4FCE2"
+          }
+        },
         "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
@@ -5632,12 +5676,21 @@
         "UserPreferencesApiLisaUserPreferencesApiLambdaExecutionRole44353F29"
       ]
     },
+    "UserPreferencesApiLisaChatuserpreferencesupdateLogGroup050EE2BA": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/LisaChat-user_preferences-update",
+        "RetentionInDays": 30
+      },
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain"
+    },
     "UserPreferencesApiLisaChatuserpreferencesupdateC679459F": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "60ef36de618f3c0976d6852620edaaebacfcdbdbcf79082154f7b89228a25147.zip"
+          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
         },
         "Description": "Creates or updates user preferences for user",
         "Environment": {
@@ -5657,6 +5710,11 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "UserPreferencesApiLisaChatuserpreferencesupdateLogGroup050EE2BA"
+          }
+        },
         "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
@@ -5701,9 +5759,9 @@
       "Type": "AWS::SSM::Parameter::Value<String>",
       "Default": "/dev/test-lisa/lisa/serve/endpoint"
     },
-    "SsmParameterValuedevtestlisalisabucketbucketaccesslogsC96584B6F00A464EAD1953AFF4B05118Parameter": {
+    "SsmParameterValuedevtestlisalisageneratedImagesBucketNameC96584B6F00A464EAD1953AFF4B05118Parameter": {
       "Type": "AWS::SSM::Parameter::Value<String>",
-      "Default": "/dev/test-lisa/lisa/bucket/bucket-access-logs"
+      "Default": "/dev/test-lisa/lisa/generatedImagesBucketName"
     },
     "SsmParameterValuedevtestlisalisamodelTableNameC96584B6F00A464EAD1953AFF4B05118Parameter": {
       "Type": "AWS::SSM::Parameter::Value<String>",

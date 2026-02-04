@@ -24,7 +24,7 @@ import { Key } from 'aws-cdk-lib/aws-kms';
 import { Construct } from 'constructs';
 
 import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
-import { BaseProps } from '../../schema';
+import { BaseProps, RemovalPolicy } from '../../schema';
 import { createLambdaRole } from '../../core/utils';
 import { Vpc } from '../../networking/vpc';
 import { LAMBDA_PATH } from '../../util';

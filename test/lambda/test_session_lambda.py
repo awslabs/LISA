@@ -48,7 +48,8 @@ retry_config = Config(retries=dict(max_attempts=3), defaults_mode="standard")
 
 
 def mock_api_wrapper(_func=None, **kwargs):
-    """Mock api_wrapper that accepts any kwargs."""
+    """Mock api_wrapper that accepts any kwargs and uses real response builder."""
+    from utilities.response_builder import generate_exception_response, generate_html_response
 
     def decorator(func):
         @functools.wraps(func)
@@ -57,24 +58,12 @@ def mock_api_wrapper(_func=None, **kwargs):
                 result = func(*args, **kw)
                 if isinstance(result, dict) and "statusCode" in result:
                     return result
-                return {
-                    "statusCode": 200,
-                    "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
-                    "body": json.dumps(result, default=str),
-                }
+                return generate_html_response(200, result)
             except ValueError as e:
-                return {
-                    "statusCode": 400,
-                    "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
-                    "body": json.dumps({"error": str(e)}),
-                }
+                return generate_exception_response(e)
             except Exception as e:
                 logging.error(f"Error in {func.__name__}: {str(e)}")
-                return {
-                    "statusCode": 500,
-                    "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
-                    "body": json.dumps({"error": str(e)}),
-                }
+                return generate_exception_response(e)
 
         return wrapper
 
@@ -176,8 +165,17 @@ patch("utilities.common_functions.get_session_id", mock_common.get_session_id).s
 patch("utilities.common_functions.retry_config", retry_config).start()
 patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()
 
+# Import Pydantic models for type-safe testing
+from models.domain_objects import DeleteResponse, SuccessResponse
+
 # Now import the lambda functions
 from session.lambda_functions import delete_session, delete_user_sessions, get_session, list_sessions, put_session
+from session.models import (
+    PutSessionRequest,
+    RenameSessionRequest,
+    Session,
+    SessionSummary,
+)
 
 
 @pytest.fixture
@@ -220,8 +218,11 @@ def test_list_sessions(dynamodb_table, sample_session, lambda_context):
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
     assert len(body) == 2
-    assert any(s["sessionId"] == "test-session" for s in body)
-    assert any(s["sessionId"] == "test-session-2" for s in body)
+    # Validate response items match SessionSummary structure
+    session_summaries = [SessionSummary.model_validate(s) for s in body]
+    session_ids = [s.sessionId for s in session_summaries]
+    assert "test-session" in session_ids
+    assert "test-session-2" in session_ids
 
 
 def test_get_session(dynamodb_table, sample_session, lambda_context):
@@ -235,8 +236,10 @@ def test_get_session(dynamodb_table, sample_session, lambda_context):
     response = get_session(event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
-    assert body["sessionId"] == sample_session["sessionId"]
-    assert body["userId"] == "test-user"
+    # Validate response matches Session model structure
+    session = Session.model_validate(body)
+    assert session.sessionId == sample_session["sessionId"]
+    assert session.userId == "test-user"
 
 
 def test_missing_path_parameters(lambda_context):
@@ -277,8 +280,8 @@ def test_missing_username(lambda_context):
 def mock_s3_operations():
     """Mock S3 operations to avoid errors."""
     with patch("session.lambda_functions._delete_user_session") as mock_delete:
-        # Make the mocked function return True by default
-        mock_delete.return_value = {"deleted": True}
+        # Make the mocked function return DeleteResponse by default
+        mock_delete.return_value = DeleteResponse(deleted=True)
         yield mock_delete
 
 
@@ -294,7 +297,9 @@ def test_delete_session(dynamodb_table, sample_session, lambda_context, mock_s3_
     response = delete_session(event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
-    assert body["deleted"] is True
+    # Validate response matches DeleteResponse model
+    delete_response = DeleteResponse.model_validate(body)
+    assert delete_response.deleted is True
 
     # Verify the mock was called with correct parameters
     mock_s3_operations.assert_called_once_with("test-session", "test-user")
@@ -314,7 +319,9 @@ def test_delete_user_sessions(dynamodb_table, sample_session, lambda_context, mo
     response = delete_user_sessions(event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
-    assert body["deleted"] is True
+    # Validate response matches DeleteResponse model
+    delete_response = DeleteResponse.model_validate(body)
+    assert delete_response.deleted is True
 
 
 def test_delete_session_not_found(dynamodb_table, lambda_context, mock_s3_operations):
@@ -332,7 +339,9 @@ def test_delete_session_not_found(dynamodb_table, lambda_context, mock_s3_operat
         response = delete_session(event, lambda_context)
         assert response["statusCode"] == 200
         body = json.loads(response["body"])
-        assert body["deleted"] is True
+        # Validate response matches DeleteResponse model
+        delete_response = DeleteResponse.model_validate(body)
+        assert delete_response.deleted is True
 
         # Verify the mock was called with correct parameters
         mock_s3_operations.assert_called_once_with("non-existent-session", "test-user")
@@ -343,13 +352,13 @@ def test_delete_session_not_found(dynamodb_table, lambda_context, mock_s3_operat
 
 def test_put_session(dynamodb_table, config_table, sample_session, lambda_context):
     """Test putting a session."""
+    # Create request using PutSessionRequest model
+    put_request = PutSessionRequest(messages=sample_session["history"], configuration=sample_session["configuration"])
 
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
         "pathParameters": {"sessionId": "test-session"},
-        "body": json.dumps(
-            {"messages": sample_session["history"], "configuration": sample_session["configuration"]}, default=str
-        ),
+        "body": put_request.model_dump_json(),
     }
 
     response = put_session(event, lambda_context)
@@ -394,7 +403,8 @@ def test_put_session_missing_required_fields(dynamodb_table, lambda_context):
     response = put_session(event, lambda_context)
     assert response["statusCode"] == 400
     body = json.loads(response["body"])
-    assert "Missing required fields" in body["error"]
+    # Pydantic validation error for missing 'messages' field
+    assert "error" in body
 
 
 def test_list_sessions_empty(dynamodb_table, lambda_context):
@@ -404,6 +414,7 @@ def test_list_sessions_empty(dynamodb_table, lambda_context):
     response = list_sessions(event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
+    assert isinstance(body, list)
     assert len(body) == 0
 
 
@@ -669,7 +680,9 @@ def test_delete_user_session_resource_not_found(mock_s3_resource, mock_table):
     )
 
     result = _delete_user_session("test-session", "test-user")
-    assert result == {"deleted": False}
+    # Result should be DeleteResponse model
+    assert isinstance(result, DeleteResponse)
+    assert result.deleted is False
 
 
 @patch("session.lambda_functions.table")
@@ -683,7 +696,9 @@ def test_delete_user_session_general_client_error(mock_s3_resource, mock_table):
     )
 
     result = _delete_user_session("test-session", "test-user")
-    assert result == {"deleted": False}
+    # Result should be DeleteResponse model
+    assert isinstance(result, DeleteResponse)
+    assert result.deleted is False
 
 
 @patch("session.lambda_functions.s3_client")
@@ -859,7 +874,9 @@ def test_get_session_encrypted_success(mock_decrypt, dynamodb_table, sample_sess
     response = get_session(event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
-    assert body["sessionId"] == "test-session"
+    # Validate response matches Session model
+    session = Session.model_validate(body)
+    assert session.sessionId == "test-session"
     mock_decrypt.assert_called_once()
 
 
@@ -954,7 +971,8 @@ def test_attach_image_to_session_missing_message(lambda_context):
     response = attach_image_to_session(event, lambda_context)
     assert response["statusCode"] == 400
     body = json.loads(response["body"])
-    assert "Missing required fields" in body["error"]
+    # Pydantic validation error for missing 'message' field
+    assert "error" in body
 
 
 def test_attach_image_to_session_s3_upload_error(lambda_context):
@@ -994,17 +1012,22 @@ def test_rename_session_success(dynamodb_table, lambda_context):
     session = {"sessionId": "test-session", "userId": "test-user", "name": "Old Name"}
     dynamodb_table.put_item(Item=session)
 
+    # Create request using RenameSessionRequest model
+    rename_request = RenameSessionRequest(name="New Name")
+
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
         "pathParameters": {"sessionId": "test-session"},
-        "body": json.dumps({"name": "New Name"}),
+        "body": rename_request.model_dump_json(),
     }
 
     with patch("session.lambda_functions.table", dynamodb_table):
         response = rename_session(event, lambda_context)
         assert response["statusCode"] == 200
         body = json.loads(response["body"])
-        assert "Session name updated successfully" in body["message"]
+        # Validate response matches SuccessResponse model
+        success_response = SuccessResponse.model_validate(body)
+        assert "Session name updated successfully" in success_response.message
 
 
 def test_rename_session_invalid_json(lambda_context):
@@ -1032,7 +1055,8 @@ def test_rename_session_missing_name(lambda_context):
     response = rename_session(event, lambda_context)
     assert response["statusCode"] == 400
     body = json.loads(response["body"])
-    assert "Missing required field: name" in body["error"]
+    # Pydantic validation error for missing 'name' field
+    assert "error" in body
 
 
 # Put Session Edge Cases Tests
@@ -1398,13 +1422,14 @@ def test_map_session_complete_data():
 
     result = _map_session(session, "test-user")
 
-    assert result["sessionId"] == "test-session-123"
-    assert result["name"] == "Test Session"
-    assert result["firstHumanMessage"] == "Hello"
-    assert result["startTime"] == "2024-01-01T00:00:00"
-    assert result["createTime"] == "2024-01-01T00:00:00"
-    assert result["lastUpdated"] == "2024-01-02T00:00:00"
-    assert result["isEncrypted"] is False
+    # Result is a SessionSummary model - use property access
+    assert result.sessionId == "test-session-123"
+    assert result.name == "Test Session"
+    assert result.firstHumanMessage == "Hello"
+    assert result.startTime == "2024-01-01T00:00:00"
+    assert result.createTime == "2024-01-01T00:00:00"
+    assert result.lastUpdated == "2024-01-02T00:00:00"
+    assert result.isEncrypted is False
 
 
 def test_map_session_missing_fields():
@@ -1413,13 +1438,14 @@ def test_map_session_missing_fields():
 
     result = _map_session(session, "test-user")
 
-    assert result["sessionId"] == "test-session"
-    assert result["name"] is None
-    assert result["firstHumanMessage"] == ""
-    assert result["startTime"] is None
-    assert result["createTime"] is None
-    assert result["lastUpdated"] is None
-    assert result["isEncrypted"] is False
+    # Result is a SessionSummary model - use property access
+    assert result.sessionId == "test-session"
+    assert result.name is None
+    assert result.firstHumanMessage == ""
+    assert result.startTime is None
+    assert result.createTime is None
+    assert result.lastUpdated is None
+    assert result.isEncrypted is False
 
 
 def test_map_session_fallback_to_start_time():
@@ -1433,7 +1459,8 @@ def test_map_session_fallback_to_start_time():
 
     result = _map_session(session, "test-user")
 
-    assert result["lastUpdated"] == "2024-01-01T00:00:00"
+    # Result is a SessionSummary model - use property access
+    assert result.lastUpdated == "2024-01-01T00:00:00"
 
 
 def test_map_session_encrypted():
@@ -1452,8 +1479,9 @@ def test_map_session_encrypted():
 
         result = _map_session(session, "test-user")
 
-        assert result["isEncrypted"] is True
-        assert result["firstHumanMessage"] == "Decrypted message"
+        # Result is a SessionSummary model - use property access
+        assert result.isEncrypted is True
+        assert result.firstHumanMessage == "Decrypted message"
 
 
 # Delete Session with Video Cleanup Tests
@@ -1489,7 +1517,8 @@ def test_delete_user_session_with_video_cleanup(mock_table, mock_s3_resource, mo
 
     result = _delete_user_session("test-session", "test-user")
 
-    assert result["deleted"] is True
+    # Result is a DeleteResponse model - use property access
+    assert result.deleted is True
     mock_table.delete_item.assert_called_once()
     mock_bucket.objects.filter.assert_called_once_with(Prefix="images/test-session")
 
@@ -1537,7 +1566,8 @@ def test_delete_user_session_encrypted_with_videos(mock_table, mock_s3_resource,
 
     result = _delete_user_session("test-session", "test-user")
 
-    assert result["deleted"] is True
+    # Result is a DeleteResponse model - use property access
+    assert result.deleted is True
     mock_decrypt.assert_called_once_with(encrypted_session, "test-user", "test-session")
     mock_s3_client.delete_object.assert_called_once_with(Bucket="bucket", Key="videos/v1.mp4")
 
@@ -1564,8 +1594,9 @@ def test_delete_user_session_encrypted_decryption_fails(mock_table, mock_s3_reso
 
     result = _delete_user_session("test-session", "test-user")
 
+    # Result is a DeleteResponse model - use property access
     # Should still succeed with deletion, just no video cleanup
-    assert result["deleted"] is True
+    assert result.deleted is True
     mock_table.delete_item.assert_called_once()
     # No video deletion because decryption failed
     mock_s3_client.delete_object.assert_not_called()
@@ -1604,8 +1635,9 @@ def test_delete_user_session_video_deletion_error(mock_table, mock_s3_resource, 
 
     result = _delete_user_session("test-session", "test-user")
 
+    # Result is a DeleteResponse model - use property access
     # Should still succeed - video deletion errors are logged but don't fail the operation
-    assert result["deleted"] is True
+    assert result.deleted is True
     assert mock_s3_client.delete_object.call_count == 2
 
 
@@ -1720,8 +1752,10 @@ def test_list_sessions_with_encrypted_sessions(dynamodb_table, lambda_context):
         assert response["statusCode"] == 200
         body = json.loads(response["body"])
         assert len(body) == 1
-        assert body[0]["sessionId"] == "encrypted-session"
-        assert body[0]["isEncrypted"] is True
+        # Validate response matches SessionSummary model
+        session_summary = SessionSummary.model_validate(body[0])
+        assert session_summary.sessionId == "encrypted-session"
+        assert session_summary.isEncrypted is True
 
 
 # Find First Human Message with List Content and Empty Text

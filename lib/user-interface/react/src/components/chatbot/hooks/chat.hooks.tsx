@@ -494,7 +494,6 @@ export const useChatGeneration = ({
                         formData.append('prompt', params.input);
                         formData.append('model', selectedModel.modelId);
                         formData.append('n', chatConfiguration.sessionConfiguration.imageGenerationArgs.numberOfImages.toString());
-                        formData.append('size', chatConfiguration.sessionConfiguration.imageGenerationArgs.size);
 
                         // Determine file extension from mime type
                         const mimeType = imageBlob.type;

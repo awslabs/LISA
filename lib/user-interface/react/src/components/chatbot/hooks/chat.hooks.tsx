@@ -451,30 +451,92 @@ export const useChatGeneration = ({
                 }
             } else if (isImageGenerationMode) {
                 try {
-                    // Create image generation request
-                    const imageGenParams = {
-                        prompt: params.input,
-                        model: selectedModel.modelId,
-                        n: chatConfiguration.sessionConfiguration.imageGenerationArgs.numberOfImages,
-                        size: chatConfiguration.sessionConfiguration.imageGenerationArgs.size,
-                        quality: chatConfiguration.sessionConfiguration.imageGenerationArgs.quality,
-                        response_format: 'url',
-                    };
+                    // Check if there's a reference photo
+                    let hasImageReference = false;
+                    let imageBlob: Blob | null = null;
 
-                    // Make API call to generate images
-                    const response = await fetch(`${RESTAPI_URI}/${RESTAPI_VERSION}/serve/images/generations`, {
-                        method: 'POST',
-                        headers: {
+                    if (fileContext) {
+                        // Check if it's an image context (base64 data URL)
+                        if (fileContext.startsWith('File context: data:image')) {
+                            const imageData = fileContext.replace('File context: ', '');
+                            // Extract mime type and base64 data
+                            const matches = imageData.match(/^data:(image\/[^;]+);base64,(.+)$/);
+                            if (matches) {
+                                const mimeType = matches[1];
+                                const base64Data = matches[2];
+
+                                // Convert base64 to Blob for multipart/form-data upload
+                                // LiteLLM requires the image as a file object for image edits
+                                const binaryString = atob(base64Data);
+                                const bytes = new Uint8Array(binaryString.length);
+                                for (let i = 0; i < binaryString.length; i++) {
+                                    bytes[i] = binaryString.charCodeAt(i);
+                                }
+                                imageBlob = new Blob([bytes], { type: mimeType });
+                                hasImageReference = true;
+                            }
+                        }
+                    }
+
+                    // Choose endpoint based on whether we have a reference image
+                    const imageEndpoint = hasImageReference
+                        ? `${RESTAPI_URI}/${RESTAPI_VERSION}/serve/images/edits`
+                        : `${RESTAPI_URI}/${RESTAPI_VERSION}/serve/images/generations`;
+
+                    // Build request based on endpoint type
+                    let requestBody: FormData | string;
+                    let requestHeaders: Record<string, string>;
+
+                    if (hasImageReference && imageBlob) {
+                        // Use multipart/form-data for image edits with reference photo
+                        // LiteLLM requires this format for image edit operations
+                        const formData = new FormData();
+                        formData.append('prompt', params.input);
+                        formData.append('model', selectedModel.modelId);
+                        formData.append('n', chatConfiguration.sessionConfiguration.imageGenerationArgs.numberOfImages.toString());
+
+                        // Determine file extension from mime type
+                        const mimeType = imageBlob.type;
+                        let extension = '.png';
+                        if (mimeType.includes('jpeg') || mimeType.includes('jpg')) extension = '.jpg';
+                        else if (mimeType.includes('webp')) extension = '.webp';
+
+                        formData.append('image', imageBlob, `reference${extension}`);
+
+                        requestBody = formData;
+                        requestHeaders = {
+                            'Authorization': `Bearer ${auth.user?.id_token}`,
+                            // Don't set Content-Type - browser will set it with boundary
+                        };
+                    } else {
+                        // Use JSON for standard image generation
+                        const imageGenParams = {
+                            prompt: params.input,
+                            model: selectedModel.modelId,
+                            n: chatConfiguration.sessionConfiguration.imageGenerationArgs.numberOfImages,
+                            size: chatConfiguration.sessionConfiguration.imageGenerationArgs.size,
+                            quality: chatConfiguration.sessionConfiguration.imageGenerationArgs.quality,
+                            response_format: 'url',
+                        };
+
+                        requestBody = JSON.stringify(imageGenParams);
+                        requestHeaders = {
                             'Authorization': `Bearer ${auth.user?.id_token}`,
                             'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(imageGenParams),
+                        };
+                    }
+
+                    // Make API call to generate or edit images
+                    const response = await fetch(imageEndpoint, {
+                        method: 'POST',
+                        headers: requestHeaders,
+                        body: requestBody,
                     });
 
                     const data = await response.json();
 
                     if (!response.ok) {
-                        throw new Error(`Image generation failed: ${JSON.stringify(data.error.message)}`);
+                        throw new Error(`Image ${hasImageReference ? 'edit' : 'generation'} failed: ${JSON.stringify(data.error?.message || data)}`);
                     }
 
                     const imageContent = data.data.map((img) => ({
@@ -486,6 +548,16 @@ export const useChatGeneration = ({
 
                     const responseTime = calculateResponseTime(startTime);
 
+                    // Build metadata with image generation parameters
+                    const imageGenParams = {
+                        prompt: params.input,
+                        model: selectedModel.modelId,
+                        n: chatConfiguration.sessionConfiguration.imageGenerationArgs.numberOfImages,
+                        size: chatConfiguration.sessionConfiguration.imageGenerationArgs.size,
+                        quality: chatConfiguration.sessionConfiguration.imageGenerationArgs.quality,
+                        response_format: 'url',
+                    };
+
                     // Save the response to the chat history
                     setSession((prev) => ({
                         ...prev,
@@ -495,7 +567,9 @@ export const useChatGeneration = ({
                             metadata: {
                                 ...metadata,
                                 imageGeneration: true,
-                                imageGenerationParams: imageGenParams
+                                imageGenerationParams: imageGenParams,
+                                hasFileContext: !!fileContext,
+                                isImageEdit: hasImageReference
                             },
                             usage: {
                                 responseTime

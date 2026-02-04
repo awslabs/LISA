@@ -101,7 +101,7 @@ export const ContextUploadModal = ({
     const [selectedFiles, setSelectedFiles] = useState<File[] | undefined>([]);
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
-    const modelSupportsImages = !!(selectedModel?.features?.filter((feature) => feature.name === 'imageInput')?.length) || selectedModel?.modelType === ModelType.videogen;
+    const modelSupportsImages = !!(selectedModel?.features?.filter((feature) => feature.name === 'imageInput')?.length) || selectedModel?.modelType === ModelType.videogen || selectedModel?.modelType === ModelType.imagegen;
 
     function handleError (error: string) {
         notificationService.generateNotification(error, 'error');

@@ -1,5 +1,4 @@
 {
-  "Transform": "AWS::SecretsManager-2024-09-16",
   "Parameters": {
     "LisaServeResourcesLisaServeResourcesmanagementKeyStringParameterParameterAD609E8A": {
       "Type": "AWS::SSM::Parameter::Value<String>",
@@ -9,9 +8,9 @@
       "Type": "AWS::SSM::Parameter::Value<String>",
       "Default": "/dev/test-lisa/lisa/tokenTableName"
     },
-    "SsmParameterValueawsserviceecsoptimizedamiamazonlinux2recommendedimageidC96584B6F00A464EAD1953AFF4B05118Parameter": {
+    "SsmParameterValueawsserviceecsoptimizedamiamazonlinux2023recommendedimageidC96584B6F00A464EAD1953AFF4B05118Parameter": {
       "Type": "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>",
-      "Default": "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id"
+      "Default": "/aws/service/ecs/optimized-ami/amazon-linux-2023/recommended/image_id"
     },
     "SsmParameterValuedevtestlisalisarolesRESTC96584B6F00A464EAD1953AFF4B05118Parameter": {
       "Type": "AWS::SSM::Parameter::Value<String>",
@@ -20,6 +19,18 @@
     "SsmParameterValuedevtestlisalisarolesRESTEXC96584B6F00A464EAD1953AFF4B05118Parameter": {
       "Type": "AWS::SSM::Parameter::Value<String>",
       "Default": "/dev/test-lisa/lisa/roles/RESTEX"
+    },
+    "SsmParameterValuedevtestlisalisaiamAuthSetupFnArnC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/iamAuthSetupFnArn"
+    },
+    "SsmParameterValuedevtestlisalisaiamAuthSetupRoleArnC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/iamAuthSetupRoleArn"
+    },
+    "SsmParameterValuedevtestlisalisageneratedImagesBucketNameC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/generatedImagesBucketName"
     },
     "SsmParameterValuedevtestlisalisarolesMCPWORKBENCHC96584B6F00A464EAD1953AFF4B05118Parameter": {
       "Type": "AWS::SSM::Parameter::Value<String>",
@@ -50,6 +61,7 @@
           }
         ],
         "BillingMode": "PAY_PER_REQUEST",
+        "DeletionProtectionEnabled": false,
         "GlobalSecondaryIndexes": [
           {
             "IndexName": "ModelIdIndex",
@@ -300,7 +312,7 @@
           "Ref": "RestApiECSClustertestlisadevASGInstanceProfile5F0036EC"
         },
         "ImageId": {
-          "Ref": "SsmParameterValueawsserviceecsoptimizedamiamazonlinux2recommendedimageidC96584B6F00A464EAD1953AFF4B05118Parameter"
+          "Ref": "SsmParameterValueawsserviceecsoptimizedamiamazonlinux2023recommendedimageidC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
         "InstanceMonitoring": true,
         "InstanceType": "m5.large",
@@ -321,7 +333,7 @@
                 {
                   "Ref": "RestApiECSClustertestlisadevClC04148B6"
                 },
-                " >> /etc/ecs/ecs.config\nsudo iptables --insert FORWARD 1 --in-interface docker+ --destination 169.254.169.254/32 --jump DROP\nsudo service iptables save\necho ECS_AWSVPC_BLOCK_IMDS=true >> /etc/ecs/ecs.config"
+                " >> /etc/ecs/ecs.config"
               ]
             ]
           }
@@ -336,7 +348,6 @@
       "Type": "AWS::AutoScaling::AutoScalingGroup",
       "Properties": {
         "AutoScalingGroupName": "test-lisa-dev-REST",
-        "Cooldown": "60",
         "DefaultInstanceWarmup": 60,
         "LaunchConfigurationName": {
           "Ref": "RestApiECSClustertestlisadevASGLaunchConfigD5B6F73C"
@@ -1039,7 +1050,7 @@
         },
         "Port": 443,
         "Protocol": "HTTPS",
-        "SslPolicy": "ELBSecurityPolicy-TLS13-1-2-2021-06"
+        "SslPolicy": "ELBSecurityPolicy-TLS13-1-2-Res-2021-06"
       }
     },
     "RestApiECSClustertestlisadevRESTALBRESTApplicationListenerRESTRESTTgtGrpGroup18249DCC": {
@@ -1049,7 +1060,6 @@
         "HealthCheckPath": "/health",
         "HealthCheckTimeoutSeconds": 30,
         "HealthyThresholdCount": 2,
-        "Name": "test-lisa-rest-rest",
         "Port": 80,
         "Protocol": "HTTP",
         "TargetGroupAttributes": [
@@ -1058,8 +1068,8 @@
             "Value": "false"
           }
         ],
-        "TargetType": "instance",
-        "UnhealthyThresholdCount": 10,
+        "TargetType": "ip",
+        "UnhealthyThresholdCount": 3,
         "VpcId": {
           "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPC8B8C4E4BB8544CDA"
         }
@@ -1072,7 +1082,6 @@
         "HealthCheckPath": "/health",
         "HealthCheckTimeoutSeconds": 30,
         "HealthyThresholdCount": 2,
-        "Name": "test-lisa-rest-mcpworkbench",
         "Port": 80,
         "Protocol": "HTTP",
         "TargetGroupAttributes": [
@@ -1081,8 +1090,8 @@
             "Value": "false"
           }
         ],
-        "TargetType": "instance",
-        "UnhealthyThresholdCount": 10,
+        "TargetType": "ip",
+        "UnhealthyThresholdCount": 3,
         "VpcId": {
           "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPC8B8C4E4BB8544CDA"
         }
@@ -1212,34 +1221,32 @@
                 "Fn::Join": [
                   "",
                   [
-                    "arn:",
+                    "arn:aws:rds-db:us-iso-east-1:012345678901:dbuser:*/",
                     {
-                      "Ref": "AWS::Partition"
-                    },
-                    ":rds-db:us-iso-east-1:012345678901:dbuser:",
-                    {
-                      "Fn::GetAtt": [
-                        "LiteLLMScalingDB7C8AE765",
-                        "DbiResourceId"
+                      "Fn::Select": [
+                        1,
+                        {
+                          "Fn::Split": [
+                            "/",
+                            {
+                              "Fn::Select": [
+                                5,
+                                {
+                                  "Fn::Split": [
+                                    ":",
+                                    {
+                                      "Ref": "SsmParameterValuedevtestlisalisarolesRESTC96584B6F00A464EAD1953AFF4B05118Parameter"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
                       ]
-                    },
-                    "/{{resolve:secretsmanager:",
-                    {
-                      "Ref": "LiteLLMScalingDBSecretAttachmentF62968F9"
-                    },
-                    ":SecretString:username::}}"
+                    }
                   ]
                 ]
-              }
-            },
-            {
-              "Action": [
-                "secretsmanager:GetSecretValue",
-                "secretsmanager:DescribeSecret"
-              ],
-              "Effect": "Allow",
-              "Resource": {
-                "Ref": "LiteLLMScalingDBSecretAttachmentF62968F9"
               }
             },
             {
@@ -1262,6 +1269,26 @@
                     {
                       "Ref": "RegisteredModelsStringParameter36CC6A6A"
                     }
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": [
+                "s3:PutObject",
+                "s3:GetObject",
+                "s3:DeleteObject"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:aws:s3:::",
+                    {
+                      "Ref": "SsmParameterValuedevtestlisalisageneratedImagesBucketNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+                    },
+                    "/*"
                   ]
                 ]
               }
@@ -1496,6 +1523,59 @@
                 "Value": {
                   "Ref": "GuardrailsTableCEF5B750"
                 }
+              },
+              {
+                "Name": "GENERATED_IMAGES_S3_BUCKET_NAME",
+                "Value": {
+                  "Ref": "SsmParameterValuedevtestlisalisageneratedImagesBucketNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+                }
+              },
+              {
+                "Name": "IAM_TOKEN_DB_AUTH",
+                "Value": "true"
+              },
+              {
+                "Name": "DATABASE_HOST",
+                "Value": {
+                  "Fn::GetAtt": [
+                    "LiteLLMScalingDB7C8AE765",
+                    "Endpoint.Address"
+                  ]
+                }
+              },
+              {
+                "Name": "DATABASE_NAME",
+                "Value": "postgres"
+              },
+              {
+                "Name": "DATABASE_PORT",
+                "Value": "5432"
+              },
+              {
+                "Name": "DATABASE_USER",
+                "Value": {
+                  "Fn::Select": [
+                    1,
+                    {
+                      "Fn::Split": [
+                        "/",
+                        {
+                          "Fn::Select": [
+                            5,
+                            {
+                              "Fn::Split": [
+                                ":",
+                                {
+                                  "Ref": "SsmParameterValuedevtestlisalisarolesRESTC96584B6F00A464EAD1953AFF4B05118Parameter"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
               }
             ],
             "Essential": true,
@@ -1510,7 +1590,7 @@
               "Timeout": 5
             },
             "Image": {
-              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:c16d29d4a2dfd4061c6e3401601c642d92b42e8f68072a2d44c97f9ff528a327"
+              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:d5f490d634b72562ac4f0b5a447fd2170226a861d35bd536c765557295367bb3"
             },
             "LogConfiguration": {
               "LogDriver": "awslogs",
@@ -1535,7 +1615,6 @@
             "PortMappings": [
               {
                 "ContainerPort": 8080,
-                "HostPort": 0,
                 "Protocol": "tcp"
               }
             ],
@@ -1546,7 +1625,7 @@
           "Ref": "SsmParameterValuedevtestlisalisarolesRESTEXC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
         "Family": "test-lisa-REST",
-        "NetworkMode": "bridge",
+        "NetworkMode": "awsvpc",
         "RequiresCompatibilities": [
           "EC2"
         ],
@@ -1592,6 +1671,27 @@
             }
           }
         ],
+        "NetworkConfiguration": {
+          "AwsvpcConfiguration": {
+            "AssignPublicIp": "DISABLED",
+            "SecurityGroups": [
+              {
+                "Fn::GetAtt": [
+                  "RestApiECSClustertestlisaRESTEc2SvcSecurityGroupE800F2AB",
+                  "GroupId"
+                ]
+              }
+            ],
+            "Subnets": [
+              {
+                "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+              },
+              {
+                "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+              }
+            ]
+          }
+        },
         "SchedulingStrategy": "REPLICA",
         "ServiceName": "REST",
         "TaskDefinition": {
@@ -1622,6 +1722,121 @@
         "RestApiECSClustertestlisadevRESTALBRESTApplicationListenerRESTMCPWORKBENCHTgtGrpGroupD99D2C75",
         "RestApiECSClustertestlisadevRESTALBRESTApplicationListenerRESTMCPWORKBENCHTgtGrpRuleBDFA4026",
         "RestApiECSClustertestlisadevRESTALBRESTApplicationListenerRESTRESTTgtGrpGroup18249DCC"
+      ]
+    },
+    "RestApiECSClustertestlisaRESTEc2SvcSecurityGroupE800F2AB": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "LisaServe/RestApi-ECSCluster/test-lisa-REST-Ec2Svc/SecurityGroup",
+        "SecurityGroupEgress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Allow all outbound traffic by default",
+            "IpProtocol": "-1"
+          }
+        ],
+        "VpcId": {
+          "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPC8B8C4E4BB8544CDA"
+        }
+      },
+      "DependsOn": [
+        "RestApiECSClusterRESTTRPolicy68D7DDA5",
+        "RestApiECSClustertestlisadevASGCAE610D7",
+        "RestApiECSClustertestlisadevASGASGRESTScaleInUpperAlarmCA336253",
+        "RestApiECSClustertestlisadevASGASGRESTScaleInUpperPolicy4621F1CA",
+        "RestApiECSClustertestlisadevASGASGRESTScaleOutLowerAlarm17D7099D",
+        "RestApiECSClustertestlisadevASGASGRESTScaleOutLowerPolicy2BDAE944",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionAllowInvokeLisaServeRestApiECSClustertestlisadevASGLifecycleHookDrainHookTopic7E3AEC6718E71340",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionB9703624",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionServiceRoleDefaultPolicy95F8B781",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionServiceRole63B8BEE5",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionTopicBAEEB019",
+        "RestApiECSClustertestlisadevASGInstanceProfile5F0036EC",
+        "RestApiECSClustertestlisadevASGInstanceRoleDefaultPolicy763E7201",
+        "RestApiECSClustertestlisadevASGInstanceRole4F18B1DE",
+        "RestApiECSClustertestlisadevASGLaunchConfigD5B6F73C",
+        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookAC6818CC",
+        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookRoleDefaultPolicyEC0162A6",
+        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookRoleEA0CB372",
+        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookTopic4A233E5E"
+      ]
+    },
+    "RestApiECSClustertestlisaRESTEc2SvcSecurityGroupfromLisaNetworkingVpcRestApiAlbSgA916BD54ALLPORTS13839E2E": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "Description": "from LisaNetworkingVpcRestApiAlbSgA916BD54:ALL PORTS",
+        "FromPort": 0,
+        "GroupId": {
+          "Fn::GetAtt": [
+            "RestApiECSClustertestlisaRESTEc2SvcSecurityGroupE800F2AB",
+            "GroupId"
+          ]
+        },
+        "IpProtocol": "tcp",
+        "SourceSecurityGroupId": {
+          "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcRestApiAlbSg469AE4F8GroupIdDB418565"
+        },
+        "ToPort": 65535
+      },
+      "DependsOn": [
+        "RestApiECSClusterRESTTRPolicy68D7DDA5",
+        "RestApiECSClustertestlisadevASGCAE610D7",
+        "RestApiECSClustertestlisadevASGASGRESTScaleInUpperAlarmCA336253",
+        "RestApiECSClustertestlisadevASGASGRESTScaleInUpperPolicy4621F1CA",
+        "RestApiECSClustertestlisadevASGASGRESTScaleOutLowerAlarm17D7099D",
+        "RestApiECSClustertestlisadevASGASGRESTScaleOutLowerPolicy2BDAE944",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionAllowInvokeLisaServeRestApiECSClustertestlisadevASGLifecycleHookDrainHookTopic7E3AEC6718E71340",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionB9703624",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionServiceRoleDefaultPolicy95F8B781",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionServiceRole63B8BEE5",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionTopicBAEEB019",
+        "RestApiECSClustertestlisadevASGInstanceProfile5F0036EC",
+        "RestApiECSClustertestlisadevASGInstanceRoleDefaultPolicy763E7201",
+        "RestApiECSClustertestlisadevASGInstanceRole4F18B1DE",
+        "RestApiECSClustertestlisadevASGLaunchConfigD5B6F73C",
+        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookAC6818CC",
+        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookRoleDefaultPolicyEC0162A6",
+        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookRoleEA0CB372",
+        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookTopic4A233E5E"
+      ]
+    },
+    "RestApiECSClustertestlisaRESTEc2SvcSecurityGroupfromLisaNetworkingVpcRestApiAlbSgA916BD5480809F5D3F33": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "Description": "Load balancer to target",
+        "FromPort": 8080,
+        "GroupId": {
+          "Fn::GetAtt": [
+            "RestApiECSClustertestlisaRESTEc2SvcSecurityGroupE800F2AB",
+            "GroupId"
+          ]
+        },
+        "IpProtocol": "tcp",
+        "SourceSecurityGroupId": {
+          "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcRestApiAlbSg469AE4F8GroupIdDB418565"
+        },
+        "ToPort": 8080
+      },
+      "DependsOn": [
+        "RestApiECSClusterRESTTRPolicy68D7DDA5",
+        "RestApiECSClustertestlisadevASGCAE610D7",
+        "RestApiECSClustertestlisadevASGASGRESTScaleInUpperAlarmCA336253",
+        "RestApiECSClustertestlisadevASGASGRESTScaleInUpperPolicy4621F1CA",
+        "RestApiECSClustertestlisadevASGASGRESTScaleOutLowerAlarm17D7099D",
+        "RestApiECSClustertestlisadevASGASGRESTScaleOutLowerPolicy2BDAE944",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionAllowInvokeLisaServeRestApiECSClustertestlisadevASGLifecycleHookDrainHookTopic7E3AEC6718E71340",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionB9703624",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionServiceRoleDefaultPolicy95F8B781",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionServiceRole63B8BEE5",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionTopicBAEEB019",
+        "RestApiECSClustertestlisadevASGInstanceProfile5F0036EC",
+        "RestApiECSClustertestlisadevASGInstanceRoleDefaultPolicy763E7201",
+        "RestApiECSClustertestlisadevASGInstanceRole4F18B1DE",
+        "RestApiECSClustertestlisadevASGLaunchConfigD5B6F73C",
+        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookAC6818CC",
+        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookRoleDefaultPolicyEC0162A6",
+        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookRoleEA0CB372",
+        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookTopic4A233E5E"
       ]
     },
     "RestApiECSClusterMCPWORKBENCHTRPolicy0E033E1A": {
@@ -1864,7 +2079,7 @@
               "Timeout": 5
             },
             "Image": {
-              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:9a0c236b30347c7353536dbc78fe25548def6ced031c13d920ffc592acdaf0d8"
+              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:ab55ef1b749a5c1f371d65704c667266c527f7acf1f7f75b56d6afc02aa71d5e"
             },
             "LogConfiguration": {
               "LogDriver": "awslogs",
@@ -1889,7 +2104,6 @@
             "PortMappings": [
               {
                 "ContainerPort": 8000,
-                "HostPort": 0,
                 "Protocol": "tcp"
               }
             ],
@@ -1900,7 +2114,7 @@
           "Ref": "SsmParameterValuedevtestlisalisarolesMCPWORKBENCHEXC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
         "Family": "test-lisa-MCPWORKBENCH",
-        "NetworkMode": "bridge",
+        "NetworkMode": "awsvpc",
         "RequiresCompatibilities": [
           "EC2"
         ],
@@ -1946,6 +2160,27 @@
             }
           }
         ],
+        "NetworkConfiguration": {
+          "AwsvpcConfiguration": {
+            "AssignPublicIp": "DISABLED",
+            "SecurityGroups": [
+              {
+                "Fn::GetAtt": [
+                  "RestApiECSClustertestlisaMCPWORKBENCHEc2SvcSecurityGroupE1348FF5",
+                  "GroupId"
+                ]
+              }
+            ],
+            "Subnets": [
+              {
+                "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+              },
+              {
+                "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+              }
+            ]
+          }
+        },
         "SchedulingStrategy": "REPLICA",
         "ServiceName": "MCPWORKBENCH",
         "TaskDefinition": {
@@ -1973,6 +2208,121 @@
         "RestApiECSClustertestlisadevASGLifecycleHookDrainHookRoleEA0CB372",
         "RestApiECSClustertestlisadevASGLifecycleHookDrainHookTopic4A233E5E",
         "RestApiECSClustertestlisadevRESTALBRESTApplicationListenerRESTMCPWORKBENCHTgtGrpRuleBDFA4026"
+      ]
+    },
+    "RestApiECSClustertestlisaMCPWORKBENCHEc2SvcSecurityGroupE1348FF5": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "LisaServe/RestApi-ECSCluster/test-lisa-MCPWORKBENCH-Ec2Svc/SecurityGroup",
+        "SecurityGroupEgress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Allow all outbound traffic by default",
+            "IpProtocol": "-1"
+          }
+        ],
+        "VpcId": {
+          "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPC8B8C4E4BB8544CDA"
+        }
+      },
+      "DependsOn": [
+        "RestApiECSClusterMCPWORKBENCHTRPolicy0E033E1A",
+        "RestApiECSClustertestlisadevASGCAE610D7",
+        "RestApiECSClustertestlisadevASGASGRESTScaleInUpperAlarmCA336253",
+        "RestApiECSClustertestlisadevASGASGRESTScaleInUpperPolicy4621F1CA",
+        "RestApiECSClustertestlisadevASGASGRESTScaleOutLowerAlarm17D7099D",
+        "RestApiECSClustertestlisadevASGASGRESTScaleOutLowerPolicy2BDAE944",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionAllowInvokeLisaServeRestApiECSClustertestlisadevASGLifecycleHookDrainHookTopic7E3AEC6718E71340",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionB9703624",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionServiceRoleDefaultPolicy95F8B781",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionServiceRole63B8BEE5",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionTopicBAEEB019",
+        "RestApiECSClustertestlisadevASGInstanceProfile5F0036EC",
+        "RestApiECSClustertestlisadevASGInstanceRoleDefaultPolicy763E7201",
+        "RestApiECSClustertestlisadevASGInstanceRole4F18B1DE",
+        "RestApiECSClustertestlisadevASGLaunchConfigD5B6F73C",
+        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookAC6818CC",
+        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookRoleDefaultPolicyEC0162A6",
+        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookRoleEA0CB372",
+        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookTopic4A233E5E"
+      ]
+    },
+    "RestApiECSClustertestlisaMCPWORKBENCHEc2SvcSecurityGroupfromLisaNetworkingVpcRestApiAlbSgA916BD54ALLPORTS138E7DFA": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "Description": "from LisaNetworkingVpcRestApiAlbSgA916BD54:ALL PORTS",
+        "FromPort": 0,
+        "GroupId": {
+          "Fn::GetAtt": [
+            "RestApiECSClustertestlisaMCPWORKBENCHEc2SvcSecurityGroupE1348FF5",
+            "GroupId"
+          ]
+        },
+        "IpProtocol": "tcp",
+        "SourceSecurityGroupId": {
+          "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcRestApiAlbSg469AE4F8GroupIdDB418565"
+        },
+        "ToPort": 65535
+      },
+      "DependsOn": [
+        "RestApiECSClusterMCPWORKBENCHTRPolicy0E033E1A",
+        "RestApiECSClustertestlisadevASGCAE610D7",
+        "RestApiECSClustertestlisadevASGASGRESTScaleInUpperAlarmCA336253",
+        "RestApiECSClustertestlisadevASGASGRESTScaleInUpperPolicy4621F1CA",
+        "RestApiECSClustertestlisadevASGASGRESTScaleOutLowerAlarm17D7099D",
+        "RestApiECSClustertestlisadevASGASGRESTScaleOutLowerPolicy2BDAE944",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionAllowInvokeLisaServeRestApiECSClustertestlisadevASGLifecycleHookDrainHookTopic7E3AEC6718E71340",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionB9703624",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionServiceRoleDefaultPolicy95F8B781",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionServiceRole63B8BEE5",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionTopicBAEEB019",
+        "RestApiECSClustertestlisadevASGInstanceProfile5F0036EC",
+        "RestApiECSClustertestlisadevASGInstanceRoleDefaultPolicy763E7201",
+        "RestApiECSClustertestlisadevASGInstanceRole4F18B1DE",
+        "RestApiECSClustertestlisadevASGLaunchConfigD5B6F73C",
+        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookAC6818CC",
+        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookRoleDefaultPolicyEC0162A6",
+        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookRoleEA0CB372",
+        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookTopic4A233E5E"
+      ]
+    },
+    "RestApiECSClustertestlisaMCPWORKBENCHEc2SvcSecurityGroupfromLisaNetworkingVpcRestApiAlbSgA916BD548000076AC800": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "Description": "Load balancer to target",
+        "FromPort": 8000,
+        "GroupId": {
+          "Fn::GetAtt": [
+            "RestApiECSClustertestlisaMCPWORKBENCHEc2SvcSecurityGroupE1348FF5",
+            "GroupId"
+          ]
+        },
+        "IpProtocol": "tcp",
+        "SourceSecurityGroupId": {
+          "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcRestApiAlbSg469AE4F8GroupIdDB418565"
+        },
+        "ToPort": 8000
+      },
+      "DependsOn": [
+        "RestApiECSClusterMCPWORKBENCHTRPolicy0E033E1A",
+        "RestApiECSClustertestlisadevASGCAE610D7",
+        "RestApiECSClustertestlisadevASGASGRESTScaleInUpperAlarmCA336253",
+        "RestApiECSClustertestlisadevASGASGRESTScaleInUpperPolicy4621F1CA",
+        "RestApiECSClustertestlisadevASGASGRESTScaleOutLowerAlarm17D7099D",
+        "RestApiECSClustertestlisadevASGASGRESTScaleOutLowerPolicy2BDAE944",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionAllowInvokeLisaServeRestApiECSClustertestlisadevASGLifecycleHookDrainHookTopic7E3AEC6718E71340",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionB9703624",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionServiceRoleDefaultPolicy95F8B781",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionServiceRole63B8BEE5",
+        "RestApiECSClustertestlisadevASGDrainECSHookFunctionTopicBAEEB019",
+        "RestApiECSClustertestlisadevASGInstanceProfile5F0036EC",
+        "RestApiECSClustertestlisadevASGInstanceRoleDefaultPolicy763E7201",
+        "RestApiECSClustertestlisadevASGInstanceRole4F18B1DE",
+        "RestApiECSClustertestlisadevASGLaunchConfigD5B6F73C",
+        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookAC6818CC",
+        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookRoleDefaultPolicyEC0162A6",
+        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookRoleEA0CB372",
+        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookTopic4A233E5E"
       ]
     },
     "FastApiEndpointF31771C0": {
@@ -2042,24 +2392,6 @@
         }
       }
     },
-    "LISALiteLLMScalingSgfromLisaNetworkingVpcLambdaSecurityGroupE929D4AD54321CB0EB7E": {
-      "Type": "AWS::EC2::SecurityGroupIngress",
-      "Properties": {
-        "Description": "Allow rotation Lambda to connect to database",
-        "FromPort": 5432,
-        "GroupId": {
-          "Fn::GetAtt": [
-            "LISALiteLLMScalingSg3CC6544C",
-            "GroupId"
-          ]
-        },
-        "IpProtocol": "tcp",
-        "SourceSecurityGroupId": {
-          "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
-        },
-        "ToPort": 5432
-      }
-    },
     "LiteLLMScalingDBSubnetGroup03777761": {
       "Type": "AWS::RDS::DBSubnetGroup",
       "Properties": {
@@ -2110,63 +2442,11 @@
         "TargetType": "AWS::RDS::DBInstance"
       }
     },
-    "LiteLLMScalingDBSecretAttachmentDatabasePasswordRotationScheduleC8556257": {
-      "Type": "AWS::SecretsManager::RotationSchedule",
-      "Properties": {
-        "HostedRotationLambda": {
-          "ExcludeCharacters": " %+~`#$&*()|[]{}:;<>?!'/@\"\\",
-          "RotationLambdaName": "test-lisa-Litellm-Rotation-Function",
-          "RotationType": "PostgreSQLSingleUser",
-          "VpcSecurityGroupIds": {
-            "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
-          },
-          "VpcSubnetIds": {
-            "Fn::Join": [
-              "",
-              [
-                {
-                  "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
-                },
-                ",",
-                {
-                  "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
-                }
-              ]
-            ]
-          }
-        },
-        "RotationRules": {
-          "ScheduleExpression": "rate(30 days)"
-        },
-        "SecretId": {
-          "Ref": "LiteLLMScalingDBSecretAttachmentF62968F9"
-        }
-      }
-    },
     "LiteLLMScalingDBSecretAttachmentPolicyDE12773F": {
       "Type": "AWS::SecretsManager::ResourcePolicy",
       "Properties": {
         "ResourcePolicy": {
           "Statement": [
-            {
-              "Action": "secretsmanager:DeleteSecret",
-              "Effect": "Deny",
-              "Principal": {
-                "AWS": {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:",
-                      {
-                        "Ref": "AWS::Partition"
-                      },
-                      ":iam::012345678901:root"
-                    ]
-                  ]
-                }
-              },
-              "Resource": "*"
-            },
             {
               "Action": [
                 "secretsmanager:GetSecretValue",
@@ -2175,7 +2455,7 @@
               "Effect": "Allow",
               "Principal": {
                 "AWS": {
-                  "Ref": "SsmParameterValuedevtestlisalisarolesRESTC96584B6F00A464EAD1953AFF4B05118Parameter"
+                  "Ref": "SsmParameterValuedevtestlisalisaiamAuthSetupRoleArnC96584B6F00A464EAD1953AFF4B05118Parameter"
                 }
               },
               "Resource": {
@@ -2199,6 +2479,7 @@
         "DBSubnetGroupName": {
           "Ref": "LiteLLMScalingDBSubnetGroup03777761"
         },
+        "DeletionProtection": false,
         "EnableIAMDatabaseAuthentication": true,
         "Engine": "postgres",
         "MasterUserPassword": {
@@ -2243,61 +2524,7 @@
                   "Endpoint.Address"
                 ]
               },
-              "\",\"dbName\":\"postgres\",\"dbPort\":5432,\"passwordSecretId\":\"",
-              {
-                "Fn::Join": [
-                  "-",
-                  [
-                    {
-                      "Fn::Select": [
-                        0,
-                        {
-                          "Fn::Split": [
-                            "-",
-                            {
-                              "Fn::Select": [
-                                6,
-                                {
-                                  "Fn::Split": [
-                                    ":",
-                                    {
-                                      "Ref": "LisaServeLiteLLMScalingDBSecret7BF5A8EA3fdaad7efa858a3daf9490cf0a702aeb"
-                                    }
-                                  ]
-                                }
-                              ]
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "Fn::Select": [
-                        1,
-                        {
-                          "Fn::Split": [
-                            "-",
-                            {
-                              "Fn::Select": [
-                                6,
-                                {
-                                  "Fn::Split": [
-                                    ":",
-                                    {
-                                      "Ref": "LisaServeLiteLLMScalingDBSecret7BF5A8EA3fdaad7efa858a3daf9490cf0a702aeb"
-                                    }
-                                  ]
-                                }
-                              ]
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                ]
-              },
-              "\"}"
+              "\",\"dbName\":\"postgres\",\"dbPort\":5432}"
             ]
           ]
         }
@@ -2333,6 +2560,250 @@
         "Type": "String",
         "Value": "[]"
       }
+    },
+    "IamAuthSetupRoleRefPolicy0635E4EA": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "secretsmanager:GetSecretValue",
+                "secretsmanager:DescribeSecret"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Ref": "LiteLLMScalingDBSecretAttachmentF62968F9"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "IamAuthSetupRoleRefPolicy0635E4EA",
+        "Roles": [
+          {
+            "Fn::Select": [
+              1,
+              {
+                "Fn::Split": [
+                  "/",
+                  {
+                    "Fn::Select": [
+                      5,
+                      {
+                        "Fn::Split": [
+                          ":",
+                          {
+                            "Ref": "SsmParameterValuedevtestlisalisaiamAuthSetupRoleArnC96584B6F00A464EAD1953AFF4B05118Parameter"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "LISAServeCreateDbUserCustomResourceB2AC2105": {
+      "Type": "Custom::AWS",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "AWS679f53fac002430cb0da5b7982bd22872D164C4C",
+            "Arn"
+          ]
+        },
+        "Create": {
+          "Fn::Join": [
+            "",
+            [
+              "{\"service\":\"Lambda\",\"action\":\"invoke\",\"physicalResourceId\":{\"id\":\"LISAServeCreateDbUserCustomResource\"},\"parameters\":{\"FunctionName\":\"",
+              {
+                "Ref": "SsmParameterValuedevtestlisalisaiamAuthSetupFnArnC96584B6F00A464EAD1953AFF4B05118Parameter"
+              },
+              "\",\"Payload\":\"{\\\"secretArn\\\":\\\"",
+              {
+                "Ref": "LiteLLMScalingDBSecretAttachmentF62968F9"
+              },
+              "\\\",\\\"dbHost\\\":\\\"",
+              {
+                "Fn::GetAtt": [
+                  "LiteLLMScalingDB7C8AE765",
+                  "Endpoint.Address"
+                ]
+              },
+              "\\\",\\\"dbPort\\\":5432,\\\"dbName\\\":\\\"postgres\\\",\\\"dbUser\\\":\\\"postgres\\\",\\\"iamName\\\":\\\"",
+              {
+                "Fn::Select": [
+                  1,
+                  {
+                    "Fn::Split": [
+                      "/",
+                      {
+                        "Fn::Select": [
+                          5,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "SsmParameterValuedevtestlisalisarolesRESTC96584B6F00A464EAD1953AFF4B05118Parameter"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "\\\"}\"}}"
+            ]
+          ]
+        },
+        "Update": {
+          "Fn::Join": [
+            "",
+            [
+              "{\"service\":\"Lambda\",\"action\":\"invoke\",\"physicalResourceId\":{\"id\":\"LISAServeCreateDbUserCustomResource\"},\"parameters\":{\"FunctionName\":\"",
+              {
+                "Ref": "SsmParameterValuedevtestlisalisaiamAuthSetupFnArnC96584B6F00A464EAD1953AFF4B05118Parameter"
+              },
+              "\",\"Payload\":\"{\\\"secretArn\\\":\\\"",
+              {
+                "Ref": "LiteLLMScalingDBSecretAttachmentF62968F9"
+              },
+              "\\\",\\\"dbHost\\\":\\\"",
+              {
+                "Fn::GetAtt": [
+                  "LiteLLMScalingDB7C8AE765",
+                  "Endpoint.Address"
+                ]
+              },
+              "\\\",\\\"dbPort\\\":5432,\\\"dbName\\\":\\\"postgres\\\",\\\"dbUser\\\":\\\"postgres\\\",\\\"iamName\\\":\\\"",
+              {
+                "Fn::Select": [
+                  1,
+                  {
+                    "Fn::Split": [
+                      "/",
+                      {
+                        "Fn::Select": [
+                          5,
+                          {
+                            "Fn::Split": [
+                              ":",
+                              {
+                                "Ref": "SsmParameterValuedevtestlisalisarolesRESTC96584B6F00A464EAD1953AFF4B05118Parameter"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "\\\"}\"}}"
+            ]
+          ]
+        },
+        "InstallLatestAwsSdk": true
+      },
+      "DependsOn": [
+        "LISAServeCreateDbUserCustomResourceCustomResourcePolicy9D7CC803",
+        "LiteLLMScalingDB7C8AE765",
+        "LiteLLMScalingDBSecretAttachmentPolicyDE12773F",
+        "LiteLLMScalingDBSecretAttachmentF62968F9",
+        "LisaServeLiteLLMScalingDBSecret7BF5A8EA3fdaad7efa858a3daf9490cf0a702aeb",
+        "LiteLLMScalingDBSubnetGroup03777761"
+      ],
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete"
+    },
+    "LISAServeCreateDbUserCustomResourceCustomResourcePolicy9D7CC803": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": {
+                "Ref": "SsmParameterValuedevtestlisalisaiamAuthSetupFnArnC96584B6F00A464EAD1953AFF4B05118Parameter"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "LISAServeCreateDbUserCustomResourceCustomResourcePolicy9D7CC803",
+        "Roles": [
+          {
+            "Ref": "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2"
+          }
+        ]
+      },
+      "DependsOn": [
+        "LiteLLMScalingDB7C8AE765",
+        "LiteLLMScalingDBSecretAttachmentPolicyDE12773F",
+        "LiteLLMScalingDBSecretAttachmentF62968F9",
+        "LisaServeLiteLLMScalingDBSecret7BF5A8EA3fdaad7efa858a3daf9490cf0a702aeb",
+        "LiteLLMScalingDBSubnetGroup03777761"
+      ]
+    },
+    "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    "AWS679f53fac002430cb0da5b7982bd22872D164C4C": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "a38f8a5114ae969de815d5c66b3ddbd646445697a789f7b16424b4ea541d4ff9.zip"
+        },
+        "Handler": "index.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2",
+            "Arn"
+          ]
+        },
+        "Runtime": "nodejs22.x",
+        "Timeout": 120
+      },
+      "DependsOn": [
+        "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2"
+      ]
     },
     "ModelInvokePermsACDC92EC": {
       "Type": "AWS::IAM::Policy",

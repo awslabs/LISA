@@ -44,20 +44,26 @@ RAG_PIPELINE_BUCKET = "lisa-rag-pipeline"
 BEDROCK_KB_S3_BUCKET = "bk-s3-test"
 
 
-def get_management_key(deployment_name: str, deployment_stage: str) -> str:
+def get_management_key(deployment_name: str, deployment_stage: str, region: str | None = None) -> str:
     """Retrieve management key from AWS Secrets Manager.
 
     Args:
         deployment_name: The LISA deployment name
+        deployment_stage: The LISA deployment stage
+        region: AWS region where the secret is stored
 
     Returns:
         str: The management API key
     """
     secret_name = f"{deployment_name}-management-key"
     print(f"  Looking for secret: {secret_name}")
+    if region:
+        print(f"  Using region: {region}")
 
     try:
-        secrets_client = boto3.client("secretsmanager")
+        secrets_client = (
+            boto3.client("secretsmanager", region_name=region) if region else boto3.client("secretsmanager")
+        )
         response = secrets_client.get_secret_value(SecretId=secret_name)
         # Secret is stored as a plain string, not JSON
         api_key = response["SecretString"]

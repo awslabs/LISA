@@ -21,20 +21,20 @@ import { Roles } from '../../../lib/core/iam/roles';
 import { Stack } from 'aws-cdk-lib';
 
 const stackRolesOverrides: Record<string, number> = {
-    'LisaApiBase': 4,
+    'LisaApiBase': 5,
     'LisaServe': 4,
     'LisaUI': 1,
     'LisaDocs': 2,
     'LisaRAG': 4,
     'LisaChat': 0,
     'LisaCore': 1,
-    'LisaModels': 1,
+    'LisaModels': 2,
     'LisaMcpWorkbench': 4,
     'LisaMcpApi': 5,
 };
 
 const stackRoles: Record<string, number> = {
-    'LisaApiBase': 5,
+    'LisaApiBase': 6,
     'LisaServe': 4,
     'LisaUI': 3,
     'LisaNetworking': 0,
@@ -43,7 +43,7 @@ const stackRoles: Record<string, number> = {
     'LisaApiDeployment': 0,
     'LisaIAM': 5,
     'LisaDocs': 4,
-    'LisaModels': 10,
+    'LisaModels': 11,
     'LisaRAG': 4,
     'LisaMetrics': 1,
     'LisaMcpWorkbench': 4,

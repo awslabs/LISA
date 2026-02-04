@@ -4,8 +4,11 @@ set -e
 
 ROOT=$(pwd)
 OUTPUT_DIR=$ROOT/dist/images
-# DOCKER_CMD=${DOCKER_CMD:-$(command -v finch >/dev/null 2>&1 && echo "finch" || echo "docker")}
-DOCKER_CMD=docker
+
+# Container runtime: Use CDK_DOCKER env var (same as CDK), default to docker
+DOCKER_CMD="${CDK_DOCKER:-docker}"
+
+PLATFORM="linux/amd64"
 
 # Parse command line arguments
 UPLOAD=false
@@ -44,9 +47,10 @@ build_image() {
 
     echo "Building image: $repository_name:$image_tag"
     echo "Context: $build_context_path"
+    echo "Platform: $PLATFORM"
 
     # Construct docker build command
-    local docker_cmd="$DOCKER_CMD build"
+    local docker_cmd="$DOCKER_CMD build --platform $PLATFORM"
 
     # Add build args
     for arg in "${build_args[@]}"; do

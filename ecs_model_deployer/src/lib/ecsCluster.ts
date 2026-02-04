@@ -33,6 +33,7 @@ import {
     LinuxParameters,
     LogDriver,
     MountPoint,
+    NetworkMode,
     Protocol,
     Volume,
 } from 'aws-cdk-lib/aws-ecs';
@@ -103,13 +104,13 @@ export class ECSCluster extends Construct {
         );
 
         // Create auto scaling group with SNS topic encryption for lifecycle hooks
+        // Note: cooldown is not set here because we use target tracking scaling which manages its own cooldown.
         const autoScalingGroup = cluster.addCapacity(createCdkId([identifier, 'ASG']), {
             vpcSubnets: subnetSelection,
             instanceType: new InstanceType(ecsConfig.instanceType),
             machineImage: EcsOptimizedImage.amazonLinux2023(ecsConfig.amiHardwareType),
             minCapacity: ecsConfig.autoScalingConfig.minCapacity,
             maxCapacity: ecsConfig.autoScalingConfig.maxCapacity,
-            cooldown: Duration.seconds(ecsConfig.autoScalingConfig.cooldown),
             groupMetrics: [GroupMetrics.all()],
             instanceMonitoring: Monitoring.DETAILED,
             newInstancesProtectedFromScaleIn: false,
@@ -217,6 +218,7 @@ export class ECSCluster extends Construct {
             // Create ECS task definition
             const ec2TaskDefinition = new Ec2TaskDefinition(this, createCdkId([roleId, 'Ec2TaskDefinition']), {
                 family: createCdkId([config.deploymentName, roleId], 32, 2),
+                networkMode: NetworkMode.BRIDGE,
                 volumes: volumes,
                 taskRole,
                 ...(executionRoleName && { executionRole: Role.fromRoleName(this, createCdkId([config.deploymentName, roleId, 'EX']), executionRoleName) }),
@@ -301,7 +303,8 @@ export class ECSCluster extends Construct {
             // Add targets
             const loadBalancerHealthCheckConfig = ecsConfig.loadBalancerConfig.healthCheckConfig;
             const targetGroup = listener.addTargets(createCdkId([identifier, 'TgtGrp']), {
-                targetGroupName: createCdkId([config.deploymentName, identifier], 32, 2).toLowerCase(),
+                // Note: targetGroupName intentionally omitted to allow CloudFormation to generate unique names.
+                // This enables seamless replacement when immutable properties (like TargetType) change.
                 healthCheck: {
                     path: loadBalancerHealthCheckConfig.path,
                     interval: Duration.seconds(loadBalancerHealthCheckConfig.interval),

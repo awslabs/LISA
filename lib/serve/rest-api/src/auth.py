@@ -27,6 +27,7 @@ from typing import Any
 import boto3
 import jwt
 import requests
+from auth_provider import get_authorization_provider
 from cachetools import TTLCache
 from cachetools.keys import hashkey
 from fastapi import HTTPException, Request
@@ -339,6 +340,7 @@ class Authorizer:
         self.token_authorizer = ApiTokenAuthorizer()
         self.management_token_authorizer = ManagementTokenAuthorizer()
         self.oidc_authorizer = OIDCHTTPBearer(authority=self.authority, client_id=self.client_id)
+        self.auth_provider = get_authorization_provider()
 
     async def __call__(self, request: Request) -> HTTPAuthorizationCredentials | None:
         jwt_data = await self.authenticate_request(request)
@@ -400,8 +402,8 @@ class Authorizer:
             user_id = token_info.get("username", "api-token")
             groups = token_info.get("groups", [])
 
-            # Check if user has admin group
-            is_admin_user = self.admin_group in groups
+            # Use auth provider for admin check
+            is_admin_user = self.auth_provider.check_admin_access(user_id, groups)
 
             if require_admin and not is_admin_user:
                 has_access = False
@@ -422,19 +424,21 @@ class Authorizer:
             auth_method = "OIDC"
             user_id = jwt_data.get("sub", jwt_data.get("username", "unknown"))
 
+            # Use auth provider for admin and app access checks
+            is_admin_user = self.auth_provider.check_admin_access_jwt(jwt_data, self.jwt_groups_property)
+            has_app_access = self.auth_provider.check_app_access_jwt(jwt_data, self.jwt_groups_property)
+
             # If user is admin, always allow access
-            if is_user_in_group(jwt_data, self.admin_group, self.jwt_groups_property):
+            if is_admin_user:
                 has_access = True
                 reason = "Admin user"
             # If admin is required but user is not admin, deny access
             elif require_admin:
                 has_access = False
                 reason = "Admin required"
-            # For non-admin requests, check user group
+            # For non-admin requests, check app access
             else:
-                has_access = self.user_group == "" or is_user_in_group(
-                    jwt_data=jwt_data, group=self.user_group, jwt_groups_property=self.jwt_groups_property
-                )
+                has_access = has_app_access
                 reason = "Valid user group" if has_access else "Invalid user group"
 
         self._log_access_attempt(request, auth_method, user_id, endpoint, has_access, reason)

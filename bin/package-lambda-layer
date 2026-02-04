@@ -8,6 +8,11 @@ BUILD_DIR=$PWD/build
 IS_LAYER=0
 TMP_DIR=$BUILD_DIR/tmp/
 PYPI_URL=
+PYTHON_VERSION=3.13
+PLATFORM="linux/amd64"
+
+# Container runtime: Use CDK_DOCKER env var (same as CDK), default to docker
+DOCKER_CMD="${CDK_DOCKER:-docker}"
 
 # Parse named parameters
 while [ $# -gt 0 ]; do
@@ -35,9 +40,12 @@ while [ $# -gt 0 ]; do
             --layer)
                 IS_LAYER=1
                 ;;
+            --python-version)
+                PYTHON_VERSION="$value"
+                ;;
             *)
                 echo "Unknown parameter: $param"
-                echo "Usage: $0 --src <source_dir> --output <output_file> --exclude <packages> --layer"
+                echo "Usage: $0 --src <source_dir> --output <output_file> --exclude <packages> --layer --python-version <version>"
                 exit 1
                 ;;
         esac
@@ -68,9 +76,13 @@ while [ $# -gt 0 ]; do
             --layer)
                 IS_LAYER=1
                 ;;
+            --python-version)
+                shift
+                PYTHON_VERSION="$1"
+                ;;
             *)
                 echo "Unknown parameter: $1"
-                echo "Usage: $0 --src <source_dir> --output <output_file> --exclude <packages>"
+                echo "Usage: $0 --src <source_dir> --output <output_file> --exclude <packages> --layer --python-version <version>"
                 exit 1
                 ;;
         esac
@@ -96,26 +108,59 @@ echo "Source directory: $SRC"
 echo "Output file: $OUTPUT"
 echo "Build directory: $BUILD_DIR"
 echo "Temp directory: $TMP_DIR"
+echo "Python version: $PYTHON_VERSION"
+echo "Platform: $PLATFORM"
+echo "Container runtime: $DOCKER_CMD"
 
+# Use AWS SAM build image for Lambda-compatible builds
+# This ensures native extensions are compiled for the correct platform
+PYTHON_IMAGE="public.ecr.aws/sam/build-python${PYTHON_VERSION}:latest"
 
 install_requirements() {
-    echo "Installing requirements"
-    rm -rf "$TMP_DIR"
+    echo "Installing requirements using container..."
+    rm -rf "$TMP_DIR" 2>/dev/null || sudo rm -rf "$TMP_DIR" 2>/dev/null || true
     mkdir -p "$TMP_DIR"
+
     if [ -f "$SRC/requirements.txt" ]; then
         echo "Installing requirements from $SRC/requirements.txt"
-        echo "Using python version $(python3 --version)"
-        python3 -m pip install -r "$SRC/requirements.txt" --force-reinstall --no-cache-dir --target "$TMP_DIR" --index-url $PYPI_URL --trusted-host $TRUSTED_HOST
+        echo "Using container image: $PYTHON_IMAGE"
+
+        # Get absolute paths for container volume mounts
+        ABS_SRC=$(cd "$SRC" && pwd)
+        ABS_TMP=$(cd "$TMP_DIR" && pwd)
+
+        # Get current user's UID/GID for ownership fix
+        CURRENT_UID=$(id -u)
+        CURRENT_GID=$(id -g)
+
+        # Run pip install inside container with correct platform, then fix ownership
+        $DOCKER_CMD run --rm \
+            --platform "$PLATFORM" \
+            -v "$ABS_SRC:/var/task/src:ro" \
+            -v "$ABS_TMP:/var/task/output" \
+            -e PYPI_URL="$PYPI_URL" \
+            -e TRUSTED_HOST="$TRUSTED_HOST" \
+            -e TARGET_UID="$CURRENT_UID" \
+            -e TARGET_GID="$CURRENT_GID" \
+            "$PYTHON_IMAGE" \
+            /bin/bash -c "
+                pip install -r /var/task/src/requirements.txt \
+                    --force-reinstall \
+                    --no-cache-dir \
+                    --target /var/task/output \
+                    --index-url \$PYPI_URL \
+                    --trusted-host \$TRUSTED_HOST && \
+                chown -R \$TARGET_UID:\$TARGET_GID /var/task/output
+            "
     else
         echo "No requirements.txt found in $SRC"
     fi
 }
 
-
 build_package() {
     echo "Building package"
     if [ -d "$SRC" ]; then
-        rsync -av --exclude='build' --exclude='.hatch' --exclude='.venv' "$SRC/" "$TMP_DIR/"
+        rsync -av --exclude='build' --exclude='.hatch' --exclude='.venv' --exclude='requirements.txt' "$SRC/" "$TMP_DIR/"
     fi
 }
 

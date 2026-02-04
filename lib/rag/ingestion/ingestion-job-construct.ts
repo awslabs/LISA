@@ -20,7 +20,7 @@
  * - AWS Batch compute environment and job queue for processing documents
  * - Lambda functions for handling scheduled ingestion and S3 events
  */
-import { Duration, Size, StackProps } from 'aws-cdk-lib';
+import { Duration, RemovalPolicy, Size, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { BaseProps, EcsSourceType } from '../../schema';
 import * as logs from 'aws-cdk-lib/aws-logs';
@@ -75,7 +75,8 @@ export class IngestionJobConstruct extends Construct {
                 type: dynamodb.AttributeType.STRING
             },
             billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-            removalPolicy: config.removalPolicy
+            removalPolicy: config.removalPolicy,
+            deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
         });
 
         // GSI for querying by document ID

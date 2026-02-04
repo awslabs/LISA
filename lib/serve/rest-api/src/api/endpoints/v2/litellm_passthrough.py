@@ -303,7 +303,7 @@ def generate_response_with_guardrail_handling(iterator: Iterator[str | bytes], m
             yield f"{line}\n\n"
 
 
-@router.api_route("/{api_path:path}", methods=["GET", "POST", "OPTIONS", "PUT", "PATCH", "DELETE", "HEAD"])
+@router.api_route("/{api_path:path}", methods=["GET", "POST", "OPTIONS", "PUT", "PATCH", "DELETE"])
 async def litellm_passthrough(request: Request, api_path: str) -> Response:
     """
     Pass requests directly to LiteLLM. LiteLLM and deployed models will respond here directly.
@@ -438,7 +438,7 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
 
         except Exception as e:
             logger.error(f"Error processing multipart request: {e}")
-            raise HTTPException(status_code=400, detail=f"Error processing multipart request: {str(e)}")
+            raise HTTPException(status_code=400, detail="Error processing multipart request")
 
     # Handle JSON requests (default behavior)
     params = await request.json()

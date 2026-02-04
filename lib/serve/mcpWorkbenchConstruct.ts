@@ -72,7 +72,10 @@ export class McpWorkbenchConstruct extends Construct {
 
         const workbenchBucket = this.createWorkbenchBucket(scope, config);
         this.createWorkbenchApi(restApi, config, vpc, securityGroups, workbenchBucket, lambdaLayers, authorizer);
-        this.createWorkbenchService(apiCluster, config, vpc);
+
+        if (config.deployMcpWorkbench) {
+            this.createWorkbenchService(apiCluster, config, vpc);
+        }
     }
 
     private createWorkbenchApi (restApi: IRestApi, config: Config, vpc: Vpc, securityGroups: ISecurityGroup[], workbenchBucket: s3.Bucket, lambdaLayers: lambda.ILayerVersion[], authorizer?: IAuthorizer) {

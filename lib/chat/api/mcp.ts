@@ -27,6 +27,7 @@ import { BaseProps } from '../../schema';
 import { createLambdaRole } from '../../core/utils';
 import { Vpc } from '../../networking/vpc';
 import { LAMBDA_PATH } from '../../util';
+import { RemovalPolicy } from 'aws-cdk-lib';
 
 /**
  * Properties for McpApi Construct.
@@ -84,6 +85,7 @@ export class McpApi extends Construct {
             billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
             encryption: dynamodb.TableEncryption.AWS_MANAGED,
             removalPolicy: config.removalPolicy,
+            deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
         });
         const byOwnerIndex = 'byOwner';
         mcpServersTable.addGlobalSecondaryIndex({

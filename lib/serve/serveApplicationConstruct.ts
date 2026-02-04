@@ -140,7 +140,6 @@ export class LisaServeApplicationConstruct extends Construct {
             subnetGroup: vpc.subnetGroup,
             credentials: dbCreds,
             iamAuthentication: useIamAuth, // Enable IAM auth when iamRdsAuth is true
-            databaseName: config.restApiConfig.rdsConfig.dbName, // Specify database name to match config
             securityGroups: [litellmDbSg],
             removalPolicy: config.removalPolicy,
         });

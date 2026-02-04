@@ -25,7 +25,7 @@
  * subject to the terms of the AWS Customer Agreement.
  */
 import * as cdk from 'aws-cdk-lib';
-import { Duration } from 'aws-cdk-lib';
+import { Duration, RemovalPolicy } from 'aws-cdk-lib';
 import {
     AuthorizationType,
     Cors,
@@ -111,7 +111,8 @@ export function registerAPIEndpoint (
     } else {
         const logGroup = new LogGroup(scope, `${functionId}-LogGroup`, {
             logGroupName: `/aws/lambda/${functionId}`,
-            retention: RetentionDays.ONE_YEAR,
+            retention: RetentionDays.ONE_MONTH,
+            removalPolicy: RemovalPolicy.RETAIN,
         });
 
         handler = new Function(scope, functionId, {

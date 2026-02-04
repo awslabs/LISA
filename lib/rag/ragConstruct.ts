@@ -45,8 +45,6 @@ import { marshall } from '@aws-sdk/util-dynamodb';
 import * as readlineSync from 'readline-sync';
 import { RAG_LAYER_PATH } from '../util';
 import { IngestionStack } from './ingestion/ingestion-stack';
-import * as child_process from 'child_process';
-import * as path from 'path';
 import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
 
 export type LisaRagProps = {
@@ -257,21 +255,8 @@ export class LisaRagConstruct extends Construct {
             StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/layerVersion/common`),
         );
 
-        // Pre-generate the tiktoken cache to ensure it does not attempt to fetch data from the internet at runtime.
-        if (config.restApiConfig.imageConfig === undefined) {
-            const cache_dir = path.join(RAG_LAYER_PATH, 'TIKTOKEN_CACHE');
-            // Skip tiktoken cache generation in test environment
-            if (process.env.NODE_ENV !== 'test') {
-                try {
-                    child_process.execSync(`python3 scripts/cache-tiktoken-for-offline.py ${cache_dir}`, { stdio: 'inherit' });
-                } catch (error) {
-                    console.warn('Failed to generate tiktoken cache:', error);
-                    // Continue execution even if cache generation fails
-                }
-            }
-        }
-
         // Build RAG Lambda layer
+        // Note: tiktoken and document processing deps moved to container-based batch ingestion
         const ragLambdaLayer = new Layer(scope, 'RagLayer', {
             config: config,
             path: RAG_LAYER_PATH,
@@ -279,9 +264,6 @@ export class LisaRagConstruct extends Construct {
             architecture: ARCHITECTURE,
             autoUpgrade: true,
             assetPath: config.lambdaLayerAssets?.ragLayerPath,
-            afterBundle: (inputDir: string, outputDir: string) => [
-                `cp -r ${inputDir}/TIKTOKEN_CACHE/* ${outputDir}/TIKTOKEN_CACHE/`
-            ],
         });
 
         new StringParameter(scope, createCdkId([config.deploymentName, config.deploymentStage, 'RagLayer']), {
@@ -290,20 +272,6 @@ export class LisaRagConstruct extends Construct {
         });
 
         const layers = [commonLambdaLayer, ragLambdaLayer.layer];
-
-        // Pre-generate the tiktoken cache to ensure it does not attempt to fetch data from the internet at runtime.
-        if (config.restApiConfig.imageConfig === undefined) {
-            const cache_dir = path.join(RAG_LAYER_PATH, 'TIKTOKEN_CACHE');
-            // Skip tiktoken cache generation in test environment
-            if (process.env.NODE_ENV !== 'test') {
-                try {
-                    child_process.execSync(`python3 scripts/cache-tiktoken-for-offline.py ${cache_dir}`, { stdio: 'inherit' });
-                } catch (error) {
-                    console.warn('Failed to generate tiktoken cache:', error);
-                    // Continue execution even if cache generation fails
-                }
-            }
-        }
 
         // create a security group for opensearch
         const openSearchSg = SecurityGroupFactory.createSecurityGroup(

@@ -65,7 +65,7 @@ export class DockerImageBuilder extends Construct {
             serverAccessLogsBucket: bucketAccessLogsBucket,
             serverAccessLogsPrefix: 'logs/docker-image-builder-bucket/',
             removalPolicy: config.removalPolicy,
-            autoDeleteObjects: config.removalPolicy !== RemovalPolicy.DESTROY,
+            autoDeleteObjects: config.removalPolicy === RemovalPolicy.DESTROY,
         });
         const ecsModelPath = ECS_MODEL_PATH;
         new BucketDeployment(this, createCdkId([stackName, 'docker-image-builder-ec2-dplmnt']), {

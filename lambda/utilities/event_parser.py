@@ -27,7 +27,7 @@ def sanitize_event_for_logging(event: dict[str, Any]) -> str:
 
     This function sanitizes the event by:
     1. Redacting authorization headers
-    2. Applying whitelist to only log safe headers
+    2. Applying allowlist to only log safe headers
     3. Replacing security-critical headers with server-controlled values
 
     Parameters
@@ -53,7 +53,7 @@ def sanitize_event_for_logging(event: dict[str, Any]) -> str:
     # Deep copy to avoid modifying original event
     sanitized = copy.deepcopy(event)
 
-    # Redact authorization headers BEFORE applying whitelist
+    # Redact authorization headers BEFORE applying allowlist
     # This ensures we log that auth was present, but not the actual token
     if "headers" in sanitized:
         # Normalize to lowercase and redact authorization
@@ -77,7 +77,7 @@ def sanitize_event_for_logging(event: dict[str, Any]) -> str:
                 normalized_multi[key_lower] = value
         sanitized["multiValueHeaders"] = normalized_multi
 
-    # Apply whitelist filtering to headers
+    # Apply allowlist filtering to headers
     if "headers" in sanitized:
         sanitized["headers"] = sanitize_headers(sanitized["headers"], event)
         # Add back redacted authorization if it was present

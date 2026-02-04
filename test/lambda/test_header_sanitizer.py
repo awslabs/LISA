@@ -37,8 +37,8 @@ def mock_event():
 class TestSanitizeHeaders:
     """Test sanitize_headers function."""
 
-    def test_only_logs_whitelisted_headers(self, mock_event):
-        """Test that only whitelisted headers are included in output."""
+    def test_only_logs_allowlisted_headers(self, mock_event):
+        """Test that only allowlisted headers are included in output."""
         headers = {
             "accept": "application/json",
             "x-amzn-actiontrace": "vof-test-injected-header-1770159407",
@@ -50,18 +50,18 @@ class TestSanitizeHeaders:
 
         result = sanitize_headers(headers, mock_event)
 
-        # Only whitelisted headers should be present
+        # Only allowlisted headers should be present
         assert result["accept"] == "application/json"
         assert result["user-agent"] == "curl/8.7.1"
         assert result["content-type"] == "application/json"
 
-        # Non-whitelisted headers should be removed
+        # Non-allowlisted headers should be removed
         assert "x-amzn-actiontrace" not in result
         assert "x-amzn-actiontrace-caller" not in result
         assert "x-custom-malicious-header" not in result
 
-    def test_drops_all_non_whitelisted_headers(self, mock_event):
-        """Test that all non-whitelisted headers are dropped."""
+    def test_drops_all_non_allowlisted_headers(self, mock_event):
+        """Test that all non-allowlisted headers are dropped."""
         headers = {
             "X-Amzn-ActionTrace": "injected-value",
             "X-AMZN-ACTIONTRACE-CALLER": "injected-caller",
@@ -71,7 +71,7 @@ class TestSanitizeHeaders:
 
         result = sanitize_headers(headers, mock_event)
 
-        # No non-whitelisted headers should be present
+        # No non-allowlisted headers should be present
         assert len(result) == 0
 
     def test_replaces_x_forwarded_for_with_real_ip(self, mock_event):
@@ -121,7 +121,7 @@ class TestSanitizeHeaders:
         assert result == {}
 
     def test_preserves_safe_headers(self, mock_event):
-        """Test that whitelisted headers are preserved."""
+        """Test that allowlisted headers are preserved."""
         headers = {
             "accept": "application/json",
             "content-type": "application/json",
@@ -139,7 +139,7 @@ class TestSanitizeHeaders:
         assert result["accept-encoding"] == "gzip, deflate"
 
     def test_combined_sanitization(self, mock_event):
-        """Test sanitization with mix of whitelisted, server-controlled, and malicious headers."""
+        """Test sanitization with mix of allowlisted, server-controlled, and malicious headers."""
         headers = {
             "accept": "application/json",
             "x-forwarded-for": "1.2.3.4",
@@ -152,7 +152,7 @@ class TestSanitizeHeaders:
 
         result = sanitize_headers(headers, mock_event)
 
-        # Whitelisted headers preserved
+        # allowlisted headers preserved
         assert result["accept"] == "application/json"
         assert result["user-agent"] == "curl/8.7.1"
 
@@ -160,7 +160,7 @@ class TestSanitizeHeaders:
         assert result["x-forwarded-for"] == "203.0.113.42"
         assert result["x-forwarded-host"] == "api.example.com"
 
-        # Non-whitelisted headers dropped
+        # Non-allowlisted headers dropped
         assert "x-amzn-actiontrace" not in result
         assert "x-amzn-actiontrace-caller" not in result
         assert "x-custom-header" not in result
@@ -183,13 +183,13 @@ class TestGetSanitizedHeadersForLogging:
 
         result = get_sanitized_headers_for_logging(event)
 
-        # Whitelisted header preserved
+        # allowlisted header preserved
         assert result["accept"] == "application/json"
 
         # Server-controlled header replaced
         assert result["x-forwarded-for"] == "203.0.113.42"
 
-        # Non-whitelisted headers dropped
+        # Non-allowlisted headers dropped
         assert "x-amzn-actiontrace" not in result
         assert "x-malicious-header" not in result
 

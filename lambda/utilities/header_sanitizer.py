@@ -19,7 +19,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# Whitelist of headers that are safe and useful to log
+# Allowlist of headers that are safe and useful to log
 # This prevents log injection attacks by only logging known, trusted headers
 ALLOWED_HEADERS = {
     "accept",
@@ -45,7 +45,7 @@ HEADERS_WITH_SERVER_VALUES = {
 
 def sanitize_headers(headers: dict[str, Any], event: dict[str, Any]) -> dict[str, Any]:
     """
-    Sanitize HTTP headers using a whitelist approach.
+    Sanitize HTTP headers using a allowlist approach.
 
     Only headers in the ALLOWED_HEADERS set are logged. This prevents log injection
     attacks by rejecting any unexpected or potentially malicious headers.
@@ -58,7 +58,7 @@ def sanitize_headers(headers: dict[str, Any], event: dict[str, Any]) -> dict[str
         event: Lambda event from API Gateway (used to extract real values)
 
     Returns:
-        Dictionary containing only whitelisted headers with sanitized values
+        Dictionary containing only allowlisted headers with sanitized values
 
     Example:
         >>> headers = {
@@ -89,13 +89,13 @@ def sanitize_headers(headers: dict[str, Any], event: dict[str, Any]) -> dict[str
             if value != server_value:
                 logger.debug(f"Replaced header {key_lower}: user_value={value}, server_value={server_value}")
 
-        # Check if this header is in the whitelist
+        # Check if this header is in the allowlist
         elif key_lower in ALLOWED_HEADERS:
             sanitized[key_lower] = value
 
         # All other headers are silently dropped (not logged)
         else:
-            logger.debug(f"Dropped non-whitelisted header: {key_lower}")
+            logger.debug(f"Dropped non-allowlisted header: {key_lower}")
 
     return sanitized
 

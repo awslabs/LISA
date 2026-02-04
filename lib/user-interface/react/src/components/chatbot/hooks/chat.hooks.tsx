@@ -112,17 +112,20 @@ export const useChatGeneration = ({
     chatConfiguration,
     selectedModel,
     isImageGenerationMode,
+    isVideoGenerationMode,
     session,
     setSession,
     metadata,
     memory,
     openAiTools,
     auth,
-    notificationService
+    notificationService,
+    fileContext
 }: {
     chatConfiguration: IChatConfiguration;
     selectedModel: IModel;
     isImageGenerationMode: boolean;
+    isVideoGenerationMode: boolean;
     session: LisaChatSession;
     setSession: React.Dispatch<React.SetStateAction<LisaChatSession>>;
     metadata: LisaChatMessageMetadata;
@@ -130,10 +133,13 @@ export const useChatGeneration = ({
     openAiTools: any;
     auth: any;
     notificationService: any;
+    fileContext?: string;
 }) => {
     const dispatch = useAppDispatch();
     const [isRunning, setIsRunning] = useState(false);
     const [isStreaming, setIsStreaming] = useState(false);
+    const [lastRequest, setLastRequest] = useState<null | GenerateLLMRequestParams>(null);
+    const [errorState, setErrorState] = useState(false);
     const stopRequested = useRef(false);
     const modelSupportsTools = selectedModel?.features?.filter((feature) => feature.name === ModelFeatures.TOOL_CALLS)?.length && true;
     const modelSupportsReasoning = selectedModel?.features?.find((feature) => feature.name === ModelFeatures.REASONING) ? true : false;
@@ -160,8 +166,15 @@ export const useChatGeneration = ({
         return new ChatOpenAI(modelConfig);
     }, [selectedModel, auth, chatConfiguration]);
 
+    const retryResponse = async () => {
+        if (!lastRequest) return;
+        await generateResponse(lastRequest);
+    };
+
     const generateResponse = async (params: GenerateLLMRequestParams) => {
         setIsRunning(true);
+        setErrorState(false);
+        setLastRequest(params);
         stopRequested.current = false;
         const startTime = performance.now(); // Start client timer
 
@@ -169,8 +182,274 @@ export const useChatGeneration = ({
         const isNewSession = session.history.length === 0;
 
         try {
-            // Handle image generation mode specifically
-            if (isImageGenerationMode) {
+            // Handle video generation mode specifically
+            if (isVideoGenerationMode) {
+                try {
+                    // Check if this is a remix operation
+                    const remixVideoId = chatConfiguration.sessionConfiguration?.remixVideoId;
+                    const isRemix = !!remixVideoId;
+
+                    // Create video generation request
+                    const videoGenParams: any = {
+                        prompt: params.input,
+                        model: selectedModel.modelId,
+                        seconds: chatConfiguration.sessionConfiguration.videoGenerationArgs.seconds,
+                        size: chatConfiguration.sessionConfiguration.videoGenerationArgs.size
+                    };
+
+                    // Handle file context
+                    let hasImageReference = false;
+                    let imageBlob: Blob | null = null;
+
+                    if (fileContext) {
+                        // Check if it's an image context (base64 data URL)
+                        if (fileContext.startsWith('File context: data:image')) {
+                            const imageData = fileContext.replace('File context: ', '');
+                            // Extract mime type and base64 data
+                            const matches = imageData.match(/^data:(image\/[^;]+);base64,(.+)$/);
+                            if (matches) {
+                                const mimeType = matches[1];
+                                const base64Data = matches[2];
+
+                                // Convert base64 to Blob for multipart/form-data upload
+                                // OpenAI requires input_reference as a file, not base64 string
+                                const binaryString = atob(base64Data);
+                                const bytes = new Uint8Array(binaryString.length);
+                                for (let i = 0; i < binaryString.length; i++) {
+                                    bytes[i] = binaryString.charCodeAt(i);
+                                }
+                                imageBlob = new Blob([bytes], { type: mimeType });
+                                hasImageReference = true;
+                            }
+                        } else {
+                            // Text file context - prepend to prompt
+                            videoGenParams.prompt = `${fileContext}\n\n${videoGenParams.prompt}`;
+                        }
+                    }
+
+                    // Make API call to create video generation or remix request
+                    const videoEndpoint = isRemix
+                        ? `${RESTAPI_URI}/${RESTAPI_VERSION}/serve/videos/${remixVideoId}/remix`
+                        : `${RESTAPI_URI}/${RESTAPI_VERSION}/serve/videos`;
+
+                    // Use FormData if we have an image reference (only for non-remix requests)
+                    // Remix doesn't support input_reference, so always use JSON for remix
+                    let requestBody: FormData | string;
+                    let requestHeaders: Record<string, string>;
+
+                    if (hasImageReference && imageBlob && !isRemix) {
+                        // Use multipart/form-data for image reference
+                        const formData = new FormData();
+                        formData.append('prompt', videoGenParams.prompt);
+                        formData.append('model', videoGenParams.model);
+                        formData.append('seconds', videoGenParams.seconds);
+                        formData.append('size', videoGenParams.size);
+
+                        // Determine file extension from mime type
+                        const mimeType = imageBlob.type;
+                        let extension = '.jpg';
+                        if (mimeType.includes('png')) extension = '.png';
+                        else if (mimeType.includes('webp')) extension = '.webp';
+
+                        formData.append('input_reference', imageBlob, `reference${extension}`);
+
+                        requestBody = formData;
+                        requestHeaders = {
+                            'Authorization': `Bearer ${auth.user?.id_token}`,
+                            // Don't set Content-Type - browser will set it with boundary
+                        };
+                    } else {
+                        // Use JSON for remix or when no image reference
+                        requestBody = JSON.stringify(videoGenParams);
+                        requestHeaders = {
+                            'Authorization': `Bearer ${auth.user?.id_token}`,
+                            'Content-Type': 'application/json',
+                        };
+                    }
+
+                    const createResponse = await fetch(videoEndpoint, {
+                        method: 'POST',
+                        headers: requestHeaders,
+                        body: requestBody,
+                    });
+
+                    const createData = await createResponse.json();
+
+                    if (!createResponse.ok) {
+                        throw new Error(`Video generation failed: ${JSON.stringify(createData.error?.message || createData)}`);
+                    }
+
+                    const videoId = createData.id || createData.video_id;
+                    if (!videoId) {
+                        throw new Error('Video generation response missing video ID');
+                    }
+
+                    // Create initial message with loading state
+                    setSession((prev) => ({
+                        ...prev,
+                        history: [...prev.history, new LisaChatMessage({
+                            type: 'ai',
+                            content: 'Generating video...',
+                            metadata: {
+                                ...metadata,
+                                videoGeneration: true,
+                                videoGenerationParams: videoGenParams,
+                                videoId: videoId,
+                                videoStatus: 'processing',
+                                hasFileContext: !!fileContext
+                            },
+                        })],
+                    }));
+
+                    // Poll for video status
+                    const pollInterval = 2000; // Poll every 2 seconds
+                    const maxPollAttempts = 300; // Max 10 minutes (300 * 2s)
+                    let pollAttempts = 0;
+                    let videoReady = false;
+                    let videoContent = null;
+
+                    while (!videoReady && pollAttempts < maxPollAttempts && !stopRequested.current) {
+                        await new Promise((resolve) => setTimeout(resolve, pollInterval));
+                        pollAttempts++;
+
+                        try {
+                            const statusResponse = await fetch(`${RESTAPI_URI}/${RESTAPI_VERSION}/serve/videos/${videoId}`, {
+                                method: 'GET',
+                                headers: {
+                                    'Authorization': `Bearer ${auth.user?.id_token}`,
+                                    'x-litellm-model-id': selectedModel.modelId,
+                                },
+                            });
+
+                            const statusData = await statusResponse.json();
+
+                            if (!statusResponse.ok) {
+                                throw new Error(`Status check failed: ${JSON.stringify(statusData.error?.message || statusData)}`);
+                            }
+
+                            const status = statusData.status || statusData.state;
+
+                            // Update status in message
+                            setSession((prev) => {
+                                const lastMessage = prev.history[prev.history.length - 1];
+                                if (lastMessage?.metadata?.videoId === videoId) {
+                                    return {
+                                        ...prev,
+                                        history: [...prev.history.slice(0, -1),
+                                            new LisaChatMessage({
+                                                ...lastMessage,
+                                                content: status === 'completed' || status === 'ready'
+                                                    ? 'Video ready!'
+                                                    : `Generating video... (${status})`,
+                                                metadata: {
+                                                    ...lastMessage.metadata,
+                                                    videoStatus: status
+                                                }
+                                            })
+                                        ],
+                                    };
+                                }
+                                return prev;
+                            });
+
+                            if (status === 'completed' || status === 'ready' || status === 'succeeded') {
+                                videoReady = true;
+
+                                // Fetch video content (stored in S3 with presigned URL)
+                                const contentResponse = await fetch(`${RESTAPI_URI}/${RESTAPI_VERSION}/serve/videos/${videoId}/content`, {
+                                    method: 'GET',
+                                    headers: {
+                                        'Authorization': `Bearer ${auth.user?.id_token}`,
+                                        'x-litellm-model-id': selectedModel.modelId,
+                                    },
+                                });
+
+                                if (!contentResponse.ok) {
+                                    throw new Error(`Failed to fetch video content: ${contentResponse.statusText}`);
+                                }
+
+                                // Response should be JSON with presigned URL and S3 key
+                                const contentData = await contentResponse.json();
+                                videoContent = {
+                                    url: contentData.url || contentData.content || contentData.data,
+                                    s3_key: contentData.s3_key
+                                };
+
+                                if (!videoContent.url) {
+                                    throw new Error('Video URL not found in response');
+                                }
+                            } else if (status === 'failed' || status === 'error') {
+                                throw new Error(`Video generation failed: ${statusData.error?.message || 'Unknown error'}`);
+                            }
+                        } catch (pollError) {
+                            // If polling fails, log but continue polling unless it's a clear failure
+                            if (pollAttempts >= 5) {
+                                throw pollError;
+                            }
+                        }
+                    }
+
+                    if (stopRequested.current) {
+                        notificationService.generateNotification('Video generation stopped by user', 'info');
+                        setSession((prev) => ({
+                            ...prev,
+                            history: prev.history.slice(0, -1),
+                        }));
+                        setIsRunning(false);
+                        return;
+                    }
+
+                    if (!videoReady) {
+                        throw new Error('Video generation timed out');
+                    }
+
+                    if (!videoContent) {
+                        throw new Error('Video content not available');
+                    }
+
+                    const responseTime = calculateResponseTime(startTime);
+
+                    // Update message with video content (presigned URL, S3 key) and video_id
+                    setSession((prev) => {
+                        const lastMessage = prev.history[prev.history.length - 1];
+                        if (lastMessage?.metadata?.videoId === videoId) {
+                            return {
+                                ...prev,
+                                history: [...prev.history.slice(0, -1),
+                                    new LisaChatMessage({
+                                        ...lastMessage,
+                                        content: [{
+                                            type: 'video_url',
+                                            video_url: {
+                                                url: videoContent.url,
+                                                s3_key: videoContent.s3_key,
+                                                video_id: videoId
+                                            }
+                                        }],
+                                        metadata: {
+                                            ...lastMessage.metadata,
+                                            videoStatus: 'completed'
+                                        },
+                                        usage: {
+                                            responseTime
+                                        }
+                                    })
+                                ],
+                            };
+                        }
+                        return prev;
+                    });
+
+                    await memory.saveContext({ input: params.input }, { output: videoContent });
+                } catch (error) {
+                    notificationService.generateNotification('Video generation failed', 'error', undefined, error.message ? <p>{error.message}</p> : undefined);
+                    setSession((prev) => ({
+                        ...prev,
+                        history: prev.history.slice(0, -1),
+                    }));
+                    setIsRunning(false);
+                }
+            } else if (isImageGenerationMode) {
                 try {
                     // Create image generation request
                     const imageGenParams = {
@@ -580,6 +859,7 @@ export const useChatGeneration = ({
         } catch (error) {
             notificationService.generateNotification('An error occurred while processing your request.', 'error', undefined, error.error?.message ? <p>{JSON.stringify(error.error.message)}</p> : undefined);
             setIsRunning(false);
+            setErrorState(true);
             throw error;
         } finally {
             setIsRunning(false);
@@ -600,5 +880,5 @@ export const useChatGeneration = ({
         stopRequested.current = true;
     }, []);
 
-    return { isRunning, setIsRunning, isStreaming, setIsStreaming, generateResponse, createOpenAiClient, stopGeneration };
+    return { isRunning, setIsRunning, isStreaming, setIsStreaming, generateResponse, createOpenAiClient, stopGeneration, retryResponse, errorState };
 };

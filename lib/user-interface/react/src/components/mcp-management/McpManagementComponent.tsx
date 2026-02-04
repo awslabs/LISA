@@ -42,6 +42,7 @@ import {
 } from './McpManagementTableConfig';
 import { setBreadcrumbs } from '@/shared/reducers/breadcrumbs.reducer';
 import { useAppDispatch } from '@/config/store';
+import { getDisplayName } from '@/shared/util/branding';
 
 type Preferences = ReturnType<typeof getDefaultPreferences>;
 
@@ -181,9 +182,9 @@ export function McpManagementComponent (): ReactElement {
                                 isFetching={isFetching}
                             />
                         }
-                        description='Host MCP servers within LISA MCP infrastructure.'
+                        description={`Host MCP servers within ${getDisplayName()} MCP infrastructure.`}
                     >
-                        LISA MCP servers
+                        {getDisplayName()} MCP servers
                     </Header>
                 }
                 filter={

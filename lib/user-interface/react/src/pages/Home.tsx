@@ -18,9 +18,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
 
-import chatImg from '../assets/chat.png';
 import { Alert, Box, Button, Modal } from '@cloudscape-design/components';
 import { purgeStore } from '../config/store';
+import { getBrandingAssetPath } from '../shared/util/branding';
 
 export function Home ({ setNav }) {
     const navigate = useNavigate();
@@ -70,16 +70,13 @@ export function Home ({ setNav }) {
                 <div>
                     <figure>
                         <img
-                            src={chatImg}
+                            src={getBrandingAssetPath('login')}
                             style={{
                                 objectFit: 'cover',
                                 width: '100%',
                                 height: '100%',
                             }}
                         />
-                        <figcaption style={{ textAlign: 'right' }}>
-                            Image generated via StableDiffusion-XL on Amazon Bedrock
-                        </figcaption>
                     </figure>
                 </div>
             </Box>

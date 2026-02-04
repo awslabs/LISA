@@ -43,6 +43,7 @@ export type SecurityGroups<T> = {
 export enum ModelType {
     TEXTGEN = 'textgen',
     EMBEDDING = 'embedding',
+    VIDEOGEN = 'videogen',
 }
 
 /**
@@ -641,15 +642,16 @@ export const EcsClusterConfigSchema = z
     })
     .refine(
         (data) => {
-            // 'textgen' type must have boolean streaming, 'embedding' type must have null streaming
+            // 'textgen' type must have boolean streaming, 'embedding' and 'videogen' types must have null streaming
             const isValidForTextgen = data.modelType === 'textgen' && typeof data.streaming === 'boolean';
             const isValidForEmbedding = data.modelType === 'embedding' && data.streaming === null;
+            const isValidForVideogen = data.modelType === 'videogen' && data.streaming === null;
 
-            return isValidForTextgen || isValidForEmbedding;
+            return isValidForTextgen || isValidForEmbedding || isValidForVideogen;
         },
         {
             message: `For 'textgen' models, 'streaming' must be true or false.
-            For 'embedding' models, 'streaming' must not be set.`,
+            For 'embedding' and 'videogen' models, 'streaming' must not be set.`,
             path: ['streaming'],
         },
     );
@@ -864,6 +866,8 @@ export const RawConfigObject = z.object({
     deployChat: z.boolean().default(true).describe('Whether to deploy chat stacks.'),
     deployDocs: z.boolean().default(true).describe('Whether to deploy docs stacks.'),
     deployUi: z.boolean().default(true).describe('Whether to deploy UI stacks.'),
+    useCustomBranding: z.boolean().optional().describe('Whether to use custom branding assets in the UI.'),
+    customDisplayName: z.string().optional().describe('Custom display name to replace "LISA" branding in titles and descriptions. Requires "useCustomBranding" to be enabled.'),
     deployMetrics: z.boolean().default(true).describe('Whether to deploy Metrics stack.'),
     deployMcp: z.boolean().default(true).describe('Whether to deploy LISA MCP stack.'),
     deployServe: z.boolean().default(true).describe('Whether to deploy LISA Serve stack.'),

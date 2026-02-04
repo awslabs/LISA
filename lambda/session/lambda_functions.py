@@ -206,6 +206,32 @@ def _get_all_user_sessions(user_id: str) -> list[dict[str, Any]]:
     return response.get("Items", [])  # type: ignore [no-any-return]
 
 
+def _extract_video_s3_keys(session: dict) -> list[str]:
+    """Extract all video S3 keys from a session's history.
+
+    Parameters
+    ----------
+    session : dict
+        The session object containing history.
+
+    Returns
+    -------
+    list[str]
+        A list of S3 keys for videos in the session.
+    """
+    video_keys: list[str] = []
+    for message in session.get("history", []):
+        content = message.get("content")
+        if isinstance(content, list):
+            for item in content:
+                if isinstance(item, dict) and item.get("type") == "video_url":
+                    video_url = item.get("video_url", {})
+                    s3_key = video_url.get("s3_key")
+                    if s3_key:
+                        video_keys.append(s3_key)
+    return video_keys
+
+
 def _delete_user_session(session_id: str, user_id: str) -> dict[str, bool]:
     """Delete a session from DynamoDB.
 
@@ -223,9 +249,39 @@ def _delete_user_session(session_id: str, user_id: str) -> dict[str, bool]:
     """
     deleted = False
     try:
+        # First, get the session to extract any video S3 keys before deleting
+        response = table.get_item(Key={"sessionId": session_id, "userId": user_id})
+        session = response.get("Item", {})
+
+        # Decrypt session if encrypted to access history for video keys
+        if session.get("is_encrypted", False):
+            try:
+                logger.info(f"Decrypting session {session_id} to extract video keys for deletion")
+                session = decrypt_session_fields(session, user_id, session_id)
+            except SessionEncryptionError as e:
+                logger.warning(f"Failed to decrypt session {session_id} for video cleanup: {e}")
+                # Continue with deletion even if decryption fails - videos may remain orphaned
+
+        # Extract video S3 keys from the session history
+        video_keys = _extract_video_s3_keys(session)
+
+        # Delete the session from DynamoDB
         table.delete_item(Key={"sessionId": session_id, "userId": user_id})
+
+        # Delete associated images from S3
         bucket = s3_resource.Bucket(s3_bucket_name)
         bucket.objects.filter(Prefix=f"images/{session_id}").delete()
+
+        # Delete associated videos from S3
+        if video_keys:
+            logger.info(f"Deleting {len(video_keys)} videos from S3 for session {session_id}")
+            for video_key in video_keys:
+                try:
+                    s3_client.delete_object(Bucket=s3_bucket_name, Key=video_key)
+                    logger.debug(f"Deleted video: {video_key}")
+                except ClientError as video_error:
+                    logger.warning(f"Failed to delete video {video_key}: {video_error}")
+
         deleted = True
     except ClientError as error:
         if error.response["Error"]["Code"] == "ResourceNotFoundException":
@@ -242,6 +298,20 @@ def _generate_presigned_image_url(key: str) -> str:
             "Bucket": s3_bucket_name,
             "Key": key,
             "ResponseContentType": "image/png",
+            "ResponseCacheControl": "no-cache",
+            "ResponseContentDisposition": "inline",
+        },
+    )
+    return url
+
+
+def _generate_presigned_video_url(key: str) -> str:
+    url: str = s3_client.generate_presigned_url(
+        "get_object",
+        Params={
+            "Bucket": s3_bucket_name,
+            "Key": key,
+            "ResponseContentType": "video/mp4",
             "ResponseCacheControl": "no-cache",
             "ResponseContentDisposition": "inline",
         },
@@ -317,7 +387,16 @@ def _process_image(task: tuple[dict, str]) -> None:
         image_url = _generate_presigned_image_url(key)
         msg["image_url"]["url"] = image_url
     except Exception as e:
-        print(f"Error uploading to S3: {e}")
+        print(f"Error generating presigned image URL: {e}")
+
+
+def _process_video(task: tuple[dict, str]) -> None:
+    msg, key = task
+    try:
+        video_url = _generate_presigned_video_url(key)
+        msg["video_url"]["url"] = video_url
+    except Exception as e:
+        print(f"Error generating presigned video URL: {e}")
 
 
 @api_wrapper
@@ -358,16 +437,22 @@ def get_session(event: dict, context: dict) -> dict:
                 resp["configuration"] = configuration
 
         # Create a list of tasks for parallel processing
-        tasks = []
+        image_tasks = []
+        video_tasks = []
         for message in resp.get("history", []):
             if isinstance(message.get("content", None), list):
                 for item in message.get("content", None):
                     if item.get("type", None) == "image_url":
                         s3_key = item.get("image_url", {}).get("s3_key", None)
                         if s3_key:
-                            tasks.append((item, s3_key))
+                            image_tasks.append((item, s3_key))
+                    elif item.get("type", None) == "video_url":
+                        s3_key = item.get("video_url", {}).get("s3_key", None)
+                        if s3_key:
+                            video_tasks.append((item, s3_key))
 
-        list(executor.map(_process_image, tasks))
+        list(executor.map(_process_image, image_tasks))
+        list(executor.map(_process_video, video_tasks))
         return resp  # type: ignore [no-any-return]
     except ValueError as e:
         return {"statusCode": 400, "body": json.dumps({"error": str(e)})}

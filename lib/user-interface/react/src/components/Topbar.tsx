@@ -19,13 +19,14 @@ import { useAuth } from '../auth/useAuth';
 import { useHref, useNavigate } from 'react-router-dom';
 import { applyDensity, Density, Mode } from '@cloudscape-design/global-styles';
 import TopNavigation, { TopNavigationProps } from '@cloudscape-design/components/top-navigation';
-import { getBaseURI } from './utils';
 import { purgeStore, useAppSelector } from '@/config/store';
 import { selectCurrentUserIsAdmin, selectCurrentUserIsApiUser, selectCurrentUsername } from '../shared/reducers/user.reducer';
 import { IConfiguration } from '@/shared/model/configuration.model';
 import { ButtonDropdownProps } from '@cloudscape-design/components';
 import ColorSchemeContext from '@/shared/color-scheme.provider';
 import { OidcConfig } from '@/config/oidc.config';
+import { getBrandingAssetPath } from '../shared/util/branding';
+import { getDisplayName } from '@/shared/util/branding';
 
 applyDensity(Density.Comfortable);
 
@@ -85,8 +86,8 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
             identity={{
                 href: useHref('/'),
                 logo: {
-                    src: `${getBaseURI()}logo.svg`,
-                    alt: 'AWS LISA Sample',
+                    src: getBrandingAssetPath('logo'),
+                    alt: `${getDisplayName()} logo`,
                 },
             }}
             utilities={[
@@ -209,7 +210,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                     },
                     iconName: 'user-profile',
                     items: [
-                        { id: 'version-info', text: `LISA v${window.gitInfo?.revisionTag}`, disabled: true },
+                        { id: 'version-info', text: `${getDisplayName()} v${window.gitInfo?.revisionTag}`, disabled: true },
                         ...(configs?.configuration.enabledComponents?.enableUserApiTokens && (isUserAdmin || isApiUser) ? [{
                             id: 'api-token',
                             text: 'API Token',

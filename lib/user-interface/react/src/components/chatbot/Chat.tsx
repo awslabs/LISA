@@ -102,7 +102,7 @@ export default function Chat ({ sessionId }) {
 
     const allModels = useMemo(() =>
         (allModelsRaw || []).filter((model) =>
-            (model.modelType === ModelType.textgen || model.modelType === ModelType.imagegen) &&
+            (model.modelType === ModelType.textgen || model.modelType === ModelType.imagegen || model.modelType === ModelType.videogen) &&
             model.status === ModelStatus.InService
         ),
     [allModelsRaw]
@@ -127,6 +127,7 @@ export default function Chat ({ sessionId }) {
     const [modelFilterValue, setModelFilterValue] = useState('');
     const [hasUserInteractedWithModel, setHasUserInteractedWithModel] = useState(false);
     const [mermaidRenderComplete, setMermaidRenderComplete] = useState(0);
+    const [videoLoadComplete, setVideoLoadComplete] = useState(0);
     const [dynamicMaxRows, setDynamicMaxRows] = useState(8);
     const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
 
@@ -135,10 +136,15 @@ export default function Chat ({ sessionId }) {
         setMermaidRenderComplete((prev) => prev + 1);
     }, []);
 
+    // Callback to handle video load completion (for auto-scroll)
+    const handleVideoLoadComplete = useCallback(() => {
+        setVideoLoadComplete((prev) => prev + 1);
+    }, []);
+
     // Ref to track if we're processing tool calls to prevent infinite loops
     const isProcessingToolCalls = useRef(false);
     const lastProcessedMessageIndex = useRef(-1);
-    const startToolChainRef = useRef<(session: LisaChatSession) => Promise<void>>();
+    const startToolChainRef = useRef<((session: LisaChatSession) => Promise<void>) | undefined>(undefined);
 
     // Memoize enabled servers to prevent infinite re-renders
     const enabledServers = useMemo(() => {
@@ -254,6 +260,7 @@ export default function Chat ({ sessionId }) {
 
     // Derived states
     const isImageGenerationMode = selectedModel?.modelType === ModelType.imagegen;
+    const isVideoGenerationMode = selectedModel?.modelType === ModelType.videogen;
 
     // Format MCP tools for OpenAI when they change
     useEffect(() => {
@@ -286,16 +293,18 @@ export default function Chat ({ sessionId }) {
         });
     }, [getRelevantDocuments, chatConfiguration.sessionConfiguration, ragConfig.repositoryId, ragConfig.collection, ragConfig.embeddingModel]);
 
-    const { isRunning, setIsRunning, isStreaming, generateResponse, stopGeneration } = useChatGeneration({
+    const { isRunning, setIsRunning, isStreaming, generateResponse, stopGeneration, retryResponse, errorState } = useChatGeneration({
         chatConfiguration,
         selectedModel,
         isImageGenerationMode,
+        isVideoGenerationMode,
         session,
         setSession,
         metadata,
         memory,
         openAiTools: config?.configuration?.enabledComponents?.mcpConnections ? openAiTools : undefined,
         auth,
+        fileContext,
         notificationService
     });
 
@@ -402,8 +411,12 @@ export default function Chat ({ sessionId }) {
                                         });
                                         if ('data' in resp) {
                                             const image: LisaAttachImageResponse = resp.data;
-                                            content.image_url.url = image.body.image_url.url;
-                                            content.image_url.s3_key = image.body.image_url.s3_key;
+                                            if (content.image_url && image.body.image_url) {
+                                                content.image_url.url = image.body.image_url.url;
+                                                if ('s3_key' in image.body.image_url) {
+                                                    content.image_url.s3_key = image.body.image_url.s3_key;
+                                                }
+                                            }
                                         }
                                     }
                                 })
@@ -487,7 +500,7 @@ export default function Chat ({ sessionId }) {
             // which was breaking AT_BOTTOM_THRESHOLD disabling auto-scroll without user input
             bottomRef.current.scrollIntoView({ behavior: 'auto' });
         }
-    }, [isStreaming, session, mermaidRenderComplete, shouldAutoScroll]);
+    }, [isStreaming, session, mermaidRenderComplete, videoLoadComplete, shouldAutoScroll]);
 
     // Scroll event listener to detect scroll position
     useEffect(() => {
@@ -555,13 +568,13 @@ export default function Chat ({ sessionId }) {
             history: prev.history.concat(new LisaChatMessage({
                 type: 'human',
                 content: userPrompt,
-                metadata: isImageGenerationMode ? { imageGeneration: true } : {},
+                metadata: isImageGenerationMode ? { imageGeneration: true } : isVideoGenerationMode ? { videoGeneration: true } : {},
             }))
         }));
 
         const messages = [];
 
-        if (session.history.length === 0 && !isImageGenerationMode) {
+        if (session.history.length === 0 && !isImageGenerationMode && !isVideoGenerationMode) {
             messages.push(new LisaChatMessage({
                 type: 'system',
                 content: chatConfiguration.promptConfiguration.promptTemplate,
@@ -571,13 +584,13 @@ export default function Chat ({ sessionId }) {
 
         // Fetch RAG documents once if needed
         let ragDocs = null;
-        if (useRag && !isImageGenerationMode) {
+        if (useRag && !isImageGenerationMode && !isVideoGenerationMode) {
             ragDocs = await fetchRelevantDocuments(userPrompt);
         }
 
         // Use extracted message builder utilities
         const messageContent = await buildMessageContent({
-            isImageGenerationMode,
+            isImageGenerationMode: isImageGenerationMode || isVideoGenerationMode,
             fileContext,
             useRag,
             userPrompt,
@@ -585,7 +598,7 @@ export default function Chat ({ sessionId }) {
         });
 
         const messageMetadata = await buildMessageMetadata({
-            isImageGenerationMode,
+            isImageGenerationMode: isImageGenerationMode || isVideoGenerationMode,
             useRag,
             chatConfiguration,
             ragDocs,
@@ -615,7 +628,7 @@ export default function Chat ({ sessionId }) {
 
         setDirtySession(true);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [userPrompt, useRag, fileContext, chatConfiguration, generateResponse, isImageGenerationMode, fetchRelevantDocuments, notificationService]);
+    }, [userPrompt, useRag, fileContext, chatConfiguration, generateResponse, isImageGenerationMode, isVideoGenerationMode, fetchRelevantDocuments, notificationService]);
 
     // Ref to track if we're processing a keyboard event
     const isKeyboardEventRef = useRef(false);
@@ -782,11 +795,14 @@ export default function Chat ({ sessionId }) {
                             chatConfiguration={chatConfiguration}
                             setUserPrompt={setUserPrompt}
                             onMermaidRenderComplete={handleMermaidRenderComplete}
+                            onVideoLoadComplete={handleVideoLoadComplete}
+                            retryResponse={retryResponse}
+                            errorState={errorState && idx === session.history.length - 1 }
                         />));
                     // eslint-disable-next-line react-hooks/exhaustive-deps
                     }, [session.history, chatConfiguration, loadingSession])}
 
-                    {!loadingSession && (isRunning || callingToolName) && !isStreaming && <Message
+                    {!loadingSession && (isRunning || callingToolName) && !isStreaming && !isImageGenerationMode && !isVideoGenerationMode && <Message
                         isRunning={isRunning}
                         callingToolName={callingToolName}
                         markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay}
@@ -796,6 +812,7 @@ export default function Chat ({ sessionId }) {
                         chatConfiguration={chatConfiguration}
                         setUserPrompt={setUserPrompt}
                         onMermaidRenderComplete={handleMermaidRenderComplete}
+                        onVideoLoadComplete={handleVideoLoadComplete}
                     />}
                     {!loadingSession && session.history.length === 0 && sessionId === undefined && (
                         <WelcomeScreen
@@ -821,7 +838,7 @@ export default function Chat ({ sessionId }) {
                                 ]}
                             >
                                 <FormField
-                                    label={isImageGenerationMode ? <StatusIndicator type='info'>Image Generation Mode</StatusIndicator> : undefined}
+                                    label={isImageGenerationMode || isVideoGenerationMode ? <StatusIndicator type='info'>{isImageGenerationMode ? 'Image Generation Mode' : 'Video Generation Mode'}</StatusIndicator> : undefined}
                                 >
                                     <Autosuggest
                                         disabled={isRunning || session.history.length > 0}
@@ -838,7 +855,7 @@ export default function Chat ({ sessionId }) {
                                         controlId='model-selection-autosuggest'
                                     />
                                 </FormField>
-                                {window.env.RAG_ENABLED && !isImageGenerationMode && (
+                                {window.env.RAG_ENABLED && !isImageGenerationMode && !isVideoGenerationMode && (
                                     <RagControls
                                         isRunning={isRunning}
                                         setUseRag={setUseRag}
@@ -869,7 +886,7 @@ export default function Chat ({ sessionId }) {
                                         <ButtonGroup
                                             ariaLabel='Chat actions'
                                             onItemClick={handleButtonClick}
-                                            items={getButtonItems(config, useRag, isImageGenerationMode)}
+                                            items={getButtonItems(config, useRag, isImageGenerationMode, isVideoGenerationMode)}
                                             variant='icon'
                                             dropdownExpandToViewport={true}
                                         />

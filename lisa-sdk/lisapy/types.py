@@ -26,6 +26,7 @@ class ModelType(str, Enum):
 
     TEXTGEN = "textgen"
     EMBEDDING = "embedding"
+    VIDEOGEN = "videogen"
 
 
 class ModelKwargs(BaseModel):

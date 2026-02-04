@@ -14,9 +14,11 @@
 
 """Model invocation routes."""
 
+import fnmatch
 import json
 import logging
 import os
+import uuid
 from collections.abc import Iterator
 
 import boto3
@@ -66,6 +68,15 @@ OPENAI_ROUTES = (
     "v1/audio/speech",
     "audio/transcriptions",
     "v1/audio/transcriptions",
+    # Video routes (using wildcards for IDs)
+    "videos",
+    "v1/videos",
+    "videos/*",
+    "v1/videos/*",
+    "videos/*/content",
+    "v1/videos/*/content",
+    "videos/*/remix",
+    "v1/videos/*/remix",
     # Health check routes
     "health",
     "health/readiness",
@@ -83,10 +94,55 @@ OPENAI_ROUTES = (
 LITELLM_KEY = os.environ["LITELLM_KEY"]
 
 secrets_manager = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"])
+s3_client = boto3.client("s3", region_name=os.environ["AWS_REGION"])
+s3_bucket_name = os.environ.get("GENERATED_IMAGES_S3_BUCKET_NAME", "")
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def _generate_presigned_video_url(key: str, content_type: str = "video/mp4") -> str:
+    """Generate a presigned URL for video content stored in S3."""
+    url: str = s3_client.generate_presigned_url(
+        "get_object",
+        Params={
+            "Bucket": s3_bucket_name,
+            "Key": key,
+            "ResponseContentType": content_type,
+            "ResponseCacheControl": "no-cache",
+            "ResponseContentDisposition": "inline",
+        },
+        ExpiresIn=3600,  # URL expires in 1 hour
+    )
+    return url
+
+
+def is_openai_route(api_path: str) -> bool:
+    # First check for exact matches (most common case)
+    if api_path in OPENAI_ROUTES:
+        return True
+
+    # Only check wildcard patterns if the path contains "video" (since only video routes have wildcards)
+    # This avoids expensive pattern matching for non-video routes
+    if "video" not in api_path:
+        return False
+
+    wildcard_patterns = [pattern for pattern in OPENAI_ROUTES if "*" in pattern]
+    wildcard_patterns.sort(key=len, reverse=True)
+
+    for route_pattern in wildcard_patterns:
+        if fnmatch.fnmatch(api_path, route_pattern):
+            # For patterns like "videos/*" (not "videos/*/something"), ensure we don't match
+            # paths with additional segments (e.g., "videos/123/content" should not match "videos/*")
+            if route_pattern.endswith("/*") and not route_pattern.endswith("/*/"):
+                pattern_segments = route_pattern.count("/")
+                path_segments = api_path.count("/")
+                if path_segments != pattern_segments:
+                    continue
+            return True
+
+    return False
 
 
 async def apply_guardrails_to_request(params: dict, model_id: str, jwt_data: dict) -> None:
@@ -258,7 +314,7 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     headers = dict(request.headers.items())
 
     authorizer = Authorizer()
-    require_admin = api_path not in OPENAI_ROUTES
+    require_admin = not is_openai_route(api_path)
     jwt_data = await authorizer.authenticate_request(request)
     if not await authorizer.can_access(request, require_admin):
         raise HTTPException(
@@ -276,8 +332,112 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     if http_method == "GET" or http_method == "DELETE":
 
         response = requests_request(method=http_method, url=litellm_path, headers=headers)
-        return JSONResponse(response.json(), status_code=response.status_code)
-    # not a GET or DELETE request, so expect a JSON payload as part of the request
+
+        # Check content type to handle binary responses (e.g., video content)
+        content_type = response.headers.get("content-type", "").lower()
+
+        # If it's JSON, parse and return as JSON
+        if "application/json" in content_type or "text/json" in content_type:
+            try:
+                return JSONResponse(response.json(), status_code=response.status_code)
+            except (ValueError, json.JSONDecodeError):
+                # If JSON parsing fails, fall through to return raw content
+                pass
+
+        # For video content, store in S3 and return presigned URL
+        if "video/" in content_type and "/content" in api_path and response.status_code == 200:
+            try:
+                # Extract video ID from path (e.g., videos/video_abc123/content -> video_abc123)
+                path_parts = api_path.split("/")
+                video_id = path_parts[-2] if len(path_parts) >= 2 else str(uuid.uuid4())
+
+                # Generate a unique S3 key for the video
+                file_extension = ".mp4"  # Default to mp4
+                if "video/webm" in content_type:
+                    file_extension = ".webm"
+                elif "video/quicktime" in content_type:
+                    file_extension = ".mov"
+
+                s3_key = f"videos/{video_id}{file_extension}"
+
+                # Upload video to S3
+                s3_client.put_object(
+                    Bucket=s3_bucket_name,
+                    Key=s3_key,
+                    Body=response.content,
+                    ContentType=content_type,
+                )
+
+                # Generate presigned URL
+                presigned_url = _generate_presigned_video_url(s3_key)
+
+                # Return JSON response with presigned URL
+                return JSONResponse(
+                    {
+                        "url": presigned_url,
+                        "s3_key": s3_key,
+                        "content_type": content_type,
+                    },
+                    status_code=200,
+                )
+            except Exception as e:
+                logger.error(f"Error storing video to S3: {e}")
+                # Fall through to return raw content if S3 storage fails
+
+        # For other binary content (image, etc.) or non-JSON, return raw response
+        return Response(
+            content=response.content,
+            status_code=response.status_code,
+            headers=dict(response.headers),
+            media_type=content_type if content_type else None,
+        )
+
+    # Check if request is multipart/form-data (used for video generation with image references)
+    content_type = request.headers.get("content-type", "").lower()
+    is_multipart = "multipart/form-data" in content_type
+    is_video_endpoint = "video" in api_path.lower()
+
+    # Handle multipart/form-data requests (video generation with image references)
+    if is_multipart and is_video_endpoint:
+        try:
+            # Parse the form data
+            form = await request.form()
+
+            # Build files dict for requests library
+            files = {}
+            data = {}
+
+            for field_name, field_value in form.items():
+                # Check if it's a file field
+                if hasattr(field_value, "read"):
+                    # It's a file - read the content and prepare for upload
+                    file_content = await field_value.read()
+                    filename = getattr(field_value, "filename", "file")
+                    content_type = getattr(field_value, "content_type", "application/octet-stream")
+                    files[field_name] = (filename, file_content, content_type)
+                else:
+                    # It's a regular form field
+                    data[field_name] = field_value
+
+            # Create new headers without Content-Type (requests library will set it with correct boundary)
+            # Use LITELLM_KEY instead of the user's token (consistent with rest of the code)
+            forward_headers = {"Authorization": f"Bearer {LITELLM_KEY}"}
+
+            # Forward multipart request to LiteLLM
+            response = requests_request(
+                method=http_method, url=litellm_path, data=data, files=files, headers=forward_headers
+            )
+
+            if response.status_code != 200:
+                logger.error(f"LiteLLM error response: {response.text}")
+
+            return JSONResponse(response.json(), status_code=response.status_code)
+
+        except Exception as e:
+            logger.error(f"Error processing multipart request: {e}")
+            raise HTTPException(status_code=400, detail=f"Error processing multipart request: {str(e)}")
+
+    # Handle JSON requests (default behavior)
     params = await request.json()
 
     # Apply guardrails for chat/completions requests

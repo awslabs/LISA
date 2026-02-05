@@ -141,7 +141,7 @@ export class ECSCluster extends Construct {
     ): { taskDefinition: Ec2TaskDefinition, container: ContainerDefinition } {
         const ec2TaskDefinition = new Ec2TaskDefinition(this, createCdkId([taskDefinitionName, 'Ec2TaskDefinition']), {
             family: createCdkId([config.deploymentName, taskDefinitionName], 32, 2),
-            networkMode: NetworkMode.AWS_VPC,
+            networkMode: NetworkMode.BRIDGE,
             volumes,
             ...(taskRole && { taskRole }),
             ...(executionRole && { executionRole }),
@@ -181,7 +181,7 @@ export class ECSCluster extends Construct {
             gpuCount: Ec2Metadata.get(ecsConfig.instanceType).gpuCount,
             memoryReservationMiB: taskDefinition.containerMemoryReservationMiB,
             memoryLimitMiB: ecsConfig.containerMemoryBuffer,
-            portMappings: [{ containerPort: taskDefinition.applicationTarget?.port ?? 8080, protocol: Protocol.TCP }],
+            portMappings: [{ hostPort: 0, containerPort: taskDefinition.applicationTarget?.port ?? 8080, protocol: Protocol.TCP }],
             healthCheck: containerHealthCheck,
             // Model containers need to run with privileged set to true
             privileged: taskDefinition.containerConfig.privileged ?? ecsConfig.amiHardwareType === AmiHardwareType.GPU,

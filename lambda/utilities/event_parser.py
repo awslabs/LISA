@@ -55,7 +55,7 @@ def sanitize_event_for_logging(event: dict[str, Any]) -> str:
 
     # Redact authorization headers BEFORE applying allowlist
     # This ensures we log that auth was present, but not the actual token
-    if "headers" in sanitized:
+    if sanitized.get("headers"):
         # Normalize to lowercase and redact authorization
         normalized_headers = {}
         for key, value in sanitized["headers"].items():
@@ -66,7 +66,7 @@ def sanitize_event_for_logging(event: dict[str, Any]) -> str:
                 normalized_headers[key_lower] = value
         sanitized["headers"] = normalized_headers
 
-    if "multiValueHeaders" in sanitized:
+    if sanitized.get("multiValueHeaders"):
         # Normalize to lowercase and redact authorization
         normalized_multi = {}
         for key, value in sanitized["multiValueHeaders"].items():
@@ -78,14 +78,15 @@ def sanitize_event_for_logging(event: dict[str, Any]) -> str:
         sanitized["multiValueHeaders"] = normalized_multi
 
     # Apply allowlist filtering to headers
-    if "headers" in sanitized:
+    if sanitized.get("headers"):
         sanitized["headers"] = sanitize_headers(sanitized["headers"], event)
         # Add back redacted authorization if it was present
-        if "authorization" in event.get("headers", {}) or "Authorization" in event.get("headers", {}):
+        original_headers = event.get("headers") or {}
+        if "authorization" in original_headers or "Authorization" in original_headers:
             sanitized["headers"]["authorization"] = "<REDACTED>"
 
     # Also sanitize multiValueHeaders if present
-    if "multiValueHeaders" in sanitized:
+    if sanitized.get("multiValueHeaders"):
         # Convert to single-value dict for sanitization, then back
         multi_headers = sanitized["multiValueHeaders"]
         single_value_headers = {k: v[0] if v else "" for k, v in multi_headers.items()}
@@ -94,9 +95,8 @@ def sanitize_event_for_logging(event: dict[str, Any]) -> str:
         # Rebuild multiValueHeaders with sanitized values
         sanitized["multiValueHeaders"] = {k: [v] for k, v in sanitized_single.items()}
         # Add back redacted authorization if it was present
-        if "authorization" in event.get("multiValueHeaders", {}) or "Authorization" in event.get(
-            "multiValueHeaders", {}
-        ):
+        original_multi_headers = event.get("multiValueHeaders") or {}
+        if "authorization" in original_multi_headers or "Authorization" in original_multi_headers:
             sanitized["multiValueHeaders"]["authorization"] = ["<REDACTED>"]
 
     return json.dumps(sanitized)

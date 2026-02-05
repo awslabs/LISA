@@ -39,7 +39,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../lisa-sdk"))
 from lisapy.api import LisaApi
 from lisapy.types import BedrockModelRequest, ModelRequest
 
-DEFAULT_EMBEDDING_MODEL_ID = "e5-embed"
+DEFAULT_EMBEDDING_MODEL_ID = "qwen3-embed-06b"
 RAG_PIPELINE_BUCKET = "lisa-rag-pipeline"
 BEDROCK_KB_S3_BUCKET = "bk-s3-test"
 
@@ -304,7 +304,7 @@ def create_self_hosted_embedded_model(
             },
         },
         "containerConfig": {
-            "image": {"baseImage": base_image, "type": "asset"},
+            "image": {"baseImage": base_image, "type": "asset" if "huggingface" in base_image.lower() else "ecr"},
             "sharedMemorySize": 2048,
             "healthCheckConfig": {
                 "command": ["CMD-SHELL", "exit 0"],
@@ -372,6 +372,11 @@ def create_self_hosted_model(
     model_name: str,
     base_image: str = "public.ecr.aws/deep-learning-containers/vllm:0.13-gpu-py312",
     skip_create: bool = False,
+    instance_type: str = "g5.xlarge",
+    environment: dict | None = None,
+    blockDeviceVolumeSize: int = 50,
+    memoryReservation: int | None = None,
+    sharedMemorySize: int = 2048,
 ) -> dict[str, Any]:
     """Create a self-hosted model configuration."""
 
@@ -392,13 +397,30 @@ def create_self_hosted_model(
     if not instances:
         raise Exception("No EC2 instances available for self-hosted model")
 
-    # Use the first available instance type that supports GPU workloads
-    gpu_instances = [inst for inst in instances if "g5" in inst.lower() or "p3" in inst.lower() or "p4" in inst.lower()]
-    instance_type = gpu_instances[0] if gpu_instances else instances[0]
+    if not environment:
+        environment = {
+            # vLLM Performance Configuration for g5.xlarge (1x A10G GPU, 24GB VRAM)
+            # These environment variables are read natively by vLLM
+            # See: https://docs.vllm.ai/en/latest/configuration/env_vars/
+            # Context length - maximum sequence length the model can handle
+            "VLLM_MAX_MODEL_LEN": "16384",
+            # GPU memory utilization - use 90% of GPU VRAM for model/KV cache
+            "VLLM_GPU_MEMORY_UTILIZATION": "0.90",
+            # Batching - max tokens processed per iteration (affects throughput)
+            "VLLM_MAX_NUM_BATCHED_TOKENS": "8192",
+            # Concurrency - max number of sequences processed in parallel
+            "VLLM_MAX_NUM_SEQS": "128",
+            # Performance optimizations
+            "VLLM_ENABLE_PREFIX_CACHING": "true",  # Cache common prefixes for faster inference
+            "VLLM_ENABLE_CHUNKED_PREFILL": "true",  # Better memory efficiency during prefill
+            # Precision - let vLLM auto-detect based on model config
+            "VLLM_DTYPE": "auto",
+        }
+
     print(f"  Using instance type: {instance_type}")
     self_hosted_model_request: ModelRequest = {
         "autoScalingConfig": {
-            "blockDeviceVolumeSize": 50,
+            "blockDeviceVolumeSize": blockDeviceVolumeSize,
             "minCapacity": 1,
             "maxCapacity": 1,
             "cooldown": 420,
@@ -411,8 +433,8 @@ def create_self_hosted_model(
             },
         },
         "containerConfig": {
-            "image": {"baseImage": base_image, "type": "asset"},
-            "sharedMemorySize": 2048,
+            "image": {"baseImage": base_image, "type": "asset" if "huggingface" in base_image.lower() else "ecr"},
+            "sharedMemorySize": sharedMemorySize,
             "healthCheckConfig": {
                 "command": ["CMD-SHELL", "exit 0"],
                 "interval": 10,
@@ -420,27 +442,11 @@ def create_self_hosted_model(
                 "timeout": 5,
                 "retries": 3,
             },
-            "environment": {
-                # vLLM Performance Configuration for g5.xlarge (1x A10G GPU, 24GB VRAM)
-                # These environment variables are read natively by vLLM
-                # See: https://docs.vllm.ai/en/latest/configuration/env_vars/
-                # Context length - maximum sequence length the model can handle
-                "VLLM_MAX_MODEL_LEN": "16384",
-                # GPU memory utilization - use 90% of GPU VRAM for model/KV cache
-                "VLLM_GPU_MEMORY_UTILIZATION": "0.90",
-                # Batching - max tokens processed per iteration (affects throughput)
-                "VLLM_MAX_NUM_BATCHED_TOKENS": "8192",
-                # Concurrency - max number of sequences processed in parallel
-                "VLLM_MAX_NUM_SEQS": "128",
-                # Performance optimizations
-                "VLLM_ENABLE_PREFIX_CACHING": "true",  # Cache common prefixes for faster inference
-                "VLLM_ENABLE_CHUNKED_PREFILL": "true",  # Better memory efficiency during prefill
-                # Precision - let vLLM auto-detect based on model config
-                "VLLM_DTYPE": "auto",
-            },
+            "environment": environment,
+            **({"memoryReservation": memoryReservation} if memoryReservation is not None else {}),
         },
         "inferenceContainer": "vllm",
-        "instanceType": "g5.xlarge",
+        "instanceType": instance_type,
         "loadBalancerConfig": {
             "healthCheckConfig": {
                 "path": "/health",
@@ -452,7 +458,7 @@ def create_self_hosted_model(
         },
         "modelId": model_id,
         "modelName": model_name,
-        "modelDescription": None,
+        "modelDescription": f"Self-hosted model for {model_name}",
         "modelType": "textgen",
         "streaming": True,
         "features": [
@@ -1227,6 +1233,13 @@ def main():
 
         auth_headers = setup_authentication(args.deployment_name, args.deployment_stage)
 
+        # Get account ID and region for self-hosted model ECR images
+        sts_client = boto3.client("sts")
+        account_id = sts_client.get_caller_identity()["Account"]
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        print(f"Account ID: {account_id}")
+        print(f"Region: {region}")
+
         # Initialize LISA client with authentication
         lisa_client = LisaApi(url=args.api, verify=verify_ssl, headers=auth_headers)
 
@@ -1305,16 +1318,78 @@ def main():
                     lisa_client,
                     "mistral-7b-instruct-03",
                     "mistralai/Mistral-7B-Instruct-v0.3",
+                    base_image=f"{account_id}.dkr.ecr.{region}.amazonaws.com/lisa-vllm:latest",
                     skip_create=args.skip_create,
                 ),
                 create_self_hosted_model(
                     lisa_client,
                     "llama-32-1b-instruct",
                     "meta-llama/Llama-3.2-1B-Instruct",
+                    base_image=f"{account_id}.dkr.ecr.{region}.amazonaws.com/lisa-vllm:latest",
                     skip_create=args.skip_create,
                 ),
                 create_self_hosted_model(
-                    lisa_client, "gpt-oss-20b", "openai/gpt-oss-20b", skip_create=args.skip_create
+                    lisa_client,
+                    "gpt-oss-20b",
+                    "openai/gpt-oss-20b",
+                    base_image=f"{account_id}.dkr.ecr.{region}.amazonaws.com/lisa-vllm:latest",
+                    skip_create=args.skip_create,
+                ),
+                create_self_hosted_model(
+                    lisa_client=lisa_client,
+                    model_id="gpt-oss-120b",
+                    model_name="openai/gpt-oss-120b",
+                    skip_create=args.skip_create,
+                    base_image=f"{account_id}.dkr.ecr.{region}.amazonaws.com/lisa-vllm:gptoss",
+                    instance_type="g6.48xlarge",
+                    blockDeviceVolumeSize=300,
+                    sharedMemorySize=65536,
+                    memoryReservation=740000,
+                    environment={
+                        "VLLM_ATTENTION_BACKEND": "TRITON_ATTN_VLLM_V1",
+                        "VLLM_TENSOR_PARALLEL_SIZE": "8",
+                        "VLLM_ASYNC_SCHEDULING": "true",
+                        "VLLM_MAX_PARALLEL_LOADING_WORKERS": "8",
+                        "VLLM_USE_TQDM_ON_LOAD": "true",
+                        "THREADS": "4",
+                        "VLLM_MAX_MODEL_LEN": "4096",
+                        "VLLM_GPU_MEMORY_UTILIZATION": "0.90",
+                        "VLLM_MAX_NUM_BATCHED_TOKENS": "8192",
+                        "VLLM_MAX_NUM_SEQS": "128",
+                        "VLLM_MAX_CONCURRENT_REQUESTS": "32",
+                        "VLLM_ENABLE_PREFIX_CACHING": "true",
+                        "VLLM_ENABLE_CHUNKED_PREFILL": "true",
+                        "VLLM_DTYPE": "auto",
+                    },
+                ),
+                # Llama-4-Scout 4-bit quantized - MoE model (109B total, 17B active)
+                # For 1M context: use p5.48xlarge (8x H100, 640GB VRAM)
+                # For 32K context: use g6.12xlarge (4x L4, 89GB VRAM) - configured below
+                # Llama-4-Scout 4-bit on g5.48xlarge (8x A10G, 192GB VRAM) - 128K context
+                create_self_hosted_model(
+                    lisa_client=lisa_client,
+                    model_id="llama4-scout-17b-4bit-128k",
+                    model_name="unsloth/Llama-4-Scout-17B-16E-Instruct-unsloth-bnb-4bit",
+                    skip_create=args.skip_create,
+                    base_image=f"{account_id}.dkr.ecr.{region}.amazonaws.com/lisa-vllm:latest",
+                    instance_type="g5.48xlarge",  # 8x A10G (192GB) for 128K context
+                    blockDeviceVolumeSize=300,
+                    sharedMemorySize=32768,
+                    memoryReservation=700000,
+                    environment={
+                        # Llama-4-Scout MoE optimizations for g5.48xlarge (128K context)
+                        # 8x A10G = 192GB VRAM total
+                        "VLLM_MAX_MODEL_LEN": "131072",  # 128K token context (max for 192GB)
+                        "VLLM_TENSOR_PARALLEL_SIZE": "8",  # Distribute across 8 A10Gs
+                        "VLLM_GPU_MEMORY_UTILIZATION": "0.92",  # High but safe utilization
+                        "VLLM_MAX_NUM_BATCHED_TOKENS": "16384",  # Moderate batch size
+                        "VLLM_MAX_NUM_SEQS": "64",  # Concurrent sequences
+                        "VLLM_ENABLE_PREFIX_CACHING": "true",  # Cache common prefixes
+                        "VLLM_ENABLE_CHUNKED_PREFILL": "true",  # Better memory efficiency
+                        "VLLM_DTYPE": "auto",  # Let vLLM detect from model config
+                        "VLLM_ATTENTION_BACKEND": "FLASH_ATTN",  # Flash attention for long context
+                        "VLLM_ENFORCE_EAGER": "false",  # Allow CUDA graphs
+                    },
                 ),
             ]
         )

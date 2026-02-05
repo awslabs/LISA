@@ -22,12 +22,14 @@ import SpaceBetween from '@cloudscape-design/components/space-between';
 import Spinner from '@cloudscape-design/components/spinner';
 import {
     Autosuggest,
-    ButtonGroup, Checkbox,
+    ButtonGroup,
+    Checkbox,
     Grid,
     PromptInput,
     Icon,
-    TokenGroup,
     Flashbar,
+    FileInput,
+    FileTokenGroup,
 } from '@cloudscape-design/components';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 
@@ -938,19 +940,6 @@ export default function Chat ({ sessionId }) {
                 <form onSubmit={(e) => e.preventDefault()}>
                     <Form>
                         <SpaceBetween size='m' direction='vertical'>
-                            {fileContext && (
-                                <TokenGroup
-                                    onDismiss={({ detail: { itemIndex } }) => {
-                                        if (itemIndex === 0) {
-                                            setFileContext('');
-                                            setFileContextName('');
-                                        }
-                                    }}
-                                    items={[
-                                        { label: fileContextName, dismissLabel: `Remove ${fileContextName}` }
-                                    ]}
-                                />
-                            )}
                             <Grid
                                 gridDefinition={[
                                     { colspan: { default: 4 } },
@@ -1021,6 +1010,28 @@ export default function Chat ({ sessionId }) {
                                             dropdownExpandToViewport={true}
                                         />
                                     </Box>
+                                }
+                                secondaryContent={
+                                    fileContext && (
+                                        <FileTokenGroup
+                                            items={[{ file: new File([fileContext], fileContextName) }]}
+                                            onDismiss={() => {
+                                                setFileContext('');
+                                                setFileContextName('');
+                                            }}
+                                            alignment='horizontal'
+                                            showFileSize={false}
+                                            showFileLastModified={false}
+                                            showFileThumbnail={false}
+                                            i18nStrings={{
+                                                removeFileAriaLabel: () => 'Remove file',
+                                                limitShowFewer: 'Show fewer files',
+                                                limitShowMore: 'Show more files',
+                                                errorIconAriaLabel: 'Error',
+                                                warningIconAriaLabel: 'Warning'
+                                            }}
+                                        />
+                                    )
                                 }
                             />
                             <SpaceBetween direction='vertical' size='xs'>

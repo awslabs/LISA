@@ -849,7 +849,7 @@ export default function Chat ({ sessionId }) {
 
             {/* Sticky warning banner for deleted model */}
             {isModelDeleted && (
-                <div className='sticky top-0 z-50 bg-white dark:bg-gray-900'>
+                <div className='sticky top-0 z-50'>
                     <Box padding={{ horizontal: 'l', top: 's' }}>
                         <Flashbar
                             items={[

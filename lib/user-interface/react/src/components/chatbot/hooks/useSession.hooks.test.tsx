@@ -18,13 +18,13 @@ import { renderHook, act } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useAuth } from 'react-oidc-context';
+import { useAuth } from '../../../auth/useAuth';
 
 import { useSession } from './useSession.hooks';
 import breadcrumbsReducer from '@/shared/reducers/breadcrumbs.reducer';
 
-// Mock react-oidc-context
-vi.mock('react-oidc-context');
+// Mock the auth abstraction
+vi.mock('../../../auth/useAuth');
 
 // Mock uuid
 vi.mock('uuid', () => ({

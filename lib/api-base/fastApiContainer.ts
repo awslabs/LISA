@@ -176,7 +176,7 @@ export class FastApiContainer extends Construct {
                     interval: 60,
                     timeout: 30,
                     healthyThresholdCount: 2,
-                    unhealthyThresholdCount: 10
+                    unhealthyThresholdCount: 3  // Reduced from 10 to 3 for faster failure detection
                 },
                 domainName: config.restApiConfig.domainName,
                 sslCertIamArn: config.restApiConfig?.sslCertIamArn ?? null,

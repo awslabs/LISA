@@ -15,7 +15,7 @@
 """Validation utilities for Bedrock Knowledge Base operations."""
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 import boto3
 from botocore.exceptions import ClientError
@@ -24,7 +24,7 @@ from utilities.validation import ValidationError
 logger = logging.getLogger(__name__)
 
 
-def validate_bedrock_kb_exists(kb_id: str, bedrock_agent_client: Optional[Any] = None) -> Dict[str, Any]:
+def validate_bedrock_kb_exists(kb_id: str, bedrock_agent_client: Any | None = None) -> dict[str, Any]:
     """
     Validate that a Bedrock Knowledge Base exists and is accessible.
 
@@ -46,7 +46,7 @@ def validate_bedrock_kb_exists(kb_id: str, bedrock_agent_client: Optional[Any] =
         kb_config = response.get("knowledgeBase", {})
 
         logger.info(f"Validated Knowledge Base {kb_id}: {kb_config.get('name')}")
-        return kb_config
+        return kb_config  # type: ignore[no-any-return]
 
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "")
@@ -67,8 +67,8 @@ def validate_bedrock_kb_exists(kb_id: str, bedrock_agent_client: Optional[Any] =
 
 
 def validate_data_source_exists(
-    kb_id: str, data_source_id: str, bedrock_agent_client: Optional[Any] = None
-) -> Dict[str, Any]:
+    kb_id: str, data_source_id: str, bedrock_agent_client: Any | None = None
+) -> dict[str, Any]:
     """
     Validate that a data source exists in a Bedrock Knowledge Base.
 
@@ -91,7 +91,7 @@ def validate_data_source_exists(
         data_source_config = response.get("dataSource", {})
 
         logger.info(f"Validated Data Source {data_source_id} in KB {kb_id}: " f"{data_source_config.get('name')}")
-        return data_source_config
+        return data_source_config  # type: ignore[no-any-return]
 
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "")
@@ -113,8 +113,8 @@ def validate_data_source_exists(
 
 
 def validate_bedrock_kb_repository(
-    kb_id: str, data_source_id: str, bedrock_agent_client: Optional[Any] = None
-) -> tuple[Dict[str, Any], Dict[str, Any]]:
+    kb_id: str, data_source_id: str, bedrock_agent_client: Any | None = None
+) -> tuple[dict[str, Any], dict[str, Any]]:
     """
     Validate both Knowledge Base and Data Source exist.
 

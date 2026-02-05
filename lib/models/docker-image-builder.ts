@@ -25,7 +25,7 @@ import {
     ServicePrincipal,
 } from 'aws-cdk-lib/aws-iam';
 import { Code, Function } from 'aws-cdk-lib/aws-lambda';
-import { Duration, Stack } from 'aws-cdk-lib';
+import { Duration, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import { BlockPublicAccess, Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
 import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
@@ -63,6 +63,9 @@ export class DockerImageBuilder extends Construct {
             encryption: BucketEncryption.S3_MANAGED,
             blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
             serverAccessLogsBucket: bucketAccessLogsBucket,
+            serverAccessLogsPrefix: 'logs/docker-image-builder-bucket/',
+            removalPolicy: config.removalPolicy,
+            autoDeleteObjects: config.removalPolicy === RemovalPolicy.DESTROY,
         });
         const ecsModelPath = ECS_MODEL_PATH;
         new BucketDeployment(this, createCdkId([stackName, 'docker-image-builder-ec2-dplmnt']), {

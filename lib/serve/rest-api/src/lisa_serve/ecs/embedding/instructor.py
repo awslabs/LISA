@@ -13,7 +13,7 @@
 #   limitations under the License.
 
 """Model adapter and kwargs validator for ECS embedding instructor model endpoints."""
-from typing import Any, Dict
+from typing import Any
 
 from aiohttp import ClientSession
 from loguru import logger
@@ -53,7 +53,7 @@ class EcsEmbeddingInstructorAdapter(EmbeddingModelAdapter):
         # PyTorch DLC has the endpoint at path /predictions/model
         self.endpoint_url = f"{self.endpoint_url.rstrip('/')}/predictions/model"  # type: ignore
 
-    async def embed_query(self, *, text: str, model_kwargs: Dict[str, Any]) -> EmbedQueryResponse:  # type: ignore
+    async def embed_query(self, *, text: str, model_kwargs: dict[str, Any]) -> EmbedQueryResponse:  # type: ignore
         """Embed data.
 
         Parameters

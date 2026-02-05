@@ -61,10 +61,12 @@ const navLinks = [
       { text: 'Usage & Features', link: '/config/usage' },
       { text: 'RAG Repository', link: '/config/repositories' },
       { text: 'Langfuse Tracing', link: '/config/langfuse-tracing'},
+      { text: 'Private Labeling', link: '/config/custom-branding' },
       {
         text: 'Configuration Schema',
         link: '/config/configuration',
         items: [
+          { text: 'Config Generator CLI', link: '/config/config-generator' },
           { text: 'VPC & Subnet Overrides', link: '/config/vpc-overrides' },
           { text: 'Security Group Overrides', link: '/config/security-group-overrides' },
           { text: 'Role Overrides', link: '/config/role-overrides' },

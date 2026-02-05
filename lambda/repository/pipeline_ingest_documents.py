@@ -17,7 +17,7 @@
 import logging
 import os
 from datetime import timedelta
-from typing import Any, Dict, List
+from typing import Any
 
 import boto3
 from models.domain_objects import (
@@ -87,7 +87,7 @@ def pipeline_ingest_document(job: IngestionJob) -> None:
             try:
                 kb_bucket = get_datasource_bucket_for_collection(
                     repository=repository,
-                    collection_id=job.collection_id,
+                    collection_id=job.collection_id,  # type: ignore[arg-type]
                 )
             except ValueError as e:
                 error_msg = str(e)
@@ -113,7 +113,7 @@ def pipeline_ingest_document(job: IngestionJob) -> None:
             # Check if document already exists (idempotent operation)
             existing_docs = list(
                 rag_document_repository.find_by_source(
-                    job.repository_id, job.collection_id, kb_s3_path, join_docs=False
+                    job.repository_id, job.collection_id, kb_s3_path, join_docs=False  # type: ignore[arg-type]
                 )
             )
 
@@ -165,7 +165,7 @@ def pipeline_ingest_document(job: IngestionJob) -> None:
                 collection = None
                 try:
                     collection = collection_service.get_collection(
-                        collection_id=job.collection_id,
+                        collection_id=job.collection_id,  # type: ignore[arg-type]
                         repository_id=job.repository_id,
                         username="system",
                         user_groups=[],
@@ -203,18 +203,23 @@ def pipeline_ingest_document(job: IngestionJob) -> None:
 
         # Non-Bedrock KB path
         documents = generate_chunks(job)
-        texts, metadatas = prepare_chunks(documents, job.repository_id, job.collection_id)
+        texts, metadatas = prepare_chunks(documents, job.repository_id, job.collection_id)  # type: ignore[arg-type]
         all_ids = store_chunks_in_vectorstore(
             texts=texts,
             metadatas=metadatas,
             repository_id=job.repository_id,
-            collection_id=job.collection_id,
-            embedding_model=job.embedding_model,
+            collection_id=job.collection_id,  # type: ignore[arg-type]
+            embedding_model=job.embedding_model,  # type: ignore[arg-type]
         )
 
         # remove old
         for rag_document in list(
-            rag_document_repository.find_by_source(job.repository_id, job.collection_id, job.s3_path, join_docs=True)
+            rag_document_repository.find_by_source(
+                job.repository_id,
+                job.collection_id,  # type: ignore[arg-type]
+                job.s3_path,
+                join_docs=True,
+            )
         ):
             prev_job = ingestion_job_repository.find_by_document(rag_document.document_id)
 
@@ -323,7 +328,7 @@ def pipeline_ingest_documents(job: IngestionJob) -> None:
                 errors.append(error_msg)
 
         # Update job with document IDs
-        job.document_ids = document_ids
+        job.document_ids = document_ids  # type: ignore[assignment]
 
         if failed == 0:
             ingestion_job_repository.update_status(job, IngestionStatus.INGESTION_COMPLETED)
@@ -385,7 +390,7 @@ def _handle_s3_discovery_scan(job: IngestionJob) -> None:
         # Perform discovery and ingestion
         result = discovery_service.discover_and_ingest_documents(
             repository_id=job.repository_id,
-            collection_id=job.collection_id,
+            collection_id=job.collection_id,  # type: ignore[arg-type]
             s3_bucket=s3_bucket,
             s3_prefix=s3_prefix,
             ingestion_type=job.ingestion_type,
@@ -417,10 +422,10 @@ def remove_document_from_vectorstore(doc: RagDocument) -> None:
         collection_id=doc.collection_id,
         embeddings=embeddings,
     )
-    vector_store.delete(doc.subdocs)
+    vector_store.delete(doc.subdocs)  # type: ignore[union-attr]
 
 
-def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
+def handle_pipeline_ingest_event(event: dict[str, Any], context: Any) -> None:
     """Handle pipeline document ingestion."""
     # Extract and validate inputs
     logger.debug(f"Received event: {event}")
@@ -452,13 +457,20 @@ def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
             data_sources = bedrock_config.get("dataSources", [])
             if data_sources:
                 first_data_source = data_sources[0]
-                if isinstance(first_data_source, dict):
-                    collection_id = first_data_source.get("id")
-                else:
-                    collection_id = getattr(first_data_source, "id", None)
+                collection_id_val: str | None = (
+                    first_data_source.get("id") if isinstance(first_data_source, dict) else first_data_source.id
+                )
+                if not collection_id_val:
+                    logger.error(f"Bedrock KB repository {repository_id} has invalid data source")
+                    return
+                collection_id = collection_id_val
             else:
                 # Try legacy single data source ID
-                collection_id = bedrock_config.get("bedrockKnowledgeDatasourceId")
+                collection_id_val = bedrock_config.get("bedrockKnowledgeDatasourceId")
+                if not collection_id_val:
+                    logger.error(f"Bedrock KB repository {repository_id} missing data source ID")
+                    return
+                collection_id = collection_id_val
 
         if not collection_id:
             logger.error(f"Bedrock KB repository {repository_id} missing data source ID")
@@ -529,7 +541,7 @@ def handle_pipeline_ingest_event(event: Dict[str, Any], context: Any) -> None:
     logger.info(f"Submitted ingestion job for document {s3_path} in repository {repository_id}")
 
 
-def handle_pipline_ingest_schedule(event: Dict[str, Any], context: Any) -> None:
+def handle_pipline_ingest_schedule(event: dict[str, Any], context: Any) -> None:
     """
     Lists all objects in the specified S3 bucket and prefix that were modified in the last 24 hours.
 
@@ -623,7 +635,7 @@ def handle_pipline_ingest_schedule(event: Dict[str, Any], context: Any) -> None:
         raise e
 
 
-def batch_texts(texts: List[str], metadatas: List[Dict], batch_size: int = 500) -> list[tuple[list[str], list[dict]]]:
+def batch_texts(texts: list[str], metadatas: list[dict], batch_size: int = 500) -> list[tuple[list[str], list[dict]]]:
     """
     Split texts and metadata into batches of specified size.
 
@@ -642,7 +654,7 @@ def batch_texts(texts: List[str], metadatas: List[Dict], batch_size: int = 500) 
     return batches
 
 
-def extract_chunk_strategy(pipeline_config: Dict) -> ChunkingStrategy:
+def extract_chunk_strategy(pipeline_config: dict) -> ChunkingStrategy:
     """
     Extract and validate chunking strategy from pipeline configuration.
 
@@ -665,7 +677,8 @@ def extract_chunk_strategy(pipeline_config: Dict) -> ChunkingStrategy:
 
         if chunk_type == "fixed":
             # Use Pydantic model validation for type safety and validation
-            return FixedChunkingStrategy.model_validate(chunking_strategy)
+            result: FixedChunkingStrategy = FixedChunkingStrategy.model_validate(chunking_strategy)
+            return result
         else:
             # Future: Handle other chunking strategy types (semantic, recursive, etc.)
             raise ValueError(f"Unsupported chunking strategy type: {chunk_type}")
@@ -683,7 +696,7 @@ def extract_chunk_strategy(pipeline_config: Dict) -> ChunkingStrategy:
         return FixedChunkingStrategy(size=512, overlap=51)
 
 
-def prepare_chunks(docs: List, repository_id: str, collection_id: str) -> tuple[List[str], List[Dict]]:
+def prepare_chunks(docs: list, repository_id: str, collection_id: str) -> tuple[list[str], list[dict]]:
     """Prepare texts and metadata from document chunks."""
     texts = []
     metadatas = []
@@ -696,8 +709,8 @@ def prepare_chunks(docs: List, repository_id: str, collection_id: str) -> tuple[
 
 
 def store_chunks_in_vectorstore(
-    texts: List[str], metadatas: List[Dict], repository_id: str, collection_id: str, embedding_model: str
-) -> List[str]:
+    texts: list[str], metadatas: list[dict], repository_id: str, collection_id: str, embedding_model: str
+) -> list[str]:
     """Store document chunks in vector store using repository service."""
     vs_repo = VectorStoreRepository()
     repository = vs_repo.find_repository_by_id(repository_id)
@@ -717,7 +730,7 @@ def store_chunks_in_vectorstore(
 
     for i, (text_batch, metadata_batch) in enumerate(batches, 1):
         logger.info(f"Processing batch {i}/{total_batches} with {len(text_batch)} texts")
-        batch_ids = vs.add_texts(texts=text_batch, metadatas=metadata_batch)
+        batch_ids = vs.add_texts(texts=text_batch, metadatas=metadata_batch)  # type: ignore[union-attr]
         if not batch_ids:
             raise Exception(f"Failed to store documents in vector store for batch {i}")
         all_ids.extend(batch_ids)

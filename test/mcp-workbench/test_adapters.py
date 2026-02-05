@@ -39,11 +39,6 @@ class MockBaseTool(BaseTool):
 @mcp_tool(
     name="test_function_tool",
     description="A test function tool",
-    parameters={
-        "type": "object",
-        "properties": {"value": {"type": "number", "description": "Value to process"}},
-        "required": ["value"],
-    },
 )
 def mock_function(value: float):
     """Mock function for function adapter testing."""
@@ -265,14 +260,13 @@ class TestCreateAdapter:
             module_name="test_module",
             class_name="MockBaseTool",
             tool_instance=tool_instance,
-            parameters={"test": "param"},
         )
 
         adapter = create_adapter(tool_info)
 
         assert adapter.name == "test_base_tool"
         assert adapter.description == "A test base tool"
-        assert adapter.parameters == {"test": "param"}
+        assert adapter.tool_info == tool_info
 
 
 def create_adapter_with_invalid_type():

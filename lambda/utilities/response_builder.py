@@ -18,13 +18,13 @@ import json
 import logging
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, Union
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 class DecimalEncoder(json.JSONEncoder):
-    """JSON encoder that handles Decimal and datetime objects."""
+    """JSON encoder that handles Decimal, datetime, and Pydantic objects."""
 
     def default(self, obj: Any) -> Any:
         """
@@ -44,10 +44,36 @@ class DecimalEncoder(json.JSONEncoder):
             return float(obj)
         if isinstance(obj, datetime):
             return obj.isoformat()
+        # Handle Pydantic models
+        if hasattr(obj, "model_dump"):
+            return obj.model_dump(mode="json")
         return super().default(obj)
 
 
-def generate_html_response(status_code: int, response_body: dict) -> Dict[str, Union[str, int, Dict[str, str]]]:
+def _serialize_pydantic(obj: Any) -> Any:
+    """
+    Recursively serialize Pydantic models to dictionaries.
+
+    Parameters
+    ----------
+    obj : Any
+        Object to serialize.
+
+    Returns
+    -------
+    Any
+        Serialized object.
+    """
+    if hasattr(obj, "model_dump"):
+        return obj.model_dump(mode="json")
+    if isinstance(obj, list):
+        return [_serialize_pydantic(item) for item in obj]
+    if isinstance(obj, dict):
+        return {key: _serialize_pydantic(value) for key, value in obj.items()}
+    return obj
+
+
+def generate_html_response(status_code: int, response_body: Any) -> dict[str, str | int | dict[str, str]]:
     """
     Generate API Gateway response with security headers.
 
@@ -61,8 +87,8 @@ def generate_html_response(status_code: int, response_body: dict) -> Dict[str, U
     ----------
     status_code : int
         HTTP status code (e.g., 200, 400, 500).
-    response_body : dict
-        Response body to be JSON-encoded.
+    response_body : Any
+        Response body to be JSON-encoded. Can be dict, list, Pydantic model, or list of Pydantic models.
 
     Returns
     -------
@@ -78,9 +104,12 @@ def generate_html_response(status_code: int, response_body: dict) -> Dict[str, U
         "headers": {...}
     }
     """
+    # Serialize Pydantic models before JSON encoding
+    serialized_body = _serialize_pydantic(response_body)
+
     return {
         "statusCode": status_code,
-        "body": json.dumps(response_body, cls=DecimalEncoder),
+        "body": json.dumps(serialized_body, cls=DecimalEncoder),
         "headers": {
             "Access-Control-Allow-Origin": "*",
             "Content-Type": "application/json",
@@ -93,7 +122,7 @@ def generate_html_response(status_code: int, response_body: dict) -> Dict[str, U
     }
 
 
-def generate_exception_response(e: Exception) -> Dict[str, Union[str, int, Dict[str, str]]]:
+def generate_exception_response(e: Exception) -> dict[str, str | int | dict[str, str]]:
     """
     Generate API Gateway error response from exception.
 
@@ -173,4 +202,4 @@ def generate_exception_response(e: Exception) -> Dict[str, Union[str, int, Dict[
             )
         logger.exception(e)
 
-    return generate_html_response(status_code, error_message)  # type: ignore [arg-type]
+    return generate_html_response(status_code, error_message)

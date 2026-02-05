@@ -33,7 +33,7 @@ import {
 } from 'aws-cdk-lib/aws-iam';
 import { Code, Function, LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
-import { CustomResource, Duration } from 'aws-cdk-lib';
+import { CustomResource, Duration, RemovalPolicy } from 'aws-cdk-lib';
 import { Provider } from 'aws-cdk-lib/custom-resources';
 import { Construct } from 'constructs';
 
@@ -132,6 +132,7 @@ export class ModelsApi extends Construct {
             billingMode: BillingMode.PAY_PER_REQUEST,
             encryption: TableEncryption.AWS_MANAGED,
             removalPolicy: config.removalPolicy,
+            deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
         });
 
         // Create SSM parameter for model table name

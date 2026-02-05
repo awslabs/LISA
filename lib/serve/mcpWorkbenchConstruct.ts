@@ -31,7 +31,7 @@ import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import { ECSCluster, ECSTasks } from '../api-base/ecsCluster';
 import { Ec2Service } from 'aws-cdk-lib/aws-ecs';
-import { BucketEncryption } from 'aws-cdk-lib/aws-s3';
+import { BlockPublicAccess, BucketEncryption } from 'aws-cdk-lib/aws-s3';
 
 export type McpWorkbenchConstructProps = {
     restApiId: string;
@@ -72,7 +72,10 @@ export class McpWorkbenchConstruct extends Construct {
 
         const workbenchBucket = this.createWorkbenchBucket(scope, config);
         this.createWorkbenchApi(restApi, config, vpc, securityGroups, workbenchBucket, lambdaLayers, authorizer);
-        this.createWorkbenchService(apiCluster, config, vpc);
+
+        if (config.deployMcpWorkbench) {
+            this.createWorkbenchService(apiCluster, config, vpc);
+        }
     }
 
     private createWorkbenchApi (restApi: IRestApi, config: Config, vpc: Vpc, securityGroups: ISecurityGroup[], workbenchBucket: s3.Bucket, lambdaLayers: lambda.ILayerVersion[], authorizer?: IAuthorizer) {
@@ -190,6 +193,7 @@ export class McpWorkbenchConstruct extends Construct {
             serverAccessLogsBucket: bucketAccessLogsBucket,
             serverAccessLogsPrefix: 'logs/mcpworkbench-bucket/',
             eventBridgeEnabled: true,
+            blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
             encryption: BucketEncryption.S3_MANAGED
         });
     }

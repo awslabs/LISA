@@ -59,19 +59,20 @@
     "clean": "npm run clean -ws && rm -rf dist node_modules cdk.out build lib/rag/layer/TIKTOKEN_CACHE lib/serve/rest-api/TIKTOKEN_CACHE",
     "watch": "tsc -w",
     "test": "jest && npm run test -ws",
+    "test:update-baselines": "jest --testPathPatterns=snapshot.test.ts -- --updateBaselines",
     "cdk": "cdk",
     "prepare": "husky || true",
     "postinstall": "patch-package",
     "dev": "cd lib/user-interface/react/ && npm run dev",
     "prepublishOnly": "npm run build && npm run copy-dist -ws",
     "migrate-properties": "node ./scripts/migrate-properties.mjs",
-    "generateSchemaDocs": "npx zod2md -c ./lib/zod2md.config.ts && npx zod2md -c ./lib/zod2md.rag.ts"
+    "generateSchemaDocs": "npx zod2md -c ./lib/zod2md.config.ts && npx zod2md -c ./lib/zod2md.rag.ts",
+    "generate-config": "tsx scripts/generate-config.ts"
   },
   "devDependencies": {
-    "@aws-cdk/aws-lambda-python-alpha": "2.232.1-alpha.0",
+    "@aws-cdk/aws-lambda-python-alpha": "^2.236.0-alpha.0",
     "@aws-sdk/client-iam": "^3.948.0",
     "@aws-sdk/client-ssm": "^3.948.0",
-    "@aws-sdk/util-dynamodb": "^3.948.0",
     "@cdklabs/cdk-enterprise-iac": "^0.1.0",
     "@eslint/js": "^9.39.1",
     "@stylistic/eslint-plugin": "^5.6.1",
@@ -83,7 +84,7 @@
     "@types/readline-sync": "^1.4.8",
     "@typescript-eslint/eslint-plugin": "^8.49.0",
     "@typescript-eslint/parser": "^8.49.0",
-    "aws-cdk": "^2.1033.0",
+    "aws-cdk": "^2.1103.0",
     "depcheck": "^1.4.7",
     "esbuild": "^0.27.1",
     "eslint": "^9.39.1",
@@ -104,7 +105,8 @@
     "zod2md": "^0.2.4"
   },
   "dependencies": {
-    "aws-cdk-lib": "^2.232.1",
+    "@aws-sdk/util-dynamodb": "^3.948.0",
+    "aws-cdk-lib": "^2.236.0",
     "aws-sdk": "^2.1693.0",
     "cdk-ecr-deployment": "^4.0.5",
     "cdk-nag": "^2.37.55",

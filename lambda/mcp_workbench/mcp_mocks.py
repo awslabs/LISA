@@ -21,8 +21,9 @@ the structure and usage of MCP tools.
 """
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable
+from typing import Any
 
 
 class BaseTool(ABC):

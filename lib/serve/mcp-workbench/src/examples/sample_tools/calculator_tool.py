@@ -23,6 +23,7 @@ This file demonstrates how to create MCP (Model Context Protocol) tools using tw
 Both methods allow you to create tools that can be called by AI models to perform specific tasks.
 """
 
+from collections.abc import Callable
 from typing import Annotated
 
 from mcpworkbench.core.base_tool import BaseTool
@@ -45,7 +46,7 @@ class CalculatorTool(BaseTool):
     4. Define the actual tool function with proper type annotations
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initialize the tool with metadata.
 
@@ -57,7 +58,7 @@ class CalculatorTool(BaseTool):
             name="calculator", description="Performs basic arithmetic operations (add, subtract, multiply, divide)"
         )
 
-    async def execute(self):
+    async def execute(self) -> Callable:
         """
         Return the callable function that implements the tool's functionality.
 
@@ -71,7 +72,7 @@ class CalculatorTool(BaseTool):
         operator: Annotated[str, "add, subtract, multiply, or divide"],
         left_operand: Annotated[float, "The first number"],
         right_operand: Annotated[float, "The second number"],
-    ):
+    ) -> dict[str, float | str]:
         """
         Execute the calculator operation.
 

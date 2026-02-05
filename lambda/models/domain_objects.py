@@ -21,16 +21,16 @@ import logging
 import re
 import urllib.parse
 import uuid
+from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import auto, Enum, StrEnum
-from typing import Annotated, Any, Dict, Generator, List, Literal, Optional, TypeAlias, Union
+from typing import Annotated, Any, Literal, Self, TypeAlias, Union
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
 from pydantic.functional_validators import AfterValidator, field_validator, model_validator
-from typing_extensions import Self
 from utilities.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, MIN_PAGE_SIZE
 from utilities.healthcheck_validator import validate_healthcheck_command
 from utilities.time import now, utc_now
@@ -70,6 +70,7 @@ class ModelType(StrEnum):
 
     TEXTGEN = auto()
     IMAGEGEN = auto()
+    VIDEOGEN = auto()
     EMBEDDING = auto()
 
 
@@ -88,13 +89,13 @@ class GuardrailConfig(BaseModel):
     guardrailIdentifier: str = Field(min_length=1)
     guardrailVersion: str = Field(default="DRAFT")
     mode: GuardrailMode = Field(default=GuardrailMode.PRE_CALL)
-    description: Optional[str] = None
-    allowedGroups: List[str] = Field(default_factory=list)
-    markedForDeletion: Optional[bool] = Field(default=False)
+    description: str | None = None
+    allowedGroups: list[str] = Field(default_factory=list)
+    markedForDeletion: bool | None = Field(default=False)
 
 
 # Type alias for guardrails configuration - maps guardrail IDs to their configs
-GuardrailsConfig: TypeAlias = Dict[str, GuardrailConfig]
+GuardrailsConfig: TypeAlias = dict[str, GuardrailConfig]
 
 
 class GuardrailRequest(BaseModel):
@@ -122,8 +123,8 @@ class GuardrailsTableEntry(BaseModel):
     guardrailIdentifier: str
     guardrailVersion: str
     mode: str
-    description: Optional[str]
-    allowedGroups: List[str]
+    description: str | None
+    allowedGroups: list[str]
     createdDate: int = Field(default_factory=lambda: now())
     lastModifiedDate: int = Field(default_factory=lambda: now())
 
@@ -214,13 +215,13 @@ class DaySchedule(BaseModel):
 class WeeklySchedule(BaseModel):
     """Defines schedule for each day of the week with one start/stop time per day"""
 
-    monday: Optional[DaySchedule] = None
-    tuesday: Optional[DaySchedule] = None
-    wednesday: Optional[DaySchedule] = None
-    thursday: Optional[DaySchedule] = None
-    friday: Optional[DaySchedule] = None
-    saturday: Optional[DaySchedule] = None
-    sunday: Optional[DaySchedule] = None
+    monday: DaySchedule | None = None
+    tuesday: DaySchedule | None = None
+    wednesday: DaySchedule | None = None
+    thursday: DaySchedule | None = None
+    friday: DaySchedule | None = None
+    saturday: DaySchedule | None = None
+    sunday: DaySchedule | None = None
 
     @model_validator(mode="after")
     def validate_daily_schedules(self) -> Self:
@@ -255,18 +256,18 @@ class BaseSchedulingConfig(BaseModel):
 
     # Schedule metadata and tracking
     scheduleEnabled: bool = False
-    lastScheduleUpdate: Optional[str] = None
-    scheduledActionArns: Optional[List[str]] = None
+    lastScheduleUpdate: str | None = None
+    scheduledActionArns: list[str] | None = None
 
     # Status tracking
     scheduleConfigured: bool = False
     lastScheduleFailed: bool = False
 
     # Next scheduled action info (computed field)
-    nextScheduledAction: Optional[NextScheduledAction] = None
+    nextScheduledAction: NextScheduledAction | None = None
 
     # Failure tracking
-    lastScheduleFailure: Optional[ScheduleFailure] = None
+    lastScheduleFailure: ScheduleFailure | None = None
 
     @field_validator("timezone")
     @classmethod
@@ -318,14 +319,14 @@ SchedulingConfig = Annotated[
 class AutoScalingConfig(BaseModel):
     """Specifies auto-scaling parameters for model deployment."""
 
-    blockDeviceVolumeSize: Optional[NonNegativeInt] = 50
+    blockDeviceVolumeSize: NonNegativeInt | None = 50
     minCapacity: PositiveInt
     maxCapacity: PositiveInt
-    desiredCapacity: Optional[PositiveInt] = None
+    desiredCapacity: PositiveInt | None = None
     cooldown: PositiveInt
     defaultInstanceWarmup: PositiveInt
     metricConfig: MetricConfig
-    scheduling: Optional[SchedulingConfig] = None
+    scheduling: SchedulingConfig | None = None
 
     @model_validator(mode="after")
     def validate_auto_scaling_config(self) -> Self:
@@ -344,11 +345,11 @@ class AutoScalingConfig(BaseModel):
 class AutoScalingInstanceConfig(BaseModel):
     """Defines instance count parameters for auto-scaling updates."""
 
-    minCapacity: Optional[PositiveInt] = None
-    maxCapacity: Optional[PositiveInt] = None
-    desiredCapacity: Optional[PositiveInt] = None
-    cooldown: Optional[PositiveInt] = None
-    defaultInstanceWarmup: Optional[PositiveInt] = None
+    minCapacity: PositiveInt | None = None
+    maxCapacity: PositiveInt | None = None
+    desiredCapacity: PositiveInt | None = None
+    cooldown: PositiveInt | None = None
+    defaultInstanceWarmup: PositiveInt | None = None
 
     @model_validator(mode="after")
     def validate_auto_scaling_instance_config(self) -> Self:
@@ -372,7 +373,7 @@ class AutoScalingInstanceConfig(BaseModel):
 class ContainerHealthCheckConfig(BaseModel):
     """Specifies container health check parameters."""
 
-    command: Union[str, List[str]]
+    command: str | list[str]
     interval: PositiveInt
     startPeriod: PositiveInt
     timeout: PositiveInt
@@ -380,7 +381,7 @@ class ContainerHealthCheckConfig(BaseModel):
 
     @field_validator("command")
     @classmethod
-    def validate_command(cls, command: Union[str, List[str]]) -> Union[str, List[str]]:
+    def validate_command(cls, command: str | list[str]) -> str | list[str]:
         """Validates healthcheck command format for ECS compatibility."""
         validate_healthcheck_command(command)
         return command
@@ -399,14 +400,14 @@ class ContainerConfig(BaseModel):
     image: ContainerConfigImage
     sharedMemorySize: PositiveInt
     healthCheckConfig: ContainerHealthCheckConfig
-    environment: Optional[Dict[str, str]] = {}
+    environment: dict[str, str] | None = {}
 
     @field_validator("environment")
     @classmethod
-    def validate_environment(cls, environment: Dict[str, str]) -> Dict[str, str]:
+    def validate_environment(cls, environment: dict[str, str]) -> dict[str, str]:
         """Validates environment variable key names."""
         if environment:
-            if not all((key for key in environment.keys())):
+            if not all(key for key in environment.keys()):
                 raise ValueError("Empty strings are not allowed for environment variable key names.")
         return environment
 
@@ -414,20 +415,20 @@ class ContainerConfig(BaseModel):
 class ContainerConfigUpdatable(BaseModel):
     """Specifies container configuration fields that can be updated."""
 
-    environment: Optional[Dict[str, str]] = None
-    sharedMemorySize: Optional[PositiveInt] = None
-    healthCheckCommand: Optional[Union[str, List[str]]] = None
-    healthCheckInterval: Optional[PositiveInt] = None
-    healthCheckTimeout: Optional[PositiveInt] = None
-    healthCheckStartPeriod: Optional[PositiveInt] = None
-    healthCheckRetries: Optional[PositiveInt] = None
+    environment: dict[str, str] | None = None
+    sharedMemorySize: PositiveInt | None = None
+    healthCheckCommand: str | list[str] | None = None
+    healthCheckInterval: PositiveInt | None = None
+    healthCheckTimeout: PositiveInt | None = None
+    healthCheckStartPeriod: PositiveInt | None = None
+    healthCheckRetries: PositiveInt | None = None
 
     @field_validator("environment")
     @classmethod
-    def validate_environment(cls, environment: Dict[str, str]) -> Dict[str, str]:
+    def validate_environment(cls, environment: dict[str, str]) -> dict[str, str]:
         """Validates environment variable key names."""
         if environment:
-            if not all((key for key in environment.keys())):
+            if not all(key for key in environment.keys()):
                 raise ValueError("Empty strings are not allowed for environment variable key names.")
         return environment
 
@@ -435,7 +436,7 @@ class ContainerConfigUpdatable(BaseModel):
 class ModelFeature(BaseModel):
     """Defines model feature attributes."""
 
-    __exceptions: List[Any] = []
+    __exceptions: list[Any] = []
     name: str
     overview: str
 
@@ -446,21 +447,21 @@ class ModelFeature(BaseModel):
 class LISAModel(BaseModel):
     """Defines core model attributes and configuration."""
 
-    autoScalingConfig: Optional[AutoScalingConfig] = None
-    containerConfig: Optional[ContainerConfig] = None
-    inferenceContainer: Optional[InferenceContainer] = None
-    instanceType: Optional[Annotated[str, AfterValidator(validate_instance_type)]] = None
-    loadBalancerConfig: Optional[LoadBalancerConfig] = None
+    autoScalingConfig: AutoScalingConfig | None = None
+    containerConfig: ContainerConfig | None = None
+    inferenceContainer: InferenceContainer | None = None
+    instanceType: Annotated[str, AfterValidator(validate_instance_type)] | None = None
+    loadBalancerConfig: LoadBalancerConfig | None = None
     modelId: str
     modelName: str
-    modelDescription: Optional[str] = None
+    modelDescription: str | None = None
     modelType: ModelType
-    modelUrl: Optional[str] = None
+    modelUrl: str | None = None
     status: ModelStatus
     streaming: bool
-    features: Optional[List[ModelFeature]] = None
-    allowedGroups: Optional[List[str]] = None
-    guardrailsConfig: Optional[GuardrailsConfig] = None
+    features: list[ModelFeature] | None = None
+    allowedGroups: list[str] | None = None
+    guardrailsConfig: GuardrailsConfig | None = None
 
 
 class ApiResponseBase(BaseModel):
@@ -472,21 +473,21 @@ class ApiResponseBase(BaseModel):
 class CreateModelRequest(BaseModel):
     """Specifies parameters for model creation requests."""
 
-    autoScalingConfig: Optional[AutoScalingConfig] = None
-    containerConfig: Optional[ContainerConfig] = None
-    inferenceContainer: Optional[InferenceContainer] = None
-    instanceType: Optional[Annotated[str, AfterValidator(validate_instance_type)]] = None
-    loadBalancerConfig: Optional[LoadBalancerConfig] = None
+    autoScalingConfig: AutoScalingConfig | None = None
+    containerConfig: ContainerConfig | None = None
+    inferenceContainer: InferenceContainer | None = None
+    instanceType: Annotated[str, AfterValidator(validate_instance_type)] | None = None
+    loadBalancerConfig: LoadBalancerConfig | None = None
     modelId: str = Field(min_length=1)
     modelName: str = Field(min_length=1)
-    modelDescription: Optional[str] = None
+    modelDescription: str | None = None
     modelType: ModelType
-    modelUrl: Optional[str] = None
-    streaming: Optional[bool] = False
-    features: Optional[List[ModelFeature]] = None
-    allowedGroups: Optional[List[str]] = None
-    apiKey: Optional[str] = None
-    guardrailsConfig: Optional[GuardrailsConfig] = None
+    modelUrl: str | None = None
+    streaming: bool | None = False
+    features: list[ModelFeature] | None = None
+    allowedGroups: list[str] | None = None
+    apiKey: str | None = None
+    guardrailsConfig: GuardrailsConfig | None = None
 
     @model_validator(mode="after")
     def validate_create_model_request(self) -> Self:
@@ -520,7 +521,7 @@ class CreateModelResponse(ApiResponseBase):
 class ListModelsResponse(BaseModel):
     """Defines response structure for model listing."""
 
-    models: List[LISAModel]
+    models: list[LISAModel]
 
 
 class GetModelResponse(ApiResponseBase):
@@ -532,15 +533,15 @@ class GetModelResponse(ApiResponseBase):
 class UpdateModelRequest(BaseModel):
     """Specifies parameters for model update requests."""
 
-    autoScalingInstanceConfig: Optional[AutoScalingInstanceConfig] = None
-    enabled: Optional[bool] = None
-    modelType: Optional[ModelType] = None
-    modelDescription: Optional[str] = None
-    streaming: Optional[bool] = None
-    allowedGroups: Optional[List[str]] = None
-    features: Optional[List[ModelFeature]] = None
-    containerConfig: Optional[ContainerConfigUpdatable] = None
-    guardrailsConfig: Optional[GuardrailsConfig] = None
+    autoScalingInstanceConfig: AutoScalingInstanceConfig | None = None
+    enabled: bool | None = None
+    modelType: ModelType | None = None
+    modelDescription: str | None = None
+    streaming: bool | None = None
+    allowedGroups: list[str] | None = None
+    features: list[ModelFeature] | None = None
+    containerConfig: ContainerConfigUpdatable | None = None
+    guardrailsConfig: GuardrailsConfig | None = None
 
     @model_validator(mode="after")
     def validate_update_model_request(self) -> Self:
@@ -608,8 +609,8 @@ class GetScheduleResponse(BaseModel):
     """Response object for getting schedule configuration."""
 
     modelId: str
-    scheduling: Dict[str, Any]
-    nextScheduledAction: Optional[Dict[str, str]] = None
+    scheduling: dict[str, Any]
+    nextScheduledAction: dict[str, str] | None = None
 
 
 class DeleteScheduleResponse(BaseModel):
@@ -628,11 +629,11 @@ class GetScheduleStatusResponse(BaseModel):
     scheduleConfigured: bool
     lastScheduleFailed: bool
     scheduleStatus: str
-    scheduleType: Optional[str] = None
+    scheduleType: str | None = None
     timezone: str
-    nextScheduledAction: Optional[Dict[str, str]] = None
-    lastScheduleUpdate: Optional[str] = None
-    lastScheduleFailure: Optional[Dict[str, Any]] = None
+    nextScheduledAction: dict[str, str] | None = None
+    lastScheduleUpdate: str | None = None
+    lastScheduleFailure: dict[str, Any] | None = None
 
 
 class IngestionType(StrEnum):
@@ -653,7 +654,7 @@ class JobActionType(StrEnum):
     COLLECTION_DELETION = auto()
 
 
-RagDocumentDict = Dict[str, Any]
+RagDocumentDict = dict[str, Any]
 
 
 class ChunkingStrategyType(StrEnum):
@@ -723,9 +724,9 @@ class RagSubDocument(BaseModel):
     """Represents a sub-document entity for DynamoDB storage."""
 
     document_id: str
-    subdocs: List[str] = Field(default_factory=lambda: [])
-    index: Optional[int] = Field(default=None)
-    sk: Optional[str] = None
+    subdocs: list[str] = Field(default_factory=lambda: [])
+    index: int | None = Field(default=None)
+    sk: str | None = None
 
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)
@@ -735,18 +736,18 @@ class RagSubDocument(BaseModel):
 class RagDocument(BaseModel):
     """Represents a RAG document entity for DynamoDB storage."""
 
-    pk: Optional[str] = None
+    pk: str | None = None
     document_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     repository_id: str = Field(min_length=3, max_length=20)
     collection_id: str
     document_name: str
     source: str
     username: str
-    subdocs: List[str] = Field(default_factory=lambda: [], exclude=True)
+    subdocs: list[str] = Field(default_factory=lambda: [], exclude=True)
     chunk_strategy: ChunkingStrategy
     ingestion_type: IngestionType = Field(default_factory=lambda: IngestionType.MANUAL)
     upload_date: int = Field(default_factory=lambda: now())
-    chunks: Optional[int] = 0
+    chunks: int | None = 0
     model_config = ConfigDict(use_enum_values=True, validate_default=True)
 
     def __init__(self, **data: Any) -> None:
@@ -761,7 +762,7 @@ class RagDocument(BaseModel):
         """Generates a partition key from repository and collection IDs."""
         return f"{repository_id}#{collection_id}"
 
-    def chunk_doc(self, chunk_size: int = 1000) -> Generator[RagSubDocument, None, None]:
+    def chunk_doc(self, chunk_size: int = 1000) -> Generator[RagSubDocument]:
         """Segments document into smaller sub-documents."""
         total_subdocs = len(self.subdocs)
         for start_index in range(0, total_subdocs, chunk_size):
@@ -771,16 +772,16 @@ class RagDocument(BaseModel):
             )
 
     @staticmethod
-    def join_docs(documents: List[RagDocumentDict]) -> List[RagDocumentDict]:
+    def join_docs(documents: list[RagDocumentDict]) -> list[RagDocumentDict]:
         """Combines multiple sub-documents into a single document."""
-        grouped_docs: dict[str, List[RagDocumentDict]] = {}
+        grouped_docs: dict[str, list[RagDocumentDict]] = {}
         for doc in documents:
             doc_id = doc.get("document_id", "")
             if doc_id not in grouped_docs:
                 grouped_docs[doc_id] = []
             grouped_docs[doc_id].append(doc)
 
-        joined_docs: List[RagDocumentDict] = []
+        joined_docs: list[RagDocumentDict] = []
         for docs in grouped_docs.values():
             joined_doc = docs[0]
             joined_doc["subdocs"] = [sub_doc for doc in docs for sub_doc in (doc.get("subdocs", []) or [])]
@@ -794,29 +795,29 @@ class IngestionJob(BaseModel):
 
     id: str = Field(default_factory=lambda: str(uuid4()))
     s3_path: str
-    collection_id: Optional[str] = Field(
+    collection_id: str | None = Field(
         default=None, description="Collection ID for full deletion, None for default collection deletion"
     )
-    document_id: Optional[str] = Field(default=None)
+    document_id: str | None = Field(default=None)
     repository_id: str
-    chunk_strategy: Optional[ChunkingStrategy] = Field(default=None)
-    embedding_model: Optional[str] = Field(
+    chunk_strategy: ChunkingStrategy | None = Field(default=None)
+    embedding_model: str | None = Field(
         default=None, description="Embedding model name, used as index identifier for default collections"
     )
-    username: Optional[str] = Field(default=None)
+    username: str | None = Field(default=None)
     ingestion_type: IngestionType = Field(
         default=IngestionType.MANUAL, description="How the document was ingested (MANUAL, AUTO, or EXISTING)"
     )
     status: IngestionStatus = IngestionStatus.INGESTION_PENDING
     created_date: str = Field(default_factory=lambda: utc_now().isoformat())
-    error_message: Optional[str] = Field(default=None)
-    document_name: Optional[str] = Field(default=None)
-    auto: Optional[bool] = Field(default=None)
-    metadata: Optional[dict] = Field(default=None)
-    job_type: Optional[JobActionType] = Field(default=None, description="Type of deletion job")
+    error_message: str | None = Field(default=None)
+    document_name: str | None = Field(default=None)
+    auto: bool | None = Field(default=None)
+    metadata: dict | None = Field(default=None)
+    job_type: JobActionType | None = Field(default=None, description="Type of deletion job")
     collection_deletion: bool = Field(default=False, description="Indicates this is a collection deletion job")
-    s3_paths: Optional[List[str]] = Field(default=None, description="List of S3 paths for batch ingestion operations")
-    document_ids: Optional[List[str]] = Field(
+    s3_paths: list[str] | None = Field(default=None, description="List of S3 paths for batch ingestion operations")
+    document_ids: list[str] | None = Field(
         default=None, description="List of document IDs from completed batch operations"
     )
 
@@ -851,15 +852,27 @@ class IngestionJob(BaseModel):
 class PaginatedResponse(BaseModel):
     """Base class for paginated API responses."""
 
-    lastEvaluatedKey: Optional[Dict[str, str]] = None
+    lastEvaluatedKey: dict[str, str] | None = None
     hasNextPage: bool = False
     hasPreviousPage: bool = False
+
+
+class DeleteResponse(BaseModel):
+    """Generic response model for delete operations."""
+
+    deleted: bool = False
+
+
+class SuccessResponse(BaseModel):
+    """Generic response model for successful operations."""
+
+    message: str
 
 
 class ListJobsResponse(PaginatedResponse):
     """Response structure for listing ingestion jobs with pagination."""
 
-    jobs: List[IngestionJob]
+    jobs: list[IngestionJob]
 
 
 @dataclass
@@ -870,9 +883,7 @@ class PaginationResult:
     has_previous_page: bool
 
     @classmethod
-    def from_keys(
-        cls, original_key: Optional[Dict[str, str]], returned_key: Optional[Dict[str, str]]
-    ) -> "PaginationResult":
+    def from_keys(cls, original_key: dict[str, str] | None, returned_key: dict[str, str] | None) -> PaginationResult:
         """Create pagination result from keys."""
         return cls(has_next_page=returned_key is not None, has_previous_page=original_key is not None)
 
@@ -882,18 +893,18 @@ class PaginationParams:
     """Shared pagination parameter handling."""
 
     page_size: int = DEFAULT_PAGE_SIZE
-    last_evaluated_key: Optional[Dict[str, str]] = None
+    last_evaluated_key: dict[str, str] | None = None
 
     @staticmethod
     def parse_page_size(
-        query_params: Dict[str, str], default: int = DEFAULT_PAGE_SIZE, max_size: int = MAX_PAGE_SIZE
+        query_params: dict[str, str], default: int = DEFAULT_PAGE_SIZE, max_size: int = MAX_PAGE_SIZE
     ) -> int:
         """Parse and validate page size with configurable limits."""
         page_size = int(query_params.get("pageSize", str(default)))
         return max(MIN_PAGE_SIZE, min(page_size, max_size))
 
     @staticmethod
-    def parse_last_evaluated_key(query_params: Dict[str, str], key_fields: List[str]) -> Optional[Dict[str, str]]:
+    def parse_last_evaluated_key(query_params: dict[str, str], key_fields: list[str]) -> dict[str, str] | None:
         """Parse last evaluated key from query parameters.
 
         Args:
@@ -926,7 +937,7 @@ class PaginationParams:
         return last_evaluated_key if last_evaluated_key else None
 
     @staticmethod
-    def parse_last_evaluated_key_v2(query_params: Dict[str, str]) -> Optional[Dict[str, Any]]:
+    def parse_last_evaluated_key_v2(query_params: dict[str, str]) -> dict[str, Any] | None:
         """Parse v2 pagination token from query parameters.
 
         The v2 token format supports scalable pagination with per-repository cursors.
@@ -975,11 +986,11 @@ class PaginationParams:
 class FilterParams:
     """Shared filtering parameter handling for collections."""
 
-    filter_text: Optional[str] = None
-    status_filter: Optional[CollectionStatus] = None
+    filter_text: str | None = None
+    status_filter: CollectionStatus | None = None
 
     @staticmethod
-    def from_query_params(query_params: Dict[str, str]) -> FilterParams:
+    def from_query_params(query_params: dict[str, str]) -> FilterParams:
         """Parse filter parameters from query string parameters.
 
         Args:
@@ -1007,11 +1018,11 @@ class FilterParams:
 class SortParams:
     """Shared sorting parameter handling for collections."""
 
-    sort_by: CollectionSortBy = None  # Will be set to default in from_query_params
-    sort_order: SortOrder = None  # Will be set to default in from_query_params
+    sort_by: CollectionSortBy | None = None  # Will be set to default in from_query_params
+    sort_order: SortOrder | None = None  # Will be set to default in from_query_params
 
     @staticmethod
-    def from_query_params(query_params: Dict[str, str]) -> SortParams:
+    def from_query_params(query_params: dict[str, str]) -> SortParams:
         """Parse sort parameters from query string parameters.
 
         Args:
@@ -1079,24 +1090,24 @@ class PipelineConfig(BaseModel):
     """Defines pipeline configuration for automated document ingestion."""
 
     autoRemove: bool = Field(default=True, description="Automatically remove documents after ingestion")
-    chunkOverlap: Optional[int] = Field(
+    chunkOverlap: int | None = Field(
         default=None, ge=0, description="Chunk overlap for pipeline ingestion (deprecated, use chunkingStrategy)"
     )
-    chunkSize: Optional[int] = Field(
+    chunkSize: int | None = Field(
         default=None,
         ge=0,
         description="Chunk size for pipeline ingestion (deprecated, use chunkingStrategy)",
     )
-    chunkingStrategy: Optional[ChunkingStrategy] = Field(
+    chunkingStrategy: ChunkingStrategy | None = Field(
         default=None, description="Chunking strategy for documents in this pipeline"
     )
-    collectionId: Optional[str] = Field(
+    collectionId: str | None = Field(
         default=None, description="Collection ID for this pipeline (for Bedrock KB, this is the data source ID)"
     )
     s3Bucket: str = Field(min_length=1, description="S3 bucket for pipeline source")
     s3Prefix: str = Field(description="S3 prefix for pipeline source")
     trigger: PipelineTrigger = Field(description="Pipeline trigger type")
-    metadata: Optional[CollectionMetadata] = Field(
+    metadata: CollectionMetadata | None = Field(
         default_factory=lambda: CollectionMetadata(tags=[]), description="Metadata for the pipeline including tags"
     )
 
@@ -1118,6 +1129,9 @@ class PipelineConfig(BaseModel):
 
         # If legacy fields provided but no chunkingStrategy, create one
         if has_legacy and not has_new:
+            # At this point we know both are not None due to has_legacy check
+            if self.chunkSize is None or self.chunkOverlap is None:
+                raise ValueError("chunkSize and chunkOverlap must both be set")
             self.chunkingStrategy = FixedChunkingStrategy(
                 type=ChunkingStrategyType.FIXED, size=self.chunkSize, overlap=self.chunkOverlap
             )
@@ -1128,12 +1142,12 @@ class PipelineConfig(BaseModel):
 class CollectionMetadata(BaseModel):
     """Defines metadata for a collection."""
 
-    tags: List[str] = Field(default_factory=list, max_length=50, description="Metadata tags for the collection")
-    customFields: Dict[str, Any] = Field(default_factory=dict, description="Custom metadata fields")
+    tags: list[str] = Field(default_factory=list, max_length=50, description="Metadata tags for the collection")
+    customFields: dict[str, Any] = Field(default_factory=dict, description="Custom metadata fields")
 
     @field_validator("tags")
     @classmethod
-    def validate_tags(cls, tags: List[str]) -> List[str]:
+    def validate_tags(cls, tags: list[str]) -> list[str]:
         """Validates metadata tags."""
         tag_pattern = re.compile(r"^[a-zA-Z0-9_-]+$")
         for tag in tags:
@@ -1147,7 +1161,7 @@ class CollectionMetadata(BaseModel):
         return tags
 
     @classmethod
-    def merge(cls, parent: Optional[CollectionMetadata], child: Optional[CollectionMetadata]) -> CollectionMetadata:
+    def merge(cls, parent: CollectionMetadata | None, child: CollectionMetadata | None) -> CollectionMetadata:
         """Merges parent and child metadata.
 
         Args:
@@ -1178,17 +1192,17 @@ class RagCollectionConfig(BaseModel):
 
     collectionId: str = Field(default_factory=lambda: str(uuid4()), description="Unique collection identifier")
     repositoryId: str = Field(min_length=1, description="Parent repository ID this collection belongs to")
-    name: Optional[str] = Field(default=None, max_length=100, description="User-friendly collection name")
-    description: Optional[str] = Field(default=None, description="Collection description")
-    chunkingStrategy: Optional[ChunkingStrategy] = Field(default=None, description="Chunking strategy for documents")
+    name: str | None = Field(default=None, max_length=100, description="User-friendly collection name")
+    description: str | None = Field(default=None, description="Collection description")
+    chunkingStrategy: ChunkingStrategy | None = Field(default=None, description="Chunking strategy for documents")
     allowChunkingOverride: bool = Field(
         default=True, description="Allow users to override chunking strategy during ingestion"
     )
-    metadata: Optional[CollectionMetadata] = Field(
+    metadata: CollectionMetadata | None = Field(
         default=None, description="Collection-specific metadata (merged with parent)"
     )
-    allowedGroups: Optional[List[str]] = Field(default=None, description="User groups with access to collection")
-    embeddingModel: Optional[str] = Field(
+    allowedGroups: list[str] | None = Field(default=None, description="User groups with access to collection")
+    embeddingModel: str | None = Field(
         default=None, description="Embedding model ID (can be set at creation, immutable after)"
     )
     createdBy: str = Field(min_length=1, description="User ID of creator")
@@ -1196,10 +1210,10 @@ class RagCollectionConfig(BaseModel):
     updatedAt: datetime = Field(default_factory=utc_now, description="Last update timestamp")
     status: CollectionStatus = Field(default=CollectionStatus.ACTIVE, description="Collection status")
     default: bool = Field(default=False, description="Indicates if this is a default collection")
-    dataSourceId: Optional[str] = Field(
+    dataSourceId: str | None = Field(
         default=None, description="Bedrock KB data source ID for filtering (Bedrock KB only)"
     )
-    pipelines: Optional[List[PipelineConfig]] = Field(
+    pipelines: list[PipelineConfig] | None = Field(
         default=None, description="Pipeline configurations for this collection"
     )
 
@@ -1207,7 +1221,7 @@ class RagCollectionConfig(BaseModel):
 
     @field_validator("name")
     @classmethod
-    def validate_name(cls, name: Optional[str]) -> Optional[str]:
+    def validate_name(cls, name: str | None) -> str | None:
         """Validates collection name."""
         if name is not None:
             if len(name) > 100:
@@ -1221,7 +1235,7 @@ class RagCollectionConfig(BaseModel):
 
     @field_validator("allowedGroups")
     @classmethod
-    def validate_allowed_groups(cls, groups: Optional[List[str]]) -> Optional[List[str]]:
+    def validate_allowed_groups(cls, groups: list[str] | None) -> list[str] | None:
         """Validates allowed groups."""
         if groups is not None and len(groups) == 0:
             # Empty list should be treated as None (inherit from parent)
@@ -1232,20 +1246,20 @@ class RagCollectionConfig(BaseModel):
 class IngestDocumentRequest(BaseModel):
     """Request model for ingesting documents."""
 
-    keys: List[str] = Field(description="S3 keys to ingest")
-    collectionId: Optional[str] = Field(default=None, description="Target collection ID")
-    embeddingModel: Optional[Dict[str, str]] = Field(default=None, description="Embedding model config")
-    chunkingStrategy: Optional[Dict[str, Any]] = Field(default=None, description="Chunking strategy override")
-    metadata: Optional[Dict[str, Any]] = Field(default=None, description="Additional metadata")
+    keys: list[str] = Field(description="S3 keys to ingest")
+    collectionId: str | None = Field(default=None, description="Target collection ID")
+    embeddingModel: dict[str, str] | None = Field(default=None, description="Embedding model config")
+    chunkingStrategy: dict[str, Any] | None = Field(default=None, description="Chunking strategy override")
+    metadata: dict[str, Any] | None = Field(default=None, description="Additional metadata")
 
 
 class ListCollectionsResponse(PaginatedResponse):
     """Response model for listing collections."""
 
-    collections: List[RagCollectionConfig] = Field(description="List of collections")
-    totalCount: Optional[int] = Field(default=None, description="Total number of collections")
-    currentPage: Optional[int] = Field(default=None, description="Current page number")
-    totalPages: Optional[int] = Field(default=None, description="Total number of pages")
+    collections: list[RagCollectionConfig] = Field(description="List of collections")
+    totalCount: int | None = Field(default=None, description="Total number of collections")
+    currentPage: int | None = Field(default=None, description="Current page number")
+    totalPages: int | None = Field(default=None, description="Total number of pages")
 
 
 class CollectionSortBy(StrEnum):
@@ -1266,8 +1280,8 @@ class SortOrder(StrEnum):
 class RepositoryMetadata(BaseModel):
     """Defines metadata for a repository/vector store."""
 
-    tags: List[str] = Field(default_factory=list, description="Tags for categorizing the repository")
-    customFields: Optional[Dict[str, Any]] = Field(default=None, description="Custom metadata fields")
+    tags: list[str] = Field(default_factory=list, description="Tags for categorizing the repository")
+    customFields: dict[str, Any] | None = Field(default=None, description="Custom metadata fields")
 
 
 class OpenSearchNewClusterConfig(BaseModel):
@@ -1319,11 +1333,11 @@ class RdsInstanceConfig(BaseModel):
     """
 
     username: str = Field(default="postgres", description="The username used for database connection.")
-    passwordSecretId: Optional[str] = Field(
+    passwordSecretId: str | None = Field(
         default=None,
         description="The SecretsManager Secret ID that stores the existing database password.",
     )
-    dbHost: Optional[str] = Field(default=None, description="The database hostname for the existing database instance.")
+    dbHost: str | None = Field(default=None, description="The database hostname for the existing database instance.")
     dbName: str = Field(default="postgres", description="The name of the database for the database instance.")
     dbPort: int = Field(
         default=5432,
@@ -1354,7 +1368,7 @@ class BedrockKnowledgeBaseConfig(BaseModel):
     """
 
     knowledgeBaseId: str = Field(min_length=1, description="The ID of the Bedrock Knowledge Base")
-    dataSources: List[BedrockDataSource] = Field(
+    dataSources: list[BedrockDataSource] = Field(
         min_length=1, description="Array of data sources in this Knowledge Base"
     )
 
@@ -1363,38 +1377,38 @@ class VectorStoreConfig(BaseModel):
     """Represents a vector store/repository configuration."""
 
     repositoryId: str = Field(description="Unique identifier for the repository")
-    repositoryName: Optional[str] = Field(default=None, description="User-friendly name for the repository")
-    description: Optional[str] = Field(default=None, description="Description of the repository")
-    embeddingModelId: Optional[str] = Field(default=None, description="Default embedding model ID")
+    repositoryName: str | None = Field(default=None, description="User-friendly name for the repository")
+    description: str | None = Field(default=None, description="Description of the repository")
+    embeddingModelId: str | None = Field(default=None, description="Default embedding model ID")
     type: str = Field(description="Type of vector store (opensearch, pgvector, bedrock_knowledge_base)")
-    allowedGroups: List[str] = Field(default_factory=list, description="User groups with access to this repository")
-    metadata: Optional[RepositoryMetadata] = Field(default=None, description="Repository metadata")
-    pipelines: Optional[List[PipelineConfig]] = Field(default=None, description="Automated ingestion pipelines")
+    allowedGroups: list[str] = Field(default_factory=list, description="User groups with access to this repository")
+    metadata: RepositoryMetadata | None = Field(default=None, description="Repository metadata")
+    pipelines: list[PipelineConfig] | None = Field(default=None, description="Automated ingestion pipelines")
     # Type-specific configurations
-    opensearchConfig: Optional[Union[OpenSearchNewClusterConfig, OpenSearchExistingClusterConfig]] = Field(
+    opensearchConfig: OpenSearchNewClusterConfig | OpenSearchExistingClusterConfig | None = Field(
         default=None, description="OpenSearch configuration"
     )
-    rdsConfig: Optional[RdsInstanceConfig] = Field(default=None, description="RDS/PGVector configuration")
-    bedrockKnowledgeBaseConfig: Optional[BedrockKnowledgeBaseConfig] = Field(
+    rdsConfig: RdsInstanceConfig | None = Field(default=None, description="RDS/PGVector configuration")
+    bedrockKnowledgeBaseConfig: BedrockKnowledgeBaseConfig | None = Field(
         default=None, description="Bedrock Knowledge Base configuration with data sources"
     )
     # Status and timestamps
-    status: Optional[VectorStoreStatus] = Field(default=None, description="Repository Status")
+    status: VectorStoreStatus | None = Field(default=None, description="Repository Status")
     createdBy: str = Field(description="Creation user")
     createdAt: datetime = Field(default_factory=utc_now, description="Creation timestamp")
-    updatedAt: Optional[datetime] = Field(default_factory=utc_now, description="Last update timestamp")
+    updatedAt: datetime | None = Field(default_factory=utc_now, description="Last update timestamp")
 
 
 class UpdateVectorStoreRequest(BaseModel):
     """Request model for updating a vector store."""
 
-    repositoryName: Optional[str] = Field(default=None, description="User-friendly name")
-    description: Optional[str] = Field(default=None, description="Description of the repository")
-    embeddingModelId: Optional[str] = Field(default=None, description="Default embedding model ID")
-    allowedGroups: Optional[List[str]] = Field(default=None, description="User groups with access")
-    metadata: Optional[RepositoryMetadata] = Field(default=None, description="Repository metadata")
-    pipelines: Optional[List[PipelineConfig]] = Field(default=None, description="Automated ingestion pipelines")
-    bedrockKnowledgeBaseConfig: Optional[BedrockKnowledgeBaseConfig] = Field(
+    repositoryName: str | None = Field(default=None, description="User-friendly name")
+    description: str | None = Field(default=None, description="Description of the repository")
+    embeddingModelId: str | None = Field(default=None, description="Default embedding model ID")
+    allowedGroups: list[str] | None = Field(default=None, description="User groups with access")
+    metadata: RepositoryMetadata | None = Field(default=None, description="Repository metadata")
+    pipelines: list[PipelineConfig] | None = Field(default=None, description="Automated ingestion pipelines")
+    bedrockKnowledgeBaseConfig: BedrockKnowledgeBaseConfig | None = Field(
         default=None, description="Bedrock Knowledge Base configuration"
     )
 
@@ -1404,10 +1418,10 @@ class KnowledgeBaseMetadata(BaseModel):
 
     knowledgeBaseId: str = Field(description="Knowledge Base ID")
     name: str = Field(description="Knowledge Base name")
-    description: Optional[str] = Field(default="", description="Knowledge Base description")
+    description: str | None = Field(default="", description="Knowledge Base description")
     status: str = Field(description="Knowledge Base status (ACTIVE, CREATING, DELETING, etc.)")
     createdAt: datetime = Field(default_factory=utc_now, description="Creation timestamp")
-    updatedAt: Optional[datetime] = Field(default=None, description="Last update timestamp")
+    updatedAt: datetime | None = Field(default=None, description="Last update timestamp")
 
 
 class DataSourceMetadata(BaseModel):
@@ -1415,14 +1429,14 @@ class DataSourceMetadata(BaseModel):
 
     dataSourceId: str = Field(description="Data Source ID")
     name: str = Field(description="Data Source name")
-    description: Optional[str] = Field(default="", description="Data Source description")
+    description: str | None = Field(default="", description="Data Source description")
     status: str = Field(description="Data Source status (AVAILABLE, CREATING, DELETING, etc.)")
     s3Bucket: str = Field(description="S3 bucket for the data source")
     s3Prefix: str = Field(default="", description="S3 prefix for the data source")
     createdAt: datetime = Field(default_factory=utc_now, description="Creation timestamp")
-    updatedAt: Optional[datetime] = Field(default=None, description="Last update timestamp")
-    managed: Optional[bool] = Field(default=False, description="Whether this data source is managed by a collection")
-    collectionId: Optional[str] = Field(default=None, description="Collection ID if managed")
+    updatedAt: datetime | None = Field(default=None, description="Last update timestamp")
+    managed: bool | None = Field(default=False, description="Whether this data source is managed by a collection")
+    collectionId: str | None = Field(default=None, description="Collection ID if managed")
 
     @field_validator("s3Bucket")
     @classmethod

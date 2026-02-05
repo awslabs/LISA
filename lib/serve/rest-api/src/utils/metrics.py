@@ -21,9 +21,8 @@ import uuid
 from datetime import datetime
 
 import boto3
+from auth import get_user_context
 from fastapi import Request
-
-from ..auth import get_user_context
 
 logger = logging.getLogger(__name__)
 

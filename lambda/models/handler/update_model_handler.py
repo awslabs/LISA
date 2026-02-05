@@ -26,7 +26,7 @@ from .utils import attach_guardrails_to_model, fetch_guardrails_for_model, to_li
 class UpdateModelHandler(BaseApiHandler):
     """Handler class for UpdateModel requests."""
 
-    def __call__(self, model_id: str, update_request: UpdateModelRequest) -> UpdateModelResponse:  # type: ignore
+    def __call__(self, model_id: str, update_request: UpdateModelRequest) -> UpdateModelResponse:
         """Call handler to update model metadata or scaling config based on user request."""
         ddb_item = self._model_table.get_item(Key={"model_id": model_id}).get("Item", None)
         if not ddb_item:

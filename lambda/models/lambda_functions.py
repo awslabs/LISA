@@ -15,7 +15,7 @@
 """APIGW endpoints for managing models."""
 import logging
 import os
-from typing import Annotated, Union
+from typing import Annotated
 from urllib.parse import urlparse
 
 import boto3
@@ -23,7 +23,7 @@ import botocore.session
 from fastapi import HTTPException, Path, Request
 from fastapi.responses import JSONResponse
 from mangum import Mangum
-from utilities.auth import get_groups, get_username, is_admin
+from utilities.auth import get_groups, get_username, is_admin, require_admin
 from utilities.common_functions import retry_config
 from utilities.fastapi_factory import create_fastapi_app
 
@@ -92,7 +92,7 @@ async def model_not_found_handler(request: Request, exc: ModelNotFoundError) -> 
 @app.exception_handler(ModelAlreadyExistsError)
 @app.exception_handler(ValueError)
 async def user_error_handler(
-    request: Request, exc: Union[InvalidStateTransitionError, ModelAlreadyExistsError, ValueError]
+    request: Request, exc: InvalidStateTransitionError | ModelAlreadyExistsError | ValueError
 ) -> JSONResponse:
     """Handle errors when customer requests options that cannot be processed."""
     return JSONResponse(status_code=400, content={"detail": str(exc)})
@@ -106,12 +106,9 @@ async def model_in_use_handler(request: Request, exc: ModelInUseError) -> JSONRe
 
 @app.post(path="", include_in_schema=False)
 @app.post(path="/")
+@require_admin("User does not have permission to create models.")
 async def create_model(create_request: CreateModelRequest, request: Request) -> CreateModelResponse:
     """Endpoint to create a model."""
-    admin_status, user_groups = get_admin_status_and_groups(request)
-    if not admin_status:
-        raise HTTPException(status_code=403, detail="User does not have permission to create models.")
-
     # Extract user context for audit logging
     event = request.scope.get("aws.event", {})
     username = get_username(event) if event else "unknown"
@@ -145,7 +142,6 @@ async def create_model(create_request: CreateModelRequest, request: Request) -> 
             "event_type": "CREATE_MODEL_REQUEST",
             "user": {
                 "username": username,
-                "groups": user_groups,
                 "auth_type": auth_type,
                 "source_ip": source_ip,
             },
@@ -261,15 +257,13 @@ async def get_model(
 
 
 @app.put(path="/{model_id}")
+@require_admin("User does not have permission to update models")
 async def update_model(
     model_id: Annotated[str, Path(title="The unique model ID of the model to update")],
     update_request: UpdateModelRequest,
     request: Request,
 ) -> UpdateModelResponse:
     """Endpoint to update a model."""
-    admin_status, _ = get_admin_status_and_groups(request)
-    if not admin_status:
-        raise HTTPException(status_code=403, detail="User does not have permission to update models")
     update_handler = UpdateModelHandler(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
@@ -285,13 +279,11 @@ async def update_model(
 
 
 @app.delete(path="/{model_id}")
+@require_admin("User does not have permission to delete models")
 async def delete_model(
     model_id: Annotated[str, Path(title="The unique model ID of the model to delete")], request: Request
 ) -> DeleteModelResponse:
     """Endpoint to delete a model."""
-    admin_status, _ = get_admin_status_and_groups(request)
-    if not admin_status:
-        raise HTTPException(status_code=403, detail="User does not have permission to delete models")
     delete_handler = DeleteModelHandler(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
@@ -314,30 +306,21 @@ async def get_instances() -> list[str]:
 
 @app.post(path="/{model_id}/schedule")
 @app.put(path="/{model_id}/schedule")
+@require_admin("User does not have permission to update model schedules")
 async def update_schedule(
     model_id: Annotated[str, Path(title="The unique model ID of the model to schedule")],
     schedule_config: SchedulingConfig,
     request: Request,
 ) -> UpdateScheduleResponse:
     """Endpoint to create or update a schedule for a model"""
+    admin_status, user_groups = get_admin_status_and_groups(request)
+
     update_schedule_handler = UpdateScheduleHandler(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
         guardrails_table_resource=guardrails_table,
     )
-
-    user_groups = []
-    admin_status = False
-
-    if "aws.event" in request.scope:
-        event = request.scope["aws.event"]
-        try:
-            user_groups = get_groups(event)
-            admin_status = is_admin(event)
-        except Exception:
-            user_groups = []
-            admin_status = False
 
     return update_schedule_handler(
         model_id=model_id, schedule_config=schedule_config, user_groups=user_groups, is_admin=admin_status
@@ -372,28 +355,19 @@ async def get_schedule(
 
 
 @app.delete(path="/{model_id}/schedule")
+@require_admin("User does not have permission to delete model schedules")
 async def delete_schedule(
     model_id: Annotated[str, Path(title="The unique model ID of the model to delete schedule for")], request: Request
 ) -> DeleteScheduleResponse:
     """Endpoint to delete a schedule for a model"""
+    admin_status, user_groups = get_admin_status_and_groups(request)
+
     delete_schedule_handler = DeleteScheduleHandler(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
         guardrails_table_resource=guardrails_table,
     )
-
-    user_groups = []
-    admin_status = False
-
-    if "aws.event" in request.scope:
-        event = request.scope["aws.event"]
-        try:
-            user_groups = get_groups(event)
-            admin_status = is_admin(event)
-        except Exception:
-            user_groups = []
-            admin_status = False
 
     return delete_schedule_handler(model_id=model_id, user_groups=user_groups, is_admin=admin_status)
 

@@ -13,9 +13,8 @@
 #   limitations under the License.
 import logging
 import os
-from typing import Dict, List
 
-import requests
+import requests  # type: ignore[import-untyped,unused-ignore]
 
 from .common import BaseMixin
 from .errors import parse_error
@@ -24,7 +23,7 @@ from .errors import parse_error
 class RagMixin(BaseMixin):
     """Mixin for rag-related operations."""
 
-    def list_documents(self, repo_id: str, collection_id: str) -> List[Dict]:
+    def list_documents(self, repo_id: str, collection_id: str) -> list[dict]:
         """List documents in a collection.
 
         Args:
@@ -42,11 +41,11 @@ class RagMixin(BaseMixin):
         if response.status_code == 200:
             result = response.json()
             # API returns {"documents": [...], "lastEvaluated": ..., ...}
-            return result.get("documents", [])
+            return result.get("documents", [])  # type: ignore[no-any-return]
         else:
             raise parse_error(response.status_code, response)
 
-    def get_document(self, repo_id: str, document_id: str) -> Dict:
+    def get_document(self, repo_id: str, document_id: str) -> dict:
         """Get a single document by ID.
 
         Args:
@@ -59,7 +58,7 @@ class RagMixin(BaseMixin):
         url = f"{self.url}/repository/{repo_id}/{document_id}"
         response = self._session.get(url)
         if response.status_code == 200:
-            return response.json()
+            return response.json()  # type: ignore[no-any-return]
         else:
             raise parse_error(response.status_code, response)
 
@@ -116,7 +115,10 @@ class RagMixin(BaseMixin):
         Returns:
             True if upload successful
         """
-        url = presigned_data.get("url")
+        url: str | None = presigned_data.get("url")
+        if not url:
+            raise ValueError("Presigned data missing 'url' field")
+
         fields = presigned_data.get("fields", {})
 
         with open(filename, "rb") as f:
@@ -153,21 +155,21 @@ class RagMixin(BaseMixin):
         file: str,
         chuck_size: int = 512,
         chuck_overlap: int = 51,
-        collection_id: str = None,
-    ) -> List[Dict]:
+        collection_id: str | None = None,
+    ) -> list[dict]:
         """Ingest a document and return job information.
 
         Returns:
             List of job dictionaries with jobId, documentId, status, s3Path
         """
         url = f"{self.url}/repository/{repo_id}/bulk"
-        params: Dict[str, str | int] = {
+        params: dict[str, str | int] = {
             "repositoryType": repo_id,
             "chunkSize": chuck_size,
             "chunkOverlap": chuck_overlap,
         }
 
-        payload = {"embeddingModel": {"modelName": model_id}, "keys": [file]}
+        payload: dict[str, str | dict | list] = {"embeddingModel": {"modelName": model_id}, "keys": [file]}
         # Add collectionId to body, not query params
         if collection_id:
             payload["collectionId"] = collection_id
@@ -179,13 +181,13 @@ class RagMixin(BaseMixin):
             logging.info(f"Full response: {result}")
             jobs = result.get("jobs", [])
             logging.info(f"Jobs extracted: {jobs}")
-            return jobs
+            return jobs  # type: ignore[no-any-return]
         else:
             raise parse_error(response.status_code, response)
 
     def similarity_search(
-        self, repo_id: str, query: str, k: int = 3, collection_id: str = None, model_name: str = None
-    ) -> List[Dict]:
+        self, repo_id: str, query: str, k: int = 3, collection_id: str | None = None, model_name: str | None = None
+    ) -> list[dict]:
         """Perform similarity search.
 
         Args:
@@ -207,7 +209,7 @@ class RagMixin(BaseMixin):
         response = self._session.get(url, params=params)
         if response.status_code == 200:
             results = response.json()
-            docs: List[Dict] = results.get("docs", [])
+            docs: list[dict] = results.get("docs", [])
             for doc in docs:
                 logging.info("Document content:", doc["Document"]["page_content"])
                 logging.info("Metadata:", doc["Document"]["metadata"])

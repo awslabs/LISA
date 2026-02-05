@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-import { ReactElement } from 'react';
+import { ReactElement, useEffect } from 'react';
 import { FormProps} from '../../../shared/form/form-props';
 import FormField from '@cloudscape-design/components/form-field';
 import Input from '@cloudscape-design/components/input';
@@ -25,6 +25,7 @@ import { Grid, SpaceBetween } from '@cloudscape-design/components';
 import { useGetInstancesQuery } from '../../../shared/reducers/model-management.reducer';
 import { ModelFeatures } from '@/components/types';
 import { UserGroupsInput } from '@/shared/form/UserGroupsInput';
+import { getDisplayName } from '../../../shared/util/branding';
 
 export type BaseModelConfigCustomProps = {
     isEdit: boolean
@@ -34,12 +35,21 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
     const {data: instances, isLoading: isLoadingInstances} = useGetInstancesQuery();
     const isEmbeddingModel = props.item.modelType === ModelType.embedding;
     const isImageModel = props.item.modelType === ModelType.imagegen;
+    const isVideoModel = props.item.modelType === ModelType.videogen;
+
+    // Enable streaming by default for textgen models when creating a new model
+    useEffect(() => {
+        if (!props.isEdit && props.item.modelType === ModelType.textgen && props.item.streaming === false) {
+            props.setFields({ 'streaming': true });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [props.isEdit, props.item.modelType]);
 
     return (
         <SpaceBetween size={'s'}>
             <FormField
                 label='Hosting Type'
-                description='Choose whether to host the model on LISA infrastructure or use a third-party provider.'
+                description={`Choose whether to host the model on ${getDisplayName()} infrastructure or use a third-party provider.`}
                 errorText={props.formErrors?.lisaHostedModel}
             >
                 <Select
@@ -61,7 +71,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     onBlur={() => props.touchFields(['lisaHostedModel'])}
                     options={[
                         { label: 'Third party', value: 'false' },
-                        { label: 'LISA hosted', value: 'true' }
+                        { label: `${getDisplayName()} hosted`, value: 'true' }
                     ]}
                     disabled={props.isEdit}
                 />
@@ -106,7 +116,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
             </FormField>
             <FormField
                 label='Model Type'
-                description='Type of model functionality: text generation, image generation, or text embeddings.'
+                description='Type of model functionality: text generation, image generation, video generation, or text embeddings.'
                 errorText={props.formErrors?.modelType}
             >
                 <Select
@@ -116,13 +126,15 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                             'modelType': detail.selectedOption.value,
                         };
 
-                        // turn off streaming for embedded models
-                        if (fields.modelType === ModelType.embedding || fields.modelType === ModelType.imagegen) {
+                        // enable streaming by default for textgen models
+                        if (fields.modelType === ModelType.textgen) {
+                            fields['streaming'] = true;
+                        } else if (fields.modelType === ModelType.embedding || fields.modelType === ModelType.imagegen || fields.modelType === ModelType.videogen) {
                             fields['streaming'] = false;
                         }
 
                         // turn off summarization and image input for embedded and imagegen models
-                        if ((fields.modelType === ModelType.embedding || fields.modelType === ModelType.imagegen)) {
+                        if ((fields.modelType === ModelType.embedding || fields.modelType === ModelType.imagegen || fields.modelType === ModelType.videogen)) {
                             fields['features'] = props.item.features.filter((feature) => feature.name !== ModelFeatures.SUMMARIZATION && feature.name !== ModelFeatures.IMAGE_INPUT && feature.name !== ModelFeatures.TOOL_CALLS);
                         }
 
@@ -132,6 +144,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     options={[
                         { label: 'TEXTGEN', value: ModelType.textgen },
                         { label: 'IMAGEGEN', value: ModelType.imagegen },
+                        { label: 'VIDEOGEN', value: ModelType.videogen },
                         { label: 'EMBEDDING', value: ModelType.embedding },
                     ]}
                     disabled={props.isEdit}
@@ -193,7 +206,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                             props.setFields({'streaming': detail.checked})
                         }
                         onBlur={() => props.touchFields(['streaming'])}
-                        disabled={isEmbeddingModel || isImageModel}
+                        disabled={isEmbeddingModel || isImageModel || isVideoModel}
                         checked={props.item.streaming}
                     />
                 </FormField>
@@ -210,7 +223,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                                 props.setFields({'features': props.item.features.filter((feature) => feature.name !== ModelFeatures.TOOL_CALLS)});
                             }
                         }}
-                        disabled={isEmbeddingModel || isImageModel}
+                        disabled={isEmbeddingModel || isImageModel || isVideoModel}
                         onBlur={() => props.touchFields(['features'])}
                         checked={props.item.features.find((feature) => feature.name === ModelFeatures.TOOL_CALLS) !== undefined}
                     />
@@ -228,7 +241,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                                 props.setFields({'features': props.item.features.filter((feature) => feature.name !== ModelFeatures.REASONING)});
                             }
                         }}
-                        disabled={isEmbeddingModel || isImageModel}
+                        disabled={isEmbeddingModel || isImageModel || isVideoModel}
                         onBlur={() => props.touchFields(['features'])}
                         checked={props.item.features.find((feature) => feature.name === ModelFeatures.REASONING) !== undefined}
                     />
@@ -246,7 +259,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                                 props.setFields({'features': props.item.features.filter((feature) => feature.name !== ModelFeatures.IMAGE_INPUT)});
                             }
                         }}
-                        disabled={isEmbeddingModel || isImageModel}
+                        disabled={isEmbeddingModel || isImageModel || isVideoModel}
                         onBlur={() => props.touchFields(['features'])}
                         checked={props.item.features.find((feature) => feature.name === ModelFeatures.IMAGE_INPUT) !== undefined}
                     />
@@ -265,7 +278,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                                 props.setFields({'features': props.item.features.filter((feature) => feature.name !== ModelFeatures.SUMMARIZATION)});
                             }
                         }}
-                        disabled={isEmbeddingModel || isImageModel}
+                        disabled={isEmbeddingModel || isImageModel || isVideoModel}
                         onBlur={() => props.touchFields(['features'])}
                         checked={props.item.features.find((feature) => feature.name === ModelFeatures.SUMMARIZATION) !== undefined}
                     />

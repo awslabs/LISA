@@ -47,6 +47,11 @@ export type ImageGenerationParams = {
     prompt: string;
 };
 
+export type VideoGenerationParams = {
+    prompt: string;
+    model?: string;
+};
+
 /**
  * Stores metadata for messages returned from LISA
  */
@@ -59,6 +64,11 @@ export type LisaChatMessageMetadata = {
     ragDocuments?: string;
     imageGeneration?: boolean;
     imageGenerationParams?: ImageGenerationParams;
+    videoGeneration?: boolean;
+    videoGenerationParams?: VideoGenerationParams;
+    videoId?: string;
+    videoStatus?: string;
+    hasFileContext?: boolean;
 };
 /**
  * Usage information from OpenAI API responses

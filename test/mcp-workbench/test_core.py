@@ -53,7 +53,7 @@ class TestAnnotations:
     def test_mcp_tool_decorator(self):
         """Test the @mcp_tool decorator."""
 
-        @mcp_tool(name="test_func", description="A test function", parameters={"param1": "value1"})
+        @mcp_tool(name="test_func", description="A test function")
         def test_function():
             return "test"
 
@@ -61,7 +61,6 @@ class TestAnnotations:
         metadata = get_tool_metadata(test_function)
         assert metadata["name"] == "test_func"
         assert metadata["description"] == "A test function"
-        assert metadata["parameters"] == {"param1": "value1"}
 
     def test_mcp_tool_without_parameters(self):
         """Test @mcp_tool decorator without parameters."""
@@ -70,8 +69,9 @@ class TestAnnotations:
         def simple_function():
             return "simple"
 
+        assert is_mcp_tool(simple_function)
         metadata = get_tool_metadata(simple_function)
-        assert metadata["parameters"] == {}
+        assert metadata["name"] == "simple_func"
 
     def test_is_mcp_tool_false(self):
         """Test is_mcp_tool returns False for regular functions."""
@@ -109,12 +109,12 @@ class TestToolDiscovery:
         tools = tool_discovery.discover_tools()
 
         # Should find both function and class-based tools
-        assert len(tools) == 3  # echo_test, add_test, greeting_test
+        assert len(tools) == 3, f"Expected 3 tools, found {len(tools)}: {[t.name for t in tools]}"
 
         tool_names = [tool.name for tool in tools]
-        assert "echo_test" in tool_names
-        assert "add_test" in tool_names
-        assert "greeting_test" in tool_names
+        assert "echo_test" in tool_names, "echo_test not found in discovered tools"
+        assert "add_test" in tool_names, "add_test not found in discovered tools"
+        assert "greeting_test" in tool_names, "greeting_test not found in discovered tools"
 
         # Check tool types
         function_tools = [t for t in tools if t.tool_type == ToolType.FUNCTION_BASED]

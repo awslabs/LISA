@@ -35,7 +35,7 @@ import 'katex/dist/katex.min.css';
 import styles from './Message.module.css';
 
 import { MessageContent } from '@langchain/core/messages';
-import { base64ToBlob, fetchImage, getDisplayableMessage, messageContainsImage } from '@/components/utils';
+import { base64ToBlob, fetchImage, getDisplayableMessage, messageContainsImage, messageContainsVideo } from '@/components/utils';
 import React, { useEffect, useState, useMemo } from 'react';
 import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { downloadFile } from '@/shared/util/downloader';
@@ -61,9 +61,12 @@ type MessageProps = {
     chatConfiguration: IChatConfiguration;
     showUsage?: boolean;
     onMermaidRenderComplete?: () => void;
+    onVideoLoadComplete?: () => void;
+    retryResponse?: () => Promise<void>
+    errorState?: boolean;
 };
 
-export const Message = React.memo(({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration, callingToolName, showUsage = false, onMermaidRenderComplete }: MessageProps) => {
+export const Message = React.memo(({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration, callingToolName, showUsage = false, onMermaidRenderComplete, onVideoLoadComplete, retryResponse, errorState }: MessageProps) => {
     const currentUser = useAppSelector(selectCurrentUsername);
     const ragCitations = !isStreaming && message?.metadata?.ragDocuments ? message?.metadata.ragDocuments : undefined;
     const [resend, setResend] = useState(false);
@@ -269,10 +272,11 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                             <ButtonDropdown
                                 items={[
                                     { id: 'download-image', text: 'Download Image', iconName: 'download' },
+                                    { id: 'share-image', text: 'Share Image Link', iconName: 'share' },
                                     { id: 'copy-image', text: 'Copy Image', iconName: 'copy' },
                                     { id: 'regenerate', text: 'Regenerate Image(s)', iconName: 'refresh' }
                                 ]}
-                                ariaLabel='Control instance'
+                                ariaLabel='Image actions'
                                 variant='icon'
                                 onItemClick={async (e) => {
                                     if (e.detail.id === 'download-image') {
@@ -280,6 +284,8 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                             await fetchImage(item.image_url.url)
                                             : base64ToBlob(item.image_url.url.split(',')[1], 'image/png');
                                         downloadFile(URL.createObjectURL(file), `${metadata?.imageGenerationParams?.prompt}.png`);
+                                    } else if (e.detail.id === 'share-image') {
+                                        navigator.clipboard.writeText(item.image_url.url);
                                     } else if (e.detail.id === 'copy-image') {
                                         const copy = new ClipboardItem({
                                             'image/png': item.image_url.url.startsWith('https://') ?
@@ -304,6 +310,51 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                 }}
                             />
                         </Grid>;
+                } else if (item.type === 'video_url' && item.video_url?.url) {
+                    const videoId = item.video_url.video_id;
+                    return (
+                        <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginTop: '8px', maxWidth: '100%' }}>
+                            <video
+                                controls
+                                style={{ flex: 1, maxHeight: '30em', minWidth: 0 }}
+                                onLoadedData={() => onVideoLoadComplete?.()}
+                            >
+                                <source src={item.video_url.url} type='video/mp4' />
+                                Your browser does not support the video tag.
+                            </video>
+                            <ButtonDropdown
+                                items={[
+                                    { id: 'download-video', text: 'Download Video', iconName: 'download' },
+                                    { id: 'share-video', text: 'Share Video Link', iconName: 'share' },
+                                    { id: 'remix-video', text: 'Remix Video', iconName: 'refresh' }
+                                ]}
+                                ariaLabel='Video actions'
+                                variant='icon'
+                                onItemClick={async (e) => {
+                                    if (e.detail.id === 'download-video') {
+                                        const videoUrl = item.video_url.url;
+                                        const videoBlob = await fetch(videoUrl).then((r) => r.blob());
+                                        const filename = `${metadata?.videoGenerationParams?.prompt || 'video'}.mp4`;
+                                        downloadFile(URL.createObjectURL(videoBlob), filename);
+                                    } else if (e.detail.id === 'share-video') {
+                                        navigator.clipboard.writeText(item.video_url.url);
+                                    } else if (e.detail.id === 'remix-video' && videoId) {
+                                        // Call the remix endpoint to create a new variation
+                                        setUserPrompt(`Remix video: ${metadata?.videoGenerationParams?.prompt ?? ''}`);
+                                        // Store the video_id for the remix call
+                                        setChatConfiguration(
+                                            merge({}, chatConfiguration, {
+                                                sessionConfiguration: {
+                                                    remixVideoId: videoId
+                                                }
+                                            })
+                                        );
+                                        setResend(true);
+                                    }
+                                }}
+                            />
+                        </div>
+                    );
                 }
                 return null;
             });
@@ -327,7 +378,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
         (message.type === MessageTypes.HUMAN || message.type === MessageTypes.AI || message.type === MessageTypes.TOOL) &&
         <div className='mt-2' style={{ overflow: 'hidden' }} data-testid={`chat-message-${message.type}`}>
             <ImageViewer setVisible={setShowImageViewer} visible={showImageViewer} selectedImage={selectedImage} metadata={selectedMetadata} />
-            {(isRunning && !callingToolName) && (
+            {(isRunning && !callingToolName && !message?.metadata?.videoGeneration) && (
                 <ChatBubble
                     ariaLabel='Generative AI assistant'
                     type='incoming'
@@ -441,7 +492,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                 }} style={isDarkMode ? darkStyles : defaultStyles} />
                             </ExpandableSection>}
                     </ChatBubble>
-                    {!isStreaming && !messageContainsImage(message.content) && <div
+                    {!isStreaming && !messageContainsImage(message.content) && !messageContainsVideo(message.content) && <div
                         style={{ display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
                         <ButtonGroup
                             onItemClick={({ detail }) =>
@@ -487,9 +538,13 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                             </div>
                         </ChatBubble>
                         <ButtonGroup
-                            onItemClick={({ detail }) =>
-                                ['copy'].includes(detail.id) &&
-                                navigator.clipboard.writeText(getDisplayableMessage(message.content))
+                            onItemClick={async ({ detail }) => {
+                                if (detail.id === 'copy'){
+                                    navigator.clipboard.writeText(getDisplayableMessage(message.content));
+                                } else if (detail.id === 'retry'){
+                                    await retryResponse();
+                                }
+                            }
                             }
                             ariaLabel='Chat actions'
                             dropdownExpandToViewport
@@ -504,7 +559,19 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                             Input copied
                                         </StatusIndicator>
                                     )
-                                }
+                                },
+                                ...(errorState ? [
+                                    {
+                                        type: 'icon-button' as const,
+                                        id: 'retry' as const,
+                                        iconName: 'refresh' as const,
+                                        text: 'Retry Message' as const,
+                                        popoverFeedback: (
+                                            <StatusIndicator type='success'>
+                                                Retrying Message
+                                            </StatusIndicator>
+                                        )
+                                    }] : [])
                             ]}
                             variant='icon'
                         />

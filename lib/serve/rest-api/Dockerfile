@@ -22,11 +22,11 @@ RUN mkdir -p /etc/ssh && \
 
 # Install build dependencies for madoka package
 RUN if command -v apt-get >/dev/null 2>&1; then \
-        apt-get update && apt-get install -y gcc g++ make && rm -rf /var/lib/apt/lists/*; \
+        apt-get update && apt-get install -y gcc g++ make procps && rm -rf /var/lib/apt/lists/*; \
     elif command -v yum >/dev/null 2>&1; then \
-        yum install -y gcc gcc-c++ make && yum clean all; \
+        yum install -y gcc gcc-c++ make procps-ng && yum clean all; \
     elif command -v apk >/dev/null 2>&1; then \
-        apk add --no-cache gcc g++ make musl-dev; \
+        apk add --no-cache gcc g++ make musl-dev procps; \
     fi
 
 # Create non-root user for running the application

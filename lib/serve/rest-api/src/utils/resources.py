@@ -14,7 +14,7 @@
 
 """REST API resources."""
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -43,6 +43,7 @@ class ModelType(str, Enum):
 
     EMBEDDING = "embedding"
     TEXTGEN = "textgen"
+    VIDEOGEN = "videogen"
 
 
 class _BaseModelRequest(BaseModel):
@@ -50,8 +51,8 @@ class _BaseModelRequest(BaseModel):
 
     provider: str = Field(..., description="The backend provider for the model.")
     modelName: str = Field(..., description="The model name.")
-    text: Union[str, list[str]] = Field(..., description="The input text(s) to be processed by the model.")
-    modelKwargs: Dict[str, Any] = Field(default={}, description="Arguments to the model.")
+    text: str | list[str] = Field(..., description="The input text(s) to be processed by the model.")
+    modelKwargs: dict[str, Any] = Field(default={}, description="Arguments to the model.")
 
 
 class EmbeddingsRequest(_BaseModelRequest):
@@ -72,13 +73,13 @@ class OpenAIChatCompletionsRequest(BaseModel):
     Additional documentation at https://platform.openai.com/docs/api-reference/chat/create
     """
 
-    messages: List[Dict[str, str]] = Field(..., description="A list of messages comprising the conversation so far.")
+    messages: list[dict[str, str]] = Field(..., description="A list of messages comprising the conversation so far.")
     model: str = Field(..., description="ID of the model to use.")
-    frequency_penalty: Optional[float] = Field(None, description="Penalty to add for text repetition.")
-    logit_bias: Optional[Dict[Any, Any]] = Field(
+    frequency_penalty: float | None = Field(None, description="Penalty to add for text repetition.")
+    logit_bias: dict[Any, Any] | None = Field(
         None, description="Modify the likelihood of specified tokens appearing in the completion."
     )
-    logprobs: Optional[bool] = Field(
+    logprobs: bool | None = Field(
         False,
         description=" ".join(
             [
@@ -88,7 +89,7 @@ class OpenAIChatCompletionsRequest(BaseModel):
             ]
         ),
     )
-    top_logprobs: Optional[int] = Field(
+    top_logprobs: int | None = Field(
         None,
         description=" ".join(
             [
@@ -99,8 +100,8 @@ class OpenAIChatCompletionsRequest(BaseModel):
             ]
         ),
     )
-    max_tokens: Optional[int] = Field(50, description="Maximum number of generated tokens.")
-    n: Optional[int] = Field(
+    max_tokens: int | None = Field(50, description="Maximum number of generated tokens.")
+    n: int | None = Field(
         1,
         description=" ".join(
             [
@@ -109,7 +110,7 @@ class OpenAIChatCompletionsRequest(BaseModel):
             ]
         ),
     )
-    presence_penalty: Optional[float] = Field(
+    presence_penalty: float | None = Field(
         0,
         description=" ".join(
             [
@@ -118,11 +119,11 @@ class OpenAIChatCompletionsRequest(BaseModel):
             ]
         ),
     )
-    seed: Optional[int] = Field(None, description="Random sampling seed.")
-    stop: Optional[List[str]] = Field(
+    seed: int | None = Field(None, description="Random sampling seed.")
+    stop: list[str] | None = Field(
         default_factory=list, description="Stop generating tokens if a member of `stop` is generated."
     )
-    stream: Optional[bool] = Field(
+    stream: bool | None = Field(
         False,
         description=" ".join(
             [
@@ -132,7 +133,7 @@ class OpenAIChatCompletionsRequest(BaseModel):
             ]
         ),
     )
-    top_p: Optional[float] = Field(
+    top_p: float | None = Field(
         None,
         description=" ".join(
             [
@@ -141,7 +142,7 @@ class OpenAIChatCompletionsRequest(BaseModel):
             ]
         ),
     )
-    temperature: Optional[float] = Field(None, description="Value used to divide the logits distribution.")
+    temperature: float | None = Field(None, description="Value used to divide the logits distribution.")
 
 
 class OpenAICompletionsRequest(BaseModel):
@@ -160,7 +161,7 @@ class OpenAICompletionsRequest(BaseModel):
             ]
         ),
     )
-    best_of: Optional[int] = Field(
+    best_of: int | None = Field(
         1,
         description=" ".join(
             [
@@ -170,9 +171,9 @@ class OpenAICompletionsRequest(BaseModel):
             ]
         ),
     )
-    echo: Optional[bool] = Field(False, description="Whether to prepend the prompt to the generated text.")
-    frequency_penalty: Optional[float] = Field(None, description="Penalty to add for text repetition.")
-    logit_bias: Optional[Dict[Any, Any]] = Field(
+    echo: bool | None = Field(False, description="Whether to prepend the prompt to the generated text.")
+    frequency_penalty: float | None = Field(None, description="Penalty to add for text repetition.")
+    logit_bias: dict[Any, Any] | None = Field(
         None,
         description=" ".join(
             [
@@ -181,7 +182,7 @@ class OpenAICompletionsRequest(BaseModel):
             ]
         ),
     )
-    logprobs: Optional[int] = Field(
+    logprobs: int | None = Field(
         None,
         description=" ".join(
             [
@@ -194,10 +195,10 @@ class OpenAICompletionsRequest(BaseModel):
             ]
         ),
     )
-    max_tokens: Optional[int] = Field(
+    max_tokens: int | None = Field(
         50, description="The maximum number of tokens that can be generated in the completion."
     )
-    n: Optional[int] = Field(
+    n: int | None = Field(
         1,
         description=" ".join(
             [
@@ -206,7 +207,7 @@ class OpenAICompletionsRequest(BaseModel):
             ]
         ),
     )
-    presence_penalty: Optional[float] = Field(
+    presence_penalty: float | None = Field(
         0,
         description=" ".join(
             [
@@ -215,11 +216,11 @@ class OpenAICompletionsRequest(BaseModel):
             ]
         ),
     )
-    seed: Optional[int] = Field(None, description="Random sampling seed.")
-    stop: Optional[Any] = Field(
+    seed: int | None = Field(None, description="Random sampling seed.")
+    stop: Any | None = Field(
         default_factory=list, description="Stop generating tokens if a member of `stop` is generated."
     )
-    stream: Optional[bool] = Field(
+    stream: bool | None = Field(
         False,
         description=" ".join(
             [
@@ -229,7 +230,7 @@ class OpenAICompletionsRequest(BaseModel):
             ]
         ),
     )
-    suffix: Optional[str] = Field(
+    suffix: str | None = Field(
         None,
         description=" ".join(
             [
@@ -239,8 +240,8 @@ class OpenAICompletionsRequest(BaseModel):
             ]
         ),
     )
-    temperature: Optional[float] = Field(1.0, description="Value used to divide the logits distribution.")
-    top_p: Optional[float] = Field(
+    temperature: float | None = Field(1.0, description="Value used to divide the logits distribution.")
+    top_p: float | None = Field(
         None,
         description=" ".join(
             [

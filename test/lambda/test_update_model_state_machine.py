@@ -95,6 +95,9 @@ mock_ecs.describe_services.return_value = {
                     "status": "PRIMARY",
                     "rolloutState": "COMPLETED",
                     "taskDefinition": "arn:aws:ecs:us-east-1:123456789012:task-definition/test-task-def:2",
+                    "runningCount": 1,
+                    "desiredCount": 1,
+                    "pendingCount": 0,
                 }
             ],
         }
@@ -609,6 +612,9 @@ def test_ecs_update_and_polling(model_table, sample_model, lambda_context):
                             "status": "PRIMARY",
                             "rolloutState": "IN_PROGRESS",
                             "taskDefinition": "arn:aws:ecs:us-east-1:123456789012:task-definition/test-task-def:2",
+                            "runningCount": 0,
+                            "desiredCount": 1,
+                            "pendingCount": 1,
                         }
                     ]
                 }
@@ -632,6 +638,9 @@ def test_ecs_update_and_polling(model_table, sample_model, lambda_context):
                             "status": "PRIMARY",
                             "rolloutState": "COMPLETED",
                             "taskDefinition": "arn:aws:ecs:us-east-1:123456789012:task-definition/test-task-def:2",
+                            "runningCount": 1,
+                            "desiredCount": 1,
+                            "pendingCount": 0,
                         }
                     ],
                 }

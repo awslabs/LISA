@@ -82,7 +82,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ -z $VERIFY ]; then
-  VERIFY=false
+  VERIFY=true
 fi
 
 echo "Using settings: PROFILE-${PROFILE}, DEPLOYMENT_NAME-${DEPLOYMENT_NAME}, APP_NAME-${APP_NAME}, DEPLOYMENT_STAGE-${DEPLOYMENT_STAGE}, REGION-${REGION}, VERIFY-${VERIFY}, API_URL-${API_URL}, ALB_URL-${ALB_URL}"

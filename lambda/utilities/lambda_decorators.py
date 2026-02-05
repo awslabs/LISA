@@ -16,8 +16,9 @@
 
 import functools
 import logging
+from collections.abc import Callable
 from contextvars import ContextVar
-from typing import Any, Callable, Dict, TypeVar, Union
+from typing import Any, overload
 
 from utilities.event_parser import sanitize_event_for_logging
 from utilities.input_validation import DEFAULT_MAX_REQUEST_SIZE, validate_input
@@ -28,14 +29,31 @@ logger = logging.getLogger(__name__)
 # Context variable to store Lambda context across the request
 ctx_context: ContextVar[Any] = ContextVar("lamdbacontext")
 
-F = TypeVar("F", bound=Callable[..., Any])
+# Type for Lambda handler functions - can return dict, list, or any JSON-serializable type
+LambdaHandler = Callable[[dict[Any, Any], Any], Any]
+
+
+@overload
+def api_wrapper(_func: LambdaHandler) -> LambdaHandler:
+    """Overload for decorator without parentheses."""
+    ...
+
+
+@overload
+def api_wrapper(
+    _func: None = None,
+    *,
+    max_request_size: int = DEFAULT_MAX_REQUEST_SIZE,
+) -> Callable[[LambdaHandler], LambdaHandler]:
+    """Overload for decorator with parameters."""
+    ...
 
 
 def api_wrapper(
-    _func: F | None = None,
+    _func: LambdaHandler | None = None,
     *,
     max_request_size: int = DEFAULT_MAX_REQUEST_SIZE,
-) -> F | Callable[[F], F]:
+) -> LambdaHandler | Callable[[LambdaHandler], LambdaHandler]:
     """
     Wrap Lambda function with comprehensive API Gateway integration.
 
@@ -52,14 +70,14 @@ def api_wrapper(
 
     Parameters
     ----------
-    _func : F | None
+    _func : LambdaHandler | None
         The Lambda handler function (used when decorator is applied without parentheses).
     max_request_size : int
         Maximum allowed request body size in bytes (default: 1MB).
 
     Returns
     -------
-    F | Callable[[F], F]
+    LambdaHandler | Callable[[LambdaHandler], LambdaHandler]
         The wrapped function with API Gateway integration.
 
     Example
@@ -75,14 +93,14 @@ def api_wrapper(
     ...     return {"status": "uploaded"}
     """
 
-    def decorator(f: F) -> F:
+    def decorator(f: LambdaHandler) -> LambdaHandler:
         @functools.wraps(f)
         @validate_input(max_request_size=max_request_size)
-        def wrapper(event: dict, context: dict) -> Dict[str, Union[str, int, Dict[str, str]]]:
+        def wrapper(event: dict[Any, Any], context: Any) -> dict[Any, Any]:
             """Execute Lambda handler with API Gateway integration."""
             ctx_context.set(context)
             code_func_name = f.__name__
-            lambda_func_name = context.function_name  # type: ignore [attr-defined]
+            lambda_func_name = getattr(context, "function_name", "unknown")
 
             # Log request with sanitized event data
             sanitized_event = sanitize_event_for_logging(event)
@@ -94,7 +112,7 @@ def api_wrapper(
             except Exception as e:
                 return generate_exception_response(e)
 
-        return wrapper  # type: ignore [return-value]
+        return wrapper
 
     # Handle both @api_wrapper and @api_wrapper() syntax
     if _func is not None:
@@ -102,7 +120,7 @@ def api_wrapper(
     return decorator
 
 
-def authorization_wrapper(f: F) -> F:
+def authorization_wrapper(f: LambdaHandler) -> LambdaHandler:
     """
     Wrap Lambda authorizer function.
 
@@ -111,12 +129,12 @@ def authorization_wrapper(f: F) -> F:
 
     Parameters
     ----------
-    f : F
+    f : LambdaHandler
         The Lambda authorizer function to wrap.
 
     Returns
     -------
-    F
+    LambdaHandler
         The wrapped authorizer function.
 
     Example
@@ -128,12 +146,12 @@ def authorization_wrapper(f: F) -> F:
     """
 
     @functools.wraps(f)
-    def wrapper(event: dict, context: dict) -> F:
+    def wrapper(event: dict[Any, Any], context: Any) -> Any:
         """Execute Lambda authorizer with context setup."""
         ctx_context.set(context)
-        return f(event, context)  # type: ignore [no-any-return]
+        return f(event, context)
 
-    return wrapper  # type: ignore [return-value]
+    return wrapper
 
 
 def get_lambda_context() -> Any:

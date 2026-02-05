@@ -14,11 +14,14 @@
 
 """Annotations for function-based MCP tools."""
 
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable, Dict
+from typing import Any, cast, TypeVar
+
+F = TypeVar("F", bound=Callable[..., Any])
 
 
-def mcp_tool(name: str, description: str):
+def mcp_tool(name: str, description: str) -> Callable[[F], F]:
     """
     Decorator to mark a function as an MCP tool.
 
@@ -30,14 +33,14 @@ def mcp_tool(name: str, description: str):
         The decorated function with MCP tool metadata
     """
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: F) -> F:
         # Store metadata as function attributes
-        func._mcp_tool_name = name
-        func._mcp_tool_description = description
-        func._is_mcp_tool = True
+        func._mcp_tool_name = name  # type: ignore[attr-defined]
+        func._mcp_tool_description = description  # type: ignore[attr-defined]
+        func._is_mcp_tool = True  # type: ignore[attr-defined]
 
         @wraps(func)
-        async def wrapper(*args, **kwargs):
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
             # If the function is not already async, we need to handle it
             if hasattr(func, "__code__") and func.__code__.co_flags & 0x80:  # CO_COROUTINE
                 return await func(*args, **kwargs)
@@ -45,22 +48,22 @@ def mcp_tool(name: str, description: str):
                 return func(*args, **kwargs)
 
         # Copy metadata to wrapper
-        wrapper._mcp_tool_name = name
-        wrapper._mcp_tool_description = description
-        wrapper._is_mcp_tool = True
-        wrapper._original_func = func
+        wrapper._mcp_tool_name = name  # type: ignore[attr-defined]
+        wrapper._mcp_tool_description = description  # type: ignore[attr-defined]
+        wrapper._is_mcp_tool = True  # type: ignore[attr-defined]
+        wrapper._original_func = func  # type: ignore[attr-defined]
 
-        return wrapper
+        return cast(F, wrapper)
 
     return decorator
 
 
 def is_mcp_tool(func: Callable) -> bool:
     """Check if a function is marked as an MCP tool."""
-    return hasattr(func, "_is_mcp_tool") and func._is_mcp_tool
+    return hasattr(func, "_is_mcp_tool") and getattr(func, "_is_mcp_tool", False)
 
 
-def get_tool_metadata(func: Callable) -> Dict[str, Any]:
+def get_tool_metadata(func: Callable) -> dict[str, Any]:
     """Get the MCP tool metadata from a decorated function."""
     if not is_mcp_tool(func):
         raise ValueError("Function is not marked as an MCP tool")

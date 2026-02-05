@@ -48,7 +48,8 @@ retry_config = Config(retries=dict(max_attempts=3), defaults_mode="standard")
 
 
 def mock_api_wrapper(_func=None, **kwargs):
-    """Mock api_wrapper that accepts any kwargs."""
+    """Mock api_wrapper that accepts any kwargs and uses real response builder."""
+    from utilities.response_builder import generate_exception_response, generate_html_response
 
     def decorator(func):
         @functools.wraps(func)
@@ -57,24 +58,12 @@ def mock_api_wrapper(_func=None, **kwargs):
                 result = func(*args, **kw)
                 if isinstance(result, dict) and "statusCode" in result:
                     return result
-                return {
-                    "statusCode": 200,
-                    "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
-                    "body": json.dumps(result, default=str),
-                }
+                return generate_html_response(200, result)
             except ValueError as e:
-                return {
-                    "statusCode": 400,
-                    "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
-                    "body": json.dumps({"error": str(e)}),
-                }
+                return generate_exception_response(e)
             except Exception as e:
                 logging.error(f"Error in {func.__name__}: {str(e)}")
-                return {
-                    "statusCode": 500,
-                    "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
-                    "body": json.dumps({"error": str(e)}),
-                }
+                return generate_exception_response(e)
 
         return wrapper
 
@@ -176,8 +165,17 @@ patch("utilities.common_functions.get_session_id", mock_common.get_session_id).s
 patch("utilities.common_functions.retry_config", retry_config).start()
 patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()
 
+# Import Pydantic models for type-safe testing
+from models.domain_objects import DeleteResponse, SuccessResponse
+
 # Now import the lambda functions
 from session.lambda_functions import delete_session, delete_user_sessions, get_session, list_sessions, put_session
+from session.models import (
+    PutSessionRequest,
+    RenameSessionRequest,
+    Session,
+    SessionSummary,
+)
 
 
 @pytest.fixture
@@ -220,8 +218,11 @@ def test_list_sessions(dynamodb_table, sample_session, lambda_context):
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
     assert len(body) == 2
-    assert any(s["sessionId"] == "test-session" for s in body)
-    assert any(s["sessionId"] == "test-session-2" for s in body)
+    # Validate response items match SessionSummary structure
+    session_summaries = [SessionSummary.model_validate(s) for s in body]
+    session_ids = [s.sessionId for s in session_summaries]
+    assert "test-session" in session_ids
+    assert "test-session-2" in session_ids
 
 
 def test_get_session(dynamodb_table, sample_session, lambda_context):
@@ -235,8 +236,10 @@ def test_get_session(dynamodb_table, sample_session, lambda_context):
     response = get_session(event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
-    assert body["sessionId"] == sample_session["sessionId"]
-    assert body["userId"] == "test-user"
+    # Validate response matches Session model structure
+    session = Session.model_validate(body)
+    assert session.sessionId == sample_session["sessionId"]
+    assert session.userId == "test-user"
 
 
 def test_missing_path_parameters(lambda_context):
@@ -277,8 +280,8 @@ def test_missing_username(lambda_context):
 def mock_s3_operations():
     """Mock S3 operations to avoid errors."""
     with patch("session.lambda_functions._delete_user_session") as mock_delete:
-        # Make the mocked function return True by default
-        mock_delete.return_value = {"deleted": True}
+        # Make the mocked function return DeleteResponse by default
+        mock_delete.return_value = DeleteResponse(deleted=True)
         yield mock_delete
 
 
@@ -294,7 +297,9 @@ def test_delete_session(dynamodb_table, sample_session, lambda_context, mock_s3_
     response = delete_session(event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
-    assert body["deleted"] is True
+    # Validate response matches DeleteResponse model
+    delete_response = DeleteResponse.model_validate(body)
+    assert delete_response.deleted is True
 
     # Verify the mock was called with correct parameters
     mock_s3_operations.assert_called_once_with("test-session", "test-user")
@@ -314,7 +319,9 @@ def test_delete_user_sessions(dynamodb_table, sample_session, lambda_context, mo
     response = delete_user_sessions(event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
-    assert body["deleted"] is True
+    # Validate response matches DeleteResponse model
+    delete_response = DeleteResponse.model_validate(body)
+    assert delete_response.deleted is True
 
 
 def test_delete_session_not_found(dynamodb_table, lambda_context, mock_s3_operations):
@@ -332,7 +339,9 @@ def test_delete_session_not_found(dynamodb_table, lambda_context, mock_s3_operat
         response = delete_session(event, lambda_context)
         assert response["statusCode"] == 200
         body = json.loads(response["body"])
-        assert body["deleted"] is True
+        # Validate response matches DeleteResponse model
+        delete_response = DeleteResponse.model_validate(body)
+        assert delete_response.deleted is True
 
         # Verify the mock was called with correct parameters
         mock_s3_operations.assert_called_once_with("non-existent-session", "test-user")
@@ -343,13 +352,13 @@ def test_delete_session_not_found(dynamodb_table, lambda_context, mock_s3_operat
 
 def test_put_session(dynamodb_table, config_table, sample_session, lambda_context):
     """Test putting a session."""
+    # Create request using PutSessionRequest model
+    put_request = PutSessionRequest(messages=sample_session["history"], configuration=sample_session["configuration"])
 
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
         "pathParameters": {"sessionId": "test-session"},
-        "body": json.dumps(
-            {"messages": sample_session["history"], "configuration": sample_session["configuration"]}, default=str
-        ),
+        "body": put_request.model_dump_json(),
     }
 
     response = put_session(event, lambda_context)
@@ -394,7 +403,8 @@ def test_put_session_missing_required_fields(dynamodb_table, lambda_context):
     response = put_session(event, lambda_context)
     assert response["statusCode"] == 400
     body = json.loads(response["body"])
-    assert "Missing required fields" in body["error"]
+    # Pydantic validation error for missing 'messages' field
+    assert "error" in body
 
 
 def test_list_sessions_empty(dynamodb_table, lambda_context):
@@ -404,6 +414,7 @@ def test_list_sessions_empty(dynamodb_table, lambda_context):
     response = list_sessions(event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
+    assert isinstance(body, list)
     assert len(body) == 0
 
 
@@ -669,7 +680,9 @@ def test_delete_user_session_resource_not_found(mock_s3_resource, mock_table):
     )
 
     result = _delete_user_session("test-session", "test-user")
-    assert result == {"deleted": False}
+    # Result should be DeleteResponse model
+    assert isinstance(result, DeleteResponse)
+    assert result.deleted is False
 
 
 @patch("session.lambda_functions.table")
@@ -683,7 +696,9 @@ def test_delete_user_session_general_client_error(mock_s3_resource, mock_table):
     )
 
     result = _delete_user_session("test-session", "test-user")
-    assert result == {"deleted": False}
+    # Result should be DeleteResponse model
+    assert isinstance(result, DeleteResponse)
+    assert result.deleted is False
 
 
 @patch("session.lambda_functions.s3_client")
@@ -859,7 +874,9 @@ def test_get_session_encrypted_success(mock_decrypt, dynamodb_table, sample_sess
     response = get_session(event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
-    assert body["sessionId"] == "test-session"
+    # Validate response matches Session model
+    session = Session.model_validate(body)
+    assert session.sessionId == "test-session"
     mock_decrypt.assert_called_once()
 
 
@@ -954,7 +971,8 @@ def test_attach_image_to_session_missing_message(lambda_context):
     response = attach_image_to_session(event, lambda_context)
     assert response["statusCode"] == 400
     body = json.loads(response["body"])
-    assert "Missing required fields" in body["error"]
+    # Pydantic validation error for missing 'message' field
+    assert "error" in body
 
 
 def test_attach_image_to_session_s3_upload_error(lambda_context):
@@ -994,17 +1012,22 @@ def test_rename_session_success(dynamodb_table, lambda_context):
     session = {"sessionId": "test-session", "userId": "test-user", "name": "Old Name"}
     dynamodb_table.put_item(Item=session)
 
+    # Create request using RenameSessionRequest model
+    rename_request = RenameSessionRequest(name="New Name")
+
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
         "pathParameters": {"sessionId": "test-session"},
-        "body": json.dumps({"name": "New Name"}),
+        "body": rename_request.model_dump_json(),
     }
 
     with patch("session.lambda_functions.table", dynamodb_table):
         response = rename_session(event, lambda_context)
         assert response["statusCode"] == 200
         body = json.loads(response["body"])
-        assert "Session name updated successfully" in body["message"]
+        # Validate response matches SuccessResponse model
+        success_response = SuccessResponse.model_validate(body)
+        assert "Session name updated successfully" in success_response.message
 
 
 def test_rename_session_invalid_json(lambda_context):
@@ -1032,7 +1055,8 @@ def test_rename_session_missing_name(lambda_context):
     response = rename_session(event, lambda_context)
     assert response["statusCode"] == 400
     body = json.loads(response["body"])
-    assert "Missing required field: name" in body["error"]
+    # Pydantic validation error for missing 'name' field
+    assert "error" in body
 
 
 # Put Session Edge Cases Tests
@@ -1196,3 +1220,568 @@ def test_put_session_model_config_update(
         response = put_session(event, lambda_context)
         assert response["statusCode"] == 200
         mock_update_config.assert_called_once()
+
+
+# Import additional functions for testing
+from session.lambda_functions import (
+    _extract_video_s3_keys,
+    _generate_presigned_video_url,
+    _map_session,
+    _process_video,
+)
+
+
+# Video S3 Key Extraction Tests
+def test_extract_video_s3_keys_no_history():
+    """Test _extract_video_s3_keys with no history."""
+    session = {}
+    result = _extract_video_s3_keys(session)
+    assert result == []
+
+
+def test_extract_video_s3_keys_empty_history():
+    """Test _extract_video_s3_keys with empty history."""
+    session = {"history": []}
+    result = _extract_video_s3_keys(session)
+    assert result == []
+
+
+def test_extract_video_s3_keys_no_videos():
+    """Test _extract_video_s3_keys with history but no videos."""
+    session = {
+        "history": [
+            {"type": "human", "content": "Hello"},
+            {"type": "assistant", "content": "Hi there!"},
+        ]
+    }
+    result = _extract_video_s3_keys(session)
+    assert result == []
+
+
+def test_extract_video_s3_keys_with_videos():
+    """Test _extract_video_s3_keys with videos in history."""
+    session = {
+        "history": [
+            {
+                "type": "assistant",
+                "content": [
+                    {
+                        "type": "video_url",
+                        "video_url": {"url": "https://example.com/video.mp4", "s3_key": "videos/video1.mp4"},
+                    }
+                ],
+            }
+        ]
+    }
+    result = _extract_video_s3_keys(session)
+    assert result == ["videos/video1.mp4"]
+
+
+def test_extract_video_s3_keys_multiple_videos():
+    """Test _extract_video_s3_keys with multiple videos."""
+    session = {
+        "history": [
+            {
+                "type": "assistant",
+                "content": [
+                    {
+                        "type": "video_url",
+                        "video_url": {"url": "https://example.com/video1.mp4", "s3_key": "videos/v1.mp4"},
+                    },
+                    {
+                        "type": "video_url",
+                        "video_url": {"url": "https://example.com/video2.mp4", "s3_key": "videos/v2.mp4"},
+                    },
+                ],
+            },
+            {
+                "type": "assistant",
+                "content": [
+                    {
+                        "type": "video_url",
+                        "video_url": {"url": "https://example.com/video3.mp4", "s3_key": "videos/v3.mp4"},
+                    },
+                ],
+            },
+        ]
+    }
+    result = _extract_video_s3_keys(session)
+    assert result == ["videos/v1.mp4", "videos/v2.mp4", "videos/v3.mp4"]
+
+
+def test_extract_video_s3_keys_mixed_content():
+    """Test _extract_video_s3_keys with mixed image and video content."""
+    session = {
+        "history": [
+            {
+                "type": "assistant",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": "https://example.com/image.png", "s3_key": "images/img.png"},
+                    },
+                    {
+                        "type": "video_url",
+                        "video_url": {"url": "https://example.com/video.mp4", "s3_key": "videos/vid.mp4"},
+                    },
+                    {"type": "text", "text": "Here is your content"},
+                ],
+            }
+        ]
+    }
+    result = _extract_video_s3_keys(session)
+    assert result == ["videos/vid.mp4"]
+
+
+def test_extract_video_s3_keys_no_s3_key():
+    """Test _extract_video_s3_keys with video missing s3_key."""
+    session = {
+        "history": [
+            {
+                "type": "assistant",
+                "content": [
+                    {"type": "video_url", "video_url": {"url": "https://example.com/video.mp4"}},  # No s3_key
+                ],
+            }
+        ]
+    }
+    result = _extract_video_s3_keys(session)
+    assert result == []
+
+
+def test_extract_video_s3_keys_string_content():
+    """Test _extract_video_s3_keys with string content (not list)."""
+    session = {"history": [{"type": "assistant", "content": "This is a text response"}]}
+    result = _extract_video_s3_keys(session)
+    assert result == []
+
+
+# Video URL Generation Tests
+@patch("session.lambda_functions.s3_client")
+def test_generate_presigned_video_url_success(mock_s3_client):
+    """Test _generate_presigned_video_url with success."""
+    mock_s3_client.generate_presigned_url.return_value = "https://presigned-video-url.com"
+
+    result = _generate_presigned_video_url("videos/test-video.mp4")
+    assert result == "https://presigned-video-url.com"
+
+    mock_s3_client.generate_presigned_url.assert_called_once_with(
+        "get_object",
+        Params={
+            "Bucket": "bucket",
+            "Key": "videos/test-video.mp4",
+            "ResponseContentType": "video/mp4",
+            "ResponseCacheControl": "no-cache",
+            "ResponseContentDisposition": "inline",
+        },
+    )
+
+
+# Video Processing Tests
+def test_process_video_success():
+    """Test _process_video with success."""
+    msg = {"video_url": {"s3_key": "videos/test.mp4"}}
+    key = "videos/test.mp4"
+
+    with patch("session.lambda_functions._generate_presigned_video_url") as mock_generate:
+        mock_generate.return_value = "https://presigned-video-url.com"
+
+        _process_video((msg, key))
+
+        assert msg["video_url"]["url"] == "https://presigned-video-url.com"
+        mock_generate.assert_called_once_with("videos/test.mp4")
+
+
+def test_process_video_exception():
+    """Test _process_video with exception."""
+    msg = {"video_url": {"s3_key": "videos/test.mp4"}}
+    key = "videos/test.mp4"
+
+    with patch("session.lambda_functions._generate_presigned_video_url") as mock_generate:
+        mock_generate.side_effect = Exception("S3 error")
+
+        # Should not raise exception, just print error
+        _process_video((msg, key))
+
+        # URL should not be set
+        assert "url" not in msg["video_url"]
+
+
+# Map Session Tests
+def test_map_session_complete_data():
+    """Test _map_session with complete session data."""
+    session = {
+        "sessionId": "test-session-123",
+        "name": "Test Session",
+        "history": [{"type": "human", "content": "Hello"}],
+        "startTime": "2024-01-01T00:00:00",
+        "createTime": "2024-01-01T00:00:00",
+        "lastUpdated": "2024-01-02T00:00:00",
+        "is_encrypted": False,
+    }
+
+    result = _map_session(session, "test-user")
+
+    # Result is a SessionSummary model - use property access
+    assert result.sessionId == "test-session-123"
+    assert result.name == "Test Session"
+    assert result.firstHumanMessage == "Hello"
+    assert result.startTime == "2024-01-01T00:00:00"
+    assert result.createTime == "2024-01-01T00:00:00"
+    assert result.lastUpdated == "2024-01-02T00:00:00"
+    assert result.isEncrypted is False
+
+
+def test_map_session_missing_fields():
+    """Test _map_session with missing optional fields."""
+    session = {"sessionId": "test-session", "history": []}
+
+    result = _map_session(session, "test-user")
+
+    # Result is a SessionSummary model - use property access
+    assert result.sessionId == "test-session"
+    assert result.name is None
+    assert result.firstHumanMessage == ""
+    assert result.startTime is None
+    assert result.createTime is None
+    assert result.lastUpdated is None
+    assert result.isEncrypted is False
+
+
+def test_map_session_fallback_to_start_time():
+    """Test _map_session falls back to startTime for lastUpdated."""
+    session = {
+        "sessionId": "test-session",
+        "startTime": "2024-01-01T00:00:00",
+        "history": [],
+        # No lastUpdated field
+    }
+
+    result = _map_session(session, "test-user")
+
+    # Result is a SessionSummary model - use property access
+    assert result.lastUpdated == "2024-01-01T00:00:00"
+
+
+def test_map_session_encrypted():
+    """Test _map_session with encrypted session."""
+    session = {
+        "sessionId": "test-session",
+        "is_encrypted": True,
+        "encrypted_history": "encrypted_data",
+    }
+
+    with patch("session.lambda_functions.decrypt_session_fields") as mock_decrypt:
+        mock_decrypt.return_value = {
+            "sessionId": "test-session",
+            "history": [{"type": "human", "content": "Decrypted message"}],
+        }
+
+        result = _map_session(session, "test-user")
+
+        # Result is a SessionSummary model - use property access
+        assert result.isEncrypted is True
+        assert result.firstHumanMessage == "Decrypted message"
+
+
+# Delete Session with Video Cleanup Tests
+@patch("session.lambda_functions.s3_client")
+@patch("session.lambda_functions.s3_resource")
+@patch("session.lambda_functions.table")
+def test_delete_user_session_with_video_cleanup(mock_table, mock_s3_resource, mock_s3_client):
+    """Test _delete_user_session with successful video cleanup."""
+    # Mock session with videos
+    session_with_videos = {
+        "sessionId": "test-session",
+        "userId": "test-user",
+        "history": [
+            {
+                "type": "assistant",
+                "content": [
+                    {
+                        "type": "video_url",
+                        "video_url": {"url": "https://example.com/v1.mp4", "s3_key": "videos/v1.mp4"},
+                    },
+                    {
+                        "type": "video_url",
+                        "video_url": {"url": "https://example.com/v2.mp4", "s3_key": "videos/v2.mp4"},
+                    },
+                ],
+            }
+        ],
+    }
+
+    mock_table.get_item.return_value = {"Item": session_with_videos}
+    mock_bucket = MagicMock()
+    mock_s3_resource.Bucket.return_value = mock_bucket
+
+    result = _delete_user_session("test-session", "test-user")
+
+    # Result is a DeleteResponse model - use property access
+    assert result.deleted is True
+    mock_table.delete_item.assert_called_once()
+    mock_bucket.objects.filter.assert_called_once_with(Prefix="images/test-session")
+
+    # Verify video deletion calls
+    assert mock_s3_client.delete_object.call_count == 2
+    mock_s3_client.delete_object.assert_any_call(Bucket="bucket", Key="videos/v1.mp4")
+    mock_s3_client.delete_object.assert_any_call(Bucket="bucket", Key="videos/v2.mp4")
+
+
+@patch("session.lambda_functions.decrypt_session_fields")
+@patch("session.lambda_functions.s3_client")
+@patch("session.lambda_functions.s3_resource")
+@patch("session.lambda_functions.table")
+def test_delete_user_session_encrypted_with_videos(mock_table, mock_s3_resource, mock_s3_client, mock_decrypt):
+    """Test _delete_user_session with encrypted session containing videos."""
+    # Mock encrypted session
+    encrypted_session = {
+        "sessionId": "test-session",
+        "userId": "test-user",
+        "is_encrypted": True,
+        "encrypted_history": "encrypted_data",
+    }
+
+    # Mock decrypted session with videos
+    decrypted_session = {
+        "sessionId": "test-session",
+        "userId": "test-user",
+        "history": [
+            {
+                "type": "assistant",
+                "content": [
+                    {
+                        "type": "video_url",
+                        "video_url": {"url": "https://example.com/v1.mp4", "s3_key": "videos/v1.mp4"},
+                    },
+                ],
+            }
+        ],
+    }
+
+    mock_table.get_item.return_value = {"Item": encrypted_session}
+    mock_decrypt.return_value = decrypted_session
+    mock_bucket = MagicMock()
+    mock_s3_resource.Bucket.return_value = mock_bucket
+
+    result = _delete_user_session("test-session", "test-user")
+
+    # Result is a DeleteResponse model - use property access
+    assert result.deleted is True
+    mock_decrypt.assert_called_once_with(encrypted_session, "test-user", "test-session")
+    mock_s3_client.delete_object.assert_called_once_with(Bucket="bucket", Key="videos/v1.mp4")
+
+
+@patch("session.lambda_functions.decrypt_session_fields")
+@patch("session.lambda_functions.s3_client")
+@patch("session.lambda_functions.s3_resource")
+@patch("session.lambda_functions.table")
+def test_delete_user_session_encrypted_decryption_fails(mock_table, mock_s3_resource, mock_s3_client, mock_decrypt):
+    """Test _delete_user_session when decryption fails - should still delete session."""
+    from utilities.session_encryption import SessionEncryptionError
+
+    encrypted_session = {
+        "sessionId": "test-session",
+        "userId": "test-user",
+        "is_encrypted": True,
+        "encrypted_history": "encrypted_data",
+    }
+
+    mock_table.get_item.return_value = {"Item": encrypted_session}
+    mock_decrypt.side_effect = SessionEncryptionError("Decryption failed")
+    mock_bucket = MagicMock()
+    mock_s3_resource.Bucket.return_value = mock_bucket
+
+    result = _delete_user_session("test-session", "test-user")
+
+    # Result is a DeleteResponse model - use property access
+    # Should still succeed with deletion, just no video cleanup
+    assert result.deleted is True
+    mock_table.delete_item.assert_called_once()
+    # No video deletion because decryption failed
+    mock_s3_client.delete_object.assert_not_called()
+
+
+@patch("session.lambda_functions.s3_client")
+@patch("session.lambda_functions.s3_resource")
+@patch("session.lambda_functions.table")
+def test_delete_user_session_video_deletion_error(mock_table, mock_s3_resource, mock_s3_client):
+    """Test _delete_user_session when video deletion fails - should continue."""
+    from botocore.exceptions import ClientError
+
+    session_with_videos = {
+        "sessionId": "test-session",
+        "userId": "test-user",
+        "history": [
+            {
+                "type": "assistant",
+                "content": [
+                    {"type": "video_url", "video_url": {"s3_key": "videos/v1.mp4"}},
+                    {"type": "video_url", "video_url": {"s3_key": "videos/v2.mp4"}},
+                ],
+            }
+        ],
+    }
+
+    mock_table.get_item.return_value = {"Item": session_with_videos}
+    mock_bucket = MagicMock()
+    mock_s3_resource.Bucket.return_value = mock_bucket
+
+    # First video deletion fails, second succeeds
+    mock_s3_client.delete_object.side_effect = [
+        ClientError(error_response={"Error": {"Code": "AccessDenied"}}, operation_name="DeleteObject"),
+        None,
+    ]
+
+    result = _delete_user_session("test-session", "test-user")
+
+    # Result is a DeleteResponse model - use property access
+    # Should still succeed - video deletion errors are logged but don't fail the operation
+    assert result.deleted is True
+    assert mock_s3_client.delete_object.call_count == 2
+
+
+# Get Session with Video Processing Tests
+def test_get_session_with_videos(dynamodb_table, lambda_context):
+    """Test get_session processes video URLs correctly."""
+    session_with_video = {
+        "sessionId": "test-session",
+        "userId": "test-user",
+        "history": [
+            {
+                "type": "assistant",
+                "content": [
+                    {"type": "video_url", "video_url": {"s3_key": "videos/test.mp4"}},
+                ],
+            }
+        ],
+    }
+    dynamodb_table.put_item(Item=session_with_video)
+
+    event = {
+        "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
+        "pathParameters": {"sessionId": "test-session"},
+    }
+
+    with patch("session.lambda_functions._process_video") as mock_process_video:
+        response = get_session(event, lambda_context)
+        assert response["statusCode"] == 200
+        # Video processing should be called
+        mock_process_video.assert_called()
+
+
+# Attach Image Tests
+def test_attach_image_to_session_https_url(lambda_context):
+    """Test attach_image_to_session with already-https URL (should not upload)."""
+    event = {
+        "pathParameters": {"sessionId": "test-session"},
+        "body": json.dumps(
+            {"message": {"type": "image_url", "image_url": {"url": "https://already-uploaded.com/image.png"}}}
+        ),
+    }
+
+    with patch("session.lambda_functions.s3_client") as mock_s3:
+        response = attach_image_to_session(event, lambda_context)
+        assert response["statusCode"] == 200
+        body = response["body"]
+        # Should return the message unchanged, S3 should not be called
+        assert body["image_url"]["url"] == "https://already-uploaded.com/image.png"
+        mock_s3.put_object.assert_not_called()
+
+
+def test_attach_image_to_session_missing_session_id(lambda_context):
+    """Test attach_image_to_session with missing session ID."""
+    mock_common.get_session_id.side_effect = ValueError("Missing sessionId")
+
+    event = {"body": json.dumps({"message": {"type": "image_url", "image_url": {"url": "data:image/png;base64,abc"}}})}
+
+    response = attach_image_to_session(event, lambda_context)
+    assert response["statusCode"] == 400
+    body = json.loads(response["body"])
+    assert "Missing sessionId" in body["error"]
+
+    # Reset the mock
+    mock_common.get_session_id.side_effect = None
+    mock_common.get_session_id.return_value = "test-session"
+
+
+# Put Session API Token Auth Tests
+@patch("session.lambda_functions.get_user_context")
+@patch("session.lambda_functions.sqs_client")
+def test_put_session_api_token_skips_metrics(
+    mock_sqs_client, mock_get_user_context, dynamodb_table, config_table, sample_session, lambda_context
+):
+    """Test put_session with API token auth type skips SQS metrics."""
+    os.environ["USAGE_METRICS_QUEUE_NAME"] = "test-metrics-queue"
+    mock_get_user_context.return_value = ("test-user", False, ["group1"])
+
+    event = {
+        "requestContext": {"authorizer": {"claims": {"username": "test-user"}, "authType": "api_token"}},
+        "pathParameters": {"sessionId": "test-session"},
+        "body": json.dumps({"messages": sample_session["history"], "configuration": sample_session["configuration"]}),
+    }
+
+    with patch("session.lambda_functions.table", dynamodb_table):
+        response = put_session(event, lambda_context)
+        assert response["statusCode"] == 200
+        # SQS should not be called for API token users
+        mock_sqs_client.send_message.assert_not_called()
+
+
+# List Sessions with Encrypted Sessions Tests
+def test_list_sessions_with_encrypted_sessions(dynamodb_table, lambda_context):
+    """Test list_sessions handles encrypted sessions correctly."""
+    encrypted_session = {
+        "sessionId": "encrypted-session",
+        "userId": "test-user",
+        "is_encrypted": True,
+        "encrypted_history": "encrypted_data",
+        "startTime": "2024-01-01T00:00:00",
+    }
+    dynamodb_table.put_item(Item=encrypted_session)
+
+    event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}}}}
+
+    with patch("session.lambda_functions.decrypt_session_fields") as mock_decrypt:
+        mock_decrypt.return_value = {
+            "sessionId": "encrypted-session",
+            "history": [{"type": "human", "content": "Decrypted message"}],
+        }
+
+        response = list_sessions(event, lambda_context)
+        assert response["statusCode"] == 200
+        body = json.loads(response["body"])
+        assert len(body) == 1
+        # Validate response matches SessionSummary model
+        session_summary = SessionSummary.model_validate(body[0])
+        assert session_summary.sessionId == "encrypted-session"
+        assert session_summary.isEncrypted is True
+
+
+# Find First Human Message with List Content and Empty Text
+def test_find_first_human_message_list_content_empty_text():
+    """Test _find_first_human_message with list content containing empty text items."""
+    session = {
+        "sessionId": "test-session",
+        "is_encrypted": False,
+        "history": [
+            {"type": "human", "content": [{"text": ""}, {"text": "Actual message"}]},
+        ],
+    }
+
+    result = _find_first_human_message(session, "test-user")
+    assert result == "Actual message"
+
+
+def test_find_first_human_message_list_content_no_text_key():
+    """Test _find_first_human_message with list content items missing text key."""
+    session = {
+        "sessionId": "test-session",
+        "is_encrypted": False,
+        "history": [
+            {"type": "human", "content": [{"image": "data:image/png"}, {"text": "Message after image"}]},
+        ],
+    }
+
+    result = _find_first_human_message(session, "test-user")
+    assert result == "Message after image"

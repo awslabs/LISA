@@ -22,6 +22,27 @@ import AppConfigured from './components/app-configured';
 
 import '@cloudscape-design/global-styles/index.css';
 import getStore from './config/store';
+import { applyTheme } from '@cloudscape-design/components/theming';
+import { Theme } from '@cloudscape-design/components/theming';
+
+// Conditionally apply custom theme if branding is enabled
+if (window.env?.USE_CUSTOM_BRANDING) {
+    try {
+        // Vite will only include files that actually exist
+        const themeModules = import.meta.glob('./theme*.ts');
+
+        // Try custom first, fall back to base
+        const themeModule = themeModules['./theme-custom.ts']
+            ? await themeModules['./theme-custom.ts']()
+            : await themeModules['./theme.ts']();
+
+        const { brandTheme } = themeModule as { brandTheme: Theme };
+        applyTheme({ theme: brandTheme });
+        console.log('Theme loaded:', themeModules['./theme-custom.ts'] ? 'custom' : 'base');
+    } catch {
+        console.warn('No theme file found, using Cloudscape default theme');
+    }
+}
 
 declare global {
     // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
@@ -39,6 +60,8 @@ declare global {
             RAG_ENABLED: boolean;
             HOSTED_MCP_ENABLED: boolean;
             API_BASE_URL: string;
+            USE_CUSTOM_BRANDING: boolean;
+            CUSTOM_DISPLAY_NAME: string;
         };
         gitInfo?: {
             revisionTag?: string;

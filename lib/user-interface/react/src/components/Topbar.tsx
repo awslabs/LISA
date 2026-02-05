@@ -15,17 +15,18 @@
 */
 
 import { ReactElement, useContext } from 'react';
-import { useAuth } from 'react-oidc-context';
+import { useAuth } from '../auth/useAuth';
 import { useHref, useNavigate } from 'react-router-dom';
 import { applyDensity, Density, Mode } from '@cloudscape-design/global-styles';
 import TopNavigation, { TopNavigationProps } from '@cloudscape-design/components/top-navigation';
-import { getBaseURI } from './utils';
 import { purgeStore, useAppSelector } from '@/config/store';
 import { selectCurrentUserIsAdmin, selectCurrentUserIsApiUser, selectCurrentUsername } from '../shared/reducers/user.reducer';
 import { IConfiguration } from '@/shared/model/configuration.model';
 import { ButtonDropdownProps } from '@cloudscape-design/components';
 import ColorSchemeContext from '@/shared/color-scheme.provider';
 import { OidcConfig } from '@/config/oidc.config';
+import { getBrandingAssetPath } from '../shared/util/branding';
+import { getDisplayName } from '@/shared/util/branding';
 
 applyDensity(Density.Comfortable);
 
@@ -78,15 +79,15 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
             external: false,
             href: '/mcp-connections',
         } as ButtonDropdownProps.Item] : [])
-    ];
+    ].sort((a,b) => a.text.localeCompare(b.text));
 
     return (
         <TopNavigation
             identity={{
                 href: useHref('/'),
                 logo: {
-                    src: `${getBaseURI()}logo.svg`,
-                    alt: 'AWS LISA Sample',
+                    src: getBrandingAssetPath('logo'),
+                    alt: `${getDisplayName()} logo`,
                 },
             }}
             utilities={[
@@ -138,7 +139,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                 external: false,
                                 href: '/model-management',
                             } as ButtonDropdownProps.Item,
-                            {
+                            ...(window.env.RAG_ENABLED ? [{
                                 id: 'repository-management',
                                 type: 'button',
                                 variant: 'link',
@@ -146,7 +147,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                 disableUtilityCollapse: false,
                                 external: false,
                                 href: '/repository-management',
-                            } as ButtonDropdownProps.Item,
+                            } as ButtonDropdownProps.Item] : []),
                             {
                                 id: 'api-token-management',
                                 type: 'button',
@@ -209,7 +210,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                     },
                     iconName: 'user-profile',
                     items: [
-                        { id: 'version-info', text: `LISA v${window.gitInfo?.revisionTag}`, disabled: true },
+                        { id: 'version-info', text: `${getDisplayName()} v${window.gitInfo?.revisionTag}`, disabled: true },
                         ...(configs?.configuration.enabledComponents?.enableUserApiTokens && (isUserAdmin || isApiUser) ? [{
                             id: 'api-token',
                             text: 'API Token',

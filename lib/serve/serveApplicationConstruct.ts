@@ -13,7 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
-import { Duration, Stack, StackProps } from 'aws-cdk-lib';
+import { Duration, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { ITable, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -36,6 +36,7 @@ import { AwsCustomResource, AwsCustomResourcePolicy, PhysicalResourceId } from '
 import { ISecurityGroup, Port } from 'aws-cdk-lib/aws-ec2';
 import { ECSTasks } from '../api-base/ecsCluster';
 import { GuardrailsTable } from '../models/guardrails-table';
+import { Role } from 'aws-cdk-lib/aws-iam';
 
 export type LisaServeApplicationProps = {
     vpc: Vpc;
@@ -65,8 +66,8 @@ export class LisaServeApplicationConstruct extends Construct {
         super(scope, id);
         const { config, vpc, securityGroups } = props;
 
-        // Determine authentication method - default to IAM auth (iamRdsAuth = true)
-        const useIamAuth = config.iamRdsAuth ?? true;
+        // Determine authentication method - default to IAM auth (iamRdsAuth = false)
+        const useIamAuth = config.iamRdsAuth ?? false;
 
         // TokenTable is now created in API Base, reference it from SSM parameter
         // API Base stack must be deployed before Serve stack (dependency is set in stages.ts)
@@ -133,6 +134,10 @@ export class LisaServeApplicationConstruct extends Construct {
         // DB is a Single AZ instance for cost + inability to make non-Aurora multi-AZ cluster in CDK
         // DB is not expected to be under any form of heavy load.
         // https://github.com/aws/aws-cdk/issues/25547
+        // NOTE: databaseName is intentionally NOT set here for backwards compatibility.
+        // Previous deployments created this RDS instance without a named database, so the
+        // default 'postgres' database is used. This means restApiConfig.rdsConfig.dbName
+        // is NOT respected for the LiteLLM database - it will always use 'postgres'.
         const litellmDb = new DatabaseInstance(scope, 'LiteLLMScalingDB', {
             engine: DatabaseInstanceEngine.POSTGRES,
             vpc: vpc.vpc,
@@ -141,6 +146,7 @@ export class LisaServeApplicationConstruct extends Construct {
             iamAuthentication: useIamAuth, // Enable IAM auth when iamRdsAuth is true
             securityGroups: [litellmDbSg],
             removalPolicy: config.removalPolicy,
+            deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
         });
 
         // Secret is used for password auth or for IAM user bootstrap
@@ -211,8 +217,20 @@ export class LisaServeApplicationConstruct extends Construct {
                 // Password auth: grant secret read access only (grantConnect requires IAM auth)
                 litellmDbSecret.grantRead(serveRole);
             } else {
-                // IAM auth: grant connect with role name and create IAM user
-                litellmDb.grantConnect(serveRole, serveRole.roleName);
+                // IAM auth: manually grant rds-db:connect permission
+                // Note: We do NOT use litellmDb.grantConnect() due to CDK bug #11851
+                // The grantConnect method generates incorrect ARN format (uses rds: instead of rds-db:)
+                // Per AWS docs: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html
+                // The correct format is: arn:aws:rds-db:region:account-id:dbuser:DbiResourceId/db-user-name
+                serveRole.addToPrincipalPolicy(new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: ['rds-db:connect'],
+                    resources: [
+                        // Use wildcard for DbiResourceId since it's not available in CloudFormation
+                        // Format: arn:aws:rds-db:region:account:dbuser:*/username
+                        `arn:${config.partition}:rds-db:${config.region}:${config.accountNumber}:dbuser:*/${serveRole.roleName}`
+                    ]
+                }));
 
                 // Use the shared IAM auth setup Lambda from API Base stack
                 const iamAuthSetupFnArn = StringParameter.valueForStringParameter(
@@ -220,27 +238,46 @@ export class LisaServeApplicationConstruct extends Construct {
                     `${config.deploymentPrefix}/iamAuthSetupFnArn`
                 );
 
-                // Run the shared IAM auth setup Lambda on create
-                // This only runs once when switching to IAM auth - the lambda creates the IAM user and deletes the bootstrap secret
+                // Get the IAM auth setup Lambda role ARN from SSM to grant it permissions
+                const iamAuthSetupRoleArn = StringParameter.valueForStringParameter(
+                    scope,
+                    `${config.deploymentPrefix}/iamAuthSetupRoleArn`
+                );
+
+                // Import the IAM auth setup role to grant it secret permissions
+                const iamAuthSetupRole = Role.fromRoleArn(
+                    scope,
+                    'IamAuthSetupRoleRef',
+                    iamAuthSetupRoleArn
+                );
+
+                // Grant the IAM auth setup Lambda role permission to read the bootstrap secret
+                litellmDbSecret.grantRead(iamAuthSetupRole);
+
+                // Run the shared IAM auth setup Lambda on create and update
+                // This runs when switching to IAM auth or updating the configuration
                 // Pass parameters via payload since the Lambda is shared
                 // Use Stack.of(scope).toJsonString() to properly resolve CDK tokens in the payload
-                const createDbUserResource = new AwsCustomResource(scope, 'LISAServeCreateDbUserCustomResource', {
-                    onCreate: {
-                        service: 'Lambda',
-                        action: 'invoke',
-                        physicalResourceId: PhysicalResourceId.of('LISAServeCreateDbUserCustomResource'),
-                        parameters: {
-                            FunctionName: iamAuthSetupFnArn,
-                            Payload: Stack.of(scope).toJsonString({
-                                secretArn: litellmDbSecret.secretArn,
-                                dbHost: config.restApiConfig.rdsConfig.dbHost,
-                                dbPort: config.restApiConfig.rdsConfig.dbPort,
-                                dbName: config.restApiConfig.rdsConfig.dbName,
-                                dbUser: config.restApiConfig.rdsConfig.username,
-                                iamName: serveRole.roleName,
-                            })
-                        },
+                const lambdaInvokeParams = {
+                    service: 'Lambda',
+                    action: 'invoke',
+                    physicalResourceId: PhysicalResourceId.of('LISAServeCreateDbUserCustomResource'),
+                    parameters: {
+                        FunctionName: iamAuthSetupFnArn,
+                        Payload: Stack.of(scope).toJsonString({
+                            secretArn: litellmDbSecret.secretArn,
+                            dbHost: config.restApiConfig.rdsConfig.dbHost,
+                            dbPort: config.restApiConfig.rdsConfig.dbPort,
+                            dbName: config.restApiConfig.rdsConfig.dbName,
+                            dbUser: config.restApiConfig.rdsConfig.username,
+                            iamName: serveRole.roleName,
+                        })
                     },
+                };
+
+                const createDbUserResource = new AwsCustomResource(scope, 'LISAServeCreateDbUserCustomResource', {
+                    onCreate: lambdaInvokeParams,
+                    onUpdate: lambdaInvokeParams,  // Also run on updates to ensure IAM user is created
                     policy: AwsCustomResourcePolicy.fromStatements([
                         new PolicyStatement({
                             effect: Effect.ALLOW,
@@ -252,6 +289,9 @@ export class LisaServeApplicationConstruct extends Construct {
 
                 // Ensure the RDS instance is fully available before running IAM auth setup
                 createDbUserResource.node.addDependency(litellmDb);
+
+                // Ensure the ECS service waits for IAM user setup to complete
+                restApi.node.addDependency(createDbUserResource);
             }
 
             this.modelsPs.grantRead(serveRole);
@@ -260,6 +300,12 @@ export class LisaServeApplicationConstruct extends Construct {
         // Use the guardrails table name from the construct we just created
         const guardrailsTableName = this.guardrailsTable.tableName;
 
+        // Get generated images bucket name for video/image content storage
+        const imagesBucketName = StringParameter.valueForStringParameter(
+            scope,
+            `${config.deploymentPrefix}/generatedImagesBucketName`
+        );
+
         // Add parameter as container environment variable for both RestAPI and RagAPI
         const container = restApi.apiCluster.containers[ECSTasks.REST];
         if (container) {
@@ -267,11 +313,22 @@ export class LisaServeApplicationConstruct extends Construct {
             container.addEnvironment('REGISTERED_MODELS_PS_NAME', this.modelsPs.parameterName);
             container.addEnvironment('LITELLM_DB_INFO_PS_NAME', litellmDbConnectionInfoPs.parameterName);
             container.addEnvironment('GUARDRAILS_TABLE_NAME', guardrailsTableName);
+            container.addEnvironment('GENERATED_IMAGES_S3_BUCKET_NAME', imagesBucketName);
             // Add metrics queue URL if provided
             if (props.metricsQueueUrl) {
                 // Get the queue URL from SSM parameter
                 const queueUrl = StringParameter.valueForStringParameter(scope, props.metricsQueueUrl);
                 container.addEnvironment('USAGE_METRICS_QUEUE_URL', queueUrl);
+            }
+
+            // Add IAM auth environment variables for LiteLLM's native token refresh
+            // When these are set, LiteLLM automatically generates and refreshes IAM auth tokens
+            if (useIamAuth && serveRole) {
+                container.addEnvironment('IAM_TOKEN_DB_AUTH', 'true');
+                container.addEnvironment('DATABASE_HOST', litellmDb.dbInstanceEndpointAddress);
+                container.addEnvironment('DATABASE_NAME', config.restApiConfig.rdsConfig.dbName);
+                container.addEnvironment('DATABASE_PORT', config.restApiConfig.rdsConfig.dbPort.toString());
+                container.addEnvironment('DATABASE_USER', serveRole.roleName);
             }
         }
         restApi.node.addDependency(this.modelsPs);
@@ -333,6 +390,15 @@ export class LisaServeApplicationConstruct extends Construct {
             litellmDbConnectionInfoPs.grantRead(restRole);
             restRole.attachInlinePolicy(invocation_permissions);
             restRole.attachInlinePolicy(guardrails_permissions);
+
+            // Grant S3 bucket permissions for video/image content storage
+            restRole.addToPrincipalPolicy(
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: ['s3:PutObject', 's3:GetObject', 's3:DeleteObject'],
+                    resources: [`arn:${config.partition}:s3:::${imagesBucketName}/*`]
+                })
+            );
 
             // Grant SQS send permissions if metrics queue URL is provided
             if (props.metricsQueueUrl) {

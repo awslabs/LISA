@@ -43,6 +43,7 @@ export type SecurityGroups<T> = {
 export enum ModelType {
     TEXTGEN = 'textgen',
     EMBEDDING = 'embedding',
+    VIDEOGEN = 'videogen',
 }
 
 /**
@@ -645,15 +646,16 @@ export const EcsClusterConfigSchema = z
     })
     .refine(
         (data) => {
-            // 'textgen' type must have boolean streaming, 'embedding' type must have null streaming
+            // 'textgen' type must have boolean streaming, 'embedding' and 'videogen' types must have null streaming
             const isValidForTextgen = data.modelType === 'textgen' && typeof data.streaming === 'boolean';
             const isValidForEmbedding = data.modelType === 'embedding' && data.streaming === null;
+            const isValidForVideogen = data.modelType === 'videogen' && data.streaming === null;
 
-            return isValidForTextgen || isValidForEmbedding;
+            return isValidForTextgen || isValidForEmbedding || isValidForVideogen;
         },
         {
             message: `For 'textgen' models, 'streaming' must be true or false.
-            For 'embedding' models, 'streaming' must not be set.`,
+            For 'embedding' and 'videogen' models, 'streaming' must not be set.`,
             path: ['streaming'],
         },
     );
@@ -868,6 +870,8 @@ export const RawConfigObject = z.object({
     deployChat: z.boolean().default(true).describe('Whether to deploy chat stacks.'),
     deployDocs: z.boolean().default(true).describe('Whether to deploy docs stacks.'),
     deployUi: z.boolean().default(true).describe('Whether to deploy UI stacks.'),
+    useCustomBranding: z.boolean().optional().describe('Whether to use custom branding assets in the UI.'),
+    customDisplayName: z.string().optional().describe('Custom display name to replace "LISA" branding in titles and descriptions. Requires "useCustomBranding" to be enabled.'),
     deployMetrics: z.boolean().default(true).describe('Whether to deploy Metrics stack.'),
     deployMcp: z.boolean().default(true).describe('Whether to deploy LISA MCP stack.'),
     deployServe: z.boolean().default(true).describe('Whether to deploy LISA Serve stack.'),
@@ -932,7 +936,7 @@ export const RawConfigObject = z.object({
     bootstrapRolePrefix: z.string().optional().describe('Prefix for CDK bootstrap role names. Useful when roles have custom prefixes like My_User_Roles_. Leave empty for standard role names.'),
     litellmConfig: LiteLLMConfig,
     convertInlinePoliciesToManaged: z.boolean().optional().default(false).describe('Convert inline policies to managed policies'),
-    iamRdsAuth: z.boolean().optional().default(true)
+    iamRdsAuth: z.boolean().optional().default(false)
         .describe('Enable IAM authentication for RDS. When true (default), IAM authentication is used and the bootstrap password is deleted after setup. When false, password-based authentication is used. WARNING: Switching from true to false after deployment is not supported - the master password is permanently deleted when IAM auth is enabled. This is a one-way migration.'),
 });
 

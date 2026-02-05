@@ -16,18 +16,18 @@
 
 import copy
 import json
-from typing import Any, Dict, Optional
+from typing import Any
 
 from utilities.header_sanitizer import sanitize_headers
 
 
-def sanitize_event_for_logging(event: Dict[str, Any]) -> str:
+def sanitize_event_for_logging(event: dict[str, Any]) -> str:
     """
     Sanitize Lambda event before logging.
 
     This function sanitizes the event by:
-    1. Normalizing header keys to lowercase
-    2. Redacting authorization headers
+    1. Redacting authorization headers
+    2. Applying allowlist to only log safe headers
     3. Replacing security-critical headers with server-controlled values
 
     Parameters
@@ -53,28 +53,51 @@ def sanitize_event_for_logging(event: Dict[str, Any]) -> str:
     # Deep copy to avoid modifying original event
     sanitized = copy.deepcopy(event)
 
-    # Normalize header keys to lowercase
-    if "headers" in event:
-        for key in event["headers"]:
-            if key != key.lower():
-                sanitized["headers"][key.lower()] = event["headers"][key]
-                del sanitized["headers"][key]
+    # Redact authorization headers BEFORE applying allowlist
+    # This ensures we log that auth was present, but not the actual token
+    if "headers" in sanitized:
+        # Normalize to lowercase and redact authorization
+        normalized_headers = {}
+        for key, value in sanitized["headers"].items():
+            key_lower = key.lower()
+            if key_lower == "authorization":
+                normalized_headers[key_lower] = "<REDACTED>"
+            else:
+                normalized_headers[key_lower] = value
+        sanitized["headers"] = normalized_headers
 
     if "multiValueHeaders" in sanitized:
-        for key in event["multiValueHeaders"]:
-            if key != key.lower():
-                sanitized["multiValueHeaders"][key.lower()] = event["multiValueHeaders"][key]
-                del sanitized["multiValueHeaders"][key]
+        # Normalize to lowercase and redact authorization
+        normalized_multi = {}
+        for key, value in sanitized["multiValueHeaders"].items():
+            key_lower = key.lower()
+            if key_lower == "authorization":
+                normalized_multi[key_lower] = ["<REDACTED>"]
+            else:
+                normalized_multi[key_lower] = value
+        sanitized["multiValueHeaders"] = normalized_multi
 
-    # Redact authorization headers
-    if "headers" in sanitized and "authorization" in sanitized["headers"]:
-        sanitized["headers"]["authorization"] = "<REDACTED>"
-    if "multiValueHeaders" in sanitized and "authorization" in sanitized["multiValueHeaders"]:
-        sanitized["multiValueHeaders"]["authorization"] = ["<REDACTED>"]
-
-    # Sanitize security-critical headers to prevent log injection
+    # Apply allowlist filtering to headers
     if "headers" in sanitized:
         sanitized["headers"] = sanitize_headers(sanitized["headers"], event)
+        # Add back redacted authorization if it was present
+        if "authorization" in event.get("headers", {}) or "Authorization" in event.get("headers", {}):
+            sanitized["headers"]["authorization"] = "<REDACTED>"
+
+    # Also sanitize multiValueHeaders if present
+    if "multiValueHeaders" in sanitized:
+        # Convert to single-value dict for sanitization, then back
+        multi_headers = sanitized["multiValueHeaders"]
+        single_value_headers = {k: v[0] if v else "" for k, v in multi_headers.items()}
+        sanitized_single = sanitize_headers(single_value_headers, event)
+
+        # Rebuild multiValueHeaders with sanitized values
+        sanitized["multiValueHeaders"] = {k: [v] for k, v in sanitized_single.items()}
+        # Add back redacted authorization if it was present
+        if "authorization" in event.get("multiValueHeaders", {}) or "Authorization" in event.get(
+            "multiValueHeaders", {}
+        ):
+            sanitized["multiValueHeaders"]["authorization"] = ["<REDACTED>"]
 
     return json.dumps(sanitized)
 
@@ -131,7 +154,7 @@ def get_principal_id(event: dict) -> str:
     return principal
 
 
-def get_bearer_token(event: dict) -> Optional[str]:
+def get_bearer_token(event: dict) -> str | None:
     """
     Extract Bearer token from Authorization header in Lambda event.
 
@@ -153,7 +176,7 @@ def get_bearer_token(event: dict) -> Optional[str]:
     """
     headers = event.get("headers") or {}
     # Headers may vary in casing
-    auth_header = headers.get("Authorization") or headers.get("authorization")
+    auth_header: str | None = headers.get("Authorization") or headers.get("authorization")
     if not auth_header:
         return None
 
@@ -161,7 +184,8 @@ def get_bearer_token(event: dict) -> Optional[str]:
         return None
 
     # Return the token after "Bearer "
-    return auth_header.split(" ", 1)[1].strip()
+    token: str = auth_header.split(" ", 1)[1].strip()
+    return token
 
 
 def get_id_token(event: dict) -> str:

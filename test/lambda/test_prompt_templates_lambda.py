@@ -121,7 +121,7 @@ patch("utilities.common_functions.retry_config", retry_config).start()
 patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()  # Patch the API wrapper
 
 # Now import the lambda functions
-from prompt_templates.lambda_functions import _get_prompt_templates, create, delete, get, list, update
+from prompt_templates.lambda_functions import _get_prompt_templates, create, delete, get, list_prompt, update
 
 
 @pytest.fixture
@@ -338,7 +338,7 @@ def test_list_prompt_templates(prompt_templates_table, lambda_context, mock_is_a
     mock_common.get_username.return_value = "different-user"
     mock_common.get_groups.return_value = ["different-group"]
 
-    response = list(list_event, lambda_context)
+    response = list_prompt(list_event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
     assert len(body["Items"]) == 1
@@ -378,7 +378,7 @@ def test_list_prompt_templates_admin(prompt_templates_table, lambda_context, moc
     # Set admin to True for this test to increase coverage
     mock_is_admin.return_value = True
 
-    response = list(list_event, lambda_context)
+    response = list_prompt(list_event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
     assert len(body["Items"]) == 1
@@ -413,7 +413,7 @@ def test_list_prompt_templates_for_user(prompt_templates_table, lambda_context):
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
     }
 
-    response = list(list_event, lambda_context)
+    response = list_prompt(list_event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
     assert len(body["Items"]) == 1

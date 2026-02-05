@@ -36,6 +36,8 @@ dev:
   deployRag: true
   deployUI: true
   deployDocs: true
+  useCustomBranding: false
+  customDisplayName: LISA
   authConfig:
     authority: test
     clientId: test

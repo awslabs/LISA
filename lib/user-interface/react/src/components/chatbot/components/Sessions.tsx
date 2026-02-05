@@ -23,7 +23,6 @@ import Button from '@cloudscape-design/components/button';
 
 import { useLazyGetConfigurationQuery } from '@/shared/reducers/configuration.reducer';
 import {
-    sessionApi,
     useDeleteAllSessionsForUserMutation,
     useDeleteSessionByIdMutation,
     useLazyGetSessionByIdQuery,

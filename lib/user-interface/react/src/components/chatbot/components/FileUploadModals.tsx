@@ -26,7 +26,7 @@ import {
     TextContent,
 } from '@cloudscape-design/components';
 import { FileTypes, StatusTypes } from '@/components/types';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RagConfig } from './RagOptions';
 import { useAppDispatch } from '@/config/store';
 import { useNotificationService } from '@/shared/util/hooks';
@@ -104,6 +104,13 @@ export const ContextUploadModal = ({
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
     const modelSupportsImages = !!(selectedModel?.features?.filter((feature) => feature.name === 'imageInput')?.length) || selectedModel?.modelType === ModelType.videogen || selectedModel?.modelType === ModelType.imagegen;
+
+    // Clear selectedFiles when fileContext is cleared externally (e.g., via badge dismissal)
+    useEffect(() => {
+        if (!fileContext) {
+            setSelectedFiles([]);
+        }
+    }, [fileContext]);
 
     function handleError (error: string) {
         notificationService.generateNotification(error, 'error');

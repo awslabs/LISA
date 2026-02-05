@@ -28,7 +28,6 @@ import {
     PromptInput,
     Icon,
     Flashbar,
-    FileInput,
     FileTokenGroup,
 } from '@cloudscape-design/components';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';

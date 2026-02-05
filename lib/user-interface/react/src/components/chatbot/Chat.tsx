@@ -536,6 +536,34 @@ export default function Chat ({ sessionId }) {
         }
     }, [sessionHealth]);
 
+    // When session finishes loading, enable auto-scroll and scroll to bottom
+    useEffect(() => {
+        if (!loadingSession && session.history.length > 0 && sessionId) {
+            // Re-enable auto-scroll when a session is loaded
+            setShouldAutoScroll(true);
+
+            // For sessions with images, we need multiple scroll attempts because:
+            // - Base64 images load instantly (synchronously)
+            // - Cached images load very quickly
+            // - The browser needs time to reflow the layout with image dimensions
+            const scrollToBottom = () => {
+                if (scrollContainerRef.current) {
+                    scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+                }
+            };
+
+            // Multiple scroll attempts with increasing delays to ensure we reach the bottom
+            // as images fully load and the container height updates
+            const delays = [0, 50, 150, 300, 500];
+            const timeoutIds = delays.map((delay) => setTimeout(scrollToBottom, delay));
+
+            // Cleanup timeouts if component unmounts or effect re-runs
+            return () => {
+                timeoutIds.forEach((id) => clearTimeout(id));
+            };
+        }
+    }, [loadingSession, sessionId, session.history.length]);
+
     useEffect(() => {
         if (shouldAutoScroll && scrollContainerRef.current) {
             // Scroll the container directly to the bottom

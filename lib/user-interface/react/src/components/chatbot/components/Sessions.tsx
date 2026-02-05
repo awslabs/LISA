@@ -236,25 +236,17 @@ export function Sessions ({ newSession }) {
                         Found {filteredSessions.length} session{filteredSessions.length !== 1 ? 's' : ''}
                     </Box>
                 )}
-                <SpaceBetween direction='horizontal' size='xs'>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <Button
                         iconName='add-plus'
-                        variant='inline-icon'
+                        variant='primary'
                         onClick={newSession}
-                        ariaLabel='New Session'
-                    />
-                    <Button
-                        iconAlt='Refresh list'
-                        iconName='refresh'
-                        variant='inline-icon'
-                        onClick={() => dispatch(sessionApi.util.invalidateTags(['sessions']))}
-                        ariaLabel='Refresh Sessions'
-                    />
+                    >
+                        New
+                    </Button>
                     {config?.configuration.enabledComponents.deleteSessionHistory &&
                         <Button
-                            iconAlt='Delete sessions'
                             iconName='remove'
-                            variant='inline-icon'
                             onClick={() =>
                                 dispatch(
                                     setConfirmationModal({
@@ -264,9 +256,10 @@ export function Sessions ({ newSession }) {
                                         description: 'This will delete all of your user sessions.'
                                     })
                                 )}
-                            ariaLabel='Delete All Sessions'
-                        />}
-                </SpaceBetween>
+                        >
+                            Delete All
+                        </Button>}
+                </div>
             </SpaceBetween>
 
             {isSessionsLoading && (

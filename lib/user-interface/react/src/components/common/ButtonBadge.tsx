@@ -26,7 +26,7 @@ type ButtonBadgeProps = {
     show?: boolean
 };
 
-export const ButtonBadge = ({ text, icon, onClick, show }: ButtonBadgeProps) => {
+export const ButtonBadge = ({ text, icon, onClick, show, dataTestId }: ButtonBadgeProps) => {
     if (show !== true) {
         return null;
     }

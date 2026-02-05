@@ -41,7 +41,7 @@ import { LAMBDA_PATH } from '../util';
 import { getPythonRuntime } from '../api-base/utils';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { EventBus } from 'aws-cdk-lib/aws-events';
-import { Bucket, BucketEncryption, HttpMethods } from 'aws-cdk-lib/aws-s3';
+import { BlockPublicAccess, Bucket, BucketEncryption, HttpMethods } from 'aws-cdk-lib/aws-s3';
 
 export type LisaApiBaseProps = {
     vpc: Vpc;
@@ -79,6 +79,7 @@ export class LisaApiBaseConstruct extends Construct {
             removalPolicy: config.removalPolicy,
             autoDeleteObjects: config.removalPolicy === RemovalPolicy.DESTROY,
             enforceSSL: true,
+            blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
             cors: [
                 {
                     allowedMethods: [HttpMethods.GET, HttpMethods.POST],

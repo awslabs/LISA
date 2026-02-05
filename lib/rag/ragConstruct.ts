@@ -17,7 +17,7 @@ import { CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { ILayerVersion, LayerVersion } from 'aws-cdk-lib/aws-lambda';
-import { Bucket, BucketEncryption, HttpMethods } from 'aws-cdk-lib/aws-s3';
+import { BlockPublicAccess, Bucket, BucketEncryption, HttpMethods } from 'aws-cdk-lib/aws-s3';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { AttributeType, BillingMode, StreamViewType, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -105,6 +105,7 @@ export class LisaRagConstruct extends Construct {
             ],
             serverAccessLogsBucket: bucketAccessLogsBucket,
             serverAccessLogsPrefix: 'logs/rag-bucket/',
+            blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
             encryption: BucketEncryption.S3_MANAGED
         });
 

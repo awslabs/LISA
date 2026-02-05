@@ -892,7 +892,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "60ef36de618f3c0976d6852620edaaebacfcdbdbcf79082154f7b89228a25147.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Description": "Lists available MCP Workbench tools",
         "Environment": {
@@ -943,12 +943,35 @@
         "McpWorkbenchLambdaExecutionRole43E4060B"
       ]
     },
+    "McpWorkbenchLisaMcpWorkbenchmcpworkbenchlistLogRetention423CC79F": {
+      "Type": "Custom::LogRetention",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "McpWorkbenchLisaMcpWorkbenchmcpworkbenchlist046D8BF5"
+              }
+            ]
+          ]
+        },
+        "RetentionInDays": 30
+      }
+    },
     "McpWorkbenchLisaMcpWorkbenchmcpworkbenchcreateE9F26E3A": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "60ef36de618f3c0976d6852620edaaebacfcdbdbcf79082154f7b89228a25147.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Description": "Create MCP Workbench tools",
         "Environment": {
@@ -999,12 +1022,35 @@
         "McpWorkbenchLambdaExecutionRole43E4060B"
       ]
     },
+    "McpWorkbenchLisaMcpWorkbenchmcpworkbenchcreateLogRetention14AEA18C": {
+      "Type": "Custom::LogRetention",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "McpWorkbenchLisaMcpWorkbenchmcpworkbenchcreateE9F26E3A"
+              }
+            ]
+          ]
+        },
+        "RetentionInDays": 30
+      }
+    },
     "McpWorkbenchLisaMcpWorkbenchmcpworkbenchread7EECA39E": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "60ef36de618f3c0976d6852620edaaebacfcdbdbcf79082154f7b89228a25147.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Description": "Get MCP Workbench tool",
         "Environment": {
@@ -1055,12 +1101,35 @@
         "McpWorkbenchLambdaExecutionRole43E4060B"
       ]
     },
+    "McpWorkbenchLisaMcpWorkbenchmcpworkbenchreadLogRetention3F008761": {
+      "Type": "Custom::LogRetention",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "McpWorkbenchLisaMcpWorkbenchmcpworkbenchread7EECA39E"
+              }
+            ]
+          ]
+        },
+        "RetentionInDays": 30
+      }
+    },
     "McpWorkbenchLisaMcpWorkbenchmcpworkbenchupdate830E4B0B": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "60ef36de618f3c0976d6852620edaaebacfcdbdbcf79082154f7b89228a25147.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Description": "Update MCP Workbench tool",
         "Environment": {
@@ -1111,12 +1180,35 @@
         "McpWorkbenchLambdaExecutionRole43E4060B"
       ]
     },
+    "McpWorkbenchLisaMcpWorkbenchmcpworkbenchupdateLogRetentionE2837050": {
+      "Type": "Custom::LogRetention",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "McpWorkbenchLisaMcpWorkbenchmcpworkbenchupdate830E4B0B"
+              }
+            ]
+          ]
+        },
+        "RetentionInDays": 30
+      }
+    },
     "McpWorkbenchLisaMcpWorkbenchmcpworkbenchdelete020452F9": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "60ef36de618f3c0976d6852620edaaebacfcdbdbcf79082154f7b89228a25147.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Description": "Delete MCP Workbench tool",
         "Environment": {
@@ -1167,12 +1259,35 @@
         "McpWorkbenchLambdaExecutionRole43E4060B"
       ]
     },
+    "McpWorkbenchLisaMcpWorkbenchmcpworkbenchdeleteLogRetention358CCB28": {
+      "Type": "Custom::LogRetention",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "McpWorkbenchLisaMcpWorkbenchmcpworkbenchdelete020452F9"
+              }
+            ]
+          ]
+        },
+        "RetentionInDays": 30
+      }
+    },
     "McpWorkbenchLisaMcpWorkbenchmcpworkbenchvalidatesyntax4307220C": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "60ef36de618f3c0976d6852620edaaebacfcdbdbcf79082154f7b89228a25147.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Description": "Validate Python code syntax",
         "Environment": {
@@ -1222,6 +1337,29 @@
         "McpWorkbenchLambdaExecutionRoleDefaultPolicyAB1DECE8",
         "McpWorkbenchLambdaExecutionRole43E4060B"
       ]
+    },
+    "McpWorkbenchLisaMcpWorkbenchmcpworkbenchvalidatesyntaxLogRetentionF1654049": {
+      "Type": "Custom::LogRetention",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "McpWorkbenchLisaMcpWorkbenchmcpworkbenchvalidatesyntax4307220C"
+              }
+            ]
+          ]
+        },
+        "RetentionInDays": 30
+      }
     },
     "McpWorkbenchS3EventHandlerRole545174C5": {
       "Type": "AWS::IAM::Role",
@@ -1337,7 +1475,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "60ef36de618f3c0976d6852620edaaebacfcdbdbcf79082154f7b89228a25147.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Environment": {
           "Variables": {
@@ -1443,6 +1581,15 @@
     "LISAMCPWorkbenchtestlisadevC221720C": {
       "Type": "AWS::S3::Bucket",
       "Properties": {
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        },
         "BucketName": "test-lisa-dev-mcpworkbench-012345678901",
         "LoggingConfiguration": {
           "DestinationBucketName": {
@@ -1469,6 +1616,12 @@
             ]
           },
           "LogFilePrefix": "logs/mcpworkbench-bucket/"
+        },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
         },
         "Tags": [
           {
@@ -1740,6 +1893,83 @@
       "DependsOn": [
         "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleDefaultPolicy2CF63D36",
         "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleB6FB88EC"
+      ]
+    },
+    "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRole9741ECFB": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRoleDefaultPolicyADDA7DEB": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "logs:PutRetentionPolicy",
+                "logs:DeleteRetentionPolicy"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRoleDefaultPolicyADDA7DEB",
+        "Roles": [
+          {
+            "Ref": "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRole9741ECFB"
+          }
+        ]
+      }
+    },
+    "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Handler": "index.handler",
+        "Runtime": "nodejs22.x",
+        "Timeout": 900,
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "2819175352ad1ce0dae768e83fc328fb70fb5f10b4a8ff0ccbcb791f02b0716d.zip"
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRole9741ECFB",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRoleDefaultPolicyADDA7DEB",
+        "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRole9741ECFB"
       ]
     }
   },

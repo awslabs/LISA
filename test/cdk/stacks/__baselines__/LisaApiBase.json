@@ -76,6 +76,12 @@
           },
           "LogFilePrefix": "logs/generated-images-bucket/"
         },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
         "Tags": [
           {
             "Key": "aws-cdk:auto-delete-objects",
@@ -483,7 +489,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Environment": {
           "Variables": {
@@ -701,7 +707,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "FunctionName": "test-lisa-dev-iam_auth_setup",
         "Handler": "utilities.db_setup_iam_auth.handler",
@@ -958,7 +964,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Description": "REST API and UI Authorization Lambda",
         "Environment": {

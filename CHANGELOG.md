@@ -1,3 +1,88 @@
+# v6.2.0
+
+## Key Features
+
+### Custom Branding
+This feature introduces custom branding capabilities, allowing users to:
+
+- Change logos (login, nav bar, and favicon) with their own brand logos
+- Update the LISA brand name and wording throughout the product with their own brand name
+- Change the theming of Cloudscape through the Cloudscape theming system
+
+**Branding:**
+- **UI**: Added ability to customize logos and brand name
+
+### Video Generation Models
+This feature adds support for video generation in LISA, including:
+
+- Adding new VideoGen model type that admins can create in the model management
+- Proxying routes to LiteLLM for video generation
+- Supporting image generation in LISA Chat
+- Saving generated videos in S3 and allowing users to download and share video links
+- Exporting all videos from a selected session as a zip
+
+**Video Generation:**
+- **Models**: New VideoGen model type added for admins
+- **Chat**: Support for generating and saving videos
+- **Session Management**: Download and share video links, export videos
+
+### Abstract Authentication
+This feature introduces an abstraction layer for authentication, allowing users to more easily override the authentication mechanisms used by LISA with minimal changes. This includes:
+
+- Adding auth abstraction to allow customization of authentication flows
+- Updating the asset builder to use containers, ensuring Python requirements are correctly applied to the Lambda runtime
+- Explicitly setting the network mode of ECS containers (VPC for rest-api/workbench, bridge for daemon models)
+
+**Authentication:**
+- **Architecture**: Added auth abstraction layer for customization
+- **Deployment**: Improved container usage and network configuration
+
+### Interactive Configuration Generator CLI
+This feature adds an interactive CLI tool that guides users through creating a valid  file for LISA deployment. Instead of manually editing YAML and referencing , users can now run 
+> @awslabs/lisa@6.2.0 generate-config
+> tsx scripts/generate-config.ts
+
+╔════════════════════════════════════════════════════════════════╗
+║           LISA Configuration Generator                         ║
+║   Generate a config-custom.yaml for LISA deployment            ║
+╚════════════════════════════════════════════════════════════════╝
+
+📋 Core Configuration
+
+AWS Account Number (12 digits):  and answer prompts to generate a properly formatted configuration.
+
+The generator prompts for and validates:
+- Core Configuration: AWS account, region, partition, deployment stage/name, S3 bucket
+- Partition Support: additional partition configurations
+
+**Configuration Management:**
+- **CLI**: Added interactive configuration generator tool
+
+### Reasoning Model Support
+This feature adds the ability for admins to mark models as reasoning-capable, which enables those models to output reasoning content alongside their responses. Users can then configure the level of reasoning effort to be included, and the reasoning content is displayed in LISA Chat and exported with the session data.
+
+**Reasoning Models:**
+- **Models**: Admins can designate models as reasoning-capable
+- **Chat**: Reasoning content displayed alongside model responses
+- **Exports**: Reasoning content included in session exports
+
+## Key Changes
+- **Security**: Enabled encryption at rest for all S3 buckets, enforced SSL/TLS traffic only to S3, and encrypted all EBS volumes
+- **Deployment**: Updated container source to use AWS ECR, upgraded host EC2 image to use AL2023
+- **Usability**: Added loading/refresh icons across pages to better inform users when a refresh is taking place
+- **Database**: Enabled IAM-based authentication for RDS connections, removed the need for storing master passwords
+- **Testing**: Consolidated LISA testing, enabled code coverage metrics, and upgraded Python syntax to latest version
+- **Accessibility**: Added a retry button next to failed user prompts, made the delete session dropdown button only appear if the config allows it
+- **Bugfixes**: Addressed several IAM permission issues, CDK warnings, and model deployment healthiness checks
+
+## Acknowledgements
+* @121983012+jmharold
+* @99225408+Ernest-Gray
+* @bedanley
+* @evmann
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v6.1.1..v6.2.0
+
 # v6.1.1
 
 ##  UI Cleanup

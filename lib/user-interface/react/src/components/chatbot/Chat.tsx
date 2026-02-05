@@ -846,29 +846,33 @@ export default function Chat ({ sessionId }) {
                     }
                 />
             )}
+
+            {/* Sticky warning banner for deleted model */}
+            {isModelDeleted && (
+                <div className='sticky top-0 z-50 bg-white dark:bg-gray-900'>
+                    <Box padding={{ horizontal: 'l', top: 's' }}>
+                        <Flashbar
+                            items={[
+                                {
+                                    type: 'warning',
+                                    dismissible: false,
+                                    content: (
+                                        <>
+                                            This session uses the model <strong>{selectedModel?.modelId}</strong> which is no longer available.
+                                            You can view the conversation history but cannot send new messages.
+                                            Please start a new session with a different model.
+                                        </>
+                                    ),
+                                    id: 'model-deleted-warning',
+                                },
+                            ]}
+                        />
+                    </Box>
+                </div>
+            )}
+
             <div ref={scrollContainerRef} className='overflow-y-auto h-[calc(100vh-20rem)] bottom-8'>
                 <SpaceBetween direction='vertical' size='l'>
-                    {/* Warning flashbar for deleted model */}
-                    {isModelDeleted && (
-                        <Box padding={{ horizontal: 'l' }}>
-                            <Flashbar
-                                items={[
-                                    {
-                                        type: 'warning',
-                                        dismissible: false,
-                                        content: (
-                                            <>
-                                                This session uses the model <strong>{selectedModel?.modelId}</strong> which is no longer available.
-                                                You can view the conversation history but cannot send new messages.
-                                                Please start a new session with a different model.
-                                            </>
-                                        ),
-                                        id: 'model-deleted-warning',
-                                    },
-                                ]}
-                            />
-                        </Box>
-                    )}
 
                     {loadingSession && (
                         <Box textAlign='center' padding='l'>

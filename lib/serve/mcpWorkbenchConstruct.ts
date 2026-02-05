@@ -222,7 +222,13 @@ export class McpWorkbenchConstruct extends Construct {
                 },
                 environment: {},
                 sharedMemorySize: 0,
-                privileged: true
+                // Use SYS_ADMIN capability instead of full privileged mode
+                // Required for FUSE mounts (rclone S3 mount)
+                // The mcpworkbench application itself runs as non-root user (lisa)
+                privileged: false,
+                linuxCapabilities: {
+                    add: ['SYS_ADMIN']
+                }
             },
             containerMemoryReservationMiB: 1024,
             applicationTarget: {

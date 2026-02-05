@@ -466,7 +466,11 @@ export const ContainerConfigSchema = z.object({
     sharedMemorySize: z.number().min(0).default(0).describe('The value for the size of the /dev/shm volume.'),
     healthCheckConfig: ContainerHealthCheckConfigSchema.default(ContainerHealthCheckConfigSchema.parse({})),
     privileged: z.boolean().optional(),
-    memoryReservation: z.number().min(0).optional().describe('Memory reservation in MiB for the container.')
+    memoryReservation: z.number().min(0).optional().describe('Memory reservation in MiB for the container.'),
+    linuxCapabilities: z.object({
+        add: z.array(z.string()).optional().describe('Linux capabilities to add to the container (e.g., SYS_ADMIN for FUSE mounts).'),
+        drop: z.array(z.string()).optional().describe('Linux capabilities to drop from the container.')
+    }).optional().describe('Linux capabilities configuration for the container.')
 }).describe('Configuration for the container.');
 
 export type ContainerConfig = z.infer<typeof ContainerConfigSchema>;

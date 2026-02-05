@@ -155,11 +155,11 @@ async def security_middleware(
         # Skip null byte check for multipart/form-data (binary file uploads contain null bytes)
         # and other binary content types
         is_binary_content = (
-            "multipart/form-data" in content_type or
-            "application/octet-stream" in content_type or
-            "image/" in content_type or
-            "video/" in content_type or
-            "audio/" in content_type
+            "multipart/form-data" in content_type
+            or "application/octet-stream" in content_type
+            or "image/" in content_type
+            or "video/" in content_type
+            or "audio/" in content_type
         )
 
         # Check for null bytes in body (only for text-based content)

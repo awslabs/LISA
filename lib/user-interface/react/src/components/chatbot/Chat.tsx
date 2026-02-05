@@ -131,6 +131,7 @@ export default function Chat ({ sessionId }) {
     const [hasUserInteractedWithModel, setHasUserInteractedWithModel] = useState(false);
     const [mermaidRenderComplete, setMermaidRenderComplete] = useState(0);
     const [videoLoadComplete, setVideoLoadComplete] = useState(0);
+    const [imageLoadComplete, setImageLoadComplete] = useState(0);
     const [dynamicMaxRows, setDynamicMaxRows] = useState(8);
     const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
     const [updatingAutoApprovalForTool, setUpdatingAutoApprovalForTool] = useState<string | null>(null);
@@ -143,6 +144,17 @@ export default function Chat ({ sessionId }) {
     // Callback to handle video load completion (for auto-scroll)
     const handleVideoLoadComplete = useCallback(() => {
         setVideoLoadComplete((prev) => prev + 1);
+    }, []);
+
+    // Callback to handle image load completion (for auto-scroll)
+    const handleImageLoadComplete = useCallback(() => {
+        // Use setTimeout with RAF to ensure the DOM has fully updated and reflowed
+        // before triggering scroll. Images can cause significant layout shifts.
+        setTimeout(() => {
+            requestAnimationFrame(() => {
+                setImageLoadComplete((prev) => prev + 1);
+            });
+        }, 50);
     }, []);
 
     // Ref to track if we're processing tool calls to prevent infinite loops
@@ -525,12 +537,13 @@ export default function Chat ({ sessionId }) {
     }, [sessionHealth]);
 
     useEffect(() => {
-        if (shouldAutoScroll && bottomRef.current) {
-            // Use 'auto' instead of 'smooth' to prevent jagged scrolling during rapid streaming
-            // which was breaking AT_BOTTOM_THRESHOLD disabling auto-scroll without user input
-            bottomRef.current.scrollIntoView({ behavior: 'auto' });
+        if (shouldAutoScroll && scrollContainerRef.current) {
+            // Scroll the container directly to the bottom
+            // This is more reliable than scrollIntoView for ensuring we reach the actual bottom
+            const container = scrollContainerRef.current;
+            container.scrollTop = container.scrollHeight;
         }
-    }, [isStreaming, session, mermaidRenderComplete, videoLoadComplete, shouldAutoScroll]);
+    }, [isStreaming, session, mermaidRenderComplete, videoLoadComplete, imageLoadComplete, shouldAutoScroll]);
 
     // Scroll event listener to detect scroll position
     useEffect(() => {
@@ -856,6 +869,7 @@ export default function Chat ({ sessionId }) {
                             setUserPrompt={setUserPrompt}
                             onMermaidRenderComplete={handleMermaidRenderComplete}
                             onVideoLoadComplete={handleVideoLoadComplete}
+                            onImageLoadComplete={handleImageLoadComplete}
                             retryResponse={retryResponse}
                             errorState={errorState && idx === session.history.length - 1 }
                         />));
@@ -873,6 +887,7 @@ export default function Chat ({ sessionId }) {
                         setUserPrompt={setUserPrompt}
                         onMermaidRenderComplete={handleMermaidRenderComplete}
                         onVideoLoadComplete={handleVideoLoadComplete}
+                        onImageLoadComplete={handleImageLoadComplete}
                     />}
                     {!loadingSession && session.history.length === 0 && sessionId === undefined && (
                         <WelcomeScreen

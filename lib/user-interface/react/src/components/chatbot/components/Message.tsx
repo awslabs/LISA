@@ -62,11 +62,12 @@ type MessageProps = {
     showUsage?: boolean;
     onMermaidRenderComplete?: () => void;
     onVideoLoadComplete?: () => void;
+    onImageLoadComplete?: () => void;
     retryResponse?: () => Promise<void>
     errorState?: boolean;
 };
 
-export const Message = React.memo(({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration, callingToolName, showUsage = false, onMermaidRenderComplete, onVideoLoadComplete, retryResponse, errorState }: MessageProps) => {
+export const Message = React.memo(({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration, callingToolName, showUsage = false, onMermaidRenderComplete, onVideoLoadComplete, onImageLoadComplete, retryResponse, errorState }: MessageProps) => {
     const currentUser = useAppSelector(selectCurrentUsername);
     const ragCitations = !isStreaming && message?.metadata?.ragDocuments ? message?.metadata.ragDocuments : undefined;
     const [resend, setResend] = useState(false);
@@ -260,14 +261,14 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                     );
                 } else if (item.type === 'image_url' && item.image_url?.url) {
                     return message.type === MessageTypes.HUMAN ?
-                        <img key={index} src={item.image_url.url} alt='User provided' style={{ maxWidth: '50%', maxHeight: '30em', marginTop: '8px' }} /> :
+                        <img key={index} src={item.image_url.url} alt='User provided' style={{ maxWidth: '50%', maxHeight: '30em', marginTop: '8px' }} onLoad={() => onImageLoadComplete?.()} /> :
                         <Grid key={`${index}-Grid`} gridDefinition={[{ colspan: 11 }, { colspan: 1 }]}>
                             <Link onClick={() => {
                                 setSelectedImage(item);
                                 setSelectedMetadata(metadata);
                                 setShowImageViewer(true);
                             }}>
-                                <img key={`${index}-Image`} src={item.image_url.url} alt='AI Generated' style={{ maxWidth: '100%', maxHeight: '30em', marginTop: '8px' }} />
+                                <img key={`${index}-Image`} src={item.image_url.url} alt='AI Generated' style={{ maxWidth: '100%', maxHeight: '30em', marginTop: '8px' }} onLoad={() => onImageLoadComplete?.()} />
                             </Link>
                             <ButtonDropdown
                                 items={[
@@ -423,9 +424,10 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                     <ChatBubble
                         ariaLabel='Generative AI assistant'
                         type='incoming'
-                        showLoadingBar={isStreaming}
+                        showLoadingBar={isStreaming || (message?.metadata?.imageGeneration && message?.metadata?.imageGenerationStatus === 'processing')}
                         avatar={
                             <Avatar
+                                loading={message?.metadata?.imageGeneration && message?.metadata?.imageGenerationStatus === 'processing'}
                                 color='gen-ai'
                                 iconName='gen-ai'
                                 ariaLabel='Generative AI assistant'
@@ -491,6 +493,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                     ...(message.usage && { usage: message.usage })
                                 }} style={isDarkMode ? darkStyles : defaultStyles} />
                             </ExpandableSection>}
+                        {!isStreaming && !isRunning && !message?.metadata?.imageGeneration && !message?.metadata?.videoGeneration &&
                         <ButtonGroup
                             onItemClick={({ detail }) =>
                                 ['copy'].includes(detail.id) &&
@@ -512,7 +515,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                 }
                             ]}
                             variant='icon'
-                        />
+                        />}
                     </ChatBubble>
                 </SpaceBetween>
             )}

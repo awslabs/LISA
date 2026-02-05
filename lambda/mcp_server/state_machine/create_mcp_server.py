@@ -24,7 +24,7 @@ from typing import Any
 import boto3
 from botocore.config import Config
 from mcp_server.models import HostedMcpServerModel, HostedMcpServerStatus, McpServerStatus
-from utilities.time import now, iso_string
+from utilities.time import iso_string, now
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)

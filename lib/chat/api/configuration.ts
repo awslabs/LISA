@@ -153,7 +153,8 @@ export class ConfigurationApi extends Construct {
 
         let environment = {
             CONFIG_TABLE_NAME: this.configTable.tableName,
-            FASTAPI_ENDPOINT: fastApiEndpoint
+            FASTAPI_ENDPOINT: fastApiEndpoint,
+            ADMIN_GROUP: config.authConfig?.adminGroup || '',
         };
 
         if (mcpApi) {

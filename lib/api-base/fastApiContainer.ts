@@ -71,7 +71,7 @@ export class FastApiContainer extends Construct {
 
         const { config, securityGroup, tokenTable, vpc, managementKeyName} = props;
 
-        const instanceType = 'm5.large';
+        const instanceType = 'm5.xlarge';
 
         const buildArgs: Record<string, string> | undefined = {
             BASE_IMAGE: config.baseImage,

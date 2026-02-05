@@ -24,7 +24,7 @@ from typing import Any
 import boto3
 from botocore.config import Config
 from mcp_server.models import HostedMcpServerModel, HostedMcpServerStatus, McpServerStatus
-from utilities.time import now
+from utilities.time import now, iso_string
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -254,7 +254,7 @@ def handle_add_server_to_active(event: dict[str, Any], context: Any) -> dict[str
                         "owner": owner,
                         "url": server_url,
                         "name": name,
-                        "created": now(),
+                        "created": iso_string(),
                         "customHeaders": {"Authorization": "Bearer {LISA_BEARER_TOKEN}"},
                         "status": McpServerStatus.ACTIVE,
                     }

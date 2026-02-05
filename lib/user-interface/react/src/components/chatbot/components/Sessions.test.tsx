@@ -171,12 +171,8 @@ describe('Sessions', () => {
 
         renderWithProviders(<Sessions newSession={mockNewSession} />);
 
-        // Open search popover
-        const searchButton = screen.getByLabelText('Search sessions');
-        await user.click(searchButton);
-
         // Type search query that won't match
-        const searchInput = screen.getByPlaceholderText('Search sessions by name...');
+        const searchInput = screen.getByPlaceholderText('Search sessions by name');
         await user.type(searchInput, 'NonExistentSession');
 
         await waitFor(() => {
@@ -210,12 +206,8 @@ describe('Sessions', () => {
 
         renderWithProviders(<Sessions newSession={mockNewSession} />);
 
-        // Open search popover
-        const searchButton = screen.getByLabelText('Search sessions');
-        await user.click(searchButton);
-
         // Type search query
-        const searchInput = screen.getByPlaceholderText('Search sessions by name...');
+        const searchInput = screen.getByPlaceholderText('Search sessions by name');
         await user.type(searchInput, 'Python');
 
         await waitFor(() => {
@@ -234,7 +226,7 @@ describe('Sessions', () => {
 
         renderWithProviders(<Sessions newSession={mockNewSession} />);
 
-        const newSessionButton = screen.getByLabelText('New Session');
+        const newSessionButton = screen.getByRole('button', { name: /new/i });
         await user.click(newSessionButton);
 
         expect(mockNewSession).toHaveBeenCalledOnce();

@@ -149,17 +149,27 @@ async def security_middleware(
         # Read the body
         body = await request.body()
 
-        # Check for null bytes in body
-        if contains_null_bytes(body):
+        # Check content type to determine if we should validate body
+        content_type = request.headers.get("content-type", "").lower()
+
+        # Skip null byte check for multipart/form-data (binary file uploads contain null bytes)
+        # and other binary content types
+        is_binary_content = (
+            "multipart/form-data" in content_type or
+            "application/octet-stream" in content_type or
+            "image/" in content_type or
+            "video/" in content_type or
+            "audio/" in content_type
+        )
+
+        # Check for null bytes in body (only for text-based content)
+        if not is_binary_content and contains_null_bytes(body):
             logger.warning(f"Null bytes detected in request body for path: {path}")
             return create_error_response(
                 status_code=400,
                 error="Bad Request",
                 message="Invalid characters detected in request",
             )
-
-        # Check content type to determine if we should validate JSON
-        content_type = request.headers.get("content-type", "").lower()
 
         # Skip body validation for multipart/form-data (file uploads)
         if "multipart/form-data" not in content_type:

@@ -25,7 +25,7 @@
  * subject to the terms of the AWS Customer Agreement.
  */
 import * as cdk from 'aws-cdk-lib';
-import { Duration, RemovalPolicy } from 'aws-cdk-lib';
+import { Duration } from 'aws-cdk-lib';
 import {
     AuthorizationType,
     Cors,
@@ -36,7 +36,7 @@ import {
 } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { IRole } from 'aws-cdk-lib/aws-iam';
-import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
+import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { CfnPermission, Code, Function, IFunction, ILayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import { Vpc } from '../networking/vpc';
@@ -109,12 +109,6 @@ export function registerAPIEndpoint (
             principal: 'apigateway.amazonaws.com',
         });
     } else {
-        const logGroup = new LogGroup(scope, `${functionId}-LogGroup`, {
-            logGroupName: `/aws/lambda/${functionId}`,
-            retention: RetentionDays.ONE_MONTH,
-            removalPolicy: RemovalPolicy.RETAIN,
-        });
-
         handler = new Function(scope, functionId, {
             functionName: functionId,
             runtime: pythonRuntime,
@@ -131,7 +125,7 @@ export function registerAPIEndpoint (
             vpc: vpc.vpc,
             securityGroups,
             vpcSubnets: vpc.subnetSelection,
-            logGroup,
+            logRetention: RetentionDays.ONE_MONTH,
         });
     }
 

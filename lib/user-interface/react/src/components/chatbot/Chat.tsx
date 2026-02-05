@@ -995,7 +995,7 @@ export default function Chat ({ sessionId }) {
                                     {
                                         root: {
                                             borderColor: {
-                                                disabled: isConnected ? ''  : '#ff7a7a'
+                                                disabled: isModelDeleted ? '#ffe347' : isConnected ? '' : '#ff7a7a'
                                             }
                                         }
                                     }

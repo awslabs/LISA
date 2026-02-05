@@ -22,10 +22,13 @@ import SpaceBetween from '@cloudscape-design/components/space-between';
 import Spinner from '@cloudscape-design/components/spinner';
 import {
     Autosuggest,
-    ButtonGroup, Checkbox,
+    ButtonGroup,
+    Checkbox,
     Grid,
     PromptInput,
     Icon,
+    Flashbar,
+    FileTokenGroup,
 } from '@cloudscape-design/components';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 
@@ -119,6 +122,7 @@ export default function Chat ({ sessionId }) {
     // State management
     const [userPrompt, setUserPrompt] = useState('');
     const [fileContext, setFileContext] = useState('');
+    const [fileContextName, setFileContextName] = useState('');
     const [dirtySession, setDirtySession] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
     const [useRag, setUseRag] = useState(false);
@@ -128,8 +132,10 @@ export default function Chat ({ sessionId }) {
     const [hasUserInteractedWithModel, setHasUserInteractedWithModel] = useState(false);
     const [mermaidRenderComplete, setMermaidRenderComplete] = useState(0);
     const [videoLoadComplete, setVideoLoadComplete] = useState(0);
+    const [imageLoadComplete, setImageLoadComplete] = useState(0);
     const [dynamicMaxRows, setDynamicMaxRows] = useState(8);
     const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+    const [updatingAutoApprovalForTool, setUpdatingAutoApprovalForTool] = useState<string | null>(null);
 
     // Callback to handle Mermaid diagram rendering completion
     const handleMermaidRenderComplete = useCallback(() => {
@@ -139,6 +145,17 @@ export default function Chat ({ sessionId }) {
     // Callback to handle video load completion (for auto-scroll)
     const handleVideoLoadComplete = useCallback(() => {
         setVideoLoadComplete((prev) => prev + 1);
+    }, []);
+
+    // Callback to handle image load completion (for auto-scroll)
+    const handleImageLoadComplete = useCallback(() => {
+        // Use setTimeout with RAF to ensure the DOM has fully updated and reflowed
+        // before triggering scroll. Images can cause significant layout shifts.
+        setTimeout(() => {
+            requestAnimationFrame(() => {
+                setImageLoadComplete((prev) => prev + 1);
+            });
+        }, 50);
     }, []);
 
     // Ref to track if we're processing tool calls to prevent infinite loops
@@ -162,7 +179,7 @@ export default function Chat ({ sessionId }) {
 
     // Use the custom hook to manage multiple MCP connections
     const { tools: mcpTools, callTool, McpConnections, toolToServerMap } = useMultipleMcp(enabledServers, userPreferences?.preferences?.mcp);
-    const [updatePreferences] = useUpdateUserPreferencesMutation();
+    const [updatePreferences, {isSuccess: isUpdatingPreferencesSuccess, isError: isUpdatingPreferencesError, isLoading: isUpdatingPreferences}] = useUpdateUserPreferencesMutation();
 
     useEffect(() => {
         if (userPreferences) {
@@ -171,6 +188,22 @@ export default function Chat ({ sessionId }) {
             setPreferences({ ...DefaultUserPreferences, user: userName });
         }
     }, [userPreferences, userName]);
+
+    // Handle preferences update success
+    useEffect(() => {
+        if (isUpdatingPreferencesSuccess) {
+            notificationService.generateNotification('Successfully updated tool preferences', 'success');
+            setUpdatingAutoApprovalForTool(null);
+        }
+    }, [isUpdatingPreferencesSuccess, notificationService]);
+
+    // Handle preferences update error
+    useEffect(() => {
+        if (isUpdatingPreferencesError) {
+            notificationService.generateNotification('Error updating tool preferences', 'error');
+            setUpdatingAutoApprovalForTool(null);
+        }
+    }, [isUpdatingPreferencesError, notificationService]);
 
     useEffect(() => {
         const calculateMaxRows = () => {
@@ -212,6 +245,12 @@ export default function Chat ({ sessionId }) {
         chatConfiguration,
         setChatConfiguration
     );
+
+    // Check if the selected model has been deleted (exists in session but not in available models)
+    const isModelDeleted = useMemo(() => {
+        if (!selectedModel) return false;
+        return !allModels?.some((model) => model.modelId === selectedModel.modelId);
+    }, [selectedModel, allModels]);
 
     // Set default model if none is selected, default model is configured, and user hasn't interacted
     useEffect(() => {
@@ -331,13 +370,17 @@ export default function Chat ({ sessionId }) {
 
 
     const toggleToolAutoApproval = (toolName: string, enabled: boolean) => {
+        setUpdatingAutoApprovalForTool(toolName);
         const existingMcpPrefs = preferences.preferences.mcp ?? { enabledServers: [], overrideAllApprovals: false };
         const mcpPrefs: McpPreferences = {
             ...existingMcpPrefs,
             enabledServers: [...existingMcpPrefs.enabledServers]
         };
         const originalServer = mcpPrefs.enabledServers.find((server) => server.name === toolToServerMap.get(toolName));
-        if (!originalServer) return; // Early return if server not found
+        if (!originalServer) {
+            setUpdatingAutoApprovalForTool(null);
+            return; // Early return if server not found
+        }
         // Create a deep copy of the server object with its nested arrays
         const serverToUpdate = {
             ...originalServer,
@@ -494,13 +537,42 @@ export default function Chat ({ sessionId }) {
         }
     }, [sessionHealth]);
 
+    // When session finishes loading, enable auto-scroll and scroll to bottom
     useEffect(() => {
-        if (shouldAutoScroll && bottomRef.current) {
-            // Use 'auto' instead of 'smooth' to prevent jagged scrolling during rapid streaming
-            // which was breaking AT_BOTTOM_THRESHOLD disabling auto-scroll without user input
-            bottomRef.current.scrollIntoView({ behavior: 'auto' });
+        if (!loadingSession && session.history.length > 0 && sessionId) {
+            // Re-enable auto-scroll when a session is loaded
+            setShouldAutoScroll(true);
+
+            // For sessions with images, we need multiple scroll attempts because:
+            // - Base64 images load instantly (synchronously)
+            // - Cached images load very quickly
+            // - The browser needs time to reflow the layout with image dimensions
+            const scrollToBottom = () => {
+                if (scrollContainerRef.current) {
+                    scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+                }
+            };
+
+            // Multiple scroll attempts with increasing delays to ensure we reach the bottom
+            // as images fully load and the container height updates
+            const delays = [0, 50, 150, 300, 500];
+            const timeoutIds = delays.map((delay) => setTimeout(scrollToBottom, delay));
+
+            // Cleanup timeouts if component unmounts or effect re-runs
+            return () => {
+                timeoutIds.forEach((id) => clearTimeout(id));
+            };
         }
-    }, [isStreaming, session, mermaidRenderComplete, videoLoadComplete, shouldAutoScroll]);
+    }, [loadingSession, sessionId, session.history.length]);
+
+    useEffect(() => {
+        if (shouldAutoScroll && scrollContainerRef.current) {
+            // Scroll the container directly to the bottom
+            // This is more reliable than scrollIntoView for ensuring we reach the actual bottom
+            const container = scrollContainerRef.current;
+            container.scrollTop = container.scrollHeight;
+        }
+    }, [isStreaming, session, mermaidRenderComplete, videoLoadComplete, imageLoadComplete, shouldAutoScroll]);
 
     // Scroll event listener to detect scroll position
     useEffect(() => {
@@ -721,9 +793,10 @@ export default function Chat ({ sessionId }) {
                 setShowContextUploadModal={(show) => show ? openModal('contextUpload') : closeModal('contextUpload')}
                 fileContext={fileContext}
                 setFileContext={setFileContext}
+                setFileContextName={setFileContextName}
                 selectedModel={selectedModel}
                 // eslint-disable-next-line react-hooks/exhaustive-deps
-            />), conditionalDeps([modals.contextUpload], [modals.contextUpload], [modals.contextUpload, openModal, closeModal, fileContext, setFileContext, selectedModel]))}
+            />), conditionalDeps([modals.contextUpload], [modals.contextUpload], [modals.contextUpload, openModal, closeModal, fileContext, setFileContext, setFileContextName, selectedModel]))}
 
             {useMemo(() => (<PromptTemplateModal
                 session={session}
@@ -755,20 +828,53 @@ export default function Chat ({ sessionId }) {
                                 <p><strong>Do you want to allow this tool execution?</strong></p>
                             </SpaceBetween>
                             <hr />
-                            <Checkbox
-                                onChange={({ detail }) =>
-                                    toggleToolAutoApproval(toolApprovalModal.tool.name, detail.checked)
-                                }
-                                checked={userPreferences?.preferences?.mcp?.enabledServers.find((server) => server.name === toolToServerMap.get(toolApprovalModal.tool.name))?.autoApprovedTools.includes(toolApprovalModal.tool.name)}
-                            >
-                                Auto-approve this tool in the future
-                            </Checkbox>
+                            {updatingAutoApprovalForTool === toolApprovalModal.tool.name ? (
+                                <Box>
+                                    <Spinner size='normal' /> Updating preferences...
+                                </Box>
+                            ) : (
+                                <Checkbox
+                                    onChange={({ detail }) =>
+                                        toggleToolAutoApproval(toolApprovalModal.tool.name, detail.checked)
+                                    }
+                                    checked={preferences?.preferences?.mcp?.enabledServers.find((server) => server.name === toolToServerMap.get(toolApprovalModal.tool.name))?.autoApprovedTools.includes(toolApprovalModal.tool.name)}
+                                    disabled={isUpdatingPreferences}
+                                >
+                                    Auto-approve this tool in the future
+                                </Checkbox>
+                            )}
                         </SpaceBetween>
                     }
                 />
             )}
+
+            {/* Sticky warning banner for deleted model */}
+            {isModelDeleted && (
+                <div className='sticky top-0 z-50'>
+                    <Box padding={{ horizontal: 'l', top: 's' }}>
+                        <Flashbar
+                            items={[
+                                {
+                                    type: 'warning',
+                                    dismissible: false,
+                                    content: (
+                                        <>
+                                            This session uses the model <strong>{selectedModel?.modelId}</strong> which is no longer available.
+                                            You can view the conversation history but cannot send new messages.
+                                            Please start a new session with a different model.
+                                        </>
+                                    ),
+                                    id: 'model-deleted-warning',
+                                },
+                            ]}
+                        />
+                    </Box>
+                </div>
+            )}
+
             <div ref={scrollContainerRef} className='overflow-y-auto h-[calc(100vh-20rem)] bottom-8'>
                 <SpaceBetween direction='vertical' size='l'>
+
                     {loadingSession && (
                         <Box textAlign='center' padding='l'>
                             <SpaceBetween size='s' direction='vertical'>
@@ -796,6 +902,7 @@ export default function Chat ({ sessionId }) {
                             setUserPrompt={setUserPrompt}
                             onMermaidRenderComplete={handleMermaidRenderComplete}
                             onVideoLoadComplete={handleVideoLoadComplete}
+                            onImageLoadComplete={handleImageLoadComplete}
                             retryResponse={retryResponse}
                             errorState={errorState && idx === session.history.length - 1 }
                         />));
@@ -813,6 +920,7 @@ export default function Chat ({ sessionId }) {
                         setUserPrompt={setUserPrompt}
                         onMermaidRenderComplete={handleMermaidRenderComplete}
                         onVideoLoadComplete={handleVideoLoadComplete}
+                        onImageLoadComplete={handleImageLoadComplete}
                     />}
                     {!loadingSession && session.history.length === 0 && sessionId === undefined && (
                         <WelcomeScreen
@@ -871,12 +979,22 @@ export default function Chat ({ sessionId }) {
                                 maxRows={dynamicMaxRows}
                                 minRows={2}
                                 spellcheck={true}
+                                style={
+                                    {
+                                        root: {
+                                            borderColor: {
+                                                disabled: isModelDeleted ? '#ffe347' : isConnected ? '' : '#ff7a7a'
+                                            }
+                                        }
+                                    }
+                                }
                                 placeholder={
                                     !selectedModel ? 'You must select a model before sending a message' :
-                                        isImageGenerationMode ? 'Describe the image you want to generate...' :
-                                            'Send a message'
+                                        isModelDeleted ? 'The model used in this session is no longer available.' :
+                                            isImageGenerationMode ? 'Describe the image you want to generate...' :
+                                                'Send a message'
                                 }
-                                disabled={!selectedModel || loadingSession}
+                                disabled={!selectedModel || loadingSession || !isConnected || isModelDeleted}
                                 onChange={({ detail }) => setUserPrompt(detail.value)}
                                 onAction={handleAction}
                                 onKeyDown={handleKeyPress}
@@ -886,11 +1004,33 @@ export default function Chat ({ sessionId }) {
                                         <ButtonGroup
                                             ariaLabel='Chat actions'
                                             onItemClick={handleButtonClick}
-                                            items={getButtonItems(config, useRag, isImageGenerationMode, isVideoGenerationMode)}
+                                            items={getButtonItems(config, useRag, isImageGenerationMode, isVideoGenerationMode, isConnected, isModelDeleted)}
                                             variant='icon'
                                             dropdownExpandToViewport={true}
                                         />
                                     </Box>
+                                }
+                                secondaryContent={
+                                    fileContext && (
+                                        <FileTokenGroup
+                                            items={[{ file: new File([fileContext], fileContextName) }]}
+                                            onDismiss={() => {
+                                                setFileContext('');
+                                                setFileContextName('');
+                                            }}
+                                            alignment='horizontal'
+                                            showFileSize={false}
+                                            showFileLastModified={false}
+                                            showFileThumbnail={false}
+                                            i18nStrings={{
+                                                removeFileAriaLabel: () => 'Remove file',
+                                                limitShowFewer: 'Show fewer files',
+                                                limitShowMore: 'Show more files',
+                                                errorIconAriaLabel: 'Error',
+                                                warningIconAriaLabel: 'Warning'
+                                            }}
+                                        />
+                                    )
                                 }
                             />
                             <SpaceBetween direction='vertical' size='xs'>

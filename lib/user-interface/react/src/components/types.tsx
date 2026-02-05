@@ -64,11 +64,13 @@ export type LisaChatMessageMetadata = {
     ragDocuments?: string;
     imageGeneration?: boolean;
     imageGenerationParams?: ImageGenerationParams;
+    imageGenerationStatus?: string;
     videoGeneration?: boolean;
     videoGenerationParams?: VideoGenerationParams;
     videoId?: string;
     videoStatus?: string;
     hasFileContext?: boolean;
+    isImageEdit?: boolean;
 };
 /**
  * Usage information from OpenAI API responses

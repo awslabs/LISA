@@ -18,12 +18,11 @@ import SpaceBetween from '@cloudscape-design/components/space-between';
 import Link from '@cloudscape-design/components/link';
 import Header from '@cloudscape-design/components/header';
 import ExpandableSection from '@cloudscape-design/components/expandable-section';
-import { ButtonDropdown, Input, Popover, Modal, FormField, Grid } from '@cloudscape-design/components';
+import { ButtonDropdown, Input, Modal, FormField, Grid } from '@cloudscape-design/components';
 import Button from '@cloudscape-design/components/button';
 
 import { useLazyGetConfigurationQuery } from '@/shared/reducers/configuration.reducer';
 import {
-    sessionApi,
     useDeleteAllSessionsForUserMutation,
     useDeleteSessionByIdMutation,
     useLazyGetSessionByIdQuery,
@@ -36,12 +35,13 @@ import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '../../../auth/useAuth';
 import { IConfiguration } from '@/shared/model/configuration.model';
 import { useNavigate } from 'react-router-dom';
-import { getSessionDisplay, messageContainsImage, messageContainsVideo } from '@/components/utils';
+import { getDisplayableMessage, getSessionDisplay, messageContainsImage, messageContainsVideo } from '@/components/utils';
 import { LisaChatSession } from '@/components/types';
 import Box from '@cloudscape-design/components/box';
 import JSZip from 'jszip';
 import { downloadFile } from '@/shared/util/downloader';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
+import styles from './Sessions.module.css';
 
 
 
@@ -210,58 +210,42 @@ export function Sessions ({ newSession }) {
 
     return (
         <div className='p-5'>
-            <SpaceBetween size='s' direction='vertical'>
+            <SpaceBetween size='l' direction='vertical'>
                 <Header>
                     History
                 </Header>
-                <SpaceBetween direction='horizontal' size='xs'>
-                    <Popover
-                        size='large'
-                        position='bottom'
-                        dismissButton={false}
-                        triggerType='custom'
-                        content={
-                            <SpaceBetween size='s'>
-                                <Input
-                                    value={searchQuery}
-                                    onChange={({ detail }) => setSearchQuery(detail.value)}
-                                    placeholder='Search sessions by name...'
-                                    clearAriaLabel='Clear search'
-                                    type='search'
-                                    controlId='session-search-input'
-                                />
-                                {searchQuery && (
-                                    <Box variant='small' color='text-status-info'>
-                                        Found {filteredSessions.length} session{filteredSessions.length !== 1 ? 's' : ''}
-                                    </Box>
-                                )}
-                            </SpaceBetween>
+                <Input
+                    value={searchQuery}
+                    onChange={({ detail }) => setSearchQuery(detail.value)}
+                    placeholder='Search sessions by name'
+                    clearAriaLabel='Clear search'
+                    type='search'
+                    style={
+                        {
+                            root: {
+                                borderColor: {
+                                    focus: filteredSessions.length >= 1 ? '' : '#ff7a7a',
+                                }
+                            }
                         }
-                    >
-                        <Button
-                            iconName='search'
-                            variant='inline-icon'
-                            ariaLabel='Search sessions'
-                        />
-                    </Popover>
+                    }
+                />
+                {searchQuery && (
+                    <Box variant='small' color={filteredSessions.length >= 1 ? 'text-status-info' : 'text-status-error'}>
+                        Found {filteredSessions.length} session{filteredSessions.length !== 1 ? 's' : ''}
+                    </Box>
+                )}
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <Button
                         iconName='add-plus'
-                        variant='inline-icon'
+                        variant='primary'
                         onClick={newSession}
-                        ariaLabel='New Session'
-                    />
-                    <Button
-                        iconAlt='Refresh list'
-                        iconName='refresh'
-                        variant='inline-icon'
-                        onClick={() => dispatch(sessionApi.util.invalidateTags(['sessions']))}
-                        ariaLabel='Refresh Sessions'
-                    />
+                    >
+                        New
+                    </Button>
                     {config?.configuration.enabledComponents.deleteSessionHistory &&
                         <Button
-                            iconAlt='Delete sessions'
-                            iconName='delete-marker'
-                            variant='inline-icon'
+                            iconName='remove'
                             onClick={() =>
                                 dispatch(
                                     setConfirmationModal({
@@ -271,9 +255,10 @@ export function Sessions ({ newSession }) {
                                         description: 'This will delete all of your user sessions.'
                                     })
                                 )}
-                            ariaLabel='Delete All Sessions'
-                        />}
-                </SpaceBetween>
+                        >
+                            Delete All
+                        </Button>}
+                </div>
             </SpaceBetween>
 
             {isSessionsLoading && (
@@ -319,7 +304,11 @@ export function Sessions ({ newSession }) {
                                         >
                                             <SpaceBetween size='xxs'>
                                                 {sessions.map((item) => (
-                                                    <Box key={item.sessionId} padding='xxs'>
+                                                    <Box
+                                                        key={item.sessionId}
+                                                        padding='xxs'
+                                                        className={item.sessionId === currentSessionId ? styles.sessionItemActive : styles.sessionItem}
+                                                    >
                                                         <Grid gridDefinition={[{ colspan: 10 }, { colspan: 2 }]}>
                                                             <Box>
                                                                 <Link onClick={() => navigate(`/ai-assistant/${item.sessionId}`)}>
@@ -351,7 +340,7 @@ export function Sessions ({ newSession }) {
                                                                                         setSessionBeingDeleted(item.sessionId);
                                                                                         deleteById(item.sessionId);
                                                                                     },
-                                                                                    description: `This will delete the Session: ${item.sessionId}.`
+                                                                                    description: `This will delete the Session: ${item.name || getDisplayableMessage(item.firstHumanMessage)}.`
                                                                                 })
                                                                             );
                                                                         } else if (e.detail.id === 'download-session') {

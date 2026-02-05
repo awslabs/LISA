@@ -315,7 +315,7 @@
           "Ref": "SsmParameterValueawsserviceecsoptimizedamiamazonlinux2023recommendedimageidC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
         "InstanceMonitoring": true,
-        "InstanceType": "m5.large",
+        "InstanceType": "m5.xlarge",
         "SecurityGroups": [
           {
             "Fn::GetAtt": [

@@ -451,6 +451,21 @@ export const useChatGeneration = ({
                 }
             } else if (isImageGenerationMode) {
                 try {
+                    // Create initial message with loading state
+                    setSession((prev) => ({
+                        ...prev,
+                        history: [...prev.history, new LisaChatMessage({
+                            type: 'ai',
+                            content: 'Generating image...',
+                            metadata: {
+                                ...metadata,
+                                imageGeneration: true,
+                                imageGenerationStatus: 'processing',
+                                hasFileContext: !!fileContext
+                            },
+                        })],
+                    }));
+
                     // Check if there's a reference photo
                     let hasImageReference = false;
                     let imageBlob: Blob | null = null;
@@ -558,28 +573,42 @@ export const useChatGeneration = ({
                         response_format: 'url',
                     };
 
-                    // Save the response to the chat history
-                    setSession((prev) => ({
-                        ...prev,
-                        history: [...prev.history, new LisaChatMessage({
-                            type: 'ai',
-                            content: imageContent,
-                            metadata: {
-                                ...metadata,
-                                imageGeneration: true,
-                                imageGenerationParams: imageGenParams,
-                                hasFileContext: !!fileContext,
-                                isImageEdit: hasImageReference
-                            },
-                            usage: {
-                                responseTime
-                            }
-                        })],
-                    }));
+                    // Update the loading message with the generated images
+                    setSession((prev) => {
+                        const lastMessage = prev.history[prev.history.length - 1];
+                        if (lastMessage?.metadata?.imageGeneration && lastMessage?.metadata?.imageGenerationStatus === 'processing') {
+                            return {
+                                ...prev,
+                                history: [...prev.history.slice(0, -1),
+                                    new LisaChatMessage({
+                                        ...lastMessage,
+                                        content: imageContent,
+                                        metadata: {
+                                            ...metadata,
+                                            imageGeneration: true,
+                                            imageGenerationParams: imageGenParams,
+                                            imageGenerationStatus: 'completed',
+                                            hasFileContext: !!fileContext,
+                                            isImageEdit: hasImageReference
+                                        },
+                                        usage: {
+                                            responseTime
+                                        }
+                                    })
+                                ],
+                            };
+                        }
+                        return prev;
+                    });
 
                     await memory.saveContext({ input: params.input }, { output: imageContent });
                 } catch (error) {
                     notificationService.generateNotification('Image generation failed', 'error', undefined, error.message ? <p>{error.message}</p> : undefined);
+                    // Remove the loading message on error
+                    setSession((prev) => ({
+                        ...prev,
+                        history: prev.history.slice(0, -1),
+                    }));
                     setIsRunning(false);
                 }
             } else {

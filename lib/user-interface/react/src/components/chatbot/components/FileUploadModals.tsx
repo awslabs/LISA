@@ -26,7 +26,7 @@ import {
     TextContent,
 } from '@cloudscape-design/components';
 import { FileTypes, StatusTypes } from '@/components/types';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RagConfig } from './RagOptions';
 import { useAppDispatch } from '@/config/store';
 import { useNotificationService } from '@/shared/util/hooks';
@@ -88,6 +88,7 @@ export type ContextUploadProps = {
     setShowContextUploadModal: React.Dispatch<React.SetStateAction<boolean>>;
     fileContext: string;
     setFileContext: React.Dispatch<React.SetStateAction<string>>;
+    setFileContextName: React.Dispatch<React.SetStateAction<string>>;
     selectedModel: IModel;
 };
 
@@ -96,12 +97,20 @@ export const ContextUploadModal = ({
     setShowContextUploadModal,
     fileContext,
     setFileContext,
+    setFileContextName,
     selectedModel
 }: ContextUploadProps) => {
     const [selectedFiles, setSelectedFiles] = useState<File[] | undefined>([]);
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
     const modelSupportsImages = !!(selectedModel?.features?.filter((feature) => feature.name === 'imageInput')?.length) || selectedModel?.modelType === ModelType.videogen || selectedModel?.modelType === ModelType.imagegen;
+
+    // Clear selectedFiles when fileContext is cleared externally (e.g., via badge dismissal)
+    useEffect(() => {
+        if (!fileContext) {
+            setSelectedFiles([]);
+        }
+    }, [fileContext]);
 
     function handleError (error: string) {
         notificationService.generateNotification(error, 'error');
@@ -127,6 +136,7 @@ export const ContextUploadModal = ({
         }
 
         setFileContext(`File context: ${fileContents}`);
+        setFileContextName(file.name);
         setSelectedFiles([file]);
         return true;
     }
@@ -160,6 +170,7 @@ export const ContextUploadModal = ({
                             onClick={() => {
                                 setShowContextUploadModal(false);
                                 setFileContext('');
+                                setFileContextName('');
                                 setSelectedFiles([]);
                             }}
                             disabled={!fileContext}

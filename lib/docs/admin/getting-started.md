@@ -20,7 +20,7 @@ LISA’s core component, Serve, provides secure, scalable, low latency access to
 language models. Serve offers model flexibility out of the box. Customers can self-host models directly within LISA
 infrastructure, or integrate with compatible third party model providers. LISA supports model self-hosting and inference
 via Amazon Elastic Container Service (ECS) with Amazon Elastic Compute Cloud (EC2). Text generation, image generation,
-and embedding models compatible with Hugging Face’s
+video generation, and embedding models compatible with Hugging Face’s
 [Text Generation Inference (TGI)](https://huggingface.co/docs/text-generation-inference/en/index)
 and [Text Embedding Inference (TEI)](https://huggingface.co/docs/text-embeddings-inference/en/index) images,
 and [vLLM](https://docs.vllm.ai/en/latest/) are supported.

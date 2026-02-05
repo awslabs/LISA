@@ -35,7 +35,7 @@ import 'katex/dist/katex.min.css';
 import styles from './Message.module.css';
 
 import { MessageContent } from '@langchain/core/messages';
-import { base64ToBlob, fetchImage, getDisplayableMessage, messageContainsImage, messageContainsVideo } from '@/components/utils';
+import { base64ToBlob, fetchImage, getDisplayableMessage } from '@/components/utils';
 import React, { useEffect, useState, useMemo } from 'react';
 import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { downloadFile } from '@/shared/util/downloader';
@@ -62,11 +62,12 @@ type MessageProps = {
     showUsage?: boolean;
     onMermaidRenderComplete?: () => void;
     onVideoLoadComplete?: () => void;
+    onImageLoadComplete?: () => void;
     retryResponse?: () => Promise<void>
     errorState?: boolean;
 };
 
-export const Message = React.memo(({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration, callingToolName, showUsage = false, onMermaidRenderComplete, onVideoLoadComplete, retryResponse, errorState }: MessageProps) => {
+export const Message = React.memo(({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration, callingToolName, showUsage = false, onMermaidRenderComplete, onVideoLoadComplete, onImageLoadComplete, retryResponse, errorState }: MessageProps) => {
     const currentUser = useAppSelector(selectCurrentUsername);
     const ragCitations = !isStreaming && message?.metadata?.ragDocuments ? message?.metadata.ragDocuments : undefined;
     const [resend, setResend] = useState(false);
@@ -260,14 +261,14 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                     );
                 } else if (item.type === 'image_url' && item.image_url?.url) {
                     return message.type === MessageTypes.HUMAN ?
-                        <img key={index} src={item.image_url.url} alt='User provided' style={{ maxWidth: '50%', maxHeight: '30em', marginTop: '8px' }} /> :
+                        <img key={index} src={item.image_url.url} alt='User provided' style={{ maxWidth: '50%', maxHeight: '30em', marginTop: '8px' }} onLoad={() => onImageLoadComplete?.()} /> :
                         <Grid key={`${index}-Grid`} gridDefinition={[{ colspan: 11 }, { colspan: 1 }]}>
                             <Link onClick={() => {
                                 setSelectedImage(item);
                                 setSelectedMetadata(metadata);
                                 setShowImageViewer(true);
                             }}>
-                                <img key={`${index}-Image`} src={item.image_url.url} alt='AI Generated' style={{ maxWidth: '100%', maxHeight: '30em', marginTop: '8px' }} />
+                                <img key={`${index}-Image`} src={item.image_url.url} alt='AI Generated' style={{ maxWidth: '100%', maxHeight: '30em', marginTop: '8px' }} onLoad={() => onImageLoadComplete?.()} />
                             </Link>
                             <ButtonDropdown
                                 items={[
@@ -423,9 +424,10 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                     <ChatBubble
                         ariaLabel='Generative AI assistant'
                         type='incoming'
-                        showLoadingBar={isStreaming}
+                        showLoadingBar={isStreaming || (message?.metadata?.imageGeneration && message?.metadata?.imageGenerationStatus === 'processing')}
                         avatar={
                             <Avatar
+                                loading={message?.metadata?.imageGeneration && message?.metadata?.imageGenerationStatus === 'processing'}
                                 color='gen-ai'
                                 iconName='gen-ai'
                                 ariaLabel='Generative AI assistant'
@@ -449,7 +451,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                             <Box color='text-status-inactive' variant='small' padding={{ right: 'xl' }}>
                                                 <SpaceBetween direction='vertical' size='s'>
                                                     <div style={{ whiteSpace: 'pre-line' }}>{message.reasoningContent}</div>
-                                                    <hr/>
+                                                    <hr />
                                                 </SpaceBetween>
                                             </Box>
                                             <ButtonGroup
@@ -491,9 +493,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                     ...(message.usage && { usage: message.usage })
                                 }} style={isDarkMode ? darkStyles : defaultStyles} />
                             </ExpandableSection>}
-                    </ChatBubble>
-                    {!isStreaming && !messageContainsImage(message.content) && !messageContainsVideo(message.content) && <div
-                        style={{ display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
+                        {!isStreaming && !isRunning && !message?.metadata?.imageGeneration && !message?.metadata?.videoGeneration &&
                         <ButtonGroup
                             onItemClick={({ detail }) =>
                                 ['copy'].includes(detail.id) &&
@@ -515,8 +515,8 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                 }
                             ]}
                             variant='icon'
-                        />
-                    </div>}
+                        />}
+                    </ChatBubble>
                 </SpaceBetween>
             )}
             {message?.type === 'human' && (
@@ -525,6 +525,13 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                         <ChatBubble
                             ariaLabel={currentUser}
                             type='outgoing'
+                            style={{
+                                bubble: {
+                                    background: isDarkMode ? '#1f2934' : '#ebebf0',
+                                    borderColor: errorState ? '#ff7a7a' : '',
+                                    borderWidth: errorState ? '1px' : '',
+                                }
+                            }}
                             avatar={
                                 <Avatar
                                     ariaLabel={currentUser}
@@ -536,45 +543,45 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                             <div className='message-content' style={{ maxWidth: '60em' }}>
                                 {renderContent(message.content)}
                             </div>
-                        </ChatBubble>
-                        <ButtonGroup
-                            onItemClick={async ({ detail }) => {
-                                if (detail.id === 'copy'){
-                                    navigator.clipboard.writeText(getDisplayableMessage(message.content));
-                                } else if (detail.id === 'retry'){
-                                    await retryResponse();
+                            <ButtonGroup
+                                onItemClick={async ({ detail }) => {
+                                    if (detail.id === 'copy') {
+                                        navigator.clipboard.writeText(getDisplayableMessage(message.content));
+                                    } else if (detail.id === 'retry') {
+                                        await retryResponse();
+                                    }
                                 }
-                            }
-                            }
-                            ariaLabel='Chat actions'
-                            dropdownExpandToViewport
-                            items={[
-                                {
-                                    type: 'icon-button',
-                                    id: 'copy',
-                                    iconName: 'copy',
-                                    text: 'Copy Input',
-                                    popoverFeedback: (
-                                        <StatusIndicator type='success'>
-                                            Input copied
-                                        </StatusIndicator>
-                                    )
-                                },
-                                ...(errorState ? [
+                                }
+                                ariaLabel='Chat actions'
+                                dropdownExpandToViewport
+                                items={[
                                     {
-                                        type: 'icon-button' as const,
-                                        id: 'retry' as const,
-                                        iconName: 'refresh' as const,
-                                        text: 'Retry Message' as const,
+                                        type: 'icon-button',
+                                        id: 'copy',
+                                        iconName: 'copy',
+                                        text: 'Copy Input',
                                         popoverFeedback: (
                                             <StatusIndicator type='success'>
-                                                Retrying Message
+                                                Input copied
                                             </StatusIndicator>
                                         )
-                                    }] : [])
-                            ]}
-                            variant='icon'
-                        />
+                                    },
+                                    ...(errorState ? [
+                                        {
+                                            type: 'icon-button' as const,
+                                            id: 'retry' as const,
+                                            iconName: 'refresh' as const,
+                                            text: 'Retry Message' as const,
+                                            popoverFeedback: (
+                                                <StatusIndicator type='success'>
+                                                    Retrying Message
+                                                </StatusIndicator>
+                                            )
+                                        }] : [])
+                                ]}
+                                variant='icon'
+                            />
+                        </ChatBubble>
                     </div>
                 </SpaceBetween>
             )}

@@ -296,12 +296,10 @@ export const useValidationReducer = <F, S extends ValidationReducerBaseState<F>>
                 fields,
             } as ValidationTouchAction);
             const parseResult = formSchema.safeParse({...state.form, ...{touched: fields}});
-            if (!parseResult.success) {
-                errors = issuesToErrors(parseResult.error.issues, fields.reduce((acc, key) => {
-                    acc[key] = true; return acc;
-                }, {}));
-            }
-            return Object.keys(errors).length === 0;
+            const touchErrors = parseResult.success ? errors : issuesToErrors(parseResult.error.issues, fields.reduce((acc, key) => {
+                acc[key] = true; return acc;
+            }, {}));
+            return Object.keys(touchErrors).length === 0;
         },
     };
 };

@@ -108,7 +108,7 @@ export const ContextUploadModal = ({
     // Clear selectedFiles when fileContext is cleared externally (e.g., via badge dismissal)
     useEffect(() => {
         if (!fileContext) {
-            setSelectedFiles([]);
+            queueMicrotask(() => setSelectedFiles([]));
         }
     }, [fileContext]);
 

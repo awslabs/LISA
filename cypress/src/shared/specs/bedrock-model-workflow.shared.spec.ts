@@ -176,7 +176,8 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
 
         // Wait for models API to load and check if model already exists
         cy.wait('@getModels', { timeout: 30000 }).then((interception) => {
-            const modelExists = models.models.some((model: any) => model.modelId === testModel.modelId);
+            const models = (interception.response?.body as { models?: any[] })?.models ?? [];
+            const modelExists = models.some((model: any) => model.modelId === testModel.modelId);
 
             if (modelExists) {
                 cy.log(`Model ${testModel.modelId} already exists, skipping creation`);

@@ -48,7 +48,7 @@ export function Chatbot ({ setNav }) {
     useEffect(() => {
         if (prevSessionIdRef.current && !sessionId) {
             // We transitioned from having a sessionId to not having one (new session)
-            setKey(new Date().toISOString());
+            queueMicrotask(() => setKey(new Date().toISOString()));
         }
         prevSessionIdRef.current = sessionId;
     }, [sessionId]);

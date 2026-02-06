@@ -190,10 +190,16 @@ export function deletePromptTemplateIfExists (templateTitle: string) {
  * Send a message that's already in the input field by clicking the send button
  */
 export function sendMessageWithButton () {
+    // Set up intercept for chat completions API
+    cy.intercept('POST', '**/chat/completions').as('chatCompletion');
+
     cy.get('button[aria-label="Send message"]')
         .should('be.visible')
         .and('not.be.disabled')
         .click();
+
+    // Wait for the chat completion to finish
+    cy.wait('@chatCompletion', { timeout: 60000 });
 }
 
 /**

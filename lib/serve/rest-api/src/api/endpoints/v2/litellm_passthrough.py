@@ -90,6 +90,17 @@ OPENAI_ROUTES = (
     "v1/mcp/server",
 )
 
+# Specific routes for anthropic (Claude Code compatibility)
+# LiteLLM's request/response format: https://litellm-api.up.railway.app/#/
+ANTHROPIC_ROUTES = (
+    # Anthropic Messages API
+    "v1/messages",
+    "v1/messages/count_tokens",
+    # Anthropic Messages API with prefix
+    "anthropic/v1/messages",
+    "anthropic/v1/messages/count_tokens",
+)
+
 # With the introduction of the LiteLLM database for model configurations, it forces a requirement to have a
 # LiteLLM-vended API key. Since we are not requiring LiteLLM keys for customers, we are using the LiteLLM key
 # required for the db and injecting that into all requests instead to overcome that requirement.
@@ -316,12 +327,12 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     headers = dict(request.headers.items())
 
     authorizer = Authorizer()
-    require_admin = not is_openai_route(api_path)
+    require_admin = not is_openai_route(api_path) and api_path not in ANTHROPIC_ROUTES
     jwt_data = await authorizer.authenticate_request(request)
     if not await authorizer.can_access(request, require_admin):
         raise HTTPException(
             status_code=HTTP_401_UNAUTHORIZED,
-            message="Not authenticated in litellm_passthrough",
+            detail="Not authenticated in litellm_passthrough",
         )
 
     # At this point in the request, we have already validated auth with IdP or persistent token. By using LiteLLM for
@@ -449,6 +460,18 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
         if model_id and jwt_data:
             await apply_guardrails_to_request(params, model_id, jwt_data)
 
+    # Validate and cap max_tokens if needed for Claude Code requests
+    if api_path in ["v1/messages", "anthropic/v1/messages"]:
+        model_id = params.get("model")
+
+        # Check for anthropic specific headers
+        if model_id and "anthropic-beta" in headers and "anthropic-version" in headers:
+            # reset max token parameter to null so LiteLLM handles the max_token value
+            if "max_tokens" in params:
+                params["max_tokens"] = None
+            if "max_completion_tokens" in params:
+                params["max_completion_tokens"] = None
+
     if params.get("stream", False):  # if a streaming request
 
         response = requests_request(method=http_method, url=litellm_path, json=params, headers=headers, stream=True)
@@ -459,13 +482,16 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
         if guardrail_response:
             return guardrail_response
 
-        # Publish metrics for streaming chat completions (API users)
-        if api_path in ["chat/completions", "v1/chat/completions"] and response.status_code == 200:
+        # Publish metrics for streaming chat completions and messages (API users)
+        if (
+            api_path in ["chat/completions", "v1/chat/completions", "v1/messages", "anthropic/v1/messages"]
+            and response.status_code == 200
+        ):
             publish_metrics_event(request, params, response.status_code)
 
         # Normal streaming (no error or non-guardrail error)
-        # Use guardrail-aware generator for chat/completions endpoints
-        if api_path in ["chat/completions", "v1/chat/completions"]:
+        # Use guardrail-aware generator for chat/completions and messages endpoints
+        if api_path in ["chat/completions", "v1/chat/completions", "v1/messages", "anthropic/v1/messages"]:
             model_id = params.get("model", "")
             return StreamingResponse(
                 generate_response_with_guardrail_handling(response.iter_lines(), model_id),
@@ -489,8 +515,8 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
         if response.status_code != 200:
             logger.error(f"LiteLLM error response: {response.text}")
 
-        # Publish metrics for chat completions (API users)
-        if api_path in ["chat/completions", "v1/chat/completions"]:
+        # Publish metrics for chat completions and messages (API users)
+        if api_path in ["chat/completions", "v1/chat/completions", "v1/messages", "anthropic/v1/messages"]:
             publish_metrics_event(request, params, response.status_code)
 
         return JSONResponse(response.json(), status_code=response.status_code)

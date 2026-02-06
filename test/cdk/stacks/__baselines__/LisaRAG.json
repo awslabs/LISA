@@ -529,6 +529,12 @@
           },
           "LogFilePrefix": "logs/rag-bucket/"
         },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
         "Tags": [
           {
             "Key": "aws-cdk:auto-delete-objects",
@@ -1444,7 +1450,7 @@
     "IngestionStackConstructIngestionJobFargateEnvD92342F8": {
       "Type": "AWS::Batch::ComputeEnvironment",
       "Properties": {
-        "ComputeEnvironmentName": "test-lisa-dev-ingestion-job-9f9b5e9ec59a",
+        "ComputeEnvironmentName": "test-lisa-dev-ingestion-job-94117c65ef0f",
         "ComputeResources": {
           "MaxvCpus": 128,
           "SecurityGroupIds": [
@@ -1485,7 +1491,7 @@
             "Order": 1
           }
         ],
-        "JobQueueName": "test-lisa-dev-ingestion-job-9f9b5e9ec59a",
+        "JobQueueName": "test-lisa-dev-ingestion-job-94117c65ef0f",
         "Priority": 1,
         "State": "ENABLED"
       }
@@ -1708,7 +1714,7 @@
           },
           "FargatePlatformConfiguration": {},
           "Image": {
-            "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:f1a7bd56fc454f0a46ca9eea3587cf74fe63ecab329160adc669f0087fcb4d82"
+            "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:abfbff42e168671e0107e86fd31bef1124447938fdf1878b3a32c39a175466de"
           },
           "JobRoleArn": {
             "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -1739,7 +1745,7 @@
           ],
           "RuntimePlatform": {}
         },
-        "JobDefinitionName": "test-lisa-dev-ingestion-job-9f9b5e9ec59a",
+        "JobDefinitionName": "test-lisa-dev-ingestion-job-94117c65ef0f",
         "PlatformCapabilities": [
           "FARGATE"
         ],
@@ -1773,7 +1779,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Environment": {
           "Variables": {
@@ -1863,7 +1869,7 @@
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE"
           }
         },
-        "FunctionName": "test-lisa-dev-ingestion-ingest-schedule-9f9b5e9ec59a",
+        "FunctionName": "test-lisa-dev-ingestion-ingest-schedule-94117c65ef0f",
         "Handler": "repository.pipeline_ingest_documents.handle_pipline_ingest_schedule",
         "Layers": [
           {
@@ -1902,7 +1908,7 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E55c60877324ec9f6f2ff6e7a8e1de77bf": {
+    "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E54d7ec1f630ae7ff839416c4f723eaa43": {
       "Type": "AWS::Lambda::Version",
       "Properties": {
         "FunctionName": {
@@ -1921,7 +1927,7 @@
         },
         "FunctionVersion": {
           "Fn::GetAtt": [
-            "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E55c60877324ec9f6f2ff6e7a8e1de77bf",
+            "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E54d7ec1f630ae7ff839416c4f723eaa43",
             "Version"
           ]
         },
@@ -1969,7 +1975,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Environment": {
           "Variables": {
@@ -2059,7 +2065,7 @@
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE"
           }
         },
-        "FunctionName": "test-lisa-dev-ingestion-ingest-event-9f9b5e9ec59a",
+        "FunctionName": "test-lisa-dev-ingestion-ingest-event-94117c65ef0f",
         "Handler": "repository.pipeline_ingest_documents.handle_pipeline_ingest_event",
         "Layers": [
           {
@@ -2098,7 +2104,7 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBC32672c3ecb167d259601303ae80564d3": {
+    "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBC2dee4c902e71215dce0dc6f1b013820d": {
       "Type": "AWS::Lambda::Version",
       "Properties": {
         "FunctionName": {
@@ -2117,7 +2123,7 @@
         },
         "FunctionVersion": {
           "Fn::GetAtt": [
-            "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBC32672c3ecb167d259601303ae80564d3",
+            "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBC2dee4c902e71215dce0dc6f1b013820d",
             "Version"
           ]
         },
@@ -2165,7 +2171,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Environment": {
           "Variables": {
@@ -2255,7 +2261,7 @@
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE"
           }
         },
-        "FunctionName": "test-lisa-dev-ingestion-delete-event-9f9b5e9ec59a",
+        "FunctionName": "test-lisa-dev-ingestion-delete-event-94117c65ef0f",
         "Handler": "repository.pipeline_ingest_documents.handle_pipeline_delete_event",
         "Layers": [
           {
@@ -2294,7 +2300,7 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E95cb71c43996e498fbdb2c7cdda9277c44": {
+    "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E9561837d7a9baa5a3011c1dda4e72825c4": {
       "Type": "AWS::Lambda::Version",
       "Properties": {
         "FunctionName": {
@@ -2313,7 +2319,7 @@
         },
         "FunctionVersion": {
           "Fn::GetAtt": [
-            "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E95cb71c43996e498fbdb2c7cdda9277c44",
+            "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E9561837d7a9baa5a3011c1dda4e72825c4",
             "Version"
           ]
         },
@@ -5306,21 +5312,12 @@
         }
       }
     },
-    "RepositoryApiLisaRAGrepositorylistallLogGroup0F85137D": {
-      "Type": "AWS::Logs::LogGroup",
-      "Properties": {
-        "LogGroupName": "/aws/lambda/LisaRAG-repository-list_all",
-        "RetentionInDays": 30
-      },
-      "UpdateReplacePolicy": "Retain",
-      "DeletionPolicy": "Retain"
-    },
     "RepositoryApiLisaRAGrepositorylistall7B1FB82C": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Description": "List all repositories",
         "Environment": {
@@ -5421,11 +5418,6 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
-        "LoggingConfig": {
-          "LogGroup": {
-            "Ref": "RepositoryApiLisaRAGrepositorylistallLogGroup0F85137D"
-          }
-        },
         "MemorySize": 512,
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -5452,21 +5444,35 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "RepositoryApiLisaRAGrepositoryliststatusLogGroup7BBF359A": {
-      "Type": "AWS::Logs::LogGroup",
+    "RepositoryApiLisaRAGrepositorylistallLogRetention1CE5334B": {
+      "Type": "Custom::LogRetention",
       "Properties": {
-        "LogGroupName": "/aws/lambda/LisaRAG-repository-list_status",
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "RepositoryApiLisaRAGrepositorylistall7B1FB82C"
+              }
+            ]
+          ]
+        },
         "RetentionInDays": 30
-      },
-      "UpdateReplacePolicy": "Retain",
-      "DeletionPolicy": "Retain"
+      }
     },
     "RepositoryApiLisaRAGrepositoryliststatus7E4D9E23": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Description": "List status for all repositories",
         "Environment": {
@@ -5567,11 +5573,6 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
-        "LoggingConfig": {
-          "LogGroup": {
-            "Ref": "RepositoryApiLisaRAGrepositoryliststatusLogGroup7BBF359A"
-          }
-        },
         "MemorySize": 512,
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -5598,21 +5599,35 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "RepositoryApiLisaRAGrepositorypresignedurlLogGroupDA22803D": {
-      "Type": "AWS::Logs::LogGroup",
+    "RepositoryApiLisaRAGrepositoryliststatusLogRetention61796A73": {
+      "Type": "Custom::LogRetention",
       "Properties": {
-        "LogGroupName": "/aws/lambda/LisaRAG-repository-presigned_url",
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "RepositoryApiLisaRAGrepositoryliststatus7E4D9E23"
+              }
+            ]
+          ]
+        },
         "RetentionInDays": 30
-      },
-      "UpdateReplacePolicy": "Retain",
-      "DeletionPolicy": "Retain"
+      }
     },
     "RepositoryApiLisaRAGrepositorypresignedurlBBDFFDED": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Description": "Generates a presigned url for uploading files to RAG",
         "Environment": {
@@ -5713,11 +5728,6 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
-        "LoggingConfig": {
-          "LogGroup": {
-            "Ref": "RepositoryApiLisaRAGrepositorypresignedurlLogGroupDA22803D"
-          }
-        },
         "MemorySize": 512,
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -5744,21 +5754,35 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "RepositoryApiLisaRAGrepositorycreateLogGroupC9446010": {
-      "Type": "AWS::Logs::LogGroup",
+    "RepositoryApiLisaRAGrepositorypresignedurlLogRetentionE8BB59A3": {
+      "Type": "Custom::LogRetention",
       "Properties": {
-        "LogGroupName": "/aws/lambda/LisaRAG-repository-create",
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "RepositoryApiLisaRAGrepositorypresignedurlBBDFFDED"
+              }
+            ]
+          ]
+        },
         "RetentionInDays": 30
-      },
-      "UpdateReplacePolicy": "Retain",
-      "DeletionPolicy": "Retain"
+      }
     },
     "RepositoryApiLisaRAGrepositorycreate82D293D2": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Description": "Create a new repository",
         "Environment": {
@@ -5859,11 +5883,6 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
-        "LoggingConfig": {
-          "LogGroup": {
-            "Ref": "RepositoryApiLisaRAGrepositorycreateLogGroupC9446010"
-          }
-        },
         "MemorySize": 512,
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -5890,21 +5909,35 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "RepositoryApiLisaRAGrepositorygetrepositorybyidLogGroup358C8E05": {
-      "Type": "AWS::Logs::LogGroup",
+    "RepositoryApiLisaRAGrepositorycreateLogRetentionE3AA1EAC": {
+      "Type": "Custom::LogRetention",
       "Properties": {
-        "LogGroupName": "/aws/lambda/LisaRAG-repository-get_repository_by_id",
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "RepositoryApiLisaRAGrepositorycreate82D293D2"
+              }
+            ]
+          ]
+        },
         "RetentionInDays": 30
-      },
-      "UpdateReplacePolicy": "Retain",
-      "DeletionPolicy": "Retain"
+      }
     },
     "RepositoryApiLisaRAGrepositorygetrepositorybyid02421B2E": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Description": "Get a repository by ID",
         "Environment": {
@@ -6005,11 +6038,6 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
-        "LoggingConfig": {
-          "LogGroup": {
-            "Ref": "RepositoryApiLisaRAGrepositorygetrepositorybyidLogGroup358C8E05"
-          }
-        },
         "MemorySize": 512,
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -6036,21 +6064,35 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "RepositoryApiLisaRAGrepositoryupdaterepositoryLogGroupE9031239": {
-      "Type": "AWS::Logs::LogGroup",
+    "RepositoryApiLisaRAGrepositorygetrepositorybyidLogRetentionF1424910": {
+      "Type": "Custom::LogRetention",
       "Properties": {
-        "LogGroupName": "/aws/lambda/LisaRAG-repository-update_repository",
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "RepositoryApiLisaRAGrepositorygetrepositorybyid02421B2E"
+              }
+            ]
+          ]
+        },
         "RetentionInDays": 30
-      },
-      "UpdateReplacePolicy": "Retain",
-      "DeletionPolicy": "Retain"
+      }
     },
     "RepositoryApiLisaRAGrepositoryupdaterepository82B1F9CD": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Description": "Update a repository",
         "Environment": {
@@ -6151,11 +6193,6 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
-        "LoggingConfig": {
-          "LogGroup": {
-            "Ref": "RepositoryApiLisaRAGrepositoryupdaterepositoryLogGroupE9031239"
-          }
-        },
         "MemorySize": 512,
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -6182,21 +6219,35 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "RepositoryApiLisaRAGrepositorydeleteLogGroupD168A871": {
-      "Type": "AWS::Logs::LogGroup",
+    "RepositoryApiLisaRAGrepositoryupdaterepositoryLogRetention3BFD999D": {
+      "Type": "Custom::LogRetention",
       "Properties": {
-        "LogGroupName": "/aws/lambda/LisaRAG-repository-delete",
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "RepositoryApiLisaRAGrepositoryupdaterepository82B1F9CD"
+              }
+            ]
+          ]
+        },
         "RetentionInDays": 30
-      },
-      "UpdateReplacePolicy": "Retain",
-      "DeletionPolicy": "Retain"
+      }
     },
     "RepositoryApiLisaRAGrepositorydelete061FD77D": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Description": "Delete a repository",
         "Environment": {
@@ -6297,11 +6348,6 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
-        "LoggingConfig": {
-          "LogGroup": {
-            "Ref": "RepositoryApiLisaRAGrepositorydeleteLogGroupD168A871"
-          }
-        },
         "MemorySize": 512,
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -6328,21 +6374,35 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "RepositoryApiLisaRAGrepositorysimilaritysearchLogGroup8179A8AE": {
-      "Type": "AWS::Logs::LogGroup",
+    "RepositoryApiLisaRAGrepositorydeleteLogRetentionE5403F1F": {
+      "Type": "Custom::LogRetention",
       "Properties": {
-        "LogGroupName": "/aws/lambda/LisaRAG-repository-similarity_search",
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "RepositoryApiLisaRAGrepositorydelete061FD77D"
+              }
+            ]
+          ]
+        },
         "RetentionInDays": 30
-      },
-      "UpdateReplacePolicy": "Retain",
-      "DeletionPolicy": "Retain"
+      }
     },
     "RepositoryApiLisaRAGrepositorysimilaritysearch4A105094": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Description": "Run a similarity search against the specified repository using the specified query",
         "Environment": {
@@ -6443,11 +6503,6 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
-        "LoggingConfig": {
-          "LogGroup": {
-            "Ref": "RepositoryApiLisaRAGrepositorysimilaritysearchLogGroup8179A8AE"
-          }
-        },
         "MemorySize": 512,
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -6474,21 +6529,35 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "RepositoryApiLisaRAGrepositoryingestdocumentsLogGroupB8A815CF": {
-      "Type": "AWS::Logs::LogGroup",
+    "RepositoryApiLisaRAGrepositorysimilaritysearchLogRetention4AA42A55": {
+      "Type": "Custom::LogRetention",
       "Properties": {
-        "LogGroupName": "/aws/lambda/LisaRAG-repository-ingest_documents",
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "RepositoryApiLisaRAGrepositorysimilaritysearch4A105094"
+              }
+            ]
+          ]
+        },
         "RetentionInDays": 30
-      },
-      "UpdateReplacePolicy": "Retain",
-      "DeletionPolicy": "Retain"
+      }
     },
     "RepositoryApiLisaRAGrepositoryingestdocumentsD194F7BE": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Description": "Ingest a set of documents based on specified S3 path",
         "Environment": {
@@ -6589,11 +6658,6 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
-        "LoggingConfig": {
-          "LogGroup": {
-            "Ref": "RepositoryApiLisaRAGrepositoryingestdocumentsLogGroupB8A815CF"
-          }
-        },
         "MemorySize": 512,
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -6620,21 +6684,35 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "RepositoryApiLisaRAGrepositorylistdocsLogGroup9B649962": {
-      "Type": "AWS::Logs::LogGroup",
+    "RepositoryApiLisaRAGrepositoryingestdocumentsLogRetention4F1A6C52": {
+      "Type": "Custom::LogRetention",
       "Properties": {
-        "LogGroupName": "/aws/lambda/LisaRAG-repository-list_docs",
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "RepositoryApiLisaRAGrepositoryingestdocumentsD194F7BE"
+              }
+            ]
+          ]
+        },
         "RetentionInDays": 30
-      },
-      "UpdateReplacePolicy": "Retain",
-      "DeletionPolicy": "Retain"
+      }
     },
     "RepositoryApiLisaRAGrepositorylistdocs0127CF73": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Description": "List all docs for a repository",
         "Environment": {
@@ -6735,11 +6813,6 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
-        "LoggingConfig": {
-          "LogGroup": {
-            "Ref": "RepositoryApiLisaRAGrepositorylistdocsLogGroup9B649962"
-          }
-        },
         "MemorySize": 512,
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -6766,21 +6839,35 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "RepositoryApiLisaRAGrepositorygetdocumentLogGroup79CADEEE": {
-      "Type": "AWS::Logs::LogGroup",
+    "RepositoryApiLisaRAGrepositorylistdocsLogRetentionD230F85A": {
+      "Type": "Custom::LogRetention",
       "Properties": {
-        "LogGroupName": "/aws/lambda/LisaRAG-repository-get_document",
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "RepositoryApiLisaRAGrepositorylistdocs0127CF73"
+              }
+            ]
+          ]
+        },
         "RetentionInDays": 30
-      },
-      "UpdateReplacePolicy": "Retain",
-      "DeletionPolicy": "Retain"
+      }
     },
     "RepositoryApiLisaRAGrepositorygetdocument7F61DEFF": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Description": "Get a document by ID",
         "Environment": {
@@ -6881,11 +6968,6 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
-        "LoggingConfig": {
-          "LogGroup": {
-            "Ref": "RepositoryApiLisaRAGrepositorygetdocumentLogGroup79CADEEE"
-          }
-        },
         "MemorySize": 512,
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -6912,21 +6994,35 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "RepositoryApiLisaRAGrepositorydownloaddocumentLogGroupA78B02F4": {
-      "Type": "AWS::Logs::LogGroup",
+    "RepositoryApiLisaRAGrepositorygetdocumentLogRetentionA1A1CC49": {
+      "Type": "Custom::LogRetention",
       "Properties": {
-        "LogGroupName": "/aws/lambda/LisaRAG-repository-download_document",
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "RepositoryApiLisaRAGrepositorygetdocument7F61DEFF"
+              }
+            ]
+          ]
+        },
         "RetentionInDays": 30
-      },
-      "UpdateReplacePolicy": "Retain",
-      "DeletionPolicy": "Retain"
+      }
     },
     "RepositoryApiLisaRAGrepositorydownloaddocument5BF87366": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Description": "Creates presigned url to download document within repository",
         "Environment": {
@@ -7027,11 +7123,6 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
-        "LoggingConfig": {
-          "LogGroup": {
-            "Ref": "RepositoryApiLisaRAGrepositorydownloaddocumentLogGroupA78B02F4"
-          }
-        },
         "MemorySize": 512,
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -7058,21 +7149,35 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "RepositoryApiLisaRAGrepositorydeletedocumentsLogGroup3F66BE61": {
-      "Type": "AWS::Logs::LogGroup",
+    "RepositoryApiLisaRAGrepositorydownloaddocumentLogRetentionF756AEC9": {
+      "Type": "Custom::LogRetention",
       "Properties": {
-        "LogGroupName": "/aws/lambda/LisaRAG-repository-delete_documents",
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "RepositoryApiLisaRAGrepositorydownloaddocument5BF87366"
+              }
+            ]
+          ]
+        },
         "RetentionInDays": 30
-      },
-      "UpdateReplacePolicy": "Retain",
-      "DeletionPolicy": "Retain"
+      }
     },
     "RepositoryApiLisaRAGrepositorydeletedocuments4D39BB65": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Description": "Deletes all records associated with documents from the repository",
         "Environment": {
@@ -7173,11 +7278,6 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
-        "LoggingConfig": {
-          "LogGroup": {
-            "Ref": "RepositoryApiLisaRAGrepositorydeletedocumentsLogGroup3F66BE61"
-          }
-        },
         "MemorySize": 512,
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -7204,21 +7304,35 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "RepositoryApiLisaRAGrepositorylistjobsLogGroupC0355B34": {
-      "Type": "AWS::Logs::LogGroup",
+    "RepositoryApiLisaRAGrepositorydeletedocumentsLogRetentionFC2B290A": {
+      "Type": "Custom::LogRetention",
       "Properties": {
-        "LogGroupName": "/aws/lambda/LisaRAG-repository-list_jobs",
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "RepositoryApiLisaRAGrepositorydeletedocuments4D39BB65"
+              }
+            ]
+          ]
+        },
         "RetentionInDays": 30
-      },
-      "UpdateReplacePolicy": "Retain",
-      "DeletionPolicy": "Retain"
+      }
     },
     "RepositoryApiLisaRAGrepositorylistjobs49FA647F": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Description": "List all ingestion jobs for a repository",
         "Environment": {
@@ -7319,11 +7433,6 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
-        "LoggingConfig": {
-          "LogGroup": {
-            "Ref": "RepositoryApiLisaRAGrepositorylistjobsLogGroupC0355B34"
-          }
-        },
         "MemorySize": 512,
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -7350,21 +7459,35 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "RepositoryApiLisaRAGrepositorylistcollectionsLogGroup08CB0DDF": {
-      "Type": "AWS::Logs::LogGroup",
+    "RepositoryApiLisaRAGrepositorylistjobsLogRetention7655158E": {
+      "Type": "Custom::LogRetention",
       "Properties": {
-        "LogGroupName": "/aws/lambda/LisaRAG-repository-list_collections",
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "RepositoryApiLisaRAGrepositorylistjobs49FA647F"
+              }
+            ]
+          ]
+        },
         "RetentionInDays": 30
-      },
-      "UpdateReplacePolicy": "Retain",
-      "DeletionPolicy": "Retain"
+      }
     },
     "RepositoryApiLisaRAGrepositorylistcollections2D9E8AB8": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Description": "List all collections within a repository",
         "Environment": {
@@ -7465,11 +7588,6 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
-        "LoggingConfig": {
-          "LogGroup": {
-            "Ref": "RepositoryApiLisaRAGrepositorylistcollectionsLogGroup08CB0DDF"
-          }
-        },
         "MemorySize": 512,
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -7496,21 +7614,35 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "RepositoryApiLisaRAGrepositorylistusercollectionsLogGroupE9DA4C00": {
-      "Type": "AWS::Logs::LogGroup",
+    "RepositoryApiLisaRAGrepositorylistcollectionsLogRetentionD0DC7C00": {
+      "Type": "Custom::LogRetention",
       "Properties": {
-        "LogGroupName": "/aws/lambda/LisaRAG-repository-list_user_collections",
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "RepositoryApiLisaRAGrepositorylistcollections2D9E8AB8"
+              }
+            ]
+          ]
+        },
         "RetentionInDays": 30
-      },
-      "UpdateReplacePolicy": "Retain",
-      "DeletionPolicy": "Retain"
+      }
     },
     "RepositoryApiLisaRAGrepositorylistusercollections77D929CE": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Description": "List all collections user has access to across all repositories",
         "Environment": {
@@ -7611,11 +7743,6 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
-        "LoggingConfig": {
-          "LogGroup": {
-            "Ref": "RepositoryApiLisaRAGrepositorylistusercollectionsLogGroupE9DA4C00"
-          }
-        },
         "MemorySize": 512,
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -7642,21 +7769,35 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "RepositoryApiLisaRAGrepositorycreatecollectionLogGroup8866A6E0": {
-      "Type": "AWS::Logs::LogGroup",
+    "RepositoryApiLisaRAGrepositorylistusercollectionsLogRetention20E7DB29": {
+      "Type": "Custom::LogRetention",
       "Properties": {
-        "LogGroupName": "/aws/lambda/LisaRAG-repository-create_collection",
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "RepositoryApiLisaRAGrepositorylistusercollections77D929CE"
+              }
+            ]
+          ]
+        },
         "RetentionInDays": 30
-      },
-      "UpdateReplacePolicy": "Retain",
-      "DeletionPolicy": "Retain"
+      }
     },
     "RepositoryApiLisaRAGrepositorycreatecollectionAC48C51B": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Description": "Create a new collection within a repository",
         "Environment": {
@@ -7757,11 +7898,6 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
-        "LoggingConfig": {
-          "LogGroup": {
-            "Ref": "RepositoryApiLisaRAGrepositorycreatecollectionLogGroup8866A6E0"
-          }
-        },
         "MemorySize": 512,
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -7788,21 +7924,35 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "RepositoryApiLisaRAGrepositorygetcollectionLogGroup0DEB821A": {
-      "Type": "AWS::Logs::LogGroup",
+    "RepositoryApiLisaRAGrepositorycreatecollectionLogRetention42E40FCE": {
+      "Type": "Custom::LogRetention",
       "Properties": {
-        "LogGroupName": "/aws/lambda/LisaRAG-repository-get_collection",
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "RepositoryApiLisaRAGrepositorycreatecollectionAC48C51B"
+              }
+            ]
+          ]
+        },
         "RetentionInDays": 30
-      },
-      "UpdateReplacePolicy": "Retain",
-      "DeletionPolicy": "Retain"
+      }
     },
     "RepositoryApiLisaRAGrepositorygetcollection8E840085": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Description": "Get a collection by ID within a repository",
         "Environment": {
@@ -7903,11 +8053,6 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
-        "LoggingConfig": {
-          "LogGroup": {
-            "Ref": "RepositoryApiLisaRAGrepositorygetcollectionLogGroup0DEB821A"
-          }
-        },
         "MemorySize": 512,
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -7934,21 +8079,35 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "RepositoryApiLisaRAGrepositoryupdatecollectionLogGroupD21F28E3": {
-      "Type": "AWS::Logs::LogGroup",
+    "RepositoryApiLisaRAGrepositorygetcollectionLogRetention913E512B": {
+      "Type": "Custom::LogRetention",
       "Properties": {
-        "LogGroupName": "/aws/lambda/LisaRAG-repository-update_collection",
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "RepositoryApiLisaRAGrepositorygetcollection8E840085"
+              }
+            ]
+          ]
+        },
         "RetentionInDays": 30
-      },
-      "UpdateReplacePolicy": "Retain",
-      "DeletionPolicy": "Retain"
+      }
     },
     "RepositoryApiLisaRAGrepositoryupdatecollection075A4C93": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Description": "Update a collection within a repository",
         "Environment": {
@@ -8049,11 +8208,6 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
-        "LoggingConfig": {
-          "LogGroup": {
-            "Ref": "RepositoryApiLisaRAGrepositoryupdatecollectionLogGroupD21F28E3"
-          }
-        },
         "MemorySize": 512,
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -8080,21 +8234,35 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "RepositoryApiLisaRAGrepositorydeletecollectionLogGroupBB8C40EA": {
-      "Type": "AWS::Logs::LogGroup",
+    "RepositoryApiLisaRAGrepositoryupdatecollectionLogRetention1AF5BFC7": {
+      "Type": "Custom::LogRetention",
       "Properties": {
-        "LogGroupName": "/aws/lambda/LisaRAG-repository-delete_collection",
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "RepositoryApiLisaRAGrepositoryupdatecollection075A4C93"
+              }
+            ]
+          ]
+        },
         "RetentionInDays": 30
-      },
-      "UpdateReplacePolicy": "Retain",
-      "DeletionPolicy": "Retain"
+      }
     },
     "RepositoryApiLisaRAGrepositorydeletecollection389837F0": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Description": "Delete a collection within a repository",
         "Environment": {
@@ -8195,11 +8363,6 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
-        "LoggingConfig": {
-          "LogGroup": {
-            "Ref": "RepositoryApiLisaRAGrepositorydeletecollectionLogGroupBB8C40EA"
-          }
-        },
         "MemorySize": 512,
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -8226,21 +8389,35 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "RepositoryApiLisaRAGrepositorylistbedrockknowledgebasesLogGroup026D9B89": {
-      "Type": "AWS::Logs::LogGroup",
+    "RepositoryApiLisaRAGrepositorydeletecollectionLogRetention7F155F31": {
+      "Type": "Custom::LogRetention",
       "Properties": {
-        "LogGroupName": "/aws/lambda/LisaRAG-repository-list_bedrock_knowledge_bases",
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "RepositoryApiLisaRAGrepositorydeletecollection389837F0"
+              }
+            ]
+          ]
+        },
         "RetentionInDays": 30
-      },
-      "UpdateReplacePolicy": "Retain",
-      "DeletionPolicy": "Retain"
+      }
     },
     "RepositoryApiLisaRAGrepositorylistbedrockknowledgebases956CBADC": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Description": "List all ACTIVE Bedrock Knowledge Bases",
         "Environment": {
@@ -8341,11 +8518,6 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
-        "LoggingConfig": {
-          "LogGroup": {
-            "Ref": "RepositoryApiLisaRAGrepositorylistbedrockknowledgebasesLogGroup026D9B89"
-          }
-        },
         "MemorySize": 512,
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -8372,21 +8544,35 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "RepositoryApiLisaRAGrepositorylistbedrockdatasourcesLogGroup1966131E": {
-      "Type": "AWS::Logs::LogGroup",
+    "RepositoryApiLisaRAGrepositorylistbedrockknowledgebasesLogRetention05BAFF36": {
+      "Type": "Custom::LogRetention",
       "Properties": {
-        "LogGroupName": "/aws/lambda/LisaRAG-repository-list_bedrock_data_sources",
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "RepositoryApiLisaRAGrepositorylistbedrockknowledgebases956CBADC"
+              }
+            ]
+          ]
+        },
         "RetentionInDays": 30
-      },
-      "UpdateReplacePolicy": "Retain",
-      "DeletionPolicy": "Retain"
+      }
     },
     "RepositoryApiLisaRAGrepositorylistbedrockdatasources5AF92659": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Description": "List data sources for a Bedrock Knowledge Base",
         "Environment": {
@@ -8487,11 +8673,6 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
-        "LoggingConfig": {
-          "LogGroup": {
-            "Ref": "RepositoryApiLisaRAGrepositorylistbedrockdatasourcesLogGroup1966131E"
-          }
-        },
         "MemorySize": 512,
         "Role": {
           "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -8516,6 +8697,106 @@
       },
       "DependsOn": [
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
+      ]
+    },
+    "RepositoryApiLisaRAGrepositorylistbedrockdatasourcesLogRetention23BD6ABD": {
+      "Type": "Custom::LogRetention",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "RepositoryApiLisaRAGrepositorylistbedrockdatasources5AF92659"
+              }
+            ]
+          ]
+        },
+        "RetentionInDays": 30
+      }
+    },
+    "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRole9741ECFB": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRoleDefaultPolicyADDA7DEB": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "logs:PutRetentionPolicy",
+                "logs:DeleteRetentionPolicy"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRoleDefaultPolicyADDA7DEB",
+        "Roles": [
+          {
+            "Ref": "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRole9741ECFB"
+          }
+        ]
+      }
+    },
+    "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Handler": "index.handler",
+        "Runtime": "nodejs22.x",
+        "Timeout": 900,
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "2819175352ad1ce0dae768e83fc328fb70fb5f10b4a8ff0ccbcb791f02b0716d.zip"
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRole9741ECFB",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRoleDefaultPolicyADDA7DEB",
+        "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRole9741ECFB"
       ]
     },
     "VectorStoreCreatorStackdevtestlisalisarolestestlisaVectorStoreCreatorRole34491B98": {
@@ -9132,7 +9413,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "02d18123048e0e1cb95454fd66ef513a229d45afd597d4ce0536fe8bc72d33d6.zip"
+          "S3Key": "1ebc9d3ac2033816c4abb63e4afd69d350b4aba8704cc9236b82ea520b74f4b0.zip"
         },
         "Environment": {
           "Variables": {
@@ -9221,7 +9502,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Environment": {
           "Variables": {
@@ -9566,7 +9847,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Environment": {
           "Variables": {
@@ -9715,7 +9996,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7a2becb437cc71264dfcc1ae51b62e7bab2e0012be827401a4890211e80caafd.zip"
+          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
         },
         "Environment": {
           "Variables": {

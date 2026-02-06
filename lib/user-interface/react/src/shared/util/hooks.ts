@@ -15,7 +15,7 @@
 */
 
 import { Action, ThunkDispatch } from '@reduxjs/toolkit';
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 import NotificationService from '../notification/notification.service';
 import { debounce, DebouncedFunc } from 'lodash';
 
@@ -43,5 +43,6 @@ export function useDebounce<T extends (...args: any[]) => void> (callback: T, de
     // useMemo is necessary because useCallback doesn't understand the dependencies for the debounced function
     const debounced = useMemo(() => debounce(callback, delay), [callback, delay]);
 
-    return useCallback(debounced, [debounced]);
+    // Return debounced directly - it's already memoized and stable until callback/delay change
+    return debounced;
 }

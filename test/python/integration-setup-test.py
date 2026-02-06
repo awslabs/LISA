@@ -20,13 +20,16 @@ This script creates:
 - A self-hosted model
 - A PGVector repository
 - An OpenSearch repository
+- A Bedrock Knowledge Base with S3 data source
+- A Bedrock Knowledge Base repository
 """
 
 import argparse
+import json
 import os
 import sys
 import time
-from typing import Any, Dict
+from typing import Any
 
 import boto3
 
@@ -36,24 +39,31 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../lisa-sdk"))
 from lisapy.api import LisaApi
 from lisapy.types import BedrockModelRequest, ModelRequest
 
-DEFAULT_EMBEDDING_MODEL_ID = "e5-embed"
+DEFAULT_EMBEDDING_MODEL_ID = "qwen3-embed-06b"
 RAG_PIPELINE_BUCKET = "lisa-rag-pipeline"
+BEDROCK_KB_S3_BUCKET = "bk-s3-test"
 
 
-def get_management_key(deployment_name: str, deployment_stage: str) -> str:
+def get_management_key(deployment_name: str, deployment_stage: str, region: str | None = None) -> str:
     """Retrieve management key from AWS Secrets Manager.
 
     Args:
         deployment_name: The LISA deployment name
+        deployment_stage: The LISA deployment stage
+        region: AWS region where the secret is stored
 
     Returns:
         str: The management API key
     """
     secret_name = f"{deployment_name}-management-key"
     print(f"  Looking for secret: {secret_name}")
+    if region:
+        print(f"  Using region: {region}")
 
     try:
-        secrets_client = boto3.client("secretsmanager")
+        secrets_client = (
+            boto3.client("secretsmanager", region_name=region) if region else boto3.client("secretsmanager")
+        )
         response = secrets_client.get_secret_value(SecretId=secret_name)
         # Secret is stored as a plain string, not JSON
         api_key = response["SecretString"]
@@ -94,14 +104,14 @@ def create_api_token(deployment_name: str, api_key: str) -> str:
         raise
 
 
-def setup_authentication(deployment_name: str, deployment_stage: str) -> Dict[str, str]:
+def setup_authentication(deployment_name: str, deployment_stage: str) -> dict[str, str]:
     """Set up authentication for LISA API calls.
 
     Args:
         deployment_name: The LISA deployment name
 
     Returns:
-        Dict[str, str]: Authentication headers
+        dict[str, str]: Authentication headers
     """
     print(f"🔑 Setting up authentication for deployment: {deployment_name}")
 
@@ -203,7 +213,7 @@ def create_bedrock_model(
     model_type: str = "textgen",
     features: any = None,
     skip_create: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a Bedrock model configuration."""
 
     # Skip creation if flag is set
@@ -217,7 +227,12 @@ def create_bedrock_model(
         return {"modelId": model_id}
 
     if features is None:
-        features = [{"name": "summarization", "overview": ""}, {"name": "imageInput", "overview": ""}]
+        features = [
+            {"name": "summarization", "overview": ""},
+            {"name": "imageInput", "overview": ""},
+            {"name": "reasoning", "overview": ""},
+            {"name": "toolCalls", "overview": ""},
+        ]
 
     print(f"\n🚀 Creating Bedrock model '{model_id}'...")
 
@@ -259,7 +274,7 @@ def create_self_hosted_embedded_model(
     model_name: str,
     base_image: str = "ghcr.io/huggingface/text-embeddings-inference:latest",
     skip_create: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a self-hosted embedded model configuration."""
 
     # Skip creation if flag is set
@@ -280,32 +295,39 @@ def create_self_hosted_embedded_model(
             "minCapacity": 1,
             "maxCapacity": 1,
             "cooldown": 420,
-            "defaultInstanceWarmup": 180,
+            "defaultInstanceWarmup": 300,  # Embedding models load faster
             "metricConfig": {
                 "albMetricName": "RequestCountPerTarget",
                 "targetValue": 30,
                 "duration": 60,
-                "estimatedInstanceWarmup": 330,
+                "estimatedInstanceWarmup": 300,
             },
         },
         "containerConfig": {
-            "image": {"baseImage": base_image, "type": "asset"},
+            "image": {"baseImage": base_image, "type": "asset" if "huggingface" in base_image.lower() else "ecr"},
             "sharedMemorySize": 2048,
             "healthCheckConfig": {
                 "command": ["CMD-SHELL", "exit 0"],
                 "interval": 10,
-                "startPeriod": 30,
+                "startPeriod": 300,  # 10 minutes to allow for model loading
                 "timeout": 5,
                 "retries": 3,
             },
             "environment": {
-                "MAX_TOTAL_TOKENS": "32768",
-                "MAX_INPUT_LENGTH": "16384",
-                "MAX_BATCH_TOKENS": "8192",
-                "MAX_CONCURRENT_REQUESTS": "512",
-                "MAX_CLIENT_BATCH_SIZE": "1024",
-                "TEI_POOLING": "mean",
-                "AUTO_TRUNCATE": "true",
+                # TEI Performance Configuration for g5.xlarge (1x A10G GPU, 24GB VRAM)
+                # Based on: https://huggingface.co/docs/text-embeddings-inference/cli_arguments
+                # Batching - CRITICAL for GPU utilization and throughput
+                # MAX_BATCH_TOKENS should be as high as possible until GPU is compute-bound
+                "MAX_BATCH_TOKENS": "16384",  # Max tokens per batch (default: 16384)
+                # Concurrency - control backpressure
+                "MAX_CONCURRENT_REQUESTS": "512",  # Max concurrent requests (default: 512)
+                "MAX_CLIENT_BATCH_SIZE": "256",  # Max inputs per client request (default: 32)
+                # Pooling method for embeddings
+                "POOLING": "mean",  # Options: cls, mean, splade, last-token
+                # Input handling
+                "AUTO_TRUNCATE": "true",  # Automatically truncate long inputs
+                # Precision - use float16 for faster inference on GPU
+                "DTYPE": "float16",
             },
         },
         "inferenceContainer": "tei",
@@ -348,9 +370,14 @@ def create_self_hosted_model(
     lisa_client: LisaApi,
     model_id: str,
     model_name: str,
-    base_image: str = "vllm/vllm-openai:latest",
+    base_image: str = "public.ecr.aws/deep-learning-containers/vllm:0.13-gpu-py312",
     skip_create: bool = False,
-) -> Dict[str, Any]:
+    instance_type: str = "g5.xlarge",
+    environment: dict | None = None,
+    blockDeviceVolumeSize: int = 50,
+    memoryReservation: int | None = None,
+    sharedMemorySize: int = 2048,
+) -> dict[str, Any]:
     """Create a self-hosted model configuration."""
 
     # Skip creation if flag is set
@@ -370,43 +397,56 @@ def create_self_hosted_model(
     if not instances:
         raise Exception("No EC2 instances available for self-hosted model")
 
-    # Use the first available instance type that supports GPU workloads
-    gpu_instances = [inst for inst in instances if "g5" in inst.lower() or "p3" in inst.lower() or "p4" in inst.lower()]
-    instance_type = gpu_instances[0] if gpu_instances else instances[0]
+    if not environment:
+        environment = {
+            # vLLM Performance Configuration for g5.xlarge (1x A10G GPU, 24GB VRAM)
+            # These environment variables are read natively by vLLM
+            # See: https://docs.vllm.ai/en/latest/configuration/env_vars/
+            # Context length - maximum sequence length the model can handle
+            "VLLM_MAX_MODEL_LEN": "16384",
+            # GPU memory utilization - use 90% of GPU VRAM for model/KV cache
+            "VLLM_GPU_MEMORY_UTILIZATION": "0.90",
+            # Batching - max tokens processed per iteration (affects throughput)
+            "VLLM_MAX_NUM_BATCHED_TOKENS": "8192",
+            # Concurrency - max number of sequences processed in parallel
+            "VLLM_MAX_NUM_SEQS": "128",
+            # Performance optimizations
+            "VLLM_ENABLE_PREFIX_CACHING": "true",  # Cache common prefixes for faster inference
+            "VLLM_ENABLE_CHUNKED_PREFILL": "true",  # Better memory efficiency during prefill
+            # Precision - let vLLM auto-detect based on model config
+            "VLLM_DTYPE": "auto",
+        }
+
     print(f"  Using instance type: {instance_type}")
     self_hosted_model_request: ModelRequest = {
         "autoScalingConfig": {
-            "blockDeviceVolumeSize": 50,
+            "blockDeviceVolumeSize": blockDeviceVolumeSize,
             "minCapacity": 1,
             "maxCapacity": 1,
             "cooldown": 420,
-            "defaultInstanceWarmup": 180,
+            "defaultInstanceWarmup": 300,  # Match model loading time
             "metricConfig": {
                 "albMetricName": "RequestCountPerTarget",
                 "targetValue": 30,
                 "duration": 60,
-                "estimatedInstanceWarmup": 330,
+                "estimatedInstanceWarmup": 300,  # Match model loading time
             },
         },
         "containerConfig": {
-            "image": {"baseImage": base_image, "type": "asset"},
-            "sharedMemorySize": 2048,
+            "image": {"baseImage": base_image, "type": "asset" if "huggingface" in base_image.lower() else "ecr"},
+            "sharedMemorySize": sharedMemorySize,
             "healthCheckConfig": {
                 "command": ["CMD-SHELL", "exit 0"],
                 "interval": 10,
-                "startPeriod": 30,
+                "startPeriod": 300,  # 10 minutes to allow for model loading
                 "timeout": 5,
                 "retries": 3,
             },
-            "environment": {
-                "MAX_TOTAL_TOKENS": "32768",
-                "MAX_INPUT_LENGTH": "16384",
-                "MAX_BATCH_TOKENS": "8192",
-                "MAX_CONCURRENT_REQUESTS": "128",
-            },
+            "environment": environment,
+            **({"memoryReservation": memoryReservation} if memoryReservation is not None else {}),
         },
         "inferenceContainer": "vllm",
-        "instanceType": "g5.xlarge",
+        "instanceType": instance_type,
         "loadBalancerConfig": {
             "healthCheckConfig": {
                 "path": "/health",
@@ -418,10 +458,15 @@ def create_self_hosted_model(
         },
         "modelId": model_id,
         "modelName": model_name,
-        "modelDescription": None,
+        "modelDescription": f"Self-hosted model for {model_name}",
         "modelType": "textgen",
         "streaming": True,
-        "features": [{"name": "summarization", "overview": ""}, {"name": "imageInput", "overview": ""}],
+        "features": [
+            {"name": "summarization", "overview": ""},
+            {"name": "imageInput", "overview": ""},
+            {"name": "reasoning", "overview": ""},
+            {"name": "toolCalls", "overview": ""},
+        ],
         "allowedGroups": None,
     }
 
@@ -443,7 +488,7 @@ def create_self_hosted_model(
 
 def create_pgvector_repository(
     lisa_client: LisaApi, embedding_model_id: str = None, skip_create: bool = False
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a PGVector repository."""
     repository_id = "pgv-rag"
 
@@ -496,7 +541,7 @@ def create_pgvector_repository(
 
 def create_opensearch_repository(
     lisa_client: LisaApi, embedding_model_id: str = None, skip_create: bool = False
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create an OpenSearch repository."""
     repository_id = "os-rag"
 
@@ -554,25 +599,604 @@ def create_opensearch_repository(
         raise
 
 
-def cleanup_resources(lisa_client: LisaApi, created_resources: Dict[str, list]):
-    """Clean up created resources."""
-    print("\n🧹 Cleaning up created resources...")
+def create_bedrock_kb_repository(
+    lisa_client: LisaApi,
+    knowledge_base_id: str,
+    data_source_id: str,
+    data_source_name: str,
+    s3_bucket: str,
+    embedding_model_id: str = None,
+    skip_create: bool = False,
+) -> dict[str, Any]:
+    """Create a Bedrock Knowledge Base repository using LISA SDK.
 
-    # Clean up models
-    for model_id in created_resources.get("models", []):
-        try:
-            lisa_client.delete_model(model_id)
-            print(f"✓ Deleted model: {model_id}")
-        except Exception as e:
-            print(f"✗ Failed to delete model {model_id}: {e}")
+    Args:
+        lisa_client: LISA API client
+        knowledge_base_id: The Bedrock Knowledge Base ID to connect to
+        data_source_id: The data source ID within the Knowledge Base
+        data_source_name: The name of the data source
+        s3_bucket: The S3 bucket used by the data source
+        embedding_model_id: Optional embedding model ID
+        skip_create: Skip creation if True
 
-    # Clean up repositories
-    for repo_id in created_resources.get("repositories", []):
+    Returns:
+        dict containing repositoryId
+    """
+    repository_id = "bedrock-kb-rag"
+
+    # Skip creation if flag is set
+    if skip_create:
+        print(f"\n⏭️  Skipping creation of Bedrock KB repository '{repository_id}' (skip_create=True)")
+        return {"repositoryId": repository_id}
+
+    # Check if repository already exists
+    if repository_exists(lisa_client, repository_id):
+        print(f"\n⏭️  Bedrock KB repository '{repository_id}' already exists, skipping creation")
+        return {"repositoryId": repository_id}
+
+    print(f"\n🚀 Creating Bedrock KB repository '{repository_id}' for Knowledge Base '{knowledge_base_id}'...")
+
+    try:
+        rag_config = {
+            "repositoryId": repository_id,
+            "embeddingModelId": embedding_model_id or DEFAULT_EMBEDDING_MODEL_ID,
+            "type": "bedrock_knowledge_base",
+            "allowedGroups": [],
+            "bedrockKnowledgeBaseConfig": {
+                "knowledgeBaseId": knowledge_base_id,
+                "dataSources": [
+                    {
+                        "id": data_source_id,
+                        "name": data_source_name,
+                        "s3Uri": f"s3://{s3_bucket}/",
+                    }
+                ],
+            },
+        }
+
+        result = lisa_client.create_bedrock_kb_repository(rag_config)
+        print(f"✓ Bedrock KB repository created: {result}")
+
+        # Handle case where response doesn't contain repositoryId
+        if result is None or not isinstance(result, dict):
+            result = {"repositoryId": rag_config["repositoryId"]}
+        elif "repositoryId" not in result:
+            result["repositoryId"] = rag_config["repositoryId"]
+
+        return result
+    except Exception as e:
+        print(f"✗ Failed to create Bedrock KB repository: {e}")
+        raise
+
+
+def create_bedrock_knowledge_base(
+    deployment_name: str,
+    region: str,
+    kb_name: str = "bedrock-kb-e2e-test",
+    s3_bucket_name: str = BEDROCK_KB_S3_BUCKET,
+    embedding_model_arn: str = None,
+    skip_create: bool = False,
+) -> dict[str, Any]:
+    """Create a Bedrock Knowledge Base with S3 data source.
+
+    Args:
+        deployment_name: The LISA deployment name
+        region: AWS region
+        kb_name: Name for the knowledge base
+        s3_bucket_name: Name of the S3 bucket to create and use as data source
+        embedding_model_arn: ARN of the embedding model (defaults to Titan Embed)
+        skip_create: Skip creation if True
+
+    Returns:
+        dict containing knowledgeBaseId, dataSourceId, and s3Bucket
+    """
+    if skip_create:
+        print(f"\n⏭️  Skipping creation of Bedrock Knowledge Base '{kb_name}' (skip_create=True)")
+        return {"knowledgeBaseId": f"{kb_name}-id", "dataSourceId": f"{kb_name}-ds-id"}
+
+    print(f"\n🚀 Setting up Bedrock Knowledge Base '{kb_name}'...")
+
+    try:
+        s3_client = boto3.client("s3", region_name=region)
+        sts_client = boto3.client("sts", region_name=region)
+        iam_client = boto3.client("iam", region_name=region)
+        aoss_client = boto3.client("opensearchserverless", region_name=region)
+        bedrock_agent_client = boto3.client("bedrock-agent", region_name=region)
+
+        # Get account ID
+        account_id = sts_client.get_caller_identity()["Account"]
+
+        # 1. Check if S3 bucket exists, create only if it doesn't
+        bucket_name = f"{deployment_name}-{s3_bucket_name}"
+        print(f"  Checking S3 bucket: {bucket_name}")
+
         try:
-            lisa_client.delete_repository(repo_id)
-            print(f"✓ Deleted repository: {repo_id}")
+            s3_client.head_bucket(Bucket=bucket_name)
+            print(f"✓ S3 bucket already exists: {bucket_name}")
+        except s3_client.exceptions.NoSuchBucket:
+            print(f"  Creating S3 bucket: {bucket_name}")
+            try:
+                if region == "us-east-1":
+                    s3_client.create_bucket(Bucket=bucket_name)
+                else:
+                    s3_client.create_bucket(
+                        Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": region}
+                    )
+                print(f"✓ S3 bucket created: {bucket_name}")
+            except Exception as e:
+                print(f"⚠️  S3 bucket creation issue: {e}")
         except Exception as e:
-            print(f"✗ Failed to delete repository {repo_id}: {e}")
+            print(f"⚠️  S3 bucket check issue: {e}")
+
+        # 2. Create IAM role for Bedrock Knowledge Base
+        role_name = f"{deployment_name}-BedrockKBRole"
+        print(f"  Creating IAM role: {role_name}")
+
+        trust_policy = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {"Service": "bedrock.amazonaws.com"},
+                    "Action": "sts:AssumeRole",
+                }
+            ],
+        }
+
+        try:
+            role_response = iam_client.create_role(
+                RoleName=role_name,
+                AssumeRolePolicyDocument=json.dumps(trust_policy),
+                Description=f"Role for Bedrock Knowledge Base - {deployment_name}",
+            )
+            role_arn = role_response["Role"]["Arn"]
+            print(f"✓ IAM role created: {role_arn}")
+
+            # Attach necessary policies
+            policy_document = {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": ["s3:GetObject", "s3:ListBucket"],
+                        "Resource": [f"arn:aws:s3:::{bucket_name}", f"arn:aws:s3:::{bucket_name}/*"],
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["bedrock:InvokeModel"],
+                        "Resource": "*",
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["aoss:APIAccessAll"],
+                        "Resource": "*",
+                    },
+                ],
+            }
+
+            iam_client.put_role_policy(
+                RoleName=role_name, PolicyName=f"{role_name}-Policy", PolicyDocument=json.dumps(policy_document)
+            )
+            print("✓ IAM policy attached to role")
+
+            # Wait for role to propagate
+            time.sleep(10)
+
+        except iam_client.exceptions.EntityAlreadyExistsException:
+            role_arn = f"arn:aws:iam::{account_id}:role/{role_name}"
+            print(f"✓ IAM role already exists: {role_arn}")
+
+        # 3. Create OpenSearch Serverless collection
+        collection_name = f"{deployment_name}-kb-collection"
+        print(f"  Creating OpenSearch Serverless collection: {collection_name}")
+
+        try:
+            # First, create encryption security policy
+            encryption_policy_name = f"{deployment_name}-kb-encryption"
+            encryption_policy = {
+                "Rules": [
+                    {
+                        "ResourceType": "collection",
+                        "Resource": [f"collection/{collection_name}"],
+                    }
+                ],
+                "AWSOwnedKey": True,
+            }
+
+            try:
+                aoss_client.create_security_policy(
+                    name=encryption_policy_name,
+                    type="encryption",
+                    policy=json.dumps(encryption_policy),
+                    description=f"Encryption policy for {collection_name}",
+                )
+                print(f"✓ Created encryption security policy: {encryption_policy_name}")
+            except aoss_client.exceptions.ConflictException:
+                print(f"✓ Encryption security policy already exists: {encryption_policy_name}")
+
+            # Create network security policy (allow public access for testing)
+            network_policy_name = f"{deployment_name}-kb-network"
+            network_policy = [
+                {
+                    "Rules": [
+                        {
+                            "ResourceType": "collection",
+                            "Resource": [f"collection/{collection_name}"],
+                        }
+                    ],
+                    "AllowFromPublic": True,
+                }
+            ]
+
+            try:
+                aoss_client.create_security_policy(
+                    name=network_policy_name,
+                    type="network",
+                    policy=json.dumps(network_policy),
+                    description=f"Network policy for {collection_name}",
+                )
+                print(f"✓ Created network security policy: {network_policy_name}")
+            except aoss_client.exceptions.ConflictException:
+                print(f"✓ Network security policy already exists: {network_policy_name}")
+
+            # Create data access policy
+            data_policy_name = f"{deployment_name}-kb-data-access"
+            data_policy = [
+                {
+                    "Rules": [
+                        {
+                            "ResourceType": "collection",
+                            "Resource": [f"collection/{collection_name}"],
+                            "Permission": [
+                                "aoss:CreateCollectionItems",
+                                "aoss:DeleteCollectionItems",
+                                "aoss:UpdateCollectionItems",
+                                "aoss:DescribeCollectionItems",
+                            ],
+                        },
+                        {
+                            "ResourceType": "index",
+                            "Resource": [f"index/{collection_name}/*"],
+                            "Permission": [
+                                "aoss:CreateIndex",
+                                "aoss:DeleteIndex",
+                                "aoss:UpdateIndex",
+                                "aoss:DescribeIndex",
+                                "aoss:ReadDocument",
+                                "aoss:WriteDocument",
+                            ],
+                        },
+                    ],
+                    "Principal": [role_arn, f"arn:aws:iam::{account_id}:root"],
+                }
+            ]
+
+            try:
+                aoss_client.create_access_policy(
+                    name=data_policy_name,
+                    type="data",
+                    policy=json.dumps(data_policy),
+                    description=f"Data access policy for {collection_name}",
+                )
+                print(f"✓ Created data access policy: {data_policy_name}")
+            except aoss_client.exceptions.ConflictException:
+                print(f"✓ Data access policy already exists: {data_policy_name}")
+
+            # Now create the collection
+            collection_response = aoss_client.create_collection(
+                name=collection_name, type="VECTORSEARCH", description=f"Collection for {kb_name}"
+            )
+            collection_id = collection_response["createCollectionDetail"]["id"]
+            collection_arn = collection_response["createCollectionDetail"]["arn"]
+            print(f"✓ OpenSearch Serverless collection created: {collection_id}")
+
+            # Wait for collection to be active
+            print("  Waiting for collection to be active...")
+            max_wait = 60  # 5 minutes
+            for i in range(max_wait):
+                collection_status = aoss_client.batch_get_collection(ids=[collection_id])
+                if collection_status["collectionDetails"][0]["status"] == "ACTIVE":
+                    print("✓ Collection is active")
+                    break
+                time.sleep(5)
+
+        except Exception as e:
+            print(f"⚠️  OpenSearch Serverless collection issue: {e}")
+            # Try to find existing collection
+            collections = aoss_client.list_collections(collectionFilters={"name": collection_name})
+            if collections["collectionSummaries"]:
+                collection_id = collections["collectionSummaries"][0]["id"]
+                collection_arn = collections["collectionSummaries"][0]["arn"]
+                print(f"✓ Using existing collection: {collection_id}")
+            else:
+                raise
+
+        # Create the vector index in OpenSearch Serverless if it doesn't exist
+        index_name = f"{kb_name}-index"
+        print(f"  Creating vector index '{index_name}' in collection...")
+
+        try:
+            # Get the collection endpoint
+            collection_details = aoss_client.batch_get_collection(ids=[collection_id])
+            collection_endpoint = collection_details["collectionDetails"][0]["collectionEndpoint"]
+
+            # Remove https:// prefix if present
+            if collection_endpoint.startswith("https://"):
+                collection_endpoint = collection_endpoint[8:]
+
+            # Create OpenSearch client for the collection
+            from opensearchpy import OpenSearch, RequestsHttpConnection
+            from requests_aws4auth import AWS4Auth
+
+            credentials = boto3.Session().get_credentials()
+            awsauth = AWS4Auth(
+                credentials.access_key,
+                credentials.secret_key,
+                region,
+                "aoss",
+                session_token=credentials.token,
+            )
+
+            os_client = OpenSearch(
+                hosts=[{"host": collection_endpoint, "port": 443}],
+                http_auth=awsauth,
+                use_ssl=True,
+                verify_certs=True,
+                connection_class=RequestsHttpConnection,
+                timeout=30,
+            )
+
+            # Check if index exists
+            if not os_client.indices.exists(index=index_name):
+                # Create index with vector field mapping
+                index_body = {
+                    "settings": {"index.knn": True},
+                    "mappings": {
+                        "properties": {
+                            "embedding": {
+                                "type": "knn_vector",
+                                "dimension": 1024,  # Titan Embed v2 dimension
+                                "method": {
+                                    "name": "hnsw",
+                                    "engine": "faiss",
+                                    "parameters": {"ef_construction": 512, "m": 16},
+                                },
+                            },
+                            "text": {"type": "text"},
+                            "metadata": {"type": "text"},
+                        }
+                    },
+                }
+
+                os_client.indices.create(index=index_name, body=index_body)
+                print(f"✓ Created vector index: {index_name}")
+            else:
+                print(f"✓ Vector index already exists: {index_name}")
+
+        except ImportError:
+            print("⚠️  opensearch-py not installed, skipping index creation")
+            print("    Install with: pip install opensearch-py requests-aws4auth")
+        except Exception as e:
+            print(f"⚠️  Could not create vector index: {e}")
+            print("    The Knowledge Base creation may fail if the index doesn't exist")
+
+        # 4. Set default embedding model if not provided
+        if not embedding_model_arn:
+            embedding_model_arn = f"arn:aws:bedrock:{region}::foundation-model/amazon.titan-embed-text-v2:0"
+
+        # 5. Check if Knowledge Base already exists
+        print(f"  Checking if Knowledge Base '{kb_name}' exists...")
+        existing_kb_id = None
+        existing_ds_id = None
+
+        try:
+            # List all knowledge bases and check if one with our name exists
+            kb_list = bedrock_agent_client.list_knowledge_bases()
+            for kb in kb_list.get("knowledgeBaseSummaries", []):
+                if kb.get("name") == kb_name:
+                    existing_kb_id = kb.get("knowledgeBaseId")
+                    print(f"✓ Knowledge Base already exists: {existing_kb_id}")
+
+                    # Get data sources for this KB
+                    ds_list = bedrock_agent_client.list_data_sources(knowledgeBaseId=existing_kb_id)
+                    if ds_list.get("dataSourceSummaries"):
+                        existing_ds_id = ds_list["dataSourceSummaries"][0]["dataSourceId"]
+                        print(f"✓ Data source already exists: {existing_ds_id}")
+                    break
+        except Exception as e:
+            print(f"  Could not check existing knowledge bases: {e}")
+
+        # If KB exists, return existing info
+        if existing_kb_id:
+            result = {
+                "knowledgeBaseId": existing_kb_id,
+                "dataSourceId": existing_ds_id,
+                "s3Bucket": bucket_name,
+                "collectionId": collection_id,
+                "roleArn": role_arn,
+            }
+            print("✓ Using existing Bedrock Knowledge Base")
+            return result
+
+        # 6. Create Knowledge Base with OpenSearch Serverless
+        print(f"  Creating Knowledge Base with OpenSearch Serverless and embedding model: {embedding_model_arn}")
+
+        kb_response = bedrock_agent_client.create_knowledge_base(
+            name=kb_name,
+            description=f"Test Knowledge Base for LISA integration testing - {deployment_name}",
+            roleArn=role_arn,
+            knowledgeBaseConfiguration={
+                "type": "VECTOR",
+                "vectorKnowledgeBaseConfiguration": {
+                    "embeddingModelArn": embedding_model_arn,
+                },
+            },
+            storageConfiguration={
+                "type": "OPENSEARCH_SERVERLESS",
+                "opensearchServerlessConfiguration": {
+                    "collectionArn": collection_arn,
+                    "vectorIndexName": f"{kb_name}-index",
+                    "fieldMapping": {
+                        "vectorField": "embedding",
+                        "textField": "text",
+                        "metadataField": "metadata",
+                    },
+                },
+            },
+        )
+
+        knowledge_base_id = kb_response["knowledgeBase"]["knowledgeBaseId"]
+        print(f"✓ Knowledge Base created: {knowledge_base_id}")
+
+        # 7. Create S3 Data Source
+        print(f"  Creating S3 data source for bucket: {bucket_name}")
+
+        ds_response = bedrock_agent_client.create_data_source(
+            knowledgeBaseId=knowledge_base_id,
+            name=f"{kb_name}-s3-source",
+            description=f"S3 data source for {kb_name}",
+            dataSourceConfiguration={
+                "type": "S3",
+                "s3Configuration": {
+                    "bucketArn": f"arn:aws:s3:::{bucket_name}",
+                    "inclusionPrefixes": ["documents/"],
+                },
+            },
+        )
+
+        data_source_id = ds_response["dataSource"]["dataSourceId"]
+        print(f"✓ Data source created: {data_source_id}")
+
+        result = {
+            "knowledgeBaseId": knowledge_base_id,
+            "dataSourceId": data_source_id,
+            "s3Bucket": bucket_name,
+            "collectionId": collection_id,
+            "roleArn": role_arn,
+        }
+
+        print(f"✓ Bedrock Knowledge Base setup complete: {result}")
+        return result
+
+    except Exception as e:
+        print(f"✗ Failed to create Bedrock Knowledge Base: {e}")
+        import traceback
+
+        traceback.print_exc()
+        raise
+
+
+def cleanup_all_models(lisa_client: LisaApi) -> None:
+    """Clean up all models by listing and deleting each one.
+
+    Args:
+        lisa_client: LISA API client
+    """
+    print("\n🧹 Cleaning up all models...")
+
+    try:
+        models = lisa_client.list_models()
+        if not models:
+            print("  No models found to delete")
+            return
+
+        print(f"  Found {len(models)} models to delete")
+        for model in models:
+            model_id = model.get("modelId")
+            if model_id:
+                try:
+                    lisa_client.delete_model(model_id)
+                    print(f"✓ Deleted model: {model_id}")
+                except Exception as e:
+                    print(f"✗ Failed to delete model {model_id}: {e}")
+    except Exception as e:
+        print(f"✗ Failed to list models for cleanup: {e}")
+
+
+def cleanup_all_repositories(lisa_client: LisaApi) -> None:
+    """Clean up all repositories by listing and deleting each one.
+
+    Args:
+        lisa_client: LISA API client
+    """
+    print("\n🧹 Cleaning up all repositories...")
+
+    try:
+        repositories = lisa_client.list_repositories()
+        if not repositories:
+            print("  No repositories found to delete")
+            return
+
+        print(f"  Found {len(repositories)} repositories to delete")
+        for repo in repositories:
+            repo_id = repo.get("repositoryId")
+            if repo_id:
+                try:
+                    lisa_client.delete_repository(repo_id)
+                    print(f"✓ Deleted repository: {repo_id}")
+                except Exception as e:
+                    print(f"✗ Failed to delete repository {repo_id}: {e}")
+    except Exception as e:
+        print(f"✗ Failed to list repositories for cleanup: {e}")
+
+
+def cleanup_resources(lisa_client: LisaApi, created_resources: dict[str, list]):
+    """Clean up created resources including Bedrock Knowledge Bases.
+
+    Args:
+        lisa_client: LISA API client
+        created_resources: Dictionary containing lists of created resource IDs
+    """
+    print("\n🧹 Cleaning up resources...")
+
+    # Clean up all models
+    cleanup_all_models(lisa_client)
+
+    # Clean up all repositories
+    cleanup_all_repositories(lisa_client)
+
+    # Clean up Bedrock Knowledge Bases
+    for kb_info in created_resources.get("knowledge_bases", []):
+        try:
+            bedrock_agent_client = boto3.client("bedrock-agent")
+            s3_client = boto3.client("s3")
+
+            kb_id = kb_info.get("knowledgeBaseId")
+            s3_bucket = kb_info.get("s3Bucket")
+
+            # Delete data source first
+            if "dataSourceId" in kb_info:
+                try:
+                    bedrock_agent_client.delete_data_source(knowledgeBaseId=kb_id, dataSourceId=kb_info["dataSourceId"])
+                    print(f"✓ Deleted data source: {kb_info['dataSourceId']}")
+                except Exception as e:
+                    print(f"✗ Failed to delete data source {kb_info['dataSourceId']}: {e}")
+
+            # Delete knowledge base
+            try:
+                bedrock_agent_client.delete_knowledge_base(knowledgeBaseId=kb_id)
+                print(f"✓ Deleted knowledge base: {kb_id}")
+            except Exception as e:
+                print(f"✗ Failed to delete knowledge base {kb_id}: {e}")
+
+            # Delete S3 bucket (empty it first)
+            if s3_bucket:
+                try:
+                    # Delete all objects in bucket
+                    paginator = s3_client.get_paginator("list_objects_v2")
+                    for page in paginator.paginate(Bucket=s3_bucket):
+                        if "Contents" in page:
+                            objects = [{"Key": obj["Key"]} for obj in page["Contents"]]
+                            s3_client.delete_objects(Bucket=s3_bucket, Delete={"Objects": objects})
+
+                    # Delete bucket
+                    s3_client.delete_bucket(Bucket=s3_bucket)
+                    print(f"✓ Deleted S3 bucket: {s3_bucket}")
+                except Exception as e:
+                    print(f"✗ Failed to delete S3 bucket {s3_bucket}: {e}")
+
+        except Exception as e:
+            print(f"✗ Failed to delete knowledge base {kb_info}: {e}")
 
 
 def main():
@@ -583,7 +1207,7 @@ def main():
     parser.add_argument("--deployment-name", required=True, help="LISA deployment name for authentication")
     parser.add_argument("--deployment-stage", required=True, help="LISA deployment stage for authentication")
     parser.add_argument("--deployment-prefix", required=True, help="LISA deployment prefix")
-    parser.add_argument("--verify", default="false", help="Verify SSL certificates")
+    parser.add_argument("--verify", default="true", help="Verify SSL certificates (default: true)")
     parser.add_argument("--profile", help="AWS profile to use")
     parser.add_argument("--cleanup", action="store_true", help="Clean up resources (delete models and repositories)")
     parser.add_argument(
@@ -609,38 +1233,32 @@ def main():
 
         auth_headers = setup_authentication(args.deployment_name, args.deployment_stage)
 
+        # Get account ID and region for self-hosted model ECR images
+        sts_client = boto3.client("sts")
+        account_id = sts_client.get_caller_identity()["Account"]
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        print(f"Account ID: {account_id}")
+        print(f"Region: {region}")
+
         # Initialize LISA client with authentication
         lisa_client = LisaApi(url=args.api, verify=verify_ssl, headers=auth_headers)
 
-        created_resources = {"models": [], "repositories": []}
+        created_resources = {"models": [], "repositories": [], "knowledge_bases": []}
 
-        # If cleanup-only mode, skip all creation and just populate resource IDs
-        if args.cleanup and args.skip_create:
-            print("\n🧹 Cleanup-only mode: Collecting resource IDs for deletion...")
+        # If cleanup mode, skip all model and repository creation and perform cleanup
+        if args.cleanup:
+            print("\n🧹 Cleanup mode: Skipping resource creation and performing cleanup...")
 
-            # Define all resource IDs that would be created
-            created_resources["models"] = [
-                "nova-lite",
-                "nova-canvas",
-                "haiku-45",
-                "sonnet-45",
-                "titan-embed",
-                "mistral-7b-instruct-03",
-                "llama-32-1b-instruct",
-                "gpt-oss-20b",
-                DEFAULT_EMBEDDING_MODEL_ID,
-                "qwen3-embed-06b",
-                "baai-embed-15",
-            ]
-            created_resources["repositories"] = [
-                "pgv-rag",
-                "os-rag",
+            # Populate knowledge base info for cleanup
+            created_resources["knowledge_bases"] = [
+                {
+                    "knowledgeBaseId": "bedrock-kb-e2e-test-id",
+                    "dataSourceId": "bedrock-kb-e2e-test-ds-id",
+                    "s3Bucket": f"{args.deployment_name}-{BEDROCK_KB_S3_BUCKET}",
+                }
             ]
 
-            print(f"  Models to delete: {created_resources['models']}")
-            print(f"  Repositories to delete: {created_resources['repositories']}")
-
-            # Skip to cleanup
+            # Perform cleanup (will list and delete all models and repositories)
             cleanup_resources(lisa_client, created_resources)
             print("\n🧹 Cleanup completed!")
             print("\n✅ Integration setup test completed successfully!")
@@ -656,7 +1274,7 @@ def main():
             print("⚠️  No embedding models found, repositories will be created without default embedding model")
 
         models = []
-        # # 1. Create Bedrock model
+        # 1. Create Bedrock models
         models.extend(
             [
                 create_bedrock_model(
@@ -690,39 +1308,93 @@ def main():
                     [],
                     skip_create=args.skip_create,
                 ),
-                create_bedrock_model(
-                    lisa_client,
-                    "nova-canvas",
-                    "bedrock/amazon.nova-canvas-v1:0",
-                    "imagegen",
-                    [],
-                    skip_create=args.skip_create,
-                ),
             ]
         )
 
-        # # 2. Create self-hosted model
+        # 2. Create self-hosted model
         models.extend(
             [
                 create_self_hosted_model(
                     lisa_client,
                     "mistral-7b-instruct-03",
                     "mistralai/Mistral-7B-Instruct-v0.3",
+                    base_image=f"{account_id}.dkr.ecr.{region}.amazonaws.com/lisa-vllm:latest",
                     skip_create=args.skip_create,
                 ),
                 create_self_hosted_model(
                     lisa_client,
                     "llama-32-1b-instruct",
                     "meta-llama/Llama-3.2-1B-Instruct",
+                    base_image=f"{account_id}.dkr.ecr.{region}.amazonaws.com/lisa-vllm:latest",
                     skip_create=args.skip_create,
                 ),
                 create_self_hosted_model(
-                    lisa_client, "gpt-oss-20b", "openai/gpt-oss-20b", skip_create=args.skip_create
+                    lisa_client,
+                    "gpt-oss-20b",
+                    "openai/gpt-oss-20b",
+                    base_image=f"{account_id}.dkr.ecr.{region}.amazonaws.com/lisa-vllm:latest",
+                    skip_create=args.skip_create,
+                ),
+                create_self_hosted_model(
+                    lisa_client=lisa_client,
+                    model_id="gpt-oss-120b",
+                    model_name="openai/gpt-oss-120b",
+                    skip_create=args.skip_create,
+                    base_image=f"{account_id}.dkr.ecr.{region}.amazonaws.com/lisa-vllm:gptoss",
+                    instance_type="g6.48xlarge",
+                    blockDeviceVolumeSize=300,
+                    sharedMemorySize=65536,
+                    memoryReservation=740000,
+                    environment={
+                        "VLLM_ATTENTION_BACKEND": "TRITON_ATTN_VLLM_V1",
+                        "VLLM_TENSOR_PARALLEL_SIZE": "8",
+                        "VLLM_ASYNC_SCHEDULING": "true",
+                        "VLLM_MAX_PARALLEL_LOADING_WORKERS": "8",
+                        "VLLM_USE_TQDM_ON_LOAD": "true",
+                        "THREADS": "4",
+                        "VLLM_MAX_MODEL_LEN": "4096",
+                        "VLLM_GPU_MEMORY_UTILIZATION": "0.90",
+                        "VLLM_MAX_NUM_BATCHED_TOKENS": "8192",
+                        "VLLM_MAX_NUM_SEQS": "128",
+                        "VLLM_MAX_CONCURRENT_REQUESTS": "32",
+                        "VLLM_ENABLE_PREFIX_CACHING": "true",
+                        "VLLM_ENABLE_CHUNKED_PREFILL": "true",
+                        "VLLM_DTYPE": "auto",
+                    },
+                ),
+                # Llama-4-Scout 4-bit quantized - MoE model (109B total, 17B active)
+                # For 1M context: use p5.48xlarge (8x H100, 640GB VRAM)
+                # For 32K context: use g6.12xlarge (4x L4, 89GB VRAM) - configured below
+                # Llama-4-Scout 4-bit on g5.48xlarge (8x A10G, 192GB VRAM) - 128K context
+                create_self_hosted_model(
+                    lisa_client=lisa_client,
+                    model_id="llama4-scout-17b-4bit-128k",
+                    model_name="unsloth/Llama-4-Scout-17B-16E-Instruct-unsloth-bnb-4bit",
+                    skip_create=args.skip_create,
+                    base_image=f"{account_id}.dkr.ecr.{region}.amazonaws.com/lisa-vllm:latest",
+                    instance_type="g5.48xlarge",  # 8x A10G (192GB) for 128K context
+                    blockDeviceVolumeSize=300,
+                    sharedMemorySize=32768,
+                    memoryReservation=700000,
+                    environment={
+                        # Llama-4-Scout MoE optimizations for g5.48xlarge (128K context)
+                        # 8x A10G = 192GB VRAM total
+                        "VLLM_MAX_MODEL_LEN": "131072",  # 128K token context (max for 192GB)
+                        "VLLM_TENSOR_PARALLEL_SIZE": "8",  # Distribute across 8 A10Gs
+                        "VLLM_GPU_MEMORY_UTILIZATION": "0.92",  # High but safe utilization
+                        "VLLM_MAX_NUM_BATCHED_TOKENS": "16384",  # Moderate batch size
+                        "VLLM_MAX_NUM_SEQS": "64",  # Concurrent sequences
+                        "VLLM_ENABLE_PREFIX_CACHING": "true",  # Cache common prefixes
+                        "VLLM_ENABLE_CHUNKED_PREFILL": "true",  # Better memory efficiency
+                        "VLLM_DTYPE": "auto",  # Let vLLM detect from model config
+                        "VLLM_ATTENTION_BACKEND": "FLASH_ATTN",  # Flash attention for long context
+                        "VLLM_ENFORCE_EAGER": "false",  # Allow CUDA graphs
+                    },
                 ),
             ]
         )
 
-        # # 3. Create self-hosted embedded model
+        # 3. Create self-hosted embedded model
         models.extend(
             [
                 create_self_hosted_embedded_model(
@@ -753,6 +1425,28 @@ def main():
         for repo in repos:
             created_resources["repositories"].append(repo["repositoryId"])
 
+        # 6. Create Bedrock Knowledge Base with S3 data source
+        kb_result = create_bedrock_knowledge_base(
+            deployment_name=args.deployment_name,
+            region=os.environ.get("AWS_REGION", "us-east-1"),
+            kb_name="bedrock-kb-e2e-test",
+            skip_create=args.skip_create,
+        )
+        created_resources["knowledge_bases"].append(kb_result)
+
+        # 7. Create Bedrock KB repository using the Knowledge Base
+        if kb_result.get("knowledgeBaseId") and kb_result.get("dataSourceId"):
+            bedrock_kb_repo = create_bedrock_kb_repository(
+                lisa_client=lisa_client,
+                knowledge_base_id=kb_result["knowledgeBaseId"],
+                data_source_id=kb_result["dataSourceId"],
+                data_source_name="bedrock-kb-e2e-test-s3-source",
+                s3_bucket=kb_result["s3Bucket"],
+                embedding_model_id=embedding_model_id,
+                skip_create=args.skip_create,
+            )
+            created_resources["repositories"].append(bedrock_kb_repo["repositoryId"])
+
         if not args.skip_create:
             print("\n✅ All resources created successfully!")
         else:
@@ -760,6 +1454,7 @@ def main():
         print("Resources:")
         print(f"  Models: {created_resources['models']}")
         print(f"  Repositories: {created_resources['repositories']}")
+        print(f"  Knowledge Bases: {[kb.get('knowledgeBaseId') for kb in created_resources['knowledge_bases']]}")
 
         # Wait for resources to be ready if requested
         if args.wait:
@@ -786,13 +1481,8 @@ def main():
             else:
                 print("\n⚠️  Some resources may not be ready yet")
 
-        # Clean up if requested
-        if args.cleanup:
-            cleanup_resources(lisa_client, created_resources)
-            print("\n🧹 Cleanup completed!")
-        else:
-            print("\n💡 To clean up resources later, run this script with --cleanup flag")
-            print("   Or manually delete the resources through the LISA UI")
+        print("\n💡 To clean up resources later, run this script with --cleanup flag")
+        print("   Or manually delete the resources through the LISA UI")
 
         print("\n✅ Integration setup test completed successfully!")
         return 0

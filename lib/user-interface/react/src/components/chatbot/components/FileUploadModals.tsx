@@ -26,7 +26,7 @@ import {
     TextContent,
 } from '@cloudscape-design/components';
 import { FileTypes, StatusTypes } from '@/components/types';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RagConfig } from './RagOptions';
 import { useAppDispatch } from '@/config/store';
 import { useNotificationService } from '@/shared/util/hooks';
@@ -37,10 +37,11 @@ import {
 } from '@/shared/reducers/rag.reducer';
 import { uploadToS3Request } from '@/components/utils';
 import { ChunkingStrategy, ChunkingStrategyType, RagRepositoryType } from '#root/lib/schema';
-import { IModel } from '@/shared/model/model-management.model';
+import { IModel, ModelType } from '@/shared/model/model-management.model';
 import { JobStatusTable } from '@/components/chatbot/components/JobStatusTable';
 import { ChunkingConfigForm } from '@/shared/form/ChunkingConfigForm';
 import { MetadataForm } from '@/shared/form/MetadataForm';
+import { getDisplayName } from '@/shared/util/branding';
 
 export const renameFile = (originalFile: File) => {
     // Add timestamp to filename for RAG uploads to not conflict with existing S3 files
@@ -87,6 +88,7 @@ export type ContextUploadProps = {
     setShowContextUploadModal: React.Dispatch<React.SetStateAction<boolean>>;
     fileContext: string;
     setFileContext: React.Dispatch<React.SetStateAction<string>>;
+    setFileContextName: React.Dispatch<React.SetStateAction<string>>;
     selectedModel: IModel;
 };
 
@@ -95,12 +97,20 @@ export const ContextUploadModal = ({
     setShowContextUploadModal,
     fileContext,
     setFileContext,
+    setFileContextName,
     selectedModel
 }: ContextUploadProps) => {
     const [selectedFiles, setSelectedFiles] = useState<File[] | undefined>([]);
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
-    const modelSupportsImages = selectedModel?.features?.filter((feature) => feature.name === 'imageInput')?.length && true;
+    const modelSupportsImages = !!(selectedModel?.features?.filter((feature) => feature.name === 'imageInput')?.length) || selectedModel?.modelType === ModelType.videogen || selectedModel?.modelType === ModelType.imagegen;
+
+    // Clear selectedFiles when fileContext is cleared externally (e.g., via badge dismissal)
+    useEffect(() => {
+        if (!fileContext) {
+            queueMicrotask(() => setSelectedFiles([]));
+        }
+    }, [fileContext]);
 
     function handleError (error: string) {
         notificationService.generateNotification(error, 'error');
@@ -126,6 +136,7 @@ export const ContextUploadModal = ({
         }
 
         setFileContext(`File context: ${fileContents}`);
+        setFileContextName(file.name);
         setSelectedFiles([file]);
         return true;
     }
@@ -159,6 +170,7 @@ export const ContextUploadModal = ({
                             onClick={() => {
                                 setShowContextUploadModal(false);
                                 setFileContext('');
+                                setFileContextName('');
                                 setSelectedFiles([]);
                             }}
                             disabled={!fileContext}
@@ -174,7 +186,7 @@ export const ContextUploadModal = ({
                     <h4>File Context</h4>
                     <p>
                         <small>
-                            Upload files for LISA to use as context in this session. This additional context will be referenced to
+                            Upload files for {getDisplayName()} to use as context in this session. This additional context will be referenced to
                             answer your questions.
                         </small>
                     </p>
@@ -334,7 +346,7 @@ export const RagUploadModal = ({
                     <h4>Upload to RAG</h4>
                     <p>
                         <small>
-                            Upload files to the RAG repository leveraged by LISA. This will provide LISA with trusted information for
+                            Upload files to the RAG repository leveraged by {getDisplayName()}. This will provide {getDisplayName()} with trusted information for
                             answering prompts.
                         </small>
                     </p>
@@ -357,12 +369,12 @@ export const RagUploadModal = ({
                         setFields={(values) => {
                             if (values.chunkingStrategy !== undefined) {
                                 setChunkingStrategy(values.chunkingStrategy);
-                            } else if (values['chunkingStrategy.size'] !== undefined) {
+                            } else if (values['chunkingStrategy.size'] !== undefined && chunkingStrategy?.type === ChunkingStrategyType.FIXED) {
                                 setChunkingStrategy({
                                     ...chunkingStrategy,
                                     size: values['chunkingStrategy.size'],
                                 });
-                            } else if (values['chunkingStrategy.overlap'] !== undefined) {
+                            } else if (values['chunkingStrategy.overlap'] !== undefined && chunkingStrategy?.type === ChunkingStrategyType.FIXED) {
                                 setChunkingStrategy({
                                     ...chunkingStrategy,
                                     overlap: values['chunkingStrategy.overlap'],

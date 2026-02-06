@@ -26,6 +26,16 @@ export type RepositoryConfig = {
 };
 
 /**
+ * Check if a repository exists in the repository management list
+ * @returns Cypress.Chainable<boolean>
+ */
+export function repositoryExists (repositoryId: string): Cypress.Chainable<boolean> {
+    return cy.get('body').then(($body) => {
+        return $body.text().includes(repositoryId);
+    });
+}
+
+/**
  * Navigate to the repository management page
  */
 export function navigateToRepositoryManagement () {

@@ -15,22 +15,22 @@
  */
 
 import React, { ReactElement } from 'react';
-import { Button, Icon } from '@cloudscape-design/components';
-import { useAppDispatch } from '../../config/store';
-import { modelManagementApi } from '../../shared/reducers/model-management.reducer';
+import { useAppDispatch } from '@/config/store';
+import { modelManagementApi, useGetAllModelsQuery } from '@/shared/reducers/model-management.reducer';
+import { RefreshButton } from '@/components/common/RefreshButton';
 
 function ModelLibraryActions (): ReactElement {
     const dispatch = useAppDispatch();
+    const { isFetching } = useGetAllModelsQuery();
 
     return (
-        <Button
+        <RefreshButton
+            isLoading={isFetching}
             onClick={() => {
                 dispatch(modelManagementApi.util.invalidateTags(['models']));
             }}
-            ariaLabel={'Refresh models cards'}
-        >
-            <Icon name='refresh' />
-        </Button>
+            ariaLabel='Refresh models cards'
+        />
     );
 }
 

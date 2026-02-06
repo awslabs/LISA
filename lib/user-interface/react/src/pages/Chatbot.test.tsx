@@ -19,12 +19,12 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useAuth } from 'react-oidc-context';
+import { useAuth } from '../auth/useAuth';
 
 import { Chatbot } from './Chatbot';
 
 // Mock all the dependencies
-vi.mock('react-oidc-context');
+vi.mock('../auth/useAuth');
 vi.mock('@/config/store', () => ({
     useAppDispatch: () => vi.fn(),
 }));

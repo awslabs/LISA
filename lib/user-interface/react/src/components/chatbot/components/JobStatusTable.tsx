@@ -17,7 +17,6 @@
 import React, { useState } from 'react';
 import {
     Box,
-    Button,
     SpaceBetween,
     StatusIndicator,
     Table,
@@ -43,6 +42,7 @@ import {
     JobStatusItem,
     getMatchesCountText,
 } from './JobStatusTableConfig';
+import { RefreshButton } from '@/components/common/RefreshButton';
 
 export type JobStatusTableProps = {
     ragConfig: RagConfig;
@@ -240,13 +240,11 @@ export function JobStatusTable ({
                                 >
                                     <Icon name='calendar' />
                                 </ButtonDropdown>
-                                <Button
+                                <RefreshButton
+                                    isLoading={isLoadingJobs}
                                     onClick={handleRefreshJobs}
-                                    disabled={isLoadingJobs}
-                                    ariaLabel={'Refresh jobs'}
-                                >
-                                    <Icon name='refresh' />
-                                </Button>
+                                    ariaLabel='Refresh jobs'
+                                />
                             </SpaceBetween>
                         }
                     >

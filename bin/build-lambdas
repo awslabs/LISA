@@ -1,77 +1,216 @@
 #!/bin/bash
 set -e
 
-ROOT=$(pwd)
-OUTPUT_DIR=$ROOT/dist/layers
-mkdir -p $OUTPUT_DIR
+SRC=src
+OUTPUT=Lambda.zip
+EXCLUDE_PACKAGES=""
+BUILD_DIR=$PWD/build
+IS_LAYER=0
+TMP_DIR=$BUILD_DIR/tmp/
+PYPI_URL=
+USE_DOCKER=0
+PLATFORM="linux/amd64"
+PYTHON_VERSION="3.13"
 
-PYPI_URL=${PYPI_URL:-https://pypi.org/simple/}
-source .venv/bin/activate
+# Container runtime: Use CDK_DOCKER env var (same as CDK), default to docker
+DOCKER_CMD="${CDK_DOCKER:-docker}"
 
-build_python_layer() {
-  local package_name=$1
-  local source_path=$2
-  local pre_build_cmd=$3
-  echo "Building Python Lambda Layer $package_name from $source_path..."
+# Parse named parameters
+while [ $# -gt 0 ]; do
+    if [[ $1 == *"="* ]]; then
+        # Handle --param=value style
+        param="${1%%=*}"
+        value="${1#*=}"
 
-  if [ -n "$pre_build_cmd" ]; then
-    eval "$pre_build_cmd"
-  fi
+        case "$param" in
+            --src)
+                SRC="$value"
+                ;;
+            --output)
+                OUTPUT="$value"
+                ;;
+            --build)
+                BUILD_DIR="$value"
+                ;;
+            --exclude)
+                EXCLUDE_PACKAGES="$value"
+                ;;
+            --pypi)
+                PYPI_URL="$value"
+                ;;
+            --layer)
+                IS_LAYER=1
+                ;;
+            --docker)
+                USE_DOCKER=1
+                ;;
+            --python-version)
+                PYTHON_VERSION="$value"
+                ;;
+            *)
+                echo "Unknown parameter: $param"
+                echo "Usage: $0 --src <source_dir> --output <output_file> --exclude <packages> --layer --docker --python-version <version>"
+                exit 1
+                ;;
+        esac
+    else
+        # Handle --param value style
+        case "$1" in
+            --src)
+                shift
+                SRC="$1"
+                ;;
+            --output)
+                shift
+                OUTPUT="$1"
+                ;;
+            --build)
+                shift
+                BUILD_DIR="$1"
+                TMP_DIR=$BUILD_DIR/tmp/python/
+                ;;
+            --exclude)
+                shift
+                EXCLUDE_PACKAGES="$1"
+                ;;
+            --pypi)
+                shift
+                PYPI_URL="$1"
+                ;;
+            --layer)
+                IS_LAYER=1
+                ;;
+            --docker)
+                USE_DOCKER=1
+                ;;
+            --python-version)
+                shift
+                PYTHON_VERSION="$1"
+                ;;
+            *)
+                echo "Unknown parameter: $1"
+                echo "Usage: $0 --src <source_dir> --output <output_file> --exclude <packages> --docker --python-version <version>"
+                exit 1
+                ;;
+        esac
+    fi
+    shift
+done
 
-  cd $source_path
-  $ROOT/bin/package-lambda-layer --src . --output "$package_name.zip" --pypi $PYPI_URL --layer
-  mv ./build/"$package_name.zip" $OUTPUT_DIR/
-  rm -rf ./build
-  cd $ROOT
+echo "Starting"
+if [ $IS_LAYER -eq 1 ]; then
+    TMP_DIR=$BUILD_DIR/tmp/python/
+fi
+
+if [ -z "$PYPI_URL" ]; then
+    echo "Must supply PYPI_URL via --pypi"
+    exit 1
+fi
+
+# Extract IP from PYPI_URL for trusted host
+TRUSTED_HOST=$(echo $PYPI_URL | sed 's|http://||' | sed 's|/.*||')
+
+# Print parameters for debugging
+echo "Source directory: $SRC"
+echo "Output file: $OUTPUT"
+echo "Build directory: $BUILD_DIR"
+echo "Temp directory: $TMP_DIR"
+echo "Platform: $PLATFORM"
+echo "Use Docker: $USE_DOCKER"
+echo "Python version: $PYTHON_VERSION"
+
+
+install_requirements() {
+    echo "Installing requirements"
+    rm -rf "$TMP_DIR"
+    mkdir -p "$TMP_DIR"
+    if [ -f "$SRC/requirements.txt" ]; then
+        echo "Installing requirements from $SRC/requirements.txt"
+
+        if [ $USE_DOCKER -eq 1 ]; then
+            # Use Docker to install dependencies for correct platform (linux/amd64)
+            # This handles packages that need compilation from source
+            echo "Using Docker with platform $PLATFORM for cross-platform compatibility"
+            $DOCKER_CMD run --rm --platform $PLATFORM \
+                -v "$PWD:/workspace" \
+                -v "$TMP_DIR:/output" \
+                -w /workspace \
+                public.ecr.aws/docker/library/python:${PYTHON_VERSION}-slim \
+                pip install -r "$SRC/requirements.txt" --force-reinstall --no-cache-dir --target /output --index-url $PYPI_URL --trusted-host $TRUSTED_HOST
+        else
+            # Try pip with --platform flag first (faster, no Docker needed)
+            # This only works for packages with pre-built wheels
+            echo "Attempting cross-platform install with pip --platform flag"
+            echo "Target: manylinux2014_x86_64, Python $PYTHON_VERSION"
+
+            # Extract major.minor version for ABI tag (e.g., 3.13 -> cp313)
+            PYTHON_ABI="cp${PYTHON_VERSION//./}"
+
+            if python3 -m pip install -r "$SRC/requirements.txt" \
+                --platform manylinux2014_x86_64 \
+                --implementation cp \
+                --python-version "$PYTHON_VERSION" \
+                --abi "$PYTHON_ABI" \
+                --only-binary=:all: \
+                --force-reinstall \
+                --no-cache-dir \
+                --target "$TMP_DIR" \
+                --index-url "$PYPI_URL" \
+                --trusted-host "$TRUSTED_HOST" 2>/dev/null; then
+                echo "Successfully installed all packages using pip --platform"
+            else
+                echo "Some packages need compilation, falling back to Docker..."
+                rm -rf "$TMP_DIR"
+                mkdir -p "$TMP_DIR"
+
+                if [ -n "$DOCKER_CMD" ]; then
+                    $DOCKER_CMD run --rm --platform $PLATFORM \
+                        -v "$PWD:/workspace" \
+                        -v "$TMP_DIR:/output" \
+                        -w /workspace \
+                        public.ecr.aws/docker/library/python:${PYTHON_VERSION}-slim \
+                        pip install -r "$SRC/requirements.txt" --force-reinstall --no-cache-dir --target /output --index-url $PYPI_URL --trusted-host $TRUSTED_HOST
+                else
+                    echo "ERROR: No container runtime available and pip --platform failed (some packages need compilation)"
+                    echo "Install Docker, Finch, or set CDK_DOCKER environment variable"
+                    echo "Alternatively, ensure all packages have pre-built wheels for manylinux2014_x86_64"
+                    exit 1
+                fi
+            fi
+        fi
+    else
+        echo "No requirements.txt found in $SRC"
+    fi
 }
 
-build_python_lambda() {
-  local package_name=$1
-  local source_path=$2
-  echo "Building Python Lambda $package_name from $source_path..."
-  cd "$source_path"
-  $ROOT/bin/package-lambda-layer --src . --output "$package_name.zip" --pypi $PYPI_URL
-  mv ./build/"$package_name.zip" $OUTPUT_DIR/
-  rm -rf ./build
-  cd $ROOT
+
+build_package() {
+    echo "Building package"
+    if [ -d "$SRC" ]; then
+        rsync -av --exclude='build' --exclude='.hatch' --exclude='.venv' "$SRC/" "$TMP_DIR/"
+    fi
 }
 
-build_node_layer() {
-  local package_name=$1
-  local source_path=$2
-  echo "Building Node.js Lambda Layer $package_name from $source_path..."
+package_artifacts() {
+    echo "Packaging"
+    if [ -n "$EXCLUDE_PACKAGES" ]; then
+        echo "Removing excluded packages: $EXCLUDE_PACKAGES"
+        for pkg in ${EXCLUDE_PACKAGES//,/ }; do
+            echo "Removing $pkg"
+            rm -rf ${TMP_DIR}/${pkg}
+            rm -rf ${TMP_DIR}/${pkg}-*
+            # Also remove egg-info directories
+            find "$TMP_DIR" -type d -name "${pkg}*egg-info" -exec rm -rf {} +
+        done
+    fi
 
-  cd "$source_path"
-
-  # Clean previous build
-  rm -rf build node_modules
-
-  # Create layer structure: nodejs/node_modules
-  mkdir -p build/nodejs
-
-  # Copy package.json and install production dependencies
-  cp package.json build/nodejs/
-  cd build/nodejs
-  npm install --omit=dev --production
-  cd ../..
-
-  # Create zip
-  cd build
-  zip -r "$package_name.zip" nodejs
-  mv "$package_name.zip" $OUTPUT_DIR/
-  cd ..
-  rm -rf build
-  cd $ROOT
+    # AWS Lambda recommends to exclude __pycache__: https://docs.aws.amazon.com/lambda/latest/dg/python-package.html#python-package-pycache
+    find "${TMP_DIR}" -depth -name __pycache__ -exec rm -rf {} \;
+    cd "${BUILD_DIR}/tmp/"
+    zip -r "${BUILD_DIR}/${OUTPUT}" .
+    rm -rf "${BUILD_DIR}/tmp"
 }
 
-echo "Building Python Lambda Layers..."
-build_python_layer "AimlAdcLisaCommonLayer" "./lib/core/layers/common"
-build_python_layer "AimlAdcLisaAuthLayer" "./lib/core/layers/authorizer"
-build_python_layer "AimlAdcLisaFastApiLayer" "./lib/core/layers/fastapi"
-build_python_layer "AimlAdcLisaRag" "./lib/rag/layer" "python3 scripts/cache-tiktoken-for-offline.py ./lib/rag/layer/TIKTOKEN_CACHE"
-
-echo "Building Node.js Lambda Layers..."
-build_node_layer "AimlAdcLisaCdkLayer" "./lib/core/layers/cdk"
-
-echo "Building Python Lambdas..."
-build_python_lambda "AimlAdcLisaLambda" "./lambda"
+install_requirements
+build_package
+package_artifacts

@@ -18,7 +18,6 @@ import logging
 import re
 import sys
 from pathlib import Path
-from typing import Optional
 
 import click
 import yaml
@@ -38,7 +37,7 @@ logger = logging.getLogger(__name__)
 def load_config_from_file(config_path: str) -> dict:
     """Load configuration from YAML file."""
     try:
-        with open(config_path, "r") as f:
+        with open(config_path) as f:
             return yaml.safe_load(f) or {}
     except FileNotFoundError:
         logger.error(f"Configuration file not found: {config_path}")
@@ -79,16 +78,16 @@ def merge_config(file_config: dict, cli_overrides: dict) -> dict:
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging")
 @click.option("--debug", is_flag=True, help="Enable debug logging")
 def main(
-    config: Optional[Path],
-    tools_dir: Optional[Path],
-    host: Optional[str],
-    port: Optional[int],
-    exit_route: Optional[str],
-    rescan_route: Optional[str],
-    cors_origins: Optional[str],
+    config: Path | None,
+    tools_dir: Path | None,
+    host: str | None,
+    port: int | None,
+    exit_route: str | None,
+    rescan_route: str | None,
+    cors_origins: str | None,
     verbose: bool,
     debug: bool,
-):
+) -> None:
     """MCP Workbench - A dynamic host for Python files used as MCP tools."""
 
     # Set logging level
@@ -106,14 +105,14 @@ def main(
         file_config = load_config_from_file(str(config))
 
     # Prepare CLI overrides
-    cli_overrides = {}
+    cli_overrides: dict[str, str | list[str]] = {}
 
     if tools_dir:
         cli_overrides["tools_dir"] = str(tools_dir)
     if host:
         cli_overrides["host"] = host
     if port:
-        cli_overrides["port"] = port
+        cli_overrides["port"] = str(port)
     if exit_route:
         cli_overrides["exit_route"] = exit_route
     if rescan_route:
@@ -122,8 +121,8 @@ def main(
     # Handle CORS origins
     if cors_origins:
         cleaned_origins = re.sub(r'^([\s"]+)?(.+?)([\s"]*)?$', r"\2", cors_origins)
-        origins = [origin.strip() for origin in cleaned_origins.split(",")]
-        cli_overrides["cors_origins"] = origins
+        origins_list: list[str] = [origin.strip() for origin in cleaned_origins.split(",")]
+        cli_overrides["cors_origins"] = origins_list
 
     # Merge configurations
     merged_config = merge_config(file_config, cli_overrides)

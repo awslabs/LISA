@@ -18,10 +18,10 @@ LISA Serve and LISA MCP are standalone, core solutions with APIs for customers n
 ## LISA Serve
 ![LISA Serve Architecture](../assets/LisaServe.png)
 
-LISA Serve provides model self-hosting and integration with compatible external model providers. Serve supports text generation, image generation, and embedding models. Serve’s components are designed for scale and reliability. Serve can be accessed via LISA’s REST APIs, or through LISA’s chat
+LISA Serve provides model self-hosting and integration with compatible external model providers. Serve supports text generation, image generation, video generation, and embedding models. Serve’s components are designed for scale and reliability. Serve can be accessed via LISA’s REST APIs, or through LISA’s chat
 UI. Regardless of origin, all inference requests are routed via an Application Load Balancer (ALB), which serves as the main entry point to LISA Serve. The ALB forwards requests through the LiteLLM proxy, hosted in its own scalable Amazon Elastic Container Service (ECS) cluster with Amazon Elastic Compute Cloud (EC2) instance. LiteLLM routes traffic to the appropriate model.
 
-Self-hosted model traffic is directed to model specific ALBs, which enable autoscaling in the event of heavy traffic. Each self-hosted model has its own Amazon ECS cluster and Amazon EC2 instance. Text generation and image generation models compatible with Hugging Face’s
+Self-hosted model traffic is directed to model specific ALBs, which enable autoscaling in the event of heavy traffic. Each self-hosted model has its own Amazon ECS cluster and Amazon EC2 instance. Text generation, image generation, video generation, and embedding models compatible with Hugging Face’s
 [Text Generation Inference (TGI)](https://huggingface.co/docs/text-generation-inference/en/index) and
 [vLLM](https://docs.vllm.ai/en/latest/) images are supported. Embedding models compatible with Hugging Face’s
 [Text Embedding Inference (TEI)](https://huggingface.co/docs/text-embeddings-inference/en/index) and
@@ -117,7 +117,7 @@ Administrator role have access to application configuration.
 
 **Features:**
 
-* Prompting text and image generation LLMs and receiving responses
+* Prompting text, image, and video generation LLMs and receiving responses
 * Viewing, deleting, and exporting chat history
 * Supports streaming responses, viewing metadata, RAG citations
 * Supports Markdown, mermaid, and math formatting

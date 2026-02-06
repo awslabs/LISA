@@ -29,6 +29,7 @@ import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resour
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { LAMBDA_PATH } from '../../util';
 import { McpApi } from './mcp';
+import { RemovalPolicy } from 'aws-cdk-lib';
 
 /**
  * Props for the ConfigurationApi construct
@@ -86,6 +87,7 @@ export class ConfigurationApi extends Construct {
             billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
             encryption: dynamodb.TableEncryption.AWS_MANAGED,
             removalPolicy: config.removalPolicy,
+            deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
         });
 
         const lambdaRole: IRole = createLambdaRole(this, config.deploymentName, 'ConfigurationApi', this.configTable.tableArn, config.roles?.LambdaConfigurationApiExecutionRole);
@@ -115,13 +117,13 @@ export class ConfigurationApi extends Construct {
                                         'editPromptTemplate': { 'BOOL': 'True' },
                                         'editChatHistoryBuffer': { 'BOOL': 'True' },
                                         'editNumOfRagDocument': { 'BOOL': 'True' },
-                                        'uploadRagDocs': { 'BOOL': 'True' },
+                                        'uploadRagDocs': { 'BOOL': config.deployRag ? 'True' : 'False' },
                                         'uploadContextDocs': { 'BOOL': 'True' },
                                         'documentSummarization': { 'BOOL': 'True' },
-                                        'showRagLibrary': { 'BOOL': 'True' },
-                                        'showMcpWorkbench': { 'BOOL': 'False' },
+                                        'showRagLibrary': { 'BOOL': config.deployRag ? 'True' : 'False' },
+                                        'showMcpWorkbench': { 'BOOL': config.deployMcpWorkbench ? 'True' : 'False' },
                                         'showPromptTemplateLibrary': { 'BOOL': 'True' },
-                                        'mcpConnections': { 'BOOL': 'True' },
+                                        'mcpConnections': { 'BOOL': config.deployMcp ? 'True' : 'False' },
                                         'modelLibrary': { 'BOOL': 'True' },
                                         'encryptSession': { 'BOOL': 'False' },
                                     }
@@ -151,7 +153,8 @@ export class ConfigurationApi extends Construct {
 
         let environment = {
             CONFIG_TABLE_NAME: this.configTable.tableName,
-            FASTAPI_ENDPOINT: fastApiEndpoint
+            FASTAPI_ENDPOINT: fastApiEndpoint,
+            ADMIN_GROUP: config.authConfig?.adminGroup || '',
         };
 
         if (mcpApi) {

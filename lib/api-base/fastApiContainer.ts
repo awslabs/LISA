@@ -71,7 +71,7 @@ export class FastApiContainer extends Construct {
 
         const { config, securityGroup, tokenTable, vpc, managementKeyName} = props;
 
-        const instanceType = 'm5.large';
+        const instanceType = 'm5.xlarge';
 
         const buildArgs: Record<string, string> | undefined = {
             BASE_IMAGE: config.baseImage,
@@ -176,7 +176,7 @@ export class FastApiContainer extends Construct {
                     interval: 60,
                     timeout: 30,
                     healthyThresholdCount: 2,
-                    unhealthyThresholdCount: 10
+                    unhealthyThresholdCount: 3  // Reduced from 10 to 3 for faster failure detection
                 },
                 domainName: config.restApiConfig.domainName,
                 sslCertIamArn: config.restApiConfig?.sslCertIamArn ?? null,

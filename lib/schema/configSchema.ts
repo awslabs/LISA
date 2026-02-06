@@ -43,6 +43,7 @@ export type SecurityGroups<T> = {
 export enum ModelType {
     TEXTGEN = 'textgen',
     EMBEDDING = 'embedding',
+    VIDEOGEN = 'videogen',
 }
 
 /**
@@ -403,11 +404,14 @@ export const VALID_INSTANCE_KEYS = Ec2Metadata.getValidInstanceKeys() as [string
 const ContainerHealthCheckConfigSchema = z.object({
     command: z.array(z.string()).default(['CMD-SHELL', 'exit 0']).describe('The command to run for health checks'),
     interval: z.number().default(10).describe('The time interval between health checks, in seconds.'),
-    startPeriod: z.number().default(30).describe('The time to wait before starting the first health check, in seconds.'),
+    startPeriod: z.number().default(300).describe('The time to wait before starting the first health check, in seconds. Default 600s (10 min) to allow for large model loading.'),
     timeout: z.number().default(5).describe('The maximum time allowed for each health check to complete, in seconds'),
-    retries: z.number().default(2).describe('The number of times to retry a failed health check before considering the container as unhealthy.'),
+    retries: z.number().default(3).describe('The number of times to retry a failed health check before considering the container as unhealthy.'),
 })
     .describe('Configuration for container health checks');
+
+export { ContainerHealthCheckConfigSchema };
+export type ContainerHealthCheckConfig = z.infer<typeof ContainerHealthCheckConfigSchema>;
 
 export const ImageTarballAsset = z.object({
     path: z.string(),
@@ -467,7 +471,7 @@ export const ContainerConfigSchema = z.object({
 
 export type ContainerConfig = z.infer<typeof ContainerConfigSchema>;
 
-const HealthCheckConfigSchema = z.object({
+export const LoadBalancerHealthCheckConfigSchema = z.object({
     path: z.string().describe('Path for the health check.'),
     interval: z.number().default(30).describe('Interval in seconds between health checks.'),
     timeout: z.number().default(10).describe('Timeout in seconds for each health check.'),
@@ -476,16 +480,18 @@ const HealthCheckConfigSchema = z.object({
 })
     .describe('Health check configuration for the load balancer.');
 
+export type LoadBalancerHealthCheckConfig = z.infer<typeof LoadBalancerHealthCheckConfigSchema>;
+
 export const LoadBalancerConfigSchema = z.object({
     sslCertIamArn: z.string().nullish().default(null).describe('SSL certificate IAM ARN for load balancer.'),
-    healthCheckConfig: HealthCheckConfigSchema,
+    healthCheckConfig: LoadBalancerHealthCheckConfigSchema,
     domainName: z.string().nullish().default(null).describe('Domain name to use instead of the load balancer\'s default DNS name.'),
 })
     .describe('Configuration for load balancer settings.');
 
 export const MetricConfigSchema = z.object({
-    albMetricName: z.string().describe('Name of the ALB metric.'),
-    targetValue: z.number().describe('Target value for the metric.'),
+    albMetricName: z.string().default('RequestCountPerTarget').describe('Name of the ALB metric.'),
+    targetValue: z.number().default(30).describe('Target value for the metric.'),
     duration: z.number().default(60).describe('Duration in seconds for metric evaluation.'),
     estimatedInstanceWarmup: z.number().min(0).default(180).describe('Estimated warm-up time in seconds until a newly launched instance can send metrics to CloudWatch.'),
 })
@@ -625,6 +631,8 @@ export const EcsClusterConfigSchema = z
         autoScalingConfig: AutoScalingConfigSchema,
         loadBalancerConfig: LoadBalancerConfigSchema,
         localModelCode: z.string().default('/opt/model-code'),
+        containerMemoryBuffer: z.number().default(1024 * 2)
+            .describe('Memory in MiB to reserve for the host OS/ECS agent. Container gets (instance memory - buffer). Default: 2048 MiB'),
         modelHosting: z
             .string()
             .default('ecs')
@@ -634,15 +642,16 @@ export const EcsClusterConfigSchema = z
     })
     .refine(
         (data) => {
-            // 'textgen' type must have boolean streaming, 'embedding' type must have null streaming
+            // 'textgen' type must have boolean streaming, 'embedding' and 'videogen' types must have null streaming
             const isValidForTextgen = data.modelType === 'textgen' && typeof data.streaming === 'boolean';
             const isValidForEmbedding = data.modelType === 'embedding' && data.streaming === null;
+            const isValidForVideogen = data.modelType === 'videogen' && data.streaming === null;
 
-            return isValidForTextgen || isValidForEmbedding;
+            return isValidForTextgen || isValidForEmbedding || isValidForVideogen;
         },
         {
             message: `For 'textgen' models, 'streaming' must be true or false.
-            For 'embedding' models, 'streaming' must not be set.`,
+            For 'embedding' and 'videogen' models, 'streaming' must not be set.`,
             path: ['streaming'],
         },
     );
@@ -722,12 +731,12 @@ const FastApiContainerConfigSchema = z.object({
         })
         .refine(
             (config) => {
-                return !config.dbHost && !config.passwordSecretId;
+                return !config.dbHost;
             },
             {
                 message:
                     'We do not allow using an existing DB for LiteLLM because of its requirement in internal model management ' +
-                    'APIs. Please do not define the dbHost or passwordSecretId fields for the FastAPI container DB config.',
+                    'APIs. Please do not define the dbHost field for the FastAPI container DB config.',
             },
         ),
 }).describe('Configuration schema for REST API.');
@@ -857,6 +866,8 @@ export const RawConfigObject = z.object({
     deployChat: z.boolean().default(true).describe('Whether to deploy chat stacks.'),
     deployDocs: z.boolean().default(true).describe('Whether to deploy docs stacks.'),
     deployUi: z.boolean().default(true).describe('Whether to deploy UI stacks.'),
+    useCustomBranding: z.boolean().optional().describe('Whether to use custom branding assets in the UI.'),
+    customDisplayName: z.string().optional().describe('Custom display name to replace "LISA" branding in titles and descriptions. Requires "useCustomBranding" to be enabled.'),
     deployMetrics: z.boolean().default(true).describe('Whether to deploy Metrics stack.'),
     deployMcp: z.boolean().default(true).describe('Whether to deploy LISA MCP stack.'),
     deployServe: z.boolean().default(true).describe('Whether to deploy LISA Serve stack.'),
@@ -870,7 +881,7 @@ export const RawConfigObject = z.object({
         indexUrl: '',
         trustedHost: '',
     }).describe('Pypi configuration.'),
-    baseImage: z.string().default('python:3.13-slim').describe('Base image used for LISA serve components'),
+    baseImage: z.string().default('public.ecr.aws/docker/library/python:3.13-slim').describe('Base image used for LISA serve components'),
     nodejsImage: z.string().default('public.ecr.aws/lambda/nodejs:24').describe('Base image used for LISA NodeJS lambda deployments'),
     condaUrl: z.string().default('').describe('Conda URL configuration'),
     certificateAuthorityBundle: z.string().default('').describe('Certificate Authority Bundle file'),
@@ -921,7 +932,8 @@ export const RawConfigObject = z.object({
     bootstrapRolePrefix: z.string().optional().describe('Prefix for CDK bootstrap role names. Useful when roles have custom prefixes like My_User_Roles_. Leave empty for standard role names.'),
     litellmConfig: LiteLLMConfig,
     convertInlinePoliciesToManaged: z.boolean().optional().default(false).describe('Convert inline policies to managed policies'),
-    iamRdsAuth: z.boolean().optional().default(false).describe('Enable IAM authentication for RDS'),
+    iamRdsAuth: z.boolean().optional().default(false)
+        .describe('Enable IAM authentication for RDS. When true (default), IAM authentication is used and the bootstrap password is deleted after setup. When false, password-based authentication is used. WARNING: Switching from true to false after deployment is not supported - the master password is permanently deleted when IAM auth is enabled. This is a one-way migration.'),
 });
 
 export const RawConfigSchema = RawConfigObject

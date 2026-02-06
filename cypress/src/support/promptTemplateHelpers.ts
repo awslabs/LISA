@@ -19,12 +19,30 @@
  * Contains reusable helpers for prompt template creation and management.
  */
 
+/**
+ * Prompt template types - mirrors PromptTemplateType from React app
+ */
+export enum PromptTemplateType {
+    Persona = 'persona',
+    Directive = 'directive'
+}
+
 export type PromptTemplateConfig = {
     title: string;
     body: string;
-    type?: 'system' | 'user';
+    type?: PromptTemplateType;
     sharePublic?: boolean;
 };
+
+/**
+ * Check if a prompt template exists in the prompt templates list
+ * @returns Cypress.Chainable<boolean>
+ */
+export function promptTemplateExists (templateTitle: string): Cypress.Chainable<boolean> {
+    return cy.get('body').then(($body) => {
+        return $body.text().includes(templateTitle);
+    });
+}
 
 /**
  * Navigate to Prompt Templates Library page
@@ -77,7 +95,7 @@ export function fillPromptTemplateConfig (config: PromptTemplateConfig) {
             .should('be.visible')
             .click();
 
-        const typeLabel = config.type === 'system' ? 'Persona' : 'Directive';
+        const typeLabel = config.type === PromptTemplateType.Persona ? 'Persona' : 'Directive';
         cy.get('[role="listbox"]')
             .should('be.visible')
             .contains('[role="option"]', typeLabel)
@@ -169,60 +187,6 @@ export function deletePromptTemplateIfExists (templateTitle: string) {
 }
 
 /**
- * Select a prompt template in chat
- * @param templateTitle - The title of the template to select
- * @param templateType - The type of template ('system' for Persona, 'user' for Directive)
- */
-export function selectPromptTemplateInChat (templateTitle: string, templateType: 'system' | 'user' = 'user') {
-    if (templateType === 'system') {
-        // For Persona templates, use the "Select Persona" button on the welcome screen
-        cy.get('[data-testid="select-persona-button"]')
-            .should('be.visible')
-            .click();
-    } else {
-        // For Directive templates, use the "Insert Prompt Template" button
-        cy.get('button[aria-label="Insert Prompt Template"]')
-            .should('be.visible')
-            .click();
-    }
-
-    // Wait for modal to open and get the visible one
-    cy.get('[role="dialog"]')
-        .filter(':visible')
-        .first()
-        .should('be.visible');
-
-    // Search for the template
-    cy.get('input[placeholder="Search by title"]')
-        .should('be.visible')
-        .clear()
-        .type(templateTitle);
-
-    // Wait for dropdown options to appear
-    cy.get('[role="listbox"]')
-        .should('be.visible');
-
-    // Select the matching option from the dropdown (skip the "Use..." option)
-    // Find the option with data-value attribute matching the template title
-    cy.get('[role="option"]')
-        .find(`span[data-value="${templateTitle}"]`)
-        .first()
-        .click();
-
-    // Wait a moment for the selection to populate
-    cy.wait(500);
-
-    // Click the Use button using data-testid
-    cy.get('[data-testid="use-prompt-button"]')
-        .should('be.visible')
-        .and('not.be.disabled')
-        .click();
-
-    // Wait for modal to close
-    cy.get('[role="dialog"]').filter(':visible').should('not.exist');
-}
-
-/**
  * Send a message that's already in the input field by clicking the send button
  */
 export function sendMessageWithButton () {
@@ -239,60 +203,46 @@ export function sendMessageWithButton () {
 }
 
 /**
- * Verify that a chat response was received
- * @param minMessages - Minimum number of messages expected (default: 2 for user + assistant)
+ * Select a prompt template in chat using the Welcome Screen buttons
+ * @param templateTitle - The title of the template to select
+ * @param templateType - The type of template (Persona or Directive)
  */
-export function verifyChatResponseReceived (minMessages: number = 2) {
-    cy.get('[data-testid="chat-message"]', { timeout: 30000 })
-        .should('have.length.at.least', minMessages);
-}
+export function selectPromptTemplateInChat (templateTitle: string, templateType: PromptTemplateType = PromptTemplateType.Directive) {
+    // Use the Welcome Screen buttons (Select Persona / Select Directive)
+    // These are visible when there's no chat history
+    const isPersona = templateType === PromptTemplateType.Persona;
+    const selectButtonTestId = isPersona ? 'select-persona-button' : 'select-directive-button';
+    const useButtonTestId = '[data-testid="use-prompt-button"]';
+    const modalSelector = '[data-testid="prompt-template-modal"]';
 
-/**
- * Select a directive prompt template, which inserts text into the message input, then send it
- * @param templateTitle - The title of the directive template to select
- */
-export function selectDirectiveAndSend (templateTitle: string) {
-    // Click the "Select Directive" button on the welcome screen
-    cy.get('[data-testid="select-directive-button"]')
-        .should('be.visible')
+    // Click the Select Persona/Directive button using data-testid
+    cy.get(`[data-testid="${selectButtonTestId}"]`, { timeout: 10000 })
         .click();
 
-    // Wait for modal to open
-    cy.get('[role="dialog"]')
-        .filter(':visible')
-        .first()
-        .should('be.visible');
+    // Wait for the modal to open
+    cy.get(modalSelector).should('be.visible');
 
-    // Search for the template
-    cy.get('input[placeholder="Search by title"]')
+    // Type in the autosuggest input to search for the template
+    cy.get(`${modalSelector} input[placeholder="Search by title"]`)
         .should('be.visible')
-        .clear()
         .type(templateTitle);
 
-    // Wait for dropdown options to appear
-    cy.get('[role="listbox"]')
-        .should('be.visible');
-
-    // Select the matching option from the dropdown (skip the "Use..." option)
-    // Find the option with data-value attribute matching the template title
+    // Wait for dropdown options to appear and select the correct one
+    // Avoid the first entry prefixed with "Use" by selecting the option that matches the exact title
     cy.get('[role="option"]')
-        .find(`span[data-value="${templateTitle}"]`)
+        .filter(`:contains("${templateTitle}")`)
+        .not(':contains("Use")')
         .first()
+        .should('be.visible')
         .click();
 
-    // Wait a moment for the selection to populate the textarea
-    cy.wait(500);
-
-    // Click the Use Prompt button using data-testid
-    cy.get('[data-testid="use-prompt-button"]')
+    // Click the Use Persona/Directive button using data-testid
+    cy.get(`${modalSelector} ${useButtonTestId}`)
         .should('be.visible')
         .and('not.be.disabled')
         .click();
 
-    // Wait for modal to close
-    cy.get('[role="dialog"]').filter(':visible').should('not.exist');
-
-    // Send the message
-    sendMessageWithButton();
-    verifyChatResponseReceived();
+    // Wait for modal to close and UI to stabilize
+    cy.get(modalSelector).should('not.be.visible');
+    cy.wait(500);
 }

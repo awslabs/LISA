@@ -1,3 +1,61 @@
+# v6.2.0
+
+## Key Features
+
+### Custom Branding
+LISA supports custom branding capabilities, allowing customers to tailor the user interface with specific logos and color schemes. The feature provides three key customization areas:
+
+1. **Visual Assets** - Replace logos (favicon, top navigation logo, login image) in `lib/user-interface/react/public/branding/custom/`
+2. **Display Name** - Change "LISA" brand name to your organization's product name via `customDisplayName` in `config-custom.yaml`
+3. **Theme Customization** - Modify colors, fonts, and visual styling through the [Cloudscape theming system](https://cloudscape.design/foundation/visual-foundation/theming/)
+
+### Video Generation Models
+LISA supports video generation.
+
+- Adding new VideoGen model type that admins can create in the model management
+- Proxying routes to LiteLLM for video generation
+- Saving generated videos in S3 and allowing users to download and share video links
+- Exporting all videos from a selected session as a zip
+
+### Interactive Configuration Generator CLI
+LISA offers an interactive CLI tool that guides customers through creating a valid `config-custom.yaml` file for deployment. Instead of manually editing YAML and referencing `example_config.yaml`, customers can now run:
+
+> @awslabs/lisa@6.2.0 generate-config
+> tsx scripts/generate-config.ts
+
+╔════════════════════════════════════════════════════════════════╗
+║           LISA Configuration Generator                         ║
+║   Generate a config-custom.yaml for LISA deployment            ║
+╚════════════════════════════════════════════════════════════════╝
+
+The generator prompts for and validates:
+- Core Configuration: AWS account, region, partition, deployment stage/name, S3 bucket
+- Partition Support: additional partition configurations
+
+### Reasoning Model Support
+Admins can mark models as "reasoning-capable," which enables those models to output reasoning content alongside their responses. Customers can then configure the level of reasoning effort to be included, and the reasoning content is displayed in LISA Chat and exported with the session data.
+
+## Other Key Changes
+- **Image Editing Support**: Users can now upload reference images during image generation, allowing the model to create precise edits and updates based on the provided visual reference
+- **Security**: Enabled encryption at rest for all S3 buckets, enforced SSL/TLS traffic only to S3, and encrypted all EBS volumes
+- **Deployment**: Updated container source to use AWS ECR, upgraded host EC2 image to use AL2023
+- **Usability**: Added loading/refresh icons across pages to better inform users when a refresh is taking place
+- **Database**: Enabled IAM-based authentication for RDS connections, removed the need for storing master passwords
+- **Accessibility**: Added a retry button next to failed user prompts, made the delete session dropdown button only appear if the config allows it
+- **Bugfixes**: Addressed several IAM permission issues, CDK warnings, and model deployment healthiness checks
+- **UI Quality of Life**: Continued to make subtle UI improvements by:
+  - Adding various highlighting and background updates throughout the UI to make sections and errors stand out and more obvious
+  - Adding loading indicators to various MCP toggles / checkboxes to display that calls are happening in the background
+  - Updated various iconography, logos, and buttons to have a more uniform and clean feel
+
+## Acknowledgements
+* @bedanley
+* @Ernest-Gray
+* @estohlmann
+* @jmharold
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v6.1.1..v6.2.0
+
 # v6.1.1
 
 ##  UI Cleanup

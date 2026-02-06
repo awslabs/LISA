@@ -28,18 +28,19 @@ import json
 import os
 import sys
 import traceback
-from typing import Any, Dict, List
+from typing import Any
 
 import boto3
 import psycopg2
-from utilities.common_functions import retry_config
+from utilities.common_functions import get_lambda_role_name, retry_config
+from utilities.rds_auth import generate_auth_token
 
 # Add the lambda directory to the Python path
 sys.path.append("/opt/python")
 sys.path.append("/var/task")
 
 
-def get_all_dynamodb_models() -> List[Dict[str, str]]:
+def get_all_dynamodb_models() -> list[dict[str, str]]:
     """Get all models from DynamoDB table with their IDs and names."""
     try:
         dynamodb = boto3.client("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
@@ -87,8 +88,8 @@ def get_all_dynamodb_models() -> List[Dict[str, str]]:
         return []
 
 
-def get_database_connection():
-    """Get database connection using connection info from SSM."""
+def get_database_connection() -> Any:
+    """Get database connection using password auth or IAM auth based on config."""
     ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
 
     # Get database connection info from SSM using environment variable
@@ -103,38 +104,47 @@ def get_database_connection():
     except Exception as e:
         raise ValueError(f"Failed to get database connection info from SSM: {e}")
 
-    # Get database credentials from Secrets Manager
-    try:
-        secrets_client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
-        secret_response = secrets_client.get_secret_value(SecretId=db_params["passwordSecretId"])
-        secret = json.loads(secret_response["SecretString"])
-    except Exception as e:
-        raise ValueError(f"Failed to get database credentials from Secrets Manager: {e}")
-
     # Validate required parameters
-    required_params = ["dbHost", "dbPort", "dbName", "username"]
+    required_params = ["dbHost", "dbPort", "dbName"]
     for param in required_params:
         if param not in db_params:
             raise ValueError(f"Missing required database parameter: {param}")
 
-    if "password" not in secret:
-        raise ValueError("Missing password in secret")
+    # Check if using password auth (passwordSecretId present) or IAM auth
+    if "passwordSecretId" in db_params:
+        # Password auth: get credentials from Secrets Manager
+        try:
+            secrets_client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=retry_config)
+            secret_response = secrets_client.get_secret_value(SecretId=db_params["passwordSecretId"])
+            secret = json.loads(secret_response["SecretString"])
+        except Exception as e:
+            raise ValueError(f"Failed to get database credentials from Secrets Manager: {e}")
 
-    # Create connection with proper error handling
+        if "password" not in secret:
+            raise ValueError("Missing password in secret")
+
+        user = db_params.get("username", "postgres")
+        password = secret["password"]
+    else:
+        # IAM auth: generate auth token
+        user = get_lambda_role_name()
+        password = generate_auth_token(db_params["dbHost"], db_params["dbPort"], user)
+
+    # Create connection
     try:
         conn = psycopg2.connect(
             host=db_params["dbHost"],
             port=db_params["dbPort"],
             database=db_params["dbName"],
-            user=db_params["username"],
-            password=secret["password"],
+            user=user,
+            password=password,
         )
         return conn
     except Exception as e:
         raise ValueError(f"Failed to connect to database: {e}")
 
 
-def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Lambda handler for Bedrock model API key cleanup.
 
@@ -189,9 +199,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         # Use psycopg2's identifier quoting to prevent SQL injection
         cursor.execute(
-            psycopg2.sql.SQL("SELECT * FROM {} LIMIT 1").format(  # noqa: S608, P103
-                psycopg2.sql.Identifier(litellm_table)
-            )
+            psycopg2.sql.SQL("SELECT * FROM {} LIMIT 1").format(psycopg2.sql.Identifier(litellm_table))  # noqa: S608
         )
         columns = [desc[0] for desc in cursor.description]
         print(f"Table {litellm_table} columns: {columns}")
@@ -210,7 +218,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         # Query all models from the LiteLLM database
         cursor.execute(
-            psycopg2.sql.SQL("SELECT {}, {}, {} FROM {}").format(  # noqa: S608, P103
+            psycopg2.sql.SQL("SELECT {}, {}, {} FROM {}").format(  # noqa: S608
                 psycopg2.sql.Identifier(model_id_col),
                 psycopg2.sql.Identifier(model_name_col),
                 psycopg2.sql.Identifier(litellm_params_col),
@@ -276,7 +284,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     # Update the model in the database
                     clean_params_json = json.dumps(clean_params)
                     cursor.execute(
-                        psycopg2.sql.SQL("UPDATE {} SET {} = %s WHERE {} = %s").format(  # noqa: S608, P103
+                        psycopg2.sql.SQL("UPDATE {} SET {} = %s WHERE {} = %s").format(  # noqa: S608
                             psycopg2.sql.Identifier(litellm_table),
                             psycopg2.sql.Identifier(litellm_params_col),
                             psycopg2.sql.Identifier(model_id_col),

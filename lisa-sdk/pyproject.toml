@@ -1,6 +1,6 @@
 [project]
 name = "lisapy"
-version = "6.1.1"
+version = "6.2.0"
 description = "A simple SDK to help you interact with LISA. LISA is an LLM hosting solution for AWS dedicated clouds or ADCs."
 readme = "README.md"
 requires-python = ">=3.13"
@@ -15,19 +15,18 @@ dependencies = [
 
 [tool.poetry]
 name = "lisapy"
-version = "6.1.1"
+version = "6.2.0"
 description = "A simple SDK to help you interact with LISA. LISA is an LLM hosting solution for AWS dedicated clouds or ADCs."
-authors = ["Steve Goley <sgoley@amazon.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.13"
 pydantic = "^2.12.5"
-langchain = "1.1.3"
-langchain-core = "1.1.3"
+langchain = "1.2.7"
+langchain-core = "1.2.7"
 langchain-community = "0.4.1"
-langchain-openai = "1.1.1"
-langchain-text-splitters = "1.0.0"
+langchain-openai = "1.1.7"
+langchain-text-splitters = "1.1.0"
 numpy = ">2.1.0"
 toml = "*"
 
@@ -49,5 +48,5 @@ markers = [
     "asyncio: Async tests",
 ]
 testpaths = [
-    "tests/"
+    "../test/sdk/"
 ]

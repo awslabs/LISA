@@ -15,7 +15,7 @@
 */
 
 import { useEffect, useMemo, useState } from 'react';
-import { useAuth } from 'react-oidc-context';
+import { useAuth } from '../../../auth/useAuth';
 import { ChatMemory } from '@/shared/util/chat-memory';
 import { LisaChatMessageHistory } from '@/components/adapters/lisa-chat-history';
 import { LisaChatMessageMetadata, LisaChatSession } from '@/components/types';

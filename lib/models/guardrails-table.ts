@@ -14,6 +14,7 @@
   limitations under the License.
 */
 
+import { RemovalPolicy } from 'aws-cdk-lib';
 import { AttributeType, BillingMode, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
 
@@ -49,6 +50,7 @@ export class GuardrailsTable extends Construct {
             billingMode: BillingMode.PAY_PER_REQUEST,
             encryption: TableEncryption.AWS_MANAGED,
             removalPolicy: removalPolicy,
+            deletionProtection: removalPolicy !== RemovalPolicy.DESTROY,
         });
 
         this.table.addGlobalSecondaryIndex({

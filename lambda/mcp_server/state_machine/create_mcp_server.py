@@ -19,12 +19,12 @@ import logging
 import os
 import re
 from copy import deepcopy
-from typing import Any, Dict, Optional
+from typing import Any
 
 import boto3
 from botocore.config import Config
 from mcp_server.models import HostedMcpServerModel, HostedMcpServerStatus, McpServerStatus
-from utilities.time import now
+from utilities.time import iso_string, now
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -39,7 +39,7 @@ mcp_servers_table = ddbResource.Table(os.environ["MCP_SERVERS_TABLE_NAME"])
 MAX_POLLS = 60
 
 
-def handle_set_server_to_creating(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_set_server_to_creating(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Set DDB entry to CREATING status."""
     logger.info(f"Setting MCP server to CREATING status: {event.get('id')}")
     output_dict = deepcopy(event)
@@ -63,7 +63,7 @@ def handle_set_server_to_creating(event: Dict[str, Any], context: Any) -> Dict[s
     return output_dict
 
 
-def handle_deploy_server(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_deploy_server(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Invoke MCP server deployer to create infrastructure."""
     logger.info(f"Deploying MCP server: {event.get('id')}")
     output_dict = deepcopy(event)
@@ -125,7 +125,7 @@ def handle_deploy_server(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     return output_dict
 
 
-def handle_poll_deployment(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_poll_deployment(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Poll CloudFormation stack status."""
     logger.info(f"Polling deployment status for stack: {event.get('stack_name')}")
     output_dict = deepcopy(event)
@@ -174,11 +174,11 @@ def handle_poll_deployment(event: Dict[str, Any], context: Any) -> Dict[str, Any
     return output_dict
 
 
-def _get_mcp_connections_table_name(deployment_prefix: str) -> Optional[str]:
+def _get_mcp_connections_table_name(deployment_prefix: str) -> str | None:
     """Get MCP connections table name from SSM parameter if chat is deployed."""
     try:
         response = ssmClient.get_parameter(Name=f"{deployment_prefix}/table/mcpServersTable")
-        return response["Parameter"]["Value"]
+        return response["Parameter"]["Value"]  # type: ignore[no-any-return]
     except ssmClient.exceptions.ParameterNotFound:
         logger.info("MCP connections table SSM parameter not found, chat may not be deployed")
         return None
@@ -187,11 +187,11 @@ def _get_mcp_connections_table_name(deployment_prefix: str) -> Optional[str]:
         return None
 
 
-def _get_api_gateway_url(deployment_prefix: str) -> Optional[str]:
+def _get_api_gateway_url(deployment_prefix: str) -> str | None:
     """Get API Gateway base URL from SSM parameter."""
     try:
         response = ssmClient.get_parameter(Name=f"{deployment_prefix}/LisaApiUrl")
-        return response["Parameter"]["Value"]
+        return response["Parameter"]["Value"]  # type: ignore[no-any-return]
     except Exception as e:
         logger.warning(f"Error getting API Gateway URL: {str(e)}")
         return None
@@ -202,7 +202,7 @@ def _normalize_server_identifier(server_id: str) -> str:
     return re.sub(r"[^a-zA-Z0-9]", "", server_id)
 
 
-def handle_add_server_to_active(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_add_server_to_active(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Set server status to IN_SERVICE after successful deployment."""
     logger.info(f"Setting MCP server to IN_SERVICE: {event.get('id')}")
     output_dict = deepcopy(event)
@@ -233,7 +233,7 @@ def handle_add_server_to_active(event: Dict[str, Any], context: Any) -> Dict[str
         if mcp_connections_table_name:
             try:
                 api_gateway_url = _get_api_gateway_url(deployment_prefix)
-                if api_gateway_url:
+                if api_gateway_url and name:
                     # Normalize server ID to match what CDK uses for resource naming
                     normalized_id = _normalize_server_identifier(name)
                     # Construct API Gateway URL for the hosted server
@@ -254,7 +254,7 @@ def handle_add_server_to_active(event: Dict[str, Any], context: Any) -> Dict[str
                         "owner": owner,
                         "url": server_url,
                         "name": name,
-                        "created": now(),
+                        "created": iso_string(),
                         "customHeaders": {"Authorization": "Bearer {LISA_BEARER_TOKEN}"},
                         "status": McpServerStatus.ACTIVE,
                     }
@@ -281,7 +281,7 @@ def handle_add_server_to_active(event: Dict[str, Any], context: Any) -> Dict[str
     return output_dict
 
 
-def handle_failure(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_failure(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Handle failure in the state machine."""
     logger.error(f"Handling MCP server creation failure: {event}")
 

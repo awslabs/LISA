@@ -20,11 +20,12 @@ import {
     Header,
     Pagination,
     SpaceBetween,
+    Spinner,
     Table,
     TextContent, Toggle
 } from '@cloudscape-design/components';
 import 'react';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useCollection } from '@cloudscape-design/collection-hooks';
 import { useLazyGetMcpServerQuery } from '@/shared/reducers/mcp-server.reducer';
@@ -34,86 +35,56 @@ import Box from '@cloudscape-design/components/box';
 import { setBreadcrumbs } from '@/shared/reducers/breadcrumbs.reducer';
 import { useAppDispatch, useAppSelector } from '@/config/store';
 import {
-    DefaultUserPreferences, McpPreferences,
-    useGetUserPreferencesQuery, UserPreferences,
-    useUpdateUserPreferencesMutation
+    DefaultUserPreferences,
+    useGetUserPreferencesQuery, UserPreferences
 } from '@/shared/reducers/user-preferences.reducer';
-import { useNotificationService } from '@/shared/util/hooks';
 import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
+import { useMcpPreferencesUpdate } from './hooks/useMcpPreferencesUpdate';
 
 export function McpServerDetails () {
     const { mcpServerId } = useParams();
     const dispatch = useAppDispatch();
     const [getMcpServerQuery, {isUninitialized, data, isFetching, isSuccess}] = useLazyGetMcpServerQuery();
     const {data: userPreferences} = useGetUserPreferencesQuery();
-    const [preferences, setPreferences] = useState<UserPreferences>(undefined);
     const userName = useAppSelector(selectCurrentUsername);
-    const [updatePreferences, {isSuccess: isUpdatingSuccess, isError: isUpdatingError, error: updateError}] = useUpdateUserPreferencesMutation();
-    const notificationService = useNotificationService(dispatch);
 
-    // create success notification
-    useEffect(() => {
-        if (isUpdatingSuccess) {
-            notificationService.generateNotification('Successfully updated tool preferences', 'success');
-        }
-    }, [isUpdatingSuccess, notificationService]);
+    const { updatingItemId: updatingToolName, isUpdating, updateMcpPreferences } = useMcpPreferencesUpdate({
+        successMessage: 'Successfully updated tool preferences',
+        errorMessage: 'Error updating tool preferences'
+    });
 
-    // create failure notification
-    useEffect(() => {
-        if (isUpdatingError) {
-            const errorMessage = 'data' in updateError ? (updateError.data?.message ?? updateError.data) : updateError.message;
-            notificationService.generateNotification(`Error updating tool preferences: ${errorMessage}`, 'error');
-        }
-    }, [isUpdatingError, updateError, notificationService]);
-
-    useEffect(() => {
-        if (userPreferences) {
-            setPreferences(userPreferences);
-        } else {
-            setPreferences({...DefaultUserPreferences, user: userName});
-        }
-    }, [userPreferences, userName]);
+    // Derive preferences from userPreferences or defaults
+    const preferences = userPreferences || {...DefaultUserPreferences, user: userName};
+    const [localPreferences, setLocalPreferences] = useState<UserPreferences>(preferences);
 
     const toggleTool = (toolName: string, enabled: boolean) => {
-        const existingMcpPrefs = preferences.preferences.mcp ?? {enabledServers: [], overrideAllApprovals: false};
-        const mcpPrefs: McpPreferences = {
-            ...existingMcpPrefs,
-            enabledServers: [...existingMcpPrefs.enabledServers]
-        };
-
-        const originalServer = mcpPrefs.enabledServers.find((server) => server.id === mcpServerId);
-        if (!originalServer) return; // Early return if server not found
-
-        // Create a deep copy of the server object with its nested arrays
-        const serverToUpdate = {
-            ...originalServer,
-            disabledTools: [...originalServer.disabledTools],
-        };
-
-        if (enabled) {
-            serverToUpdate.disabledTools = serverToUpdate.disabledTools.filter((item) => item !== toolName);
-        } else {
-            serverToUpdate.disabledTools = [...serverToUpdate.disabledTools, toolName];
-        }
-
-        mcpPrefs.enabledServers = [
-            ...mcpPrefs.enabledServers.filter((server) => server.id !== mcpServerId),
-            serverToUpdate
-        ];
-        updatePrefs(mcpPrefs);
-    };
-
-    const updatePrefs = (mcpPrefs: McpPreferences) => {
-        const updated = {...preferences,
-            preferences: {...preferences.preferences,
-                mcp: {
-                    ...preferences.preferences.mcp,
-                    ...mcpPrefs
+        updateMcpPreferences(
+            toolName,
+            localPreferences,
+            (existingMcpPrefs) => {
+                const originalServer = existingMcpPrefs.enabledServers.find((server) => server.id === mcpServerId);
+                if (!originalServer) {
+                    return existingMcpPrefs; // Return unchanged if server not found
                 }
-            }
-        };
-        setPreferences(updated);
-        updatePreferences(updated);
+
+                // Create a deep copy of the server with updated disabled tools
+                const serverToUpdate = {
+                    ...originalServer,
+                    disabledTools: enabled
+                        ? originalServer.disabledTools.filter((item) => item !== toolName)
+                        : [...originalServer.disabledTools, toolName]
+                };
+
+                return {
+                    ...existingMcpPrefs,
+                    enabledServers: [
+                        ...existingMcpPrefs.enabledServers.filter((server) => server.id !== mcpServerId),
+                        serverToUpdate
+                    ]
+                };
+            },
+            setLocalPreferences
+        );
     };
 
     if (isSuccess) {
@@ -185,7 +156,17 @@ export function McpServerDetails () {
             pagination={<Pagination {...paginationProps} />}
             items={items}
             columnDefinitions={[
-                { header: 'Use tool', cell: (item) => <Toggle checked={!preferences?.preferences?.mcp?.enabledServers.find((server) => server.id === mcpServerId)?.disabledTools.includes(item.name)} onChange={({detail}) => toggleTool(item.name, detail.checked)}/>},
+                { header: 'Use tool', cell: (item) => (
+                    updatingToolName === item.name ? (
+                        <Spinner size='normal' />
+                    ) : (
+                        <Toggle
+                            checked={!localPreferences?.preferences?.mcp?.enabledServers.find((server) => server.id === mcpServerId)?.disabledTools.includes(item.name)}
+                            onChange={({detail}) => toggleTool(item.name, detail.checked)}
+                            disabled={isUpdating}
+                        />
+                    )
+                )},
                 { header: 'Name', cell: (item) => item.name},
                 { header: 'Description', cell: (item) => item.description},
             ]}

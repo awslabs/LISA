@@ -20,6 +20,7 @@ import { AdjustmentType, AutoScalingGroup, BlockDeviceVolume, GroupMetrics, Moni
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { Metric } from 'aws-cdk-lib/aws-cloudwatch';
 import { InstanceType, ISecurityGroup, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
+import { Alias } from 'aws-cdk-lib/aws-kms';
 import {
     AmiHardwareType,
     AsgCapacityProvider,
@@ -35,6 +36,7 @@ import {
     LinuxParameters,
     LogDriver,
     MountPoint,
+    NetworkMode,
     Protocol,
     Volume,
 } from 'aws-cdk-lib/aws-ecs';
@@ -139,6 +141,7 @@ export class ECSCluster extends Construct {
     ): { taskDefinition: Ec2TaskDefinition, container: ContainerDefinition } {
         const ec2TaskDefinition = new Ec2TaskDefinition(this, createCdkId([taskDefinitionName, 'Ec2TaskDefinition']), {
             family: createCdkId([config.deploymentName, taskDefinitionName], 32, 2),
+            networkMode: NetworkMode.BRIDGE,
             volumes,
             ...(taskRole && { taskRole }),
             ...(executionRole && { executionRole }),
@@ -212,14 +215,15 @@ export class ECSCluster extends Construct {
         });
 
         // Create auto-scaling group
+        // Note: cooldown is not set here because we use step scaling policies which don't support cooldown.
+        // Step scaling uses evaluation periods instead for controlling scaling behavior.
         const autoScalingGroup = new AutoScalingGroup(this, createCdkId([config.deploymentName, config.deploymentStage, 'ASG']), {
             vpc: vpc.vpc,
             vpcSubnets: vpc.subnetSelection,
             instanceType: new InstanceType(ecsConfig.instanceType),
-            machineImage: EcsOptimizedImage.amazonLinux2(ecsConfig.amiHardwareType),
+            machineImage: EcsOptimizedImage.amazonLinux2023(ecsConfig.amiHardwareType),
             minCapacity: ecsConfig.autoScalingConfig.minCapacity,
             maxCapacity: ecsConfig.autoScalingConfig.maxCapacity,
-            cooldown: Duration.seconds(ecsConfig.autoScalingConfig.cooldown),
             groupMetrics: [GroupMetrics.all()],
             instanceMonitoring: Monitoring.DETAILED,
             defaultInstanceWarmup: Duration.seconds(ecsConfig.autoScalingConfig.defaultInstanceWarmup),
@@ -236,6 +240,15 @@ export class ECSCluster extends Construct {
             updatePolicy: UpdatePolicy.rollingUpdate({})
         });
 
+        // Enable SNS topic encryption for ECS lifecycle hooks
+        // AppSec Finding #5: SNS topics must use server-side encryption
+        // Uses AWS managed key (alias/aws/sns) for lifecycle hook drain notifications
+        const snsEncryptionKey = Alias.fromAliasName(
+            this,
+            createCdkId([config.deploymentName, config.deploymentStage, 'SnsKey']),
+            'alias/aws/sns'
+        );
+
         const asgCapacityProvider = new AsgCapacityProvider(this, createCdkId([config.deploymentName, config.deploymentStage, 'AsgCapacityProvider']), {
             autoScalingGroup,
             // Managed scaling tracks cluster reservation to add/remove instances automatically
@@ -247,6 +260,9 @@ export class ECSCluster extends Construct {
             // disable managed scaling because we are going to setup rules to do it
             enableManagedScaling: false,
             enableManagedTerminationProtection: false,
+
+            // Encrypt SNS topic used for lifecycle hook notifications
+            topicEncryptionKey: snsEncryptionKey,
         });
         cluster.addAsgCapacityProvider(asgCapacityProvider);
 
@@ -270,7 +286,6 @@ export class ECSCluster extends Construct {
             ],
             evaluationPeriods: 5,
             adjustmentType: AdjustmentType.CHANGE_IN_CAPACITY,
-            cooldown: Duration.seconds(300)
         });
 
         autoScalingGroup.scaleOnMetric(createCdkId(['ASG', identifier, 'ScaleOut']), {
@@ -281,7 +296,6 @@ export class ECSCluster extends Construct {
             ],
             evaluationPeriods: 2,
             adjustmentType: AdjustmentType.CHANGE_IN_CAPACITY,
-            cooldown: Duration.seconds(120)
         });
 
         // Tag Auto Scaling Group for schedule management
@@ -385,13 +399,16 @@ export class ECSCluster extends Construct {
         asgSecurityGroup.addIngressRule(securityGroup, Port.allTcp());
 
         // Add listener
+        // AppSec TLS Configuration: Use TLS 1.2/1.3 policy with forward secrecy (ECDHE cipher suites only)
+        // SslPolicy.TLS13_RES maps to ELBSecurityPolicy-TLS13-1-2-2021-06
+        // This policy excludes RSA key exchange cipher suites to meet tlscheckerv2 compliance requirements
         const listenerProps: BaseApplicationListenerProps = {
             port: ecsConfig.loadBalancerConfig.sslCertIamArn ? 443 : 80,
             open: ecsConfig.internetFacing,
             certificates: ecsConfig.loadBalancerConfig.sslCertIamArn
                 ? [{ certificateArn: ecsConfig.loadBalancerConfig.sslCertIamArn }]
                 : undefined,
-            sslPolicy: ecsConfig.loadBalancerConfig.sslCertIamArn ? SslPolicy.RECOMMENDED_TLS : SslPolicy.RECOMMENDED,
+            sslPolicy: ecsConfig.loadBalancerConfig.sslCertIamArn ? SslPolicy.TLS13_RES : undefined,
         };
 
         const listener = loadBalancer.addListener(
@@ -581,7 +598,12 @@ export class ECSCluster extends Construct {
             circuitBreaker: !this.config.region.includes('iso') ? { rollback: true } : undefined,
             capacityProviderStrategies: [
                 { capacityProvider: this.asgCapacityProvider.capacityProviderName, weight: 1 }
-            ]
+            ],
+            // Speed up deployments by allowing more aggressive rollout
+            minHealthyPercent: 50,  // Allow 50% of tasks to be replaced at once
+            maxHealthyPercent: 200, // Allow up to 2x desired count during deployment
+            // Reduce health check grace period for faster failure detection
+            healthCheckGracePeriod: Duration.seconds(60)
         };
 
         const service = new Ec2Service(this, createCdkId([this.config.deploymentName, taskName, 'Ec2Svc']), serviceProps);
@@ -596,7 +618,8 @@ export class ECSCluster extends Construct {
         const loadBalancerHealthCheckConfig = this.ecsConfig.loadBalancerConfig.healthCheckConfig;
 
         const targetGroup = this.listener.addTargets(createCdkId([this.identifier, taskName, 'TgtGrp']), {
-            targetGroupName: createCdkId([this.config.deploymentName, this.identifier, taskName], 32, 2).toLowerCase(),
+            // Note: targetGroupName intentionally omitted to allow CloudFormation to generate unique names.
+            // This enables seamless replacement when immutable properties (like TargetType) change.
             healthCheck: {
                 path: loadBalancerHealthCheckConfig.path,
                 interval: Duration.seconds(loadBalancerHealthCheckConfig.interval),

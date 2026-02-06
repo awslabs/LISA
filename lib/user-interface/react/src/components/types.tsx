@@ -47,6 +47,11 @@ export type ImageGenerationParams = {
     prompt: string;
 };
 
+export type VideoGenerationParams = {
+    prompt: string;
+    model?: string;
+};
+
 /**
  * Stores metadata for messages returned from LISA
  */
@@ -59,6 +64,13 @@ export type LisaChatMessageMetadata = {
     ragDocuments?: string;
     imageGeneration?: boolean;
     imageGenerationParams?: ImageGenerationParams;
+    imageGenerationStatus?: string;
+    videoGeneration?: boolean;
+    videoGenerationParams?: VideoGenerationParams;
+    videoId?: string;
+    videoStatus?: string;
+    hasFileContext?: boolean;
+    isImageEdit?: boolean;
 };
 /**
  * Usage information from OpenAI API responses
@@ -81,6 +93,8 @@ export type LisaChatMessageFields = {
     toolCalls?: any[];
     usage?: UsageInfo;
     guardrailTriggered?: boolean;
+    reasoningContent?: string;
+    reasoningSignature?: string;
 } & BaseMessageFields;
 
 /**
@@ -92,6 +106,8 @@ export class LisaChatMessage extends BaseMessage implements LisaChatMessageField
     toolCalls?: any[];
     usage?: UsageInfo;
     guardrailTriggered?: boolean;
+    reasoningContent?: string;
+    reasoningSignature?: string;
 
     constructor (fields: LisaChatMessageFields) {
         super(fields);
@@ -100,6 +116,8 @@ export class LisaChatMessage extends BaseMessage implements LisaChatMessageField
         this.toolCalls = fields.toolCalls ?? [];
         this.usage = fields.usage;
         this.guardrailTriggered = fields.guardrailTriggered ?? false;
+        this.reasoningContent = fields.reasoningContent;
+        this.reasoningSignature = fields.reasoningSignature;
     }
 
     static lc_name () {
@@ -248,6 +266,7 @@ export enum ModelFeatures {
     SUMMARIZATION = 'summarization',
     IMAGE_INPUT = 'imageInput',
     TOOL_CALLS = 'toolCalls',
+    REASONING = 'reasoning',
 }
 
 /**

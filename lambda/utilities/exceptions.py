@@ -35,3 +35,8 @@ class NotFoundException(HTTPException):
 class UnauthorizedException(HTTPException):
     def __init__(self, detail: str = "Unauthorized"):
         super().__init__(401, detail)  # flake8: noqa
+
+
+class ForbiddenException(HTTPException):
+    def __init__(self, detail: str = "Forbidden"):
+        super().__init__(403, detail)  # flake8: noqa

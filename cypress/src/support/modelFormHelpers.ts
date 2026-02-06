@@ -27,6 +27,16 @@ export type BedrockModelConfig = {
 };
 
 /**
+ * Check if a model exists in the model management list
+ * @returns Cypress.Chainable<boolean>
+ */
+export function modelExists (modelId: string): Cypress.Chainable<boolean> {
+    return cy.get('body').then(($body) => {
+        return $body.text().includes(modelId);
+    });
+}
+
+/**
  * Open the Create Model wizard modal
  */
 export function openCreateModelWizard () {

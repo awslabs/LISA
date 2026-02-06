@@ -67,15 +67,17 @@ ragRepositories: []
 #    If adding an existing PGVector database, this configurations assumes:
 #    1. The database has been configured to have pgvector installed and enabled: https://aws.amazon.com/about-aws/whats-new/2023/05/amazon-rds-postgresql-pgvector-ml-model-integration/
 #    2. The database is accessible by RAG-related lambda functions (add inbound PostgreSQL access on the database's security group for all Lambda RAG security groups)
-#    3. A secret ID exists in SecretsManager holding the database password within a json block of '{"password":"your_password_here"}'. This is the same format that RDS natively provides a password in SecretsManager.
-#    If the passwordSecretId or dbHost are not provided, then a sample database will be created for you. Only the username is required.
+#    3. If using password auth (iamRdsAuth: false), a secret ID exists in SecretsManager holding the database password within a json block of '{"password":"your_password_here"}'.
+#       If using IAM auth (default), the database must have IAM authentication enabled.
+#    If the dbHost is not provided, then a sample database will be created for you.
 #    - repositoryId: pgvector-rag
 #     type: pgvector
 #     rdsConfig:
 #       username: postgres
-#       passwordSecretId: # password ID as stored in SecretsManager. Example: "rds!db-aa88493d-be8d-4a3f-96dc-c668165f7826"
+#       passwordSecretId: # password ID as stored in SecretsManager (only needed if iamRdsAuth: false). Example: "rds!db-aa88493d-be8d-4a3f-96dc-c668165f7826"
 #       dbHost: # Host name of database. Example hostname from RDS: "my-db-name.291b2f03.us-east-1.rds.amazonaws.com"
 #       dbName: postgres
+# iamRdsAuth: true  # Set to false to use password-based authentication instead of IAM auth (default: false)
 # You can optionally provide a list of models and the deployment process will ensure they exist in your model bucket and try to download them if they don't exist
 # ecsModels:
 #  - modelName: mistralai/Mistral-7B-Instruct-v0.2

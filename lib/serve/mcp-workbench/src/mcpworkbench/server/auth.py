@@ -19,7 +19,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from time import time
-from typing import Any, Dict, Optional
+from typing import Any
 
 import boto3
 import jwt
@@ -62,12 +62,13 @@ if not jwt.algorithms.has_crypto:
     raise RuntimeError("No crypto support for JWT.")
 
 
-def get_oidc_metadata(cert_path: Optional[str] = None) -> Dict[str, Any]:
+def get_oidc_metadata(cert_path: str | None = None) -> dict[str, Any]:
     """Get OIDC endpoints and metadata from authority."""
     authority = os.environ.get("AUTHORITY")
     resp = requests.get(f"{authority}/.well-known/openid-configuration", verify=cert_path or True, timeout=30)
     resp.raise_for_status()
-    return resp.json()  # type: ignore
+    result: dict[str, Any] = resp.json()
+    return result
 
 
 def get_jwks_client() -> jwt.PyJWKClient:
@@ -87,11 +88,11 @@ def get_jwks_client() -> jwt.PyJWKClient:
 
 def id_token_is_valid(
     id_token: str, client_id: str, authority: str, jwks_client: jwt.PyJWKClient
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Check whether an ID token is valid and return decoded data."""
     try:
         signing_key = jwks_client.get_signing_key_from_jwt(id_token)
-        data: Dict[str, Any] = jwt.decode(
+        data: dict[str, Any] = jwt.decode(
             id_token,
             signing_key.key,
             algorithms=["RS256"],
@@ -124,7 +125,7 @@ def is_user_in_group(jwt_data: dict[str, Any], group: str, jwt_groups_property: 
     return group in current_node
 
 
-def get_authorization_token(headers: Dict[str, str], header_name: str = "Authorization") -> str:
+def get_authorization_token(headers: dict[str, str], header_name: str = "Authorization") -> str:
     """Get Bearer token from Authorization headers if it exists."""
     if header_name in headers:
         return headers.get(header_name, "").removeprefix("Bearer").strip()
@@ -132,10 +133,10 @@ def get_authorization_token(headers: Dict[str, str], header_name: str = "Authori
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app: ASGIApp, dispatch: DispatchFunction | None = None):
+    def __init__(self, app: ASGIApp, dispatch: DispatchFunction | None = None) -> None:
         super().__init__(app, dispatch)
 
-    async def dispatch(self, request, call_next):
+    async def dispatch(self, request: Request, call_next: Any) -> Response:
         response = await call_next(request)
         response.headers["Custom"] = "Example"
         return response
@@ -144,22 +145,22 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 class OIDCHTTPBearer(BaseHTTPMiddleware):
     """OIDC based bearer token authenticator."""
 
-    def __init__(self, app: ASGIApp, dispatch: DispatchFunction | None = None):
+    def __init__(self, app: ASGIApp, dispatch: DispatchFunction | None = None) -> None:
         super().__init__(app, dispatch)
         self._token_authorizer = ApiTokenAuthorizer()
         self._management_token_authorizer = ManagementTokenAuthorizer()
         self._jwks_client = get_jwks_client()
 
-    async def dispatch(self, request: Request, call_next) -> Response:
+    async def dispatch(self, request: Request, call_next: Any) -> Response:
         """Verify the provided bearer token or API Key. API Key will take precedence over the bearer token."""
         if request.method == "OPTIONS":
             return await call_next(request)
 
         valid = False
-        if self._token_authorizer.is_valid_api_token(request.headers):
+        if self._token_authorizer.is_valid_api_token(dict(request.headers)):
             logger.info("looks like a valid api token")
             valid = True
-        elif self._management_token_authorizer.is_valid_api_token(request.headers):
+        elif self._management_token_authorizer.is_valid_api_token(dict(request.headers)):
             logger.info("looks like a valid mgmt token")
             valid = True
         else:
@@ -205,7 +206,7 @@ class ApiTokenAuthorizer:
         ddb_response = self._token_table.get_item(Key={"token": token}, ReturnConsumedCapacity="NONE")
         return ddb_response.get("Item", None)
 
-    def is_valid_api_token(self, headers: Dict[str, str]) -> bool:
+    def is_valid_api_token(self, headers: dict[str, str]) -> bool:
         """Return if API Token from request headers is valid if found."""
         for header_name in API_KEY_HEADER_NAMES:
             token = get_authorization_token(headers, header_name)
@@ -248,7 +249,7 @@ class ManagementTokenAuthorizer:
             self._secret_tokens = secret_tokens
             self._last_run = current_time
 
-    def is_valid_api_token(self, headers: Dict[str, str]) -> bool:
+    def is_valid_api_token(self, headers: dict[str, str]) -> bool:
         """Return if API Token from request headers is valid if found."""
         self._refreshTokens()
 

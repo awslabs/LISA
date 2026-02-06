@@ -15,7 +15,7 @@
 */
 
 import { useCallback, useEffect, useState, useRef } from 'react';
-import { useAuth } from 'react-oidc-context';
+import { useAuth } from '../../../auth/useAuth';
 import { v4 as uuidv4 } from 'uuid';
 import { LisaChatSession } from '@/components/types';
 import { baseConfig, IChatConfiguration } from '@/shared/model/chat.configurations.model';
@@ -99,16 +99,14 @@ export const useSession = (sessionId: string, getSessionById: any) => {
                 setSession((prev) => ({ ...prev, history: [] }));
                 loadSession(sessionId);
             }
-        } else {
-            // No sessionId in URL - create a new session only once
-            // Use ref to prevent creating multiple sessions if effect runs multiple times
-            if (!hasCreatedNewSessionRef.current) {
-                hasCreatedNewSessionRef.current = true;
-                createNewSession();
-            }
+        } else if (!internalSessionId || internalSessionId !== session.sessionId || session.history.length > 0) {
+            // Create new session when:
+            // - No sessionId provided AND no internal session yet, OR
+            // - Transitioning from an existing session (internalSessionId doesn't match current session or has history)
+            createNewSession();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [sessionId, dispatch, loadSession, createNewSession]);
+    }, [sessionId, dispatch, loadSession]);
 
     return {
         session,

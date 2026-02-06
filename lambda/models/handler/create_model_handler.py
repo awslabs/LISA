@@ -17,6 +17,7 @@
 import os
 
 from models.exception import ModelAlreadyExistsError
+from utilities.time import now
 
 from ..domain_objects import CreateModelRequest, CreateModelResponse, ModelStatus
 from .base_handler import BaseApiHandler
@@ -26,7 +27,7 @@ from .utils import to_lisa_model
 class CreateModelHandler(BaseApiHandler):
     """Handler class for CreateModel requests."""
 
-    def __call__(self, create_request: CreateModelRequest) -> CreateModelResponse:  # type: ignore
+    def __call__(self, create_request: CreateModelRequest) -> CreateModelResponse:
         """Create model infrastructure and add model data to LiteLLM database."""
         model_id = create_request.modelId
 
@@ -36,6 +37,21 @@ class CreateModelHandler(BaseApiHandler):
             raise ModelAlreadyExistsError(f"Model '{model_id}' already exists. Please select another name.")
 
         self.validate(create_request)
+
+        # Create initial DynamoDB record before starting state machine
+        # This ensures model_config exists even if state machine fails
+        model_config_data = create_request.model_dump()
+        model_config_data.pop("guardrailsConfig", None)
+
+        self._model_table.put_item(
+            Item={
+                "model_id": model_id,
+                "model_status": ModelStatus.CREATING,
+                "model_config": model_config_data,
+                "model_description": create_request.modelDescription,
+                "last_modified_date": now(),
+            }
+        )
 
         self._stepfunctions.start_execution(
             stateMachineArn=os.environ["CREATE_SFN_ARN"], input=create_request.model_dump_json()

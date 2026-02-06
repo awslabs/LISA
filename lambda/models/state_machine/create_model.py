@@ -19,13 +19,13 @@ import logging
 import os
 from copy import deepcopy
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any
 from zoneinfo import ZoneInfo
 
 import boto3
 from botocore.config import Config
 from models.clients.litellm_client import LiteLLMClient
-from models.domain_objects import CreateModelRequest, GuardrailsTableEntry, InferenceContainer, ModelStatus
+from models.domain_objects import CreateModelRequest, GuardrailsTableEntry, InferenceContainer, ModelStatus, ModelType
 from models.exception import (
     MaxPollsExceededException,
     StackFailedToCreateException,
@@ -81,11 +81,11 @@ def get_container_path(inference_container_type: InferenceContainer) -> str:
     return path_mapping[inference_container_type]
 
 
-def adjust_initial_capacity_for_schedule(prepared_event: Dict[str, Any]) -> None:
+def adjust_initial_capacity_for_schedule(prepared_event: dict[str, Any]) -> None:
     """Adjust Auto Scaling Group initial capacity based on schedule configuration"""
     try:
         # Check if scheduling is configured
-        auto_scaling_config = prepared_event.get("autoScalingConfig", {})
+        auto_scaling_config = prepared_event.get("autoScalingConfig", {}) or {}
         scheduling_config = auto_scaling_config.get("scheduling")
 
         if (
@@ -172,22 +172,20 @@ def adjust_initial_capacity_for_schedule(prepared_event: Dict[str, Any]) -> None
         logger.info("Using original capacity settings due to scheduling error")
 
 
-def handle_set_model_to_creating(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_set_model_to_creating(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Set DDB entry to CREATING status."""
     logger.info(f"Setting model to CREATING status: {event.get('modelId')}")
     output_dict = deepcopy(event)
     request = CreateModelRequest.model_validate(event)
 
     is_lisa_managed = all(
-        (
-            bool(request_param)
-            for request_param in (
-                request.autoScalingConfig,
-                request.containerConfig,
-                request.inferenceContainer,
-                request.instanceType,
-                request.loadBalancerConfig,
-            )
+        bool(request_param)
+        for request_param in (
+            request.autoScalingConfig,
+            request.containerConfig,
+            request.inferenceContainer,
+            request.instanceType,
+            request.loadBalancerConfig,
         )
     )
 
@@ -213,7 +211,7 @@ def handle_set_model_to_creating(event: Dict[str, Any], context: Any) -> Dict[st
     return output_dict
 
 
-def handle_start_copy_docker_image(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_start_copy_docker_image(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Start process for copying Docker image into local AWS account."""
     logger.info(f"Starting Docker image copy for model: {event.get('modelId')}")
     output_dict = deepcopy(event)
@@ -282,7 +280,7 @@ def handle_start_copy_docker_image(event: Dict[str, Any], context: Any) -> Dict[
     return output_dict
 
 
-def handle_poll_docker_image_available(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_poll_docker_image_available(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Check that Docker image is available in account or not."""
     output_dict = deepcopy(event)
 
@@ -320,7 +318,7 @@ def handle_poll_docker_image_available(event: Dict[str, Any], context: Any) -> D
     return output_dict
 
 
-def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_start_create_stack(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Start model infrastructure creation."""
     output_dict = deepcopy(event)
     request = CreateModelRequest.model_validate(event)
@@ -363,7 +361,7 @@ def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, 
         }
 
     # Remove scheduling configuration from autoScalingConfig before sending to ECS deployer
-    if "autoScalingConfig" in prepared_event and "scheduling" in prepared_event["autoScalingConfig"]:
+    if prepared_event.get("autoScalingConfig") and "scheduling" in prepared_event["autoScalingConfig"]:
         del prepared_event["autoScalingConfig"]["scheduling"]
 
     # Log the complete payload being sent (excluding large environment variables)
@@ -448,7 +446,7 @@ def handle_start_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, 
     return output_dict
 
 
-def handle_poll_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_poll_create_stack(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Check that model infrastructure creation has completed or not."""
     output_dict = deepcopy(event)
     stack = cfnClient.describe_stacks(StackName=event["stack_name"])["Stacks"][0]
@@ -486,10 +484,92 @@ def handle_poll_create_stack(event: Dict[str, Any], context: Any) -> Dict[str, A
         )
 
 
-def handle_add_model_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+autoscaling_client = boto3.client("autoscaling", region_name=os.environ["AWS_REGION"], config=retry_config)
+
+
+def handle_poll_model_ready(event: dict[str, Any], context: Any) -> dict[str, Any]:
+    """
+    Poll ASG to confirm model instances are healthy before marking as InService.
+
+    This handler checks that the Auto Scaling Group has healthy instances running
+    before proceeding to add the model to LiteLLM. This ensures the model is actually
+    ready to serve requests, not just that the infrastructure was created.
+    """
+    output_dict = deepcopy(event)
+    model_id = event.get("modelId", "unknown")
+    asg_name = event.get("autoScalingGroup")
+
+    if not asg_name:
+        logger.warning(f"No ASG name found for model {model_id}, skipping capacity check")
+        output_dict["continue_polling_capacity"] = False
+        output_dict["remaining_capacity_polls"] = 0
+        return output_dict
+
+    logger.info(f"Polling capacity for model {model_id}, ASG: {asg_name}")
+
+    try:
+        asg_info = autoscaling_client.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])[
+            "AutoScalingGroups"
+        ][0]
+
+        desired_capacity = asg_info["DesiredCapacity"]
+        instances = asg_info.get("Instances", [])
+        num_healthy_instances = sum(
+            1
+            for instance in instances
+            if instance.get("HealthStatus") == "Healthy" and instance.get("LifecycleState") == "InService"
+        )
+
+        logger.info(
+            f"ASG {asg_name}: desired={desired_capacity}, healthy_in_service={num_healthy_instances}, "
+            f"total_instances={len(instances)}"
+        )
+
+        # Initialize or decrement remaining polls
+        remaining_polls = event.get("remaining_capacity_polls", 60) - 1  # ~30 minutes at 30s intervals
+        output_dict["remaining_capacity_polls"] = remaining_polls
+
+        if remaining_polls <= 0:
+            logger.error(f"Model '{model_id}' did not start healthy instances in expected amount of time.")
+            # Continue anyway - the model will be added to LiteLLM but may not be ready
+            # This allows the user to see the model and troubleshoot
+            output_dict["continue_polling_capacity"] = False
+            output_dict["capacity_timeout"] = True
+            return output_dict
+
+        # Check if we have the desired number of healthy instances
+        # For scheduled models that start with 0 capacity, we consider them ready
+        if desired_capacity == 0:
+            logger.info(f"Model {model_id} has desired capacity of 0 (scheduled), marking as ready")
+            output_dict["continue_polling_capacity"] = False
+        elif num_healthy_instances >= desired_capacity:
+            logger.info(f"Model {model_id} has {num_healthy_instances}/{desired_capacity} healthy instances, ready!")
+            output_dict["continue_polling_capacity"] = False
+        else:
+            logger.info(
+                f"Model {model_id} waiting for instances: {num_healthy_instances}/{desired_capacity} healthy. "
+                f"Polls remaining: {remaining_polls}"
+            )
+            output_dict["continue_polling_capacity"] = True
+
+    except Exception as e:
+        logger.error(f"Error checking ASG status for model {model_id}: {e}")
+        # On error, continue polling if we have polls remaining
+        remaining_polls = event.get("remaining_capacity_polls", 60) - 1
+        output_dict["remaining_capacity_polls"] = remaining_polls
+        output_dict["continue_polling_capacity"] = remaining_polls > 0
+
+    return output_dict
+
+
+def handle_add_model_to_litellm(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Add model to LiteLLM once it is created."""
     output_dict = deepcopy(event)
     is_lisa_managed = event["create_infra"]
+
+    # Check if this is a video generation model
+    model_type = event.get("modelType", "").upper()
+    is_video_model = model_type == ModelType.VIDEOGEN.upper()
 
     # Parse the JSON string from environment variable
     litellm_config_str = os.environ.get("LITELLM_CONFIG_OBJ", json.dumps({}))
@@ -503,7 +583,14 @@ def handle_add_model_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str
     # Only set api_key if it's present in the event
     if "apiKey" in event:
         litellm_params["api_key"] = event["apiKey"]  # pragma: allowlist-secret
-    litellm_params["drop_params"] = True  # drop unrecognized param instead of failing the request on it
+
+    # For video generation models, use empty litellm_settings to avoid drop_params error
+    if is_video_model:
+        litellm_params = {}
+        if "apiKey" in event:
+            litellm_params["api_key"] = event["apiKey"]  # pragma: allowlist-secret
+    else:
+        litellm_params["drop_params"] = True  # drop unrecognized param instead of failing the request on it
 
     if is_lisa_managed:
         # get load balancer from cloudformation stack
@@ -547,7 +634,7 @@ def handle_add_model_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str
     )
 
     # If scheduling is configured, sync model status to ensure it reflects actual ASG state
-    scheduling_config = event.get("autoScalingConfig", {}).get("scheduling")
+    scheduling_config = (event.get("autoScalingConfig", {}) or {}).get("scheduling")
     auto_scaling_group = event.get("autoScalingGroup")
 
     if scheduling_config and auto_scaling_group:
@@ -562,7 +649,7 @@ def handle_add_model_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str
     return output_dict
 
 
-def handle_add_guardrails_to_litellm(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_add_guardrails_to_litellm(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Add guardrails to LiteLLM and store them in DynamoDB."""
     logger.info(f"Adding guardrails to LiteLLM for model: {event.get('modelId')}")
     output_dict = deepcopy(event)
@@ -664,7 +751,7 @@ def handle_add_guardrails_to_litellm(event: Dict[str, Any], context: Any) -> Dic
     return output_dict
 
 
-def handle_failure(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_failure(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Handle failures from state machine.
 

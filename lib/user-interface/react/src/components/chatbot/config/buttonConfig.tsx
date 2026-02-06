@@ -22,14 +22,18 @@ import { PromptTemplateType } from '@/shared/reducers/prompt-templates.reducer';
 export const getButtonItems = (
     config: IConfiguration,
     useRag: boolean,
-    isImageGenerationMode: boolean
+    isImageGenerationMode: boolean,
+    isVideoGenerationMode: boolean,
+    isConnected: boolean,
+    isModelDeleted: boolean = false
 ): ButtonGroupProps.Item[] => {
     const baseItems: ButtonGroupProps.Item[] = [
         {
             type: 'icon-button',
             id: 'settings',
             iconName: 'settings',
-            text: 'Session configuration'
+            text: 'Session configuration',
+            disabled: !isConnected || isModelDeleted
         }
     ];
 
@@ -38,24 +42,25 @@ export const getButtonItems = (
     // RAG Upload
     if (config?.configuration.enabledComponents.uploadRagDocs &&
         window.env.RAG_ENABLED &&
-        !isImageGenerationMode) {
+        !isImageGenerationMode && !isVideoGenerationMode) {
         conditionalItems.push({
             type: 'icon-button',
             id: 'upload-to-rag',
             iconName: 'upload',
             text: 'Upload to RAG',
-            disabled: !useRag
+            disabled: !useRag || !isConnected || isModelDeleted
         });
     }
 
     // Context Upload
     if (config?.configuration.enabledComponents.uploadContextDocs &&
-        !isImageGenerationMode) {
+        !isImageGenerationMode && !isVideoGenerationMode) {
         conditionalItems.push({
             type: 'icon-button',
             id: 'add-file-to-context',
             iconName: 'insert-row',
-            text: 'Add file to context'
+            text: 'Add file to context',
+            disabled: !isConnected || isModelDeleted
         });
     }
 
@@ -65,26 +70,29 @@ export const getButtonItems = (
             type: 'icon-button',
             id: 'insert-prompt-template',
             iconName: 'contact',
-            text: 'Insert Prompt Template'
+            text: 'Insert Prompt Template',
+            disabled: !isConnected || isModelDeleted
         });
     }
 
     // Document Summarization
-    if (config?.configuration.enabledComponents.documentSummarization) {
+    if (config?.configuration.enabledComponents.documentSummarization && !isVideoGenerationMode && !isImageGenerationMode) {
         conditionalItems.push({
             type: 'icon-button',
             id: 'summarize-document',
             iconName: 'transcript',
-            text: 'Summarize Document'
+            text: 'Summarize Document',
+            disabled: !isConnected || isModelDeleted
         });
     }
 
     // Additional Configuration Dropdown
-    if (config?.configuration.enabledComponents.editPromptTemplate && !isImageGenerationMode) {
+    if (config?.configuration.enabledComponents.editPromptTemplate && !isImageGenerationMode && !isVideoGenerationMode) {
         conditionalItems.push({
             type: 'menu-dropdown',
             id: 'more-actions',
             text: 'Additional Configuration',
+            disabled: !isConnected || isModelDeleted,
             items: [
                 {
                     id: 'edit-prompt-template',
@@ -92,6 +100,16 @@ export const getButtonItems = (
                     text: 'Edit Persona'
                 },
             ]
+        });
+    }
+
+    if (isVideoGenerationMode || isImageGenerationMode) {
+        conditionalItems.push({
+            type: 'icon-button',
+            id: 'attach-reference-photo',
+            iconName: 'video-on',
+            text: 'Add Reference Photo',
+            disabled: !isConnected || isModelDeleted
         });
     }
 
@@ -124,6 +142,7 @@ export const useButtonActions = ({
                 setFilterPromptTemplateType(PromptTemplateType.Directive);
                 openModal('promptTemplate');
             },
+            'attach-reference-photo': () => openModal('contextUpload'),
         };
 
         const action = actions[detail.id];

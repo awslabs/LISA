@@ -16,6 +16,7 @@
 
 import { ReactElement } from 'react';
 import { Button, SpaceBetween } from '@cloudscape-design/components';
+import { RefreshButton } from '@/components/common/RefreshButton';
 import { ITokenInfo } from '../../shared/model/api-token.model';
 import { useDeleteTokenMutation } from '../../shared/reducers/api-token.reducer';
 import { useAppDispatch } from '../../config/store';
@@ -28,6 +29,7 @@ export type ApiTokenActionsProps = {
     setCreateWizardVisible: (visible: boolean) => void;
     onRefresh: () => void;
     disableCreate?: boolean;
+    isFetching?: boolean;
 };
 
 export function ApiTokenActions ({
@@ -36,6 +38,7 @@ export function ApiTokenActions ({
     setCreateWizardVisible,
     onRefresh,
     disableCreate = false,
+    isFetching = false,
 }: ApiTokenActionsProps): ReactElement {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
@@ -74,12 +77,11 @@ export function ApiTokenActions ({
 
     return (
         <SpaceBetween direction='horizontal' size='xs'>
-            <Button
-                iconName='refresh'
+            <RefreshButton
+                isLoading={isFetching}
                 onClick={onRefresh}
-            >
-                Refresh
-            </Button>
+                ariaLabel='Refresh tokens'
+            />
             <Button
                 onClick={() => setCreateWizardVisible(true)}
                 variant='primary'

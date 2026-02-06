@@ -18,6 +18,8 @@ import { StatusIndicatorProps } from '@cloudscape-design/components/status-indic
 import { CollectionPreferencesProps, StatusIndicator, Box } from '@cloudscape-design/components';
 import { DEFAULT_PAGE_SIZE_OPTIONS } from '../../shared/preferences/common-preferences';
 import Badge from '@cloudscape-design/components/badge';
+import { getDisplayName } from '@/shared/util/branding';
+import _ from 'lodash';
 
 type EnumDictionary<T extends string | symbol | number, U> = {
     [K in T]: U;
@@ -138,8 +140,8 @@ export const createCardDefinitions = (defaultModelId?: string) => ({
         },
         {
             id: 'hosting',
-            header: 'Hosted in LISA',
-            content: (model: IModel) => String(model.containerConfig !== null && model.autoScalingConfig !== null && model.loadBalancerConfig !== null),
+            header: 'Model Provider',
+            content: (model: IModel) => model.containerConfig !== null && model.autoScalingConfig !== null && model.loadBalancerConfig !== null ? `${getDisplayName()} hosted` : _.startCase(model.modelName.split('/')[0]),
         },
         {
             id: 'instanceType',

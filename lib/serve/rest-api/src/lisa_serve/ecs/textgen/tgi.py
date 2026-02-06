@@ -15,7 +15,8 @@
 """Model adapter and kwargs validator for ECS text generation TGI model endpoints."""
 import time
 import uuid
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from collections.abc import AsyncGenerator
+from typing import Any
 
 from loguru import logger
 from pydantic import BaseModel, confloat, Field, NonNegativeFloat, NonNegativeInt, PositiveFloat, PositiveInt
@@ -82,15 +83,15 @@ class EcsTextGenTgiValidator(BaseModel):
     """
 
     max_new_tokens: NonNegativeInt = 50
-    top_k: Optional[NonNegativeInt] = None
-    top_p: Optional[confloat(gt=0.0, lt=1.0)] = None  # type: ignore
-    typical_p: Optional[confloat(gt=0.0, lt=1.0)] = None  # type: ignore
-    temperature: Optional[NonNegativeFloat] = None
-    repetition_penalty: Optional[PositiveFloat] = None
+    top_k: NonNegativeInt | None = None
+    top_p: confloat(gt=0.0, lt=1.0) | None = None  # type: ignore
+    typical_p: confloat(gt=0.0, lt=1.0) | None = None  # type: ignore
+    temperature: NonNegativeFloat | None = None
+    repetition_penalty: PositiveFloat | None = None
     return_full_text: bool = False
-    truncate: Optional[PositiveInt] = None
-    stop_sequences: List[str] = Field(default_factory=list)
-    seed: Optional[PositiveInt] = None
+    truncate: PositiveInt | None = None
+    stop_sequences: list[str] = Field(default_factory=list)
+    seed: PositiveInt | None = None
     do_sample: bool = False
     watermark: bool = False
 
@@ -113,7 +114,7 @@ class EcsTextGenTgiAdapter(TextGenModelAdapter, StreamTextGenModelAdapter):
         # Define client
         self.client = AsyncClient(endpoint_url, timeout=60)
 
-    async def generate(self, *, text: str, model_kwargs: Dict[str, Any]) -> GenerateResponse:  # type: ignore
+    async def generate(self, *, text: str, model_kwargs: dict[str, Any]) -> GenerateResponse:  # type: ignore
         """Text generation.
 
         Parameters
@@ -143,8 +144,8 @@ class EcsTextGenTgiAdapter(TextGenModelAdapter, StreamTextGenModelAdapter):
         return response
 
     async def generate_stream(
-        self, *, text: str, model_kwargs: Dict[str, Any]
-    ) -> AsyncGenerator[GenerateStreamResponse, None]:
+        self, *, text: str, model_kwargs: dict[str, Any]
+    ) -> AsyncGenerator[GenerateStreamResponse]:
         """Text generation with token streaming.
 
         Parameters
@@ -174,8 +175,8 @@ class EcsTextGenTgiAdapter(TextGenModelAdapter, StreamTextGenModelAdapter):
             yield response
 
     async def openai_generate_stream(
-        self, *, text: str, model_kwargs: Dict[str, Any], is_text_completion: bool
-    ) -> AsyncGenerator[GenerateStreamResponse, None]:
+        self, *, text: str, model_kwargs: dict[str, Any], is_text_completion: bool
+    ) -> AsyncGenerator[GenerateStreamResponse]:
         """Text generation with token streaming, conforming to the OpenAI API specification.
 
         Parameters

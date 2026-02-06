@@ -4,8 +4,11 @@ set -e
 
 ROOT=$(pwd)
 OUTPUT_DIR=$ROOT/dist/images
-# DOCKER_CMD=${DOCKER_CMD:-$(command -v finch >/dev/null 2>&1 && echo "finch" || echo "docker")}
-DOCKER_CMD=docker
+
+# Container runtime: Use CDK_DOCKER env var (same as CDK), default to docker
+DOCKER_CMD="${CDK_DOCKER:-docker}"
+
+PLATFORM="linux/amd64"
 
 # Parse command line arguments
 UPLOAD=false
@@ -44,9 +47,10 @@ build_image() {
 
     echo "Building image: $repository_name:$image_tag"
     echo "Context: $build_context_path"
+    echo "Platform: $PLATFORM"
 
     # Construct docker build command
-    local docker_cmd="$DOCKER_CMD build"
+    local docker_cmd="$DOCKER_CMD build --platform $PLATFORM"
 
     # Add build args
     for arg in "${build_args[@]}"; do
@@ -116,7 +120,7 @@ build_all_images() {
     build_image "Dockerfile" "lisa-rest-api" "$LISA_VERSION" "./lib/serve/rest-api" \
         "NODE_ENV=production" \
         "LITELLM_CONFIG=\"db_key: sk-a8814208-0388-480c-9fc7-fea59607ca38\"" \
-        "BASE_IMAGE=python:3.13-slim"
+        "BASE_IMAGE=public.ecr.aws/docker/library/python:3.13-slim"
 
     # lisa-batch-ingestion
     RAG_DIR="./lib/rag/ingestion/ingestion-image"
@@ -130,7 +134,7 @@ build_all_images() {
         MCP_DIR="./lib/serve/mcp-workbench"
         build_image "Dockerfile" "lisa-mcp-workbench" "$LISA_VERSION" "$MCP_DIR" \
             "NODE_ENV=production" \
-            "BASE_IMAGE=python:3.13-slim"
+            "BASE_IMAGE=public.ecr.aws/docker/library/python:3.13-slim"
     else
         echo "deployMcpWorkbench is disabled, skipping lisa-mcp-workbench build"
         echo ""
@@ -151,7 +155,7 @@ build_all_images() {
     # lisa-vllm
     build_image "Dockerfile" "lisa-vllm" "latest" "./lib/serve/ecs-model/vllm" \
         "NODE_ENV=production" \
-        "BASE_IMAGE=vllm/vllm-openai:latest" \
+        "BASE_IMAGE=public.ecr.aws/deep-learning-containers/vllm:0.13-gpu-py312" \
         "MOUNTS3_DEB_URL=https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb"
 
     echo "All images built successfully!"

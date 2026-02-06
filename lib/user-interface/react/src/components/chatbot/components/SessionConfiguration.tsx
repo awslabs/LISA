@@ -31,6 +31,7 @@ import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { IModel, ModelType } from '@/shared/model/model-management.model';
 import { IConfiguration } from '@/shared/model/configuration.model';
 import { LisaChatSession } from '@/components/types';
+import { ModelFeatures } from '@/components/types';
 
 export type SessionConfigurationProps = {
     title?: string;
@@ -93,7 +94,16 @@ export const SessionConfiguration = ({
         };
     });
 
+    const reasoningEffortOptions = [
+        { value: 'none', label: 'None' },
+        { value: 'minimal', label: 'Minimal' },
+        { value: 'low', label: 'Low' },
+        { value: 'medium', label: 'Medium' },
+        { value: 'high', label: 'High' },
+        { value: 'xhigh', label: 'X-High' },
+    ];
     const isImageModel = selectedModel?.modelType === ModelType.imagegen;
+    const isVideoModel = selectedModel?.modelType === ModelType.videogen;
 
     return (
         <Modal
@@ -104,7 +114,7 @@ export const SessionConfiguration = ({
             size='large'
         >
             <SpaceBetween direction='vertical' size='l'>
-                <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }, { colspan: 6 }, { colspan: 6 }, { colspan: 6 }]}>
+                <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }, { colspan: 6 }, { colspan: 6 }, { colspan: 6 }, { colspan: 6 }]}>
                     <Toggle
                         onChange={({ detail }) => updateSessionConfiguration('streaming', detail.checked)}
                         checked={chatConfiguration.sessionConfiguration.streaming}
@@ -126,7 +136,7 @@ export const SessionConfiguration = ({
                         >
                             Show Message Metadata
                         </Toggle>}
-                    {systemConfig && systemConfig.configuration.enabledComponents.editChatHistoryBuffer && !isImageModel && !modelOnly &&
+                    {systemConfig && systemConfig.configuration.enabledComponents.editChatHistoryBuffer && !isImageModel && !isVideoModel && !modelOnly &&
                         <FormField label='Chat History Buffer Size'>
                             <Select
                                 disabled={isRunning}
@@ -139,7 +149,7 @@ export const SessionConfiguration = ({
                                 options={oneThroughTenOptions}
                             />
                         </FormField>}
-                    {systemConfig && systemConfig.configuration.enabledComponents.editNumOfRagDocument && !isImageModel && !modelOnly &&
+                    {systemConfig && systemConfig.configuration.enabledComponents.editNumOfRagDocument && !isImageModel && !isVideoModel && !modelOnly &&
                         <FormField label='Matching RAG Excerpts'>
                             <Select
                                 disabled={isRunning}
@@ -152,8 +162,29 @@ export const SessionConfiguration = ({
                                 options={oneThroughTenOptions}
                             />
                         </FormField>}
+                    {selectedModel?.features?.find((feature) => feature.name === ModelFeatures.REASONING) &&
+                        <FormField label='Reasoning Effort'>
+                            <Select
+                                disabled={isRunning}
+                                filteringType='auto'
+                                selectedOption={{
+                                    value: chatConfiguration.sessionConfiguration.modelArgs.reasoning_effort,
+                                    label: chatConfiguration.sessionConfiguration.modelArgs.reasoning_effort,
+                                }}
+                                onChange={({ detail }) => updateSessionConfiguration('modelArgs', {...chatConfiguration.sessionConfiguration.modelArgs, reasoning_effort: detail.selectedOption.value })}
+                                options={reasoningEffortOptions}
+                            />
+                        </FormField>}
+                    {selectedModel?.features?.find((feature) => feature.name === ModelFeatures.REASONING) &&
+                        <Toggle
+                            onChange={({ detail }) => updateSessionConfiguration('showReasoningContent', detail.checked)}
+                            checked={chatConfiguration.sessionConfiguration.showReasoningContent}
+                            disabled={isRunning}
+                        >
+                            Show Reasoning Content
+                        </Toggle>}
                 </Grid>
-                {systemConfig && systemConfig.configuration.enabledComponents.editKwargs && !isImageModel &&
+                {systemConfig && systemConfig.configuration.enabledComponents.editKwargs && !isImageModel && !isVideoModel &&
                     <Container
                         header={
                             <Header
@@ -473,6 +504,47 @@ export const SessionConfiguration = ({
                                         return { label: String(i), value: String(i) };
                                     })
                                 }
+                            />
+                        </FormField>
+                    </Container>
+                )}
+                {isVideoModel && (
+                    <Container
+                        header={
+                            <Header variant='h2' description='Configuration options for video generation'>
+                                Video Generation Options
+                            </Header>
+                        }
+                    >
+                        <FormField label='Video Duration'>
+                            <Select
+                                selectedOption={{ value: chatConfiguration.sessionConfiguration.videoGenerationArgs.seconds }}
+                                onChange={({ detail }) => {
+                                    updateSessionConfiguration('videoGenerationArgs', {
+                                        ...chatConfiguration.sessionConfiguration.videoGenerationArgs,
+                                        seconds: detail.selectedOption.value,
+                                    });
+                                }}
+                                options={[
+                                    { label: '4 seconds', value: '4' },
+                                    { label: '8 seconds', value: '8' },
+                                    { label: '12 seconds', value: '12' },
+                                ]}
+                            />
+                        </FormField>
+                        <FormField label='Video Size'>
+                            <Select
+                                selectedOption={{ value: chatConfiguration.sessionConfiguration.videoGenerationArgs.size }}
+                                onChange={({ detail }) => {
+                                    updateSessionConfiguration('videoGenerationArgs', {
+                                        ...chatConfiguration.sessionConfiguration.videoGenerationArgs,
+                                        size: detail.selectedOption.value,
+                                    });
+                                }}
+                                options={[
+                                    { label: '720x1280 (Portrait)', value: '720x1280' },
+                                    { label: '1280x720 (Landscape)', value: '1280x720' },
+                                ]}
                             />
                         </FormField>
                     </Container>

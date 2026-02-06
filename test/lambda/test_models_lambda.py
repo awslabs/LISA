@@ -33,6 +33,7 @@ os.environ["LISA_RAG_COLLECTIONS_TABLE_PS_NAME"] = "/test/ragCollectionsTableNam
 os.environ["CREATE_SFN_ARN"] = "arn:aws:states:us-east-1:123456789012:stateMachine:CreateModelStateMachine"
 os.environ["DELETE_SFN_ARN"] = "arn:aws:states:us-east-1:123456789012:stateMachine:DeleteModelStateMachine"
 os.environ["UPDATE_SFN_ARN"] = "arn:aws:states:us-east-1:123456789012:stateMachine:UpdateModelStateMachine"
+os.environ["ADMIN_GROUP"] = "admin-group"
 
 import boto3
 import pytest
@@ -78,7 +79,6 @@ from models.lambda_functions import (
     model_not_found_handler,
     update_model,
     user_error_handler,
-    validation_exception_handler,
 )
 from moto import mock_aws
 
@@ -715,8 +715,6 @@ def test_update_model_validation(
 @pytest.mark.asyncio
 async def test_exception_handlers():
     """Test exception handlers."""
-    from fastapi.encoders import jsonable_encoder
-    from fastapi.exceptions import RequestValidationError
 
     # Setup mock request
     request = MagicMock()
@@ -727,14 +725,9 @@ async def test_exception_handlers():
     assert response.status_code == 404
     assert json.loads(response.body)["detail"] == "Model not found"
 
-    # Test RequestValidationError handler
-    mock_errors = [{"loc": ["body", "modelId"], "msg": "field required", "type": "value_error.missing"}]
-    exc = MagicMock(spec=RequestValidationError)
-    exc.errors.return_value = mock_errors
-    response = await validation_exception_handler(request, exc)
-    assert response.status_code == 422
-    assert json.loads(response.body)["detail"] == jsonable_encoder(mock_errors)
-    assert json.loads(response.body)["type"] == "RequestValidationError"
+    # Note: RequestValidationError handler is now tested through the FastAPI app
+    # It's defined in the fastapi_factory and automatically registered
+    # Test it through integration tests instead of unit tests
 
     # Test user error handler with ModelAlreadyExistsError
     exc = ModelAlreadyExistsError("Model already exists")
@@ -750,9 +743,14 @@ async def test_exception_handlers():
 
 
 @pytest.mark.asyncio
-async def test_fastapi_endpoints(sample_model, model_table, mock_autoscaling_client, mock_stepfunctions_client):
+async def test_fastapi_endpoints(
+    sample_model, model_table, mock_autoscaling_client, mock_stepfunctions_client, mock_auth
+):
     """Test FastAPI endpoints."""
     from fastapi.testclient import TestClient
+
+    # Set admin access for this test
+    mock_auth.set_user("admin-user", ["admin-group"], is_admin=True)
 
     # Create test client
     client = TestClient(app)
@@ -764,11 +762,7 @@ async def test_fastapi_endpoints(sample_model, model_table, mock_autoscaling_cli
         "models.lambda_functions.UpdateModelHandler"
     ) as mock_update_handler, patch(
         "models.lambda_functions.DeleteModelHandler"
-    ) as mock_delete_handler, patch(
-        "models.lambda_functions.get_admin_status_and_groups"
-    ) as mock_get_admin_status:
-        # Mock admin status - return admin=True for all operations in this test
-        mock_get_admin_status.return_value = (True, [])
+    ) as mock_delete_handler:
 
         # Setup handler mocks
         create_handler_instance = MagicMock()
@@ -930,7 +924,7 @@ def non_admin_event():
 
 
 @pytest.mark.asyncio
-async def test_get_admin_status_and_groups():
+async def test_get_admin_status_and_groups(mock_auth):
     """Test the get_admin_status_and_groups helper function."""
 
     # Test with admin event
@@ -946,15 +940,12 @@ async def test_get_admin_status_and_groups():
     mock_request = MagicMock(spec=Request)
     mock_request.scope = {"aws.event": admin_event}
 
-    with patch("models.lambda_functions.is_admin") as mock_is_admin, patch(
-        "models.lambda_functions.get_groups"
-    ) as mock_get_groups:
-        mock_is_admin.return_value = True
-        mock_get_groups.return_value = ["admin-group"]
+    # Set admin user via mock_auth fixture
+    mock_auth.set_user("admin-user", ["admin-group"], is_admin=True)
 
-        admin_status, user_groups = get_admin_status_and_groups(mock_request)
-        assert admin_status is True
-        assert user_groups == ["admin-group"]
+    admin_status, user_groups = get_admin_status_and_groups(mock_request)
+    assert admin_status is True
+    assert user_groups == ["admin-group"]
 
     # Test with non-admin event
     non_admin_event = {
@@ -968,15 +959,12 @@ async def test_get_admin_status_and_groups():
 
     mock_request.scope = {"aws.event": non_admin_event}
 
-    with patch("models.lambda_functions.is_admin") as mock_is_admin, patch(
-        "models.lambda_functions.get_groups"
-    ) as mock_get_groups:
-        mock_is_admin.return_value = False
-        mock_get_groups.return_value = ["user-group"]
+    # Set non-admin user via mock_auth fixture
+    mock_auth.set_user("regular-user", ["user-group"], is_admin=False)
 
-        admin_status, user_groups = get_admin_status_and_groups(mock_request)
-        assert admin_status is False
-        assert user_groups == ["user-group"]
+    admin_status, user_groups = get_admin_status_and_groups(mock_request)
+    assert admin_status is False
+    assert user_groups == ["user-group"]
 
     # Test with no event in scope
     mock_request.scope = {}
@@ -999,9 +987,7 @@ async def test_create_model_admin_required(
         modelId="test-model", modelName="test-model", modelType=ModelType.TEXTGEN, streaming=True
     )
 
-    with patch("models.lambda_functions.is_admin") as mock_is_admin, patch(
-        "models.lambda_functions.get_groups"
-    ) as mock_get_groups:
+    with patch("utilities.auth.is_admin") as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups:
         mock_is_admin.return_value = False
         mock_get_groups.return_value = []
 
@@ -1023,9 +1009,7 @@ async def test_update_model_admin_required(
 
     update_request = UpdateModelRequest(streaming=False)
 
-    with patch("models.lambda_functions.is_admin") as mock_is_admin, patch(
-        "models.lambda_functions.get_groups"
-    ) as mock_get_groups:
+    with patch("utilities.auth.is_admin") as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups:
         mock_is_admin.return_value = False
         mock_get_groups.return_value = []
 
@@ -1045,9 +1029,7 @@ async def test_delete_model_admin_required(
     mock_request = MagicMock(spec=Request)
     mock_request.scope = {"aws.event": non_admin_event}
 
-    with patch("models.lambda_functions.is_admin") as mock_is_admin, patch(
-        "models.lambda_functions.get_groups"
-    ) as mock_get_groups:
+    with patch("utilities.auth.is_admin") as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups:
         mock_is_admin.return_value = False
         mock_get_groups.return_value = []
 
@@ -1059,22 +1041,19 @@ async def test_delete_model_admin_required(
 
 @pytest.mark.asyncio
 async def test_create_update_delete_admin_allowed(
-    sample_model, model_table, mock_autoscaling_client, mock_stepfunctions_client, admin_event
+    sample_model, model_table, mock_autoscaling_client, mock_stepfunctions_client, admin_event, mock_auth
 ):
     """Test that admin users can successfully create, update, and delete models."""
+
+    # Set admin access via mock_auth fixture
+    mock_auth.set_user("admin-user", ["admin-group"], is_admin=True)
 
     mock_request = MagicMock(spec=Request)
     mock_request.scope = {"aws.event": admin_event}
 
-    with patch("models.lambda_functions.is_admin") as mock_is_admin, patch(
-        "models.lambda_functions.get_groups"
-    ) as mock_get_groups, patch("models.lambda_functions.CreateModelHandler") as mock_create_handler, patch(
+    with patch("models.lambda_functions.CreateModelHandler") as mock_create_handler, patch(
         "models.lambda_functions.UpdateModelHandler"
-    ) as mock_update_handler, patch(
-        "models.lambda_functions.DeleteModelHandler"
-    ) as mock_delete_handler:
-        mock_is_admin.return_value = True
-        mock_get_groups.return_value = ["admin-group"]
+    ) as mock_update_handler, patch("models.lambda_functions.DeleteModelHandler") as mock_delete_handler:
 
         # Mock create handler
         create_handler_instance = MagicMock()

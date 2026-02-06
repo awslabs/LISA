@@ -20,7 +20,7 @@ LISA’s core component, Serve, provides secure, scalable, low latency access to
 language models. Serve offers model flexibility out of the box. Customers can self-host models directly within LISA
 infrastructure, or integrate with compatible third party model providers. LISA supports model self-hosting and inference
 via Amazon Elastic Container Service (ECS) with Amazon Elastic Compute Cloud (EC2). Text generation, image generation,
-and embedding models compatible with Hugging Face’s
+video generation, and embedding models compatible with Hugging Face’s
 [Text Generation Inference (TGI)](https://huggingface.co/docs/text-generation-inference/en/index)
 and [Text Embedding Inference (TEI)](https://huggingface.co/docs/text-embeddings-inference/en/index) images,
 and [vLLM](https://docs.vllm.ai/en/latest/) are supported.
@@ -96,3 +96,54 @@ flexibility for different use cases.
 
 *The below screenshot showcases LISA’s Model Management page. It is filtered to display the Claude models configured with LISA, although they are hosted by the Amazon Bedrock service. Via LISA’s Model Management page, Administrators configure self-hosted and externally hosted third party (3P) models with LISA. LISA is compatible with over 100 externally hosted models via the LiteLLM proxy. Administrators do not need to worry about the 3P model provider’s unique API requirements since LiteLLM handles the standardization.*
 ![LISA Model Management](../assets/LISA_Model_Mgmt.png)
+
+# Access Control
+
+LISA Roles and Enterprise Groups control access to features and resources.
+
+## Roles
+
+`AdminGroup` and `UserGroup` properties in the configuration are used to control tiers of application access, not resource access.
+
+- **AdminGroup**: The IDP group that distinguishes which users have access to create and manage restricted resource configuration within the UI, including:
+  - Activating application features
+  - Configuring models via Model Management
+  - Configuring repos and Collections via RAG management
+  - MCP server management
+  - MCP Workbench code editor
+
+- **UserGroup** (optional): If provided, this is required when the IDP is used for multiple systems and you want to control which users in the IDP have access to LISA.
+
+- **API Management** (v6.1+): A new role that allows users to manage their API tokens within LISA, but does not grant full Admin privileges.
+
+## Groups
+
+Access to resources can be constrained by Enterprise Groups, including:
+
+- LISA models
+- Prompt templates
+- RAG repos
+- RAG collections
+- MCP Connections
+- LISA MCP servers
+- API tokens
+
+You can create or bring any number of Enterprise Groups in your IDP, which can then be used in LISA to lock down resources at creation/update. When you create/update any resource, you can assign 0, 1, or many Groups to that resource.
+
+### Example: Group-Based Access Control
+
+For example, let's say your IDP has the following groups: **Team Red**, **Team White**, and **Team Blue**. Below shows how you can use Groups to lock down access to Models, and then RAG repos and their Collections:
+
+**Models:**
+- Model 1: Teams Red and White
+- Model 2: none (Global)
+- Model 3: Team Blue
+
+**RAG Repositories and Collections:**
+- RAG Repo 1: Teams Red, White, Blue
+  - Collection A: Team Red
+  - Collection B: Team White
+  - Collection C: Teams White and Blue
+- RAG Repo 2: none (Global)
+  - Collection X: Team Blue
+  - Collection Y: none (Global)

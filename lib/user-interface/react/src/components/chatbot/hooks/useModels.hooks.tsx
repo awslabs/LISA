@@ -17,6 +17,7 @@
 import { useMemo } from 'react';
 import { IModel, ModelType } from '@/shared/model/model-management.model';
 import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
+import { ModelFeatures } from '@/components/types';
 
 export const useModels = (
     allModels: IModel[] | undefined,
@@ -37,21 +38,31 @@ export const useModels = (
         } else {
             const model = allModels?.find((model) => model.modelId === value);
             if (model) {
-                // Auto-adjust streaming configuration based on model capabilities
-                if (!model.streaming && chatConfiguration.sessionConfiguration.streaming) {
+                // Determine what configuration changes are needed
+                const modelSupportsStreaming = model.streaming ?? false;
+                const modelSupportsReasoning = !!model.features?.find((feature) => feature.name === ModelFeatures.REASONING);
+                const currentStreaming = chatConfiguration.sessionConfiguration.streaming;
+                const hasReasoningEffort = !!chatConfiguration.sessionConfiguration.modelArgs.reasoning_effort;
+
+                // Calculate the new configuration values
+                const shouldUpdateStreaming = (modelSupportsStreaming !== currentStreaming);
+                const shouldUpdateReasoning = (modelSupportsReasoning !== hasReasoningEffort);
+
+                // Only update configuration if changes are needed
+                if (shouldUpdateStreaming || shouldUpdateReasoning) {
                     setChatConfiguration({
                         ...chatConfiguration,
                         sessionConfiguration: {
                             ...chatConfiguration.sessionConfiguration,
-                            streaming: false
-                        }
-                    });
-                } else if (model.streaming && !chatConfiguration.sessionConfiguration.streaming) {
-                    setChatConfiguration({
-                        ...chatConfiguration,
-                        sessionConfiguration: {
-                            ...chatConfiguration.sessionConfiguration,
-                            streaming: true
+                            streaming: shouldUpdateStreaming ? modelSupportsStreaming : currentStreaming,
+                            modelArgs: {
+                                ...chatConfiguration.sessionConfiguration.modelArgs,
+                                ...(shouldUpdateReasoning
+                                    ? modelSupportsReasoning
+                                        ? { reasoning_effort: 'medium', top_p: 0.95 }
+                                        : { reasoning_effort: null, top_p: 0.01 }
+                                    : {})
+                            }
                         }
                     });
                 }
@@ -64,9 +75,13 @@ export const useModels = (
     const isImageGenerationMode = (selectedModel: IModel | undefined) =>
         selectedModel?.modelType === ModelType.imagegen;
 
+    const isVideoGenerationMode = (selectedModel: IModel | undefined) =>
+        selectedModel?.modelType === ModelType.videogen;
+
     return {
         modelsOptions,
         handleModelChange,
         isImageGenerationMode,
+        isVideoGenerationMode,
     };
 };

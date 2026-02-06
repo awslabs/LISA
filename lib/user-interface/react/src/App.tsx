@@ -19,7 +19,7 @@ import { ReactElement, useEffect, useState } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from '@cloudscape-design/components';
 import Spinner from '@cloudscape-design/components/spinner';
-import { useAuth } from 'react-oidc-context';
+import { useAuth } from './auth/useAuth';
 
 import Home from './pages/Home';
 import Chatbot from './pages/Chatbot';
@@ -105,7 +105,6 @@ const ApiUserRoute = ({ children }: RouteProps) => {
 };
 
 function App () {
-    const [showNavigation, setShowNavigation] = useState(false);
     const [nav, setNav] = useState(null);
     const confirmationModal: ConfirmationModalProps = useAppSelector((state) => state.modal.confirmationModal);
     const auth = useAuth();
@@ -131,13 +130,7 @@ function App () {
         applyMode(colorScheme);
     }, [colorScheme]);
 
-    useEffect(() => {
-        if (nav) {
-            setShowNavigation(true);
-        } else {
-            setShowNavigation(false);
-        }
-    }, [nav]);
+    const showNavigation = !!nav;
 
     return (
         <ColorSchemeContext.Provider value={{ colorScheme, setColorScheme }}>
@@ -194,14 +187,14 @@ function App () {
                                     </AdminRoute>
                                 }
                             />}
-                            <Route
+                            {window.env.RAG_ENABLED && <Route
                                 path='repository-management'
                                 element={
                                     <AdminRoute>
                                         <RepositoryManagement setNav={setNav} />
                                     </AdminRoute>
                                 }
-                            />
+                            />}
                             <Route
                                 path='api-token-management'
                                 element={

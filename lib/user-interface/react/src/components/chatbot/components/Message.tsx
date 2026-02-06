@@ -35,7 +35,7 @@ import 'katex/dist/katex.min.css';
 import styles from './Message.module.css';
 
 import { MessageContent } from '@langchain/core/messages';
-import { base64ToBlob, fetchImage, getDisplayableMessage, messageContainsImage } from '@/components/utils';
+import { base64ToBlob, fetchImage, getDisplayableMessage } from '@/components/utils';
 import React, { useEffect, useState, useMemo } from 'react';
 import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { downloadFile } from '@/shared/util/downloader';
@@ -61,17 +61,32 @@ type MessageProps = {
     chatConfiguration: IChatConfiguration;
     showUsage?: boolean;
     onMermaidRenderComplete?: () => void;
+    onVideoLoadComplete?: () => void;
+    onImageLoadComplete?: () => void;
+    retryResponse?: () => Promise<void>
+    errorState?: boolean;
 };
 
-export const Message = React.memo(({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration, callingToolName, showUsage = false, onMermaidRenderComplete }: MessageProps) => {
+export const Message = React.memo(({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration, callingToolName, showUsage = false, onMermaidRenderComplete, onVideoLoadComplete, onImageLoadComplete, retryResponse, errorState }: MessageProps) => {
     const currentUser = useAppSelector(selectCurrentUsername);
     const ragCitations = !isStreaming && message?.metadata?.ragDocuments ? message?.metadata.ragDocuments : undefined;
     const [resend, setResend] = useState(false);
     const [showImageViewer, setShowImageViewer] = useState(false);
     const [selectedImage, setSelectedImage] = useState(undefined);
     const [selectedMetadata, setSelectedMetadata] = useState(undefined);
+    const [reasoningExpanded, setReasoningExpanded] = useState(true);
     const { colorScheme } = useContext(ColorSchemeContext);
     const isDarkMode = colorScheme === Mode.Dark;
+    const hasMessageContent = message?.content && typeof message.content === 'string' && message.content.trim() && message.content.trim() !== '\u00A0';
+
+    // Auto-expand reasoning when it first appears, then auto-collapse when message content starts arriving
+    useEffect(() => {
+        if (hasMessageContent) {
+            setReasoningExpanded(false);
+        } else if (!hasMessageContent && message?.reasoningContent) {
+            setReasoningExpanded(true);
+        }
+    }, [hasMessageContent, message?.reasoningContent]);
 
     useEffect(() => {
         if (resend) {
@@ -246,22 +261,23 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                     );
                 } else if (item.type === 'image_url' && item.image_url?.url) {
                     return message.type === MessageTypes.HUMAN ?
-                        <img key={index} src={item.image_url.url} alt='User provided' style={{ maxWidth: '50%', maxHeight: '30em', marginTop: '8px' }} /> :
+                        <img key={index} src={item.image_url.url} alt='User provided' style={{ maxWidth: '50%', maxHeight: '30em', marginTop: '8px' }} onLoad={() => onImageLoadComplete?.()} /> :
                         <Grid key={`${index}-Grid`} gridDefinition={[{ colspan: 11 }, { colspan: 1 }]}>
                             <Link onClick={() => {
                                 setSelectedImage(item);
                                 setSelectedMetadata(metadata);
                                 setShowImageViewer(true);
                             }}>
-                                <img key={`${index}-Image`} src={item.image_url.url} alt='AI Generated' style={{ maxWidth: '100%', maxHeight: '30em', marginTop: '8px' }} />
+                                <img key={`${index}-Image`} src={item.image_url.url} alt='AI Generated' style={{ maxWidth: '100%', maxHeight: '30em', marginTop: '8px' }} onLoad={() => onImageLoadComplete?.()} />
                             </Link>
                             <ButtonDropdown
                                 items={[
                                     { id: 'download-image', text: 'Download Image', iconName: 'download' },
+                                    { id: 'share-image', text: 'Share Image Link', iconName: 'share' },
                                     { id: 'copy-image', text: 'Copy Image', iconName: 'copy' },
                                     { id: 'regenerate', text: 'Regenerate Image(s)', iconName: 'refresh' }
                                 ]}
-                                ariaLabel='Control instance'
+                                ariaLabel='Image actions'
                                 variant='icon'
                                 onItemClick={async (e) => {
                                     if (e.detail.id === 'download-image') {
@@ -269,6 +285,8 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                             await fetchImage(item.image_url.url)
                                             : base64ToBlob(item.image_url.url.split(',')[1], 'image/png');
                                         downloadFile(URL.createObjectURL(file), `${metadata?.imageGenerationParams?.prompt}.png`);
+                                    } else if (e.detail.id === 'share-image') {
+                                        navigator.clipboard.writeText(item.image_url.url);
                                     } else if (e.detail.id === 'copy-image') {
                                         const copy = new ClipboardItem({
                                             'image/png': item.image_url.url.startsWith('https://') ?
@@ -293,6 +311,51 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                 }}
                             />
                         </Grid>;
+                } else if (item.type === 'video_url' && item.video_url?.url) {
+                    const videoId = item.video_url.video_id;
+                    return (
+                        <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginTop: '8px', maxWidth: '100%' }}>
+                            <video
+                                controls
+                                style={{ flex: 1, maxHeight: '30em', minWidth: 0 }}
+                                onLoadedData={() => onVideoLoadComplete?.()}
+                            >
+                                <source src={item.video_url.url} type='video/mp4' />
+                                Your browser does not support the video tag.
+                            </video>
+                            <ButtonDropdown
+                                items={[
+                                    { id: 'download-video', text: 'Download Video', iconName: 'download' },
+                                    { id: 'share-video', text: 'Share Video Link', iconName: 'share' },
+                                    { id: 'remix-video', text: 'Remix Video', iconName: 'refresh' }
+                                ]}
+                                ariaLabel='Video actions'
+                                variant='icon'
+                                onItemClick={async (e) => {
+                                    if (e.detail.id === 'download-video') {
+                                        const videoUrl = item.video_url.url;
+                                        const videoBlob = await fetch(videoUrl).then((r) => r.blob());
+                                        const filename = `${metadata?.videoGenerationParams?.prompt || 'video'}.mp4`;
+                                        downloadFile(URL.createObjectURL(videoBlob), filename);
+                                    } else if (e.detail.id === 'share-video') {
+                                        navigator.clipboard.writeText(item.video_url.url);
+                                    } else if (e.detail.id === 'remix-video' && videoId) {
+                                        // Call the remix endpoint to create a new variation
+                                        setUserPrompt(`Remix video: ${metadata?.videoGenerationParams?.prompt ?? ''}`);
+                                        // Store the video_id for the remix call
+                                        setChatConfiguration(
+                                            merge({}, chatConfiguration, {
+                                                sessionConfiguration: {
+                                                    remixVideoId: videoId
+                                                }
+                                            })
+                                        );
+                                        setResend(true);
+                                    }
+                                }}
+                            />
+                        </div>
+                    );
                 }
                 return null;
             });
@@ -314,9 +377,9 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
 
     return (
         (message.type === MessageTypes.HUMAN || message.type === MessageTypes.AI || message.type === MessageTypes.TOOL) &&
-        <div className='mt-2' style={{ overflow: 'hidden' }} data-testid='chat-message'>
+        <div className='mt-2' style={{ overflow: 'hidden' }} data-testid={`chat-message-${message.type}`}>
             <ImageViewer setVisible={setShowImageViewer} visible={showImageViewer} selectedImage={selectedImage} metadata={selectedMetadata} />
-            {(isRunning && !callingToolName) && (
+            {(isRunning && !callingToolName && !message?.metadata?.videoGeneration) && (
                 <ChatBubble
                     ariaLabel='Generative AI assistant'
                     type='incoming'
@@ -331,7 +394,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                     }
                     actions={showUsage ? <UsageInfo usage={message.usage} /> : undefined}
                 >
-                    <Box color='text-status-inactive'>
+                    <Box color='text-status-inactive' data-testid='generating-response-box'>
                         Generating response
                     </Box>
                 </ChatBubble>
@@ -356,14 +419,15 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                     </Box>
                 </ChatBubble>
             )}
-            {message?.type === 'ai' && !isRunning && !callingToolName && message?.content && (
+            {message?.type === 'ai' && !isRunning && !callingToolName && (message?.content || message?.reasoningContent) && (
                 <SpaceBetween direction='horizontal' size='m'>
                     <ChatBubble
                         ariaLabel='Generative AI assistant'
                         type='incoming'
-                        showLoadingBar={isStreaming}
+                        showLoadingBar={isStreaming || (message?.metadata?.imageGeneration && message?.metadata?.imageGenerationStatus === 'processing')}
                         avatar={
                             <Avatar
+                                loading={message?.metadata?.imageGeneration && message?.metadata?.imageGenerationStatus === 'processing'}
                                 color='gen-ai'
                                 iconName='gen-ai'
                                 ariaLabel='Generative AI assistant'
@@ -372,7 +436,53 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                         }
                         actions={showUsage ? <UsageInfo usage={message.usage} /> : undefined}
                     >
-                        {renderContent(message.content, message.metadata)}
+                        {message?.reasoningContent && chatConfiguration.sessionConfiguration.showReasoningContent && (
+                            <Box margin={{ bottom: 's' }}>
+                                <ExpandableSection
+                                    variant='footer'
+                                    headerText='Reasoning'
+                                    expanded={reasoningExpanded}
+                                    onChange={({ detail }) => {
+                                        setReasoningExpanded(detail.expanded);
+                                    }}
+                                >
+                                    <SpaceBetween direction='vertical' size='s'>
+                                        <Grid gridDefinition={[{ colspan: 11 }, { colspan: 1 }]}>
+                                            <Box color='text-status-inactive' variant='small' padding={{ right: 'xl' }}>
+                                                <SpaceBetween direction='vertical' size='s'>
+                                                    <div style={{ whiteSpace: 'pre-line' }}>{message.reasoningContent}</div>
+                                                    <hr />
+                                                </SpaceBetween>
+                                            </Box>
+                                            <ButtonGroup
+                                                onItemClick={({ detail }) => {
+                                                    if (detail.id === 'copy-reasoning') {
+                                                        navigator.clipboard.writeText(message.reasoningContent || '');
+                                                    }
+                                                }}
+                                                ariaLabel='Copy reasoning content'
+                                                dropdownExpandToViewport
+                                                items={[
+                                                    {
+                                                        type: 'icon-button',
+                                                        id: 'copy-reasoning',
+                                                        iconName: 'copy',
+                                                        text: 'Copy Reasoning',
+                                                        popoverFeedback: (
+                                                            <StatusIndicator type='success'>
+                                                                Reasoning copied
+                                                            </StatusIndicator>
+                                                        )
+                                                    }
+                                                ]}
+                                                variant='icon'
+                                            />
+                                        </Grid>
+                                    </SpaceBetween>
+                                </ExpandableSection>
+                            </Box>
+                        )}
+                        {message?.content && (typeof message.content === 'string' ? (message.content.trim() && message.content.trim() !== '\u00A0') : true) && renderContent(message.content, message.metadata)}
                         {showMetadata && !isStreaming &&
                             <ExpandableSection
                                 variant='footer'
@@ -383,9 +493,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                     ...(message.usage && { usage: message.usage })
                                 }} style={isDarkMode ? darkStyles : defaultStyles} />
                             </ExpandableSection>}
-                    </ChatBubble>
-                    {!isStreaming && !messageContainsImage(message.content) && <div
-                        style={{ display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
+                        {!isStreaming && !isRunning && !message?.metadata?.imageGeneration && !message?.metadata?.videoGeneration &&
                         <ButtonGroup
                             onItemClick={({ detail }) =>
                                 ['copy'].includes(detail.id) &&
@@ -407,8 +515,8 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                 }
                             ]}
                             variant='icon'
-                        />
-                    </div>}
+                        />}
+                    </ChatBubble>
                 </SpaceBetween>
             )}
             {message?.type === 'human' && (
@@ -417,6 +525,13 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                         <ChatBubble
                             ariaLabel={currentUser}
                             type='outgoing'
+                            style={{
+                                bubble: {
+                                    background: isDarkMode ? '#1f2934' : '#ebebf0',
+                                    borderColor: errorState ? '#ff7a7a' : '',
+                                    borderWidth: errorState ? '1px' : '',
+                                }
+                            }}
                             avatar={
                                 <Avatar
                                     ariaLabel={currentUser}
@@ -428,29 +543,45 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                             <div className='message-content' style={{ maxWidth: '60em' }}>
                                 {renderContent(message.content)}
                             </div>
-                        </ChatBubble>
-                        <ButtonGroup
-                            onItemClick={({ detail }) =>
-                                ['copy'].includes(detail.id) &&
-                                navigator.clipboard.writeText(getDisplayableMessage(message.content))
-                            }
-                            ariaLabel='Chat actions'
-                            dropdownExpandToViewport
-                            items={[
-                                {
-                                    type: 'icon-button',
-                                    id: 'copy',
-                                    iconName: 'copy',
-                                    text: 'Copy Input',
-                                    popoverFeedback: (
-                                        <StatusIndicator type='success'>
-                                            Input copied
-                                        </StatusIndicator>
-                                    )
+                            <ButtonGroup
+                                onItemClick={async ({ detail }) => {
+                                    if (detail.id === 'copy') {
+                                        navigator.clipboard.writeText(getDisplayableMessage(message.content));
+                                    } else if (detail.id === 'retry') {
+                                        await retryResponse();
+                                    }
                                 }
-                            ]}
-                            variant='icon'
-                        />
+                                }
+                                ariaLabel='Chat actions'
+                                dropdownExpandToViewport
+                                items={[
+                                    {
+                                        type: 'icon-button',
+                                        id: 'copy',
+                                        iconName: 'copy',
+                                        text: 'Copy Input',
+                                        popoverFeedback: (
+                                            <StatusIndicator type='success'>
+                                                Input copied
+                                            </StatusIndicator>
+                                        )
+                                    },
+                                    ...(errorState ? [
+                                        {
+                                            type: 'icon-button' as const,
+                                            id: 'retry' as const,
+                                            iconName: 'refresh' as const,
+                                            text: 'Retry Message' as const,
+                                            popoverFeedback: (
+                                                <StatusIndicator type='success'>
+                                                    Retrying Message
+                                                </StatusIndicator>
+                                            )
+                                        }] : [])
+                                ]}
+                                variant='icon'
+                            />
+                        </ChatBubble>
                     </div>
                 </SpaceBetween>
             )}

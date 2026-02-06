@@ -36,6 +36,7 @@ import {
 } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { IRole } from 'aws-cdk-lib/aws-iam';
+import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { CfnPermission, Code, Function, IFunction, ILayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import { Vpc } from '../networking/vpc';
@@ -94,7 +95,10 @@ export function registerAPIEndpoint (
     let handler;
 
     if (funcDef.existingFunction) {
-        handler = Function.fromFunctionArn(scope, functionId, funcDef.existingFunction);
+        handler = Function.fromFunctionAttributes(scope, functionId, {
+            functionArn: funcDef.existingFunction,
+            sameEnvironment: true,
+        });
 
         // create a CFN L1 primitive because `handler.addPermission` doesn't behave as expected
         // https://stackoverflow.com/questions/71075361/aws-cdk-lambda-resource-based-policy-for-a-function-with-an-alias
@@ -121,6 +125,7 @@ export function registerAPIEndpoint (
             vpc: vpc.vpc,
             securityGroups,
             vpcSubnets: vpc.subnetSelection,
+            logRetention: RetentionDays.ONE_MONTH,
         });
     }
 

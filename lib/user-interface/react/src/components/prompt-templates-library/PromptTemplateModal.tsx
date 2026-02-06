@@ -82,8 +82,10 @@ export const PromptTemplateModal = ({
         }
     }, [showModal, dispatch]);
 
+    const modalTestId = 'prompt-template-modal';
     return (
         <Modal
+            data-testid={modalTestId}
             onDismiss={() => {
                 setShowModal(false);
                 setUserPrompt('');
@@ -104,6 +106,7 @@ export const PromptTemplateModal = ({
                             Cancel
                         </Button>
                         <Button
+                            data-testid='use-prompt-button'
                             variant='primary'
                             onClick={() => {
                                 if (isPersona) {

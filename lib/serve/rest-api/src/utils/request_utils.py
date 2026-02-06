@@ -17,13 +17,34 @@ import json
 import os
 import sys
 import traceback
-from typing import Any, AsyncGenerator, Callable, Dict, Tuple
+from collections.abc import AsyncGenerator, Callable
+from typing import Any, Protocol
 
 from loguru import logger
+from utils.cache_manager import cache_model_assets, get_model_assets, get_registered_models_cache
+from utils.resources import RestApiResource
 
-from ..lisa_serve.registry import registry
-from .cache_manager import cache_model_assets, get_model_assets, get_registered_models_cache
-from .resources import RestApiResource
+
+class RegistryProtocol(Protocol):
+    """Protocol for model registry - allows dependency injection."""
+
+    def get_assets(self, provider: str) -> dict[str, Any]:
+        """Get model assets for a provider."""
+        ...
+
+
+def _get_default_registry() -> RegistryProtocol:
+    """Lazy import of registry to avoid import-time dependencies.
+
+    This function is only called at runtime, not at import time,
+    allowing tests to mock the registry without importing lisa_serve.
+    """
+    # Import here to avoid circular dependencies and allow test mocking
+    # This is intentionally not at module level
+    from lisa_serve.registry import registry  # noqa: PLC0415
+
+    return registry
+
 
 logger.remove()
 logger_level = os.environ.get("LOG_LEVEL", "INFO")
@@ -48,7 +69,7 @@ logger.configure(
 )
 
 
-async def validate_model(request_data: Dict[str, Any], resource: RestApiResource) -> None:
+async def validate_model(request_data: dict[str, Any], resource: RestApiResource) -> None:
     """Validate that the selected model is registered and supported for the specified resource.
 
     Parameters
@@ -91,13 +112,17 @@ async def validate_model(request_data: Dict[str, Any], resource: RestApiResource
         raise ValueError(message)
 
 
-async def get_model_and_validator(request_data: Dict[str, Any]) -> Tuple[Any, Any]:
+async def get_model_and_validator(
+    request_data: dict[str, Any], registry: RegistryProtocol | None = None
+) -> tuple[Any, Any]:
     """Get model and model kwargs validator.
 
     Parameters
     ----------
     request_data : Dict[str, Any]
         Request data.
+    registry : RegistryProtocol | None
+        Optional registry for dependency injection (testing).
 
     Returns
     -------
@@ -112,6 +137,9 @@ async def get_model_and_validator(request_data: Dict[str, Any]) -> Tuple[Any, An
     model_assets = get_model_assets(model_key)
     if not model_assets:
         # If not cached, retrieve model assets from registry
+        if registry is None:
+            registry = _get_default_registry()
+
         registry_assets = registry.get_assets(provider)
         adapter = registry_assets["adapter"]
         validator = registry_assets["validator"]
@@ -134,8 +162,8 @@ async def get_model_and_validator(request_data: Dict[str, Any]) -> Tuple[Any, An
 
 
 async def validate_and_prepare_llm_request(
-    request_data: Dict[str, Any], resource: RestApiResource
-) -> Tuple[Any, Any, str]:
+    request_data: dict[str, Any], resource: RestApiResource, registry: RegistryProtocol | None = None
+) -> tuple[Any, Any, str]:
     """Validate and prepare data for LLM (Language Model) requests.
 
     Parameters
@@ -145,6 +173,9 @@ async def validate_and_prepare_llm_request(
 
     resource : RestApiResource
         REST API resource.
+
+    registry : RegistryProtocol | None
+        Optional registry for dependency injection (testing).
 
     Returns
     -------
@@ -159,7 +190,7 @@ async def validate_and_prepare_llm_request(
     await validate_model(request_data, resource)
 
     # Instantiate the model and get the model kwargs validator
-    model, validator = await get_model_and_validator(request_data)
+    model, validator = await get_model_and_validator(request_data, registry)
 
     # Verify model kwargs
     model_kwargs = validator(**request_data["modelKwargs"])
@@ -174,8 +205,8 @@ async def validate_and_prepare_llm_request(
 
 
 def handle_stream_exceptions(
-    func: Callable[..., AsyncGenerator[str, None]],
-) -> Callable[..., AsyncGenerator[str, None]]:
+    func: Callable[..., AsyncGenerator[str]],
+) -> Callable[..., AsyncGenerator[str]]:
     """Decorate a streaming function to handle exceptions gracefully.
 
     This decorator catches any exceptions raised during the execution of a streaming function
@@ -200,7 +231,7 @@ def handle_stream_exceptions(
         The items yielded by the original function, or a JSON-formatted error message in case of an exception.
     """
 
-    async def wrapper(*args: Any, **kwargs: Any) -> AsyncGenerator[str, None]:
+    async def wrapper(*args: Any, **kwargs: Any) -> AsyncGenerator[str]:
         try:
             async for item in func(*args, **kwargs):
                 yield item

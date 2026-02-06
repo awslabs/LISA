@@ -15,17 +15,20 @@
  */
 
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { useAuth } from 'react-oidc-context';
+import { useAuth } from '../../auth/useAuth';
 import Form from '@cloudscape-design/components/form';
 import Box from '@cloudscape-design/components/box';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import Spinner from '@cloudscape-design/components/spinner';
 import {
     Autosuggest,
-    ButtonGroup, Checkbox,
+    ButtonGroup,
+    Checkbox,
     Grid,
     PromptInput,
     Icon,
+    Flashbar,
+    FileTokenGroup,
 } from '@cloudscape-design/components';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 
@@ -102,7 +105,7 @@ export default function Chat ({ sessionId }) {
 
     const allModels = useMemo(() =>
         (allModelsRaw || []).filter((model) =>
-            (model.modelType === ModelType.textgen || model.modelType === ModelType.imagegen) &&
+            (model.modelType === ModelType.textgen || model.modelType === ModelType.imagegen || model.modelType === ModelType.videogen) &&
             model.status === ModelStatus.InService
         ),
     [allModelsRaw]
@@ -119,6 +122,7 @@ export default function Chat ({ sessionId }) {
     // State management
     const [userPrompt, setUserPrompt] = useState('');
     const [fileContext, setFileContext] = useState('');
+    const [fileContextName, setFileContextName] = useState('');
     const [dirtySession, setDirtySession] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
     const [useRag, setUseRag] = useState(false);
@@ -127,18 +131,37 @@ export default function Chat ({ sessionId }) {
     const [modelFilterValue, setModelFilterValue] = useState('');
     const [hasUserInteractedWithModel, setHasUserInteractedWithModel] = useState(false);
     const [mermaidRenderComplete, setMermaidRenderComplete] = useState(0);
+    const [videoLoadComplete, setVideoLoadComplete] = useState(0);
+    const [imageLoadComplete, setImageLoadComplete] = useState(0);
     const [dynamicMaxRows, setDynamicMaxRows] = useState(8);
     const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+    const [updatingAutoApprovalForTool, setUpdatingAutoApprovalForTool] = useState<string | null>(null);
 
     // Callback to handle Mermaid diagram rendering completion
     const handleMermaidRenderComplete = useCallback(() => {
         setMermaidRenderComplete((prev) => prev + 1);
     }, []);
 
+    // Callback to handle video load completion (for auto-scroll)
+    const handleVideoLoadComplete = useCallback(() => {
+        setVideoLoadComplete((prev) => prev + 1);
+    }, []);
+
+    // Callback to handle image load completion (for auto-scroll)
+    const handleImageLoadComplete = useCallback(() => {
+        // Use setTimeout with RAF to ensure the DOM has fully updated and reflowed
+        // before triggering scroll. Images can cause significant layout shifts.
+        setTimeout(() => {
+            requestAnimationFrame(() => {
+                setImageLoadComplete((prev) => prev + 1);
+            });
+        }, 50);
+    }, []);
+
     // Ref to track if we're processing tool calls to prevent infinite loops
     const isProcessingToolCalls = useRef(false);
     const lastProcessedMessageIndex = useRef(-1);
-    const startToolChainRef = useRef<(session: LisaChatSession) => Promise<void>>();
+    const startToolChainRef = useRef<((session: LisaChatSession) => Promise<void>) | undefined>(undefined);
 
     // Memoize enabled servers to prevent infinite re-renders
     const enabledServers = useMemo(() => {
@@ -156,7 +179,7 @@ export default function Chat ({ sessionId }) {
 
     // Use the custom hook to manage multiple MCP connections
     const { tools: mcpTools, callTool, McpConnections, toolToServerMap } = useMultipleMcp(enabledServers, userPreferences?.preferences?.mcp);
-    const [updatePreferences] = useUpdateUserPreferencesMutation();
+    const [updatePreferences, {isSuccess: isUpdatingPreferencesSuccess, isError: isUpdatingPreferencesError, isLoading: isUpdatingPreferences}] = useUpdateUserPreferencesMutation();
 
     useEffect(() => {
         if (userPreferences) {
@@ -165,6 +188,22 @@ export default function Chat ({ sessionId }) {
             setPreferences({ ...DefaultUserPreferences, user: userName });
         }
     }, [userPreferences, userName]);
+
+    // Handle preferences update success
+    useEffect(() => {
+        if (isUpdatingPreferencesSuccess) {
+            notificationService.generateNotification('Successfully updated tool preferences', 'success');
+            setUpdatingAutoApprovalForTool(null);
+        }
+    }, [isUpdatingPreferencesSuccess, notificationService]);
+
+    // Handle preferences update error
+    useEffect(() => {
+        if (isUpdatingPreferencesError) {
+            notificationService.generateNotification('Error updating tool preferences', 'error');
+            setUpdatingAutoApprovalForTool(null);
+        }
+    }, [isUpdatingPreferencesError, notificationService]);
 
     useEffect(() => {
         const calculateMaxRows = () => {
@@ -206,6 +245,12 @@ export default function Chat ({ sessionId }) {
         chatConfiguration,
         setChatConfiguration
     );
+
+    // Check if the selected model has been deleted (exists in session but not in available models)
+    const isModelDeleted = useMemo(() => {
+        if (!selectedModel) return false;
+        return !allModels?.some((model) => model.modelId === selectedModel.modelId);
+    }, [selectedModel, allModels]);
 
     // Set default model if none is selected, default model is configured, and user hasn't interacted
     useEffect(() => {
@@ -254,6 +299,7 @@ export default function Chat ({ sessionId }) {
 
     // Derived states
     const isImageGenerationMode = selectedModel?.modelType === ModelType.imagegen;
+    const isVideoGenerationMode = selectedModel?.modelType === ModelType.videogen;
 
     // Format MCP tools for OpenAI when they change
     useEffect(() => {
@@ -286,16 +332,18 @@ export default function Chat ({ sessionId }) {
         });
     }, [getRelevantDocuments, chatConfiguration.sessionConfiguration, ragConfig.repositoryId, ragConfig.collection, ragConfig.embeddingModel]);
 
-    const { isRunning, setIsRunning, isStreaming, generateResponse, stopGeneration } = useChatGeneration({
+    const { isRunning, setIsRunning, isStreaming, generateResponse, stopGeneration, retryResponse, errorState } = useChatGeneration({
         chatConfiguration,
         selectedModel,
         isImageGenerationMode,
+        isVideoGenerationMode,
         session,
         setSession,
         metadata,
         memory,
         openAiTools: config?.configuration?.enabledComponents?.mcpConnections ? openAiTools : undefined,
         auth,
+        fileContext,
         notificationService
     });
 
@@ -322,13 +370,17 @@ export default function Chat ({ sessionId }) {
 
 
     const toggleToolAutoApproval = (toolName: string, enabled: boolean) => {
+        setUpdatingAutoApprovalForTool(toolName);
         const existingMcpPrefs = preferences.preferences.mcp ?? { enabledServers: [], overrideAllApprovals: false };
         const mcpPrefs: McpPreferences = {
             ...existingMcpPrefs,
             enabledServers: [...existingMcpPrefs.enabledServers]
         };
         const originalServer = mcpPrefs.enabledServers.find((server) => server.name === toolToServerMap.get(toolName));
-        if (!originalServer) return; // Early return if server not found
+        if (!originalServer) {
+            setUpdatingAutoApprovalForTool(null);
+            return; // Early return if server not found
+        }
         // Create a deep copy of the server object with its nested arrays
         const serverToUpdate = {
             ...originalServer,
@@ -402,8 +454,12 @@ export default function Chat ({ sessionId }) {
                                         });
                                         if ('data' in resp) {
                                             const image: LisaAttachImageResponse = resp.data;
-                                            content.image_url.url = image.body.image_url.url;
-                                            content.image_url.s3_key = image.body.image_url.s3_key;
+                                            if (content.image_url && image.body.image_url) {
+                                                content.image_url.url = image.body.image_url.url;
+                                                if ('s3_key' in image.body.image_url) {
+                                                    content.image_url.s3_key = image.body.image_url.s3_key;
+                                                }
+                                            }
                                         }
                                     }
                                 })
@@ -481,13 +537,42 @@ export default function Chat ({ sessionId }) {
         }
     }, [sessionHealth]);
 
+    // When session finishes loading, enable auto-scroll and scroll to bottom
     useEffect(() => {
-        if (shouldAutoScroll && bottomRef.current) {
-            // Use 'auto' instead of 'smooth' to prevent jagged scrolling during rapid streaming
-            // which was breaking AT_BOTTOM_THRESHOLD disabling auto-scroll without user input
-            bottomRef.current.scrollIntoView({ behavior: 'auto' });
+        if (!loadingSession && session.history.length > 0 && sessionId) {
+            // Re-enable auto-scroll when a session is loaded
+            setShouldAutoScroll(true);
+
+            // For sessions with images, we need multiple scroll attempts because:
+            // - Base64 images load instantly (synchronously)
+            // - Cached images load very quickly
+            // - The browser needs time to reflow the layout with image dimensions
+            const scrollToBottom = () => {
+                if (scrollContainerRef.current) {
+                    scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+                }
+            };
+
+            // Multiple scroll attempts with increasing delays to ensure we reach the bottom
+            // as images fully load and the container height updates
+            const delays = [0, 50, 150, 300, 500];
+            const timeoutIds = delays.map((delay) => setTimeout(scrollToBottom, delay));
+
+            // Cleanup timeouts if component unmounts or effect re-runs
+            return () => {
+                timeoutIds.forEach((id) => clearTimeout(id));
+            };
         }
-    }, [isStreaming, session, mermaidRenderComplete, shouldAutoScroll]);
+    }, [loadingSession, sessionId, session.history.length]);
+
+    useEffect(() => {
+        if (shouldAutoScroll && scrollContainerRef.current) {
+            // Scroll the container directly to the bottom
+            // This is more reliable than scrollIntoView for ensuring we reach the actual bottom
+            const container = scrollContainerRef.current;
+            container.scrollTop = container.scrollHeight;
+        }
+    }, [isStreaming, session, mermaidRenderComplete, videoLoadComplete, imageLoadComplete, shouldAutoScroll]);
 
     // Scroll event listener to detect scroll position
     useEffect(() => {
@@ -555,13 +640,13 @@ export default function Chat ({ sessionId }) {
             history: prev.history.concat(new LisaChatMessage({
                 type: 'human',
                 content: userPrompt,
-                metadata: isImageGenerationMode ? { imageGeneration: true } : {},
+                metadata: isImageGenerationMode ? { imageGeneration: true } : isVideoGenerationMode ? { videoGeneration: true } : {},
             }))
         }));
 
         const messages = [];
 
-        if (session.history.length === 0 && !isImageGenerationMode) {
+        if (session.history.length === 0 && !isImageGenerationMode && !isVideoGenerationMode) {
             messages.push(new LisaChatMessage({
                 type: 'system',
                 content: chatConfiguration.promptConfiguration.promptTemplate,
@@ -571,13 +656,13 @@ export default function Chat ({ sessionId }) {
 
         // Fetch RAG documents once if needed
         let ragDocs = null;
-        if (useRag && !isImageGenerationMode) {
+        if (useRag && !isImageGenerationMode && !isVideoGenerationMode) {
             ragDocs = await fetchRelevantDocuments(userPrompt);
         }
 
         // Use extracted message builder utilities
         const messageContent = await buildMessageContent({
-            isImageGenerationMode,
+            isImageGenerationMode: isImageGenerationMode || isVideoGenerationMode,
             fileContext,
             useRag,
             userPrompt,
@@ -585,7 +670,7 @@ export default function Chat ({ sessionId }) {
         });
 
         const messageMetadata = await buildMessageMetadata({
-            isImageGenerationMode,
+            isImageGenerationMode: isImageGenerationMode || isVideoGenerationMode,
             useRag,
             chatConfiguration,
             ragDocs,
@@ -615,7 +700,7 @@ export default function Chat ({ sessionId }) {
 
         setDirtySession(true);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [userPrompt, useRag, fileContext, chatConfiguration, generateResponse, isImageGenerationMode, fetchRelevantDocuments, notificationService]);
+    }, [userPrompt, useRag, fileContext, chatConfiguration, generateResponse, isImageGenerationMode, isVideoGenerationMode, fetchRelevantDocuments, notificationService]);
 
     // Ref to track if we're processing a keyboard event
     const isKeyboardEventRef = useRef(false);
@@ -697,20 +782,21 @@ export default function Chat ({ sessionId }) {
                 // eslint-disable-next-line react-hooks/exhaustive-deps
             />), conditionalDeps([modals.sessionConfiguration], [modals.sessionConfiguration], [modals.sessionConfiguration, chatConfiguration, setChatConfiguration, selectedModel, isRunning, openModal, closeModal, config, session, updateSession, ragConfig]))}
 
-            {useMemo(() => (<RagUploadModal
+            {useMemo(() => (window.env.RAG_ENABLED ? <RagUploadModal
                 ragConfig={ragConfig}
                 showRagUploadModal={modals.ragUpload}
                 setShowRagUploadModal={(show) => show ? openModal('ragUpload') : closeModal('ragUpload')}
-            />), [ragConfig, modals.ragUpload, openModal, closeModal])}
+            /> : null), [ragConfig, modals.ragUpload, openModal, closeModal])}
 
             {useMemo(() => (<ContextUploadModal
                 showContextUploadModal={modals.contextUpload}
                 setShowContextUploadModal={(show) => show ? openModal('contextUpload') : closeModal('contextUpload')}
                 fileContext={fileContext}
                 setFileContext={setFileContext}
+                setFileContextName={setFileContextName}
                 selectedModel={selectedModel}
                 // eslint-disable-next-line react-hooks/exhaustive-deps
-            />), conditionalDeps([modals.contextUpload], [modals.contextUpload], [modals.contextUpload, openModal, closeModal, fileContext, setFileContext, selectedModel]))}
+            />), conditionalDeps([modals.contextUpload], [modals.contextUpload], [modals.contextUpload, openModal, closeModal, fileContext, setFileContext, setFileContextName, selectedModel]))}
 
             {useMemo(() => (<PromptTemplateModal
                 session={session}
@@ -742,20 +828,53 @@ export default function Chat ({ sessionId }) {
                                 <p><strong>Do you want to allow this tool execution?</strong></p>
                             </SpaceBetween>
                             <hr />
-                            <Checkbox
-                                onChange={({ detail }) =>
-                                    toggleToolAutoApproval(toolApprovalModal.tool.name, detail.checked)
-                                }
-                                checked={userPreferences?.preferences?.mcp?.enabledServers.find((server) => server.name === toolToServerMap.get(toolApprovalModal.tool.name))?.autoApprovedTools.includes(toolApprovalModal.tool.name)}
-                            >
-                                Auto-approve this tool in the future
-                            </Checkbox>
+                            {updatingAutoApprovalForTool === toolApprovalModal.tool.name ? (
+                                <Box>
+                                    <Spinner size='normal' /> Updating preferences...
+                                </Box>
+                            ) : (
+                                <Checkbox
+                                    onChange={({ detail }) =>
+                                        toggleToolAutoApproval(toolApprovalModal.tool.name, detail.checked)
+                                    }
+                                    checked={preferences?.preferences?.mcp?.enabledServers.find((server) => server.name === toolToServerMap.get(toolApprovalModal.tool.name))?.autoApprovedTools.includes(toolApprovalModal.tool.name)}
+                                    disabled={isUpdatingPreferences}
+                                >
+                                    Auto-approve this tool in the future
+                                </Checkbox>
+                            )}
                         </SpaceBetween>
                     }
                 />
             )}
+
+            {/* Sticky warning banner for deleted model */}
+            {isModelDeleted && (
+                <div className='sticky top-0 z-50'>
+                    <Box padding={{ horizontal: 'l', top: 's' }}>
+                        <Flashbar
+                            items={[
+                                {
+                                    type: 'warning',
+                                    dismissible: false,
+                                    content: (
+                                        <>
+                                            This session uses the model <strong>{selectedModel?.modelId}</strong> which is no longer available.
+                                            You can view the conversation history but cannot send new messages.
+                                            Please start a new session with a different model.
+                                        </>
+                                    ),
+                                    id: 'model-deleted-warning',
+                                },
+                            ]}
+                        />
+                    </Box>
+                </div>
+            )}
+
             <div ref={scrollContainerRef} className='overflow-y-auto h-[calc(100vh-20rem)] bottom-8'>
                 <SpaceBetween direction='vertical' size='l'>
+
                     {loadingSession && (
                         <Box textAlign='center' padding='l'>
                             <SpaceBetween size='s' direction='vertical'>
@@ -782,11 +901,15 @@ export default function Chat ({ sessionId }) {
                             chatConfiguration={chatConfiguration}
                             setUserPrompt={setUserPrompt}
                             onMermaidRenderComplete={handleMermaidRenderComplete}
+                            onVideoLoadComplete={handleVideoLoadComplete}
+                            onImageLoadComplete={handleImageLoadComplete}
+                            retryResponse={retryResponse}
+                            errorState={errorState && idx === session.history.length - 1 }
                         />));
                     // eslint-disable-next-line react-hooks/exhaustive-deps
                     }, [session.history, chatConfiguration, loadingSession])}
 
-                    {!loadingSession && (isRunning || callingToolName) && !isStreaming && <Message
+                    {!loadingSession && (isRunning || callingToolName) && !isStreaming && !isImageGenerationMode && !isVideoGenerationMode && <Message
                         isRunning={isRunning}
                         callingToolName={callingToolName}
                         markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay}
@@ -796,6 +919,8 @@ export default function Chat ({ sessionId }) {
                         chatConfiguration={chatConfiguration}
                         setUserPrompt={setUserPrompt}
                         onMermaidRenderComplete={handleMermaidRenderComplete}
+                        onVideoLoadComplete={handleVideoLoadComplete}
+                        onImageLoadComplete={handleImageLoadComplete}
                     />}
                     {!loadingSession && session.history.length === 0 && sessionId === undefined && (
                         <WelcomeScreen
@@ -821,7 +946,7 @@ export default function Chat ({ sessionId }) {
                                 ]}
                             >
                                 <FormField
-                                    label={isImageGenerationMode ? <StatusIndicator type='info'>Image Generation Mode</StatusIndicator> : undefined}
+                                    label={isImageGenerationMode || isVideoGenerationMode ? <StatusIndicator type='info'>{isImageGenerationMode ? 'Image Generation Mode' : 'Video Generation Mode'}</StatusIndicator> : undefined}
                                 >
                                     <Autosuggest
                                         disabled={isRunning || session.history.length > 0}
@@ -838,7 +963,7 @@ export default function Chat ({ sessionId }) {
                                         controlId='model-selection-autosuggest'
                                     />
                                 </FormField>
-                                {window.env.RAG_ENABLED && !isImageGenerationMode && (
+                                {window.env.RAG_ENABLED && !isImageGenerationMode && !isVideoGenerationMode && (
                                     <RagControls
                                         isRunning={isRunning}
                                         setUseRag={setUseRag}
@@ -854,12 +979,22 @@ export default function Chat ({ sessionId }) {
                                 maxRows={dynamicMaxRows}
                                 minRows={2}
                                 spellcheck={true}
+                                style={
+                                    {
+                                        root: {
+                                            borderColor: {
+                                                disabled: isModelDeleted ? '#ffe347' : isConnected ? '' : '#ff7a7a'
+                                            }
+                                        }
+                                    }
+                                }
                                 placeholder={
                                     !selectedModel ? 'You must select a model before sending a message' :
-                                        isImageGenerationMode ? 'Describe the image you want to generate...' :
-                                            'Send a message'
+                                        isModelDeleted ? 'The model used in this session is no longer available.' :
+                                            isImageGenerationMode ? 'Describe the image you want to generate...' :
+                                                'Send a message'
                                 }
-                                disabled={!selectedModel || loadingSession}
+                                disabled={!selectedModel || loadingSession || !isConnected || isModelDeleted}
                                 onChange={({ detail }) => setUserPrompt(detail.value)}
                                 onAction={handleAction}
                                 onKeyDown={handleKeyPress}
@@ -869,11 +1004,33 @@ export default function Chat ({ sessionId }) {
                                         <ButtonGroup
                                             ariaLabel='Chat actions'
                                             onItemClick={handleButtonClick}
-                                            items={getButtonItems(config, useRag, isImageGenerationMode)}
+                                            items={getButtonItems(config, useRag, isImageGenerationMode, isVideoGenerationMode, isConnected, isModelDeleted)}
                                             variant='icon'
                                             dropdownExpandToViewport={true}
                                         />
                                     </Box>
+                                }
+                                secondaryContent={
+                                    fileContext && (
+                                        <FileTokenGroup
+                                            items={[{ file: new File([fileContext], fileContextName) }]}
+                                            onDismiss={() => {
+                                                setFileContext('');
+                                                setFileContextName('');
+                                            }}
+                                            alignment='horizontal'
+                                            showFileSize={false}
+                                            showFileLastModified={false}
+                                            showFileThumbnail={false}
+                                            i18nStrings={{
+                                                removeFileAriaLabel: () => 'Remove file',
+                                                limitShowFewer: 'Show fewer files',
+                                                limitShowMore: 'Show more files',
+                                                errorIconAriaLabel: 'Error',
+                                                warningIconAriaLabel: 'Warning'
+                                            }}
+                                        />
+                                    )
                                 }
                             />
                             <SpaceBetween direction='vertical' size='xs'>

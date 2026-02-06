@@ -14,12 +14,12 @@
 
 """Cognito Authentication Helper."""
 import getpass
-from typing import Any, Dict
+from typing import Any
 
 import boto3
 
 
-def get_cognito_token(client_id: str, username: str, region: str = "us-east-1") -> Dict[str, Any]:
+def get_cognito_token(client_id: str, username: str, region: str = "us-east-1") -> dict[str, Any]:
     """Get a token from Cognito.
 
     Parameters

@@ -32,6 +32,21 @@ warn_return_any = true
 warn_unused_ignores = true
 strict_optional = true
 show_error_codes = true
+explicit_package_bases = true
+mypy_path = [
+    "lambda",
+    "lisa-sdk",
+    "lib/serve/rest-api/src",
+    "lib/serve/mcp-workbench/src",
+]
+exclude = [
+    "^build/",
+    "^dist/",
+    "^\\.venv/",
+    "^cdk\\.out/",
+    "^node_modules/",
+    ".*/build/.*",
+]
 
 [tool.ruff]
 line-length = 120
@@ -53,5 +68,14 @@ markers = [
     "cdk_deployed: CDK infrastructure deployed",
 ]
 testpaths = [
-    "test/python"
+    "test/python",
+    "test/lambda",
+    "test/mcp-workbench",
+    "test/lisa-sdk",
+]
+pythonpath = [
+    "lambda",
+    "lisa-sdk",
+    "lib/serve/rest-api/src",
+    "lib/serve/mcp-workbench/src",
 ]

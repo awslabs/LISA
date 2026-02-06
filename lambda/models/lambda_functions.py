@@ -13,20 +13,19 @@
 #   limitations under the License.
 
 """APIGW endpoints for managing models."""
+import logging
 import os
-from typing import Annotated, Union
+from typing import Annotated
+from urllib.parse import urlparse
 
 import boto3
 import botocore.session
-from fastapi import FastAPI, HTTPException, Path, Request
-from fastapi.encoders import jsonable_encoder
-from fastapi.exceptions import RequestValidationError
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import HTTPException, Path, Request
 from fastapi.responses import JSONResponse
 from mangum import Mangum
-from utilities.auth import get_groups, is_admin
+from utilities.auth import get_groups, get_username, is_admin, require_admin
 from utilities.common_functions import retry_config
-from utilities.fastapi_middleware.aws_api_gateway_middleware import AWSAPIGatewayMiddleware
+from utilities.fastapi_factory import create_fastapi_app
 
 from .domain_objects import (
     CreateModelRequest,
@@ -55,18 +54,10 @@ from .handler import (
     UpdateScheduleHandler,
 )
 
-sess = botocore.session.Session()
-app = FastAPI(redirect_slashes=False, lifespan="off", docs_url="/docs", openapi_url="/openapi.json")
-app.add_middleware(AWSAPIGatewayMiddleware)
+logger = logging.getLogger(__name__)
 
-# Enable CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+sess = botocore.session.Session()
+app = create_fastapi_app()
 
 autoscaling = boto3.client("autoscaling", region_name=os.environ["AWS_REGION"], config=retry_config)
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
@@ -97,31 +88,93 @@ async def model_not_found_handler(request: Request, exc: ModelNotFoundError) -> 
     return JSONResponse(status_code=404, content={"detail": str(exc)})
 
 
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
-    """Handle exception when request fails validation and and translate to a 422 error."""
-    return JSONResponse(
-        status_code=422, content={"detail": jsonable_encoder(exc.errors()), "type": "RequestValidationError"}
-    )
-
-
 @app.exception_handler(InvalidStateTransitionError)
 @app.exception_handler(ModelAlreadyExistsError)
 @app.exception_handler(ValueError)
 async def user_error_handler(
-    request: Request, exc: Union[InvalidStateTransitionError, ModelAlreadyExistsError, ValueError]
+    request: Request, exc: InvalidStateTransitionError | ModelAlreadyExistsError | ValueError
 ) -> JSONResponse:
     """Handle errors when customer requests options that cannot be processed."""
     return JSONResponse(status_code=400, content={"detail": str(exc)})
 
 
+@app.exception_handler(ModelInUseError)
+async def model_in_use_handler(request: Request, exc: ModelInUseError) -> JSONResponse:
+    """Handle exception when attempting to delete a model that is in use."""
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
 @app.post(path="", include_in_schema=False)
 @app.post(path="/")
+@require_admin("User does not have permission to create models.")
 async def create_model(create_request: CreateModelRequest, request: Request) -> CreateModelResponse:
     """Endpoint to create a model."""
-    admin_status, _ = get_admin_status_and_groups(request)
-    if not admin_status:
-        raise HTTPException(status_code=403, detail="User does not have permission to create models.")
+    # Extract user context for audit logging
+    event = request.scope.get("aws.event", {})
+    username = get_username(event) if event else "unknown"
+    auth_type = event.get("requestContext", {}).get("authorizer", {}).get("authType", "unknown")
+    source_ip = event.get("requestContext", {}).get("identity", {}).get("sourceIp", "unknown")
+
+    # Extract container image and healthcheck details for audit logging
+    container_image = None
+    registry_domain = None
+    healthcheck_command = None
+
+    if create_request.containerConfig:
+        container_image = create_request.containerConfig.image.baseImage
+        # Extract registry domain from image URL
+        try:
+            if "://" in container_image:
+                registry_domain = urlparse(container_image).netloc
+            elif "/" in container_image:
+                registry_domain = container_image.split("/")[0]
+            else:
+                registry_domain = "unknown"
+        except Exception:
+            registry_domain = "parse_error"
+
+        healthcheck_command = create_request.containerConfig.healthCheckConfig.command
+
+    # Log CreateModel request for security audit
+    logger.info(
+        "CreateModel request",
+        extra={
+            "event_type": "CREATE_MODEL_REQUEST",
+            "user": {
+                "username": username,
+                "auth_type": auth_type,
+                "source_ip": source_ip,
+            },
+            "model": {
+                "model_id": create_request.modelId,
+                "model_name": create_request.modelName,
+                "instance_type": create_request.instanceType if hasattr(create_request, "instanceType") else None,
+                "auto_scaling": (
+                    {
+                        "min_capacity": (
+                            create_request.autoScalingConfig.minCapacity if create_request.autoScalingConfig else None
+                        ),
+                        "max_capacity": (
+                            create_request.autoScalingConfig.maxCapacity if create_request.autoScalingConfig else None
+                        ),
+                    }
+                    if create_request.autoScalingConfig
+                    else None
+                ),
+            },
+            "container": (
+                {
+                    "base_image": container_image,
+                    "registry_domain": registry_domain,
+                    "image_type": create_request.containerConfig.image.type if create_request.containerConfig else None,
+                    "healthcheck_command": healthcheck_command,
+                }
+                if create_request.containerConfig
+                else None
+            ),
+        },
+    )
+
     create_handler = CreateModelHandler(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
@@ -129,9 +182,44 @@ async def create_model(create_request: CreateModelRequest, request: Request) -> 
         guardrails_table_resource=guardrails_table,
     )
     try:
-        return create_handler(create_request=create_request)
+        response = create_handler(create_request=create_request)
+
+        # Log successful creation
+        logger.info(
+            "CreateModel request successful",
+            extra={
+                "event_type": "CREATE_MODEL_SUCCESS",
+                "model_id": create_request.modelId,
+                "username": username,
+            },
+        )
+
+        return response
     except ModelAlreadyExistsError as e:
+        # Log failure
+        logger.warning(
+            "CreateModel request failed - model already exists",
+            extra={
+                "event_type": "CREATE_MODEL_FAILURE",
+                "model_id": create_request.modelId,
+                "username": username,
+                "error": str(e),
+            },
+        )
         raise HTTPException(status_code=409, detail=str(e))
+    except Exception as e:
+        # Log unexpected failure
+        logger.error(
+            "CreateModel request failed with unexpected error",
+            extra={
+                "event_type": "CREATE_MODEL_ERROR",
+                "model_id": create_request.modelId,
+                "username": username,
+                "error": str(e),
+            },
+            exc_info=True,
+        )
+        raise
 
 
 @app.get(path="", include_in_schema=False)
@@ -169,15 +257,13 @@ async def get_model(
 
 
 @app.put(path="/{model_id}")
+@require_admin("User does not have permission to update models")
 async def update_model(
     model_id: Annotated[str, Path(title="The unique model ID of the model to update")],
     update_request: UpdateModelRequest,
     request: Request,
 ) -> UpdateModelResponse:
     """Endpoint to update a model."""
-    admin_status, _ = get_admin_status_and_groups(request)
-    if not admin_status:
-        raise HTTPException(status_code=403, detail="User does not have permission to update models")
     update_handler = UpdateModelHandler(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
@@ -193,13 +279,11 @@ async def update_model(
 
 
 @app.delete(path="/{model_id}")
+@require_admin("User does not have permission to delete models")
 async def delete_model(
     model_id: Annotated[str, Path(title="The unique model ID of the model to delete")], request: Request
 ) -> DeleteModelResponse:
     """Endpoint to delete a model."""
-    admin_status, _ = get_admin_status_and_groups(request)
-    if not admin_status:
-        raise HTTPException(status_code=403, detail="User does not have permission to delete models")
     delete_handler = DeleteModelHandler(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
@@ -222,30 +306,21 @@ async def get_instances() -> list[str]:
 
 @app.post(path="/{model_id}/schedule")
 @app.put(path="/{model_id}/schedule")
+@require_admin("User does not have permission to update model schedules")
 async def update_schedule(
     model_id: Annotated[str, Path(title="The unique model ID of the model to schedule")],
     schedule_config: SchedulingConfig,
     request: Request,
 ) -> UpdateScheduleResponse:
     """Endpoint to create or update a schedule for a model"""
+    admin_status, user_groups = get_admin_status_and_groups(request)
+
     update_schedule_handler = UpdateScheduleHandler(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
         guardrails_table_resource=guardrails_table,
     )
-
-    user_groups = []
-    admin_status = False
-
-    if "aws.event" in request.scope:
-        event = request.scope["aws.event"]
-        try:
-            user_groups = get_groups(event)
-            admin_status = is_admin(event)
-        except Exception:
-            user_groups = []
-            admin_status = False
 
     return update_schedule_handler(
         model_id=model_id, schedule_config=schedule_config, user_groups=user_groups, is_admin=admin_status
@@ -280,28 +355,19 @@ async def get_schedule(
 
 
 @app.delete(path="/{model_id}/schedule")
+@require_admin("User does not have permission to delete model schedules")
 async def delete_schedule(
     model_id: Annotated[str, Path(title="The unique model ID of the model to delete schedule for")], request: Request
 ) -> DeleteScheduleResponse:
     """Endpoint to delete a schedule for a model"""
+    admin_status, user_groups = get_admin_status_and_groups(request)
+
     delete_schedule_handler = DeleteScheduleHandler(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
         model_table_resource=model_table,
         guardrails_table_resource=guardrails_table,
     )
-
-    user_groups = []
-    admin_status = False
-
-    if "aws.event" in request.scope:
-        event = request.scope["aws.event"]
-        try:
-            user_groups = get_groups(event)
-            admin_status = is_admin(event)
-        except Exception:
-            user_groups = []
-            admin_status = False
 
     return delete_schedule_handler(model_id=model_id, user_groups=user_groups, is_admin=admin_status)
 

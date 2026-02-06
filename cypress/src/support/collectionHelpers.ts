@@ -374,14 +374,14 @@ export function getAutoCreatedCollectionInfo (repositoryId: string): Cypress.Cha
             if (autoCreatedCollection) {
                 const collectionName = autoCreatedCollection.name;
                 const collectionId = autoCreatedCollection.collectionId;
-                cy.log(`Found auto-created collection: ${collectionName} (ID: ${collectionId})`);
-                return { name: collectionName, id: collectionId };
+                Cypress.log({ name: 'getAutoCreatedCollectionInfo', message: `Found auto-created collection: ${collectionName} (ID: ${collectionId})` });
+                return cy.wrap({ name: collectionName, id: collectionId });
             }
 
             // Fallback to first collection if no default found
             const firstCollection = collections[0];
-            cy.log(`Using first collection: ${firstCollection.name} (ID: ${firstCollection.collectionId})`);
-            return { name: firstCollection.name, id: firstCollection.collectionId };
+            Cypress.log({ name: 'getAutoCreatedCollectionInfo', message: `Using first collection: ${firstCollection.name} (ID: ${firstCollection.collectionId})` });
+            return cy.wrap({ name: firstCollection.name, id: firstCollection.collectionId });
         }
         throw new Error(`Failed to fetch collections for repository ${repositoryId}`);
     });

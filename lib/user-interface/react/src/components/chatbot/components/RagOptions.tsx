@@ -104,8 +104,7 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
         // Update tracking when repository changes
         if (repositoryHasChanged) {
             lastRepositoryIdRef.current = currentRepositoryId;
-
-            setUserHasSelectedCollection(false);
+            queueMicrotask(() => setUserHasSelectedCollection(false));
         }
 
         if (currentRepositoryId && filteredRepositories && allModels && (!userHasSelectedCollection || repositoryHasChanged)) {

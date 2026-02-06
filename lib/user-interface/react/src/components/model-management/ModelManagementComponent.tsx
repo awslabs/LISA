@@ -62,9 +62,9 @@ export function ModelManagementComponent (): ReactElement {
     useEffect(() => {
         const finalStatePredicate = (model: IModel) => [ModelStatus.InService, ModelStatus.Failed, ModelStatus.Stopped].includes(model.status);
         if (allModels?.every(finalStatePredicate)) {
-            setShouldPoll(false);
+            queueMicrotask(() => setShouldPoll(false));
         }
-    }, [allModels, setShouldPoll]);
+    }, [allModels]);
 
     // Compute filtered models based on search text
     const filteredModels = useMemo(() => {
@@ -87,7 +87,7 @@ export function ModelManagementComponent (): ReactElement {
     // Reset to first page when filters change and current page becomes invalid
     useEffect(() => {
         if (currentPageIndex > numberOfPages && numberOfPages > 0) {
-            setCurrentPageIndex(1);
+            queueMicrotask(() => setCurrentPageIndex(1));
         }
     }, [currentPageIndex, numberOfPages]);
 

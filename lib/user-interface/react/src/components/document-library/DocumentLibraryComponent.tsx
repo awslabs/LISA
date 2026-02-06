@@ -185,6 +185,7 @@ export function DocumentLibraryComponent ({ repositoryId, collectionId }: Docume
             resizableColumns
             enableKeyboardNavigation
             items={items}
+            variant='full-page'
             loading={isLoading && !paginatedDocs}
             loadingText='Loading documents'
             selectionType='multi'

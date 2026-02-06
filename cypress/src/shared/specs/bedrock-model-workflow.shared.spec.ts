@@ -176,8 +176,8 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
 
         // Wait for models API to load and check if model already exists
         cy.wait('@getModels', { timeout: 30000 }).then((interception) => {
-            const models = interception.response?.body || { models: [] };
-            const modelExists = models.models.some((model: any) => model.modelId === testModel.modelId);
+            const models = (interception.response?.body as { models?: any[] })?.models ?? [];
+            const modelExists = models.some((model: any) => model.modelId === testModel.modelId);
 
             if (modelExists) {
                 cy.log(`Model ${testModel.modelId} already exists, skipping creation`);
@@ -302,12 +302,80 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
         });
     });
 
-    it('Persona prompt template appears in Prompt Templates list', () => {
+    it('Rename auto-created collection to known name', function () {
+        if (!testState.repositoryReady) {
+            this.skip();
+        }
+
+        navigateToRagManagement();
+
+        // Get the auto-created collection info (name and ID) and rename it
+        getAutoCreatedCollectionInfo(testRepository.repositoryId).then((collectionInfo) => {
+            cy.log(`Auto-created collection: ${collectionInfo.name} (ID: ${collectionInfo.id})`);
+            testState.collectionId = collectionInfo.id; // Store the collection ID
+            renameCollection(collectionInfo.name, testCollection.collectionName);
+            testState.collectionRenamed = true;
+        });
+    });
+
+    it('Upload test document to collection via chat page', function () {
+        if (!testState.collectionRenamed) {
+            this.skip();
+        }
+
+        // Navigate to chat page
+        navigateAndVerifyChatPage();
+
+        // Select model, repository, and collection
+        selectModelInChat(testModel.modelId);
+        selectRagRepositoryInChat(testRepository.repositoryId);
+        selectCollectionInChat(testCollection.collectionName);
+
+        // Upload the document
+        uploadDocument(testDocumentPath);
+        testState.documentUploaded = true;
+    });
+
+    it('Wait for document to be ingested', function () {
+        if (!testState.documentUploaded) {
+            this.skip();
+        }
+
+        waitForDocumentIngested(testRepository.repositoryId, testState.collectionId, testDocumentPath, 300000);
+        testState.documentIngested = true;
+    });
+
+    it('Admin creates a persona prompt template (or uses existing)', () => {
+        navigateToPromptTemplates();
+
+        // Wait for prompt templates API to load and check if template already exists
+        cy.wait('@getPromptTemplates', { timeout: 30000 }).then((interception) => {
+            const templates = interception.response?.body || [];
+            const templateExists = templates.some((template: any) => template.title === testPromptTemplatePersona.title);
+
+            if (templateExists) {
+                cy.log(`Prompt template "${testPromptTemplatePersona.title}" already exists, skipping creation`);
+                testState.personaTemplateCreated = true;
+            } else {
+                openCreatePromptTemplateWizard();
+                fillPromptTemplateConfig(testPromptTemplatePersona);
+                completePromptTemplateWizard();
+                waitForPromptTemplateCreationSuccess(testPromptTemplatePersona.title);
+                testState.personaTemplateCreated = true;
+            }
+        });
+    });
+
+    it('Persona prompt template appears in Prompt Templates list', function () {
+        if (!testState.personaTemplateCreated) {
+            this.skip();
+        }
+
         navigateToPromptTemplates();
         verifyPromptTemplateInList(testPromptTemplatePersona.title);
     });
 
-    it('Admin creates a directive prompt template', () => {
+    it('Admin creates a directive prompt template (or uses existing)', () => {
         navigateToPromptTemplates();
 
         promptTemplateExists(testPromptTemplateDirective.title).then((exists) => {
@@ -323,7 +391,11 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
         });
     });
 
-    it('Directive prompt template appears in Prompt Templates list', () => {
+    it('Directive prompt template appears in Prompt Templates list', function () {
+        if (!testState.directiveTemplateCreated) {
+            this.skip();
+        }
+
         navigateToPromptTemplates();
         verifyPromptTemplateInList(testPromptTemplateDirective.title);
     });

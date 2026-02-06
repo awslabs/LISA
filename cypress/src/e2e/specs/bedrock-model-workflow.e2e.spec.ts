@@ -33,5 +33,5 @@ describe('Bedrock Model Workflow (E2E)', () => {
         cy.loginAs('admin');
     });
 
-    runBedrockModelWorkflowTests();
+    runBedrockModelWorkflowTests({skipCleanup: true});
 });

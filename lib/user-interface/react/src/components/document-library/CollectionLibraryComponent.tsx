@@ -188,6 +188,7 @@ export function CollectionLibraryComponent ({ admin = false }: CollectionLibrary
                 stickyColumns={{ first: 1, last: 0 }}
                 resizableColumns
                 enableKeyboardNavigation
+                variant='full-page'
                 items={items}
                 loading={fetchingCollections && !allCollections}
                 loadingText='Loading collections'

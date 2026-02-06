@@ -1,6 +1,6 @@
 # Custom Branding
 
-LISA supports custom branding capabilities, allowing organizations to customize the user interface with their own logos and color schemes. This feature enables you to replace LISA branding with your organization's own branding while maintaining all functionality.
+LISA supports custom branding, allowing customers to tailor the user interface with specific logos and color schemes. This feature enables you to replace LISA branding with your organization's own branding while maintaining all functionality.
 
 ## Overview
 

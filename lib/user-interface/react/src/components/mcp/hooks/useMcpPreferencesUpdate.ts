@@ -52,7 +52,7 @@ export function useMcpPreferencesUpdate (options: UseMcpPreferencesUpdateOptions
     useEffect(() => {
         if (isUpdatingSuccess) {
             notificationService.generateNotification(successMessage, 'success');
-            setUpdatingItemId(null);
+            queueMicrotask(() => setUpdatingItemId(null));
         }
     }, [isUpdatingSuccess, notificationService, successMessage]);
 
@@ -66,7 +66,7 @@ export function useMcpPreferencesUpdate (options: UseMcpPreferencesUpdateOptions
                 `${errorMessage}: ${errorDetail}`,
                 'error'
             );
-            setUpdatingItemId(null);
+            queueMicrotask(() => setUpdatingItemId(null));
         }
     }, [isUpdatingError, updateError, notificationService, errorMessage]);
 

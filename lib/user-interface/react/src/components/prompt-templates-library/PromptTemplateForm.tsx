@@ -131,8 +131,7 @@ export function PromptTemplateForm (props: PromptTemplateFormProps) {
     // Check if template is public and update state accordingly
     useEffect(() => {
         if (data?.groups?.findIndex((group) => group === 'lisa:public') > -1) {
-
-            setSharePublic(true);
+            queueMicrotask(() => setSharePublic(true));
         }
     }, [data?.groups]);
 

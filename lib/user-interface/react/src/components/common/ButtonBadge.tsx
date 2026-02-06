@@ -23,15 +23,16 @@ type ButtonBadgeProps = {
     text: string;
     icon: IconDefinition;
     onClick: () => void;
-    show?: boolean
+    show?: boolean;
+    dataTestId?: string;
 };
 
-export const ButtonBadge = ({ text, icon, onClick, show }: ButtonBadgeProps) => {
+export const ButtonBadge = ({ text, icon, onClick, show, dataTestId }: ButtonBadgeProps) => {
     if (show !== true) {
         return null;
     }
 
-    const testId = `${kebabCase(text)}-button`;
+    const testId = dataTestId ?? `${kebabCase(text)}-button`;
 
     return (
         <Button variant='normal' onClick={onClick} data-testid={testId}>

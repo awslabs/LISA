@@ -105,7 +105,6 @@ const ApiUserRoute = ({ children }: RouteProps) => {
 };
 
 function App () {
-    const [showNavigation, setShowNavigation] = useState(false);
     const [nav, setNav] = useState(null);
     const confirmationModal: ConfirmationModalProps = useAppSelector((state) => state.modal.confirmationModal);
     const auth = useAuth();
@@ -131,13 +130,7 @@ function App () {
         applyMode(colorScheme);
     }, [colorScheme]);
 
-    useEffect(() => {
-        if (nav) {
-            setShowNavigation(true);
-        } else {
-            setShowNavigation(false);
-        }
-    }, [nav]);
+    const showNavigation = !!nav;
 
     return (
         <ColorSchemeContext.Provider value={{ colorScheme, setColorScheme }}>

@@ -22,11 +22,11 @@ import uuid
 from collections.abc import Iterator
 
 import boto3
-from auth import Authorizer, extract_user_groups_from_jwt
+from auth import extract_user_groups_from_jwt
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from requests import request as requests_request
-from starlette.status import HTTP_401_UNAUTHORIZED
+from starlette.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 from utils.guardrails import (
     create_guardrail_json_response,
     create_guardrail_streaming_response,
@@ -224,7 +224,7 @@ def handle_guardrail_violation_response(
         if is_streaming:
             # Return as streaming response
             return StreamingResponse(
-                create_guardrail_streaming_response(guardrail_response, model_id, created), status_code=200
+                create_guardrail_streaming_response(guardrail_response, model_id, created), status_code=HTTP_200_OK
             )
         else:
             # Return as a normal completion response
@@ -303,36 +303,40 @@ def generate_response_with_guardrail_handling(iterator: Iterator[str | bytes], m
             yield f"{line}\n\n"
 
 
-@router.api_route("/{api_path:path}", methods=["GET", "POST", "OPTIONS", "PUT", "PATCH", "DELETE"])
+@router.api_route("/{api_path:path}", methods=["GET", "POST", "OPTIONS", "DELETE"])
 async def litellm_passthrough(request: Request, api_path: str) -> Response:
     """
     Pass requests directly to LiteLLM. LiteLLM and deployed models will respond here directly.
 
-    This accepts all HTTP methods as to not put any restriction on how deployed models would act given different HTTP
-    payload requirements. Results are only streamed if the OpenAI-compatible request specifies streaming as part of the
+    Authentication is handled by auth_middleware. This function checks authorization
+    based on whether the route requires admin access.
+
+    Results are only streamed if the OpenAI-compatible request specifies streaming as part of the
     input payload.
     """
     litellm_path = f"{LITELLM_URL}/{api_path}"
     headers = dict(request.headers.items())
 
-    authorizer = Authorizer()
+    # Auth is handled by middleware - check authorization for admin routes
     require_admin = not is_openai_route(api_path)
-    jwt_data = await authorizer.authenticate_request(request)
-    if not await authorizer.can_access(request, require_admin):
+    is_admin = getattr(request.state, "is_admin", False)
+
+    if require_admin and not is_admin:
         raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
-            message="Not authenticated in litellm_passthrough",
+            status_code=HTTP_403_FORBIDDEN,
+            detail="Admin access required for this endpoint",
         )
 
-    # At this point in the request, we have already validated auth with IdP or persistent token. By using LiteLLM for
-    # model management, LiteLLM requires an admin key, and that forces all requests to require a key as well. To avoid
-    # soliciting yet another form of auth from the user, we add the existing LiteLLM key to the headers that go directly
-    # to the LiteLLM instance.
+    # Get JWT data from request state (set by auth middleware)
+    jwt_data = getattr(request.state, "jwt_data", None)
+
+    # Inject LiteLLM key for all requests to the local LiteLLM instance
     headers["Authorization"] = f"Bearer {LITELLM_KEY}"
 
     http_method = request.method
-    if http_method == "GET" or http_method == "DELETE":
 
+    # Handle GET and DELETE requests (no body expected)
+    if http_method in ("GET", "DELETE", "OPTIONS"):
         response = requests_request(method=http_method, url=litellm_path, headers=headers)
 
         # Check content type to handle binary responses (e.g., video content)
@@ -380,7 +384,7 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
                         "s3_key": s3_key,
                         "content_type": content_type,
                     },
-                    status_code=200,
+                    status_code=HTTP_200_OK,
                 )
             except Exception as e:
                 logger.error(f"Error storing video to S3: {e}")
@@ -394,7 +398,7 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
             media_type=content_type if content_type else None,
         )
 
-    # Check if request is multipart/form-data (used for video generation and image edits with reference images)
+    # POST requests below - check content type
     content_type = request.headers.get("content-type", "").lower()
     is_multipart = "multipart/form-data" in content_type
     is_video_endpoint = "video" in api_path.lower()
@@ -416,14 +420,13 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
                     # It's a file - read the content and prepare for upload
                     file_content = await field_value.read()
                     filename = getattr(field_value, "filename", "file")
-                    content_type = getattr(field_value, "content_type", "application/octet-stream")
-                    files[field_name] = (filename, file_content, content_type)
+                    file_content_type = getattr(field_value, "content_type", "application/octet-stream")
+                    files[field_name] = (filename, file_content, file_content_type)
                 else:
                     # It's a regular form field
                     data[field_name] = field_value
 
             # Create new headers without Content-Type (requests library will set it with correct boundary)
-            # Use LITELLM_KEY instead of the user's token (consistent with rest of the code)
             forward_headers = {"Authorization": f"Bearer {LITELLM_KEY}"}
 
             # Forward multipart request to LiteLLM
@@ -438,35 +441,44 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
 
         except Exception as e:
             logger.error(f"Error processing multipart request: {e}")
-            raise HTTPException(status_code=400, detail="Error processing multipart request")
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Error processing multipart request")
 
-    # Handle JSON requests (default behavior)
-    params = await request.json()
+    # Handle JSON POST requests
+    # Parse request body first
+    try:
+        body = await request.body()
+        if not body:
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Request body is required")
+        params = json.loads(body)
+    except json.JSONDecodeError as e:
+        logger.error(f"Invalid JSON in request body: {e}")
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid JSON in request body")
 
-    # Apply guardrails for chat/completions requests
-    if api_path in ["chat/completions", "v1/chat/completions"]:
+    # Apply guardrails BEFORE sending to LiteLLM for chat/completions requests
+    # This adds guardrail configuration to the request so LiteLLM enforces them
+    is_chat_completion = api_path in ["chat/completions", "v1/chat/completions"]
+    if is_chat_completion:
         model_id = params.get("model")
         if model_id and jwt_data:
             await apply_guardrails_to_request(params, model_id, jwt_data)
 
-    if params.get("stream", False):  # if a streaming request
+    is_streaming = params.get("stream", False)
 
+    if is_streaming:
         response = requests_request(method=http_method, url=litellm_path, json=params, headers=headers, stream=True)
 
-        # Check for guardrail violations
+        # Check for guardrail violations in the initial response (before streaming starts)
         model_id = params.get("model", "")
         guardrail_response = handle_guardrail_violation_response(response, model_id, params, is_streaming=True)
         if guardrail_response:
             return guardrail_response
 
         # Publish metrics for streaming chat completions (API users)
-        if api_path in ["chat/completions", "v1/chat/completions"] and response.status_code == 200:
+        if is_chat_completion and response.status_code == 200:
             publish_metrics_event(request, params, response.status_code)
 
-        # Normal streaming (no error or non-guardrail error)
-        # Use guardrail-aware generator for chat/completions endpoints
-        if api_path in ["chat/completions", "v1/chat/completions"]:
-            model_id = params.get("model", "")
+        # Use guardrail-aware generator for chat/completions to catch violations in the stream
+        if is_chat_completion:
             return StreamingResponse(
                 generate_response_with_guardrail_handling(response.iter_lines(), model_id),
                 status_code=response.status_code,
@@ -476,21 +488,21 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
                 generate_response(response.iter_lines()),
                 status_code=response.status_code,
             )
-    else:  # not a streaming request
 
-        response = requests_request(method=http_method, url=litellm_path, json=params, headers=headers)
+    # Non-streaming request
+    response = requests_request(method=http_method, url=litellm_path, json=params, headers=headers)
 
-        # Check for guardrail violations
-        model_id = params.get("model", "")
-        guardrail_response = handle_guardrail_violation_response(response, model_id, params, is_streaming=False)
-        if guardrail_response:
-            return guardrail_response
+    # Check for guardrail violations in the response
+    model_id = params.get("model", "")
+    guardrail_response = handle_guardrail_violation_response(response, model_id, params, is_streaming=False)
+    if guardrail_response:
+        return guardrail_response
 
-        if response.status_code != 200:
-            logger.error(f"LiteLLM error response: {response.text}")
+    if response.status_code != 200:
+        logger.error(f"LiteLLM error response: {response.text}")
 
-        # Publish metrics for chat completions (API users)
-        if api_path in ["chat/completions", "v1/chat/completions"]:
-            publish_metrics_event(request, params, response.status_code)
+    # Publish metrics for chat completions (API users)
+    if is_chat_completion:
+        publish_metrics_event(request, params, response.status_code)
 
-        return JSONResponse(response.json(), status_code=response.status_code)
+    return JSONResponse(response.json(), status_code=response.status_code)

@@ -21,6 +21,7 @@ import boto3
 from fastapi import HTTPException, Path, Request
 from fastapi.responses import JSONResponse
 from mangum import Mangum
+from starlette.status import HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_404_NOT_FOUND
 from utilities.auth import get_user_context, is_api_user
 from utilities.common_functions import retry_config
 from utilities.fastapi_factory import create_fastapi_app
@@ -54,14 +55,14 @@ token_table = dynamodb.Table(os.environ["TOKEN_TABLE_NAME"])
 @app.exception_handler(TokenNotFoundError)
 async def token_not_found_handler(request: Request, exc: TokenNotFoundError) -> JSONResponse:
     """Handle exception when token cannot be found and translate to a 404 error."""
-    return JSONResponse(status_code=404, content={"message": str(exc)})
+    return JSONResponse(status_code=HTTP_404_NOT_FOUND, content={"message": str(exc)})
 
 
 @app.exception_handler(TokenAlreadyExistsError)
 @app.exception_handler(ValueError)
 async def user_error_handler(request: Request, exc: TokenAlreadyExistsError | ValueError) -> JSONResponse:
     """Handle errors when customer requests options that cannot be processed."""
-    return JSONResponse(status_code=400, content={"message": str(exc)})
+    return JSONResponse(status_code=HTTP_400_BAD_REQUEST, content={"message": str(exc)})
 
 
 @app.post(path="/{username}")
@@ -73,7 +74,7 @@ async def create_token_for_user(
     """Admin-only endpoint to create token for a specific user."""
     # Get current user from AWS API Gateway context
     if "aws.event" not in request.scope:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized")
 
     event = request.scope["aws.event"]
     current_user, is_admin_user, _ = get_user_context(event)
@@ -88,7 +89,7 @@ async def create_own_token(request: Request, create_request: CreateTokenUserRequ
     """User endpoint to create their own token - requires API group membership."""
     # Get current user from AWS API Gateway context
     if "aws.event" not in request.scope:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized")
 
     event = request.scope["aws.event"]
     current_user, is_admin_user, user_groups = get_user_context(event)
@@ -104,7 +105,7 @@ async def list_tokens(request: Request) -> ListTokensResponse:
     """List tokens - admins see all, users see only their own."""
     # Get current user from AWS API Gateway context
     if "aws.event" not in request.scope:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized")
 
     event = request.scope["aws.event"]
     current_user, is_admin_user, _ = get_user_context(event)
@@ -120,7 +121,7 @@ async def get_token(
     """Get specific token details."""
     # Get current user from AWS API Gateway context
     if "aws.event" not in request.scope:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized")
 
     event = request.scope["aws.event"]
     current_user, is_admin_user, _ = get_user_context(event)
@@ -136,7 +137,7 @@ async def delete_token(
     """Delete a token."""
     # Get current user from AWS API Gateway context
     if "aws.event" not in request.scope:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Unauthorized")
 
     event = request.scope["aws.event"]
     current_user, is_admin_user, _ = get_user_context(event)

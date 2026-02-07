@@ -58,7 +58,7 @@ from utilities.bedrock_kb_discovery import (
 )
 from utilities.bedrock_kb_validation import validate_bedrock_kb_exists
 from utilities.common_functions import api_wrapper, retry_config
-from utilities.exceptions import HTTPException
+from utilities.exceptions import ForbiddenException, NotFoundException
 from utilities.repository_types import RepositoryType
 from utilities.validation import ValidationError
 
@@ -224,7 +224,7 @@ def get_repository(event: dict[str, Any], repository_id: str) -> dict[str, Any]:
     # Non-admins must have matching group access
     user_groups = get_groups(event)
     if not user_has_group_access(user_groups, repo.get("allowedGroups", [])):
-        raise HTTPException(status_code=403, message="User does not have permission to access this repository")
+        raise ForbiddenException("User does not have permission to access this repository")
 
     return repo
 
@@ -482,9 +482,7 @@ def get_collection(event: dict, context: dict) -> dict[str, Any]:
         )
 
     if collection is None:
-        raise HTTPException(
-            status_code=404, message=f"Collection '{collection_id}' not found in repository '{repository_id}'"
-        )
+        raise NotFoundException(f"Collection '{collection_id}' not found in repository '{repository_id}'")
 
     # Return collection configuration
     result: dict[str, Any] = collection.model_dump(mode="json")

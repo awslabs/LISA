@@ -19,6 +19,11 @@ from typing import Any
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 from loguru import logger
+from starlette.status import (
+    HTTP_400_BAD_REQUEST,
+    HTTP_405_METHOD_NOT_ALLOWED,
+    HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+)
 
 # Maximum request size: 10MB
 # This allows for large prompts, image uploads, and other content
@@ -72,7 +77,7 @@ async def validate_input_middleware(
             status="ERROR",
         )
         return JSONResponse(
-            status_code=405,
+            status_code=HTTP_405_METHOD_NOT_ALLOWED,
             content={
                 "error": "Method Not Allowed",
                 "message": f"HTTP method {request.method} is not allowed",
@@ -86,7 +91,7 @@ async def validate_input_middleware(
             status="ERROR",
         )
         return JSONResponse(
-            status_code=400,
+            status_code=HTTP_400_BAD_REQUEST,
             content={
                 "error": "Bad Request",
                 "message": "Invalid characters detected in request path",
@@ -101,7 +106,7 @@ async def validate_input_middleware(
                 status="ERROR",
             )
             return JSONResponse(
-                status_code=400,
+                status_code=HTTP_400_BAD_REQUEST,
                 content={
                     "error": "Bad Request",
                     "message": "Invalid characters detected in path parameters",
@@ -116,7 +121,7 @@ async def validate_input_middleware(
                 status="ERROR",
             )
             return JSONResponse(
-                status_code=400,
+                status_code=HTTP_400_BAD_REQUEST,
                 content={
                     "error": "Bad Request",
                     "message": "Invalid characters detected in query parameters",
@@ -137,7 +142,7 @@ async def validate_input_middleware(
                 status="ERROR",
             )
             return JSONResponse(
-                status_code=413,
+                status_code=HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                 content={
                     "error": "Payload Too Large",
                     "message": f"Request body size exceeds maximum allowed size of {max_request_size} bytes",
@@ -154,7 +159,7 @@ async def validate_input_middleware(
                         status="ERROR",
                     )
                     return JSONResponse(
-                        status_code=400,
+                        status_code=HTTP_400_BAD_REQUEST,
                         content={
                             "error": "Bad Request",
                             "message": "Invalid characters detected in request body",

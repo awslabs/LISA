@@ -19,6 +19,7 @@ from typing import Any, DefaultDict
 
 from fastapi import HTTPException
 from services.model_service import ModelService
+from starlette.status import HTTP_404_NOT_FOUND
 from utils.cache_manager import get_registered_models_cache
 from utils.resources import ModelType
 
@@ -101,7 +102,7 @@ async def handle_describe_model(
     if not metadata:
         error_message = f"Metadata for provider {provider} and model {model_name} not found."
         logger.error(error_message, extra={"event": "handle_describe_model", "status": "ERROR"})
-        raise HTTPException(status_code=404, detail=error_message)
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=error_message)
 
     return metadata
 

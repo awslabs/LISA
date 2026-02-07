@@ -25,7 +25,8 @@ import boto3
 from botocore.config import Config
 from fastapi import HTTPException as FastAPIHTTPException
 from fastapi import Request
-from utilities.exceptions import HTTPException
+from starlette.status import HTTP_403_FORBIDDEN, HTTP_500_INTERNAL_SERVER_ERROR
+from utilities.exceptions import ForbiddenException
 
 from .auth_provider import get_authorization_provider
 
@@ -93,7 +94,7 @@ def admin_only(func: Callable) -> Callable:
     @wraps(func)
     def wrapper(event: dict[str, Any], context: dict[str, Any], *args: Any, **kwargs: Any) -> Any:
         if not is_admin(event):
-            raise HTTPException(status_code=403, message="User does not have permission to access this repository")
+            raise ForbiddenException("User does not have permission to access this repository")
         return func(event, context, *args, **kwargs)
 
     return wrapper
@@ -136,7 +137,8 @@ def require_admin(message: str = "User does not have permission to perform this 
 
             if request is None:
                 raise FastAPIHTTPException(
-                    status_code=500, detail="Internal error: Request object not found in handler"
+                    status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Internal error: Request object not found in handler",
                 )
 
             # Extract event from request scope
@@ -145,7 +147,7 @@ def require_admin(message: str = "User does not have permission to perform this 
             auth_module = sys.modules.get("utilities.auth")
             is_admin_func = getattr(auth_module, "is_admin", is_admin) if auth_module else is_admin
             if not is_admin_func(event):
-                raise FastAPIHTTPException(status_code=403, detail=message)
+                raise FastAPIHTTPException(status_code=HTTP_403_FORBIDDEN, detail=message)
 
             return await func(*args, **kwargs)
 

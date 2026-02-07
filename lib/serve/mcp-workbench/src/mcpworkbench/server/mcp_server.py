@@ -27,6 +27,7 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Mount, Route
+from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
 from ..config.models import ServerConfig
 from ..core.base_tool import BaseTool
@@ -131,7 +132,7 @@ class MCPWorkbenchServer:
                         "error": str(e),
                         "timestamp": datetime.utcnow().isoformat() + "Z",
                     }
-                    return JSONResponse(error_result, status_code=500)
+                    return JSONResponse(error_result, status_code=HTTP_500_INTERNAL_SERVER_ERROR)
 
             app.add_route(self.config.rescan_route_path, rescan_endpoint, methods=["GET"])
 

@@ -25,7 +25,7 @@ import botocore.exceptions
 from pydantic import BaseModel, Field
 from utilities.auth import is_admin
 from utilities.common_functions import api_wrapper, retry_config
-from utilities.exceptions import HTTPException
+from utilities.exceptions import BadRequestException, ForbiddenException, InternalServerErrorException, NotFoundException
 from utilities.time import iso_string
 
 from .syntax_validator import PythonSyntaxValidator
@@ -77,46 +77,41 @@ def _get_tool_from_s3(tool_id: str) -> MCPToolModel:
     except botocore.exceptions.ClientError as e:
         code = e.response.get("Error", {}).get("Code")
         if code in ("NoSuchKey", "404"):
-            raise HTTPException(status_code=404, message=f"Tool {tool_id} not found in S3 bucket.") from e
-        # Log and re-raise as ValueError to keep the function's contract
+            raise NotFoundException(f"Tool {tool_id} not found in S3 bucket.") from e
         logger.error("Error retrieving tool from S3: %s", e, exc_info=True)
-        raise ValueError(f"Failed to retrieve tool: {e}") from e
+        raise InternalServerErrorException(f"Failed to retrieve tool: {e}") from e
     except Exception as e:
         logger.error("Unexpected error retrieving tool from S3: %s", e, exc_info=True)
-        raise ValueError(f"Failed to retrieve tool: {e}") from e
+        raise InternalServerErrorException(f"Failed to retrieve tool: {e}") from e
 
 
 @api_wrapper
 def read(event: dict, context: dict) -> Any:
     """Retrieve a specific tool from S3."""
     if not is_admin(event):
-        raise ValueError("Only admin users can access tools.")
+        raise ForbiddenException("Only admin users can access tools.")
 
     tool_id = event.get("pathParameters", {}).get("toolId")
     if not tool_id:
-        raise ValueError("Missing toolId parameter.")
+        raise BadRequestException("Missing toolId parameter.")
 
     logger.info(f"Reading tool with ID: {tool_id}")
 
     try:
         tool = _get_tool_from_s3(tool_id)
         return tool.model_dump()
-    except HTTPException:
-        # Let HTTPException pass through for proper status codes
+    except (NotFoundException, ForbiddenException, BadRequestException, InternalServerErrorException):
         raise
-    except ValueError as e:
-        # This is likely from _get_tool_from_s3 already properly formatted
-        raise e
     except Exception as e:
         logger.error("Unexpected error reading tool: %s", e, exc_info=True)
-        raise ValueError(f"Failed to read tool: {e}") from e
+        raise InternalServerErrorException(f"Failed to read tool: {e}") from e
 
 
 @api_wrapper
 def list(event: dict, context: dict) -> dict[str, Any]:
     """List all tools from S3."""
     if not is_admin(event):
-        raise ValueError("Only admin users can access tools.")
+        raise ForbiddenException("Only admin users can access tools.")
 
     try:
         response = s3_client.list_objects_v2(Bucket=WORKBENCH_BUCKET, Prefix="")
@@ -138,24 +133,24 @@ def list(event: dict, context: dict) -> dict[str, Any]:
         return {"tools": tools}
     except botocore.exceptions.ClientError as e:
         logger.error("Error listing tools from S3: %s", e, exc_info=True)
-        raise ValueError(f"Failed to list tools: {e}") from e
+        raise InternalServerErrorException(f"Failed to list tools: {e}") from e
     except Exception as e:
         logger.error("Unexpected error listing tools: %s", e, exc_info=True)
-        raise ValueError(f"Failed to list tools: {e}") from e
+        raise InternalServerErrorException(f"Failed to list tools: {e}") from e
 
 
 @api_wrapper
 def create(event: dict, context: dict) -> Any:
     """Create a new tool in S3."""
     if not is_admin(event):
-        raise ValueError("Only admin users can access tools.")
+        raise ForbiddenException("Only admin users can access tools.")
 
     try:
         body = json.loads(event["body"], parse_float=Decimal)
 
         # Ensure the required fields are present
         if "id" not in body or "contents" not in body:
-            raise ValueError("Missing required fields: 'id' and 'contents' are required.")
+            raise BadRequestException("Missing required fields: 'id' and 'contents' are required.")
 
         # Create the tool model
         tool_model = MCPToolModel(id=body["id"], contents=body["contents"])
@@ -171,37 +166,36 @@ def create(event: dict, context: dict) -> Any:
         return tool_model.model_dump()
     except botocore.exceptions.ClientError as e:
         logger.error("Error creating tool in S3: %s", e, exc_info=True)
-        raise ValueError(f"Failed to create tool: {e}") from e
+        raise InternalServerErrorException(f"Failed to create tool: {e}") from e
     except json.JSONDecodeError as e:
         logger.error("Invalid JSON in request body: %s", e, exc_info=True)
-        raise ValueError(f"Invalid request body: {e}") from e
+        raise BadRequestException(f"Invalid request body: {e}") from e
+    except (NotFoundException, ForbiddenException, BadRequestException, InternalServerErrorException):
+        raise
     except Exception as e:
         logger.error("Unexpected error creating tool: %s", e, exc_info=True)
-        raise ValueError(f"Failed to create tool: {e}") from e
+        raise InternalServerErrorException(f"Failed to create tool: {e}") from e
 
 
 @api_wrapper
 def update(event: dict, context: dict) -> Any:
     """Update an existing tool in S3."""
     if not is_admin(event):
-        raise ValueError("Only admin users can access tools.")
+        raise ForbiddenException("Only admin users can access tools.")
 
     try:
         tool_id = event.get("pathParameters", {}).get("toolId")
         if not tool_id:
-            raise ValueError("Missing toolId parameter.")
+            raise BadRequestException("Missing toolId parameter.")
 
         body = json.loads(event["body"], parse_float=Decimal)
 
         # Ensure the contents field is present
         if "contents" not in body:
-            raise ValueError("Missing required field: 'contents' is required.")
+            raise BadRequestException("Missing required field: 'contents' is required.")
 
-        # Check if the tool exists
-        try:
-            _get_tool_from_s3(tool_id)
-        except HTTPException:
-            raise HTTPException(status_code=404, message=f"Tool {tool_id} does not exist.")
+        # Check if the tool exists (will raise NotFoundException if not found)
+        _get_tool_from_s3(tool_id)
 
         # Create updated tool model
         tool_model = MCPToolModel(id=tool_id, contents=body["contents"])
@@ -215,66 +209,67 @@ def update(event: dict, context: dict) -> Any:
         )
 
         return tool_model.model_dump()
+    except (NotFoundException, ForbiddenException, BadRequestException, InternalServerErrorException):
+        raise
     except botocore.exceptions.ClientError as e:
         logger.error("Error updating tool in S3: %s", e, exc_info=True)
-        raise ValueError(f"Failed to update tool: {e}") from e
+        raise InternalServerErrorException(f"Failed to update tool: {e}") from e
     except json.JSONDecodeError as e:
         logger.error("Invalid JSON in request body: %s", e, exc_info=True)
-        raise ValueError(f"Invalid request body: {e}") from e
+        raise BadRequestException(f"Invalid request body: {e}") from e
     except Exception as e:
         logger.error("Unexpected error updating tool: %s", e, exc_info=True)
-        raise ValueError(f"Failed to update tool: {e}") from e
+        raise InternalServerErrorException(f"Failed to update tool: {e}") from e
 
 
 @api_wrapper
 def delete(event: dict, context: dict) -> dict[str, str]:
     """Delete a tool from S3."""
     if not is_admin(event):
-        raise ValueError("Only admin users can access tools.")
+        raise ForbiddenException("Only admin users can access tools.")
 
     try:
         tool_id = event.get("pathParameters", {}).get("toolId")
         if not tool_id:
-            raise ValueError("Missing toolId parameter.")
+            raise BadRequestException("Missing toolId parameter.")
 
         # Ensure the tool_id ends with .py
         if not tool_id.endswith(".py"):
             tool_id = f"{tool_id}.py"
 
-        # Check if the tool exists before deletion
-        try:
-            _get_tool_from_s3(tool_id)
-        except HTTPException:
-            raise HTTPException(status_code=404, message=f"Tool {tool_id} does not exist.")
+        # Check if the tool exists before deletion (will raise NotFoundException if not found)
+        _get_tool_from_s3(tool_id)
 
         # Delete from S3
         s3_client.delete_object(Bucket=WORKBENCH_BUCKET, Key=tool_id)
 
         return {"status": "ok", "message": f"Tool {tool_id} deleted successfully."}
+    except (NotFoundException, ForbiddenException, BadRequestException, InternalServerErrorException):
+        raise
     except botocore.exceptions.ClientError as e:
         logger.error("Error deleting tool from S3: %s", e, exc_info=True)
-        raise ValueError(f"Failed to delete tool: {e}") from e
+        raise InternalServerErrorException(f"Failed to delete tool: {e}") from e
     except Exception as e:
         logger.error("Unexpected error deleting tool: %s", e, exc_info=True)
-        raise ValueError(f"Failed to delete tool: {e}") from e
+        raise InternalServerErrorException(f"Failed to delete tool: {e}") from e
 
 
 @api_wrapper
 def validate_syntax(event: dict, context: dict) -> dict[str, Any]:
     """Validate Python code syntax without execution."""
     if not is_admin(event):
-        raise ValueError("Only admin users can validate code syntax.")
+        raise ForbiddenException("Only admin users can validate code syntax.")
 
     try:
         body = json.loads(event["body"], parse_float=Decimal)
 
         # Ensure the required field is present
         if "code" not in body:
-            raise ValueError("Missing required field: 'code' is required.")
+            raise BadRequestException("Missing required field: 'code' is required.")
 
         code = body["code"]
         if not isinstance(code, str):
-            raise ValueError("Code must be a string.")
+            raise BadRequestException("Code must be a string.")
 
         logger.info("Validating Python code syntax")
 
@@ -294,9 +289,11 @@ def validate_syntax(event: dict, context: dict) -> dict[str, Any]:
 
         return response
 
+    except (NotFoundException, ForbiddenException, BadRequestException, InternalServerErrorException):
+        raise
     except json.JSONDecodeError as e:
         logger.error("Invalid JSON in request body: %s", e, exc_info=True)
-        raise ValueError(f"Invalid request body: {e}") from e
+        raise BadRequestException(f"Invalid request body: {e}") from e
     except Exception as e:
         logger.error("Unexpected error validating syntax: %s", e, exc_info=True)
-        raise ValueError(f"Failed to validate syntax: {e}") from e
+        raise InternalServerErrorException(f"Failed to validate syntax: {e}") from e

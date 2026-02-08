@@ -28,7 +28,13 @@ import boto3
 from boto3.dynamodb.conditions import Attr, Key
 from utilities.auth import admin_only, get_user_context
 from utilities.common_functions import api_wrapper, get_bearer_token, get_item, retry_config
-from utilities.exceptions import BadRequestException, ConflictException, ForbiddenException, InternalServerErrorException, NotFoundException
+from utilities.exceptions import (
+    BadRequestException,
+    ConflictException,
+    ForbiddenException,
+    InternalServerErrorException,
+    NotFoundException,
+)
 
 from .models import (
     HostedMcpServerModel,
@@ -407,7 +413,9 @@ def get_hosted_mcp_server(event: dict, context: dict) -> Any:
     if is_admin_user:
         return item
 
-    raise ForbiddenException(f"Not authorized to get hosted MCP server {mcp_server_id}. User {user_id} is not an admin.")
+    raise ForbiddenException(
+        f"Not authorized to get hosted MCP server {mcp_server_id}. User {user_id} is not an admin."
+    )
 
 
 @api_wrapper
@@ -482,10 +490,14 @@ def update_hosted_mcp_server(event: dict, context: dict) -> Any:
     if update_request.enabled is not None:
         # Force capacity changes and enable/disable operations to happen in separate requests
         if update_request.autoScalingConfig is not None:
-            raise BadRequestException("Start or Stop operations and AutoScaling changes must happen in separate requests.")
+            raise BadRequestException(
+                "Start or Stop operations and AutoScaling changes must happen in separate requests."
+            )
         # Server cannot be enabled if it isn't already stopped
         if update_request.enabled and server_status != HostedMcpServerStatus.STOPPED:
-            raise ConflictException(f"Server cannot be enabled when it is not in the '{HostedMcpServerStatus.STOPPED}' state.")
+            raise ConflictException(
+                f"Server cannot be enabled when it is not in the '{HostedMcpServerStatus.STOPPED}' state."
+            )
         # Server cannot be stopped if it isn't already in service
         elif not update_request.enabled and server_status != HostedMcpServerStatus.IN_SERVICE:
             raise ConflictException(
@@ -496,7 +508,9 @@ def update_hosted_mcp_server(event: dict, context: dict) -> Any:
     if update_request.autoScalingConfig is not None:
         stack_name = item.get("stack_name")
         if not stack_name:
-            raise BadRequestException("Cannot update AutoScaling Config for server that does not have a CloudFormation stack.")
+            raise BadRequestException(
+                "Cannot update AutoScaling Config for server that does not have a CloudFormation stack."
+            )
 
         asg_config = update_request.autoScalingConfig.model_dump(exclude_none=True)
         current_asg_config = item.get("autoScalingConfig", {})
@@ -506,7 +520,9 @@ def update_hosted_mcp_server(event: dict, context: dict) -> Any:
         max_capacity = asg_config.get("maxCapacity", current_asg_config.get("maxCapacity", 1))
 
         if min_capacity > max_capacity:
-            raise BadRequestException(f"Min capacity ({min_capacity}) cannot be greater than max capacity ({max_capacity}).")
+            raise BadRequestException(
+                f"Min capacity ({min_capacity}) cannot be greater than max capacity ({max_capacity})."
+            )
 
         # Validate min and max are positive
         if min_capacity < 1:
@@ -523,7 +539,9 @@ def update_hosted_mcp_server(event: dict, context: dict) -> Any:
     ):
         stack_name = item.get("stack_name")
         if not stack_name:
-            raise BadRequestException("Cannot update container config for server that does not have a CloudFormation stack.")
+            raise BadRequestException(
+                "Cannot update container config for server that does not have a CloudFormation stack."
+            )
 
     # Kick off state machine
     sfn_arn = os.environ.get("UPDATE_MCP_SERVER_SFN_ARN")

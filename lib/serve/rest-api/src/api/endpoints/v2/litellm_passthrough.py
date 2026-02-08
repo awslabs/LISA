@@ -26,7 +26,7 @@ from auth import extract_user_groups_from_jwt
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from requests import request as requests_request
-from starlette.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
+from starlette.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
 from utils.guardrails import (
     create_guardrail_json_response,
     create_guardrail_streaming_response,

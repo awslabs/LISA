@@ -301,7 +301,7 @@ def create_bedrock_collection(event: dict, context: dict) -> dict[str, Any]:
                     logger.info(f"Collection {collection_id} already exists, skipping creation")
                     skipped_collections.append(existing_collection.model_dump(mode="json"))
                     continue
-            except (HTTPException, ValidationError):
+            except (NotFoundException, ValidationError):
                 # Collection doesn't exist, proceed with creation
                 pass
 

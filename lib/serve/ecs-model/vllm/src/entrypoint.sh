@@ -105,6 +105,10 @@ declare -a vars=("S3_BUCKET_MODELS" "LOCAL_MODEL_PATH" "MODEL_NAME" "S3_MOUNT_PO
 #   VLLM_KEEP_ALIVE_ON_ENGINE_DEATH - Keep API server alive on engine error (true/false)
 #   VLLM_SLEEP_WHEN_IDLE - Reduce CPU usage when idle (true/false)
 #
+# TOOL CALLING / FUNCTION CALLING (opt-in):
+#   VLLM_ENABLE_AUTO_TOOL_CHOICE - Enable automatic tool choice routing (set to "true" to enable)
+#   VLLM_TOOL_CALL_PARSER - Tool call parser name (hermes/mistral/llama3_json/qwen/etc.)
+#
 # ROCM SPECIFIC (AMD GPUs):
 #   VLLM_ROCM_USE_AITER - Enable AITER ops on ROCm (true/false)
 #   VLLM_ROCM_USE_SKINNY_GEMM - Use skinny GEMM on ROCm (true/false)
@@ -239,6 +243,20 @@ fi
 if [[ "${VLLM_TRUST_REMOTE_CODE}" == "true" ]]; then
     ADDITIONAL_ARGS="${ADDITIONAL_ARGS} --trust-remote-code"
     echo "  --trust-remote-code"
+fi
+
+# Enable tool calling support (opt-in only)
+# These flags are required for models that support function/tool calling with tool_choice: "auto"
+# (e.g., Qwen, Mistral, Llama, etc.)
+# See https://docs.vllm.ai/en/stable/features/tool_calling/
+if [[ "${VLLM_ENABLE_AUTO_TOOL_CHOICE}" == "true" ]]; then
+    ADDITIONAL_ARGS="${ADDITIONAL_ARGS} --enable-auto-tool-choice"
+    echo "  --enable-auto-tool-choice"
+fi
+
+if [[ -n "${VLLM_TOOL_CALL_PARSER}" ]]; then
+    ADDITIONAL_ARGS="${ADDITIONAL_ARGS} --tool-call-parser ${VLLM_TOOL_CALL_PARSER}"
+    echo "  --tool-call-parser ${VLLM_TOOL_CALL_PARSER}"
 fi
 
 echo "Starting vLLM with args: ${ADDITIONAL_ARGS}"

@@ -823,6 +823,7 @@ export default function Chat ({ sessionId }) {
                             <SpaceBetween size='s' direction='vertical'>
                                 <p>The AI is about to execute the following tool:</p>
                                 <p><strong>Tool Name:</strong> {toolApprovalModal.tool.name}</p>
+                                <p><strong>MCP Server:</strong> {toolToServerMap.get(toolApprovalModal.tool.name)}</p>
                                 <p><strong>Arguments:</strong></p>
                                 {JSON.stringify(toolApprovalModal.tool.args).replace('{', '').replace('}', '')}
                                 <p><strong>Do you want to allow this tool execution?</strong></p>

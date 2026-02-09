@@ -23,7 +23,7 @@ from starlette.status import (
     HTTP_401_UNAUTHORIZED,
     HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
-    HTTP_422_UNPROCESSABLE_ENTITY,
+    HTTP_422_UNPROCESSABLE_CONTENT,
 )
 from utilities.exceptions import ForbiddenException, HTTPException, NotFoundException, UnauthorizedException
 from utilities.fastapi_middleware.aws_api_gateway_middleware import AWSAPIGatewayMiddleware
@@ -126,7 +126,7 @@ def create_fastapi_app() -> FastAPI:
     async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
         """Handle exception when request fails validation and translate to a 422 error."""
         return JSONResponse(
-            status_code=HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=HTTP_422_UNPROCESSABLE_CONTENT,
             content={"detail": jsonable_encoder(exc.errors()), "type": "RequestValidationError"},
         )
 

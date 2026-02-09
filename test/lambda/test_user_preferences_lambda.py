@@ -54,25 +54,28 @@ def mock_api_wrapper(func):
                 "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
                 "body": json.dumps(result, default=str),
             }
-        except ValueError as e:
-            error_msg = str(e)
-            # Determine status code based on error message
-            status_code = 400
-            if "not found" in error_msg.lower():
-                status_code = 404
-            elif "Not authorized" in error_msg:
-                status_code = 403
+        except Exception as e:
+            # Handle HTTPException and its subclasses
+            if hasattr(e, "http_status_code"):
+                status_code = e.http_status_code
+                error_message = getattr(e, "message", str(e))
+            elif isinstance(e, ValueError):
+                error_msg = str(e)
+                # Determine status code based on error message
+                status_code = 400
+                if "not found" in error_msg.lower():
+                    status_code = 404
+                elif "Not authorized" in error_msg:
+                    status_code = 403
+                error_message = error_msg
+            else:
+                status_code = 500
+                error_message = str(e)
 
             return {
                 "statusCode": status_code,
                 "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
-                "body": json.dumps({"error": error_msg}),
-            }
-        except Exception as e:
-            return {
-                "statusCode": 500,
-                "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
-                "body": json.dumps({"error": str(e)}),
+                "body": json.dumps({"error": error_message}),
             }
 
     return wrapper

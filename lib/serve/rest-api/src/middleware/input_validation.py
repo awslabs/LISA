@@ -22,7 +22,7 @@ from loguru import logger
 from starlette.status import (
     HTTP_400_BAD_REQUEST,
     HTTP_405_METHOD_NOT_ALLOWED,
-    HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+    HTTP_413_CONTENT_TOO_LARGE,
 )
 
 # Maximum request size: 10MB
@@ -142,7 +142,7 @@ async def validate_input_middleware(
                 status="ERROR",
             )
             return JSONResponse(
-                status_code=HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                status_code=HTTP_413_CONTENT_TOO_LARGE,
                 content={
                     "error": "Payload Too Large",
                     "message": f"Request body size exceeds maximum allowed size of {max_request_size} bytes",

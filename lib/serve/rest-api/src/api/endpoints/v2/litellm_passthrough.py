@@ -101,9 +101,9 @@ ANTHROPIC_ROUTES = (
     "anthropic/v1/messages/count_tokens",
 )
 CHAT_ROUTES = (
-    "chat/completions", 
-    "v1/chat/completions", 
-    "v1/messages", 
+    "chat/completions",
+    "v1/chat/completions",
+    "v1/messages",
     "anthropic/v1/messages",
 )
 
@@ -220,7 +220,7 @@ def handle_guardrail_violation_response(
     Returns:
         Response object if a guardrail violation was handled, None otherwise
     """
-    if response.status_code != 400:
+    if response.status_code != HTTP_400_BAD_REQUEST:
         return None
 
     try:
@@ -342,6 +342,7 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
         raise HTTPException(
             status_code=HTTP_403_FORBIDDEN,
             detail="Admin access required for this endpoint",
+        )
 
     # Get JWT data from request state (set by auth middleware)
     jwt_data = getattr(request.state, "jwt_data", None)
@@ -367,7 +368,7 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
                 pass
 
         # For video content, store in S3 and return presigned URL
-        if "video/" in content_type and "/content" in api_path and response.status_code == 200:
+        if "video/" in content_type and "/content" in api_path and response.status_code == HTTP_200_OK:
             try:
                 # Extract video ID from path (e.g., videos/video_abc123/content -> video_abc123)
                 path_parts = api_path.split("/")
@@ -450,7 +451,7 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
                 method=http_method, url=litellm_path, data=data, files=files, headers=forward_headers
             )
 
-            if response.status_code != 200:
+            if response.status_code != HTTP_200_OK:
                 logger.error(f"LiteLLM error response: {response.text}")
 
             return JSONResponse(response.json(), status_code=response.status_code)
@@ -472,7 +473,7 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
 
     # Apply guardrails BEFORE sending to LiteLLM for chat/completions requests
     # This adds guardrail configuration to the request so LiteLLM enforces them
-    is_chat_completion = api_path in CHAT_ROUTE
+    is_chat_completion = api_path in CHAT_ROUTES
     if is_chat_completion:
         model_id = params.get("model")
         if model_id and jwt_data:
@@ -526,7 +527,7 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     if guardrail_response:
         return guardrail_response
 
-    if response.status_code != 200:
+    if response.status_code != HTTP_200_OK:
         logger.error(f"LiteLLM error response: {response.text}")
 
     # Publish metrics for chat completions (API users)

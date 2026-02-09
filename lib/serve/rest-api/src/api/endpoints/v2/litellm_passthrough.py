@@ -90,6 +90,23 @@ OPENAI_ROUTES = (
     "v1/mcp/server",
 )
 
+# Specific routes for anthropic (Claude Code compatibility)
+# LiteLLM's request/response format: https://litellm-api.up.railway.app/#/
+ANTHROPIC_ROUTES = (
+    # Anthropic Messages API
+    "v1/messages",
+    "v1/messages/count_tokens",
+    # Anthropic Messages API with prefix
+    "anthropic/v1/messages",
+    "anthropic/v1/messages/count_tokens",
+)
+CHAT_ROUTES = (
+    "chat/completions", 
+    "v1/chat/completions", 
+    "v1/messages", 
+    "anthropic/v1/messages",
+)
+
 # With the introduction of the LiteLLM database for model configurations, it forces a requirement to have a
 # LiteLLM-vended API key. Since we are not requiring LiteLLM keys for customers, we are using the LiteLLM key
 # required for the db and injecting that into all requests instead to overcome that requirement.
@@ -318,14 +335,13 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     headers = dict(request.headers.items())
 
     # Auth is handled by middleware - check authorization for admin routes
-    require_admin = not is_openai_route(api_path)
+    require_admin = not is_openai_route(api_path) and api_path not in ANTHROPIC_ROUTES
     is_admin = getattr(request.state, "is_admin", False)
 
     if require_admin and not is_admin:
         raise HTTPException(
             status_code=HTTP_403_FORBIDDEN,
             detail="Admin access required for this endpoint",
-        )
 
     # Get JWT data from request state (set by auth middleware)
     jwt_data = getattr(request.state, "jwt_data", None)
@@ -456,14 +472,25 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
 
     # Apply guardrails BEFORE sending to LiteLLM for chat/completions requests
     # This adds guardrail configuration to the request so LiteLLM enforces them
-    is_chat_completion = api_path in ["chat/completions", "v1/chat/completions"]
+    is_chat_completion = api_path in CHAT_ROUTE
     if is_chat_completion:
         model_id = params.get("model")
         if model_id and jwt_data:
             await apply_guardrails_to_request(params, model_id, jwt_data)
 
-    is_streaming = params.get("stream", False)
+    # Validate and cap max_tokens if needed for Claude Code requests
+    if api_path in ["v1/messages", "anthropic/v1/messages"]:
+        model_id = params.get("model")
 
+        # Check for anthropic specific headers
+        if model_id and "anthropic-beta" in headers and "anthropic-version" in headers:
+            # reset max token parameter to null so LiteLLM handles the max_token value
+            if "max_tokens" in params:
+                params["max_tokens"] = None
+            if "max_completion_tokens" in params:
+                params["max_completion_tokens"] = None
+
+    is_streaming = params.get("stream", False)
     if is_streaming:
         response = requests_request(method=http_method, url=litellm_path, json=params, headers=headers, stream=True)
 
@@ -474,11 +501,12 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
             return guardrail_response
 
         # Publish metrics for streaming chat completions (API users)
-        if is_chat_completion and response.status_code == 200:
+        if is_chat_completion and response.status_code == HTTP_200_OK:
             publish_metrics_event(request, params, response.status_code)
 
         # Use guardrail-aware generator for chat/completions to catch violations in the stream
         if is_chat_completion:
+            model_id = params.get("model", "")
             return StreamingResponse(
                 generate_response_with_guardrail_handling(response.iter_lines(), model_id),
                 status_code=response.status_code,

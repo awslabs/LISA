@@ -46,7 +46,7 @@ async def auth_middleware(request: Request, call_next: Callable[[Request], Respo
     """Authentication middleware.
 
     Validates authentication tokens and sets user context on request.state.
-    Public paths (health checks) bypass authentication.
+    Public paths (health checks) and OPTIONS requests (CORS preflight) bypass authentication.
 
     Sets on request.state:
         - authenticated: bool - Whether user is authenticated
@@ -63,6 +63,10 @@ async def auth_middleware(request: Request, call_next: Callable[[Request], Respo
         Response from the next handler or 401 error
     """
     path = request.url.path
+
+    # Skip auth for OPTIONS requests (CORS preflight)
+    if request.method == "OPTIONS":
+        return await call_next(request)
 
     # Skip auth for public paths
     if is_public_path(path):

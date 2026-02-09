@@ -303,7 +303,7 @@ def generate_response_with_guardrail_handling(iterator: Iterator[str | bytes], m
             yield f"{line}\n\n"
 
 
-@router.api_route("/{api_path:path}", methods=["GET", "POST", "OPTIONS", "DELETE"])
+@router.api_route("/{api_path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
 async def litellm_passthrough(request: Request, api_path: str) -> Response:
     """
     Pass requests directly to LiteLLM. LiteLLM and deployed models will respond here directly.

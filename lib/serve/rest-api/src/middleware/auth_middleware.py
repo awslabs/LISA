@@ -32,6 +32,7 @@ from starlette.status import (
     HTTP_403_FORBIDDEN,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
+from utils.route_utils import is_openai_or_anthropic_route
 
 # Paths that don't require authentication
 PUBLIC_PATHS = {"/health", "/health/readiness", "/health/liveliness"}
@@ -47,6 +48,7 @@ async def auth_middleware(request: Request, call_next: Callable[[Request], Respo
 
     Validates authentication tokens and sets user context on request.state.
     Public paths (health checks) and OPTIONS requests (CORS preflight) bypass authentication.
+    OpenAI/Anthropic routes require authentication but authorization is handled by the endpoint.
 
     Sets on request.state:
         - authenticated: bool - Whether user is authenticated
@@ -81,6 +83,9 @@ async def auth_middleware(request: Request, call_next: Callable[[Request], Respo
         request.state.groups = []
         return await call_next(request)
 
+    # For OpenAI/Anthropic routes, authentication is required but we let the endpoint handle authorization
+    is_openai_route = is_openai_or_anthropic_route(path)
+
     try:
         authorizer = Authorizer()
         jwt_data = await authorizer.authenticate_request(request)
@@ -113,10 +118,34 @@ async def auth_middleware(request: Request, call_next: Callable[[Request], Respo
 
         return await call_next(request)
 
-    except HTTPException:
+    except HTTPException as e:
+        # For OpenAI/Anthropic routes, provide more specific error messages
+        if is_openai_route:
+            logger.warning(f"Authentication failed for OpenAI/Anthropic route {path}: {e.detail}")
+            return JSONResponse(
+                status_code=HTTP_401_UNAUTHORIZED,
+                content={
+                    "error": {
+                        "message": "Invalid authentication credentials",
+                        "type": "invalid_request_error",
+                        "code": "invalid_api_key",
+                    }
+                },
+            )
         raise
     except Exception as e:
         logger.error(f"Authentication error: {e}")
+        if is_openai_route:
+            return JSONResponse(
+                status_code=HTTP_401_UNAUTHORIZED,
+                content={
+                    "error": {
+                        "message": "Authentication failed",
+                        "type": "invalid_request_error",
+                        "code": "authentication_error",
+                    }
+                },
+            )
         return JSONResponse(
             status_code=HTTP_401_UNAUTHORIZED,
             content={"error": "Unauthorized", "message": "Authentication failed"},

@@ -14,7 +14,6 @@
 
 """Model invocation routes."""
 
-import fnmatch
 import json
 import logging
 import os
@@ -36,76 +35,11 @@ from utils.guardrails import (
     is_guardrail_violation,
 )
 from utils.metrics import publish_metrics_event
+from utils.route_utils import is_anthropic_route, is_chat_route, is_lisa_public_route, is_openai_route
 
 # Local LiteLLM installation URL. By default, LiteLLM runs on port 4000. Change the port here if the
 # port was changed as part of the LiteLLM startup in entrypoint.sh
 LITELLM_URL = "http://localhost:4000"
-
-# The following is an allowlist of OpenAI routes that users would not need elevated permissions to invoke. This is so
-# that we may assume anything *not* in this allowlist is an admin operation that requires greater LiteLLM permissions.
-# Assume that anything not within these routes requires admin permissions, which would only come from the LISA model
-# management API.
-OPENAI_ROUTES = (
-    # List models
-    "models",
-    "v1/models",
-    # Model Info
-    "model/info",
-    "v1/model/info",
-    # Text completions
-    "chat/completions",
-    "v1/chat/completions",
-    "completions",
-    "v1/completions",
-    # Embeddings
-    "embeddings",
-    "v1/embeddings",
-    # Create images
-    "images/generations",
-    "v1/images/generations",
-    "images/edits",
-    "v1/images/edits",
-    # Audio routes
-    "audio/speech",
-    "v1/audio/speech",
-    "audio/transcriptions",
-    "v1/audio/transcriptions",
-    # Video routes (using wildcards for IDs)
-    "videos",
-    "v1/videos",
-    "videos/*",
-    "v1/videos/*",
-    "videos/*/content",
-    "v1/videos/*/content",
-    "videos/*/remix",
-    "v1/videos/*/remix",
-    # Health check routes
-    "health",
-    "health/readiness",
-    "health/liveliness",
-    # MCP
-    "mcp/enabled",
-    "mcp/tools/list",
-    "mcp/tools/call",
-    "v1/mcp/server",
-)
-
-# Specific routes for anthropic (Claude Code compatibility)
-# LiteLLM's request/response format: https://litellm-api.up.railway.app/#/
-ANTHROPIC_ROUTES = (
-    # Anthropic Messages API
-    "v1/messages",
-    "v1/messages/count_tokens",
-    # Anthropic Messages API with prefix
-    "anthropic/v1/messages",
-    "anthropic/v1/messages/count_tokens",
-)
-CHAT_ROUTES = (
-    "chat/completions",
-    "v1/chat/completions",
-    "v1/messages",
-    "anthropic/v1/messages",
-)
 
 # With the introduction of the LiteLLM database for model configurations, it forces a requirement to have a
 # LiteLLM-vended API key. Since we are not requiring LiteLLM keys for customers, we are using the LiteLLM key
@@ -135,33 +69,6 @@ def _generate_presigned_video_url(key: str, content_type: str = "video/mp4") -> 
         ExpiresIn=3600,  # URL expires in 1 hour
     )
     return url
-
-
-def is_openai_route(api_path: str) -> bool:
-    # First check for exact matches (most common case)
-    if api_path in OPENAI_ROUTES:
-        return True
-
-    # Only check wildcard patterns if the path contains "video" (since only video routes have wildcards)
-    # This avoids expensive pattern matching for non-video routes
-    if "video" not in api_path:
-        return False
-
-    wildcard_patterns = [pattern for pattern in OPENAI_ROUTES if "*" in pattern]
-    wildcard_patterns.sort(key=len, reverse=True)
-
-    for route_pattern in wildcard_patterns:
-        if fnmatch.fnmatch(api_path, route_pattern):
-            # For patterns like "videos/*" (not "videos/*/something"), ensure we don't match
-            # paths with additional segments (e.g., "videos/123/content" should not match "videos/*")
-            if route_pattern.endswith("/*") and not route_pattern.endswith("/*/"):
-                pattern_segments = route_pattern.count("/")
-                path_segments = api_path.count("/")
-                if path_segments != pattern_segments:
-                    continue
-            return True
-
-    return False
 
 
 async def apply_guardrails_to_request(params: dict, model_id: str, jwt_data: dict) -> None:
@@ -335,7 +242,9 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     headers = dict(request.headers.items())
 
     # Auth is handled by middleware - check authorization for admin routes
-    require_admin = not is_openai_route(api_path) and api_path not in ANTHROPIC_ROUTES
+    require_admin = (
+        not is_openai_route(api_path) and not is_anthropic_route(api_path) and not is_lisa_public_route(api_path)
+    )
     is_admin = getattr(request.state, "is_admin", False)
 
     if require_admin and not is_admin:
@@ -473,14 +382,14 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
 
     # Apply guardrails BEFORE sending to LiteLLM for chat/completions requests
     # This adds guardrail configuration to the request so LiteLLM enforces them
-    is_chat_completion = api_path in CHAT_ROUTES
+    is_chat_completion = is_chat_route(api_path)
     if is_chat_completion:
         model_id = params.get("model")
         if model_id and jwt_data:
             await apply_guardrails_to_request(params, model_id, jwt_data)
 
     # Validate and cap max_tokens if needed for Claude Code requests
-    if api_path in ["v1/messages", "anthropic/v1/messages"]:
+    if is_anthropic_route(api_path):
         model_id = params.get("model")
 
         # Check for anthropic specific headers

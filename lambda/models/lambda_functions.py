@@ -23,6 +23,7 @@ import botocore.session
 from fastapi import HTTPException, Path, Request
 from fastapi.responses import JSONResponse
 from mangum import Mangum
+from starlette.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
 from utilities.auth import get_groups, get_username, is_admin, require_admin
 from utilities.common_functions import retry_config
 from utilities.fastapi_factory import create_fastapi_app
@@ -85,7 +86,7 @@ def get_admin_status_and_groups(request: Request) -> tuple[bool, list[str]]:
 @app.exception_handler(ModelNotFoundError)
 async def model_not_found_handler(request: Request, exc: ModelNotFoundError) -> JSONResponse:
     """Handle exception when model cannot be found and translate to a 404 error."""
-    return JSONResponse(status_code=404, content={"detail": str(exc)})
+    return JSONResponse(status_code=HTTP_404_NOT_FOUND, content={"detail": str(exc)})
 
 
 @app.exception_handler(InvalidStateTransitionError)
@@ -95,13 +96,13 @@ async def user_error_handler(
     request: Request, exc: InvalidStateTransitionError | ModelAlreadyExistsError | ValueError
 ) -> JSONResponse:
     """Handle errors when customer requests options that cannot be processed."""
-    return JSONResponse(status_code=400, content={"detail": str(exc)})
+    return JSONResponse(status_code=HTTP_400_BAD_REQUEST, content={"detail": str(exc)})
 
 
 @app.exception_handler(ModelInUseError)
 async def model_in_use_handler(request: Request, exc: ModelInUseError) -> JSONResponse:
     """Handle exception when attempting to delete a model that is in use."""
-    return JSONResponse(status_code=409, content={"detail": str(exc)})
+    return JSONResponse(status_code=HTTP_409_CONFLICT, content={"detail": str(exc)})
 
 
 @app.post(path="", include_in_schema=False)
@@ -206,7 +207,7 @@ async def create_model(create_request: CreateModelRequest, request: Request) -> 
                 "error": str(e),
             },
         )
-        raise HTTPException(status_code=409, detail=str(e))
+        raise HTTPException(status_code=HTTP_409_CONFLICT, detail=str(e))
     except Exception as e:
         # Log unexpected failure
         logger.error(
@@ -253,7 +254,7 @@ async def get_model(
     try:
         return get_handler(model_id=model_id, user_groups=user_groups, is_admin=admin_status)
     except ModelNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=str(e))
 
 
 @app.put(path="/{model_id}")
@@ -273,9 +274,9 @@ async def update_model(
     try:
         return update_handler(model_id=model_id, update_request=update_request)
     except ModelNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=str(e))
     except InvalidStateTransitionError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @app.delete(path="/{model_id}")
@@ -293,9 +294,9 @@ async def delete_model(
     try:
         return delete_handler(model_id=model_id)
     except ModelInUseError as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise HTTPException(status_code=HTTP_409_CONFLICT, detail=str(e))
     except ModelNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=str(e))
 
 
 @app.get(path="/metadata/instances")

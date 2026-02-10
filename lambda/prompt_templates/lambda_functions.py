@@ -26,6 +26,7 @@ import boto3
 from boto3.dynamodb.conditions import Attr, Key
 from utilities.auth import get_user_context, get_username
 from utilities.common_functions import api_wrapper, get_item, retry_config
+from utilities.exceptions import BadRequestException, ForbiddenException, NotFoundException
 
 from .models import PromptTemplateModel
 
@@ -95,7 +96,7 @@ def get(event: dict, context: dict) -> Any:
     item = get_item(response)
 
     if item is None:
-        raise ValueError(f"Prompt template {prompt_template_id} not found.")
+        raise NotFoundException(f"Prompt template {prompt_template_id} not found.")
 
     # Check if the user is authorized to get the prompt template
     is_owner = item["owner"] == user_id
@@ -105,7 +106,7 @@ def get(event: dict, context: dict) -> Any:
             item["isOwner"] = True
         return item
 
-    raise ValueError(f"Not authorized to get {prompt_template_id}.")
+    raise ForbiddenException(f"Not authorized to get {prompt_template_id}.")
 
 
 def is_member(user_groups: list[str], prompt_groups: list[str]) -> bool:
@@ -156,14 +157,14 @@ def update(event: dict, context: dict) -> Any:
     prompt_template_model = PromptTemplateModel(**body)
 
     if prompt_template_id != prompt_template_model.id:
-        raise ValueError(f"URL id {prompt_template_id} doesn't match body id {prompt_template_model.id}")
+        raise BadRequestException(f"URL id {prompt_template_id} doesn't match body id {prompt_template_model.id}")
 
     # Query for the latest prompt template revision
     response = table.query(KeyConditionExpression=Key("id").eq(prompt_template_id), Limit=1, ScanIndexForward=False)
     item = get_item(response)
 
     if item is None:
-        raise ValueError(f"Prompt template {prompt_template_model} not found.")
+        raise NotFoundException(f"Prompt template {prompt_template_id} not found.")
 
     # Check if the user is authorized to update the prompt template
     if is_admin or item["owner"] == user_id:
@@ -184,7 +185,7 @@ def update(event: dict, context: dict) -> Any:
         response = table.put_item(Item=prompt_template_model.model_dump(exclude_none=True))
         return prompt_template_model.model_dump()
 
-    raise ValueError(f"Not authorized to update {prompt_template_id}.")
+    raise ForbiddenException(f"Not authorized to update {prompt_template_id}.")
 
 
 @api_wrapper
@@ -198,7 +199,7 @@ def delete(event: dict, context: dict) -> dict[str, str]:
     item = get_item(response)
 
     if item is None:
-        raise ValueError(f"Prompt template {prompt_template_id} not found.")
+        raise NotFoundException(f"Prompt template {prompt_template_id} not found.")
 
     # Check if the user is authorized to delete the prompt template
     if is_admin or item["owner"] == user_id:
@@ -212,7 +213,7 @@ def delete(event: dict, context: dict) -> dict[str, str]:
 
         return {"status": "ok"}
 
-    raise ValueError(f"Not authorized to delete {prompt_template_id}.")
+    raise ForbiddenException(f"Not authorized to delete {prompt_template_id}.")
 
 
 def get_prompt_template_id(event: dict) -> str:

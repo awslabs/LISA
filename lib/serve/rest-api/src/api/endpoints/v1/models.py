@@ -18,6 +18,7 @@ import logging
 
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
+from starlette.status import HTTP_200_OK
 
 from ....handlers.models import (
     handle_describe_model,
@@ -48,7 +49,7 @@ async def describe_model(
     """Describe model by provider and model name."""
     response = await handle_describe_model(provider, model_name)
 
-    return JSONResponse(content=response, status_code=200)
+    return JSONResponse(content=response, status_code=HTTP_200_OK)
 
 
 @router.get(f"/{RestApiResource.DESCRIBE_MODELS}")
@@ -65,7 +66,7 @@ async def describe_models(
 
     response = await handle_describe_models(model_types)
 
-    return JSONResponse(content=response, status_code=200)
+    return JSONResponse(content=response, status_code=HTTP_200_OK)
 
 
 @router.get(f"/{RestApiResource.LIST_MODELS}")
@@ -82,11 +83,11 @@ async def list_models(
 
     response = await handle_list_models(model_types)
 
-    return JSONResponse(content=response, status_code=200)
+    return JSONResponse(content=response, status_code=HTTP_200_OK)
 
 
 @router.get(f"/{RestApiResource.OPENAI_LIST_MODELS}")
 async def openai_list_models() -> JSONResponse:
     """List models for OpenAI Compatibility. Only returns TEXTGEN models."""
     response = await handle_openai_list_models()
-    return JSONResponse(content=response, status_code=200)
+    return JSONResponse(content=response, status_code=HTTP_200_OK)

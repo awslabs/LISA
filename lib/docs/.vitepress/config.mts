@@ -54,7 +54,11 @@ const navLinks = [
     text: 'Advanced Configuration',
     items: [
       { text: 'API Token Management', link: '/config/api-tokens' },
-      { text: 'Model Compatibility', link: '/config/model-compatibility' },
+      { text: 'Model Compatibility', link: '/config/model-compatibility',
+        items: [
+          {text: "vLLM Variables", link: '/config/vllm_variables'}
+        ]
+      },
       { text: 'Model Management API', link: '/config/model-management-api' },
       { text: 'Model Management UI', link: '/config/model-management-ui' },
       { text: 'Bedrock Guardrails', link: '/config/guardrails' },

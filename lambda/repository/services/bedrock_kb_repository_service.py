@@ -32,7 +32,7 @@ from models.domain_objects import (
 )
 from repository.rag_document_repo import RagDocumentRepository
 from utilities.bedrock_kb import bulk_delete_documents_from_kb, delete_document_from_kb
-from utilities.exceptions import HTTPException
+from utilities.exceptions import ServiceUnavailableException
 from utilities.time import now, utc_now
 
 from .repository_service import RepositoryService
@@ -304,12 +304,9 @@ class BedrockKBRepositoryService(RepositoryService):
             # Check for Aurora DB auto-pause error
             if error_code == "ValidationException" and "auto-paused" in error_message.lower():
                 logger.warning(f"Aurora DB is resuming from auto-pause for KB {kb_id}")
-                raise HTTPException(
-                    status_code=503,
-                    message=(
-                        "The knowledge base database is currently starting up. "
-                        "Please retry your request in a few moments."
-                    ),
+                raise ServiceUnavailableException(
+                    "The knowledge base database is currently starting up. "
+                    "Please retry your request in a few moments."
                 )
 
             logger.error(f"Bedrock retrieve failed for KB {kb_id}: {error_message}")

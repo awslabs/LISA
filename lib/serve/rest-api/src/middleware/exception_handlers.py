@@ -20,11 +20,10 @@ with generic error messages, preventing internal details from being exposed.
 
 import traceback
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from loguru import logger
-from starlette.status import HTTP_422_UNPROCESSABLE_CONTENT, HTTP_500_INTERNAL_SERVER_ERROR
 
 
 async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
@@ -48,7 +47,7 @@ async def generic_exception_handler(request: Request, exc: Exception) -> JSONRes
     )
 
     return JSONResponse(
-        status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
             "error": "Internal Server Error",
             "message": "An unexpected error occurred",
@@ -138,7 +137,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     logger.warning(f"Validation error for {request.method} {request.url.path}: {exc.errors()}")
 
     return JSONResponse(
-        status_code=HTTP_422_UNPROCESSABLE_CONTENT,
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         content={
             "error": "Unprocessable Entity",
             "message": "Request validation failed",

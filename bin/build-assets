@@ -3,5 +3,11 @@ set -e
 
 ROOT=$(pwd)
 
-./bin/build-lambdas
+# Default PYPI_URL if not set
+PYPI_URL=${PYPI_URL:-"https://pypi.org/simple"}
+
+# Build lambda layers with PYPI_URL
+./bin/build-lambdas --src lambda --output Lambda.zip --pypi "$PYPI_URL"
+
+# Build and export container images
 ./bin/build-images --export

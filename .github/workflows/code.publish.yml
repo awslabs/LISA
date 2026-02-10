@@ -1,7 +1,19 @@
-name: Publish LISA NPM Package
+name: Publish LISA Packages
 on:
   release:
     types: [released]
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: 'Test mode (skips npm publish and release upload)'
+        required: false
+        type: boolean
+        default: true
+      version:
+        description: 'Version tag for testing'
+        required: false
+        type: string
+        default: 'test-v0.0.0'
 
 permissions:
   contents: read  # Default read-only
@@ -10,19 +22,62 @@ jobs:
   PublishLISA:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write  # Required for uploading release assets
       packages: write  # Required for npm package publishing
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v4
+      
       # Setup .npmrc file to publish to GitHub Packages
       - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v4
         with:
           node-version: '24.x'
           registry-url: 'https://npm.pkg.github.com'
+      
+      # Setup Python for build scripts
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      
+      # Install npm dependencies and publish package
       - run: npm ci
-      - run: npm publish
+      - name: Publish NPM Package
+        if: github.event_name == 'release' || !inputs.test_mode
+        run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      # Build binary assets (lambda layers and container images)
+      - name: Build Lambda Layers and Container Images
+        run: |
+          # Create build directory for lambda layers
+          mkdir -p build
+          
+          # Build assets (runs build-lambdas and build-images --export)
+          ./bin/build-assets
+        env:
+          PYPI_URL: https://pypi.org/simple
+          LISA_VERSION: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.version }}
+      
+      # Upload binary assets to GitHub Release
+      - name: Upload Release Assets
+        if: github.event_name == 'release' || !inputs.test_mode
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/*.zip
+            dist/images/*.tar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      # In test mode, just list what would be uploaded
+      - name: List Build Artifacts (Test Mode)
+        if: github.event_name == 'workflow_dispatch' && inputs.test_mode
+        run: |
+          echo "=== Lambda Layers (build/*.zip) ==="
+          ls -lh build/*.zip 2>/dev/null || echo "No zip files found"
+          echo ""
+          echo "=== Container Images (dist/images/*.tar) ==="
+          ls -lh dist/images/*.tar 2>/dev/null || echo "No tar files found"
 
   SendSlackNotification:
     name: Send Slack Notification
@@ -37,9 +92,9 @@ jobs:
         env:
           SLACK_WEBHOOK: ${{ secrets.INTERNAL_DEV_SLACK_WEBHOOK_URL }}
           SLACK_COLOR: ${{ contains(join(needs.*.result, ' '), 'failure') && 'failure' || 'success' }}
-          SLACK_TITLE: 'NPM Package Published'
+          SLACK_TITLE: 'LISA Package Published'
           SLACK_FOOTER: ''
           MSG_MINIMAL: 'actions url,commit'
-          SLACK_MESSAGE_ON_FAILURE: '<!here> NPM Package publish FAILED for version  ${{ github.event.pull_request.head.ref }}|commit>'
-          SLACK_MESSAGE_ON_SUCCESS: 'NPM Package published SUCCESS for ${{ github.event.pull_request.head.ref }}|commit>.'
-          SLACK_MESSAGE: 'NPM Publish Finished with status ${{ job.status }} for <${{ github.event.pull_request.head.ref }}|commit>'
+          SLACK_MESSAGE_ON_FAILURE: '<!here> LISA Package publish FAILED for version ${{ github.event.release.tag_name }}'
+          SLACK_MESSAGE_ON_SUCCESS: 'LISA Package published SUCCESS for version ${{ github.event.release.tag_name }} with NPM package and binary assets.'
+          SLACK_MESSAGE: 'LISA Publish Finished with status ${{ job.status }} for version ${{ github.event.release.tag_name }}'

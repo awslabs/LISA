@@ -57,23 +57,28 @@ def mock_api_wrapper(func):
                 "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
                 "body": json.dumps(result, default=str),
             }
-        except ValueError as e:
-            error_msg = str(e)
-            status_code = 400
-            if "not found" in error_msg.lower():
-                status_code = 404
+        except Exception as e:
+            # Check for http_status_code attribute (custom HTTPException subclasses)
+            if hasattr(e, "http_status_code"):
+                status_code = e.http_status_code
+                error_msg = getattr(e, "message", str(e))
+            elif hasattr(e, "status_code"):
+                status_code = e.status_code
+                error_msg = getattr(e, "message", str(e))
+            elif isinstance(e, ValueError):
+                error_msg = str(e)
+                status_code = 400
+                if "not found" in error_msg.lower():
+                    status_code = 404
+            else:
+                logging.error(f"Error in {func.__name__}: {str(e)}")
+                status_code = 500
+                error_msg = str(e)
 
             return {
                 "statusCode": status_code,
                 "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
                 "body": json.dumps({"error": error_msg}),
-            }
-        except Exception as e:
-            logging.error(f"Error in {func.__name__}: {str(e)}")
-            return {
-                "statusCode": 500,
-                "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
-                "body": json.dumps({"error": str(e)}),
             }
 
     return wrapper

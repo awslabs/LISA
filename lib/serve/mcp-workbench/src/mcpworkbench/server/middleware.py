@@ -24,6 +24,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware as StarletteCORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
+from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
 from ..config.models import CORSConfig
 from ..core.tool_discovery import ToolDiscovery
@@ -134,7 +135,7 @@ class RescanMiddleware(BaseHTTPMiddleware):
                 logger.error(f"Error during rescan: {e}")
                 return JSONResponse(
                     {"status": "error", "message": f"Rescan failed: {str(e)}", "timestamp": datetime.now().isoformat()},
-                    status_code=500,
+                    status_code=HTTP_500_INTERNAL_SERVER_ERROR,
                 )
 
         # Continue with normal request processing

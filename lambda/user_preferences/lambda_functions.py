@@ -23,6 +23,7 @@ import boto3
 from boto3.dynamodb.conditions import Key
 from utilities.auth import get_username
 from utilities.common_functions import api_wrapper, get_item, retry_config
+from utilities.exceptions import ForbiddenException
 
 from .models import UserPreferencesModel
 
@@ -48,7 +49,7 @@ def get(event: dict, context: dict) -> Any:
     if item["user"] == user_id:
         return item
 
-    raise ValueError(f"Not authorized to get {user_id}'s preferences.")
+    raise ForbiddenException(f"Not authorized to get {user_id}'s preferences.")
 
 
 @api_wrapper
@@ -77,4 +78,4 @@ def update(event: dict, context: dict) -> Any:
         table.put_item(Item=user_preferences_model.model_dump(exclude_none=True))
         return user_preferences_model.model_dump()
 
-    raise ValueError(f"Not authorized to update {user_id}'s preferences.")
+    raise ForbiddenException(f"Not authorized to update {user_id}'s preferences.")

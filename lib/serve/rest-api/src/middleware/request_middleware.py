@@ -21,6 +21,7 @@ from uuid import uuid4
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 from loguru import logger
+from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 from utils.header_sanitizer import get_real_client_ip, get_sanitized_headers_from_request
 
 
@@ -70,7 +71,7 @@ async def process_request_middleware(request: Request, call_next: Callable[[Requ
                 status="ERROR",
             )
             response = JSONResponse(
-                status_code=500,
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
                 content={"detail": "Internal server error"},
             )
 

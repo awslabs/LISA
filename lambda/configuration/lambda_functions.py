@@ -26,7 +26,7 @@ from mcp_server.models import McpServerModel, McpServerStatus
 from mcp_workbench.lambda_functions import MCPWORKBENCH_UUID
 from utilities.auth import is_admin
 from utilities.common_functions import api_wrapper, get_property_path, retry_config
-from utilities.exceptions import HTTPException
+from utilities.exceptions import ForbiddenException
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +73,7 @@ def update_configuration(event: dict, context: dict) -> dict[str, str]:
 
     # Only admins can update global configuration
     if config_scope == "global" and not is_admin(event):
-        raise HTTPException(status_code=403, message="Only admins can update global configuration")
+        raise ForbiddenException("Only admins can update global configuration")
 
     body["created_at"] = str(Decimal(time.time()))
 

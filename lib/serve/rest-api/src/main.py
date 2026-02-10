@@ -25,6 +25,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from lisa_serve.registry import registry
 from loguru import logger
 from middleware import (
+    auth_middleware,
     process_request_middleware,
     register_exception_handlers,
     security_middleware,
@@ -108,6 +109,16 @@ app.add_middleware(
 ##############
 # MIDDLEWARE #
 ##############
+
+
+@app.middleware("http")
+async def authenticate(request, call_next):  # type: ignore
+    """Authentication middleware.
+
+    Validates tokens and sets user context on request.state.
+    Runs after security checks but before request processing.
+    """
+    return await auth_middleware(request, call_next)
 
 
 @app.middleware("http")

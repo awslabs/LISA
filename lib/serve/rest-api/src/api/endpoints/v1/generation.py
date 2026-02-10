@@ -18,6 +18,7 @@ import logging
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse, StreamingResponse
+from starlette.status import HTTP_200_OK
 
 from ....handlers.generation import handle_generate, handle_generate_stream, handle_openai_generate_stream
 from ....utils.resources import (
@@ -38,7 +39,7 @@ async def generate(request: GenerateRequest) -> JSONResponse:
     """Text generation."""
     response = await handle_generate(request.dict())
 
-    return JSONResponse(content=response, status_code=200)
+    return JSONResponse(content=response, status_code=HTTP_200_OK)
 
 
 @router.post(f"/{RestApiResource.GENERATE_STREAM}")

@@ -26,25 +26,18 @@ jobs:
       packages: write  # Required for npm package publishing
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v4
-      
-      # Setup .npmrc file to publish to GitHub Packages
+      # Setup .npmrc file to publish to npmjs registry
       - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v4
         with:
           node-version: '24.x'
-          registry-url: 'https://npm.pkg.github.com'
-      
-      # Setup Python for build scripts
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-      
-      # Install npm dependencies and publish package
+          registry-url: 'https://registry.npmjs.org'
+          
       - run: npm ci
       - name: Publish NPM Package
         if: github.event_name == 'release' || !inputs.test_mode
         run: npm publish
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       
       # Build binary assets (lambda layers and container images)
       - name: Build Lambda Layers and Container Images

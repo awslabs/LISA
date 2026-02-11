@@ -3,7 +3,7 @@
 
 * Set up or have access to an AWS account.
 * Ensure that your AWS account has the appropriate permissions. Resource creation during the AWS CDK deployment expects Administrator or Administrator-like permissions, to include resource creation and mutation permissions. Installation will not succeed if this profile does not have permissions to create and edit arbitrary resources for the system. This level of permissions is not required for the runtime of LISA. This is only necessary for deployment and subsequent updates.
-* If using the chat UI, have your Identity Provider (IdP) information available, and access.
+* If using the chat UI, have your Identity Provider (IdP) information available.
 * If using an existing VPC, have its information available.
 * Familiarity with AWS Cloud Development Kit (CDK) and infrastructure-as-code principles is a plus.
 * AWS CDK and Model Management both leverage AWS Systems Manager Agent (SSM) parameter store. Confirm that SSM is approved for use by your organization before beginning. If you're new to CDK, review the [AWS CDK Documentation](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html) and consult with your AWS support team.
@@ -30,13 +30,14 @@ git clone -b main --single-branch <path-to-lisa-repo>
 cd lisa
 ```
 
-### Step 2: Set Up Environment Variables
-
-Create and configure your `config-custom.yaml` file:
-
+### Step 2a: Create/Configure `config-custom.yaml`:
+Run the command below to copy the example configuration into `config-custom.yaml`. This will create the file if it doesn't exist already.
 ```bash
 cp example_config.yaml config-custom.yaml
 ```
+Review the `config-custom.yaml` settings.  Some settings will be configured later in this guide.
+
+### Step 2b: Set Up Environment Variables
 
 Set the following environment variables:
 
@@ -50,6 +51,7 @@ export CDK_DOCKER=finch # Optional, only required if not using docker as contain
 ### Step 3: Set Up Python and TypeScript Environments
 
 Install system dependencies and set up both Python and TypeScript environments:
+- ***NOTE** The code block below has two tabs for Debian & EL/AL2*
 
 :::tabs
 == Debian
@@ -108,7 +110,112 @@ Edit the `config-custom.yaml` file to customize your LISA deployment. Key config
 - Authentication settings
 - Model bucket name
 
-### Step 5: Stage Model Weights
+### Step 5: Configure Identity Provider
+
+In the `config-custom.yaml` file, configure the `authConfig` block for authentication. LISA supports OpenID Connect (OIDC) providers such as AWS Cognito or Keycloak. Required fields include:
+
+- `authority`: URL of your identity provider
+- `clientId`: Client ID for your application
+- `adminGroup`: Group name for users with model management permissions
+- `userGroup`: Group name for regular LISA users
+- `jwtGroupsProperty`: Path to the groups field in the JWT token
+- `additionalScopes` (optional): Extra scopes for group membership information
+
+IDP Configuration examples using AWS Cognito and Keycloak can be found: [IDP Configuration Examples](/admin/idp-config)
+
+
+### Step 6: Configure LiteLLM
+We utilize LiteLLM under the hood to allow LISA to respond to the [OpenAI specification](https://platform.openai.com/docs/api-reference).
+For LiteLLM configuration, a key must be set up so that the system may communicate with a database for tracking all the models that are added or removed
+using the [Model Management API](/config/model-management-api). The key must start with `sk-` and then can be any
+arbitrary
+string. We recommend generating a new UUID and then using that as
+the key. Configuration example is below.
+
+
+```yaml
+litellmConfig:
+  db_key: sk-00000000-0000-0000-0000-000000000000  # needed for db operations, create your own key # pragma: allowlist-secret
+```
+
+### Step 7: Set Up SSL Certificates (Development Only)
+
+LISA requires SSL certificates for secure communication. Choose the appropriate method based on your deployment environment.
+
+#### AWS Certificate Manager
+
+Use AWS Certificate Manager to create and manage certificates:
+
+1. **Create a Certificate in AWS Certificate Manager**:
+   - Navigate to the [AWS Certificate Manager Console](https://console.aws.amazon.com/acm)
+   - Request a public certificate
+   - For internal AWS deployments, use the domain pattern: `<alias>.people.aws.dev`
+   - Follow the DNS validation process to verify domain ownership
+   - Note: You may need access to specific AWS bindles or Route 53 hosted zones
+
+2. **Configure Custom Domains** in your `config-custom.yaml`:
+
+```yaml
+restApiConfig:
+  sslCertIamArn: arn:aws:acm:<region>:<account-id>:certificate/<certificate-id>
+  domainName: serve.<alias>.people.aws.dev
+
+apiGatewayConfig:
+  domainName: chat.<alias>.people.aws.dev
+```
+
+- For `sslCertIamArn` copy the arn from your ssl certificate from the AWS Certificate Manager.  Otherwise you can manually fill it in.
+- For `domainName` replace `<alias>` with your chosen subdomain.
+
+1. **Set Up Route 53 and Custom Domains**:
+
+After configuring your certificate and custom domains in `config-custom.yaml`, you need to set up DNS routing:
+
+**Create Route 53 Hosted Zone**:
+   - Navigate to Route 53 in the AWS Console
+   - Create a hosted zone for your domain (if it does not already exists)
+   - Note the hosted zone ID and name servers
+
+**Configure API Gateway Custom Domain** (after LISA deployment):
+   - Navigate to API Gateway → Custom domain names
+   - Create a custom domain for your chat endpoint: `chat.<alias>.people.aws.dev`
+   - Associate it with your API Gateway stage
+
+**Create DNS Records**:
+   - In Route 53, create an A record for `chat.<alias>.people.aws.dev`:
+     - Type: A record (Alias)
+     - Alias target: Your API Gateway custom domain
+   - Create a CNAME record for `serve.<alias>.people.aws.dev`:
+     - Type: CNAME
+     - Value: Your LisaServe REST API Application Load Balancer DNS name (found in EC2 → Load Balancers)
+
+**For Internal AWS Deployments**:
+   - Register your DNS name using Supernova at https://supernova.amazon.dev/
+   - Follow the guide at https://w.amazon.com/bin/view/SuperNova/PreOnboardingSteps/
+   - Use the pattern: `{username}.people.aws.dev`
+   - Associate with the appropriate AWS bindle for access control
+
+**Redeploy LISA**
+  - Redeploy LISA for the changes to take effect
+  - After completing these steps and redeploying LISA, your application will be accessible via custom domains with valid SSL certificates, eliminating the need to accept self-signed certificates in your browser.
+
+### Step 8a: Customize Model Deployment (If Using LISA Serve)
+
+In the `ecsModels` section of `config-custom.yaml`, allow our deployment process to pull the model weights for you.
+
+During the deployment process, LISA will optionally attempt to download your model weights if you specify an optional `ecsModels`
+array, this will only work in non ADC regions. Specifically, see the `ecsModels` section of
+the [example_config.yaml](https://github.com/awslabs/LISA/blob/develop/example_config.yaml) file.
+Here we define the model name, inference container, and baseImage:
+
+```yaml
+ecsModels:
+  - modelName: your-model-name
+    inferenceContainer: vllm
+    baseImage: vllm/vllm-openai:latest
+```
+
+### Step 8b: Stage Model Weights
 
 LISA requires model weights to be staged in the S3 bucket specified in your `config-custom.yaml` file, assuming the S3 bucket follows this structure:
 
@@ -149,94 +256,10 @@ This command verifies if the model's weights are already present in your S3 buck
 > **NOTE**
 > This process is primarily designed and tested for HuggingFace models. For other model formats, you will need to manually create and upload safetensors.
 
-### Step 6: Configure Identity Provider
+> **NOTE**
+> Please valdiate that all files successfully downloaded locally AND were uploaded to the S3 Bucket.  Ensure all large files such as .safetensor files exist.
 
-In the `config-custom.yaml` file, configure the `authConfig` block for authentication. LISA supports OpenID Connect (OIDC) providers such as AWS Cognito or Keycloak. Required fields include:
-
-- `authority`: URL of your identity provider
-- `clientId`: Client ID for your application
-- `adminGroup`: Group name for users with model management permissions
-- `userGroup`: Group name for regular LISA users
-- `jwtGroupsProperty`: Path to the groups field in the JWT token
-- `additionalScopes` (optional): Extra scopes for group membership information
-
-IDP Configuration examples using AWS Cognito and Keycloak can be found: [IDP Configuration Examples](/admin/idp-config)
-
-
-### Step 7: Configure LiteLLM
-We utilize LiteLLM under the hood to allow LISA to respond to the [OpenAI specification](https://platform.openai.com/docs/api-reference).
-For LiteLLM configuration, a key must be set up so that the system may communicate with a database for tracking all the models that are added or removed
-using the [Model Management API](/config/model-management-api). The key must start with `sk-` and then can be any
-arbitrary
-string. We recommend generating a new UUID and then using that as
-the key. Configuration example is below.
-
-
-```yaml
-litellmConfig:
-  db_key: sk-00000000-0000-0000-0000-000000000000  # needed for db operations, create your own key # pragma: allowlist-secret
-```
-
-### Step 8: Set Up SSL Certificates (Development Only)
-
-**WARNING: THIS IS FOR DEV ONLY**
-When deploying for dev and testing you can use a self-signed certificate for the REST API ALB. You can create this by using the script: `gen-cert.sh` and uploading it to `IAM`.
-
-```bash
-export REGION=<your-region>
-export DOMAIN=<your-domain> #Optional if not running in 'aws' partition
-./scripts/gen-certs.sh
-aws iam upload-server-certificate --server-certificate-name <cert-name> --certificate-body file://scripts/server.pem --private-key file://scripts/server.key
-```
-
-Update your `config-custom.yaml` with the certificate ARN:
-
-```yaml
-restApiConfig:
-  sslCertIamArn: arn:<aws-partition>:iam::<account-number>:server-certificate/<certificate-name>
-```
-
-#### Accepting Self-Signed Certificate in Browser
-
-When using a self-signed certificate, the LISA UI will load normally, but API calls from the UI to the SERVE ALB (REST API ALB) will be blocked by the browser due to the self-signed certificate. To allow the UI to communicate with the SERVE ALB, you need to accept the certificate for the SERVE ALB domain:
-
-1. **Navigate to the SERVE ALB Domain**: Open a new browser tab and navigate directly to the REST API ALB domain (the serve domain). You can test this by navigating to `https://<serve-alb-domain>/health` or any other endpoint.
-2. **Accept the Certificate**: When the browser displays a security warning about the self-signed certificate:
-   - Look for an "Advanced" or "Show Details" option
-   - Click "Proceed to [domain]" or "Accept the Risk and Continue"
-   - Some browsers may show this as a "rejected host" warning - you can accept it to proceed
-
-**Alternative Method - Using Developer Tools**:
-1. **Open Developer Tools**: Press `F12` or right-click and select "Inspect" to open your browser's developer tools
-2. **Navigate to the LISA UI**
-3. **Go to the Network Tab**: This will show you the API requests that are being blocked when the LISA UI tries to connect to the SERVE ALB
-4. **Click on a Failed Request**: Click on a failed request (typically showing a certificate error) to see the SERVE ALB domain
-5. **Navigate to the Domain**: Copy the SERVE ALB domain from the failed request and navigate to it directly in a new tab to accept the certificate
-
-**Note**: The exact steps vary by browser:
-- **Chrome/Edge**: Click "Advanced" → "Proceed to [domain] (unsafe)"
-- **Firefox**: Click "Advanced" → "Accept the Risk and Continue"
-- **Safari**: Click "Show Details" → "visit this website" → "Visit Website"
-
-After accepting the certificate for the SERVE ALB domain, the UI will be able to make API calls to the SERVE ALB successfully. The browser will remember your choice for this domain.
-
-### Step 9: Customize Model Deployment
-
-In the `ecsModels` section of `config-custom.yaml`, allow our deployment process to pull the model weights for you.
-
-During the deployment process, LISA will optionally attempt to download your model weights if you specify an optional `ecsModels`
-array, this will only work in non ADC regions. Specifically, see the `ecsModels` section of
-the [example_config.yaml](https://github.com/awslabs/LISA/blob/develop/example_config.yaml) file.
-Here we define the model name, inference container, and baseImage:
-
-```yaml
-ecsModels:
-  - modelName: your-model-name
-    inferenceContainer: tgi
-    baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1
-```
-
-### Step 10: Bootstrap CDK (If Not Already Done)
+### Step 9: Bootstrap CDK (If Not Already Done)
 
 If you haven't bootstrapped your AWS account for CDK:
 
@@ -443,3 +466,4 @@ pytest lisa-sdk/tests --url <rest-url-from-cdk-output> --verify <path-to-server.
 - **Container pull errors**: Verify ECR repositories exist and have correct permissions
 - **Lambda deployment issues**: Check that lambda zip files are properly formatted and accessible
 - **Network connectivity**: Confirm VPC configuration allows required outbound connections
+- **S3 Models Bucket Issues**: Confirm your AWS_REGION is set correctly and that all of your model's files successfully uploaded to your models bucket

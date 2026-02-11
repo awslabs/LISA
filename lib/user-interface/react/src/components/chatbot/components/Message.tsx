@@ -28,11 +28,9 @@ import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
 import ChatBubble from '@cloudscape-design/chat-components/chat-bubble';
 import Avatar from '@cloudscape-design/chat-components/avatar';
 
-import remarkMath from 'remark-math';
-import remarkGfm from 'remark-gfm';
-import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import styles from './Message.module.css';
+import { markdownPlugins } from '../utils/markdownRenderer';
 
 import { MessageContent } from '@langchain/core/messages';
 import { base64ToBlob, fetchImage, getDisplayableMessage } from '@/components/utils';
@@ -249,8 +247,8 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                         <div key={index} className={styles.messageContent} style={{ maxWidth: '60em' }}>
                             {markdownDisplay ? (
                                 <ReactMarkdown
-                                    remarkPlugins={[remarkMath, remarkGfm]}
-                                    rehypePlugins={[rehypeKatex]}
+                                    remarkPlugins={markdownPlugins.remarkPlugins}
+                                    rehypePlugins={markdownPlugins.rehypePlugins}
                                     children={displayableText}
                                     components={markdownComponents}
                                 />
@@ -364,8 +362,8 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
             <div className={styles.messageContent} style={{ maxWidth: '60em' }}>
                 {markdownDisplay ? (
                     <ReactMarkdown
-                        remarkPlugins={[remarkMath, remarkGfm]}
-                        rehypePlugins={[rehypeKatex]}
+                        remarkPlugins={markdownPlugins.remarkPlugins}
+                        rehypePlugins={markdownPlugins.rehypePlugins}
                         children={getDisplayableMessage(content, message.type === MessageTypes.AI ? ragCitations : undefined)}
                         components={markdownComponents}
                     />

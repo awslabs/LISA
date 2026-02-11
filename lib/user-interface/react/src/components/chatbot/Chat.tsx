@@ -815,18 +815,16 @@ export default function Chat ({ sessionId }) {
             {toolApprovalModal && (
                 <ConfirmationModal
                     action='Execute'
-                    resourceName={`Tool: ${toolApprovalModal.tool.name}`}
+                    title={'Confirm MCP Tool Execution'}
                     onConfirm={handleToolApproval}
                     onDismiss={handleToolRejection}
                     description={
-                        <SpaceBetween size='m' direction='vertical'>
-                            <SpaceBetween size='s' direction='vertical'>
-                                <p>The AI is about to execute the following tool:</p>
-                                <p><strong>Tool Name:</strong> {toolApprovalModal.tool.name}</p>
-                                <p><strong>MCP Server:</strong> {toolToServerMap.get(toolApprovalModal.tool.name)}</p>
-                                <p><strong>Arguments:</strong></p>
+                        <SpaceBetween size='xs' direction='vertical'>
+                            <SpaceBetween size='xs' direction='vertical'>
+                                <div><strong>MCP Server:</strong> {toolToServerMap.get(toolApprovalModal.tool.name)}</div>
+                                <div><strong>MCP Tool:</strong> {toolApprovalModal.tool.name}</div>
+                                <div><strong>Details:</strong></div>
                                 {JSON.stringify(toolApprovalModal.tool.args).replace('{', '').replace('}', '')}
-                                <p><strong>Do you want to allow this tool execution?</strong></p>
                             </SpaceBetween>
                             <hr />
                             {updatingAutoApprovalForTool === toolApprovalModal.tool.name ? (

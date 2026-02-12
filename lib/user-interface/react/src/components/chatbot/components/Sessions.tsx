@@ -23,7 +23,7 @@ import Button from '@cloudscape-design/components/button';
 
 import { useLazyGetConfigurationQuery } from '@/shared/reducers/configuration.reducer';
 import {
-    useDeleteAllSessionsForUserMutation,
+    sessionApi,
     useDeleteSessionByIdMutation,
     useLazyGetSessionByIdQuery,
     useListSessionsQuery,
@@ -60,12 +60,6 @@ export function Sessions ({ newSession }) {
         error: deleteByIdError,
         isLoading: isDeleteByIdLoading,
     }] = useDeleteSessionByIdMutation();
-    const [deleteUserSessions, {
-        isSuccess: isDeleteUserSessionsSuccess,
-        isError: isDeleteUserSessionsError,
-        error: deleteUserSessionsError,
-        isLoading: isDeleteUserSessionsLoading,
-    }] = useDeleteAllSessionsForUserMutation();
     const [updateSessionName, {
         isSuccess: isUpdateSessionNameSuccess,
         isError: isUpdateSessionNameError,
@@ -164,16 +158,6 @@ export function Sessions ({ newSession }) {
     }, [isDeleteByIdSuccess, isDeleteByIdError, deleteByIdError, isDeleteByIdLoading]);
 
     useEffect(() => {
-        if (!isDeleteUserSessionsLoading && isDeleteUserSessionsSuccess) {
-            notificationService.generateNotification('Successfully deleted all user sessions', 'success');
-        } else if (!isDeleteUserSessionsLoading && isDeleteUserSessionsError) {
-            const errorMessage = 'message' in deleteUserSessionsError ? deleteUserSessionsError.message : 'Unknown error';
-            notificationService.generateNotification(`Error deleting user sessions: ${errorMessage}`, 'error');
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isDeleteUserSessionsSuccess, isDeleteUserSessionsError, deleteUserSessionsError, isDeleteUserSessionsLoading]);
-
-    useEffect(() => {
         if (!isUpdateSessionNameLoading && isUpdateSessionNameSuccess) {
             notificationService.generateNotification('Successfully renamed session', 'success');
             setRenameModalVisible(false);
@@ -243,21 +227,14 @@ export function Sessions ({ newSession }) {
                     >
                         New
                     </Button>
-                    {config?.configuration.enabledComponents.deleteSessionHistory &&
-                        <Button
-                            iconName='remove'
-                            onClick={() =>
-                                dispatch(
-                                    setConfirmationModal({
-                                        action: 'Delete',
-                                        resourceName: 'All Sessions',
-                                        onConfirm: () => deleteUserSessions(),
-                                        description: 'This will delete all of your user sessions.'
-                                    })
-                                )}
-                        >
-                            Delete All
-                        </Button>}
+                    <Button
+                        iconAlt='Refresh list'
+                        iconName='refresh'
+                        onClick={() => dispatch(sessionApi.util.invalidateTags(['sessions']))}
+                        ariaLabel='Refresh Sessions'
+                    >
+                        Refresh
+                    </Button>
                 </div>
             </SpaceBetween>
 

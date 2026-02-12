@@ -489,7 +489,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Environment": {
           "Variables": {
@@ -707,7 +707,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "FunctionName": "test-lisa-dev-iam_auth_setup",
         "Handler": "utilities.db_setup_iam_auth.handler",
@@ -964,7 +964,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Description": "REST API and UI Authorization Lambda",
         "Environment": {

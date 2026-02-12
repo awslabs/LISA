@@ -180,7 +180,8 @@ def _update_session_with_current_model_config(
         updated_selected.allowedGroups = current_model_config["allowedGroups"]
 
     logger.info(f"Updated session selectedModel config for model {model_id} with current model settings")
-    return session_config.model_copy(update={"selectedModel": updated_selected})
+    updated_config: SessionConfigurationModel = session_config.model_copy(update={"selectedModel": updated_selected})
+    return updated_config
 
 
 def _get_all_user_sessions(user_id: str) -> list[dict[str, Any]]:

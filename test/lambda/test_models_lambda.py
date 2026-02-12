@@ -987,8 +987,11 @@ async def test_create_model_admin_required(
         modelId="test-model", modelName="test-model", modelType=ModelType.TEXTGEN, streaming=True
     )
 
-    with patch("utilities.auth.is_admin") as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups:
+    with patch("utilities.auth.is_admin") as mock_is_admin, patch(
+        "utilities.auth.get_groups"
+    ) as mock_get_groups, patch("utilities.fastapi_middleware.auth_decorators.is_admin") as mock_decorator_is_admin:
         mock_is_admin.return_value = False
+        mock_decorator_is_admin.return_value = False
         mock_get_groups.return_value = []
 
         with pytest.raises(HTTPException) as exc_info:
@@ -1009,8 +1012,11 @@ async def test_update_model_admin_required(
 
     update_request = UpdateModelRequest(streaming=False)
 
-    with patch("utilities.auth.is_admin") as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups:
+    with patch("utilities.auth.is_admin") as mock_is_admin, patch(
+        "utilities.auth.get_groups"
+    ) as mock_get_groups, patch("utilities.fastapi_middleware.auth_decorators.is_admin") as mock_decorator_is_admin:
         mock_is_admin.return_value = False
+        mock_decorator_is_admin.return_value = False
         mock_get_groups.return_value = []
 
         with pytest.raises(HTTPException) as exc_info:
@@ -1029,8 +1035,11 @@ async def test_delete_model_admin_required(
     mock_request = MagicMock(spec=Request)
     mock_request.scope = {"aws.event": non_admin_event}
 
-    with patch("utilities.auth.is_admin") as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups:
+    with patch("utilities.auth.is_admin") as mock_is_admin, patch(
+        "utilities.auth.get_groups"
+    ) as mock_get_groups, patch("utilities.fastapi_middleware.auth_decorators.is_admin") as mock_decorator_is_admin:
         mock_is_admin.return_value = False
+        mock_decorator_is_admin.return_value = False
         mock_get_groups.return_value = []
 
         with pytest.raises(HTTPException) as exc_info:

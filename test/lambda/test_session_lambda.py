@@ -41,6 +41,7 @@ os.environ["SESSIONS_BY_USER_ID_INDEX_NAME"] = "sessions-by-user-id-index"
 os.environ["GENERATED_IMAGES_S3_BUCKET_NAME"] = "bucket"
 os.environ["MODEL_TABLE_NAME"] = "model-table"
 os.environ["CONFIG_TABLE_NAME"] = "config-table"
+os.environ["GUARDRAILS_TABLE_NAME"] = "guardrails-table"
 os.environ["SESSION_ENCRYPTION_KEY_ARN"] = "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"
 
 # Create a real retry config
@@ -173,7 +174,9 @@ from session.lambda_functions import delete_session, delete_user_sessions, get_s
 from session.models import (
     PutSessionRequest,
     RenameSessionRequest,
+    SelectedModel,
     Session,
+    SessionConfigurationModel,
     SessionSummary,
 )
 
@@ -594,35 +597,35 @@ def test_get_current_model_config_success(model_table):
 
 def test_update_session_with_current_model_config_empty_config():
     """Test _update_session_with_current_model_config with empty config."""
-    result = _update_session_with_current_model_config({})
-    assert result == {}
+    result = _update_session_with_current_model_config(SessionConfigurationModel())
+    assert result.selectedModel is None
 
 
 def test_update_session_with_current_model_config_no_model_id():
     """Test _update_session_with_current_model_config with no modelId."""
-    session_config = {"selectedModel": {"name": "test-model"}}  # No modelId
+    session_config = SessionConfigurationModel(selectedModel=SelectedModel(modelName="test-model"))  # No modelId
 
     result = _update_session_with_current_model_config(session_config)
-    assert result == session_config
+    assert result.selectedModel.modelName == "test-model"
 
 
 def test_update_session_with_current_model_config_model_not_found():
     """Test _update_session_with_current_model_config when model not found."""
-    session_config = {"selectedModel": {"modelId": "non-existent-model"}}
+    session_config = SessionConfigurationModel(selectedModel=SelectedModel(modelId="non-existent-model"))
 
     with patch("session.lambda_functions._get_current_model_config") as mock_get_config:
         mock_get_config.return_value = {}
 
         result = _update_session_with_current_model_config(session_config)
-        assert result == session_config
+        assert result.selectedModel.modelId == "non-existent-model"
 
 
 def test_update_session_with_current_model_config_success():
     """Test _update_session_with_current_model_config with successful update."""
-    session_config = {"selectedModel": {"modelId": "test-model"}}
+    session_config = SessionConfigurationModel(selectedModel=SelectedModel(modelId="test-model"))
 
     current_model_config = {
-        "features": ["new-feature"],
+        "features": [{"name": "new-feature", "overview": ""}],
         "streaming": False,
         "modelType": "updated-type",
         "modelDescription": "Updated description",
@@ -635,11 +638,13 @@ def test_update_session_with_current_model_config_success():
         result = _update_session_with_current_model_config(session_config)
 
         # Verify the selectedModel was updated with current config
-        assert result["selectedModel"]["features"] == ["new-feature"]
-        assert result["selectedModel"]["streaming"] is False
-        assert result["selectedModel"]["modelType"] == "updated-type"
-        assert result["selectedModel"]["modelDescription"] == "Updated description"
-        assert result["selectedModel"]["allowedGroups"] == ["group1", "group2"]
+        assert result.selectedModel is not None
+        assert len(result.selectedModel.features) == 1
+        assert result.selectedModel.features[0].name == "new-feature"
+        assert result.selectedModel.streaming is False
+        assert result.selectedModel.modelType == "updated-type"
+        assert result.selectedModel.modelDescription == "Updated description"
+        assert result.selectedModel.allowedGroups == ["group1", "group2"]
 
 
 # Session Processing Tests
@@ -915,8 +920,10 @@ def test_get_session_model_config_update(mock_update_config, dynamodb_table, sam
 
     dynamodb_table.put_item(Item=session_with_config)
 
-    # Mock model config update
-    updated_config = {"selectedModel": {"modelId": "test-model", "features": ["new-feature"]}}
+    # Mock model config update - return SessionConfigurationModel
+    updated_config = SessionConfigurationModel(
+        selectedModel=SelectedModel(modelId="test-model", features=[{"name": "new-feature", "overview": ""}])
+    )
     mock_update_config.return_value = updated_config
 
     event = {
@@ -1204,8 +1211,10 @@ def test_put_session_model_config_update(
 ):
     """Test put_session with model configuration update."""
 
-    # Mock model config update
-    updated_config = {"selectedModel": {"modelId": "test-model", "features": ["new-feature"]}}
+    # Mock model config update - return SessionConfigurationModel
+    updated_config = SessionConfigurationModel(
+        selectedModel=SelectedModel(modelId="test-model", features=[{"name": "new-feature", "overview": ""}])
+    )
     mock_update_config.return_value = updated_config
 
     event = {

@@ -37,7 +37,7 @@ jobs:
         with:
           python-version: '3.13'
 
-      # Install npm dependencies and publish package. Auth is established with NpmJs Trusted publishing. 
+      # Install npm dependencies and publish package. Auth is established with NpmJs Trusted publishing.
       # To update, modify package at https://www.npmjs.com/package/awslabs-lisa/access
       # More info: https://docs.npmjs.com/trusted-publishers
       - run: npm ci

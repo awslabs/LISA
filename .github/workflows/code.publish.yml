@@ -44,6 +44,9 @@ jobs:
       - name: Publish NPM Package
         if: github.event_name == 'release' || !inputs.test_mode
         run: npm publish
+      - name: Publish NPM Package (Dry Run)
+        if: github.event_name == 'workflow_dispatch' && inputs.test_mode
+        run: npm publish --dry-run
 
       # Build binary assets (lambda layers and container images)
       - name: Build Lambda Layers and Container Images

@@ -124,6 +124,7 @@ def setup_auth_patches(request, mock_auth, aws_credentials):
         # Also patch where these functions are imported
         patch("models.lambda_functions.is_admin", mock_auth.is_admin),
         patch("models.lambda_functions.get_groups", mock_auth.get_groups),
+        patch("utilities.fastapi_middleware.auth_decorators.is_admin", mock_auth.is_admin),
     ]
 
     for p in patches:

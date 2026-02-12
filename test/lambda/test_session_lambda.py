@@ -675,6 +675,41 @@ def test_get_all_user_sessions_general_client_error(mock_table):
 
 
 @patch("session.lambda_functions.table")
+def test_get_all_user_sessions_pagination(mock_table):
+    """Test _get_all_user_sessions fetches all pages when DynamoDB paginates."""
+    # First page returns 2 items and LastEvaluatedKey
+    # Second page returns 1 item and no LastEvaluatedKey
+    mock_table.query.side_effect = [
+        {
+            "Items": [
+                {"sessionId": "session-1", "userId": "test-user"},
+                {"sessionId": "session-2", "userId": "test-user"},
+            ],
+            "LastEvaluatedKey": {"userId": "test-user", "sessionId": "session-2"},
+        },
+        {
+            "Items": [{"sessionId": "session-3", "userId": "test-user"}],
+        },
+    ]
+
+    result = _get_all_user_sessions("test-user")
+
+    assert len(result) == 3
+    assert result[0]["sessionId"] == "session-1"
+    assert result[1]["sessionId"] == "session-2"
+    assert result[2]["sessionId"] == "session-3"
+    assert mock_table.query.call_count == 2
+    # Second call should include ExclusiveStartKey
+    mock_table.query.assert_called_with(
+        KeyConditionExpression="userId = :user_id",
+        ExpressionAttributeValues={":user_id": "test-user"},
+        IndexName="sessions-by-user-id-index",
+        ScanIndexForward=False,
+        ExclusiveStartKey={"userId": "test-user", "sessionId": "session-2"},
+    )
+
+
+@patch("session.lambda_functions.table")
 @patch("session.lambda_functions.s3_resource")
 def test_delete_user_session_resource_not_found(mock_s3_resource, mock_table):
     """Test _delete_user_session with ResourceNotFoundException."""

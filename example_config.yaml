@@ -80,9 +80,9 @@ ragRepositories: []
 # iamRdsAuth: true  # Set to false to use password-based authentication instead of IAM auth (default: false)
 # You can optionally provide a list of models and the deployment process will ensure they exist in your model bucket and try to download them if they don't exist
 # ecsModels:
-#  - modelName: mistralai/Mistral-7B-Instruct-v0.2
-#    inferenceContainer: tgi
-#    baseImage: ghcr.io/huggingface/text-generation-inference:2.0.1
+#  - modelName: mistralai/Mistral-7B-Instruct-v0.3
+#    inferenceContainer: vllm
+#    baseImage: vllm/vllm-openai:latest
 #  - modelName: intfloat/e5-large-v2
 #    inferenceContainer: tei
 #    baseImage: ghcr.io/huggingface/text-embeddings-inference:1.2.3

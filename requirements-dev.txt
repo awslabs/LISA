@@ -18,7 +18,7 @@ python-docx==1.2.0
 pypdf==6.4.1
 langchain==1.2.7
 langchain-community==0.4.1
-langchain-core==1.2.7
+langchain-core==1.2.11
 langchain-openai==1.1.7
 langchain-text-splitters==1.1.0
 cachetools==6.2.2

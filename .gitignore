@@ -58,3 +58,4 @@ config-generated.yaml
 
 # Cypress local environment
 /cypress/.env.local
+.npmrc

@@ -20,7 +20,7 @@ LISA supports video generation.
 ### Interactive Configuration Generator CLI
 LISA offers an interactive CLI tool that guides customers through creating a valid `config-custom.yaml` file for deployment. Instead of manually editing YAML and referencing `example_config.yaml`, customers can now run:
 
-> @awslabs/lisa@6.2.0 generate-config
+> awslabs-lisa@6.2.0 generate-config
 > tsx scripts/generate-config.ts
 
 ╔════════════════════════════════════════════════════════════════╗

@@ -66,7 +66,7 @@ def require_admin(message: str = "User does not have permission to perform this 
 
             # Extract event from request scope (set by AWSAPIGatewayMiddleware)
             event = request.scope.get("aws.event", {})
-            
+
             # Check admin status using utilities.auth.is_admin
             if not is_admin(event):
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=message)

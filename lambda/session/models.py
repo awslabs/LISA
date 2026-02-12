@@ -17,6 +17,7 @@
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from utilities.encoders import convert_float_to_decimal
 from utilities.time import iso_string
 
 # --- Session configuration models (aligned with chat.configurations.model.ts) ---
@@ -167,7 +168,8 @@ class SessionConfigurationModel(BaseModel):
     def model_dump_for_storage(self) -> dict[str, Any]:
         """Serialize to dict for DynamoDB storage."""
         result: dict[str, Any] = self.model_dump(mode="json", exclude_none=False)
-        return result
+        converted: dict[str, Any] = convert_float_to_decimal(result)
+        return converted
 
     @classmethod
     def from_dict(cls, data: dict[str, Any] | None) -> "SessionConfigurationModel":

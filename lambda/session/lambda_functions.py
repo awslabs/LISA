@@ -186,6 +186,8 @@ def _update_session_with_current_model_config(
 def _get_all_user_sessions(user_id: str) -> list[dict[str, Any]]:
     """Get all sessions for a user from DynamoDB.
 
+    Paginates through all results when DynamoDB returns more than one page.
+
     Parameters
     ----------
     user_id : str
@@ -196,20 +198,33 @@ def _get_all_user_sessions(user_id: str) -> list[dict[str, Any]]:
     List[Dict[str, Any]]
         A list of user sessions.
     """
-    response = {}
+    all_items: list[dict[str, Any]] = []
+    exclusive_start_key: dict[str, Any] | None = None
+
     try:
-        response = table.query(
-            KeyConditionExpression="userId = :user_id",
-            ExpressionAttributeValues={":user_id": user_id},
-            IndexName=os.environ["SESSIONS_BY_USER_ID_INDEX_NAME"],
-            ScanIndexForward=False,
-        )
+        while True:
+            query_params: dict[str, Any] = {
+                "KeyConditionExpression": "userId = :user_id",
+                "ExpressionAttributeValues": {":user_id": user_id},
+                "IndexName": os.environ["SESSIONS_BY_USER_ID_INDEX_NAME"],
+                "ScanIndexForward": False,
+            }
+            if exclusive_start_key is not None:
+                query_params["ExclusiveStartKey"] = exclusive_start_key
+
+            response = table.query(**query_params)
+            items = response.get("Items", [])
+            all_items.extend(items)
+
+            exclusive_start_key = response.get("LastEvaluatedKey")
+            if exclusive_start_key is None:
+                break
     except ClientError as error:
         if error.response["Error"]["Code"] == "ResourceNotFoundException":
             logger.warning(f"No sessions found for user {user_id}")
         else:
             logger.exception("Error listing sessions")
-    return response.get("Items", [])  # type: ignore [no-any-return]
+    return all_items
 
 
 def _extract_video_s3_keys(session: dict) -> list[str]:

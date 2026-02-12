@@ -23,27 +23,27 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write  # Required for uploading release assets
-      packages: write  # Required for npm package publishing
+      id-token: write  # Required for npm trusted publishing (OIDC)
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v4
       # Setup .npmrc file to publish to NpmJs Packages
       - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v4
         with:
           node-version: '24.x'
-          registry-url: 'https://npm.pkg.github.com'
+          registry-url: 'https://registry.npmjs.org'
 
       # Setup Python for build scripts
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
 
-      # Install npm dependencies and publish package
+      # Install npm dependencies and publish package. Auth is established with NpmJs Trusted publishing. 
+      # To update, modify package at https://www.npmjs.com/package/awslabs-lisa/access
+      # More info: https://docs.npmjs.com/trusted-publishers
       - run: npm ci
       - name: Publish NPM Package
         if: github.event_name == 'release' || !inputs.test_mode
         run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       # Build binary assets (lambda layers and container images)
       - name: Build Lambda Layers and Container Images

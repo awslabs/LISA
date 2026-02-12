@@ -22,13 +22,10 @@ import SpaceBetween from '@cloudscape-design/components/space-between';
 import Spinner from '@cloudscape-design/components/spinner';
 import {
     Autosuggest,
-    ButtonGroup,
     Checkbox,
     Grid,
-    PromptInput,
     Icon,
     Flashbar,
-    FileTokenGroup,
 } from '@cloudscape-design/components';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 
@@ -68,9 +65,14 @@ import { useModels } from './hooks/useModels.hooks';
 import { useMemory } from './hooks/useMemory.hooks';
 import { useModals } from './hooks/useModals.hooks';
 import { useToolChain } from './hooks/useToolChain.hooks';
+import { useDynamicMaxRows } from './hooks/useDynamicMaxRows';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { buildMessageContent, buildMessageMetadata } from './utils/messageBuilder.utils';
 import { getButtonItems, useButtonActions } from './config/buttonConfig';
+import PromptPreview from './components/PromptPreview';
+import ChatPromptInput from './components/ChatPromptInput';
+import { Mode } from '@cloudscape-design/global-styles';
+import ColorSchemeContext from '@/shared/color-scheme.provider';
 import { McpServerStatus, useListMcpServersQuery } from '@/shared/reducers/mcp-server.reducer';
 import {
     DefaultUserPreferences,
@@ -133,9 +135,13 @@ export default function Chat ({ sessionId }) {
     const [mermaidRenderComplete, setMermaidRenderComplete] = useState(0);
     const [videoLoadComplete, setVideoLoadComplete] = useState(0);
     const [imageLoadComplete, setImageLoadComplete] = useState(0);
-    const [dynamicMaxRows, setDynamicMaxRows] = useState(8);
     const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
     const [updatingAutoApprovalForTool, setUpdatingAutoApprovalForTool] = useState<string | null>(null);
+    const [showMarkdownPreview, setShowMarkdownPreview] = useState(false);
+
+    // Get color scheme context for markdown preview
+    const { colorScheme } = useContext(ColorSchemeContext);
+    const isDarkMode = colorScheme === Mode.Dark;
 
     // Callback to handle Mermaid diagram rendering completion
     const handleMermaidRenderComplete = useCallback(() => {
@@ -181,6 +187,28 @@ export default function Chat ({ sessionId }) {
     const { tools: mcpTools, callTool, McpConnections, toolToServerMap } = useMultipleMcp(enabledServers, userPreferences?.preferences?.mcp);
     const [updatePreferences, {isSuccess: isUpdatingPreferencesSuccess, isError: isUpdatingPreferencesError, isLoading: isUpdatingPreferences}] = useUpdateUserPreferencesMutation();
 
+    // Load markdown preview preference from user preferences
+    useEffect(() => {
+        if (userPreferences?.preferences?.showMarkdownPreview !== undefined) {
+            setShowMarkdownPreview(userPreferences.preferences.showMarkdownPreview);
+        }
+    }, [userPreferences]);
+
+    // Handle markdown preview toggle
+    const handleToggleMarkdownPreview = useCallback((enabled: boolean) => {
+        setShowMarkdownPreview(enabled);
+
+        const updated = {
+            ...preferences,
+            preferences: {
+                ...preferences.preferences,
+                showMarkdownPreview: enabled
+            }
+        };
+        setPreferences(updated);
+        updatePreferences(updated);
+    }, [preferences, updatePreferences, setPreferences]);
+
     useEffect(() => {
         if (userPreferences) {
             setPreferences(userPreferences);
@@ -205,28 +233,8 @@ export default function Chat ({ sessionId }) {
         }
     }, [isUpdatingPreferencesError, notificationService]);
 
-    useEffect(() => {
-        const calculateMaxRows = () => {
-            const LINE_HEIGHT = 24; // pixels per row
-            const RESERVED_UI_HEIGHT = 280; // model selector, buttons, status
-            const MAX_INPUT_PERCENTAGE = 0.5; // 50% of viewport max
-
-            const availableHeight = window.innerHeight - RESERVED_UI_HEIGHT;
-            const maxInputHeight = availableHeight * MAX_INPUT_PERCENTAGE;
-            const calculatedMaxRows = Math.floor(maxInputHeight / LINE_HEIGHT);
-
-            // Clamp between 3 and 12 rows
-            const clampedMaxRows = Math.max(3, Math.min(12, calculatedMaxRows));
-            setDynamicMaxRows(clampedMaxRows);
-        };
-
-        calculateMaxRows();
-        window.addEventListener('resize', calculateMaxRows);
-        return () => window.removeEventListener('resize', calculateMaxRows);
-    }, []);
-
-
     // Custom hooks
+    const { dynamicMaxRows } = useDynamicMaxRows();
     const {
         session,
         setSession,
@@ -291,11 +299,20 @@ export default function Chat ({ sessionId }) {
         refreshPromptTemplate
     } = useModals();
 
-    const { handleButtonClick } = useButtonActions({
+    const { handleButtonClick: baseHandleButtonClick } = useButtonActions({
         openModal,
         refreshPromptTemplate,
         setFilterPromptTemplateType,
     });
+
+    // Extended button click handler that includes markdown preview toggle
+    const handleButtonClick = useCallback(({ detail }: { detail: { id: string } }) => {
+        if (detail.id === 'toggle-markdown-preview') {
+            handleToggleMarkdownPreview(!showMarkdownPreview);
+        } else {
+            baseHandleButtonClick({ detail });
+        }
+    }, [baseHandleButtonClick, handleToggleMarkdownPreview, showMarkdownPreview]);
 
     // Derived states
     const isImageGenerationMode = selectedModel?.modelType === ModelType.imagegen;
@@ -423,7 +440,7 @@ export default function Chat ({ sessionId }) {
     }, [stopToolChain, stopGeneration, setIsRunning, notificationService]);
 
     // Determine if we should show stop button
-    const shouldShowStopButton = isRunning || callingToolName;
+    const shouldShowStopButton = Boolean(isRunning || callingToolName);
 
     useEffect(() => {
         if (sessionHealth) {
@@ -746,6 +763,48 @@ export default function Chat ({ sessionId }) {
         }
     }, [shouldShowStopButton, userPrompt.length, isRunning, callingToolName, loadingSession, handleSendGenerateRequest]);
 
+    const promptInputProps = useMemo(() => ({
+        userPrompt,
+        shouldShowStopButton,
+        dynamicMaxRows,
+        isModelDeleted,
+        isConnected,
+        selectedModel,
+        loadingSession,
+        isImageGenerationMode,
+        isVideoGenerationMode,
+        fileContext,
+        fileContextName,
+        config,
+        useRag,
+        showMarkdownPreview,
+        setUserPrompt,
+        setFileContext,
+        setFileContextName,
+        handleAction,
+        handleKeyPress,
+        handleButtonClick,
+        getButtonItems,
+    }), [
+        userPrompt,
+        shouldShowStopButton,
+        dynamicMaxRows,
+        isModelDeleted,
+        isConnected,
+        selectedModel,
+        loadingSession,
+        isImageGenerationMode,
+        isVideoGenerationMode,
+        fileContext,
+        fileContextName,
+        config,
+        useRag,
+        showMarkdownPreview,
+        handleAction,
+        handleKeyPress,
+        handleButtonClick,
+    ]);
+
     return (
         <div className='flex flex-col h-[85vh]'>
             {/* MCP Connections - invisible components that manage the connections */}
@@ -971,67 +1030,16 @@ export default function Chat ({ sessionId }) {
                                     />
                                 )}
                             </Grid>
-                            <PromptInput
-                                value={userPrompt}
-                                actionButtonAriaLabel={shouldShowStopButton ? 'Stop generation' : 'Send message'}
-                                actionButtonIconName={shouldShowStopButton ? 'status-negative' : 'send'}
-                                maxRows={dynamicMaxRows}
-                                minRows={2}
-                                spellcheck={true}
-                                style={
-                                    {
-                                        root: {
-                                            borderColor: {
-                                                disabled: isModelDeleted ? '#ffe347' : isConnected ? '' : '#ff7a7a'
-                                            }
-                                        }
-                                    }
-                                }
-                                placeholder={
-                                    !selectedModel ? 'You must select a model before sending a message' :
-                                        isModelDeleted ? 'The model used in this session is no longer available.' :
-                                            isImageGenerationMode ? 'Describe the image you want to generate...' :
-                                                'Send a message'
-                                }
-                                disabled={!selectedModel || loadingSession || !isConnected || isModelDeleted}
-                                onChange={({ detail }) => setUserPrompt(detail.value)}
-                                onAction={handleAction}
-                                onKeyDown={handleKeyPress}
-                                controlId='chat-prompt-input'
-                                secondaryActions={
-                                    <Box padding={{ left: 'xxs', top: 'xs' }}>
-                                        <ButtonGroup
-                                            ariaLabel='Chat actions'
-                                            onItemClick={handleButtonClick}
-                                            items={getButtonItems(config, useRag, isImageGenerationMode, isVideoGenerationMode, isConnected, isModelDeleted)}
-                                            variant='icon'
-                                            dropdownExpandToViewport={true}
-                                        />
-                                    </Box>
-                                }
-                                secondaryContent={
-                                    fileContext && (
-                                        <FileTokenGroup
-                                            items={[{ file: new File([fileContext], fileContextName) }]}
-                                            onDismiss={() => {
-                                                setFileContext('');
-                                                setFileContextName('');
-                                            }}
-                                            alignment='horizontal'
-                                            showFileSize={false}
-                                            showFileLastModified={false}
-                                            showFileThumbnail={false}
-                                            i18nStrings={{
-                                                removeFileAriaLabel: () => 'Remove file',
-                                                limitShowFewer: 'Show fewer files',
-                                                limitShowMore: 'Show more files',
-                                                errorIconAriaLabel: 'Error',
-                                                warningIconAriaLabel: 'Warning'
-                                            }}
-                                        />
-                                    )
-                                }
-                            />
+                            {showMarkdownPreview ? (
+                                <div style={{ overflow: 'hidden' }}>
+                                    <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }]}>
+                                        <ChatPromptInput {...promptInputProps} />
+                                        <PromptPreview content={userPrompt} isDarkMode={isDarkMode} />
+                                    </Grid>
+                                </div>
+                            ) : (
+                                <ChatPromptInput {...promptInputProps} />
+                            )}
                             <SpaceBetween direction='vertical' size='xs'>
                                 <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }]}>
                                     {enabledServers && enabledServers.length > 0 && selectedModel?.features?.filter((feature) => feature.name === ModelFeatures.TOOL_CALLS)?.length && true ? (

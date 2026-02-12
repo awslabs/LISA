@@ -25,7 +25,8 @@ export const getButtonItems = (
     isImageGenerationMode: boolean,
     isVideoGenerationMode: boolean,
     isConnected: boolean,
-    isModelDeleted: boolean = false
+    isModelDeleted: boolean = false,
+    showMarkdownPreview: boolean = false
 ): ButtonGroupProps.Item[] => {
     const baseItems: ButtonGroupProps.Item[] = [
         {
@@ -33,6 +34,13 @@ export const getButtonItems = (
             id: 'settings',
             iconName: 'settings',
             text: 'Session configuration',
+            disabled: !isConnected || isModelDeleted
+        },
+        {
+            type: 'icon-button',
+            id: 'toggle-markdown-preview',
+            iconName: 'view-vertical',
+            text: showMarkdownPreview ? 'Hide Preview' : 'Show Preview',
             disabled: !isConnected || isModelDeleted
         }
     ];

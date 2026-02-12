@@ -1,65 +1,25 @@
 # v6.2.1
 
-## Key Features
+## Bug Fixes
+- Removed FastAPI import from auth handler preventing lambdas without FastAPI in the layer dependencies from working
+- Updated Session model to account for session configuration data types to allow resuming old stored sessions
+- Made exception handling more uniform and consistent across the application
 
-### Update Deployment Guide
-The deployment guide has been extensively updated to include new walk-throughs and updated instructions for various components of the LISA deployment.
+## UI Updates
+- Cleaned up the MCP approval modal
+- Removed borders around all tables for a consistent theme across the UI
+- Added markdown preview toggle to prompt input
+- Moved delete all sessions button under user profile and added back the refresh button to session panel
 
-**Deployment Guide Updates:**
-- Added a walk-through for setting up AWS Certificate Manager
-- Updated the Route 53 walk-through
-- Enhanced the API Gateway walk-through
-- Added a new section for the SuperNova walk-through (AWS internal only)
-- Updated the example configurations, including a working config for Mistral 7B v0.3 with VLLM
-- Revised the Cognito setup guide to reflect the latest changes
-
-### Publish Artifacts
-This release publishes a set of pre-built assets, including lambdas and container images, to GitHub and NPM. This will make it easier for users to consume these resources without having to build them from scratch.
-
-### Preview Panel for Rendering Prompts
-This feature introduces a new preview panel that allows users to view a rendered version of the contents in the PromptInput area. The preview panel supports the following capabilities:
-- Markdown rendering
-- Mermaid diagram rendering (within code blocks)
-- Inline and block LaTeX math equation rendering
-
-### Session Config Model Mapping
-This change updates the session configuration model to improve the mapping between the data stored in DynamoDB and the session configuration object.
-
-### MCP Execution Modal Clarity Update
-The MCP Tool Execution Modal has been updated to be more concise and remove duplicate information, including:
-- Removal of the duplicate tool name
-- Reduction of excess spacing
-- Removal of the do you want to allow this tool execution message (already mentioned above)
-- Changing arguments to details
-
-### vLLM Variables Documentation
-New documentation has been added to describe the vLLM environment variables that LISA Serve supports. This will help users understand the available configuration options for running vLLM models.
-
-### MCP Server Identifier in Approval Modal
-A new MCP server identification label has been added to the tool approval modal. This will help users distinguish which MCP server initiated the tool execution request.
-
-### Table Border Removal
-The borders have been removed from several table components to align the UI with the overall design of the application.
-
-### Consistent Exception Handling
-A comprehensive refactor has been performed to ensure consistent exception handling across the various APIs.
-
-## Key Changes
-- **Deployment Guide**: Extensive updates to the deployment guide, including new walk-throughs and configuration examples
-- **Artifact Publishing**: Pre-built assets, including lambdas and container images, are now available on GitHub and NPM
-- **Prompt Rendering**: Introduction of a preview panel to render Markdown, Mermaid diagrams, and LaTeX math equations
-- **Session Config Mapping**: Improved mapping between DynamoDB data and session configuration objects
-- **MCP Execution Modal**: Streamlined the MCP tool execution modal to be more concise and remove duplicate information
-- **vLLM Variables Documentation**: New documentation added to describe the available vLLM environment variables
-- **MCP Server Identifier**: Added a server identification label to the tool approval modal
-- **Table Borders**: Removed borders from several table components to align with the overall design
-- **Exception Handling**: Comprehensive refactor to ensure consistent exception handling across APIs
+## Documentation Updates
+- Cleared up the vLLM variables LISA supports
+- Updated deployment guide to account for new cognito updates
 
 ## Acknowledgements
-* @121983012+jmharold
-* @99225408+Ernest-Gray
 * @bedanley
-* @evmann
+* @Ernest-Gray
+* @estohlmann
+* @jmharold
 
 **Full Changelog**: https://github.com/awslabs/LISA/compare/v6.2.0..v6.2.1
 

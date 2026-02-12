@@ -26,12 +26,18 @@ jobs:
       packages: write  # Required for npm package publishing
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v4
-      # Setup .npmrc file to publish to npmjs registry
+      # Setup .npmrc file to publish to NpmJs Packages
       - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v4
         with:
           node-version: '24.x'
-          registry-url: 'https://registry.npmjs.org'
+          registry-url: 'https://npm.pkg.github.com'
 
+      # Setup Python for build scripts
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      # Install npm dependencies and publish package
       - run: npm ci
       - name: Publish NPM Package
         if: github.event_name == 'release' || !inputs.test_mode
@@ -57,7 +63,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            build/*.zip
+            dist/layers/*.zip
             dist/images/*.tar
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -66,8 +72,8 @@ jobs:
       - name: List Build Artifacts (Test Mode)
         if: github.event_name == 'workflow_dispatch' && inputs.test_mode
         run: |
-          echo "=== Lambda Layers (build/*.zip) ==="
-          ls -lh build/*.zip 2>/dev/null || echo "No zip files found"
+          echo "=== Lambda Layers (dist/layers/*.zip) ==="
+          ls -lh dist/layers/*.zip 2>/dev/null || echo "No zip files found"
           echo ""
           echo "=== Container Images (dist/images/*.tar) ==="
           ls -lh dist/images/*.tar 2>/dev/null || echo "No tar files found"

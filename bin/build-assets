@@ -2,12 +2,30 @@
 set -e
 
 ROOT=$(pwd)
+LAYER_DIR=$ROOT/dist/layers
+IMAGE_DIR=$ROOT/dist/images
 
 # Default PYPI_URL if not set
-PYPI_URL=${PYPI_URL:-"https://pypi.org/simple"}
+export PYPI_URL=${PYPI_URL:-"https://pypi.org/simple"}
+export OUTPUT_DIR=$LAYER_DIR
+export IMAGE_DIR
 
-# Build lambda layers with PYPI_URL
-./bin/build-lambdas --src lambda --output Lambda.zip --pypi "$PYPI_URL"
+echo "Building all assets..."
+
+# Build Lambda layers (Python and Node.js)
+echo "Building Lambda Layers..."
+./bin/build-lambda-layers
+
+# Build Lambda function (no dependencies, uses layers)
+echo "Building Lambda function..."
+cd lambda
+$ROOT/bin/package-lambda --src . --output "Lambda.zip" --pypi "$PYPI_URL"
+mv ./build/Lambda.zip "$LAYER_DIR/"
+rm -rf ./build
+cd "$ROOT"
 
 # Build and export container images
+echo "Building Image exports..."
 ./bin/build-images --export
+
+echo "All assets built successfully!"

@@ -1,0 +1,200 @@
+#!/bin/bash
+set -e
+
+# Pull container image tarballs from a GitHub Release into dist/images/
+# These can then be used with imageConfig type: tarball in config-custom.yaml
+
+REPO="awslabs/LISA"
+VERSION=""
+OUTPUT_DIR="./dist/images"
+TOKEN=""
+IMAGES=("lisa-rest-api" "lisa-batch-ingestion" "lisa-mcp-workbench" "lisa-tei" "lisa-tgi" "lisa-vllm")
+
+usage() {
+    echo "Usage: $0 [OPTIONS]"
+    echo ""
+    echo "Download container image tarballs from a GitHub Release."
+    echo ""
+    echo "Options:"
+    echo "  --version VERSION   Release version tag (default: reads from VERSION file)"
+    echo "  --repo OWNER/REPO   GitHub repository (default: awslabs/LISA)"
+    echo "  --output DIR        Output directory (default: ./dist/images)"
+    echo "  --token TOKEN       GitHub token for private repos or rate limiting"
+    echo "  --images LIST       Comma-separated image names to download (default: all)"
+    echo "  --help              Show this help message"
+    echo ""
+    echo "Example:"
+    echo "  $0 --version v6.2.0"
+    echo "  $0 --version v6.2.0 --images lisa-rest-api,lisa-batch-ingestion"
+    echo ""
+    echo "After downloading, add to config-custom.yaml:"
+    echo "  restApiConfig:"
+    echo "    imageConfig:"
+    echo "      type: tarball"
+    echo "      path: ./dist/images/lisa-rest-api_<version>.tar"
+    exit 0
+}
+
+# Parse arguments
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --version)
+            shift
+            VERSION="$1"
+            ;;
+        --repo)
+            shift
+            REPO="$1"
+            ;;
+        --output)
+            shift
+            OUTPUT_DIR="$1"
+            ;;
+        --token)
+            shift
+            TOKEN="$1"
+            ;;
+        --images)
+            shift
+            IFS=',' read -ra IMAGES <<< "$1"
+            ;;
+        --help)
+            usage
+            ;;
+        *)
+            echo "Unknown option: $1"
+            usage
+            ;;
+    esac
+    shift
+done
+
+# Resolve version from VERSION file if not provided
+if [ -z "$VERSION" ]; then
+    if [ -f "./VERSION" ]; then
+        VERSION=$(cat ./VERSION)
+        echo "Using version from VERSION file: $VERSION"
+    else
+        echo "ERROR: No --version specified and no VERSION file found"
+        exit 1
+    fi
+fi
+
+# Strip leading 'v' if present for matching asset filenames
+CLEAN_VERSION="${VERSION#v}"
+
+mkdir -p "$OUTPUT_DIR"
+
+# Build curl auth header
+AUTH_HEADER=""
+if [ -n "$TOKEN" ]; then
+    AUTH_HEADER="Authorization: token $TOKEN"
+fi
+
+# Resolve the release API URL
+API_URL="https://api.github.com/repos/$REPO/releases/tags/$VERSION"
+
+# If version doesn't start with 'v', also try with 'v' prefix
+echo "Fetching release info from: $API_URL"
+RELEASE_JSON=$(curl -sfL ${AUTH_HEADER:+-H "$AUTH_HEADER"} "$API_URL" 2>/dev/null) || {
+    # Try with 'v' prefix
+    API_URL="https://api.github.com/repos/$REPO/releases/tags/v$VERSION"
+    echo "Retrying with v-prefix: $API_URL"
+    RELEASE_JSON=$(curl -sfL ${AUTH_HEADER:+-H "$AUTH_HEADER"} "$API_URL") || {
+        echo "ERROR: Could not find release for version '$VERSION' or 'v$VERSION'"
+        echo "Check available releases at: https://github.com/$REPO/releases"
+        exit 1
+    }
+}
+
+echo "Found release. Downloading image tarballs..."
+echo ""
+
+DOWNLOADED=0
+FAILED=0
+
+for IMAGE_NAME in "${IMAGES[@]}"; do
+    # The build-images script names exports as: {repository_name}_{image_tag}.tar
+    ASSET_NAME="${IMAGE_NAME}_${CLEAN_VERSION}.tar"
+
+    # Extract the download URL for this asset
+    DOWNLOAD_URL=$(echo "$RELEASE_JSON" | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+for asset in data.get('assets', []):
+    if asset['name'] == '$ASSET_NAME':
+        print(asset.get('browser_download_url', asset['url']))
+        sys.exit(0)
+sys.exit(1)
+" 2>/dev/null) || {
+        # Some images use 'latest' as tag instead of version (tei, tgi, vllm)
+        ASSET_NAME="${IMAGE_NAME}_latest.tar"
+        DOWNLOAD_URL=$(echo "$RELEASE_JSON" | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+for asset in data.get('assets', []):
+    if asset['name'] == '$ASSET_NAME':
+        print(asset.get('browser_download_url', asset['url']))
+        sys.exit(0)
+sys.exit(1)
+" 2>/dev/null) || {
+            echo "SKIP: $IMAGE_NAME (no matching asset found in release)"
+            continue
+        }
+    }
+
+    DEST="$OUTPUT_DIR/$ASSET_NAME"
+    echo "Downloading $ASSET_NAME..."
+
+    if curl -sfL ${AUTH_HEADER:+-H "$AUTH_HEADER"} -H "Accept: application/octet-stream" -o "$DEST" "$DOWNLOAD_URL"; then
+        SIZE=$(du -h "$DEST" | cut -f1)
+        echo "  -> $DEST ($SIZE)"
+        DOWNLOADED=$((DOWNLOADED + 1))
+    else
+        echo "  FAILED to download $ASSET_NAME"
+        FAILED=$((FAILED + 1))
+    fi
+done
+
+echo ""
+echo "Download complete: $DOWNLOADED succeeded, $FAILED failed"
+echo ""
+
+if [ $DOWNLOADED -gt 0 ]; then
+    echo "Add the following to your config-custom.yaml to use these images:"
+    echo ""
+    echo "---"
+    for IMAGE_NAME in "${IMAGES[@]}"; do
+        # Check which file actually exists for this image
+        TAR_FILE=$(ls "$OUTPUT_DIR/${IMAGE_NAME}_"*.tar 2>/dev/null | head -1)
+        if [ -n "$TAR_FILE" ]; then
+            case "$IMAGE_NAME" in
+                lisa-rest-api)
+                    echo "restApiConfig:"
+                    echo "  imageConfig:"
+                    echo "    type: tarball"
+                    echo "    path: $TAR_FILE"
+                    ;;
+                lisa-mcp-workbench)
+                    echo "mcpWorkbenchConfig:"
+                    echo "  imageConfig:"
+                    echo "    type: tarball"
+                    echo "    path: $TAR_FILE"
+                    ;;
+                lisa-batch-ingestion)
+                    echo "batchIngestionConfig:"
+                    echo "  imageConfig:"
+                    echo "    type: tarball"
+                    echo "    path: $TAR_FILE"
+                    ;;
+                *)
+                    echo "# $IMAGE_NAME:"
+                    echo "#   imageConfig:"
+                    echo "#     type: tarball"
+                    echo "#     path: $TAR_FILE"
+                    ;;
+            esac
+        fi
+    done
+    echo "---"
+fi

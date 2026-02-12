@@ -313,19 +313,21 @@ Update your `config-custom.yaml` in the ADC region:
 ```yaml
 # Lambda layers from pre-built archives
 lambdaLayerAssets:
-  authorizerLayerPath: './dist/layers/AimlAdcLisaAuthLayer.zip'
-  commonLayerPath: './dist/layers/AimlAdcLisaCommonLayer.zip'
-  fastapiLayerPath: './dist/layers/AimlAdcLisaFastApiLayer.zip'
-  ragLayerPath: './dist/layers/AimlAdcLisaRag.zip'
-  sdkLayerPath: './dist/layers/AimlAdcLisaSdk.zip'
+  authorizerLayerPath: './dist/layers/LisaAuthLayer.zip'
+  commonLayerPath: './dist/layers/LisaCommonLayer.zip'
+  cdkLayerPath: './dist/layers/LisaCdkLayer.zip'
+  fastapiLayerPath: './dist/layers/LisaFastApiLayer.zip'
+  ragLayerPath: './dist/layers/LisaRag.zip'
+  sdkLayerPath: './dist/layers/LisaSdk.zip'
 
 # Lambda functions
-lambdaPath: './dist/layers/AimlAdcLisaLambda.zip'
+lambdaPath: './dist/layers/LisaLambda.zip'
 
 # Pre-built web assets
 webAppAssetsPath: './dist/lisa-web'
 documentsPath: './dist/docs'
 ecsModelDeployerPath: './dist/ecs_model_deployer'
+mcpServerDeployerPath: './dist/mcp_server_model_deployer'
 vectorStoreDeployerPath: './dist/vector_store_deployer'
 
 # Container images from ECR

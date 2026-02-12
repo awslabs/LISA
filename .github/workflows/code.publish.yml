@@ -31,26 +31,26 @@ jobs:
         with:
           node-version: '24.x'
           registry-url: 'https://registry.npmjs.org'
-          
+
       - run: npm ci
       - name: Publish NPM Package
         if: github.event_name == 'release' || !inputs.test_mode
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      
+
       # Build binary assets (lambda layers and container images)
       - name: Build Lambda Layers and Container Images
         run: |
           # Create build directory for lambda layers
           mkdir -p build
-          
+
           # Build assets (runs build-lambdas and build-images --export)
           ./bin/build-assets
         env:
           PYPI_URL: https://pypi.org/simple
           LISA_VERSION: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.version }}
-      
+
       # Upload binary assets to GitHub Release
       - name: Upload Release Assets
         if: github.event_name == 'release' || !inputs.test_mode
@@ -61,7 +61,7 @@ jobs:
             dist/images/*.tar
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
+
       # In test mode, just list what would be uploaded
       - name: List Build Artifacts (Test Mode)
         if: github.event_name == 'workflow_dispatch' && inputs.test_mode

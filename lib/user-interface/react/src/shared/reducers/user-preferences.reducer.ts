@@ -33,6 +33,7 @@ export type McpPreferences = {
 
 export type Preferences = {
     mcp?: McpPreferences;
+    showMarkdownPreview?: boolean;
 };
 
 export type UserPreferences = {

@@ -1062,7 +1062,7 @@
           "cdk-hnb659fds-assets-012345678901-us-iso-east-1"
         ],
         "SourceObjectKeys": [
-          "9f3ea1eafc68ae8e89106b5a5558bdeb3a38a08821681b1f69441cbbbec07237.zip"
+          "ffe1c48bcf2d745bcfa70b2ca14a28a1e7c75f23b98e9038b681788acd4dd6d4.zip"
         ],
         "DestinationBucketName": {
           "Ref": "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderec2bucketA3074A95"
@@ -1261,7 +1261,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Environment": {
           "Variables": {
@@ -1613,7 +1613,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Description": "Manages Auto Scaling scheduled actions for LISA model scheduling",
         "Environment": {
@@ -1665,7 +1665,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Description": "Processes Auto Scaling Group CloudWatch events to update model status",
         "Environment": {
@@ -1795,7 +1795,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Environment": {
           "Variables": {
@@ -1880,7 +1880,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Environment": {
           "Variables": {
@@ -1965,7 +1965,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Environment": {
           "Variables": {
@@ -2050,7 +2050,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Environment": {
           "Variables": {
@@ -2135,7 +2135,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Environment": {
           "Variables": {
@@ -2220,7 +2220,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Environment": {
           "Variables": {
@@ -2305,7 +2305,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Environment": {
           "Variables": {
@@ -2390,7 +2390,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Environment": {
           "Variables": {
@@ -2478,7 +2478,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Environment": {
           "Variables": {
@@ -2563,7 +2563,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Environment": {
           "Variables": {
@@ -3076,7 +3076,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Environment": {
           "Variables": {
@@ -3137,7 +3137,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Environment": {
           "Variables": {
@@ -3198,7 +3198,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Environment": {
           "Variables": {
@@ -3259,7 +3259,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Environment": {
           "Variables": {
@@ -3320,7 +3320,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Environment": {
           "Variables": {
@@ -3381,7 +3381,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Environment": {
           "Variables": {
@@ -3722,7 +3722,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Environment": {
           "Variables": {
@@ -3784,7 +3784,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Environment": {
           "Variables": {
@@ -3846,7 +3846,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Environment": {
           "Variables": {
@@ -3908,7 +3908,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Environment": {
           "Variables": {
@@ -3970,7 +3970,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Environment": {
           "Variables": {
@@ -4032,7 +4032,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Environment": {
           "Variables": {
@@ -4493,7 +4493,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Description": "Manage model",
         "Environment": {
@@ -4611,7 +4611,7 @@
         ]
       }
     },
-    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler292673D9D37A": {
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler3ff83C1FEF1A": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",
@@ -4650,7 +4650,7 @@
         }
       }
     },
-    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler843cDF6CA924": {
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler77dc5CFE1E46": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",
@@ -4694,7 +4694,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Description": "Manage model",
         "Environment": {
@@ -4788,7 +4788,7 @@
         "RetentionInDays": 30
       }
     },
-    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler851b7E6C1542": {
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandlera4f62D9A3786": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",
@@ -4979,7 +4979,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "d48342ef6b586ea1b32bfc4a7362678941da35c794d23108c8162dbba8b0d5a0.zip"
+          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
         },
         "Description": "Remove api_key from existing Bedrock models to fix Invalid API Key format errors",
         "Environment": {

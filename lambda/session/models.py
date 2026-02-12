@@ -166,7 +166,8 @@ class SessionConfigurationModel(BaseModel):
 
     def model_dump_for_storage(self) -> dict[str, Any]:
         """Serialize to dict for DynamoDB storage."""
-        return self.model_dump(mode="json", exclude_none=False)
+        result: dict[str, Any] = self.model_dump(mode="json", exclude_none=False)
+        return result
 
     @classmethod
     def from_dict(cls, data: dict[str, Any] | None) -> "SessionConfigurationModel":
@@ -174,7 +175,8 @@ class SessionConfigurationModel(BaseModel):
         if not data:
             return cls()
         try:
-            return cls.model_validate(data)
+            instance: SessionConfigurationModel = cls.model_validate(data)
+            return instance
         except Exception:
             return cls()
 

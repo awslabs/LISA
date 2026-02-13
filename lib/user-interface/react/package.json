@@ -4,8 +4,9 @@
   "version": "6.2.1",
   "type": "module",
   "scripts": {
+    "prebuild": "cp node_modules/pdfjs-dist/build/pdf.worker.min.js public/",
     "dev": "vite",
-    "build": "node ./scripts/set-revision-info.mjs && tsc && vite build && npm run copy-dist",
+    "build": "npm run prebuild && node ./scripts/set-revision-info.mjs && tsc && vite build && npm run copy-dist",
     "copy-dist": "mkdir -p ../../../dist/lisa-web && cp -r ./dist/* ../../../dist/lisa-web/",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0 --fix",
     "preview": "vite preview",
@@ -43,6 +44,7 @@
     "luxon": "^3.7.2",
     "mermaid": "^11.12.2",
     "oidc-client-ts": "^3.1.0",
+    "pdfjs-dist": "^5.4.624",
     "react": "^19.2.1",
     "react-ace": "^14.0.1",
     "react-dom": "^19.2.1",

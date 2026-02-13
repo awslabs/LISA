@@ -27,6 +27,7 @@ import {
 } from '@cloudscape-design/components';
 import { FileTypes, StatusTypes } from '@/components/types';
 import React, { useState, useEffect } from 'react';
+import * as pdfjsLib from 'pdfjs-dist';
 import { RagConfig } from './RagOptions';
 import { useAppDispatch } from '@/config/store';
 import { useNotificationService } from '@/shared/util/hooks';
@@ -42,6 +43,9 @@ import { JobStatusTable } from '@/components/chatbot/components/JobStatusTable';
 import { ChunkingConfigForm } from '@/shared/form/ChunkingConfigForm';
 import { MetadataForm } from '@/shared/form/MetadataForm';
 import { getDisplayName } from '@/shared/util/branding';
+
+// Configure PDF.js worker to use local file
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 export const renameFile = (originalFile: File) => {
     // Add timestamp to filename for RAG uploads to not conflict with existing S3 files
@@ -116,6 +120,23 @@ export const ContextUploadModal = ({
         notificationService.generateNotification(error, 'error');
     }
 
+    async function extractTextFromPDF(file: File): Promise<string> {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        
+        let fullText = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items
+                .map((item: any) => item.str)
+                .join(' ');
+            fullText += pageText + '\n\n';
+        }
+        
+        return fullText;
+    }
+
     async function processFile (file: File): Promise<boolean> {
         //File context currently only supports single files
         let fileContents: string;
@@ -130,6 +151,9 @@ export const ContextUploadModal = ({
                 };
                 reader.readAsDataURL(file);
             });
+        } else if (file.type === FileTypes.PDF) {
+            // Handle PDF files
+            fileContents = await extractTextFromPDF(file);
         } else {
             // Handle text files
             fileContents = await file.text();
@@ -156,7 +180,7 @@ export const ContextUploadModal = ({
                         <Button
                             onClick={async () => {
                                 const files = selectedFiles.map((f) => renameFile(f));
-                                const successfulUploads = await handleUpload(files, handleError, processFile, modelSupportsImages ? [FileTypes.TEXT, FileTypes.JPEG, FileTypes.PNG, FileTypes.WEBP, FileTypes.GIF] : [FileTypes.TEXT], 20971520);
+                                const successfulUploads = await handleUpload(files, handleError, processFile, modelSupportsImages ? [FileTypes.TEXT, FileTypes.JPEG, FileTypes.PNG, FileTypes.WEBP, FileTypes.GIF] : [FileTypes.TEXT, FileTypes.PDF], 20971520);
                                 if (successfulUploads.length > 0) {
                                     notificationService.generateNotification(`Successfully added file(s) to context ${successfulUploads.join(', ')}`, StatusTypes.SUCCESS);
                                     setShowContextUploadModal(false);
@@ -202,9 +226,10 @@ export const ContextUploadModal = ({
                         limitShowMore: 'Show more files',
                         errorIconAriaLabel: 'Error',
                     }}
+                    multiple
                     showFileSize
                     tokenLimit={3}
-                    constraintText={`Allowed file types are ${modelSupportsImages ? 'txt, png, jpg, jpeg, gif, webp' : 'txt'}. File size limit is 20 MB.`}
+                    constraintText={`Allowed file types are ${modelSupportsImages ? 'txt, png, jpg, jpeg, gif, webp' : 'txt, pdf'}. File size limit is 20 MB.`}
                 />
             </SpaceBetween>
         </Modal>

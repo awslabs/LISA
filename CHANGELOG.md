@@ -1,3 +1,28 @@
+# v6.2.1
+
+## Bug Fixes
+- Removed FastAPI import from auth handler preventing lambdas without FastAPI in the layer dependencies from working
+- Updated Session model to account for session configuration data types to allow resuming old stored sessions
+- Made exception handling more uniform and consistent across the application
+
+## UI Updates
+- Cleaned up the MCP approval modal
+- Removed borders around all tables for a consistent theme across the UI
+- Added markdown preview toggle to prompt input
+- Moved delete all sessions button under user profile and added back the refresh button to session panel
+
+## Documentation Updates
+- Cleared up the vLLM variables LISA supports
+- Updated deployment guide to account for new cognito updates
+
+## Acknowledgements
+* @bedanley
+* @Ernest-Gray
+* @estohlmann
+* @jmharold
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v6.2.0..v6.2.1
+
 # v6.2.0
 
 ## Key Features

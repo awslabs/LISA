@@ -1271,7 +1271,7 @@ def test_pipeline_embeddings_embed_documents_mismatch():
 
         embeddings = RagEmbeddings("test-model", "test-token")
 
-        with pytest.raises(Exception, match="Number of embeddings does not match number of input texts"):
+        with pytest.raises(Exception, match="Embedding count mismatch: expected 2, got 1"):
             embeddings.embed_documents(["text1", "text2"])
 
 

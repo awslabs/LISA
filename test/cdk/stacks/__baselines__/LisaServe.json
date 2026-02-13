@@ -1590,7 +1590,7 @@
               "Timeout": 5
             },
             "Image": {
-              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:7010d3fc60c43bea5c2f4b926df34e4ef454fe95b966cc5c642b247a7554b8e6"
+              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:a19a3b0ff7139ac8e66b83819be54584e63ecd109c973a534ba36293c1ff0005"
             },
             "LogConfiguration": {
               "LogDriver": "awslogs",
@@ -1944,7 +1944,7 @@
               "Timeout": 5
             },
             "Image": {
-              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:fcba8fe82ada4af0a2de9d06ec3d45e26bd0320633c64e3a5d2a1a32953789cd"
+              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:8afec7b2364847d0d18f93e1c04ef0da5c9a397271bcca2cf6e263a76e983832"
             },
             "LogConfiguration": {
               "LogDriver": "awslogs",
@@ -2519,7 +2519,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a38f8a5114ae969de815d5c66b3ddbd646445697a789f7b16424b4ea541d4ff9.zip"
+          "S3Key": "f1ef0b7df9fbd6678b581ed85579e856c8f7832ce4e06e642f2c2421ef37c427.zip"
         },
         "Handler": "index.handler",
         "Role": {

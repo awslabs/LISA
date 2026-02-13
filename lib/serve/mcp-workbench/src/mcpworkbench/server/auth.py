@@ -28,6 +28,7 @@ from fastapi import Request
 from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware, DispatchFunction
 from starlette.responses import JSONResponse, Response
+from starlette.status import HTTP_401_UNAUTHORIZED
 from starlette.types import ASGIApp
 
 # The following are field names, not passwords or tokens
@@ -177,7 +178,7 @@ class OIDCHTTPBearer(BaseHTTPMiddleware):
 
         if not valid:
             return JSONResponse(
-                status_code=401,
+                status_code=HTTP_401_UNAUTHORIZED,
                 content={"detail": "Unauthorized"},
                 headers={
                     "Access-Control-Allow-Origin": "*",

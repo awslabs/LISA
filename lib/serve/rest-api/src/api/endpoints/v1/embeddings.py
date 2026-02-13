@@ -18,6 +18,7 @@ import logging
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
+from starlette.status import HTTP_200_OK
 
 from ....handlers.embeddings import handle_embeddings
 from ....utils.resources import EmbeddingsRequest, RestApiResource
@@ -32,4 +33,4 @@ async def embeddings(request: EmbeddingsRequest) -> JSONResponse:
     """Text embeddings."""
     response = await handle_embeddings(request.dict())
 
-    return JSONResponse(content=response, status_code=200)
+    return JSONResponse(content=response, status_code=HTTP_200_OK)

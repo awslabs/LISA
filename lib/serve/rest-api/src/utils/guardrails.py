@@ -23,6 +23,7 @@ from typing import Any
 import boto3
 from fastapi.responses import JSONResponse
 from loguru import logger
+from starlette.status import HTTP_200_OK
 
 
 async def get_model_guardrails(model_id: str) -> list[dict[str, Any]]:
@@ -236,4 +237,4 @@ def create_guardrail_json_response(guardrail_response: str, model_id: str, creat
         "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
         "lisa_guardrail_triggered": True,
     }
-    return JSONResponse(response_data, status_code=200)
+    return JSONResponse(response_data, status_code=HTTP_200_OK)

@@ -63,29 +63,28 @@ def mock_api_wrapper(func):
                 "body": json.dumps(result, default=str),
                 "headers": {"Access-Control-Allow-Origin": "*", "Content-Type": "application/json"},
             }
-        except ValueError as e:
-            error_msg = str(e)
-            # For tests that need to assert specific errors with pytest.raises, re-raise
-            if "test" in event.get("raise_errors", ""):
-                raise
-
-            # Handle specific error patterns with appropriate status codes
-            status_code = 400
-            if "not found" in error_msg.lower():
-                status_code = 404
-            elif "Not authorized" in error_msg:
-                status_code = 403
+        except Exception as e:
+            # Handle HTTPException and its subclasses (NotFoundException, ForbiddenException, etc.)
+            if hasattr(e, "http_status_code"):
+                status_code = e.http_status_code
+                error_message = getattr(e, "message", str(e))
+            elif isinstance(e, ValueError):
+                error_msg = str(e)
+                # Handle specific error patterns with appropriate status codes
+                status_code = 400
+                if "not found" in error_msg.lower():
+                    status_code = 404
+                elif "Not authorized" in error_msg:
+                    status_code = 403
+                error_message = error_msg
+            else:
+                # For other errors, return a general 400 response
+                status_code = 400
+                error_message = f"Bad Request: {str(e)}"
 
             return {
                 "statusCode": status_code,
-                "body": json.dumps({"error": error_msg}, default=str),
-                "headers": {"Access-Control-Allow-Origin": "*", "Content-Type": "application/json"},
-            }
-        except Exception as e:
-            # For other errors, return a general 400 response
-            return {
-                "statusCode": 400,
-                "body": json.dumps({"error": f"Bad Request: {str(e)}"}, default=str),
+                "body": json.dumps({"error": error_message}, default=str),
                 "headers": {"Access-Control-Allow-Origin": "*", "Content-Type": "application/json"},
             }
 

@@ -32,6 +32,7 @@ vi.mock('../auth/useAuth');
 // Mock store functions
 vi.mock('@/config/store', () => ({
     purgeStore: vi.fn(),
+    useAppDispatch: vi.fn(() => vi.fn()),
     useAppSelector: vi.fn((selector) => {
         const selectorStr = selector.toString();
         if (selectorStr.includes('selectCurrentUserIsAdmin')) return false;

@@ -1,0 +1,65 @@
+#!/bin/bash
+set -e
+
+ROOT=$(pwd)
+OUTPUT_DIR=${OUTPUT_DIR:-$ROOT/dist/layers}
+mkdir -p $OUTPUT_DIR
+
+# Default PYPI_URL if not set
+PYPI_URL=${PYPI_URL:-"https://pypi.org/simple"}
+
+# Define associative array for package name and source mapping
+declare -A LAMBDA_LAYERS
+LAMBDA_LAYERS["CommonLayer"]="./lib/core/layers/common"
+LAMBDA_LAYERS["AuthLayer"]="./lib/core/layers/authorizer"
+LAMBDA_LAYERS["FastApiLayer"]="./lib/core/layers/fastapi"
+LAMBDA_LAYERS["Rag"]="./lib/rag/layer"
+LAMBDA_LAYERS["Sdk"]="./lisa-sdk"
+
+echo "Building Python Lambda Layers..."
+for package_name in "${!LAMBDA_LAYERS[@]}"; do
+  source_path=${LAMBDA_LAYERS[$package_name]}
+  echo "Building Lambda Layer $package_name from $source_path..."
+
+  # Use package-lambda utility with --layer flag (output is relative to source)
+  cd "$source_path"
+  $ROOT/bin/package-lambda --src . --output "$package_name.zip" --pypi "$PYPI_URL" --layer
+  # Move the built zip to the output directory
+  mv "./build/$package_name.zip" "$OUTPUT_DIR/"
+  rm -rf ./build
+  cd "$ROOT"
+done
+
+# Build Node.js CDK Layer
+build_node_layer() {
+  local package_name=$1
+  local source_path=$2
+  echo "Building Node.js Lambda Layer $package_name from $source_path..."
+
+  cd "$source_path"
+
+  # Clean previous build
+  rm -rf build node_modules
+
+  # Create layer structure: nodejs/node_modules
+  mkdir -p build/nodejs
+
+  # Copy package.json and install production dependencies
+  cp package.json build/nodejs/
+  cd build/nodejs
+  npm install --omit=dev --production
+  cd ../..
+
+  # Create zip
+  cd build
+  zip -r "$package_name.zip" nodejs
+  mv "$package_name.zip" $OUTPUT_DIR/
+  cd ..
+  rm -rf build
+  cd $ROOT
+}
+
+echo "Building Node.js Lambda Layers..."
+build_node_layer "CdkLayer" "./lib/core/layers/cdk"
+
+echo "All Lambda layers built successfully in $OUTPUT_DIR!"

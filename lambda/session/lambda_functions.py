@@ -33,7 +33,9 @@ from session.models import (
     AttachImageRequest,
     PutSessionRequest,
     RenameSessionRequest,
+    SelectedModelFeature,
     Session,
+    SessionConfigurationModel,
     SessionSummary,
 )
 from utilities.auth import get_user_context, get_username
@@ -130,27 +132,26 @@ def _get_current_model_config(model_id: str) -> Any:
         return {}
 
 
-def _update_session_with_current_model_config(session_config: dict[str, Any]) -> dict[str, Any]:
+def _update_session_with_current_model_config(
+    session_config: SessionConfigurationModel,
+) -> SessionConfigurationModel:
     """Update session configuration with the most recent model configuration.
 
     Parameters
     ----------
-    session_config : Dict[str, Any]
+    session_config : SessionConfigurationModel
         The session configuration containing model information.
 
     Returns
     -------
-    Dict[str, Any]
+    SessionConfigurationModel
         Updated configuration with current model settings.
     """
-    if not session_config:
+    if not session_config or not session_config.selectedModel:
         return session_config
 
-    # Extract model ID from selectedModel section
-    selected_model = session_config.get("selectedModel", {})
-
-    # Get the modelId directly
-    model_id = selected_model.get("modelId")
+    selected_model = session_config.selectedModel
+    model_id = selected_model.modelId
     if not model_id:
         logger.warning("No modelId found in session selectedModel")
         return session_config
@@ -161,34 +162,32 @@ def _update_session_with_current_model_config(session_config: dict[str, Any]) ->
         logger.warning(f"Could not fetch current config for model {model_id}, using existing session config")
         return session_config
 
-    # Create updated config with current model settings
-    updated_config = session_config.copy()
+    # Build updated SelectedModel with current model settings
+    updated_selected = selected_model.model_copy(deep=True)
 
-    # Update the selectedModel section with current model configuration
-    if "selectedModel" not in updated_config:
-        updated_config["selectedModel"] = {}
-
-    selected_model_section = updated_config["selectedModel"]
-
-    # Update features from current model config
     if "features" in current_model_config:
-        selected_model_section["features"] = current_model_config["features"]
-
-    # Update streaming setting
+        updated_selected.features = [
+            SelectedModelFeature.model_validate(f) if isinstance(f, dict) else f
+            for f in current_model_config["features"]
+        ]
     if "streaming" in current_model_config:
-        selected_model_section["streaming"] = current_model_config["streaming"]
-
-    # Update other model-specific settings that might have changed
-    for key in ["modelType", "modelDescription", "allowedGroups"]:
-        if key in current_model_config:
-            selected_model_section[key] = current_model_config[key]
+        updated_selected.streaming = current_model_config["streaming"]
+    if "modelType" in current_model_config:
+        updated_selected.modelType = str(current_model_config["modelType"])
+    if "modelDescription" in current_model_config:
+        updated_selected.modelDescription = current_model_config["modelDescription"]
+    if "allowedGroups" in current_model_config:
+        updated_selected.allowedGroups = current_model_config["allowedGroups"]
 
     logger.info(f"Updated session selectedModel config for model {model_id} with current model settings")
+    updated_config: SessionConfigurationModel = session_config.model_copy(update={"selectedModel": updated_selected})
     return updated_config
 
 
 def _get_all_user_sessions(user_id: str) -> list[dict[str, Any]]:
     """Get all sessions for a user from DynamoDB.
+
+    Paginates through all results when DynamoDB returns more than one page.
 
     Parameters
     ----------
@@ -200,20 +199,33 @@ def _get_all_user_sessions(user_id: str) -> list[dict[str, Any]]:
     List[Dict[str, Any]]
         A list of user sessions.
     """
-    response = {}
+    all_items: list[dict[str, Any]] = []
+    exclusive_start_key: dict[str, Any] | None = None
+
     try:
-        response = table.query(
-            KeyConditionExpression="userId = :user_id",
-            ExpressionAttributeValues={":user_id": user_id},
-            IndexName=os.environ["SESSIONS_BY_USER_ID_INDEX_NAME"],
-            ScanIndexForward=False,
-        )
+        while True:
+            query_params: dict[str, Any] = {
+                "KeyConditionExpression": "userId = :user_id",
+                "ExpressionAttributeValues": {":user_id": user_id},
+                "IndexName": os.environ["SESSIONS_BY_USER_ID_INDEX_NAME"],
+                "ScanIndexForward": False,
+            }
+            if exclusive_start_key is not None:
+                query_params["ExclusiveStartKey"] = exclusive_start_key
+
+            response = table.query(**query_params)
+            items = response.get("Items", [])
+            all_items.extend(items)
+
+            exclusive_start_key = response.get("LastEvaluatedKey")
+            if exclusive_start_key is None:
+                break
     except ClientError as error:
         if error.response["Error"]["Code"] == "ResourceNotFoundException":
             logger.warning(f"No sessions found for user {user_id}")
         else:
             logger.exception("Error listing sessions")
-    return response.get("Items", [])  # type: ignore [no-any-return]
+    return all_items
 
 
 def _extract_video_s3_keys(session: dict) -> list[str]:
@@ -435,11 +447,9 @@ def get_session(event: dict, context: dict) -> Session | dict:
         session = Session.from_dynamodb_item(item)
 
         # Update configuration with current model settings before returning
-        if session.configuration and session.configuration.get("selectedModel"):
-            temp_config = {"selectedModel": session.configuration["selectedModel"]}
-            updated_temp_config = _update_session_with_current_model_config(temp_config)
-            session.configuration["selectedModel"] = updated_temp_config.get(
-                "selectedModel", session.configuration["selectedModel"]
+        if session.configuration and session.configuration.selectedModel:
+            session = session.model_copy(
+                update={"configuration": _update_session_with_current_model_config(session.configuration)}
             )
 
         # Create a list of tasks for parallel processing presigned URLs
@@ -579,13 +589,11 @@ def put_session(event: dict, context: dict) -> SuccessResponse | dict:
             return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
 
         # Get the configuration from the request body (what the frontend sends)
-        configuration = request.configuration or {}
+        configuration = request.configuration or SessionConfigurationModel()
 
         # Update the selectedModel within the configuration with current model settings
-        if configuration and configuration.get("selectedModel"):
-            temp_config = {"selectedModel": configuration["selectedModel"]}
-            updated_temp_config = _update_session_with_current_model_config(temp_config)
-            configuration["selectedModel"] = updated_temp_config.get("selectedModel", configuration["selectedModel"])
+        if configuration and configuration.selectedModel:
+            configuration = _update_session_with_current_model_config(configuration)
 
         # Check if encryption is enabled via configuration table
         encryption_enabled = _is_session_encryption_enabled()
@@ -650,7 +658,7 @@ def put_session(event: dict, context: dict) -> SuccessResponse | dict:
                 ExpressionAttributeValues={
                     ":history": session_data.history,
                     ":name": session_data.name,
-                    ":configuration": session_data.configuration,
+                    ":configuration": session_data.configuration.model_dump_for_storage(),
                     ":startTime": session_data.startTime,
                     ":createTime": session_data.createTime,
                     ":lastUpdated": session_data.lastUpdated,

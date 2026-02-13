@@ -48,6 +48,10 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && inputs.test_mode
         run: npm publish --dry-run
 
+      # Install Python dependencies needed by build scripts
+      - name: Install Python build dependencies
+        run: pip install tiktoken==0.12.0
+
       # Build binary assets (lambda layers and container images)
       - name: Build Lambda Layers and Container Images
         run: |

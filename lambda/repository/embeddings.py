@@ -141,9 +141,7 @@ class RagEmbeddings(BaseModel):
             all_embeddings.extend(batch_embeddings)
 
         if len(all_embeddings) != len(texts):
-            raise Exception(
-                f"Embedding count mismatch: expected {len(texts)}, got {len(all_embeddings)}"
-            )
+            raise Exception(f"Embedding count mismatch: expected {len(texts)}, got {len(all_embeddings)}")
 
         logger.info(f"Successfully embedded {len(texts)} documents")
         return all_embeddings
@@ -160,8 +158,7 @@ class RagEmbeddings(BaseModel):
                 if attempt < MAX_RETRIES:
                     backoff = INITIAL_BACKOFF_SECONDS * (2 ** (attempt - 1))
                     logger.warning(
-                        f"Embedding attempt {attempt}/{MAX_RETRIES} failed: {e}. "
-                        f"Retrying in {backoff:.1f}s..."
+                        f"Embedding attempt {attempt}/{MAX_RETRIES} failed: {e}. " f"Retrying in {backoff:.1f}s..."
                     )
                     time.sleep(backoff)
                 else:
@@ -227,9 +224,7 @@ class RagEmbeddings(BaseModel):
             raise Exception("No embeddings found in API response")
 
         if len(embeddings) != expected_count:
-            raise Exception(
-                f"Embedding count mismatch: expected {expected_count}, got {len(embeddings)}"
-            )
+            raise Exception(f"Embedding count mismatch: expected {expected_count}, got {len(embeddings)}")
 
         return embeddings
 

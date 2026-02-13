@@ -10,7 +10,7 @@ aiohttp==3.13.2
 backoff==2.2.1
 cachetools==6.2.2
 click==8.3.1
-cryptography==46.0.3
+cryptography==46.0.5
 fastapi>=0.120.1
 fastapi_utils==0.8.0
 gunicorn>=23.0.0,<24.0.0

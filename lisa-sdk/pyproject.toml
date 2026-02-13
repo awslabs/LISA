@@ -23,16 +23,16 @@ readme = "README.md"
 python = "^3.13"
 pydantic = "^2.12.5"
 langchain = "1.2.7"
-langchain-core = "1.2.7"
+langchain-core = "1.2.12"
 langchain-community = "0.4.1"
-langchain-openai = "1.1.7"
+langchain-openai = "1.1.9"
 langchain-text-splitters = "1.1.0"
 numpy = ">2.1.0"
 toml = "*"
 
 [tool.poetry.group.dev.dependencies]
 boto3 = "*"
-ipykernel = "^7.1.0"
+ipykernel = "^7.2.0"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^9.0.2"

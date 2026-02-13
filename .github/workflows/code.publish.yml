@@ -37,6 +37,10 @@ jobs:
         with:
           python-version: '3.13'
 
+      # Install Python dependencies needed by build scripts
+      - name: Install Python build dependencies
+        run: pip install tiktoken==0.12.0
+        
       # Install npm dependencies and publish package. Auth is established with NpmJs Trusted publishing.
       # To update, modify package at https://www.npmjs.com/package/awslabs-lisa/access
       # More info: https://docs.npmjs.com/trusted-publishers
@@ -47,19 +51,6 @@ jobs:
       - name: Publish NPM Package (Dry Run)
         if: github.event_name == 'workflow_dispatch' && inputs.test_mode
         run: npm publish --dry-run
-
-      # Install Python dependencies needed by build scripts
-      - name: Install Python build dependencies
-        run: pip install tiktoken==0.12.0
-
-      # Build binary assets (lambda layers and container images)
-      - name: Build Lambda Layers and Container Images
-        run: |
-          # Create build directory for lambda layers
-          mkdir -p build
-
-          # Build assets (runs build-lambdas and build-images --export)
-          ./bin/build-assets
         env:
           PYPI_URL: https://pypi.org/simple
           LISA_VERSION: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.version }}

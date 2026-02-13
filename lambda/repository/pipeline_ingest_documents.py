@@ -635,14 +635,14 @@ def handle_pipline_ingest_schedule(event: dict[str, Any], context: Any) -> None:
         raise e
 
 
-def batch_texts(texts: list[str], metadatas: list[dict], batch_size: int = 500) -> list[tuple[list[str], list[dict]]]:
+def batch_texts(texts: list[str], metadatas: list[dict], batch_size: int = 256) -> list[tuple[list[str], list[dict]]]:
     """
     Split texts and metadata into batches of specified size.
 
     Args:
         texts: List of text strings to batch
         metadatas: List of metadata dictionaries
-        batch_size: Maximum size of each batch
+        batch_size: Maximum size of each batch (default 256 to match embedding server limit)
     Returns:
         List of tuples containing (texts_batch, metadatas_batch)
     """

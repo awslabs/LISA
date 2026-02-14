@@ -10,6 +10,17 @@ export PYPI_URL=${PYPI_URL:-"https://pypi.org/simple"}
 export OUTPUT_DIR=$LAYER_DIR
 export IMAGE_DIR
 
+# Parse arguments
+INCLUDE_IMAGES=false
+for arg in "$@"; do
+    case $arg in
+        --include-images)
+            INCLUDE_IMAGES=true
+            shift
+            ;;
+    esac
+done
+
 echo "Building all assets..."
 
 # Build Lambda layers (Python and Node.js)
@@ -24,8 +35,10 @@ mv ./build/Lambda.zip "$LAYER_DIR/"
 rm -rf ./build
 cd "$ROOT"
 
-# Build and export container images
-echo "Building Image exports..."
-./bin/build-images --export
+# Build and export container images (only when explicitly requested)
+if [[ "$INCLUDE_IMAGES" == "true" ]]; then
+    echo "Building Image exports..."
+    ./bin/build-images --export
+fi
 
 echo "All assets built successfully!"

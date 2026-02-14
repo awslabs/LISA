@@ -52,10 +52,7 @@ jobs:
         with:
           python-version: '3.13'
 
-      # Install Python dependencies needed by build scripts
-      - name: Install Python build dependencies
-        run: pip install tiktoken==0.12.0
-        
+
       # Install npm dependencies and publish package. Auth is established with NpmJs Trusted publishing.
       # To update, modify package at https://www.npmjs.com/package/awslabs-lisa/access
       # More info: https://docs.npmjs.com/trusted-publishers
@@ -66,6 +63,15 @@ jobs:
       - name: Publish NPM Package (Dry Run)
         if: github.event_name == 'workflow_dispatch' && inputs.test_mode
         run: npm publish --dry-run
+      # Install Python dependencies needed by build scripts
+      - name: Install Python build dependencies
+        run: pip install tiktoken==0.12.0
+      # Build and export container images (separate from npm publish to avoid OOM)
+      - name: Build Container Images
+        run: ./bin/build-images --export
+        env:
+          PYPI_URL: https://pypi.org/simple
+          LISA_VERSION: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.version }}
 
       # Upload binary assets to GitHub Release
       - name: Upload Release Assets
@@ -73,7 +79,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/layers/*.zip
             dist/images/*.tar
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

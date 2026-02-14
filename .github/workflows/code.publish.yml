@@ -25,6 +25,21 @@ jobs:
       contents: write  # Required for uploading release assets
       id-token: write  # Required for npm trusted publishing (OIDC)
     steps:
+      # Free up disk space (~30GB+) by removing preinstalled software we don't need
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo rm -rf /opt/hostedtoolcache/go
+          sudo rm -rf /opt/hostedtoolcache/Ruby
+          sudo rm -rf /usr/local/share/powershell
+          sudo rm -rf /usr/local/share/chromium
+          sudo rm -rf /usr/local/lib/heroku
+          sudo rm -rf /usr/share/swift
+          sudo docker image prune --all --force
+          df -h
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v4
       # Setup .npmrc file to publish to NpmJs Packages
       - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v4
@@ -51,9 +66,6 @@ jobs:
       - name: Publish NPM Package (Dry Run)
         if: github.event_name == 'workflow_dispatch' && inputs.test_mode
         run: npm publish --dry-run
-        env:
-          PYPI_URL: https://pypi.org/simple
-          LISA_VERSION: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.version }}
 
       # Upload binary assets to GitHub Release
       - name: Upload Release Assets

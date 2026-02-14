@@ -57,11 +57,15 @@ jobs:
       # To update, modify package at https://www.npmjs.com/package/awslabs-lisa/access
       # More info: https://docs.npmjs.com/trusted-publishers
       - run: npm ci
+      # Set version from input when running in test mode
+      - name: Set test version
+        if: github.event_name == 'workflow_dispatch'
+        run: npm version "${{ inputs.version }}" --no-git-tag-version --allow-same-version
       - name: Publish NPM Package
-        if: github.event_name == 'release' || !inputs.test_mode
+        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.test_mode == false)
         run: npm publish
       - name: Publish NPM Package (Dry Run)
-        if: github.event_name == 'workflow_dispatch' && inputs.test_mode
+        if: github.event_name == 'workflow_dispatch' && inputs.test_mode == true
         run: npm publish --dry-run
       # Install Python dependencies needed by build scripts
       - name: Install Python build dependencies
@@ -75,7 +79,7 @@ jobs:
 
       # Upload binary assets to GitHub Release
       - name: Upload Release Assets
-        if: github.event_name == 'release' || !inputs.test_mode
+        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.test_mode == false)
         uses: softprops/action-gh-release@v2
         with:
           files: |
@@ -85,7 +89,7 @@ jobs:
 
       # In test mode, just list what would be uploaded
       - name: List Build Artifacts (Test Mode)
-        if: github.event_name == 'workflow_dispatch' && inputs.test_mode
+        if: github.event_name == 'workflow_dispatch' && inputs.test_mode == true
         run: |
           echo "=== Lambda Layers (dist/layers/*.zip) ==="
           ls -lh dist/layers/*.zip 2>/dev/null || echo "No zip files found"

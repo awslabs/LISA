@@ -25,7 +25,9 @@ from .utils import attach_guardrails_to_model, fetch_all_guardrails, group_guard
 class ListModelsHandler(BaseApiHandler):
     """Handler class for ListModels requests."""
 
-    def __call__(self, user_groups: list[str] | None = None, is_admin: bool = False) -> ListModelsResponse:
+    def __call__(
+        self, user_groups: list[str] | None = None, is_admin: bool = False, username: str | None = None
+    ) -> ListModelsResponse:
         """Call handler to get all models from DynamoDB and transform results into API response format."""
         ddb_models = []
         models_response = self._model_table.scan()
@@ -50,7 +52,9 @@ class ListModelsHandler(BaseApiHandler):
         # Filter models based on user groups if not admin
         if not is_admin and user_groups is not None:
             models_list = [
-                model for model in models_list if user_has_group_access(user_groups, model.allowedGroups or [])
+                model
+                for model in models_list
+                if user_has_group_access(user_groups, model.allowedGroups or [], username=username)
             ]
 
         return ListModelsResponse(models=models_list)

@@ -99,6 +99,32 @@ class AuthorizationProvider(ABC):
         """
         pass
 
+    @abstractmethod
+    def is_member_of(self, username: str, group_name: str, groups: list[str] | None = None) -> bool:
+        """Check if a user is a member of a specific group.
+
+        Parameters
+        ----------
+        username : str
+            The username to check membership for
+        group_name : str
+            The group name to check membership in
+        groups : list[str] | None
+            Optional list of groups the user belongs to (used by OIDC providers)
+
+        Returns
+        -------
+        bool
+            True if user is a member of the group, False otherwise
+        """
+        pass
+
+    def user_has_group_access(self, username: str, allowed_groups: list[str], groups: list[str] | None = None) -> bool:
+        """Check if a user has access based on group membership."""
+        if not allowed_groups:
+            return True
+        return any(self.is_member_of(username, group, groups) for group in allowed_groups)
+
 
 def _get_property_path(data: dict[str, Any], property_path: str) -> list[str] | None:
     """Extract a value from nested dict using dot-notation path."""
@@ -171,6 +197,10 @@ class OIDCAuthorizationProvider(AuthorizationProvider):
             return True
         groups = _get_property_path(jwt_data, jwt_groups_property) or []
         return self.user_group in groups
+
+    def is_member_of(self, username: str, group_name: str, groups: list[str] | None = None) -> bool:
+        """Check group membership using JWT groups already available in the token."""
+        return group_name in (groups or [])
 
 
 # Singleton instance for the authorization provider

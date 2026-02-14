@@ -63,6 +63,48 @@ class AuthorizationProvider(ABC):
         """
         pass
 
+    @abstractmethod
+    def is_member_of(self, username: str, group_name: str, groups: list[str] | None = None) -> bool:
+        """Check if a user is a member of a specific group.
+
+        Parameters
+        ----------
+        username : str
+            The username to check membership for
+        group_name : str
+            The group name to check membership in
+        groups : list[str] | None
+            Optional list of groups the user belongs to (used by OIDC providers
+            where groups are already available from JWT claims)
+
+        Returns
+        -------
+        bool
+            True if user is a member of the group, False otherwise
+        """
+        pass
+
+    def user_has_group_access(self, username: str, allowed_groups: list[str], groups: list[str] | None = None) -> bool:
+        """Check if a user has access based on group membership.
+
+        Parameters
+        ----------
+        username : str
+            The username to check access for
+        allowed_groups : list[str]
+            List of groups allowed to access the resource
+        groups : list[str] | None
+            Optional list of groups the user belongs to (used by OIDC providers)
+
+        Returns
+        -------
+        bool
+            True if user has access (either no restrictions or user is in a required group)
+        """
+        if not allowed_groups:
+            return True
+        return any(self.is_member_of(username, group, groups) for group in allowed_groups)
+
 
 class OIDCAuthorizationProvider(AuthorizationProvider):
     """OIDC group-based authorization provider.
@@ -144,6 +186,13 @@ class OIDCAuthorizationProvider(AuthorizationProvider):
             f"User {username} app access check: groups={groups}, user_group={self.user_group}, result={has_access}"
         )
         return has_access
+
+    def is_member_of(self, username: str, group_name: str, groups: list[str] | None = None) -> bool:
+        """Check group membership using JWT groups already available in the token.
+
+        For OIDC, groups come from the JWT claims so we just check the provided list.
+        """
+        return group_name in (groups or [])
 
 
 # Singleton instance for the authorization provider

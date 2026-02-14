@@ -100,12 +100,12 @@ def list_all(event: dict, context: dict) -> list[dict[str, Any]]:
     Returns:
         List of repository configurations user can access
     """
-    _, is_admin, groups = get_user_context(event)
+    username, is_admin, groups = get_user_context(event)
     registered_repositories = vs_repo.get_registered_repositories()
     return [
         repo
         for repo in registered_repositories
-        if is_admin or user_has_group_access(groups, repo.get("allowedGroups", []))
+        if is_admin or user_has_group_access(groups, repo.get("allowedGroups", []), username=username)
     ]
 
 
@@ -222,8 +222,9 @@ def get_repository(event: dict[str, Any], repository_id: str) -> dict[str, Any]:
         return repo
 
     # Non-admins must have matching group access
+    username = get_username(event)
     user_groups = get_groups(event)
-    if not user_has_group_access(user_groups, repo.get("allowedGroups", [])):
+    if not user_has_group_access(user_groups, repo.get("allowedGroups", []), username=username):
         raise ForbiddenException("User does not have permission to access this repository")
 
     return repo

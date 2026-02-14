@@ -37,7 +37,11 @@ def to_lisa_model(model_dict: dict[str, Any]) -> LISAModel:
 
 
 def get_model_and_validate_access(
-    model_table: Any, model_id: str, user_groups: list[str] | None = None, is_admin: bool = False
+    model_table: Any,
+    model_id: str,
+    user_groups: list[str] | None = None,
+    is_admin: bool = False,
+    username: str | None = None,
 ) -> dict[str, Any]:
     """
     Get model from DynamoDB and validate user access
@@ -47,6 +51,7 @@ def get_model_and_validate_access(
         model_id: ID of the model to retrieve
         user_groups: User's group memberships
         is_admin: Whether user is admin
+        username: Username for provider-based membership checks
 
     Returns:
         Dict: Model item from DynamoDB
@@ -67,7 +72,7 @@ def get_model_and_validate_access(
         user_groups = user_groups or []
 
         # Check if user has access
-        if not user_has_group_access(user_groups, allowed_groups):
+        if not user_has_group_access(user_groups, allowed_groups, username=username):
             raise ValidationError(f"Access denied to access model {model_id}")
 
     return model_item  # type: ignore[no-any-return]
@@ -79,6 +84,7 @@ def get_model_and_validate_status(
     allowed_statuses: list[str] | None = None,
     user_groups: list[str] | None = None,
     is_admin: bool = False,
+    username: str | None = None,
 ) -> dict[str, Any]:
     """
     Get model from DynamoDB, validate user access, and check model status
@@ -90,6 +96,7 @@ def get_model_and_validate_status(
                          Defaults to ["InService", "Stopped"] for schedule operations
         user_groups: User's group memberships
         is_admin: Whether user is admin
+        username: Username for provider-based membership checks
 
     Returns:
         Dict: Model item from DynamoDB
@@ -102,7 +109,7 @@ def get_model_and_validate_status(
     if allowed_statuses is None:
         allowed_statuses = ["InService", "Stopped"]
 
-    model_item = get_model_and_validate_access(model_table, model_id, user_groups, is_admin)
+    model_item = get_model_and_validate_access(model_table, model_id, user_groups, is_admin, username=username)
 
     model_status = model_item.get("model_status")
     if model_status not in allowed_statuses:

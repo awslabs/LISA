@@ -69,19 +69,21 @@ guardrails_table = dynamodb.Table(os.environ["GUARDRAILS_TABLE_NAME"])
 stepfunctions = boto3.client("stepfunctions", region_name=os.environ["AWS_REGION"], config=retry_config)
 
 
-def get_admin_status_and_groups(request: Request) -> tuple[bool, list[str]]:
+def get_admin_status_and_groups(request: Request) -> tuple[bool, list[str], str]:
     admin_status = False
     user_groups = []
+    username = "unknown"
 
     if "aws.event" in request.scope:
         event = request.scope["aws.event"]
         try:
+            username = get_username(event)
             user_groups = get_groups(event)
             admin_status = is_admin(event)
         except Exception:
             user_groups = []
             admin_status = False
-    return admin_status, user_groups
+    return admin_status, user_groups, username
 
 
 @app.exception_handler(ModelNotFoundError)
@@ -235,8 +237,8 @@ async def list_models(request: Request) -> ListModelsResponse:
         guardrails_table_resource=guardrails_table,
     )
 
-    admin_status, user_groups = get_admin_status_and_groups(request)
-    return list_handler(user_groups=user_groups, is_admin=admin_status)
+    admin_status, user_groups, username = get_admin_status_and_groups(request)
+    return list_handler(user_groups=user_groups, is_admin=admin_status, username=username)
 
 
 @app.get(path="/{model_id}")
@@ -251,9 +253,9 @@ async def get_model(
         guardrails_table_resource=guardrails_table,
     )
 
-    admin_status, user_groups = get_admin_status_and_groups(request)
+    admin_status, user_groups, username = get_admin_status_and_groups(request)
     try:
-        return get_handler(model_id=model_id, user_groups=user_groups, is_admin=admin_status)
+        return get_handler(model_id=model_id, user_groups=user_groups, is_admin=admin_status, username=username)
     except ModelNotFoundError as e:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=str(e))
 
@@ -315,7 +317,7 @@ async def update_schedule(
     request: Request,
 ) -> UpdateScheduleResponse:
     """Endpoint to create or update a schedule for a model"""
-    admin_status, user_groups = get_admin_status_and_groups(request)
+    admin_status, user_groups, _username = get_admin_status_and_groups(request)
 
     update_schedule_handler = UpdateScheduleHandler(
         autoscaling_client=autoscaling,
@@ -362,7 +364,7 @@ async def delete_schedule(
     model_id: Annotated[str, Path(title="The unique model ID of the model to delete schedule for")], request: Request
 ) -> DeleteScheduleResponse:
     """Endpoint to delete a schedule for a model"""
-    admin_status, user_groups = get_admin_status_and_groups(request)
+    admin_status, user_groups, _username = get_admin_status_and_groups(request)
 
     delete_schedule_handler = DeleteScheduleHandler(
         autoscaling_client=autoscaling,

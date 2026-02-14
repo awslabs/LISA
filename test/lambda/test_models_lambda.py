@@ -943,7 +943,7 @@ async def test_get_admin_status_and_groups(mock_auth):
     # Set admin user via mock_auth fixture
     mock_auth.set_user("admin-user", ["admin-group"], is_admin=True)
 
-    admin_status, user_groups = get_admin_status_and_groups(mock_request)
+    admin_status, user_groups, username = get_admin_status_and_groups(mock_request)
     assert admin_status is True
     assert user_groups == ["admin-group"]
 
@@ -962,13 +962,13 @@ async def test_get_admin_status_and_groups(mock_auth):
     # Set non-admin user via mock_auth fixture
     mock_auth.set_user("regular-user", ["user-group"], is_admin=False)
 
-    admin_status, user_groups = get_admin_status_and_groups(mock_request)
+    admin_status, user_groups, username = get_admin_status_and_groups(mock_request)
     assert admin_status is False
     assert user_groups == ["user-group"]
 
     # Test with no event in scope
     mock_request.scope = {}
-    admin_status, user_groups = get_admin_status_and_groups(mock_request)
+    admin_status, user_groups, username = get_admin_status_and_groups(mock_request)
     assert admin_status is False
     assert user_groups == []
 

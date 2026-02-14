@@ -65,22 +65,32 @@ def get_user_context(event: dict[str, Any]) -> tuple[str, bool, list[str]]:
     return get_username(event), is_admin(event), get_groups(event)
 
 
-def user_has_group_access(user_groups: list[str], allowed_groups: list[str]) -> bool:
-    """
-    Check if user has access based on group membership.
+def user_has_group_access(
+    user_groups: list[str],
+    allowed_groups: list[str],
+    username: str | None = None,
+) -> bool:
+    """Check if user has access based on group membership.
+
+    Delegates to the configured authorization provider's is_member_of for each group.
+    Falls back to set intersection when no username is provided (backward compat).
 
     Args:
         user_groups: List of groups the user belongs to
         allowed_groups: List of groups allowed to access the resource
+        username: Optional username for provider-based membership checks
 
     Returns:
         True if user has access (either no restrictions or user has required group)
     """
-    # Public resource (no group restrictions)
     if not allowed_groups:
         return True
 
-    # Check if user has at least one matching group
+    if username is not None:
+        auth_provider = get_authorization_provider()
+        return auth_provider.user_has_group_access(username, allowed_groups, user_groups)
+
+    # Backward compat: set intersection when username not provided
     return len(set(user_groups).intersection(set(allowed_groups))) > 0
 
 

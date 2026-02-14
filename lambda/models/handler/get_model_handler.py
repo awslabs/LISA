@@ -26,7 +26,9 @@ from .utils import attach_guardrails_to_model, fetch_guardrails_for_model, to_li
 class GetModelHandler(BaseApiHandler):
     """Handler class for GetModel requests."""
 
-    def __call__(self, model_id: str, user_groups: list[str] | None = None, is_admin: bool = False) -> GetModelResponse:
+    def __call__(
+        self, model_id: str, user_groups: list[str] | None = None, is_admin: bool = False, username: str | None = None
+    ) -> GetModelResponse:
         """Get model metadata from LiteLLM and translate to a model management response object."""
         ddb_item = self._model_table.get_item(Key={"model_id": model_id}).get("Item", None)
         if not ddb_item:
@@ -40,7 +42,7 @@ class GetModelHandler(BaseApiHandler):
 
         # Check if user has access to this model based on groups
         if not is_admin and user_groups is not None:
-            if not user_has_group_access(user_groups, model.allowedGroups or []):
+            if not user_has_group_access(user_groups, model.allowedGroups or [], username=username):
                 raise ModelNotFoundError(f"Model '{model_id}' was not found.")
 
         return GetModelResponse(model=model)

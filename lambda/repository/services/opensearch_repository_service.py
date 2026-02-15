@@ -24,7 +24,7 @@ from langchain_community.vectorstores import OpenSearchVectorSearch
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
 from opensearchpy import RequestsHttpConnection
-from repository.embeddings import RagEmbeddings
+from repository.embeddings import get_model_embedding_prefixes, RagEmbeddings
 from requests_aws4auth import AWS4Auth
 from utilities.common_functions import retry_config
 from utilities.repository_types import RepositoryType
@@ -66,7 +66,9 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
             List of documents with page_content and metadata
         """
         # Create embeddings and vector store client once
-        embeddings = RagEmbeddings(model_name=model_name)
+        embeddings = RagEmbeddings(
+            model_name=model_name, query_prefix=get_model_embedding_prefixes(model_name)["query_prefix"]
+        )
         vector_store = self._get_vector_store_client(
             collection_id=collection_id,
             embeddings=embeddings,

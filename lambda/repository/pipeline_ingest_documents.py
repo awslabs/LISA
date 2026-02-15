@@ -31,7 +31,7 @@ from models.domain_objects import (
     RagDocument,
 )
 from repository.collection_service import CollectionService
-from repository.embeddings import RagEmbeddings
+from repository.embeddings import get_model_embedding_prefixes, RagEmbeddings
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
 from repository.metadata_generator import MetadataGenerator
@@ -716,7 +716,8 @@ def store_chunks_in_vectorstore(
     repository = vs_repo.find_repository_by_id(repository_id)
 
     service = RepositoryServiceFactory.create_service(repository)
-    embeddings = RagEmbeddings(model_name=embedding_model)
+    prefix_config = get_model_embedding_prefixes(embedding_model)
+    embeddings = RagEmbeddings(model_name=embedding_model, prefix_config=prefix_config)
     vs = service.get_vector_store_client(
         collection_id=collection_id,
         embeddings=embeddings,

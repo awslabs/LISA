@@ -39,7 +39,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../lisa-sdk"))
 from lisapy.api import LisaApi
 from lisapy.types import BedrockModelRequest, ModelRequest
 
-DEFAULT_EMBEDDING_MODEL_ID = "qwen3-embed-06b"
+DEFAULT_EMBEDDING_MODEL_ID = "e5-embed"
 RAG_PIPELINE_BUCKET = "lisa-rag-pipeline"
 BEDROCK_KB_S3_BUCKET = "bk-s3-test"
 

@@ -120,6 +120,20 @@ def _update_container_config(
     return container_metadata
 
 
+def _update_embedding_prefix_config(model_config: dict[str, Any], value: dict[str, Any], model_id: str) -> None:
+    """Update embedding prefix config with dual-write of legacy flat fields.
+
+    Writes the structured embeddingPrefixConfig and also writes the legacy
+    embeddingQueryPrefix and embeddingDocumentPrefix flat fields so that
+    older system components can read the prefix values.
+    """
+    logger.info(f"Setting embeddingPrefixConfig for model '{model_id}'")
+    model_config["embeddingPrefixConfig"] = value
+    # Dual-write legacy flat fields for backward compatibility
+    model_config["embeddingQueryPrefix"] = value.get("query_prefix", "")
+    model_config["embeddingDocumentPrefix"] = value.get("document_prefix", "")
+
+
 def _get_metadata_update_handlers(model_config: dict[str, Any], model_id: str) -> dict[str, Callable[..., Any]]:
     """Return a dictionary mapping field names to their update handlers."""
     return {
@@ -129,6 +143,13 @@ def _get_metadata_update_handlers(model_config: dict[str, Any], model_id: str) -
         "allowedGroups": lambda value: _update_simple_field(model_config, "allowedGroups", value, model_id),
         "features": lambda value: _update_simple_field(model_config, "features", value, model_id),
         "containerConfig": lambda value: _update_container_config(model_config, value, model_id),
+        "embeddingPrefixConfig": lambda value: _update_embedding_prefix_config(model_config, value, model_id),
+        "embeddingQueryPrefix": lambda value: _update_simple_field(
+            model_config, "embeddingQueryPrefix", value, model_id
+        ),
+        "embeddingDocumentPrefix": lambda value: _update_simple_field(
+            model_config, "embeddingDocumentPrefix", value, model_id
+        ),
     }
 
 

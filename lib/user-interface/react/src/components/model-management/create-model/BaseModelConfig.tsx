@@ -150,6 +150,40 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     disabled={props.isEdit}
                 />
             </FormField>
+            {isEmbeddingModel && (
+                <>
+                    <FormField
+                        label={<span>Embedding Query Prefix <em>- Optional</em></span>}
+                        description='Prefix prepended to query text before embedding for retrieval. Common values: "query: " (E5), "Represent this sentence for searching relevant passages: " (BGE).'
+                        errorText={props.formErrors?.embeddingQueryPrefix}
+                    >
+                        <Input
+                            value={props.item.embeddingQueryPrefix || ''}
+                            inputMode='text'
+                            onBlur={() => props.touchFields(['embeddingQueryPrefix'])}
+                            onChange={({ detail }) => {
+                                props.setFields({ 'embeddingQueryPrefix': detail.value });
+                            }}
+                            placeholder='e.g. query: '
+                        />
+                    </FormField>
+                    <FormField
+                        label={<span>Embedding Document Prefix <em>- Optional</em></span>}
+                        description='Prefix prepended to document text before embedding for indexing. Common values: "passage: " (E5). Leave empty if the model does not require a document prefix.'
+                        errorText={props.formErrors?.embeddingDocumentPrefix}
+                    >
+                        <Input
+                            value={props.item.embeddingDocumentPrefix || ''}
+                            inputMode='text'
+                            onBlur={() => props.touchFields(['embeddingDocumentPrefix'])}
+                            onChange={({ detail }) => {
+                                props.setFields({ 'embeddingDocumentPrefix': detail.value });
+                            }}
+                            placeholder='e.g. passage: '
+                        />
+                    </FormField>
+                </>
+            )}
             {props.item.lisaHostedModel && (
                 <>
                     <FormField

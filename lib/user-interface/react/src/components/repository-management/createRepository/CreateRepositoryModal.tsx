@@ -224,7 +224,8 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
                     formErrors={errors}
                     isEdit={isEdit}
                     repositoryId={state.form.repositoryId}
-                    repositoryType={state.form.type} />
+                    repositoryType={state.form.type}
+                    existingPipelines={isEdit ? (selectedItems[0]?.pipelines ?? []) : []} />
             ),
             isOptional: true,
             onEdit: true,

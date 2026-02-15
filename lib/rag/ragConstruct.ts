@@ -402,6 +402,17 @@ export class LisaRagConstruct extends Construct {
         docMetaTable.grantReadWriteData(lambdaRole);
         subDocTable.grantReadWriteData(lambdaRole);
         collectionsTable.grantReadWriteData(lambdaRole);
+
+        // Grant RAG lambdas read access to model table for embedding prefix lookup
+        lambdaRole.addToPrincipalPolicy(
+            new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: ['dynamodb:GetItem'],
+                resources: [
+                    `arn:${config.partition}:dynamodb:${config.region}:${config.accountNumber}:table/${modelTableNameStringParameter.stringValue}`,
+                ],
+            }),
+        );
     }
 
     legacyRepositories (

@@ -233,7 +233,7 @@ export const ragApi = createApi({
 
                 const queryString = new URLSearchParams(params).toString();
                 return {
-                    url: `repository/${request.repositoryId}/similaritySearch?${queryString}`,
+                    url: `repository/${request.repositoryId}/similaritySearch?score=true&${queryString}`,
                 };
             },
         }),

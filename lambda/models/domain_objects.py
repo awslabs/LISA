@@ -444,6 +444,44 @@ class ModelFeature(BaseModel):
         super().__init__(**kwargs)
 
 
+class PrefixMode(StrEnum):
+    """Defines supported embedding prefix modes."""
+
+    SIMPLE = "simple"
+    TEMPLATE = "template"
+    API_PARAM = "api_param"
+
+
+class EmbeddingPrefixConfig(BaseModel):
+    """Defines structured embedding prefix configuration supporting simple, template, and API parameter modes."""
+
+    prefix_mode: PrefixMode = PrefixMode.SIMPLE
+    query_prefix: str = ""
+    document_prefix: str = ""
+    api_param_name: str | None = None
+    query_api_param_value: str | None = None
+    document_api_param_value: str | None = None
+
+    @model_validator(mode="after")
+    def validate_mode_constraints(self) -> Self:
+        """Validates fields based on prefix_mode."""
+        if self.prefix_mode == PrefixMode.TEMPLATE:
+            count = self.query_prefix.count("{text}")
+            if count != 1:
+                raise ValueError(
+                    f"Template mode requires exactly one '{{text}}' placeholder in query_prefix, found {count}"
+                )
+        elif self.prefix_mode == PrefixMode.API_PARAM:
+            if not self.api_param_name:
+                raise ValueError("API parameter mode requires a non-empty api_param_name")
+            if not self.query_api_param_value and not self.document_api_param_value:
+                raise ValueError(
+                    "API parameter mode requires at least one non-empty value "
+                    "in query_api_param_value or document_api_param_value"
+                )
+        return self
+
+
 class LISAModel(BaseModel):
     """Defines core model attributes and configuration."""
 
@@ -462,6 +500,8 @@ class LISAModel(BaseModel):
     features: list[ModelFeature] | None = None
     allowedGroups: list[str] | None = None
     guardrailsConfig: GuardrailsConfig | None = None
+    embeddingQueryPrefix: str | None = None
+    embeddingDocumentPrefix: str | None = None
 
 
 class ApiResponseBase(BaseModel):
@@ -488,6 +528,8 @@ class CreateModelRequest(BaseModel):
     allowedGroups: list[str] | None = None
     apiKey: str | None = None
     guardrailsConfig: GuardrailsConfig | None = None
+    embeddingQueryPrefix: str | None = None
+    embeddingDocumentPrefix: str | None = None
 
     @model_validator(mode="after")
     def validate_create_model_request(self) -> Self:
@@ -542,6 +584,8 @@ class UpdateModelRequest(BaseModel):
     features: list[ModelFeature] | None = None
     containerConfig: ContainerConfigUpdatable | None = None
     guardrailsConfig: GuardrailsConfig | None = None
+    embeddingQueryPrefix: str | None = None
+    embeddingDocumentPrefix: str | None = None
 
     @model_validator(mode="after")
     def validate_update_model_request(self) -> Self:
@@ -556,11 +600,14 @@ class UpdateModelRequest(BaseModel):
             self.features,
             self.containerConfig,
             self.guardrailsConfig,
+            self.embeddingQueryPrefix,
+            self.embeddingDocumentPrefix,
         ]
         if not validate_any_fields_defined(fields):
             raise ValueError(
                 "At least one field out of autoScalingInstanceConfig, containerConfig, enabled, modelType, "
-                "modelDescription, streaming, allowedGroups, features, or guardrailsConfig must be "
+                "modelDescription, streaming, allowedGroups, features, embeddingQueryPrefix, "
+                "embeddingDocumentPrefix, or guardrailsConfig must be "
                 "defined in request payload."
             )
 
@@ -662,6 +709,7 @@ class ChunkingStrategyType(StrEnum):
 
     FIXED = auto()
     NONE = auto()
+    SEMANTIC = auto()
 
 
 class IngestionStatus(StrEnum):
@@ -717,7 +765,28 @@ class NoneChunkingStrategy(BaseModel):
     type: ChunkingStrategyType = ChunkingStrategyType.NONE
 
 
-ChunkingStrategy = Union[FixedChunkingStrategy, NoneChunkingStrategy]
+class SemanticChunkingStrategy(BaseModel):
+    """Configuration for embedding-aware semantic chunking."""
+
+    type: ChunkingStrategyType = ChunkingStrategyType.SEMANTIC
+    window_size: int = Field(default=512, ge=100, le=10000, description="Window size in characters")
+    window_stride: int = Field(default=256, ge=50, le=5000, description="Stride between windows in characters")
+    similarity_threshold: float = Field(
+        default=0.5, ge=0.0, le=1.0, description="Cosine similarity threshold for boundary detection"
+    )
+    max_chunk_size: int = Field(default=2000, ge=200, le=20000, description="Maximum chunk size before fallback splitting")
+
+    @model_validator(mode="after")
+    def validate_stride(self) -> Self:
+        """Validates stride is not greater than window size."""
+        if self.window_stride > self.window_size:
+            raise ValueError(
+                f"window_stride ({self.window_stride}) must be <= window_size ({self.window_size})"
+            )
+        return self
+
+
+ChunkingStrategy = Union[FixedChunkingStrategy, NoneChunkingStrategy, SemanticChunkingStrategy]
 
 
 class RagSubDocument(BaseModel):

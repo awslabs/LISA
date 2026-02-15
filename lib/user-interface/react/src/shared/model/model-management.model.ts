@@ -195,6 +195,8 @@ export type IModel = {
     autoScalingConfig: IAutoScalingConfig;
     loadBalancerConfig: ILoadBalancerConfig;
     allowedGroups?: string[];
+    embeddingQueryPrefix?: string;
+    embeddingDocumentPrefix?: string;
 };
 
 export type IModelListResponse = {
@@ -219,6 +221,8 @@ export type IModelRequest = {
     allowedGroups?: string[];
     apiKey?: string;
     guardrailsConfig?: IGuardrailsConfig;
+    embeddingQueryPrefix?: string;
+    embeddingDocumentPrefix?: string;
 };
 
 export type ModelFeature = {
@@ -245,6 +249,8 @@ export type IModelUpdateRequest = {
     autoScalingInstanceConfig?: IAutoScalingInstanceConfig;
     containerConfig?: IContainerConfig;
     guardrailsConfig?: IGuardrailsConfig;
+    embeddingQueryPrefix?: string;
+    embeddingDocumentPrefix?: string;
 };
 
 const containerConfigImageSchema = z.object({
@@ -420,6 +426,8 @@ export const ModelRequestBaseSchema = z.object({
     loadBalancerConfig: loadBalancerConfigSchema.default(loadBalancerConfigSchema.parse({})),
     allowedGroups: z.array(z.string()).default([]),
     guardrailsConfig: guardrailsConfigSchema.optional(),
+    embeddingQueryPrefix: z.string().default(''),
+    embeddingDocumentPrefix: z.string().default(''),
 });
 
 // Full schema with refinements - use this for validation

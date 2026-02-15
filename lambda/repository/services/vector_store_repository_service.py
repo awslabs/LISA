@@ -34,7 +34,7 @@ from models.domain_objects import (
     RagDocument,
     VectorStoreStatus,
 )
-from repository.embeddings import RagEmbeddings
+from repository.embeddings import get_model_embedding_prefixes, RagEmbeddings
 from repository.rag_document_repo import RagDocumentRepository
 from utilities.common_functions import retry_config
 from utilities.time import utc_now
@@ -165,7 +165,9 @@ class VectorStoreRepositoryService(RepositoryService):
         Returns:
             List of documents with page_content and metadata
         """
-        embeddings = RagEmbeddings(model_name=model_name)
+        embeddings = RagEmbeddings(
+            model_name=model_name, prefix_config=get_model_embedding_prefixes(model_name)
+        )
         vector_store = self._get_vector_store_client(
             collection_id=collection_id,
             embeddings=embeddings,
@@ -302,7 +304,8 @@ class VectorStoreRepositoryService(RepositoryService):
         embedding_model: str,
     ) -> list[str]:
         """Store document chunks in vector store."""
-        embeddings = RagEmbeddings(model_name=embedding_model)
+        prefix_config = get_model_embedding_prefixes(embedding_model)
+        embeddings = RagEmbeddings(model_name=embedding_model, prefix_config=prefix_config)
         vector_store = self._get_vector_store_client(
             collection_id=collection_id,
             embeddings=embeddings,

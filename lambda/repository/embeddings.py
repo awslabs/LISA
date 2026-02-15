@@ -19,7 +19,9 @@ from typing import Any
 
 import boto3
 import requests
+from models.domain_objects import EmbeddingPrefixConfig
 from pydantic import BaseModel, ConfigDict, field_validator
+from repository.prefix_resolver import PrefixResolver
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from utilities.auth import get_management_key
@@ -38,6 +40,55 @@ MAX_EMBEDDING_BATCH_SIZE = 256
 # Retry configuration for transient embedding failures
 MAX_RETRIES = 3
 INITIAL_BACKOFF_SECONDS = 1.0
+
+
+def get_model_embedding_prefixes(model_name: str) -> EmbeddingPrefixConfig:
+    """Look up embedding prefix configuration from the models DynamoDB table.
+
+    Args:
+        model_name: The model ID to look up.
+
+    Returns:
+        EmbeddingPrefixConfig with the model's prefix settings, or a default empty config.
+    """
+    table_name = os.environ.get("MODEL_TABLE_NAME")
+    if not table_name:
+        logger.debug("MODEL_TABLE_NAME not set, skipping prefix lookup")
+        return EmbeddingPrefixConfig()
+
+    try:
+        dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
+        table = dynamodb.Table(table_name)
+        response = table.get_item(Key={"model_id": model_name})
+        item = response.get("Item")
+        if not item:
+            logger.debug(f"Model {model_name} not found in model table")
+            return EmbeddingPrefixConfig()
+
+        model_config = item.get("model_config", {})
+
+        # Try structured config first
+        prefix_config_data = model_config.get("embeddingPrefixConfig")
+        if prefix_config_data:
+            try:
+                return EmbeddingPrefixConfig.model_validate(prefix_config_data)
+            except Exception:
+                logger.warning(
+                    f"Invalid embeddingPrefixConfig for {model_name}, falling back to legacy fields",
+                    exc_info=True,
+                )
+
+        # Fall back to legacy flat fields
+        query_prefix = model_config.get("embeddingQueryPrefix") or ""
+        document_prefix = model_config.get("embeddingDocumentPrefix") or ""
+        if query_prefix or document_prefix:
+            return PrefixResolver.from_legacy(query_prefix, document_prefix)
+
+        return EmbeddingPrefixConfig()
+    except Exception:
+        logger.warning(f"Failed to look up model prefixes for {model_name}", exc_info=True)
+        return EmbeddingPrefixConfig()
+
 
 # Module-level session with connection pooling for better performance
 # This reuses TCP connections across multiple embedding requests
@@ -77,6 +128,7 @@ class RagEmbeddings(BaseModel):
     lisa_api_endpoint: str
     base_url: str
     cert_path: str | bool
+    prefix_config: EmbeddingPrefixConfig = EmbeddingPrefixConfig()
 
     @field_validator("model_name")
     @classmethod
@@ -85,6 +137,15 @@ class RagEmbeddings(BaseModel):
         return v
 
     def __init__(self, model_name: str, id_token: str | None = None, **data: Any) -> None:
+        # Handle backward compatibility: convert legacy query_prefix/document_prefix kwargs
+        query_prefix = data.pop("query_prefix", None)
+        document_prefix = data.pop("document_prefix", None)
+        if (query_prefix is not None or document_prefix is not None) and "prefix_config" not in data:
+            data["prefix_config"] = PrefixResolver.from_legacy(
+                query_prefix or "",
+                document_prefix or "",
+            )
+
         # Prepare initialization data
         init_data = {"model_name": model_name, **data}
         try:
@@ -100,7 +161,10 @@ class RagEmbeddings(BaseModel):
             init_data["cert_path"] = get_cert_path(iam_client)
 
             super().__init__(**init_data)
-            logger.info("Successfully initialized pipeline embeddings")
+            logger.info(
+                f"Successfully initialized pipeline embeddings "
+                f"(prefix_config={self.prefix_config!r})"
+            )
         except Exception:
             logger.error("Failed to initialize pipeline embeddings", exc_info=True)
             raise
@@ -110,8 +174,7 @@ class RagEmbeddings(BaseModel):
         Generate embeddings for a list of documents, automatically batching
         to stay within the embedding server's max batch size.
 
-        Uses input_type="passage" so litellm applies the correct model-specific
-        prefix for document indexing (e.g. "passage: " for E5 models).
+        Applies document prefix via PrefixResolver and passes API params if configured.
 
         Args:
             texts: List of text strings to embed
@@ -126,6 +189,10 @@ class RagEmbeddings(BaseModel):
         if not texts:
             raise ValidationError("No texts provided for embedding")
 
+        # Apply document prefix via PrefixResolver
+        texts = [PrefixResolver.resolve_document_text(self.prefix_config, t) for t in texts]
+        api_params = PrefixResolver.get_api_params(self.prefix_config, "document")
+
         logger.info(f"Embedding {len(texts)} documents using {self.model_name}")
 
         all_embeddings: list[list[float]] = []
@@ -137,7 +204,7 @@ class RagEmbeddings(BaseModel):
             total_batches = (len(texts) + batch_size - 1) // batch_size
             logger.info(f"Embedding batch {batch_num}/{total_batches} ({len(batch)} texts)")
 
-            batch_embeddings = self._embed_batch_with_retry(batch)
+            batch_embeddings = self._embed_batch_with_retry(batch, extra_params=api_params)
             all_embeddings.extend(batch_embeddings)
 
         if len(all_embeddings) != len(texts):
@@ -146,13 +213,15 @@ class RagEmbeddings(BaseModel):
         logger.info(f"Successfully embedded {len(texts)} documents")
         return all_embeddings
 
-    def _embed_batch_with_retry(self, texts: list[str], input_type: str | None = None) -> list[list[float]]:
+    def _embed_batch_with_retry(
+        self, texts: list[str], extra_params: dict[str, str] | None = None
+    ) -> list[list[float]]:
         """Send a single batch to the embedding API with exponential backoff on failure."""
         last_exception: Exception | None = None
 
         for attempt in range(1, MAX_RETRIES + 1):
             try:
-                return self._call_embedding_api(texts, input_type=input_type)
+                return self._call_embedding_api(texts, extra_params=extra_params)
             except Exception as e:
                 last_exception = e
                 if attempt < MAX_RETRIES:
@@ -166,7 +235,7 @@ class RagEmbeddings(BaseModel):
 
         raise last_exception  # type: ignore[misc]
 
-    def _call_embedding_api(self, texts: list[str], input_type: str | None = None) -> list[list[float]]:
+    def _call_embedding_api(self, texts: list[str], extra_params: dict[str, str] | None = None) -> list[list[float]]:
         """Make a single embedding HTTP request and parse the response."""
         url = f"{self.base_url}/embeddings"
         request_data: dict[str, Any] = {
@@ -174,8 +243,8 @@ class RagEmbeddings(BaseModel):
             "model": self.model_name,
             "encoding_format": "float",
         }
-        if input_type is not None:
-            request_data["input_type"] = input_type
+        if extra_params:
+            request_data.update(extra_params)
 
         session = _get_http_session()
         try:
@@ -229,10 +298,27 @@ class RagEmbeddings(BaseModel):
         return embeddings
 
     def embed_query(self, text: str) -> list[float]:
-        """Embed a single query text using input_type="query" for retrieval."""
+        """Embed a single query text, applying query prefix via PrefixResolver.
+
+        Applies query prefix to text based on prefix mode and passes API params if configured.
+
+        Args:
+            text: Query text string to embed
+
+        Returns:
+            Embedding vector for the query
+
+        Raises:
+            ValidationError: If input text is invalid
+            Exception: If embedding request fails after retries
+        """
         if not text or not isinstance(text, str):
             raise ValidationError("Invalid query text")
 
+        # Apply query prefix via PrefixResolver
+        text = PrefixResolver.resolve_query_text(self.prefix_config, text)
+        api_params = PrefixResolver.get_api_params(self.prefix_config, "query")
+
         logger.info("Embedding single query text")
-        result = self._embed_batch_with_retry([text])
+        result = self._embed_batch_with_retry([text], extra_params=api_params)
         return result[0]

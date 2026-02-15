@@ -193,7 +193,9 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                 'features',
                 'containerConfig',
                 'autoScalingConfig',
-                'guardrailsConfig'
+                'guardrailsConfig',
+                'embeddingQueryPrefix',
+                'embeddingDocumentPrefix'
             ]);
 
             // Build the update request
@@ -201,7 +203,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
 
             // Pick defined fields from updateFields for basic properties
             const basicFields = _.pickBy(updateFields, (value, key) =>
-                ['streaming', 'enabled', 'modelType', 'modelDescription', 'allowedGroups', 'features'].includes(key) &&
+                ['streaming', 'enabled', 'modelType', 'modelDescription', 'allowedGroups', 'features', 'embeddingQueryPrefix', 'embeddingDocumentPrefix'].includes(key) &&
                 value !== undefined
             );
 

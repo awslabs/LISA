@@ -16,13 +16,14 @@ fastapi==0.124.2
 gunicorn==23.0.0
 langchain-community==0.4.1
 langchain-core==1.2.7
+langchain-postgres>=0.0.14
 langchain-text-splitters==1.1.0
 loguru==0.7.3
 mangum==0.19.0
 opensearch-py==3.1.0
 pgvector==0.4.2
 prisma==0.15.0
-psycopg2-binary==2.9.11
+psycopg[binary]
 pydantic==2.12.5
 PyJWT==2.10.1
 pynacl==1.6.1

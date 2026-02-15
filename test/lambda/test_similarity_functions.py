@@ -55,11 +55,11 @@ def test_opensearch_retrieve_documents_without_score():
 
 
 def test_pgvector_retrieve_documents_with_score():
-    """Test PGVector retrieve_documents with score normalization"""
+    """Test PGVector retrieve_documents with score normalization using langchain_postgres.PGVectorStore"""
     repository = {"repositoryId": "test-repo", "type": "pgvector"}
     service = PGVectorRepositoryService(repository)
 
-    # Mock vector store
+    # Mock PGVectorStore from langchain_postgres (the new client)
     mock_vs = MagicMock()
     mock_doc = MagicMock()
     mock_doc.page_content = "Test content"
@@ -67,8 +67,12 @@ def test_pgvector_retrieve_documents_with_score():
     mock_vs.similarity_search_with_score.return_value = [(mock_doc, 0.8)]  # cosine distance
 
     with patch("repository.services.vector_store_repository_service.RagEmbeddings"):
-        with patch.object(service, "_get_vector_store_client", return_value=mock_vs):
-            result = service.retrieve_documents("test query", "test-collection", 3, "test-model", include_score=True)
+        with patch("repository.services.pgvector_repository_service.PGVectorStore") as mock_pgvector_store:
+            mock_pgvector_store.create_sync.return_value = mock_vs
+            with patch.object(service, "_get_vector_store_client", return_value=mock_vs):
+                result = service.retrieve_documents(
+                    "test query", "test-collection", 3, "test-model", include_score=True
+                )
 
     assert len(result) == 1
     assert result[0]["page_content"] == "Test content"

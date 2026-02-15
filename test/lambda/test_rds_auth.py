@@ -40,7 +40,7 @@ class TestRdsAuth:
                 )
 
     def test_generate_auth_token_with_special_characters(self):
-        """Test token generation with special characters that need URL encoding."""
+        """Test token with special characters is returned raw without URL encoding."""
         with patch.dict("os.environ", {"AWS_REGION": "us-east-1"}):
             with patch("boto3.client") as mock_boto3:
                 mock_rds = Mock()
@@ -49,8 +49,8 @@ class TestRdsAuth:
 
                 result = generate_auth_token("test-host", "5432", "test-user")
 
-                # Should be URL encoded
-                assert result == "token%2Bwith%2Fspecial%3Dchars%26more"
+                # Raw token returned directly — psycopg3 handles encoding natively
+                assert result == "token+with/special=chars&more"
 
     def test_generate_auth_token_client_error(self):
         """Test handling of ClientError from RDS client."""

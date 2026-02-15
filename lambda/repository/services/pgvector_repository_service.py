@@ -19,9 +19,9 @@ import logging
 import os
 
 import boto3
-from langchain_community.vectorstores import PGVector
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
+from langchain_postgres import PGEngine, PGVectorStore
 from repository.embeddings import RagEmbeddings
 from utilities.common_functions import get_lambda_role_name, retry_config
 from utilities.rds_auth import generate_auth_token
@@ -53,8 +53,8 @@ class PGVectorRepositoryService(VectorStoreRepositoryService):
             )
 
             # Drop the collection if supported
-            if hasattr(vector_store, "delete_collection"):
-                vector_store.delete_collection()
+            if hasattr(vector_store, "drop_tables"):
+                vector_store.drop_tables()
                 logger.info(f"Dropped PGVector collection: {collection_id}")
             else:
                 logger.warning("Vector store does not support collection deletion")
@@ -75,17 +75,20 @@ class PGVectorRepositoryService(VectorStoreRepositoryService):
         Returns:
             Similarity score in 0-1 range
         """
-        return max(0.0, 1.0 - (score / 2.0))
+        return min(1.0, max(0.0, 1.0 - (score / 2.0)))
 
     def _get_vector_store_client(self, collection_id: str, embeddings: Embeddings) -> VectorStore:
         """Get PGVector vector store client.
+
+        Uses PGEngine for connection management and PGVectorStore as the
+        vector store implementation from langchain-postgres.
 
         Args:
             collection_id: Collection identifier
             embeddings: Embeddings adapter
 
         Returns:
-            PGVector client instance
+            PGVectorStore client instance
 
         Raises:
             ValueError: If repository is not registered or not a PGVector repository
@@ -116,27 +119,34 @@ class PGVectorRepositoryService(VectorStoreRepositoryService):
             secrets_response = secretsmanager_client.get_secret_value(SecretId=connection_info.get("passwordSecretId"))
             user = connection_info.get("username")
             password = json.loads(secrets_response.get("SecretString")).get("password")
-            use_ssl = False
+            ssl_mode = None
         else:
             # IAM auth: generate auth token
             user = get_lambda_role_name()
             password = generate_auth_token(connection_info.get("dbHost"), connection_info.get("dbPort"), user)
-            use_ssl = True  # IAM auth requires SSL
+            ssl_mode = "require"  # IAM auth requires SSL
 
-        connection_string = PGVector.connection_string_from_db_params(
-            driver="psycopg2",
-            host=connection_info.get("dbHost"),
-            port=connection_info.get("dbPort"),
-            database=connection_info.get("dbName"),
-            user=user,
-            password=password,
+        host = connection_info.get("dbHost")
+        port = int(connection_info.get("dbPort"))
+        database = connection_info.get("dbName")
+
+        # Build connection string for psycopg3
+        connection_string = f"postgresql+psycopg3://{user}:{password}@{host}:{port}/{database}"
+        if ssl_mode:
+            connection_string = f"{connection_string}?sslmode={ssl_mode}"
+
+        engine = PGEngine.from_connection_string(url=connection_string)
+
+        # Determine embedding dimension and initialize vector store table (idempotent)
+        sample_embedding = embeddings.embed_query("dimension probe")
+        vector_size = len(sample_embedding)
+        engine.init_vectorstore_table(
+            table_name=collection_id,
+            vector_size=vector_size,
         )
 
-        if use_ssl:
-            connection_string = f"{connection_string}?sslmode=require"
-
-        return PGVector(
-            collection_name=collection_id,
-            connection_string=connection_string,
-            embedding_function=embeddings,
+        return PGVectorStore.create_sync(
+            engine=engine,
+            table_name=collection_id,
+            embedding_service=embeddings,
         )

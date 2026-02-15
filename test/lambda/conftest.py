@@ -169,6 +169,9 @@ def aws_credentials():
     os.environ["AWS_SESSION_TOKEN"] = "testing"
     os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
     os.environ["AWS_REGION"] = "us-east-1"
+    # Set required env vars for module-level imports triggered by conftest patches
+    os.environ.setdefault("MODEL_TABLE_NAME", "test-model-table")
+    os.environ.setdefault("GUARDRAILS_TABLE_NAME", "test-guardrails-table")
 
 
 @pytest.fixture

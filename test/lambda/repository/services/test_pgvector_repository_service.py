@@ -51,19 +51,19 @@ class TestPGVectorRepositoryService:
     """Test suite for PGVectorRepositoryService."""
 
     def test_drop_collection_index_success(self, pgvector_service):
-        """Test dropping PGVector collection successfully."""
+        """Test dropping PGVector collection successfully via drop_tables()."""
         mock_vector_store = MagicMock()
-        mock_vector_store.delete_collection.return_value = None
+        mock_vector_store.drop_tables.return_value = None
 
         with patch("repository.services.pgvector_repository_service.RagEmbeddings"):
             with patch.object(pgvector_service, "_get_vector_store_client", return_value=mock_vector_store):
                 pgvector_service._drop_collection_index("test-collection")
 
-                mock_vector_store.delete_collection.assert_called_once()
+                mock_vector_store.drop_tables.assert_called_once()
 
     def test_drop_collection_index_no_support(self, pgvector_service):
-        """Test dropping collection when vector store doesn't support deletion."""
-        mock_vector_store = MagicMock(spec=[])  # No delete_collection method
+        """Test dropping collection when vector store doesn't support drop_tables."""
+        mock_vector_store = MagicMock(spec=[])  # No drop_tables method
 
         with patch("repository.services.pgvector_repository_service.RagEmbeddings"):
             with patch.object(pgvector_service, "_get_vector_store_client", return_value=mock_vector_store):
@@ -73,7 +73,7 @@ class TestPGVectorRepositoryService:
     def test_drop_collection_index_exception(self, pgvector_service):
         """Test dropping collection handles exceptions gracefully."""
         mock_vector_store = MagicMock()
-        mock_vector_store.delete_collection.side_effect = Exception("Database error")
+        mock_vector_store.drop_tables.side_effect = Exception("Database error")
 
         with patch("repository.services.pgvector_repository_service.RagEmbeddings"):
             with patch.object(pgvector_service, "_get_vector_store_client", return_value=mock_vector_store):
@@ -99,3 +99,19 @@ class TestPGVectorRepositoryService:
 
         # Negative distance (shouldn't happen but handle gracefully) -> clamped to 0.0
         assert pgvector_service._normalize_similarity_score(-0.5) >= 0.0
+
+    def test_normalize_similarity_score_boundary_clamping(self, pgvector_service):
+        """Test score normalization clamps out-of-range inputs to [0, 1].
+
+        Validates: Requirements 5.2, 5.3, 5.4
+        """
+        # Boundary values within normal range
+        assert pgvector_service._normalize_similarity_score(0.0) == 1.0  # identical vectors
+        assert pgvector_service._normalize_similarity_score(2.0) == 0.0  # opposite vectors
+        assert pgvector_service._normalize_similarity_score(1.0) == 0.5  # orthogonal vectors
+
+        # Negative input should clamp to 1.0 (max similarity)
+        assert pgvector_service._normalize_similarity_score(-1.0) == 1.0
+
+        # Input > 2.0 should clamp to 0.0 (min similarity)
+        assert pgvector_service._normalize_similarity_score(3.0) == 0.0

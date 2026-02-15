@@ -62,7 +62,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         run: npm version "${{ inputs.version }}" --no-git-tag-version --allow-same-version
       - name: Publish NPM Package
-        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.test_mode == false)
+        if: "!(github.event_name == 'workflow_dispatch' && inputs.test_mode == true)"
         run: npm publish
       - name: Publish NPM Package (Dry Run)
         if: github.event_name == 'workflow_dispatch' && inputs.test_mode == true
@@ -82,6 +82,7 @@ jobs:
         if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.test_mode == false)
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.version }}
           files: |
             dist/images/*.tar
         env:

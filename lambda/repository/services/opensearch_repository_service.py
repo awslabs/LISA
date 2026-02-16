@@ -67,7 +67,7 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
         """
         # Create embeddings and vector store client once
         embeddings = RagEmbeddings(
-            model_name=model_name, query_prefix=get_model_embedding_prefixes(model_name)["query_prefix"]
+            model_name=model_name, prefix_config=get_model_embedding_prefixes(model_name)
         )
         vector_store = self._get_vector_store_client(
             collection_id=collection_id,

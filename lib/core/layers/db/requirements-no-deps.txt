@@ -1,0 +1,10 @@
+# Packages installed with --no-deps to avoid pulling unnecessary transitive dependencies.
+# - langchain-postgres: pulls psycopg[binary] (~18MB, already in this layer), asyncpg (~14MB)
+# - pgvector: pulls numpy (~45MB, already in RAG layer at runtime)
+# - opensearch-py: pulls grpcio (~17MB) + opensearch-protobufs via protobuf transport
+#   (we only use RequestsHttpConnection, so grpc is not needed)
+# Required runtime deps are in requirements.txt or provided by other layers.
+
+langchain-postgres==0.0.16
+pgvector==0.3.6
+opensearch-py==3.1.0

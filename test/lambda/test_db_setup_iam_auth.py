@@ -19,7 +19,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import boto3
-import psycopg2
+import psycopg
 import pytest
 from botocore.exceptions import ClientError
 from moto import mock_aws
@@ -61,8 +61,8 @@ def lambda_context():
 
 
 @pytest.fixture
-def mock_psycopg2_connection():
-    """Create a mock psycopg2 connection."""
+def mock_psycopg_connection():
+    """Create a mock psycopg connection."""
     mock_conn = MagicMock()
     mock_cursor = MagicMock()
     mock_conn.cursor.return_value = mock_cursor
@@ -169,12 +169,12 @@ def test_delete_bootstrap_secret_error():
         assert result is False
 
 
-def test_create_db_user_success(mock_psycopg2_connection):
+def test_create_db_user_success(mock_psycopg_connection):
     """Test successful creation of a database user."""
-    mock_conn, mock_cursor = mock_psycopg2_connection
+    mock_conn, mock_cursor = mock_psycopg_connection
 
-    # Mock the psycopg2.connect function
-    with patch("psycopg2.connect", return_value=mock_conn):
+    # Mock the psycopg.connect function
+    with patch("psycopg.connect", return_value=mock_conn):
         # Mock get_db_credentials
         with patch("utilities.db_setup_iam_auth.get_db_credentials") as mock_get_credentials:
             mock_get_credentials.return_value = {"password": "test-password"}
@@ -191,17 +191,6 @@ def test_create_db_user_success(mock_psycopg2_connection):
 
             # Verify the connection was established with the correct parameters
             mock_get_credentials.assert_called_once_with("test-arn")
-            psycopg2_connect_args = {
-                "dbname": "test-db",
-                "user": "admin",
-                "password": "test-password",
-                "host": "test-host",
-                "port": "5432",
-            }
-
-            # Verify the connection was established with the correct parameters
-            psycopg2_connect_call = mock_conn._mock_call_args
-            assert psycopg2_connect_call is None or psycopg2_connect_call[1] == psycopg2_connect_args
 
             # Verify the cursor was created
             mock_conn.cursor.assert_called_once()
@@ -231,21 +220,20 @@ def test_create_db_user_success(mock_psycopg2_connection):
             mock_conn.close.assert_called_once()
 
 
-def test_create_db_user_existing_user(mock_psycopg2_connection):
+def test_create_db_user_existing_user(mock_psycopg_connection):
     """Test handling when the user already exists."""
-    mock_conn, mock_cursor = mock_psycopg2_connection
+    mock_conn, mock_cursor = mock_psycopg_connection
 
-    class PsycopgError(psycopg2.Error):
-        pgcode = "23505"  # Unique violation
+    # psycopg3 uses sqlstate instead of pgcode
+    unique_violation_error = psycopg.errors.UniqueViolation("unique violation")
 
     # Configure the cursor: vector extension succeeds, CREATE USER raises unique violation, rest succeed
     # Order: CREATE EXTENSION (success), CREATE USER (unique violation), then GRANT commands (success)
     # There are 14 GRANT/ALTER commands after CREATE USER
-    unique_violation_error = PsycopgError("unique violation")
     mock_cursor.execute.side_effect = [None, unique_violation_error] + [None] * 14
 
-    # Mock the psycopg2.connect function
-    with patch("psycopg2.connect", return_value=mock_conn):
+    # Mock the psycopg.connect function
+    with patch("psycopg.connect", return_value=mock_conn):
         # Mock get_db_credentials
         with patch("utilities.db_setup_iam_auth.get_db_credentials") as mock_get_credentials:
             mock_get_credentials.return_value = {"password": "test-password"}
@@ -266,19 +254,18 @@ def test_create_db_user_existing_user(mock_psycopg2_connection):
             mock_conn.close.assert_called_once()
 
 
-def test_create_db_user_error(mock_psycopg2_connection):
+def test_create_db_user_error(mock_psycopg_connection):
     """Test error handling for other PostgreSQL errors during CREATE USER."""
-    mock_conn, mock_cursor = mock_psycopg2_connection
+    mock_conn, mock_cursor = mock_psycopg_connection
 
-    # Configure the cursor to raise a non-unique violation error on CREATE USER
-    class PsycopgError(psycopg2.Error):
-        pgcode = "42P01"  # Table does not exist
+    # psycopg3 uses specific error classes from psycopg.errors
+    db_error = psycopg.errors.UndefinedTable("relation does not exist")
 
     # Vector extension succeeds, CREATE USER fails with non-unique-violation error
-    mock_cursor.execute.side_effect = [None, PsycopgError("relation does not exist")]
+    mock_cursor.execute.side_effect = [None, db_error]
 
-    # Mock the psycopg2.connect function
-    with patch("psycopg2.connect", return_value=mock_conn):
+    # Mock the psycopg.connect function
+    with patch("psycopg.connect", return_value=mock_conn):
         # Mock get_db_credentials
         with patch("utilities.db_setup_iam_auth.get_db_credentials") as mock_get_credentials:
             mock_get_credentials.return_value = {"password": "test-password"}
@@ -295,19 +282,18 @@ def test_create_db_user_error(mock_psycopg2_connection):
                 )
 
 
-def test_create_db_user_grant_error(mock_psycopg2_connection):
+def test_create_db_user_grant_error(mock_psycopg_connection):
     """Test error handling when granting privileges fails."""
-    mock_conn, mock_cursor = mock_psycopg2_connection
+    mock_conn, mock_cursor = mock_psycopg_connection
 
-    # Configure the cursor to raise an error on the GRANT command
-    class PsycopgError(psycopg2.Error):
-        pgcode = "42501"  # Permission denied
+    # psycopg3 uses specific error classes from psycopg.errors
+    permission_error = psycopg.errors.InsufficientPrivilege("permission denied")
 
     # Order: CREATE EXTENSION (success), CREATE USER (success), first GRANT (fails)
-    mock_cursor.execute.side_effect = [None, None, PsycopgError("permission denied")]
+    mock_cursor.execute.side_effect = [None, None, permission_error]
 
-    # Mock the psycopg2.connect function
-    with patch("psycopg2.connect", return_value=mock_conn):
+    # Mock the psycopg.connect function
+    with patch("psycopg.connect", return_value=mock_conn):
         # Mock get_db_credentials
         with patch("utilities.db_setup_iam_auth.get_db_credentials") as mock_get_credentials:
             mock_get_credentials.return_value = {"password": "test-password"}

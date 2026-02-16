@@ -1,0 +1,9 @@
+# Packages installed with --no-deps to avoid pulling unnecessary transitive dependencies
+# that would push the Lambda layer over the 250MB unzipped size limit.
+#
+# langchain-community: pulls langchain-classic (~15MB), grpcio (~17MB) via langsmith
+#
+# Required transitive deps are explicitly listed in requirements.txt instead.
+# langchain-postgres moved to DB Layer.
+
+langchain-community==0.4.1

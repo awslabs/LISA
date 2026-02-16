@@ -301,11 +301,18 @@ export class LisaApiBaseConstruct extends Construct {
             resources: [`arn:${config.partition}:secretsmanager:${config.region}:${config.accountNumber}:secret:*`],
         }));
 
-        // Get common layer for psycopg2
+        // Get common layer
         const commonLayer = LayerVersion.fromLayerVersionArn(
             scope,
             'IamAuthCommonLayer',
             StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/layerVersion/common`),
+        );
+
+        // Get DB layer for psycopg
+        const dbLayer = LayerVersion.fromLayerVersionArn(
+            scope,
+            'IamAuthDbLayer',
+            StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/layerVersion/db`),
         );
 
         const iamAuthSetupFn = new Function(scope, 'IamAuthSetupFn', {
@@ -319,7 +326,7 @@ export class LisaApiBaseConstruct extends Construct {
             vpc: vpc.vpc,
             vpcSubnets: vpc.subnetSelection,
             securityGroups: securityGroups,
-            layers: [commonLayer],
+            layers: [commonLayer, dbLayer],
         });
 
         // Store the IAM auth setup Lambda ARN in SSM for other stacks to use

@@ -98,7 +98,7 @@ def test_get_database_connection_password_auth(setup_env):
         }
         mock_secrets.get_secret_value.return_value = {"SecretString": json.dumps({"password": "pass"})}
 
-        with patch("psycopg2.connect") as mock_connect:
+        with patch("psycopg.connect") as mock_connect:
             mock_connect.return_value = MagicMock()
 
             from models.model_api_key_cleanup import get_database_connection
@@ -128,7 +128,7 @@ def test_get_database_connection_iam_auth(setup_env):
             }
         }
 
-        with patch("psycopg2.connect") as mock_connect:
+        with patch("psycopg.connect") as mock_connect:
             mock_connect.return_value = MagicMock()
 
             with patch("models.model_api_key_cleanup.get_lambda_role_name") as mock_role:
@@ -173,12 +173,12 @@ def test_lambda_handler_success(setup_env):
 
     with patch("models.model_api_key_cleanup.get_database_connection") as mock_conn:
         with patch("models.model_api_key_cleanup.get_all_dynamodb_models") as mock_models:
-            # Mock psycopg2.sql.SQL and Identifier
+            # Mock psycopg.sql.SQL and Identifier
             mock_sql_obj = MagicMock()
             mock_sql_obj.format.return_value = "SELECT * FROM LiteLLM_ProxyModelTable LIMIT 1"
 
-            with patch("psycopg2.sql.SQL") as mock_sql_class:
-                with patch("psycopg2.sql.Identifier") as mock_identifier:
+            with patch("psycopg.sql.SQL") as mock_sql_class:
+                with patch("psycopg.sql.Identifier") as mock_identifier:
                     mock_sql_class.return_value = mock_sql_obj
                     mock_identifier.return_value = MagicMock()
 

@@ -21,7 +21,7 @@ import { Layer, NodeLayer } from './layers';
 import { BaseProps } from '../schema';
 import { RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 
-import { COMMON_LAYER_PATH, FASTAPI_LAYER_PATH, AUTHORIZER_LAYER_PATH, CDK_LAYER_PATH } from '../util';
+import { COMMON_LAYER_PATH, FASTAPI_LAYER_PATH, AUTHORIZER_LAYER_PATH, CDK_LAYER_PATH, DB_LAYER_PATH } from '../util';
 import { BlockPublicAccess, Bucket, BucketEncryption, ObjectOwnership } from 'aws-cdk-lib/aws-s3';
 import { getNodeRuntime } from '../api-base/utils';
 
@@ -98,6 +98,17 @@ export class CoreConstruct extends Construct {
             assetPath: config.lambdaLayerAssets?.cdkLayerPath,
         });
 
+        // Build DB Lambda layer for PostgreSQL/OpenSearch/PGVector connectivity
+        const dbLambdaLayer = new Layer(scope, 'DbLayer', {
+            config: config,
+            path: DB_LAYER_PATH,
+            description: 'Database connectivity for Lambdas (psycopg, opensearch, pgvector, langchain-postgres)',
+            architecture: ARCHITECTURE,
+            autoUpgrade: true,
+            assetPath: config.lambdaLayerAssets?.dbLayerPath,
+            noDepsRequirements: 'requirements-no-deps.txt',
+        });
+
         new StringParameter(scope, 'LisaCommonLamdaLayerStringParameter', {
             parameterName: `${config.deploymentPrefix}/layerVersion/common`,
             stringValue: commonLambdaLayer.layer.layerVersionArn,
@@ -120,6 +131,12 @@ export class CoreConstruct extends Construct {
             parameterName: `${config.deploymentPrefix}/layerVersion/cdk`,
             stringValue: cdkLambdaLayer.layer.layerVersionArn,
             description: 'Layer Version ARN for LISA CDK Lambda Layer',
+        });
+
+        new StringParameter(scope, 'LisaDbLamdaLayerStringParameter', {
+            parameterName: `${config.deploymentPrefix}/layerVersion/db`,
+            stringValue: dbLambdaLayer.layer.layerVersionArn,
+            description: 'Layer Version ARN for LISA DB Lambda Layer',
         });
     }
 }

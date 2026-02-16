@@ -24,6 +24,7 @@ export const COMMON_LAYER_PATH = path.join(ROOT_PATH, 'lib', 'core', 'layers', '
 export const FASTAPI_LAYER_PATH = path.join(ROOT_PATH, 'lib', 'core', 'layers', 'fastapi');
 export const AUTHORIZER_LAYER_PATH = path.join(ROOT_PATH, 'lib', 'core', 'layers', 'authorizer');
 export const CDK_LAYER_PATH = path.join(ROOT_PATH, 'lib', 'core', 'layers', 'cdk');
+export const DB_LAYER_PATH = path.join(ROOT_PATH, 'lib', 'core', 'layers', 'db');
 export const SDK_PATH = path.join(ROOT_PATH, 'lisa-sdk');
 export const RAG_LAYER_PATH = path.join(ROOT_PATH, 'lib', 'rag', 'layer');
 

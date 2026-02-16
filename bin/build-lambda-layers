@@ -13,6 +13,7 @@ declare -A LAMBDA_LAYERS
 LAMBDA_LAYERS["CommonLayer"]="./lib/core/layers/common"
 LAMBDA_LAYERS["AuthLayer"]="./lib/core/layers/authorizer"
 LAMBDA_LAYERS["FastApiLayer"]="./lib/core/layers/fastapi"
+LAMBDA_LAYERS["DbLayer"]="./lib/core/layers/db"
 LAMBDA_LAYERS["Rag"]="./lib/rag/layer"
 LAMBDA_LAYERS["Sdk"]="./lisa-sdk"
 

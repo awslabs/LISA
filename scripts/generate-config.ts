@@ -87,6 +87,7 @@ type LambdaLayerAssets = {
     authorizerLayerPath: string;
     commonLayerPath: string;
     cdkLayerPath: string;
+    dbLayerPath: string;
     fastapiLayerPath: string;
     ragLayerPath: string;
     sdkLayerPath: string;
@@ -335,6 +336,7 @@ class ConfigBuilder {
                 authorizerLayerPath: `${base}/layers/AuthLayer.zip`,
                 commonLayerPath: `${base}/layers/CommonLayer.zip`,
                 cdkLayerPath: `${base}/layers/CdkLayer.zip`,
+                dbLayerPath: `${base}/layers/DbLayer.zip`,
                 fastapiLayerPath: `${base}/layers/FastApiLayer.zip`,
                 ragLayerPath: `${base}/layers/Rag.zip`,
                 sdkLayerPath: `${base}/layers/Sdk.zip`,
@@ -367,6 +369,7 @@ class ConfigBuilder {
                 authorizerLayerPath: `${base}/layers/AuthLayer.zip`,
                 commonLayerPath: `${base}/layers/CommonLayer.zip`,
                 cdkLayerPath: `${base}/layers/CdkLayer.zip`,
+                dbLayerPath: `${base}/layers/DbLayer.zip`,
                 fastapiLayerPath: `${base}/layers/FastApiLayer.zip`,
                 ragLayerPath: `${base}/layers/Rag.zip`,
                 sdkLayerPath: `${base}/layers/Sdk.zip`,

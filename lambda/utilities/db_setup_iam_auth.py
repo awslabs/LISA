@@ -17,7 +17,7 @@ import os
 from typing import Any
 
 import boto3
-import psycopg2
+import psycopg
 from botocore.exceptions import ClientError
 
 logger = logging.getLogger(__name__)
@@ -128,10 +128,10 @@ def create_db_user(db_host: str, db_port: str, db_name: str, db_user: str, secre
     logger.info(f"Connecting to database at {db_host}:{db_port}/{db_name} as {db_user}")
 
     try:
-        conn = psycopg2.connect(
-            dbname=db_name, user=db_user, password=credentials["password"], host=db_host, port=db_port
+        conn = psycopg.connect(
+            dbname=db_name, user=db_user, password=credentials["password"], host=db_host, port=db_port, autocommit=False
         )
-    except psycopg2.Error as e:
+    except psycopg.Error as e:
         logger.error(f"Failed to connect to database: {e}")
         raise Exception(f"Failed to connect to database: {e}")
 
@@ -143,7 +143,7 @@ def create_db_user(db_host: str, db_port: str, db_name: str, db_user: str, secre
         cursor.execute("CREATE EXTENSION IF NOT EXISTS vector")
         conn.commit()
         logger.info("Vector extension created or already exists")
-    except psycopg2.Error as e:
+    except psycopg.Error as e:
         conn.rollback()
         logger.error(f"Error creating vector extension: {e}")
         raise Exception(f"Error creating vector extension: {e}")
@@ -152,12 +152,12 @@ def create_db_user(db_host: str, db_port: str, db_name: str, db_user: str, secre
         logger.info(f"Creating database user: {iam_name}")
         cursor.execute(f'CREATE USER "{iam_name}"')
         conn.commit()
-    except psycopg2.Error as e:
+    except psycopg.Error as e:
         conn.rollback()  # Must rollback failed transaction before executing more commands
-        if e.pgcode not in ["23505", "42710"]:
+        if e.sqlstate not in ["23505", "42710"]:
             logger.error(f"Error creating user: {e}")
             raise Exception(f"Error creating user: {e}")
-        logger.info(f"User {iam_name} already exists (pgcode: {e.pgcode})")
+        logger.info(f"User {iam_name} already exists (sqlstate: {e.sqlstate})")
 
     sql_commands = [
         f'GRANT rds_iam to "{iam_name}"',
@@ -186,7 +186,7 @@ def create_db_user(db_host: str, db_port: str, db_name: str, db_user: str, secre
             cursor.execute(command)
         conn.commit()
         logger.info("Successfully granted all privileges to IAM user")
-    except psycopg2.Error as e:
+    except psycopg.Error as e:
         logger.error(f"Error granting privileges to user: {e}")
         raise Exception(f"Error granting privileges to user: {e}")
     finally:

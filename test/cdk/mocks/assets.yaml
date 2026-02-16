@@ -4,6 +4,7 @@ dev:
   lambdaLayerAssets:
     authorizerLayerPath: ./test/cdk/mocks/layers
     commonLayerPath: ./test/cdk/mocks/layers
+    dbLayerPath: ./test/cdk/mocks/layers
     fastapiLayerPath: ./test/cdk/mocks/layers
     ragLayerPath: ./test/cdk/mocks/layers
   restApiConfig:

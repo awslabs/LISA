@@ -15,6 +15,7 @@ __pycache__/
 .husky/
 .mypy_cache/
 .pytest_cache/
+.hypothesis/
 *.key
 *.pem
 TIKTOKEN_CACHE

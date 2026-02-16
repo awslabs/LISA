@@ -109,6 +109,12 @@ export class ModelsApi extends Construct {
             StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/fastapi`),
         );
 
+        const dbLambdaLayer = LayerVersion.fromLayerVersionArn(
+            this,
+            'models-db-lambda-layer',
+            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/db`),
+        );
+
         const lambdaLayers = [commonLambdaLayer, fastapiLambdaLayer];
         const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
             restApiId: restApiId,
@@ -482,7 +488,7 @@ export class ModelsApi extends Construct {
             runtime: getPythonRuntime(),
             handler: 'models.model_api_key_cleanup.lambda_handler',
             code: Code.fromAsset(lambdaPath),
-            layers: lambdaLayers,
+            layers: [...lambdaLayers, dbLambdaLayer],
             environment: {
                 LISA_API_URL_PS_NAME: lisaServeEndpointUrlPs.parameterName,
                 MANAGEMENT_KEY_NAME: managementKeyName,

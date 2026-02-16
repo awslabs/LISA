@@ -1,37 +1,26 @@
 # RAG Lambda Layer - Slimmed down for Lambda 250MB limit
-# Document processing dependencies moved to container-based batch ingestion:
-# - pypdf, lxml, python-docx (document parsing)
-# - tiktoken (token counting)
-# - langchain-text-splitters (chunking)
+# Document processing dependencies moved to container-based batch ingestion.
+# Database/vector store connectors moved to DB Layer.
 #
 # This layer is used by Lambda functions for:
 # - Repository/Collection CRUD operations
-# - Similarity search (OpenSearch, PGVector)
+# - Similarity search (OpenSearch, PGVector) — via DB Layer
 # - Ingestion job management (submitting to Batch, not processing)
 #
-# Heavy document processing happens in container: lib/rag/ingestion/ingestion-image/
+# NOTE: langchain-community is installed separately via requirements-no-deps.txt
+# (with --no-deps) to avoid pulling ~65MB of unnecessary transitive dependencies.
+# Its required runtime deps are listed explicitly below.
 
 # Core langchain package for vector store base classes
-langchain-core==1.2.7
-
-# langchain-community for OpenSearchVectorSearch and PGVector classes
-# This package has many optional dependencies - we only need the core vectorstore functionality
-langchain-community==0.4.1
-
-# langchain-postgres for PGVectorStore (replaces deprecated langchain_community PGVector)
-langchain-postgres>=0.0.14
-
-# Database and search connectors (required for similarity search)
-opensearch-py==3.1.0
-pgvector==0.4.2
-psycopg[binary]
-requests-aws4auth==1.3.1
+langchain-core==1.2.13
 
 # Required by langchain-community for vector operations
-# NumPy 2.x has pre-built wheels - pin to specific version to avoid source builds
 numpy==2.1.0
 
-# psycopg2-binary provided by Common Layer (used by other components)
-# boto3/botocore provided by Lambda runtime
+# Explicit transitive deps for langchain-community (installed --no-deps):
+pydantic-settings>=2.10.1
+dataclasses-json>=0.6.7
+httpx-sse>=0.4.0
+aiohttp>=3.8.3
 
 urllib3==2.6.1

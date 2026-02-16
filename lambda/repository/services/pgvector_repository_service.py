@@ -130,8 +130,8 @@ class PGVectorRepositoryService(VectorStoreRepositoryService):
         port = int(connection_info.get("dbPort"))
         database = connection_info.get("dbName")
 
-        # Build connection string for psycopg3
-        connection_string = f"postgresql+psycopg3://{user}:{password}@{host}:{port}/{database}"
+        # Build connection string for psycopg (psycopg3)
+        connection_string = f"postgresql+psycopg://{user}:{password}@{host}:{port}/{database}"
         if ssl_mode:
             connection_string = f"{connection_string}?sslmode={ssl_mode}"
 

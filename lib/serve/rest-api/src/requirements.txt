@@ -1,5 +1,5 @@
 # AWS SDK Dependencies
-# boto3 version pinned by litellm[proxy]==1.81.3 for RDS IAM token refresh
+# boto3 version pinned by litellm[proxy]==1.81.12
 boto3==1.40.76
 
 # OpenTelemetry - Optional for LiteLLM Weave integration, silences import warnings
@@ -15,9 +15,8 @@ fastapi>=0.120.1
 fastapi_utils==0.8.0
 gunicorn>=23.0.0,<24.0.0
 
-# LiteLLM - Upgraded to 1.81.3 for RDS IAM token refresh fix (PR #18795)
-# Fixes: "All connection attempts failed" errors every 15 minutes with IAM auth
-litellm[proxy]==1.81.3
+# LiteLLM - Upgraded to 1.81.12 for latest bug fixes and improvements
+litellm[proxy]==1.81.12
 
 loguru==0.7.3
 pydantic>=2.5.0,<3.0.0
@@ -27,6 +26,6 @@ prisma==0.15.0
 pynacl>=1.5.0,<2.0.0
 starlette>=0.40.0,<0.51.0
 
-# ASGI Server - Version constrained by litellm[proxy]==1.81.3
+# ASGI Server - Version constrained by litellm[proxy]==1.81.12
 # litellm requires uvicorn>=0.31.1,<0.32.0
 uvicorn>=0.31.1,<0.32.0

@@ -265,6 +265,7 @@ export class LisaRagConstruct extends Construct {
             architecture: ARCHITECTURE,
             autoUpgrade: true,
             assetPath: config.lambdaLayerAssets?.ragLayerPath,
+            noDepsRequirements: 'requirements-no-deps.txt',
         });
 
         new StringParameter(scope, createCdkId([config.deploymentName, config.deploymentStage, 'RagLayer']), {
@@ -272,7 +273,14 @@ export class LisaRagConstruct extends Construct {
             stringValue: ragLambdaLayer.layer.layerVersionArn
         });
 
-        const layers = [commonLambdaLayer, ragLambdaLayer.layer];
+        // Get DB layer from SSM (built in CoreConstruct)
+        const dbLambdaLayer = LayerVersion.fromLayerVersionArn(
+            scope,
+            'rag-db-lambda-layer',
+            StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/layerVersion/db`),
+        );
+
+        const layers = [commonLambdaLayer, ragLambdaLayer.layer, dbLambdaLayer];
 
         // create a security group for opensearch
         const openSearchSg = SecurityGroupFactory.createSecurityGroup(

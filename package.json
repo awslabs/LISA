@@ -56,7 +56,7 @@
     "build:assets": "./bin/build-assets",
     "deploy": "tsx ./bin/lisa.ts",
     "copy-dist": "cp VERSION ./dist/",
-    "clean": "npm run clean -ws && rm -rf dist node_modules cdk.out build lib/rag/layer/TIKTOKEN_CACHE lib/serve/rest-api/TIKTOKEN_CACHE",
+    "clean": "npm run clean -ws && rm -rf dist node_modules cdk.out build lib/rag/ingestion/ingestion-image/build lib/serve/rest-api/TIKTOKEN_CACHE",
     "watch": "tsc -w",
     "test": "jest && npm run test -ws",
     "test:update-baselines": "jest --testPathPatterns=snapshot.test.ts -- --updateBaselines",

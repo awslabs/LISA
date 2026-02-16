@@ -1,0 +1,17 @@
+# Database connectivity layer for PostgreSQL, OpenSearch, and PGVector
+# Used by lambdas that need database/vector store access:
+# - IamAuthSetupFn (db_setup_iam_auth)
+# - ModelApiKeyCleanup (model_api_key_cleanup)
+# - RAG lambdas (repository CRUD, similarity search)
+#
+# NOTE: opensearch-py and pgvector are installed via requirements-no-deps.txt
+# to avoid pulling ~65MB of unnecessary transitive deps:
+# - pgvector pulls numpy (~45MB, already in RAG layer)
+# - opensearch-py 3.1.0 pulls grpcio (~17MB) via opensearch-protobufs
+#   (only needed for protobuf transport; we use RequestsHttpConnection)
+# Their actual runtime deps (requests, urllib3, certifi, python-dateutil)
+# are provided by Common layer or the Lambda runtime.
+psycopg[binary]
+sqlalchemy>=2
+psycopg-pool>=3.2.1
+python-dateutil

@@ -40,6 +40,8 @@ type LayerProps = {
     removePackages?: string[];
     assetPath?: string;
     afterBundle?: (inputDir: string, outputDir: string) => string[];
+    /** Path to a requirements file whose packages should be installed with --no-deps. */
+    noDepsRequirements?: string;
 } & BaseProps;
 
 /**
@@ -57,12 +59,14 @@ export class Layer extends Construct {
     constructor (scope: Construct, id: string, props: LayerProps) {
         super(scope, id);
 
-        const { assetPath, config, path: layerPath, description, architecture, afterBundle } = props;
+        const { assetPath, config, path: layerPath, description, architecture, afterBundle, noDepsRequirements } = props;
 
         if (!fs.existsSync(`${layerPath}/requirements.txt`)) {
             throw new Error(`requirements.txt not found in ${layerPath}`);
         }
         const packagesExists = fs.existsSync(path.join(layerPath, 'packages'));
+        const hasNoDeps = noDepsRequirements && fs.existsSync(path.join(layerPath, noDepsRequirements));
+        const useCommandHooks = packagesExists || afterBundle || hasNoDeps;
 
         try {
             if (assetPath) {
@@ -82,9 +86,16 @@ export class Layer extends Construct {
                     removalPolicy: config.removalPolicy,
                     bundling: {
                         platform: architecture.dockerPlatform,
-                        commandHooks: (packagesExists || afterBundle) ? {
+                        commandHooks: useCommandHooks ? {
                             beforeBundling (inputDir: string, outputDir: string): string[] {
-                                return [`mkdir -p ${outputDir}/python && touch ${outputDir}/python/requirements.txt`];
+                                const commands = [`mkdir -p ${outputDir}/python && touch ${outputDir}/python/requirements.txt`];
+                                if (hasNoDeps) {
+                                    // Pre-install packages that need --no-deps before the normal pip install runs
+                                    commands.push(
+                                        `pip install --no-deps -r ${inputDir}/${noDepsRequirements} -t ${outputDir}/python`
+                                    );
+                                }
+                                return commands;
                             },
                             afterBundling (inputDir: string, outputDir: string): string[] {
                                 const commands = [];

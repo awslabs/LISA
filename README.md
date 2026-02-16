@@ -44,5 +44,5 @@ installation and usage.
 ## License
 Although this repository is released under the Apache 2.0 license, when configured to use PGVector as a RAG store it
 uses
-the third party `psycopg2-binary` library. The `psycopg2-binary` project's licensing includes
-the [LGPL with exceptions](https://github.com/psycopg/psycopg2/blob/master/LICENSE) license.
+the third party `psycopg` (psycopg3) library. The `psycopg` project's licensing includes
+the [LGPL 3.0](https://github.com/psycopg/psycopg/blob/master/LICENSE.txt) license.

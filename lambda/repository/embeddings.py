@@ -236,3 +236,11 @@ class RagEmbeddings(BaseModel):
         logger.info("Embedding single query text")
         result = self._embed_batch_with_retry([text])
         return result[0]
+
+    async def aembed_query(self, text: str) -> list[float]:
+        """Async version of embed_query. Delegates to sync implementation since Lambda has no async benefit."""
+        return self.embed_query(text)
+
+    async def aembed_documents(self, texts: list[str]) -> list[list[float]]:
+        """Async version of embed_documents. Delegates to sync implementation since Lambda has no async benefit."""
+        return self.embed_documents(texts)

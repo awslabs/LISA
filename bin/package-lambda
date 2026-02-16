@@ -124,6 +124,51 @@ install_requirements() {
     echo "Installing requirements"
     rm -rf "$TMP_DIR"
     mkdir -p "$TMP_DIR"
+
+    # Phase 1: Install --no-deps packages first (if requirements-no-deps.txt exists)
+    # This mirrors the CDK PythonLayerVersion beforeBundling hook behavior
+    if [ -f "$SRC/requirements-no-deps.txt" ]; then
+        echo "Installing no-deps requirements from $SRC/requirements-no-deps.txt"
+
+        if [ $USE_DOCKER -eq 1 ]; then
+            $DOCKER_CMD run --rm --platform $PLATFORM \
+                -v "$PWD:/workspace" \
+                -v "$TMP_DIR:/output" \
+                -w /workspace \
+                public.ecr.aws/docker/library/python:${PYTHON_VERSION}-slim \
+                pip install --no-deps -r "$SRC/requirements-no-deps.txt" --no-cache-dir --target /output --index-url $PYPI_URL --trusted-host $TRUSTED_HOST
+        else
+            PYTHON_ABI="cp${PYTHON_VERSION//./}"
+
+            if python3 -m pip install --no-deps -r "$SRC/requirements-no-deps.txt" \
+                --platform manylinux2014_x86_64 \
+                --implementation cp \
+                --python-version "$PYTHON_VERSION" \
+                --abi "$PYTHON_ABI" \
+                --only-binary=:all: \
+                --no-cache-dir \
+                --target "$TMP_DIR" \
+                --index-url "$PYPI_URL" \
+                --trusted-host "$TRUSTED_HOST" 2>/dev/null; then
+                echo "Successfully installed no-deps packages using pip --platform"
+            else
+                echo "No-deps packages need compilation, falling back to Docker..."
+                if [ -n "$DOCKER_CMD" ]; then
+                    $DOCKER_CMD run --rm --platform $PLATFORM \
+                        -v "$PWD:/workspace" \
+                        -v "$TMP_DIR:/output" \
+                        -w /workspace \
+                        public.ecr.aws/docker/library/python:${PYTHON_VERSION}-slim \
+                        pip install --no-deps -r "$SRC/requirements-no-deps.txt" --no-cache-dir --target /output --index-url $PYPI_URL --trusted-host $TRUSTED_HOST
+                else
+                    echo "ERROR: No container runtime available and pip --platform failed for no-deps packages"
+                    exit 1
+                fi
+            fi
+        fi
+    fi
+
+    # Phase 2: Install normal requirements
     if [ -f "$SRC/requirements.txt" ]; then
         echo "Installing requirements from $SRC/requirements.txt"
 

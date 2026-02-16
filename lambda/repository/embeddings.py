@@ -19,6 +19,7 @@ from typing import Any
 
 import boto3
 import requests
+from langchain_core.embeddings import Embeddings
 from models.domain_objects import EmbeddingPrefixConfig
 from pydantic import BaseModel, ConfigDict, field_validator
 from repository.prefix_resolver import PrefixResolver
@@ -116,9 +117,12 @@ def _get_http_session() -> requests.Session:
     return _http_session
 
 
-class RagEmbeddings(BaseModel):
+class RagEmbeddings(BaseModel, Embeddings):
     """
     Handles document embeddings through LiteLLM using management credentials.
+
+    Implements langchain_core.embeddings.Embeddings so it can be used directly
+    with langchain vector stores (OpenSearch, PGVector, etc.).
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)

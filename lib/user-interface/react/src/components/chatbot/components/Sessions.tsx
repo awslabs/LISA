@@ -288,14 +288,23 @@ export function Sessions ({ newSession }) {
                                                     >
                                                         <Grid gridDefinition={[{ colspan: 10 }, { colspan: 2 }]}>
                                                             <Box>
-                                                                <Link onClick={() => navigate(`/ai-assistant/${item.sessionId}`)}>
-                                                                    <Box
-                                                                        color={item.sessionId === currentSessionId ? 'text-status-info' : 'text-status-inactive'}
-                                                                        fontWeight={item.sessionId === currentSessionId ? 'bold' : 'normal'}
-                                                                    >
-                                                                        {getSessionDisplay(item, 40)}
+                                                                <SpaceBetween size='xxs' direction='vertical'>
+                                                                    <Link onClick={() => navigate(`/ai-assistant/${item.sessionId}`)}>
+                                                                        <Box
+                                                                            color={item.sessionId === currentSessionId ? 'text-status-info' : 'text-status-inactive'}
+                                                                            fontWeight={item.sessionId === currentSessionId ? 'bold' : 'normal'}
+                                                                        >
+                                                                            {getSessionDisplay(item, 40)}
+                                                                        </Box>
+                                                                    </Link>
+                                                                    <Box variant='small' color='text-status-inactive' fontSize='body-s'>
+                                                                        {item.lastUpdated ? 'Updated' : 'Created'}: {new Date(item.lastUpdated || item.startTime).toLocaleString(undefined, {
+                                                                            dateStyle: 'short',
+                                                                            timeStyle: 'short'
+                                                                        })}
+
                                                                     </Box>
-                                                                </Link>
+                                                                </SpaceBetween>
                                                             </Box>
                                                             <Box>
                                                                 <ButtonDropdown

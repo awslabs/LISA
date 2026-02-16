@@ -41,6 +41,7 @@ import Box from '@cloudscape-design/components/box';
 import JSZip from 'jszip';
 import { downloadFile } from '@/shared/util/downloader';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
+import { formatDate } from '@/shared/util/formats';
 import styles from './Sessions.module.css';
 
 
@@ -298,10 +299,7 @@ export function Sessions ({ newSession }) {
                                                                         </Box>
                                                                     </Link>
                                                                     <Box variant='small' color='text-status-inactive' fontSize='body-s'>
-                                                                        {item.lastUpdated ? 'Updated' : 'Created'}: {new Date(item.lastUpdated || item.startTime).toLocaleString(undefined, {
-                                                                            dateStyle: 'short',
-                                                                            timeStyle: 'short'
-                                                                        })}
+                                                                        {item.lastUpdated ? 'Updated' : 'Created'}: {formatDate(item.lastUpdated || item.startTime)}
 
                                                                     </Box>
                                                                 </SpaceBetween>

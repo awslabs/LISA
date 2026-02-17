@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import { combineReducers, configureStore } from '@reduxjs/toolkit';
+import { combineReducers, configureStore, createAction } from '@reduxjs/toolkit';
 import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux';
 import storage from 'redux-persist/lib/storage';
 import { persistReducer, persistStore } from 'redux-persist';
@@ -26,7 +26,19 @@ const persistConfig = {
     storage,
 };
 
-const persistedReducer = persistReducer(persistConfig, combineReducers(sharedReducers));
+export const resetState = createAction('store/reset');
+
+const combinedReducer = combineReducers(sharedReducers);
+
+const rootReducer = (state: any, action: any) => {
+    if (action.type === resetState.type) {
+        return combinedReducer({ user: state?.user }, action);
+
+    }
+    return combinedReducer(state, action);
+};
+
+const persistedReducer = persistReducer(persistConfig, rootReducer);
 
 const store = configureStore({
     reducer: persistedReducer,
@@ -38,6 +50,7 @@ const store = configureStore({
 });
 
 export async function purgeStore () {
+    store.dispatch(resetState());
     await storage.removeItem('persist:lisa');
     persistor.purge().then(() => {
         persistor.flush().then(() => {

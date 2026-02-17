@@ -64,6 +64,12 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isDeleteUserSessionsSuccess, isDeleteUserSessionsError, deleteUserSessionsError, isDeleteUserSessionsLoading]);
 
+    useEffect(() => {
+        if (auth.isAuthenticated) {
+            purgeStore();
+        }
+    }, [auth.isAuthenticated]);
+
     const libraryItems = [
         ...(configs?.configuration.enabledComponents?.modelLibrary ? [{
             id: 'model-library',

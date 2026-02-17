@@ -105,7 +105,8 @@ describe('Topbar', () => {
         await user.click(screen.getByText('Sign out'));
 
         // Verify that purgeStore and signoutRedirect were called
-        expect(purgeStore).toHaveBeenCalledOnce();
+        // purgeStore is called twice: once on mount (authenticated) and once on sign-out
+        expect(purgeStore).toHaveBeenCalledTimes(2);
         expect(mockAuth.signoutRedirect).toHaveBeenCalledOnce();
     });
 
@@ -131,5 +132,23 @@ describe('Topbar', () => {
         expect(mockAuth.signinRedirect).toHaveBeenCalledWith({
             redirect_uri: window.location.toString(),
         });
+    });
+
+    it('calls purgeStore on mount when user is authenticated', async () => {
+        const { purgeStore } = await import('@/config/store');
+
+        renderTopbar();
+
+        expect(purgeStore).toHaveBeenCalledOnce();
+    });
+
+    it('does not call purgeStore when user is not authenticated', async () => {
+        const { purgeStore } = await import('@/config/store');
+
+        (useAuth as any).mockReturnValue({ ...mockAuth, isAuthenticated: false });
+
+        renderTopbar();
+
+        expect(purgeStore).not.toHaveBeenCalled();
     });
 });

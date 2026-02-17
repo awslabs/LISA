@@ -29,8 +29,9 @@ const persistConfig = {
 export const resetState = createAction('store/reset');
 
 const combinedReducer = combineReducers(sharedReducers);
+type RootState = ReturnType<typeof combinedReducer>;
 
-const rootReducer = (state: any, action: any) => {
+const rootReducer = (state: RootState | undefined, action: ReturnType<typeof resetState> | { type: string }) => {
     if (action.type === resetState.type) {
         return combinedReducer({ user: state?.user }, action);
 
@@ -49,16 +50,6 @@ const store = configureStore({
             .concat(...rootMiddleware),
 });
 
-export async function purgeStore () {
-    store.dispatch(resetState());
-    await storage.removeItem('persist:lisa');
-    persistor.purge().then(() => {
-        persistor.flush().then(() => {
-            persistor.pause();
-        });
-    });
-}
-
 const getStore = () => store;
 
 export type IRootState = ReturnType<typeof store.getState>;
@@ -68,4 +59,13 @@ export const useAppSelector: TypedUseSelectorHook<IRootState> = useSelector;
 export const useAppDispatch = () => useDispatch<AppDispatch>();
 
 export const persistor = persistStore(store);
+
+export async function purgeStore () {
+    store.dispatch(resetState());
+    await storage.removeItem('persist:lisa');
+    await persistor.purge();
+    await persistor.flush();
+    persistor.pause();
+}
+
 export default getStore;

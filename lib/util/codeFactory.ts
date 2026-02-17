@@ -19,9 +19,11 @@ import { Code } from 'aws-cdk-lib/aws-lambda';
 import { EcsSourceType, ImageAsset } from '../schema';
 import { Repository } from 'aws-cdk-lib/aws-ecr';
 import { Construct } from 'constructs';
-import { AssetImageProps, ContainerImage } from 'aws-cdk-lib/aws-ecs';
+import { AssetImageProps, ContainerImage, EcsOptimizedImage } from 'aws-cdk-lib/aws-ecs';
 import { createCdkId } from '../core/utils';
 import { Platform } from 'aws-cdk-lib/aws-ecr-assets';
+import { IMachineImage, MachineImage } from 'aws-cdk-lib/aws-ec2';
+import { AmiHardwareType } from '../schema/cdk';
 
 export const DEFAULT_PLATFORM = Platform.LINUX_AMD64;
 
@@ -86,5 +88,19 @@ export class CodeFactory {
                 return Code.fromAsset(image.path);
             }
         }
+    }
+
+    /**
+     * Returns the appropriate ECS machine image based on config.
+     * If a custom AMI ID is provided, uses that. Otherwise falls back to
+     * the default ECS-optimized AMI (AL2 for ADC/iso regions, AL2023 otherwise).
+     */
+    static getEcsMachineImage (region: string | undefined, amiHardwareType: AmiHardwareType, amiId?: string): IMachineImage {
+        if (amiId) {
+            return MachineImage.genericLinux({ [region!]: amiId });
+        }
+        return region?.includes('iso')
+            ? EcsOptimizedImage.amazonLinux2(amiHardwareType)
+            : EcsOptimizedImage.amazonLinux2023(amiHardwareType);
     }
 }

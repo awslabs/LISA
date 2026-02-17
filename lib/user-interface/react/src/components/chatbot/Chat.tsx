@@ -45,6 +45,7 @@ import {
     useAttachImageToSessionMutation,
     useGetSessionHealthQuery,
     useLazyGetSessionByIdQuery,
+    useListSessionsQuery,
     useUpdateSessionMutation,
 } from '@/shared/reducers/session.reducer';
 import { useAppDispatch, useAppSelector } from '@/config/store';
@@ -83,6 +84,7 @@ import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 import ConfirmationModal from '@/shared/modal/confirmation-modal';
 import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
 import { conditionalDeps } from '../utils';
+import { formatDate } from '@/shared/util/formats';
 
 export default function Chat ({ sessionId }) {
     const dispatch = useAppDispatch();
@@ -248,6 +250,13 @@ export default function Chat ({ sessionId }) {
         ragConfig,
         setRagConfig
     } = useSession(sessionId, getSessionById);
+
+    // Get sessions list lastUpdated timestamp
+    const { data: sessions } = useListSessionsQuery(null, { refetchOnMountOrArgChange: 5 });
+    const currentSessionSummary = useMemo(() =>
+        sessions?.find((s) => s.sessionId === session.sessionId),
+    [sessions, session.sessionId]
+    );
 
     const { modelsOptions, handleModelChange } = useModels(
         allModels,
@@ -995,6 +1004,16 @@ export default function Chat ({ sessionId }) {
                             openModal={openModal}
                         />
                     )}
+                    {!loadingSession && session.history.length > 0 && session.lastUpdated && (
+                        <Box textAlign='center' padding='s'>
+                            <Box variant='small' color='text-status-inactive'>
+                                Last updated: {new Date(session.lastUpdated).toLocaleString(undefined, {
+                                    timeStyle: 'short',
+                                    dateStyle: 'medium'
+                                })}
+                            </Box>
+                        </Box>
+                    )}
                     <div ref={bottomRef} />
                 </SpaceBetween>
             </div>
@@ -1046,7 +1065,7 @@ export default function Chat ({ sessionId }) {
                                 <ChatPromptInput {...promptInputProps} />
                             )}
                             <SpaceBetween direction='vertical' size='xs'>
-                                <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }]}>
+                                <Grid gridDefinition={[{ colspan: 4 }, { colspan: 4 }, { colspan: 4 }]}>
                                     {enabledServers && enabledServers.length > 0 && selectedModel?.features?.filter((feature) => feature.name === ModelFeatures.TOOL_CALLS)?.length && true ? (
                                         <Box>
                                             <Icon name='gen-ai' variant='success' /> {enabledServers.length} MCP Servers - {openAiTools?.length || 0} tools
@@ -1056,6 +1075,13 @@ export default function Chat ({ sessionId }) {
                                             : (<Box>
                                                 <Icon name='gen-ai' variant='disabled' /> This model does not have Tool Calling enabled
                                             </Box>)}
+                                    <Box textAlign='center'>
+                                        {!loadingSession && session.history.length > 0 && (currentSessionSummary?.lastUpdated) && (
+                                            <Box variant='small' color='text-status-inactive'>
+                                                Last updated: {formatDate(currentSessionSummary?.lastUpdated)}
+                                            </Box>
+                                        )}
+                                    </Box>
                                     <Box float='right' variant='div'>
                                         <StatusIndicator type={isConnected ? 'success' : 'error'}>
                                             {isConnected ? 'Connected' : 'Disconnected'}

@@ -41,6 +41,7 @@ import Box from '@cloudscape-design/components/box';
 import JSZip from 'jszip';
 import { downloadFile } from '@/shared/util/downloader';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
+import { formatDate } from '@/shared/util/formats';
 import styles from './Sessions.module.css';
 
 
@@ -288,14 +289,20 @@ export function Sessions ({ newSession }) {
                                                     >
                                                         <Grid gridDefinition={[{ colspan: 10 }, { colspan: 2 }]}>
                                                             <Box>
-                                                                <Link onClick={() => navigate(`/ai-assistant/${item.sessionId}`)}>
-                                                                    <Box
-                                                                        color={item.sessionId === currentSessionId ? 'text-status-info' : 'text-status-inactive'}
-                                                                        fontWeight={item.sessionId === currentSessionId ? 'bold' : 'normal'}
-                                                                    >
-                                                                        {getSessionDisplay(item, 40)}
+                                                                <SpaceBetween size='xxs' direction='vertical'>
+                                                                    <Link onClick={() => navigate(`/ai-assistant/${item.sessionId}`)}>
+                                                                        <Box
+                                                                            color={item.sessionId === currentSessionId ? 'text-status-info' : 'text-status-inactive'}
+                                                                            fontWeight={item.sessionId === currentSessionId ? 'bold' : 'normal'}
+                                                                        >
+                                                                            {getSessionDisplay(item, 40)}
+                                                                        </Box>
+                                                                    </Link>
+                                                                    <Box variant='small' color='text-status-inactive' fontSize='body-s'>
+                                                                        {item.lastUpdated ? 'Updated' : 'Created'}: {formatDate(item.lastUpdated || item.startTime)}
+
                                                                     </Box>
-                                                                </Link>
+                                                                </SpaceBetween>
                                                             </Box>
                                                             <Box>
                                                                 <ButtonDropdown

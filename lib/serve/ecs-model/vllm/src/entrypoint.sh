@@ -43,6 +43,7 @@ declare -a vars=("S3_BUCKET_MODELS" "LOCAL_MODEL_PATH" "MODEL_NAME" "S3_MOUNT_PO
 #   VLLM_BLOCK_SIZE - Memory block size (8/16/32)
 #   VLLM_SEED - Random seed for reproducibility
 #   VLLM_FLOAT32_MATMUL_PRECISION - Float32 matmul precision (ieee/tf32)
+#   VLLM_ASYNC_SCHEDULING - Adds --async-scheduling for higher performance
 #
 # ATTENTION & BACKENDS:
 #   VLLM_ATTENTION_BACKEND - Attention backend (FLASH_ATTN/XFORMERS/ROCM_FLASH/TORCH_SDPA/FLASHINFER/etc)
@@ -257,6 +258,11 @@ fi
 if [[ -n "${VLLM_TOOL_CALL_PARSER}" ]]; then
     ADDITIONAL_ARGS="${ADDITIONAL_ARGS} --tool-call-parser ${VLLM_TOOL_CALL_PARSER}"
     echo "  --tool-call-parser ${VLLM_TOOL_CALL_PARSER}"
+fi
+
+if [[ "${VLLM_ASYNC_SCHEDULING}" == "true" ]]; then
+    ADDITIONAL_ARGS="${ADDITIONAL_ARGS} --async-scheduling"
+    echo "  --async-scheduling"
 fi
 
 echo "Starting vLLM with args: ${ADDITIONAL_ARGS}"

@@ -137,7 +137,7 @@ def test_store_chunks_in_vectorstore(setup_env):
         ids = store_chunks_in_vectorstore(texts, metadatas, "repo1", "col1", "model1")
 
         assert len(ids) > 0
-        assert mock_vs.add_texts.call_count == 3  # 1200 texts / 500 batch size
+        assert mock_vs.add_texts.call_count == 5  # 1200 texts / 256 batch size
 
 
 def test_store_chunks_in_vectorstore_failure(setup_env):

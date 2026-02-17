@@ -27,7 +27,6 @@ import {
     Ec2Service,
     Ec2ServiceProps,
     Ec2TaskDefinition,
-    EcsOptimizedImage,
     HealthCheck,
     Host,
     LinuxParameters,
@@ -108,7 +107,7 @@ export class ECSCluster extends Construct {
         const autoScalingGroup = cluster.addCapacity(createCdkId([identifier, 'ASG']), {
             vpcSubnets: subnetSelection,
             instanceType: new InstanceType(ecsConfig.instanceType),
-            machineImage: EcsOptimizedImage.amazonLinux2023(ecsConfig.amiHardwareType),
+            machineImage: CodeFactory.getEcsMachineImage(config.region, ecsConfig.amiHardwareType, ecsConfig.amiId),
             minCapacity: ecsConfig.autoScalingConfig.minCapacity,
             maxCapacity: ecsConfig.autoScalingConfig.maxCapacity,
             groupMetrics: [GroupMetrics.all()],

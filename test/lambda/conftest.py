@@ -119,13 +119,20 @@ def setup_auth_patches(request, mock_auth, aws_credentials):
     patches = [
         patch("utilities.auth.get_username", mock_auth.get_username),
         patch("utilities.auth.get_groups", mock_auth.get_groups),
-        patch("utilities.auth.is_admin", mock_auth.is_admin),
         patch("utilities.auth.get_user_context", mock_auth.get_user_context),
-        # Also patch where these functions are imported
-        patch("models.lambda_functions.is_admin", mock_auth.is_admin),
-        patch("models.lambda_functions.get_groups", mock_auth.get_groups),
         patch("utilities.fastapi_middleware.auth_decorators.is_admin", mock_auth.is_admin),
     ]
+    # Chat assistant stacks tests use their own is_admin patch (patch_is_admin_for_chat_stacks).
+    if "test_chat_assistant_stacks" not in request.node.nodeid:
+        patches.append(patch("utilities.auth.is_admin", mock_auth.is_admin))
+    # Avoid importing models.lambda_functions for test_chat_assistant_stacks (that module requires MODEL_TABLE_NAME).
+    if "test_chat_assistant_stacks" not in request.node.nodeid:
+        patches.extend(
+            [
+                patch("models.lambda_functions.is_admin", mock_auth.is_admin),
+                patch("models.lambda_functions.get_groups", mock_auth.get_groups),
+            ]
+        )
 
     for p in patches:
         p.start()

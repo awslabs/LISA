@@ -16,6 +16,7 @@
 
 import React, { useMemo, useState } from 'react';
 import {
+    Badge,
     Box,
     Button,
     ButtonDropdown,
@@ -26,31 +27,45 @@ import {
     TextFilter,
 } from '@cloudscape-design/components';
 import { RefreshButton } from '@/components/common/RefreshButton';
-
-export type ChatAssistantStackPlaceholder = {
-    stackId: string;
-    name: string;
-    description: string;
-};
+import { useAppDispatch } from '@/config/store';
+import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
+import { useNotificationService } from '@/shared/util/hooks';
+import {
+    useListStacksQuery,
+    useDeleteStackMutation,
+    useUpdateStackStatusMutation,
+} from '@/shared/reducers/chat-assistant-stacks.reducer';
+import { IChatAssistantStack } from '@/shared/model/chat-assistant-stack.model';
+import CreateStackModal from '@/components/chat-assistant-stacks/CreateStackModal';
 
 const CARD_DEFINITION = {
-    header: (item: ChatAssistantStackPlaceholder) => item.name,
+    header: (item: IChatAssistantStack) => (
+        <SpaceBetween direction='horizontal' size='xs'>
+            <span>{item.name}</span>
+            {!item.isActive && <Badge color='grey'>Inactive</Badge>}
+        </SpaceBetween>
+    ),
     sections: [
         {
             id: 'description',
             header: 'Description',
-            content: (item: ChatAssistantStackPlaceholder) => item.description || '—',
+            content: (item: IChatAssistantStack) => item.description || '—',
         },
     ],
 };
 
 export function ChatAssistantStacksConfiguration (): React.ReactElement {
+    const dispatch = useAppDispatch();
+    const notificationService = useNotificationService(dispatch);
     const [searchText, setSearchText] = useState('');
-    const [isRefreshing, setIsRefreshing] = useState(false);
-    const [selectedItems, setSelectedItems] = useState<ChatAssistantStackPlaceholder[]>([]);
+    const [createModalVisible, setCreateModalVisible] = useState(false);
+    const [isEdit, setIsEdit] = useState(false);
+    const [selectedItems, setSelectedItems] = useState<IChatAssistantStack[]>([]);
 
-    // Placeholder: no API yet – empty list. When API exists, replace with query and filter by name/description.
-    const stacks: ChatAssistantStackPlaceholder[] = [];
+    const { data: stacks = [], isFetching, refetch } = useListStacksQuery(undefined, { refetchOnMountOrArgChange: true });
+    const [deleteStack, { isLoading: isDeleting }] = useDeleteStackMutation();
+    const [updateStackStatus, { isLoading: isUpdatingStatus }] = useUpdateStackStatusMutation();
+
     const filteredStacks = useMemo(() => {
         if (!searchText.trim()) return stacks;
         const lower = searchText.toLowerCase();
@@ -59,91 +74,154 @@ export function ChatAssistantStacksConfiguration (): React.ReactElement {
                 s.name.toLowerCase().includes(lower) ||
                 (s.description && s.description.toLowerCase().includes(lower))
         );
-    }, [searchText]);
+    }, [stacks, searchText]);
 
     const handleRefresh = () => {
-        setIsRefreshing(true);
-        // TODO: refetch stacks when API exists
-        setTimeout(() => setIsRefreshing(false), 500);
+        refetch();
     };
 
     const handleCreateStack = () => {
-        // TODO: open Create Stack modal (AS-4)
+        setIsEdit(false);
+        setCreateModalVisible(true);
+    };
+
+    const handleActionsClick = (detail: { id: string }) => {
+        const stack = selectedItems[0];
+        if (!stack) return;
+        switch (detail.id) {
+            case 'update':
+                setIsEdit(true);
+                setCreateModalVisible(true);
+                break;
+            case 'delete':
+                dispatch(
+                    setConfirmationModal({
+                        action: 'Delete',
+                        resourceName: 'Chat Assistant Stack',
+                        description: `This will delete the stack "${stack.name}".`,
+                        onConfirm: () => {
+                            deleteStack(stack.stackId)
+                                .unwrap()
+                                .then(() => {
+                                    notificationService.generateNotification(`Deleted stack: ${stack.name}`, 'success');
+                                    setSelectedItems([]);
+                                })
+                                .catch((err) => {
+                                    notificationService.generateNotification(err?.message ?? 'Failed to delete stack', 'error');
+                                });
+                        },
+                    })
+                );
+                break;
+            case 'activate':
+                updateStackStatus({ stackId: stack.stackId, isActive: true })
+                    .unwrap()
+                    .then(() => {
+                        notificationService.generateNotification(`Activated stack: ${stack.name}`, 'success');
+                        setSelectedItems([]);
+                    })
+                    .catch((err) => {
+                        notificationService.generateNotification(err?.message ?? 'Failed to activate stack', 'error');
+                    });
+                break;
+            case 'deactivate':
+                updateStackStatus({ stackId: stack.stackId, isActive: false })
+                    .unwrap()
+                    .then(() => {
+                        notificationService.generateNotification(`Deactivated stack: ${stack.name}`, 'success');
+                        setSelectedItems([]);
+                    })
+                    .catch((err) => {
+                        notificationService.generateNotification(err?.message ?? 'Failed to deactivate stack', 'error');
+                    });
+                break;
+            default:
+                break;
+        }
     };
 
     const actionsDropdownItems = [
         { id: 'update', text: 'Update', disabled: selectedItems.length !== 1 },
         { id: 'delete', text: 'Delete', disabled: selectedItems.length !== 1 },
-        { id: 'activate', text: 'Activate', disabled: selectedItems.length !== 1 },
-        { id: 'deactivate', text: 'Deactivate', disabled: selectedItems.length !== 1 },
+        { id: 'activate', text: 'Activate', disabled: selectedItems.length !== 1 || selectedItems[0]?.isActive },
+        { id: 'deactivate', text: 'Deactivate', disabled: selectedItems.length !== 1 || !selectedItems[0]?.isActive },
     ];
 
     return (
-        <Container
-            header={
-                <Header variant='h2'>
-                    Chat Assistant Stacks
-                </Header>
-            }
-        >
-            <Cards
-                variant='full-page'
-                trackBy='stackId'
-                cardDefinition={CARD_DEFINITION}
-                cardsPerRow={[{ cards: 3 }]}
-                items={filteredStacks}
-                selectedItems={selectedItems}
-                onSelectionChange={({ detail }) => setSelectedItems(detail.selectedItems)}
-                selectionType='single'
-                loading={isRefreshing}
-                loadingText='Loading stacks'
+        <>
+            <CreateStackModal
+                visible={createModalVisible}
+                setVisible={setCreateModalVisible}
+                isEdit={isEdit}
+                setIsEdit={setIsEdit}
+                selectedStack={isEdit ? selectedItems[0] ?? null : null}
+                setSelectedItems={setSelectedItems}
+            />
+            <Container
                 header={
-                    <Header
-                        counter={filteredStacks.length > 0 ? `(${filteredStacks.length})` : undefined}
-                        actions={
-                            <SpaceBetween direction='horizontal' size='xs'>
-                                <RefreshButton
-                                    isLoading={isRefreshing}
-                                    onClick={handleRefresh}
-                                    ariaLabel='Refresh stacks'
-                                />
-                                <ButtonDropdown
-                                    items={actionsDropdownItems}
-                                    variant='primary'
-                                    disabled={selectedItems.length === 0}
-                                    onItemClick={() => {
-                                        // TODO: handle Actions (AS-4–AS-7)
-                                    }}
-                                >
-                                    Actions
-                                </ButtonDropdown>
-                                <Button variant='primary' onClick={handleCreateStack}>
-                                    Create Stack
-                                </Button>
-                            </SpaceBetween>
-                        }
-                    >
-                        Stacks
+                    <Header variant='h2'>
+                        Chat Assistant Stacks
                     </Header>
                 }
-                filter={
-                    <TextFilter
-                        filteringText={searchText}
-                        filteringPlaceholder='Search by name or description'
-                        filteringAriaLabel='Search stacks'
-                        onChange={({ detail }) => setSearchText(detail.filteringText)}
-                    />
-                }
-                empty={
-                    <Box margin={{ vertical: 'xs' }} textAlign='center' color='inherit'>
-                        <SpaceBetween size='m'>
-                            <b>No stacks</b>
-                            <span>Create a stack to bundle models, repos, MCP servers, and prompts for users.</span>
-                        </SpaceBetween>
-                    </Box>
-                }
-            />
-        </Container>
+            >
+                <Cards
+                    variant='full-page'
+                    trackBy='stackId'
+                    cardDefinition={CARD_DEFINITION}
+                    cardsPerRow={[{ cards: 3 }]}
+                    items={filteredStacks}
+                    selectedItems={selectedItems}
+                    onSelectionChange={({ detail }) => setSelectedItems(detail.selectedItems)}
+                    selectionType='single'
+                    loading={isFetching}
+                    loadingText='Loading stacks'
+                    header={
+                        <Header
+                            counter={filteredStacks.length > 0 ? `(${filteredStacks.length})` : undefined}
+                            actions={
+                                <SpaceBetween direction='horizontal' size='xs'>
+                                    <RefreshButton
+                                        isLoading={isFetching}
+                                        onClick={handleRefresh}
+                                        ariaLabel='Refresh stacks'
+                                    />
+                                    <ButtonDropdown
+                                        items={actionsDropdownItems}
+                                        variant='primary'
+                                        disabled={selectedItems.length === 0}
+                                        loading={isDeleting || isUpdatingStatus}
+                                        onItemClick={({ detail }) => handleActionsClick(detail)}
+                                    >
+                                        Actions
+                                    </ButtonDropdown>
+                                    <Button variant='primary' onClick={handleCreateStack}>
+                                        Create Stack
+                                    </Button>
+                                </SpaceBetween>
+                            }
+                        >
+                            Stacks
+                        </Header>
+                    }
+                    filter={
+                        <TextFilter
+                            filteringText={searchText}
+                            filteringPlaceholder='Search by name or description'
+                            filteringAriaLabel='Search stacks'
+                            onChange={({ detail }) => setSearchText(detail.filteringText)}
+                        />
+                    }
+                    empty={
+                        <Box margin={{ vertical: 'xs' }} textAlign='center' color='inherit'>
+                            <SpaceBetween size='m'>
+                                <b>No stacks</b>
+                                <span>Create a stack to bundle models, repos, MCP servers, and prompts for users.</span>
+                            </SpaceBetween>
+                        </Box>
+                    }
+                />
+            </Container>
+        </>
     );
 }
 

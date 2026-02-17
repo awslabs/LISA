@@ -27,6 +27,7 @@ LISA Serve supports configuring vLLM model serving through environment variables
 | `VLLM_MAX_NUM_SEQS` | Maximum concurrent sequences | `256` | `128`, `512` |
 | `VLLM_ENABLE_PREFIX_CACHING` | Enable prefix caching for repeated prompts | `false` | `true` |
 | `VLLM_ENABLE_CHUNKED_PREFILL` | Enable chunked prefill | `false` | `true` |
+| `VLLM_ASYNC_SCHEDULING` | Adds --async-scheduling for higher performance if hardware supported | `false` | `true` |
 
 ## Parallel Processing
 

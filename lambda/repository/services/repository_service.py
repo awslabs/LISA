@@ -53,6 +53,20 @@ class RepositoryService(ABC):
             True if default collection should be created, False otherwise
         """
         pass
+    def initialize_collection(self, collection_id: str, embedding_model: str) -> None:
+        """Initialize backing storage for a new collection.
+
+        Called when a collection is first created so that repository-specific
+        resources (e.g., PGVector tables) can be provisioned. The default
+        implementation is a no-op; subclasses override as needed.
+
+        Args:
+            collection_id: Collection identifier
+            embedding_model: Name of the embedding model (used to determine vector dimensions)
+        """
+        pass
+
+
 
     @abstractmethod
     def get_collection_id_from_config(self, pipeline_config: dict[str, Any]) -> str:

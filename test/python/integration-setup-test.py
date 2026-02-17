@@ -415,6 +415,7 @@ def create_self_hosted_model(
             "VLLM_ENABLE_CHUNKED_PREFILL": "true",  # Better memory efficiency during prefill
             # Precision - let vLLM auto-detect based on model config
             "VLLM_DTYPE": "auto",
+            "VLLM_USE_V1": "1"
         }
 
     print(f"  Using instance type: {instance_type}")
@@ -1346,7 +1347,7 @@ def main():
                     sharedMemorySize=65536,
                     memoryReservation=740000,
                     environment={
-                        "VLLM_ATTENTION_BACKEND": "TRITON_ATTN_VLLM_V1",
+                        "VLLM_USE_V1": "0",
                         "VLLM_TENSOR_PARALLEL_SIZE": "8",
                         "VLLM_ASYNC_SCHEDULING": "true",
                         "VLLM_MAX_PARALLEL_LOADING_WORKERS": "8",

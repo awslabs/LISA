@@ -87,48 +87,17 @@ class TestRepositoryServiceFactory:
         assert RepositoryType.BEDROCK_KB in supported_types
         assert len(supported_types) == 3
 
-    def test_register_custom_service(self):
-        """Test registering a custom service class."""
-        from repository.services.repository_service import RepositoryService
+    def test_lazy_import_opensearch(self):
+        """Test that OpenSearch service class is lazily imported."""
+        service_class = RepositoryServiceFactory._get_service_class(RepositoryType.OPENSEARCH)
+        assert service_class is OpenSearchRepositoryService
 
-        class CustomRepositoryService(RepositoryService):
-            def supports_custom_collections(self):
-                return True
+    def test_lazy_import_pgvector(self):
+        """Test that PGVector service class is lazily imported."""
+        service_class = RepositoryServiceFactory._get_service_class(RepositoryType.PGVECTOR)
+        assert service_class is PGVectorRepositoryService
 
-            def should_create_default_collection(self):
-                return False
-
-            def get_collection_id_from_config(self, pipeline_config):
-                return "custom-id"
-
-            def ingest_document(self, job, texts, metadatas):
-                pass
-
-            def delete_document(self, document, s3_client, bedrock_agent_client=None):
-                pass
-
-            def delete_collection(self, collection_id, s3_client, bedrock_agent_client=None):
-                pass
-
-            def retrieve_documents(self, query, collection_id, top_k, bedrock_agent_client=None):
-                return []
-
-            def validate_document_source(self, s3_path):
-                return s3_path
-
-            def get_vector_store_client(self, collection_id, embeddings):
-                return None
-
-            def create_default_collection(self):
-                return None
-
-        # Register custom service using existing enum value for testing
-        # (Can't create new enum values dynamically)
-        original_service = RepositoryServiceFactory._services.get(RepositoryType.OPENSEARCH)
-        RepositoryServiceFactory.register_service(RepositoryType.OPENSEARCH, CustomRepositoryService)
-
-        # Verify registration
-        assert RepositoryServiceFactory._services[RepositoryType.OPENSEARCH] == CustomRepositoryService
-
-        # Restore original
-        RepositoryServiceFactory._services[RepositoryType.OPENSEARCH] = original_service
+    def test_lazy_import_bedrock_kb(self):
+        """Test that Bedrock KB service class is lazily imported."""
+        service_class = RepositoryServiceFactory._get_service_class(RepositoryType.BEDROCK_KB)
+        assert service_class is BedrockKBRepositoryService

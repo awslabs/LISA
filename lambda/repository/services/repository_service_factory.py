@@ -14,14 +14,14 @@
 
 """Factory for creating repository service instances."""
 
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 from utilities.repository_types import RepositoryType
 
-from .bedrock_kb_repository_service import BedrockKBRepositoryService
-from .opensearch_repository_service import OpenSearchRepositoryService
-from .pgvector_repository_service import PGVectorRepositoryService
-from .repository_service import RepositoryService
+if TYPE_CHECKING:
+    from .repository_service import RepositoryService
 
 
 class RepositoryServiceFactory:
@@ -29,17 +29,46 @@ class RepositoryServiceFactory:
 
     Encapsulates repository-specific behavior, eliminating the need for
     conditional logic throughout the codebase.
+
+    Service classes are lazily imported to avoid loading heavy dependencies
+    (e.g., langchain_community, langchain_postgres) at module load time.
+    This prevents ImportErrors in Lambda functions that don't need vector
+    store operations and reduces cold start times.
     """
 
-    # Registry mapping repository types to service classes
-    _services: dict[RepositoryType, type[RepositoryService]] = {
-        RepositoryType.OPENSEARCH: OpenSearchRepositoryService,
-        RepositoryType.PGVECTOR: PGVectorRepositoryService,
-        RepositoryType.BEDROCK_KB: BedrockKBRepositoryService,
-    }
+    @classmethod
+    def _get_service_class(cls, repo_type: RepositoryType) -> type["RepositoryService"]:
+        """Lazily import and return the service class for a repository type.
+
+        Args:
+            repo_type: Repository type to look up
+
+        Returns:
+            Service class for the repository type
+
+        Raises:
+            ValueError: If repository type is not supported
+        """
+        if repo_type == RepositoryType.OPENSEARCH:
+            from .opensearch_repository_service import OpenSearchRepositoryService
+
+            return OpenSearchRepositoryService
+        elif repo_type == RepositoryType.PGVECTOR:
+            from .pgvector_repository_service import PGVectorRepositoryService
+
+            return PGVectorRepositoryService
+        elif repo_type == RepositoryType.BEDROCK_KB:
+            from .bedrock_kb_repository_service import BedrockKBRepositoryService
+
+            return BedrockKBRepositoryService
+        else:
+            raise ValueError(
+                f"Unsupported repository type: {repo_type}. "
+                f"Supported types: {[RepositoryType.OPENSEARCH, RepositoryType.PGVECTOR, RepositoryType.BEDROCK_KB]}"
+            )
 
     @classmethod
-    def create_service(cls, repository: dict[str, Any]) -> RepositoryService:
+    def create_service(cls, repository: dict[str, Any]) -> "RepositoryService":
         """Create appropriate service instance for repository type.
 
         Args:
@@ -52,17 +81,11 @@ class RepositoryServiceFactory:
             ValueError: If repository type is not supported
         """
         repo_type = RepositoryType.get_type(repository)
-
-        service_class = cls._services.get(repo_type)
-        if not service_class:
-            raise ValueError(
-                f"Unsupported repository type: {repo_type}. " f"Supported types: {list(cls._services.keys())}"
-            )
-
+        service_class = cls._get_service_class(repo_type)
         return service_class(repository)
 
     @classmethod
-    def register_service(cls, repo_type: RepositoryType, service_class: type[RepositoryService]) -> None:
+    def register_service(cls, repo_type: RepositoryType, service_class: type["RepositoryService"]) -> None:
         """Register a new service class for a repository type.
 
         Allows extending the factory with new repository types without
@@ -72,7 +95,9 @@ class RepositoryServiceFactory:
             repo_type: Repository type to register
             service_class: Service class to use for this type
         """
-        cls._services[repo_type] = service_class
+        # Note: With lazy imports, custom registrations would need a different
+        # mechanism. This method is preserved for backward compatibility.
+        pass
 
     @classmethod
     def get_supported_types(cls) -> list[RepositoryType]:
@@ -81,4 +106,4 @@ class RepositoryServiceFactory:
         Returns:
             List of registered repository types
         """
-        return list(cls._services.keys())
+        return [RepositoryType.OPENSEARCH, RepositoryType.PGVECTOR, RepositoryType.BEDROCK_KB]

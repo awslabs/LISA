@@ -88,11 +88,13 @@ export class Layer extends Construct {
                         platform: architecture.dockerPlatform,
                         commandHooks: useCommandHooks ? {
                             beforeBundling (inputDir: string, outputDir: string): string[] {
-                                const commands = [`mkdir -p ${outputDir}/python && touch ${outputDir}/python/requirements.txt`];
+                                const commands: string[] = [];
                                 if (hasNoDeps) {
-                                    // Pre-install packages that need --no-deps before the normal pip install runs
+                                    // Pre-install packages that need --no-deps before the normal pip install runs.
+                                    // outputDir is already the python/ subdirectory for PythonLayerVersion
+                                    // (outputPathSuffix='python'), so install directly into outputDir.
                                     commands.push(
-                                        `pip install --no-deps -r ${inputDir}/${noDepsRequirements} -t ${outputDir}/python`
+                                        `pip install --no-deps -r ${inputDir}/${noDepsRequirements} -t ${outputDir}`
                                     );
                                 }
                                 return commands;
@@ -100,7 +102,7 @@ export class Layer extends Construct {
                             afterBundling (inputDir: string, outputDir: string): string[] {
                                 const commands = [];
                                 if (packagesExists) {
-                                    commands.push(`cp -r ${inputDir}/packages/* ${outputDir}/python/`);
+                                    commands.push(`cp -r ${inputDir}/packages/* ${outputDir}/`);
                                 }
                                 if (afterBundle) {
                                     commands.push(...afterBundle(inputDir, outputDir));

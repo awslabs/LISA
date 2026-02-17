@@ -77,18 +77,11 @@ class PGVectorRepositoryService(VectorStoreRepositoryService):
         """
         return min(1.0, max(0.0, 1.0 - (score / 2.0)))
 
-    def _get_vector_store_client(self, collection_id: str, embeddings: Embeddings) -> VectorStore:
-        """Get PGVector vector store client.
-
-        Uses PGEngine for connection management and PGVectorStore as the
-        vector store implementation from langchain-postgres.
-
-        Args:
-            collection_id: Collection identifier
-            embeddings: Embeddings adapter
+    def _create_engine(self) -> PGEngine:
+        """Create a PGEngine instance from repository connection configuration.
 
         Returns:
-            PGVectorStore client instance
+            PGEngine connected to the repository's database
 
         Raises:
             ValueError: If repository is not registered or not a PGVector repository
@@ -115,38 +108,60 @@ class PGVectorRepositoryService(VectorStoreRepositoryService):
 
         # Check if using password auth (passwordSecretId present) or IAM auth
         if "passwordSecretId" in connection_info:
-            # Password auth: get credentials from Secrets Manager
             secrets_response = secretsmanager_client.get_secret_value(SecretId=connection_info.get("passwordSecretId"))
             user = connection_info.get("username")
             password = json.loads(secrets_response.get("SecretString")).get("password")
             ssl_mode = None
         else:
-            # IAM auth: generate auth token
             user = get_lambda_role_name()
             password = generate_auth_token(connection_info.get("dbHost"), connection_info.get("dbPort"), user)
-            ssl_mode = "require"  # IAM auth requires SSL
+            ssl_mode = "require"
 
         host = connection_info.get("dbHost")
         port = int(connection_info.get("dbPort"))
         database = connection_info.get("dbName")
 
-        # Build connection string for psycopg (psycopg3)
         connection_string = f"postgresql+psycopg://{user}:{password}@{host}:{port}/{database}"
         if ssl_mode:
             connection_string = f"{connection_string}?sslmode={ssl_mode}"
 
-        engine = PGEngine.from_connection_string(url=connection_string)
+        return PGEngine.from_connection_string(url=connection_string)
 
-        # Determine embedding dimension and initialize vector store table (idempotent)
+    def initialize_collection(self, collection_id: str, embedding_model: str) -> None:
+        """Create the PGVector table for a new collection.
+
+        Args:
+            collection_id: Collection identifier (used as the table name)
+            embedding_model: Embedding model name for determining vector dimensions
+        """
+        embeddings = RagEmbeddings(model_name=embedding_model)
+        engine = self._create_engine()
         sample_embedding = embeddings.embed_query("dimension probe")
         vector_size = len(sample_embedding)
         engine.init_vectorstore_table(
             table_name=collection_id,
             vector_size=vector_size,
         )
+        logger.info(f"Initialized PGVector table for collection '{collection_id}' with vector_size={vector_size}")
+
+    def _get_vector_store_client(self, collection_id: str, embeddings: Embeddings) -> VectorStore:
+        """Get PGVector vector store client.
+
+        Assumes the collection table already exists (created by initialize_collection).
+
+        Args:
+            collection_id: Collection identifier
+            embeddings: Embeddings adapter
+
+        Returns:
+            PGVectorStore client instance
+        """
+        engine = self._create_engine()
 
         return PGVectorStore.create_sync(
             engine=engine,
             table_name=collection_id,
             embedding_service=embeddings,
         )
+
+

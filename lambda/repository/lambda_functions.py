@@ -428,6 +428,14 @@ def create_collection(event: dict, context: dict) -> dict[str, Any]:
         username=username,
     )
 
+    # Initialize backing storage (e.g., PGVector table) for the new collection
+    embedding_model = collection.embeddingModel or repository.get("embeddingModelId")
+    service = RepositoryServiceFactory.create_service(repository)
+    service.initialize_collection(
+        collection_id=created_collection.collectionId,
+        embedding_model=embedding_model,
+    )
+
     # Return collection configuration
     result: dict[str, Any] = created_collection.model_dump(mode="json")
     return result

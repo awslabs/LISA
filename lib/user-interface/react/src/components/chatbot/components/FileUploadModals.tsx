@@ -47,18 +47,45 @@ import { getDisplayName } from '@/shared/util/branding';
 // Configure PDF.js worker to use local file
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
-// File extension mappings for validation
+// File extension mappings as fallback if MIME types are not
+// specified. Primarily an issue with any compiled languages.
 const AllowedExtensions =
     [
-        '.py', '.js', '.jsx', '.ts', '.tsx', '.html', '.htm', '.css',
-        '.java', '.c', '.cpp', '.cxx', '.cc', '.h', '.hpp', '.hxx',
-        '.go', '.rs', '.rb', '.php', '.swift', '.kt', '.kts', '.scala',
-        '.sh', '.bash', '.zsh', '.fish', '.ps1', '.sql', '.yaml', '.yml',
-        '.json', '.xml', '.toml', '.ini', '.cfg', '.conf', '.r', '.m',
-        '.cs', '.vb', '.fs', '.clj', '.cljs', '.ex', '.exs', '.erl',
-        '.hrl', '.lua', '.pl', '.pm', '.dart', '.zig', '.nim', '.v',
-        '.sv', '.svh', '.vhd', '.vhdl'
+        '.ts', '.tsx', '.java', '.c', '.cpp', '.cxx', '.cc', '.h',
+        '.hpp', '.hxx', '.go', '.rs', '.ps1', '.sql', '.r', '.m'
     ];
+
+// Allowed file types for image-supporting models
+const IMAGE_MODEL_FILE_TYPES = [
+    FileTypes.TEXT,
+    FileTypes.JPEG,
+    FileTypes.PNG,
+    FileTypes.WEBP,
+    FileTypes.GIF
+];
+
+// Allowed file types for text/code models (non-image)
+const TEXT_MODEL_FILE_TYPES = [
+    FileTypes.TEXT,
+    FileTypes.PDF,
+    FileTypes.PYTHON,
+    FileTypes.JAVASCRIPT,
+    FileTypes.HTML,
+    FileTypes.MARKDOWN,
+    FileTypes.YAML,
+    FileTypes.JSON,
+    FileTypes.CSS,
+    FileTypes.RUBY,
+    FileTypes.SHELL,
+    FileTypes.XML
+];
+
+// Allowed file types for RAG uploads
+const RAG_FILE_TYPES = [
+    FileTypes.TEXT,
+    FileTypes.DOCX,
+    FileTypes.PDF
+];
 
 /**
  * Extract file extension from filename
@@ -219,9 +246,13 @@ export const ContextUploadModal = ({
                         <Button
                             onClick={async () => {
                                 const files = selectedFiles.map((f) => renameFile(f));
-                                const successfulUploads = await handleUpload(files, handleError, processFile, modelSupportsImages
-                                    ? [FileTypes.TEXT, FileTypes.JPEG, FileTypes.PNG, FileTypes.WEBP, FileTypes.GIF]
-                                    : [FileTypes.TEXT, FileTypes.PDF, FileTypes.PYTHON, FileTypes.JAVASCRIPT, FileTypes.HTML, FileTypes.MARKDOWN, FileTypes.YAML, FileTypes.JSON], 20971520);
+                                const successfulUploads = await handleUpload(
+                                    files,
+                                    handleError,
+                                    processFile,
+                                    modelSupportsImages ? IMAGE_MODEL_FILE_TYPES : TEXT_MODEL_FILE_TYPES,
+                                    20971520
+                                );
 
                                 if (successfulUploads.length > 0) {
                                     // Combine all accumulated file contents
@@ -406,7 +437,7 @@ export const RagUploadModal = ({
                                     files,
                                     handleError,
                                     processFile,
-                                    [FileTypes.TEXT, FileTypes.DOCX, FileTypes.PDF],
+                                    RAG_FILE_TYPES,
                                     52428800,
                                 );
                                 setDisplayProgressBar(false);

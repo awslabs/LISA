@@ -244,6 +244,10 @@ export enum FileTypes {
     MARKDOWN = 'text/markdown',
     YAML = 'application/x-yaml',
     JSON = 'application/json',
+    CSS = 'text/css',
+    RUBY = 'text/x-ruby-script',
+    SHELL = 'text/x-sh',
+    XML = 'text/xml'
 }
 
 /**

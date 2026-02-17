@@ -15,14 +15,14 @@
  */
 
 import { ReactElement, useEffect } from 'react';
-import ChatAssistantStacksConfiguration from '../components/configuration/ChatAssistantStacksConfiguration';
+import ChatAssistantStacksManagement from '../components/chat-assistant-stacks/ChatAssistantStacksManagement';
 
 export function ChatAssistantStacks ({ setNav }): ReactElement {
     useEffect(() => {
         setNav(null);
     }, [setNav]);
 
-    return <ChatAssistantStacksConfiguration />;
+    return <ChatAssistantStacksManagement />;
 }
 
 export default ChatAssistantStacks;

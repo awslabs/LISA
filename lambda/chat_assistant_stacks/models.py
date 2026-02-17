@@ -26,7 +26,6 @@ class ChatAssistantStackModel(BaseModel):
     name: str
     description: str
     modelIds: list[str] = Field(default_factory=list)
-    guardrailIds: list[str] | None = Field(default_factory=list)
     repositoryIds: list[str] = Field(default_factory=list)
     collectionIds: list[str] = Field(default_factory=list)
     mcpServerIds: list[str] = Field(default_factory=list)

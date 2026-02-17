@@ -35,7 +35,6 @@ import { ModelType } from '@/shared/model/model-management.model';
 import {
     StackBaseForm,
     StackModelsStep,
-    StackGuardrailsStep,
     StackRagStep,
     StackAgentsStep,
     StackPromptsStep,
@@ -53,11 +52,11 @@ export type CreateStackModalProps = {
     setSelectedItems: (items: IChatAssistantStack[]) => void;
 };
 
-const initialForm: ChatAssistantStackRequestForm = ChatAssistantStackRequestSchema.parse({
+/** Initial empty form; no Zod parse so validation only runs on Next/Submit. */
+const initialForm: ChatAssistantStackRequestForm = {
     name: '',
     description: '',
     modelIds: [],
-    guardrailIds: [],
     repositoryIds: [],
     collectionIds: [],
     mcpServerIds: [],
@@ -65,7 +64,7 @@ const initialForm: ChatAssistantStackRequestForm = ChatAssistantStackRequestSche
     personaPromptId: null,
     directivePromptIds: [],
     allowedGroups: [],
-});
+};
 
 type CreateStackState = {
     validateAll: boolean;
@@ -106,7 +105,6 @@ export function CreateStackModal (props: CreateStackModalProps): ReactElement {
                         name: selectedStack.name,
                         description: selectedStack.description,
                         modelIds: selectedStack.modelIds || [],
-                        guardrailIds: selectedStack.guardrailIds || [],
                         repositoryIds: selectedStack.repositoryIds || [],
                         collectionIds: selectedStack.collectionIds || [],
                         mcpServerIds: selectedStack.mcpServerIds || [],
@@ -165,7 +163,6 @@ export function CreateStackModal (props: CreateStackModalProps): ReactElement {
                 name: selectedStack.name,
                 description: selectedStack.description,
                 modelIds: selectedStack.modelIds,
-                guardrailIds: selectedStack.guardrailIds,
                 repositoryIds: selectedStack.repositoryIds,
                 collectionIds: selectedStack.collectionIds,
                 mcpServerIds: selectedStack.mcpServerIds,
@@ -224,7 +221,6 @@ export function CreateStackModal (props: CreateStackModalProps): ReactElement {
         [],
         [],
         [],
-        [],
     ];
 
     const steps = [
@@ -237,12 +233,6 @@ export function CreateStackModal (props: CreateStackModalProps): ReactElement {
             title: 'Models',
             description: 'Select at least one model.',
             content: <StackModelsStep item={state.form} setFields={setFields} touchFields={touchFields} formErrors={errors} />,
-        },
-        {
-            title: 'Guardrails',
-            description: 'Optional guardrail identifiers.',
-            isOptional: true,
-            content: <StackGuardrailsStep item={state.form} setFields={setFields} touchFields={touchFields} formErrors={errors} />,
         },
         {
             title: 'RAG',

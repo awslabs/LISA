@@ -21,7 +21,6 @@ import {
     Button,
     ButtonDropdown,
     Cards,
-    Container,
     Header,
     SpaceBetween,
     TextFilter,
@@ -38,23 +37,16 @@ import {
 import { IChatAssistantStack } from '@/shared/model/chat-assistant-stack.model';
 import CreateStackModal from '@/components/chat-assistant-stacks/CreateStackModal';
 
-const CARD_DEFINITION = {
-    header: (item: IChatAssistantStack) => (
-        <SpaceBetween direction='horizontal' size='xs'>
-            <span>{item.name}</span>
-            {!item.isActive && <Badge color='grey'>Inactive</Badge>}
-        </SpaceBetween>
-    ),
-    sections: [
-        {
-            id: 'description',
-            header: 'Description',
-            content: (item: IChatAssistantStack) => item.description || '—',
-        },
-    ],
-};
+function listIds (ids: string[] | undefined): string {
+    if (!ids?.length) return '—';
+    return ids.join(', ');
+}
 
-export function ChatAssistantStacksConfiguration (): React.ReactElement {
+function formatCount (n: number, singular: string, plural: string): string {
+    return n === 1 ? `1 ${singular}` : `${n} ${plural}`;
+}
+
+export function ChatAssistantStacksManagement (): React.ReactElement {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
     const [searchText, setSearchText] = useState('');
@@ -65,6 +57,91 @@ export function ChatAssistantStacksConfiguration (): React.ReactElement {
     const { data: stacks = [], isFetching, refetch } = useListStacksQuery(undefined, { refetchOnMountOrArgChange: true });
     const [deleteStack, { isLoading: isDeleting }] = useDeleteStackMutation();
     const [updateStackStatus, { isLoading: isUpdatingStatus }] = useUpdateStackStatusMutation();
+
+    const cardDefinition = useMemo(
+        () => ({
+            header: (item: IChatAssistantStack) => (
+                <SpaceBetween direction='horizontal' size='xs'>
+                    <span>{item.name}</span>
+                    {!item.isActive && <Badge color='grey'>Inactive</Badge>}
+                </SpaceBetween>
+            ),
+            sections: [
+                {
+                    id: 'description',
+                    header: 'Description',
+                    content: (item: IChatAssistantStack) => item.description || '—',
+                },
+                {
+                    id: 'models',
+                    header: 'Models',
+                    content: (item: IChatAssistantStack) => listIds(item.modelIds),
+                },
+                {
+                    id: 'rag',
+                    header: 'RAG',
+                    content: (item: IChatAssistantStack) => {
+                        const repos = item.repositoryIds?.length ?? 0;
+                        const colls = item.collectionIds?.length ?? 0;
+                        if (repos === 0 && colls === 0) return '—';
+                        const parts = [];
+                        if (repos) parts.push(formatCount(repos, 'repository', 'repositories'));
+                        if (colls) parts.push(formatCount(colls, 'collection', 'collections'));
+                        return parts.join(', ');
+                    },
+                },
+                {
+                    id: 'mcp',
+                    header: 'MCP',
+                    content: (item: IChatAssistantStack) => {
+                        const servers = item.mcpServerIds?.length ?? 0;
+                        const tools = item.mcpToolIds?.length ?? 0;
+                        if (servers === 0 && tools === 0) return '—';
+                        const parts = [];
+                        if (servers) parts.push(formatCount(servers, 'server', 'servers'));
+                        if (tools) parts.push(formatCount(tools, 'tool', 'tools'));
+                        return parts.join(', ');
+                    },
+                },
+                {
+                    id: 'prompts',
+                    header: 'Prompts',
+                    content: (item: IChatAssistantStack) => {
+                        const hasPersona = !!item.personaPromptId;
+                        const dirCount = item.directivePromptIds?.length ?? 0;
+                        if (!hasPersona && dirCount === 0) return '—';
+                        const parts = [];
+                        if (hasPersona) parts.push('Persona');
+                        if (dirCount) parts.push(formatCount(dirCount, 'directive', 'directives'));
+                        return parts.join(', ');
+                    },
+                },
+                {
+                    id: 'access',
+                    header: 'Access',
+                    content: (item: IChatAssistantStack) => {
+                        const groups = item.allowedGroups ?? [];
+                        return groups.length === 0 ? 'Global' : groups.join(', ');
+                    },
+                },
+                {
+                    id: 'updated',
+                    header: 'Last updated',
+                    content: (item: IChatAssistantStack) => {
+                        const u = item.updated ?? item.created;
+                        if (!u) return '—';
+                        try {
+                            const d = new Date(u);
+                            return d.toLocaleDateString(undefined, { dateStyle: 'medium' });
+                        } catch {
+                            return u;
+                        }
+                    },
+                },
+            ],
+        }),
+        []
+    );
 
     const filteredStacks = useMemo(() => {
         if (!searchText.trim()) return stacks;
@@ -157,17 +234,10 @@ export function ChatAssistantStacksConfiguration (): React.ReactElement {
                 selectedStack={isEdit ? selectedItems[0] ?? null : null}
                 setSelectedItems={setSelectedItems}
             />
-            <Container
-                header={
-                    <Header variant='h2'>
-                        Chat Assistant Stacks
-                    </Header>
-                }
-            >
                 <Cards
                     variant='full-page'
                     trackBy='stackId'
-                    cardDefinition={CARD_DEFINITION}
+                    cardDefinition={cardDefinition}
                     cardsPerRow={[{ cards: 3 }]}
                     items={filteredStacks}
                     selectedItems={selectedItems}
@@ -200,7 +270,7 @@ export function ChatAssistantStacksConfiguration (): React.ReactElement {
                                 </SpaceBetween>
                             }
                         >
-                            Stacks
+                            Chat Assistant Stacks
                         </Header>
                     }
                     filter={
@@ -220,9 +290,8 @@ export function ChatAssistantStacksConfiguration (): React.ReactElement {
                         </Box>
                     }
                 />
-            </Container>
         </>
     );
 }
 
-export default ChatAssistantStacksConfiguration;
+export default ChatAssistantStacksManagement;

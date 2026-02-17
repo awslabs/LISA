@@ -23,7 +23,6 @@ export type IChatAssistantStack = {
     name: string;
     description: string;
     modelIds: string[];
-    guardrailIds?: string[];
     repositoryIds: string[];
     collectionIds: string[];
     mcpServerIds: string[];
@@ -40,7 +39,6 @@ export type IChatAssistantStackRequest = {
     name: string;
     description: string;
     modelIds: string[];
-    guardrailIds?: string[];
     repositoryIds: string[];
     collectionIds: string[];
     mcpServerIds: string[];
@@ -54,7 +52,6 @@ export const ChatAssistantStackRequestSchema = z.object({
     name: z.string().min(1, 'Stack Assistant Name is required').max(STACK_NAME_MAX_LENGTH, `Name must be ${STACK_NAME_MAX_LENGTH} characters or less`),
     description: z.string().min(1, 'Description is required'),
     modelIds: z.array(z.string()).min(1, 'Select at least one model'),
-    guardrailIds: z.array(z.string()).optional().default([]),
     repositoryIds: z.array(z.string()).default([]),
     collectionIds: z.array(z.string()).default([]),
     mcpServerIds: z.array(z.string()).default([]),

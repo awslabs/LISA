@@ -18,7 +18,6 @@ import React, { ReactElement, useMemo } from 'react';
 import {
     Alert,
     Box,
-    Button,
     Checkbox,
     FormField,
     Input,
@@ -31,6 +30,7 @@ import {
 import { FormProps } from '@/shared/form/form-props';
 import { UserGroupsInput } from '@/shared/form/UserGroupsInput';
 import { ChatAssistantStackRequestForm } from '@/shared/model/chat-assistant-stack.model';
+import { ModelType } from '@/shared/model/model-management.model';
 import { useGetAllModelsQuery } from '@/shared/reducers/model-management.reducer';
 import { useListRagRepositoriesQuery, useListAllCollectionsQuery } from '@/shared/reducers/rag.reducer';
 import { useListMcpServersQuery, useListHostedMcpServersQuery } from '@/shared/reducers/mcp-server.reducer';
@@ -84,10 +84,10 @@ export function StackModelsStep (props: StackFormProps): ReactElement {
     };
     if (isLoading) return <Spinner />;
     if (error) return <StatusIndicator type='error'>Failed to load models</StatusIndicator>;
-    const list = models || [];
+    const list = (models || []).filter((m) => m.modelType !== ModelType.embedding);
     return (
         <SpaceBetween size='m'>
-            <Alert type='info'>Select at least one model. Any model type (including embeddings for RAG) is allowed.</Alert>
+            <Alert type='info'>Select at least one model. Embedding models are excluded (used for RAG only).</Alert>
             <FormField label='Models' errorText={formErrors?.modelIds} description='Select one or more models.'>
                 <SpaceBetween size='s'>
                     {list.map((m) => (
@@ -100,50 +100,6 @@ export function StackModelsStep (props: StackFormProps): ReactElement {
                         </Checkbox>
                     ))}
                     {list.length === 0 && <Box color='text-body-secondary'>No models available.</Box>}
-                </SpaceBetween>
-            </FormField>
-        </SpaceBetween>
-    );
-}
-
-export function StackGuardrailsStep (props: StackFormProps): ReactElement {
-    const { item, setFields, formErrors } = props;
-    const ids = item.guardrailIds || [];
-    const [input, setInput] = React.useState('');
-    const add = () => {
-        const v = input.trim();
-        if (v && !ids.includes(v)) {
-            setFields({ guardrailIds: [...ids, v] });
-            setInput('');
-        }
-    };
-    const remove = (i: number) => {
-        setFields({ guardrailIds: ids.filter((_, idx) => idx !== i) });
-    };
-    return (
-        <SpaceBetween size='m'>
-            <Alert type='info'>Optional. Guardrails are configured at model level; add identifiers if needed.</Alert>
-            <FormField label='Guardrail identifiers' errorText={formErrors?.guardrailIds}>
-                <SpaceBetween size='xs'>
-                    <Box>
-                        {ids.map((id, i) => (
-                            <Box key={i} margin={{ bottom: 'xs' }}>
-                                <SpaceBetween direction='horizontal' size='xs'>
-                                    <Input value={id} readOnly disabled />
-                                    <Button onClick={() => remove(i)}>Remove</Button>
-                                </SpaceBetween>
-                            </Box>
-                        ))}
-                    </Box>
-                    <SpaceBetween direction='horizontal' size='xs'>
-                        <Input
-                            value={input}
-                            onChange={({ detail }) => setInput(detail.value)}
-                            onKeyDown={(e) => e.detail?.key === 'Enter' && (add(), e.preventDefault())}
-                            placeholder='Guardrail ID'
-                        />
-                        <Button onClick={add}>Add</Button>
-                    </SpaceBetween>
                 </SpaceBetween>
             </FormField>
         </SpaceBetween>
@@ -215,10 +171,10 @@ export function StackAgentsStep (props: StackFormProps): ReactElement {
     const mcpServerIds = item.mcpServerIds || [];
     const mcpToolIds = item.mcpToolIds || [];
     const servers = useMemo(() => {
-        const list: { id: string; name: string }[] = [];
-        (connectionServers?.Items || []).forEach((s) => list.push({ id: s.id, name: s.name }));
-        (hostedServers || []).forEach((s) => list.push({ id: s.id, name: s.name }));
-        return list;
+        const byId = new Map<string, { id: string; name: string }>();
+        (connectionServers?.Items || []).forEach((s) => byId.set(s.id, { id: s.id, name: s.name }));
+        (hostedServers || []).forEach((s) => byId.set(s.id, { id: s.id, name: s.name }));
+        return Array.from(byId.values());
     }, [connectionServers, hostedServers]);
     const toggleServer = (id: string) => {
         if (mcpServerIds.includes(id)) setFields({ mcpServerIds: mcpServerIds.filter((x) => x !== id) });

@@ -52,7 +52,7 @@ repos:
   hooks:
     - id: codespell
       entry: codespell
-      args: ['--skip=*.git*,*cdk.out*,*venv*,*mypy_cache*,*package-lock*,*node_modules*,*dist/*,*poetry.lock*,*coverage*,*models/*,*htmlcov*,*TIKTOKEN_CACHE/*,*test/cdk/stacks/__baselines__/*', "-L=xdescribe,assertIn,afterAll"]
+      args: ['--skip=*.git*,*cdk.out*,*venv*,*mypy_cache*,*package-lock*,*node_modules*,*dist/*,*/public/*,*poetry.lock*,*coverage*,*models/*,*htmlcov*,*TIKTOKEN_CACHE/*,*test/cdk/stacks/__baselines__/*', "-L=xdescribe,assertIn,afterAll"]
       pass_filenames: false
 
 - repo: https://github.com/pycqa/isort

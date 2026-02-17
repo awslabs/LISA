@@ -237,7 +237,13 @@ export enum FileTypes {
     JPG = 'image/jpg',
     PNG = 'image/png',
     GIF = 'image/gif',
-    WEBP = 'image/webp'
+    WEBP = 'image/webp',
+    PYTHON = 'text/x-python-script',
+    JAVASCRIPT = 'text/javascript',
+    HTML = 'text/html',
+    MARKDOWN = 'text/markdown',
+    YAML = 'application/x-yaml',
+    JSON = 'application/json',
 }
 
 /**

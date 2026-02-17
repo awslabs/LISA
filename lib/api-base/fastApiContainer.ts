@@ -24,7 +24,7 @@ import { dump as yamlDump } from 'js-yaml';
 import { ECSCluster, ECSTasks } from './ecsCluster';
 import { BaseProps, Ec2Metadata, ECSConfig, EcsSourceType } from '../schema';
 import { Vpc } from '../networking/vpc';
-import { REST_API_PATH } from '../util';
+import { REST_API_PATH, ROOT_PATH } from '../util';
 import * as child_process from 'child_process';
 import * as path from 'path';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -128,7 +128,8 @@ export class FastApiContainer extends Construct {
             // Skip tiktoken cache generation in test environment
             if (process.env.NODE_ENV !== 'test') {
                 try {
-                    child_process.execSync(`python3 scripts/cache-tiktoken-for-offline.py ${cache_dir}`, { stdio: 'inherit' });
+                    const scriptPath = path.join(ROOT_PATH, 'scripts', 'cache-tiktoken-for-offline.py');
+                    child_process.execSync(`python3 ${scriptPath} ${cache_dir}`, { stdio: 'inherit' });
                 } catch (error) {
                     console.warn('Failed to generate tiktoken cache:', error);
                     // Continue execution even if cache generation fails

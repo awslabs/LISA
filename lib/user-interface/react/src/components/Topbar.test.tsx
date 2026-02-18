@@ -31,7 +31,6 @@ vi.mock('../auth/useAuth');
 
 // Mock store functions
 vi.mock('@/config/store', () => ({
-    purgeStore: vi.fn(),
     useAppDispatch: vi.fn(() => vi.fn()),
     useAppSelector: vi.fn((selector) => {
         const selectorStr = selector.toString();
@@ -93,20 +92,13 @@ describe('Topbar', () => {
 
     it('calls signoutRedirect when sign out is clicked', async () => {
         const user = userEvent.setup();
-        const { purgeStore } = await import('@/config/store');
 
         renderTopbar();
 
-        // Click the user profile dropdown button (the button with user icon)
         const userButton = screen.getByRole('button', { expanded: false });
         await user.click(userButton);
-
-        // Click the sign out option
         await user.click(screen.getByText('Sign out'));
 
-        // Verify that purgeStore and signoutRedirect were called
-        // purgeStore is called twice: once on mount (authenticated) and once on sign-out
-        expect(purgeStore).toHaveBeenCalledTimes(2);
         expect(mockAuth.signoutRedirect).toHaveBeenCalledOnce();
     });
 
@@ -134,21 +126,4 @@ describe('Topbar', () => {
         });
     });
 
-    it('calls purgeStore on mount when user is authenticated', async () => {
-        const { purgeStore } = await import('@/config/store');
-
-        renderTopbar();
-
-        expect(purgeStore).toHaveBeenCalledOnce();
-    });
-
-    it('does not call purgeStore when user is not authenticated', async () => {
-        const { purgeStore } = await import('@/config/store');
-
-        (useAuth as any).mockReturnValue({ ...mockAuth, isAuthenticated: false });
-
-        renderTopbar();
-
-        expect(purgeStore).not.toHaveBeenCalled();
-    });
 });

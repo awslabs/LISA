@@ -14,35 +14,13 @@
   limitations under the License.
 */
 
-import { combineReducers, configureStore, createAction } from '@reduxjs/toolkit';
+import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux';
-import storage from 'redux-persist/lib/storage';
-import { persistReducer, persistStore } from 'redux-persist';
 
 import sharedReducers, { rootMiddleware } from '../shared/reducers';
 
-const persistConfig = {
-    key: 'lisa',
-    storage,
-};
-
-export const resetState = createAction('store/reset');
-
-const combinedReducer = combineReducers(sharedReducers);
-type RootState = ReturnType<typeof combinedReducer>;
-
-const rootReducer = (state: RootState | undefined, action: ReturnType<typeof resetState> | { type: string }) => {
-    if (action.type === resetState.type) {
-        return combinedReducer({ user: state?.user }, action);
-
-    }
-    return combinedReducer(state, action);
-};
-
-const persistedReducer = persistReducer(persistConfig, rootReducer);
-
 const store = configureStore({
-    reducer: persistedReducer,
+    reducer: combineReducers(sharedReducers),
     middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware({
             serializableCheck: false,
@@ -57,15 +35,5 @@ export type AppDispatch = typeof store.dispatch;
 
 export const useAppSelector: TypedUseSelectorHook<IRootState> = useSelector;
 export const useAppDispatch = () => useDispatch<AppDispatch>();
-
-export const persistor = persistStore(store);
-
-export async function purgeStore () {
-    store.dispatch(resetState());
-    await storage.removeItem('persist:lisa');
-    await persistor.purge();
-    await persistor.flush();
-    persistor.pause();
-}
 
 export default getStore;

@@ -24,6 +24,7 @@ import { Alias } from 'aws-cdk-lib/aws-kms';
 import {
     AmiHardwareType,
     AsgCapacityProvider,
+    Capability,
     Cluster,
     ContainerDefinition,
     ContainerInsights,
@@ -160,12 +161,62 @@ export class ECSCluster extends Construct {
             retries: containerHealthCheckConfig.retries,
         };
 
-        const linuxParameters =
-            taskDefinition.containerConfig.sharedMemorySize > 0
-                ? new LinuxParameters(this, createCdkId([taskDefinitionName, 'LinuxParameters']), {
-                    sharedMemorySize: taskDefinition.containerConfig.sharedMemorySize,
-                })
-                : undefined;
+        // Create LinuxParameters for shared memory size and/or Linux capabilities
+        const needsLinuxParameters = taskDefinition.containerConfig.sharedMemorySize > 0 ||
+            taskDefinition.containerConfig.linuxCapabilities;
+
+        const linuxParameters = needsLinuxParameters
+            ? new LinuxParameters(this, createCdkId([taskDefinitionName, 'LinuxParameters']), {
+                sharedMemorySize: taskDefinition.containerConfig.sharedMemorySize > 0
+                    ? taskDefinition.containerConfig.sharedMemorySize
+                    : undefined,
+            })
+            : undefined;
+
+        // Add Linux capabilities if specified (e.g., SYS_ADMIN for FUSE mounts)
+        if (linuxParameters && taskDefinition.containerConfig.linuxCapabilities) {
+            const caps = taskDefinition.containerConfig.linuxCapabilities;
+            if (caps.add) {
+                // Map string capability names to Capability enum values
+                const capabilityMap: Record<string, Capability> = {
+                    'SYS_ADMIN': Capability.SYS_ADMIN,
+                    'NET_ADMIN': Capability.NET_ADMIN,
+                    'SYS_PTRACE': Capability.SYS_PTRACE,
+                    'AUDIT_CONTROL': Capability.AUDIT_CONTROL,
+                    'AUDIT_WRITE': Capability.AUDIT_WRITE,
+                    'CHOWN': Capability.CHOWN,
+                    'DAC_OVERRIDE': Capability.DAC_OVERRIDE,
+                    'FOWNER': Capability.FOWNER,
+                    'FSETID': Capability.FSETID,
+                    'KILL': Capability.KILL,
+                    'MKNOD': Capability.MKNOD,
+                    'NET_BIND_SERVICE': Capability.NET_BIND_SERVICE,
+                    'SETFCAP': Capability.SETFCAP,
+                    'SETGID': Capability.SETGID,
+                    'SETUID': Capability.SETUID,
+                    'SYS_CHROOT': Capability.SYS_CHROOT,
+                };
+                const addCaps = caps.add
+                    .map(cap => capabilityMap[cap])
+                    .filter((cap): cap is Capability => cap !== undefined);
+                if (addCaps.length > 0) {
+                    linuxParameters.addCapabilities(...addCaps);
+                }
+            }
+            if (caps.drop) {
+                const capabilityMap: Record<string, Capability> = {
+                    'ALL': Capability.ALL,
+                    'SYS_ADMIN': Capability.SYS_ADMIN,
+                    'NET_ADMIN': Capability.NET_ADMIN,
+                };
+                const dropCaps = caps.drop
+                    .map(cap => capabilityMap[cap])
+                    .filter((cap): cap is Capability => cap !== undefined);
+                if (dropCaps.length > 0) {
+                    linuxParameters.dropCapabilities(...dropCaps);
+                }
+            }
+        }
 
         const image = CodeFactory.createImage(taskDefinition.containerConfig.image, this, taskDefinitionName, ecsConfig.buildArgs);
 

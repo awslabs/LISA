@@ -127,6 +127,7 @@ export default function Chat ({ sessionId }) {
     const [userPrompt, setUserPrompt] = useState('');
     const [fileContext, setFileContext] = useState('');
     const [fileContextName, setFileContextName] = useState('');
+    const [fileContextFiles, setFileContextFiles] = useState<Array<{name: string, content: string}>>([]);
     const [dirtySession, setDirtySession] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
     const [useRag, setUseRag] = useState(false);
@@ -784,12 +785,14 @@ export default function Chat ({ sessionId }) {
         isVideoGenerationMode,
         fileContext,
         fileContextName,
+        fileContextFiles,
         config,
         useRag,
         showMarkdownPreview,
         setUserPrompt,
         setFileContext,
         setFileContextName,
+        setFileContextFiles,
         handleAction,
         handleKeyPress,
         handleButtonClick,
@@ -806,6 +809,7 @@ export default function Chat ({ sessionId }) {
         isVideoGenerationMode,
         fileContext,
         fileContextName,
+        fileContextFiles,
         config,
         useRag,
         showMarkdownPreview,
@@ -862,9 +866,10 @@ export default function Chat ({ sessionId }) {
                 fileContext={fileContext}
                 setFileContext={setFileContext}
                 setFileContextName={setFileContextName}
+                setFileContextFiles={setFileContextFiles}
                 selectedModel={selectedModel}
                 // eslint-disable-next-line react-hooks/exhaustive-deps
-            />), conditionalDeps([modals.contextUpload], [modals.contextUpload], [modals.contextUpload, openModal, closeModal, fileContext, setFileContext, setFileContextName, selectedModel]))}
+            />), conditionalDeps([modals.contextUpload], [modals.contextUpload], [modals.contextUpload, openModal, closeModal, fileContext, setFileContext, setFileContextName, setFileContextFiles, selectedModel]))}
 
             {useMemo(() => (<PromptTemplateModal
                 session={session}

@@ -999,16 +999,6 @@ export default function Chat ({ sessionId }) {
                             openModal={openModal}
                         />
                     )}
-                    {!loadingSession && session.history.length > 0 && session.lastUpdated && (
-                        <Box textAlign='center' padding='s'>
-                            <Box variant='small' color='text-status-inactive'>
-                                Last updated: {new Date(session.lastUpdated).toLocaleString(undefined, {
-                                    timeStyle: 'short',
-                                    dateStyle: 'medium'
-                                })}
-                            </Box>
-                        </Box>
-                    )}
                     <div ref={bottomRef} />
                 </SpaceBetween>
             </div>

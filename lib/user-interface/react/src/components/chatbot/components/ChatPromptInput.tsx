@@ -29,13 +29,14 @@ type ChatPromptInputProps = {
     isImageGenerationMode: boolean;
     isVideoGenerationMode: boolean;
     fileContext: string;
-    fileContextName: string;
+    fileContextFiles: Array<{name: string, content: string}>;
     config: IConfiguration;
     useRag: boolean;
     showMarkdownPreview: boolean;
     setUserPrompt: (value: string) => void;
     setFileContext: (value: string) => void;
     setFileContextName: (value: string) => void;
+    setFileContextFiles: React.Dispatch<React.SetStateAction<Array<{name: string, content: string}>>>;
     handleAction: () => void;
     handleKeyPress: (event: any) => void;
     handleButtonClick: (event: { detail: { id: string } }) => void;
@@ -61,18 +62,37 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
     isImageGenerationMode,
     isVideoGenerationMode,
     fileContext,
-    fileContextName,
+    fileContextFiles,
     config,
     useRag,
     showMarkdownPreview,
     setUserPrompt,
     setFileContext,
     setFileContextName,
+    setFileContextFiles,
     handleAction,
     handleKeyPress,
     handleButtonClick,
     getButtonItems,
 }) => {
+    // Handler for removing individual files
+    const handleRemoveFile = (fileNameToRemove: string) => {
+        const remainingFiles = fileContextFiles.filter((f) => f.name !== fileNameToRemove);
+
+        if (remainingFiles.length === 0) {
+            // No files left, clear everything
+            setFileContext('');
+            setFileContextName('');
+            setFileContextFiles([]);
+        } else {
+            // Update with remaining files
+            const combinedContext = remainingFiles.map((f) => f.content).join('\n\n');
+            const fileNames = remainingFiles.map((f) => f.name).join(', ');
+            setFileContext(`File context:\n${combinedContext}`);
+            setFileContextName(fileNames);
+            setFileContextFiles(remainingFiles);
+        }
+    };
     return (
         <PromptInput
             value={userPrompt}
@@ -113,19 +133,24 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
                 </Box>
             }
             secondaryContent={
-                fileContext && (
+                fileContext && fileContextFiles.length > 0 && (
                     <FileTokenGroup
-                        items={[{ file: new File([fileContext], fileContextName) }]}
-                        onDismiss={() => {
-                            setFileContext('');
-                            setFileContextName('');
+                        items={fileContextFiles.map((file) => ({
+                            file: new File([file.content], file.name)
+                        }))}
+                        onDismiss={(event) => {
+                            // The event.detail contains the fileIndex
+                            const dismissedIndex = (event.detail as any).fileIndex;
+                            if (dismissedIndex !== undefined && fileContextFiles[dismissedIndex]) {
+                                handleRemoveFile(fileContextFiles[dismissedIndex].name);
+                            }
                         }}
                         alignment='horizontal'
                         showFileSize={false}
                         showFileLastModified={false}
                         showFileThumbnail={false}
                         i18nStrings={{
-                            removeFileAriaLabel: () => 'Remove file',
+                            removeFileAriaLabel: (fileIndex) => `Remove file ${fileContextFiles[fileIndex]?.name || fileIndex + 1}`,
                             limitShowFewer: 'Show fewer files',
                             limitShowMore: 'Show more files',
                             errorIconAriaLabel: 'Error',

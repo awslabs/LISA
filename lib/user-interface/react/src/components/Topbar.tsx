@@ -19,7 +19,7 @@ import { useAuth } from '../auth/useAuth';
 import { useHref, useNavigate } from 'react-router-dom';
 import { applyDensity, Density, Mode } from '@cloudscape-design/global-styles';
 import TopNavigation, { TopNavigationProps } from '@cloudscape-design/components/top-navigation';
-import { purgeStore, useAppDispatch, useAppSelector } from '@/config/store';
+import { useAppDispatch, useAppSelector } from '@/config/store';
 import { selectCurrentUserIsAdmin, selectCurrentUserIsApiUser, selectCurrentUsername } from '../shared/reducers/user.reducer';
 import { IConfiguration } from '@/shared/model/configuration.model';
 import { ButtonDropdownProps } from '@cloudscape-design/components';
@@ -223,7 +223,6 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                 auth.signinRedirect({ redirect_uri: window.location.toString() });
                                 break;
                             case 'signout':
-                                await purgeStore();
                                 await auth.removeUser();
                                 await auth.signoutRedirect({
                                     extraQueryParams: {

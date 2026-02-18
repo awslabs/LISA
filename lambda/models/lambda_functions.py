@@ -24,9 +24,10 @@ from fastapi import HTTPException, Path, Request
 from fastapi.responses import JSONResponse
 from mangum import Mangum
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
-from utilities.auth import get_groups, get_username, is_admin, require_admin
+from utilities.auth import get_groups, get_username, is_admin
 from utilities.common_functions import retry_config
 from utilities.fastapi_factory import create_fastapi_app
+from utilities.fastapi_middleware import require_admin
 
 from .domain_objects import (
     CreateModelRequest,

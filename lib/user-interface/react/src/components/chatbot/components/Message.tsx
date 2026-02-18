@@ -20,19 +20,15 @@ import ExpandableSection from '@cloudscape-design/components/expandable-section'
 import { ButtonDropdown, ButtonGroup, Grid, SpaceBetween, StatusIndicator } from '@cloudscape-design/components';
 import { JsonView, darkStyles, defaultStyles } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { LisaChatMessage, LisaChatMessageMetadata, MessageTypes } from '../../types';
 import { useAppSelector } from '@/config/store';
 import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
 import ChatBubble from '@cloudscape-design/chat-components/chat-bubble';
 import Avatar from '@cloudscape-design/chat-components/avatar';
 
-import remarkMath from 'remark-math';
-import remarkGfm from 'remark-gfm';
-import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import styles from './Message.module.css';
+import { getMarkdownComponents, markdownPlugins } from '../utils/markdownRenderer';
 
 import { MessageContent } from '@langchain/core/messages';
 import { base64ToBlob, fetchImage, getDisplayableMessage } from '@/components/utils';
@@ -41,7 +37,6 @@ import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { downloadFile } from '@/shared/util/downloader';
 import Link from '@cloudscape-design/components/link';
 import ImageViewer from '@/components/chatbot/components/ImageViewer';
-import MermaidDiagram from '@/components/chatbot/components/MermaidDiagram';
 import UsageInfo from '@/components/chatbot/components/UsageInfo';
 import { merge } from 'lodash';
 import { useContext } from 'react';
@@ -97,145 +92,10 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
     }, [resend]);
 
     // Memoize the ReactMarkdown components to prevent re-creation on every render
-    const markdownComponents = useMemo(() => ({
-        code ({ className, children, ...props }: any) {
-            const match = /language-(\w+)/.exec(className || '');
-            const codeString = String(children).replace(/\n$/, '');
-
-            const CodeBlockWithCopyButton = ({ language, code }: { language: string, code: string }) => {
-                return (
-                    <div style={{ position: 'relative' }}>
-                        <div
-                            style={{
-                                position: 'absolute',
-                                top: '5px',
-                                right: '5px',
-                                zIndex: 10
-                            }}
-                        >
-                            <ButtonGroup
-                                onItemClick={() =>
-                                    navigator.clipboard.writeText(code)
-                                }
-                                ariaLabel='Chat actions'
-                                dropdownExpandToViewport
-                                items={[
-                                    {
-                                        type: 'icon-button',
-                                        id: 'copy code',
-                                        iconName: 'copy',
-                                        text: 'Copy Code',
-                                        popoverFeedback: (
-                                            <StatusIndicator type='success'>
-                                                Code copied
-                                            </StatusIndicator>
-                                        )
-                                    }
-                                ]}
-                                variant='icon'
-                            />
-                        </div>
-                        <SyntaxHighlighter
-                            style={isDarkMode ? oneDark : oneLight}
-                            language={language}
-                            PreTag='div'
-                            {...props}
-                        >
-                            {code}
-                        </SyntaxHighlighter>
-                    </div>
-                );
-            };
-            const CodeBlockWithoutLanguage = ({ code }: { code: string }) => {
-                return (
-                    <div style={{ position: 'relative' }}>
-                        <div
-                            style={{
-                                position: 'absolute',
-                                top: '5px',
-                                right: '5px',
-                                zIndex: 10,
-                            }}
-                        >
-                            <ButtonGroup
-                                onItemClick={() =>
-                                    navigator.clipboard.writeText(code)
-                                }
-                                ariaLabel='Chat actions'
-                                dropdownExpandToViewport
-                                items={[
-                                    {
-                                        type: 'icon-button',
-                                        id: 'copy code',
-                                        iconName: 'copy',
-                                        text: 'Copy Code',
-                                        popoverFeedback: (
-                                            <StatusIndicator type='success'>
-                                                Code copied
-                                            </StatusIndicator>
-                                        )
-                                    }
-                                ]}
-                                variant='icon'
-                            />
-                        </div>
-                        <pre
-                            style={{
-                                backgroundColor: isDarkMode ? '#1e1e1e' : '#f5f5f5',
-                                color: isDarkMode ? '#d4d4d4' : '#333333',
-                                padding: '16px',
-                                borderRadius: '6px',
-                                overflow: 'auto',
-                                fontFamily: 'Consolas, Monaco, "Courier New", monospace',
-                                fontSize: '14px',
-                                lineHeight: '1.45',
-                                margin: '0',
-                                textWrap: 'wrap'
-                            }}
-                        >
-                            <code style={{ backgroundColor: 'transparent', padding: '0', color: 'inherit' }}>
-                                {code}
-                            </code>
-                        </pre>
-                    </div>
-                );
-            };
-            // Check if this is inline code by examining the props
-            const isInlineCode = !props.node || props.node.position?.start?.line === props.node.position?.end?.line;
-
-            if (isInlineCode) {
-                return (
-                    <code
-                        className='bg-zinc-300/25 border-zinc-500/25 border-solid text-red-600 px-1 py-0.5 rounded text-sm font-mono'
-                        style={{
-                            backgroundColor: 'rgba(209, 213, 219, 0.25)',
-                            border: '1px solid rgba(107, 114, 128, 0.25)',
-                            color: '#dc2626',
-                            padding: '2px 4px',
-                            borderRadius: '4px',
-                            fontSize: '0.875rem',
-                            fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace'
-                        }}
-                        {...props}
-                    >
-                        {children}
-                    </code>
-                );
-            }
-            return match ? (
-                match[1] === 'mermaid' ? (
-                    <MermaidDiagram chart={codeString} isStreaming={isStreaming} onRenderComplete={onMermaidRenderComplete} />
-                ) : (
-                    <CodeBlockWithCopyButton
-                        language={match[1]}
-                        code={codeString}
-                    />
-                )
-            ) : (
-                <CodeBlockWithoutLanguage code={codeString} />
-            );
-        },
-    }), [isStreaming, onMermaidRenderComplete, isDarkMode]);
+    const markdownComponents = useMemo(
+        () => getMarkdownComponents(isDarkMode, isStreaming, onMermaidRenderComplete),
+        [isDarkMode, isStreaming, onMermaidRenderComplete]
+    );
 
     const renderContent = (content: MessageContent, metadata?: LisaChatMessageMetadata) => {
         if (Array.isArray(content)) {
@@ -249,8 +109,8 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                         <div key={index} className={styles.messageContent} style={{ maxWidth: '60em' }}>
                             {markdownDisplay ? (
                                 <ReactMarkdown
-                                    remarkPlugins={[remarkMath, remarkGfm]}
-                                    rehypePlugins={[rehypeKatex]}
+                                    remarkPlugins={markdownPlugins.remarkPlugins}
+                                    rehypePlugins={markdownPlugins.rehypePlugins}
                                     children={displayableText}
                                     components={markdownComponents}
                                 />
@@ -364,8 +224,8 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
             <div className={styles.messageContent} style={{ maxWidth: '60em' }}>
                 {markdownDisplay ? (
                     <ReactMarkdown
-                        remarkPlugins={[remarkMath, remarkGfm]}
-                        rehypePlugins={[rehypeKatex]}
+                        remarkPlugins={markdownPlugins.remarkPlugins}
+                        rehypePlugins={markdownPlugins.rehypePlugins}
                         children={getDisplayableMessage(content, message.type === MessageTypes.AI ? ragCitations : undefined)}
                         components={markdownComponents}
                     />

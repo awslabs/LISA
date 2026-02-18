@@ -1,7 +1,19 @@
-name: Publish LISA NPM Package
+name: Publish LISA Packages
 on:
   release:
     types: [released]
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: 'Test mode (skips npm publish and release upload)'
+        required: false
+        type: boolean
+        default: true
+      version:
+        description: 'Version tag for testing'
+        required: false
+        type: string
+        default: 'test-v0.0.0'
 
 permissions:
   contents: read  # Default read-only
@@ -10,19 +22,81 @@ jobs:
   PublishLISA:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      packages: write  # Required for npm package publishing
+      contents: write  # Required for uploading release assets
+      id-token: write  # Required for npm trusted publishing (OIDC)
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v4
-      # Setup .npmrc file to publish to GitHub Packages
-      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v4
+      # Free up disk space (~30GB+) by removing preinstalled software we don't need
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo rm -rf /opt/hostedtoolcache/go
+          sudo rm -rf /opt/hostedtoolcache/Ruby
+          sudo rm -rf /usr/local/share/powershell
+          sudo rm -rf /usr/local/share/chromium
+          sudo rm -rf /usr/local/lib/heroku
+          sudo rm -rf /usr/share/swift
+          sudo docker image prune --all --force
+          df -h
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
+      # Setup .npmrc file to publish to NpmJs Packages
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v4
         with:
           node-version: '24.x'
-          registry-url: 'https://npm.pkg.github.com'
+          registry-url: 'https://registry.npmjs.org'
+
+      # Setup Python for build scripts
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+
+      # Install npm dependencies and publish package. Auth is established with NpmJs Trusted publishing.
+      # To update, modify package at https://www.npmjs.com/package/awslabs-lisa/access
+      # More info: https://docs.npmjs.com/trusted-publishers
       - run: npm ci
-      - run: npm publish
+      # Set version from input when running in test mode
+      - name: Set test version
+        if: github.event_name == 'workflow_dispatch'
+        run: npm version "${{ inputs.version }}" --no-git-tag-version --allow-same-version
+      - name: Publish NPM Package
+        if: "!(github.event_name == 'workflow_dispatch' && inputs.test_mode == true)"
+        run: npm publish
+      - name: Publish NPM Package (Dry Run)
+        if: github.event_name == 'workflow_dispatch' && inputs.test_mode == true
+        run: npm publish --dry-run
+      # Install Python dependencies needed by build scripts
+      - name: Install Python build dependencies
+        run: pip install tiktoken==0.12.0
+      # Build and export container images (separate from npm publish to avoid OOM)
+      - name: Build Container Images
+        run: ./bin/build-images --export
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PYPI_URL: https://pypi.org/simple
+          LISA_VERSION: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.version }}
+
+      # Upload binary assets to GitHub Release
+      - name: Upload Release Assets
+        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.test_mode == false)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.version }}
+          files: |
+            dist/images/*.tar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # In test mode, just list what would be uploaded
+      - name: List Build Artifacts (Test Mode)
+        if: github.event_name == 'workflow_dispatch' && inputs.test_mode == true
+        run: |
+          echo "=== Lambda Layers (dist/layers/*.zip) ==="
+          ls -lh dist/layers/*.zip 2>/dev/null || echo "No zip files found"
+          echo ""
+          echo "=== Container Images (dist/images/*.tar) ==="
+          ls -lh dist/images/*.tar 2>/dev/null || echo "No tar files found"
 
   SendSlackNotification:
     name: Send Slack Notification
@@ -37,9 +111,9 @@ jobs:
         env:
           SLACK_WEBHOOK: ${{ secrets.INTERNAL_DEV_SLACK_WEBHOOK_URL }}
           SLACK_COLOR: ${{ contains(join(needs.*.result, ' '), 'failure') && 'failure' || 'success' }}
-          SLACK_TITLE: 'NPM Package Published'
+          SLACK_TITLE: 'LISA Package Published'
           SLACK_FOOTER: ''
           MSG_MINIMAL: 'actions url,commit'
-          SLACK_MESSAGE_ON_FAILURE: '<!here> NPM Package publish FAILED for version  ${{ github.event.pull_request.head.ref }}|commit>'
-          SLACK_MESSAGE_ON_SUCCESS: 'NPM Package published SUCCESS for ${{ github.event.pull_request.head.ref }}|commit>.'
-          SLACK_MESSAGE: 'NPM Publish Finished with status ${{ job.status }} for <${{ github.event.pull_request.head.ref }}|commit>'
+          SLACK_MESSAGE_ON_FAILURE: '<!here> LISA Package publish FAILED for version ${{ github.event.release.tag_name }}'
+          SLACK_MESSAGE_ON_SUCCESS: 'LISA Package published SUCCESS for version ${{ github.event.release.tag_name }} with NPM package and binary assets.'
+          SLACK_MESSAGE: 'LISA Publish Finished with status ${{ job.status }} for version ${{ github.event.release.tag_name }}'

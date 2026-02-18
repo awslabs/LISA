@@ -3,7 +3,7 @@
 set -e
 
 ROOT=$(pwd)
-OUTPUT_DIR=$ROOT/dist/images
+OUTPUT_DIR=${IMAGE_DIR:-$ROOT/dist/images}
 
 # Container runtime: Use CDK_DOCKER env var (same as CDK), default to docker
 DOCKER_CMD="${CDK_DOCKER:-docker}"

@@ -31,7 +31,7 @@ vi.mock('../auth/useAuth');
 
 // Mock store functions
 vi.mock('@/config/store', () => ({
-    purgeStore: vi.fn(),
+    useAppDispatch: vi.fn(() => vi.fn()),
     useAppSelector: vi.fn((selector) => {
         const selectorStr = selector.toString();
         if (selectorStr.includes('selectCurrentUserIsAdmin')) return false;
@@ -92,19 +92,13 @@ describe('Topbar', () => {
 
     it('calls signoutRedirect when sign out is clicked', async () => {
         const user = userEvent.setup();
-        const { purgeStore } = await import('@/config/store');
 
         renderTopbar();
 
-        // Click the user profile dropdown button (the button with user icon)
         const userButton = screen.getByRole('button', { expanded: false });
         await user.click(userButton);
-
-        // Click the sign out option
         await user.click(screen.getByText('Sign out'));
 
-        // Verify that purgeStore and signoutRedirect were called
-        expect(purgeStore).toHaveBeenCalledOnce();
         expect(mockAuth.signoutRedirect).toHaveBeenCalledOnce();
     });
 
@@ -131,4 +125,5 @@ describe('Topbar', () => {
             redirect_uri: window.location.toString(),
         });
     });
+
 });

@@ -2,6 +2,43 @@
 set -e
 
 ROOT=$(pwd)
+LAYER_DIR=$ROOT/dist/layers
+IMAGE_DIR=$ROOT/dist/images
 
-./bin/build-lambdas
-./bin/build-images --export
+# Default PYPI_URL if not set
+export PYPI_URL=${PYPI_URL:-"https://pypi.org/simple"}
+export OUTPUT_DIR=$LAYER_DIR
+export IMAGE_DIR
+
+# Parse arguments
+INCLUDE_IMAGES=false
+for arg in "$@"; do
+    case $arg in
+        --include-images)
+            INCLUDE_IMAGES=true
+            shift
+            ;;
+    esac
+done
+
+echo "Building all assets..."
+
+# Build Lambda layers (Python and Node.js)
+echo "Building Lambda Layers..."
+./bin/build-lambda-layers
+
+# Build Lambda function (no dependencies, uses layers)
+echo "Building Lambda function..."
+cd lambda
+$ROOT/bin/package-lambda --src . --output "Lambda.zip" --pypi "$PYPI_URL"
+mv ./build/Lambda.zip "$LAYER_DIR/"
+rm -rf ./build
+cd "$ROOT"
+
+# Build and export container images (only when explicitly requested)
+if [[ "$INCLUDE_IMAGES" == "true" ]]; then
+    echo "Building Image exports..."
+    ./bin/build-images --export
+fi
+
+echo "All assets built successfully!"

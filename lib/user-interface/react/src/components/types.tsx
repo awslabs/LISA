@@ -227,17 +227,26 @@ export type PutSessionRequestBody = {
 };
 
 /**
- * File types that can be uploaded for context or for RAG
+ * File types that can be uploaded as context in RAG or non-RAG use cases
+ * Ref: https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/MIME_types/Common_types
+ *
+ * Note: Only standard MIME types are included. Non-standard file types (Python, Java, Shell)
+ * are handled via file extension matching in AllowedExtensions fallback (FileUploadModals.tsx).
  */
 export enum FileTypes {
     TEXT = 'text/plain',
     DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     PDF = 'application/pdf',
     JPEG = 'image/jpeg',
-    JPG = 'image/jpg',
     PNG = 'image/png',
     GIF = 'image/gif',
-    WEBP = 'image/webp'
+    WEBP = 'image/webp',
+    JAVASCRIPT = 'text/javascript',
+    HTML = 'text/html',
+    MARKDOWN = 'text/markdown',
+    JSON = 'application/json',
+    CSS = 'text/css',
+    XML = 'text/xml'
 }
 
 /**

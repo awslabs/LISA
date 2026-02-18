@@ -293,14 +293,13 @@ export function Sessions ({ newSession }) {
                                                                     <Link onClick={() => navigate(`/ai-assistant/${item.sessionId}`)}>
                                                                         <Box
                                                                             color={item.sessionId === currentSessionId ? 'text-status-info' : 'text-status-inactive'}
-                                                                            fontWeight={item.sessionId === currentSessionId ? 'bold' : 'normal'}
+                                                                            fontWeight={item.sessionId === currentSessionId ? 'bold' : 'heavy'}
                                                                         >
                                                                             {getSessionDisplay(item, 40)}
                                                                         </Box>
                                                                     </Link>
-                                                                    <Box variant='small' color='text-status-inactive' fontSize='body-s'>
-                                                                        {item.lastUpdated ? 'Updated' : 'Created'}: {formatDate(item.lastUpdated || item.startTime)}
-
+                                                                    <Box variant='small' color='text-status-inactive' fontSize='body-s' fontWeight='light'>
+                                                                        {formatDate(item.lastUpdated || item.startTime)}
                                                                     </Box>
                                                                 </SpaceBetween>
                                                             </Box>

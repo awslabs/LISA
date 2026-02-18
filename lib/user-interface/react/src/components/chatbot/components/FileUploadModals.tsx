@@ -28,7 +28,7 @@ import {
 import { FileTypes, StatusTypes } from '@/components/types';
 import React, { useState, useEffect } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
-import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { RagConfig } from './RagOptions';
 import { useAppDispatch } from '@/config/store';
 import { useNotificationService } from '@/shared/util/hooks';
@@ -49,11 +49,13 @@ import { getDisplayName } from '@/shared/util/branding';
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 // File extension mappings as fallback if MIME types are not
-// specified. Primarily an issue with any compiled languages.
+// specified. Primarily an issue with any compiled languages and
+// file types without standard MIME types (Python, YAML, Ruby, Shell).
 const AllowedExtensions =
     [
         '.ts', '.tsx', '.java', '.c', '.cpp', '.cxx', '.cc', '.h',
-        '.hpp', '.hxx', '.go', '.rs', '.ps1', '.sql', '.r', '.m'
+        '.hpp', '.hxx', '.go', '.rs', '.ps1', '.sql', '.r', '.m',
+        '.py', '.yml', '.yaml', '.rb', '.sh'
     ];
 
 // Allowed file types for image-supporting models
@@ -66,18 +68,15 @@ const IMAGE_MODEL_FILE_TYPES = [
 ];
 
 // Allowed file types for text/code models (non-image)
+// Note: Python, YAML, Ruby, and Shell files are handled via AllowedExtensions fallback
 const TEXT_MODEL_FILE_TYPES = [
     FileTypes.TEXT,
     FileTypes.PDF,
-    FileTypes.PYTHON,
     FileTypes.JAVASCRIPT,
     FileTypes.HTML,
     FileTypes.MARKDOWN,
-    FileTypes.YAML,
     FileTypes.JSON,
     FileTypes.CSS,
-    FileTypes.RUBY,
-    FileTypes.SHELL,
     FileTypes.XML
 ];
 
@@ -208,8 +207,8 @@ export const ContextUploadModal = ({
         // Process file and return its contents to be accumulated
         let fileContents: string;
 
-        if (file.type === FileTypes.JPEG || file.type === FileTypes.PNG) {
-            // Handle image files
+        // Handle image files
+        if (IMAGE_MODEL_FILE_TYPES.includes(file.type as FileTypes)) {
             fileContents = await new Promise((resolve) => {
                 const reader = new FileReader();
                 reader.onloadend = () => {

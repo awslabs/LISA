@@ -190,6 +190,15 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                     href: '/mcp-management',
                                 } as ButtonDropdownProps.Item,
                             ] : []),
+                            ...(configs?.configuration?.enabledComponents?.chatAssistantStacks ? [{
+                                id: 'chat-assistant-stacks',
+                                type: 'button',
+                                variant: 'link',
+                                text: 'Chat Assistant Stacks',
+                                disableUtilityCollapse: false,
+                                external: false,
+                                href: '/chat-assistant-stacks',
+                            } as ButtonDropdownProps.Item] : []),
                             ...(configs?.configuration.enabledComponents?.showMcpWorkbench ? [{
                                 id: 'mcp-workbench',
                                 type: 'button',

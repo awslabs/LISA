@@ -60,9 +60,14 @@ export function issuesToErrors (issues: z.ZodIssue[], touched?: any): any {
     const formErrors = {} as any;
     issues.forEach((issue) => {
         const key = issue.path.reduce((previous, current) => {
-            if (isNaN(Number(current))) {
+            if (previous === '') {
+                // First element - don't add a dot
+                return String(current);
+            } else if (isNaN(Number(current))) {
+                // Property access - add dot
                 return `${previous}.${current}`;
             } else {
+                // Array index - add brackets
                 return `${previous}[${current}]`;
             }
         }, '');

@@ -228,13 +228,13 @@ export type PutSessionRequestBody = {
 
 /**
  * File types that can be uploaded for context or for RAG
+ * Ref: https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/MIME_types/Common_types
  */
 export enum FileTypes {
     TEXT = 'text/plain',
     DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     PDF = 'application/pdf',
     JPEG = 'image/jpeg',
-    JPG = 'image/jpg',
     PNG = 'image/png',
     GIF = 'image/gif',
     WEBP = 'image/webp',

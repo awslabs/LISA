@@ -28,6 +28,7 @@ import {
 import { FileTypes, StatusTypes } from '@/components/types';
 import React, { useState, useEffect } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
+import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { RagConfig } from './RagOptions';
 import { useAppDispatch } from '@/config/store';
 import { useNotificationService } from '@/shared/util/hooks';
@@ -45,7 +46,7 @@ import { MetadataForm } from '@/shared/form/MetadataForm';
 import { getDisplayName } from '@/shared/util/branding';
 
 // Configure PDF.js worker to use local file
-pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 // File extension mappings as fallback if MIME types are not
 // specified. Primarily an issue with any compiled languages.
@@ -207,7 +208,7 @@ export const ContextUploadModal = ({
         // Process file and return its contents to be accumulated
         let fileContents: string;
 
-        if (file.type === FileTypes.JPEG || file.type === FileTypes.JPG || file.type === FileTypes.PNG) {
+        if (file.type === FileTypes.JPEG || file.type === FileTypes.PNG) {
             // Handle image files
             fileContents = await new Promise((resolve) => {
                 const reader = new FileReader();

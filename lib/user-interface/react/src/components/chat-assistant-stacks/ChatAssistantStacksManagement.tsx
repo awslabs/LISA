@@ -234,62 +234,62 @@ export function ChatAssistantStacksManagement (): React.ReactElement {
                 selectedStack={isEdit ? selectedItems[0] ?? null : null}
                 setSelectedItems={setSelectedItems}
             />
-                <Cards
-                    variant='full-page'
-                    trackBy='stackId'
-                    cardDefinition={cardDefinition}
-                    cardsPerRow={[{ cards: 3 }]}
-                    items={filteredStacks}
-                    selectedItems={selectedItems}
-                    onSelectionChange={({ detail }) => setSelectedItems(detail.selectedItems)}
-                    selectionType='single'
-                    loading={isFetching}
-                    loadingText='Loading stacks'
-                    header={
-                        <Header
-                            counter={filteredStacks.length > 0 ? `(${filteredStacks.length})` : undefined}
-                            actions={
-                                <SpaceBetween direction='horizontal' size='xs'>
-                                    <RefreshButton
-                                        isLoading={isFetching}
-                                        onClick={handleRefresh}
-                                        ariaLabel='Refresh stacks'
-                                    />
-                                    <ButtonDropdown
-                                        items={actionsDropdownItems}
-                                        variant='primary'
-                                        disabled={selectedItems.length === 0}
-                                        loading={isDeleting || isUpdatingStatus}
-                                        onItemClick={({ detail }) => handleActionsClick(detail)}
-                                    >
-                                        Actions
-                                    </ButtonDropdown>
-                                    <Button variant='primary' onClick={handleCreateStack}>
-                                        Create Stack
-                                    </Button>
-                                </SpaceBetween>
-                            }
-                        >
-                            Chat Assistant Stacks
-                        </Header>
-                    }
-                    filter={
-                        <TextFilter
-                            filteringText={searchText}
-                            filteringPlaceholder='Search by name or description'
-                            filteringAriaLabel='Search stacks'
-                            onChange={({ detail }) => setSearchText(detail.filteringText)}
-                        />
-                    }
-                    empty={
-                        <Box margin={{ vertical: 'xs' }} textAlign='center' color='inherit'>
-                            <SpaceBetween size='m'>
-                                <b>No stacks</b>
-                                <span>Create a stack to bundle models, repos, MCP servers, and prompts for users.</span>
+            <Cards
+                variant='full-page'
+                trackBy='stackId'
+                cardDefinition={cardDefinition}
+                cardsPerRow={[{ cards: 3 }]}
+                items={filteredStacks}
+                selectedItems={selectedItems}
+                onSelectionChange={({ detail }) => setSelectedItems(detail.selectedItems)}
+                selectionType='single'
+                loading={isFetching}
+                loadingText='Loading stacks'
+                header={
+                    <Header
+                        counter={filteredStacks.length > 0 ? `(${filteredStacks.length})` : undefined}
+                        actions={
+                            <SpaceBetween direction='horizontal' size='xs'>
+                                <RefreshButton
+                                    isLoading={isFetching}
+                                    onClick={handleRefresh}
+                                    ariaLabel='Refresh stacks'
+                                />
+                                <ButtonDropdown
+                                    items={actionsDropdownItems}
+                                    variant='primary'
+                                    disabled={selectedItems.length === 0}
+                                    loading={isDeleting || isUpdatingStatus}
+                                    onItemClick={({ detail }) => handleActionsClick(detail)}
+                                >
+                                    Actions
+                                </ButtonDropdown>
+                                <Button variant='primary' onClick={handleCreateStack}>
+                                    Create Stack
+                                </Button>
                             </SpaceBetween>
-                        </Box>
-                    }
-                />
+                        }
+                    >
+                        Chat Assistant Stacks
+                    </Header>
+                }
+                filter={
+                    <TextFilter
+                        filteringText={searchText}
+                        filteringPlaceholder='Search by name or description'
+                        filteringAriaLabel='Search stacks'
+                        onChange={({ detail }) => setSearchText(detail.filteringText)}
+                    />
+                }
+                empty={
+                    <Box margin={{ vertical: 'xs' }} textAlign='center' color='inherit'>
+                        <SpaceBetween size='m'>
+                            <b>No stacks</b>
+                            <span>Create a stack to bundle models, repos, MCP servers, and prompts for users.</span>
+                        </SpaceBetween>
+                    </Box>
+                }
+            />
         </>
     );
 }

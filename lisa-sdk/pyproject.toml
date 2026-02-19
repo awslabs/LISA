@@ -22,11 +22,16 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.13"
 pydantic = "^2.12.5"
-langchain = "1.2.7"
-langchain-core = "1.2.7"
+langchain = ">=1.2.10"
+langchain-core = ">=1.2.11"
 langchain-community = "0.4.1"
 langchain-openai = "1.1.7"
 langchain-text-splitters = "1.1.0"
+langsmith = ">=0.6.3"
+urllib3 = ">=2.6.3"
+aiohttp = ">=3.13.3"
+orjson = ">=3.11.6"
+marshmallow = ">=3.26.2"
 numpy = ">2.1.0"
 toml = "*"
 
@@ -37,6 +42,7 @@ ipykernel = "^7.1.0"
 [tool.poetry.group.test.dependencies]
 pytest = "^9.0.2"
 pytest-asyncio = "*"
+responses = "*"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

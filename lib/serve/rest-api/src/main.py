@@ -13,16 +13,13 @@
 #   limitations under the License.
 
 """REST API."""
-import json
 import os
 import sys
 from contextlib import asynccontextmanager
 
-import boto3
 from api.routes import router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from lisa_serve.registry import registry
 from loguru import logger
 from middleware import (
     auth_middleware,
@@ -31,8 +28,6 @@ from middleware import (
     security_middleware,
     validate_input_middleware,
 )
-from services.model_registration import ModelRegistrationService
-from utils.cache_manager import set_registered_models_cache
 
 logger.remove()
 logger_level = os.environ.get("LOG_LEVEL", "INFO")
@@ -59,33 +54,8 @@ logger.configure(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # type: ignore
-    """REST API start and update task."""
-    event = "start_and_update_task"
-    task_logger = logger.bind(event=event)
-    task_logger.debug("Start task", status="START")
-
-    # Create model registration service
-    registration_service = ModelRegistrationService(registry)
-
-    try:
-        verify_path = os.getenv("SSL_CERT_FILE") or None
-        # Use synchronous boto3 client - this runs once at startup so async isn't needed
-        # This avoids aiobotocore dependency which has version conflicts with litellm's boto3
-        ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], verify=verify_path)
-        response = ssm_client.get_parameter(Name=os.environ["REGISTERED_MODELS_PS_NAME"])
-
-        registered_models = json.loads(response["Parameter"]["Value"])
-
-        # Register all models using the service
-        new_models = registration_service.register_models(registered_models)
-
-        # Update the global cache
-        set_registered_models_cache(new_models)
-    except Exception:
-        task_logger.exception("An unknown error occurred", status="ERROR")
-
+    """REST API lifespan."""
     yield
-    task_logger.debug("Finished API Lifespan task", status="FINISH")
 
 
 app = FastAPI(lifespan=lifespan)

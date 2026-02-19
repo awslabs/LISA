@@ -42,8 +42,8 @@ export function Chatbot ({ setNav }) {
         // This ensures state is cleared even when already on /ai-assistant (no UUID in URL)
         setKey(new Date().toISOString());
 
-        // Navigate to clear the sessionId from URL (if not already there)
-        navigate('/ai-assistant', { replace: true });
+        // Navigate and clear location state so assistant stack is cleared (fixes needing New twice)
+        navigate('/ai-assistant', { replace: true, state: {} });
     }, [navigate, dispatch, sessionId]);
 
     // Update key when sessionId changes from a value to undefined (new session clicked)

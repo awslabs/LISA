@@ -25,8 +25,8 @@ pydantic = "^2.12.5"
 langchain = ">=1.2.10"
 langchain-core = ">=1.2.11"
 langchain-community = "0.4.1"
-langchain-openai = "1.1.7"
-langchain-text-splitters = "1.1.0"
+langchain-openai = "1.1.10"
+langchain-text-splitters = "1.1.1"
 langsmith = ">=0.6.3"
 urllib3 = ">=2.6.3"
 aiohttp = ">=3.13.3"
@@ -37,7 +37,7 @@ toml = "*"
 
 [tool.poetry.group.dev.dependencies]
 boto3 = "*"
-ipykernel = "^7.1.0"
+ipykernel = "^7.2.0"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^9.0.2"

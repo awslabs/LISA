@@ -17,8 +17,10 @@
 import json
 import logging
 import os
+import time
 import uuid
 from collections.abc import Iterator
+from typing import Any, cast
 
 import boto3
 from auth import extract_user_groups_from_jwt
@@ -53,6 +55,14 @@ s3_bucket_name = os.environ.get("GENERATED_IMAGES_S3_BUCKET_NAME", "")
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# Model info cache with TTL (Time To Live)
+# Cache structure: {model_id: {"data": model_info, "timestamp": cache_time}}
+_model_info_cache: dict[str, dict[str, Any]] = {}
+# Cache TTL in seconds (default: 5 minutes)
+# Stale entries are automatically refreshed when accessed after TTL expires
+# This ensures deleted/recreated models get fresh data within 5 minutes
+MODEL_INFO_CACHE_TTL = int(os.environ.get("MODEL_INFO_CACHE_TTL", "300"))
 
 
 def _generate_presigned_video_url(key: str, content_type: str = "video/mp4") -> str:
@@ -157,6 +167,85 @@ def handle_guardrail_violation_response(
     except Exception as e:
         logger.error(f"Error handling guardrail violation: {e}")
         return None
+
+
+def invalidate_model_cache(model_id: str | None = None) -> None:
+    """
+    Manually invalidate model info cache.
+
+    Note: This function is available for manual/programmatic cache clearing but is not
+    automatically triggered. The cache relies on TTL expiration for normal operation.
+
+    Args:
+        model_id: Specific model to invalidate. If None, clears entire cache.
+    """
+    if model_id is None:
+        _model_info_cache.clear()
+        logger.info("Cleared entire model info cache")
+    elif model_id in _model_info_cache:
+        del _model_info_cache[model_id]
+        logger.info(f"Invalidated cache for model {model_id}")
+
+
+def get_model_info(model_id: str, use_cache: bool = True) -> dict | None:
+    """
+    Get model information from LiteLLM for a given model ID.
+
+    Uses a TTL-based cache to reduce API calls while ensuring deleted/recreated
+    models are eventually refreshed.
+
+    Args:
+        model_id: User-defined model ID (model_name in LiteLLM)
+        use_cache: Whether to use cached data (default True). Set False to force refresh.
+
+    Returns:
+        Model info dict with litellm_params, or None if not found
+    """
+    current_time = time.time()
+
+    # Check cache first if enabled
+    if use_cache and model_id in _model_info_cache:
+        cache_entry = _model_info_cache[model_id]
+        cache_age = current_time - cache_entry["timestamp"]
+
+        # Return cached data if still fresh
+        if cache_age < MODEL_INFO_CACHE_TTL:
+            logger.debug(f"Cache hit for model {model_id} (age: {cache_age:.1f}s)")
+            model_info = cast(dict[Any, Any], cache_entry["data"])
+            return model_info
+        else:
+            logger.debug(f"Cache expired for model {model_id} (age: {cache_age:.1f}s)")
+
+    # Cache miss or expired - fetch from LiteLLM
+    try:
+        headers = {"Authorization": f"Bearer {LITELLM_KEY}"}
+        response = requests_request(
+            method="GET",
+            url=f"{LITELLM_URL}/model/info",
+            headers=headers,
+            timeout=2,
+        )
+
+        if response.status_code == HTTP_200_OK:
+            all_models = response.json().get("data", [])
+            # Filter to find the specific model by model_name
+            for model in all_models:
+                if model.get("model_name") == model_id:
+                    model_info = cast(dict[Any, Any], model)
+                    # Update cache
+                    _model_info_cache[model_id] = {"data": model_info, "timestamp": current_time}
+                    logger.debug(f"Cached model info for {model_id}")
+                    return model_info
+
+            # Model not found - remove from cache if present
+            if model_id in _model_info_cache:
+                logger.info(f"Model {model_id} no longer exists, removing from cache")
+                del _model_info_cache[model_id]
+
+    except Exception as e:
+        logger.error(f"Failed to get model info for {model_id}: {e}")
+
+    return None
 
 
 def generate_response(iterator: Iterator[str | bytes]) -> Iterator[str]:
@@ -380,25 +469,34 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
         logger.error(f"Invalid JSON in request body: {e}")
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid JSON in request body")
 
+    # Get model info from LiteLLM to determine the actual model provider path
+    model_id = params.get("model")
+    model_name = None  # The actual provider/model path (e.g., "bedrock/us.anthropic.claude...")
+    if model_id:
+        model_info = get_model_info(model_id)
+        if model_info:
+            model_name = model_info.get("litellm_params", {}).get("model")
+            logger.debug(f"model_id: {model_id}, model_name: {model_name}")
+
     # Apply guardrails BEFORE sending to LiteLLM for chat/completions requests
     # This adds guardrail configuration to the request so LiteLLM enforces them
     is_chat_completion = is_chat_route(api_path)
     if is_chat_completion:
-        model_id = params.get("model")
         if model_id and jwt_data:
             await apply_guardrails_to_request(params, model_id, jwt_data)
 
     # Validate and cap max_tokens if needed for Claude Code requests
     if is_anthropic_route(api_path):
-        model_id = params.get("model")
-
-        # Check for anthropic specific headers
+        # Check for anthropic specific headers and reset the max token parameter to None
+        # so LiteLLM handles the max_token value. Only if it's not an Anthropic model
         if model_id and "anthropic-beta" in headers and "anthropic-version" in headers:
-            # reset max token parameter to null so LiteLLM handles the max_token value
-            if "max_tokens" in params:
-                params["max_tokens"] = None
-            if "max_completion_tokens" in params:
-                params["max_completion_tokens"] = None
+
+            # Only nullify max_tokens if the model is NOT an Anthropic model
+            if model_name and ".anthropic" not in model_name:
+                if "max_tokens" in params:
+                    params["max_tokens"] = None
+                if "max_completion_tokens" in params:
+                    params["max_completion_tokens"] = None
 
     is_streaming = params.get("stream", False)
     if is_streaming:

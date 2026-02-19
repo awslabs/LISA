@@ -61,6 +61,7 @@ const navLinks = [
       },
       { text: 'Model Management API', link: '/config/model-management-api' },
       { text: 'Model Management UI', link: '/config/model-management-ui' },
+      { text: 'Chat Assistant Stacks', link: '/config/chat-assistant-stacks' },
       { text: 'Bedrock Guardrails', link: '/config/guardrails' },
       { text: 'Usage & Features', link: '/config/usage' },
       { text: 'RAG Repository', link: '/config/repositories' },

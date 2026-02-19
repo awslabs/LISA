@@ -18,8 +18,6 @@ import sys
 
 from loguru import logger
 
-from .ecs import *  # noqa: F403,F401
-
 # Configure custom logger
 logger.remove()
 logger_level = os.environ.get("LOG_LEVEL", "INFO")

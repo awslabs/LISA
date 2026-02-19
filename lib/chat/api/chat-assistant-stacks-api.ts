@@ -81,7 +81,7 @@ export class ChatAssistantStacksApi extends Construct {
             {
                 name: 'list_stacks',
                 resource: 'chat_assistant_stacks',
-                description: 'List Chat Assistant Stacks',
+                description: 'List stacks (all for admin, active+accessible for non-admin)',
                 path: 'chat-assistant-stacks',
                 method: 'GET',
                 environment,

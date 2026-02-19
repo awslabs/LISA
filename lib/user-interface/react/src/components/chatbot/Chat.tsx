@@ -86,7 +86,7 @@ import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
 import { conditionalDeps } from '../utils';
 import { formatDate } from '@/shared/util/formats';
 
-export default function Chat ({ sessionId }) {
+export default function Chat ({ sessionId, initialStack }) {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
     const config: IConfiguration = useContext(ConfigurationContext);
@@ -185,6 +185,7 @@ export default function Chat ({ sessionId }) {
     const consecutiveToolCallCount = useRef(0);
     const TOOL_CALL_LIMIT = 20;
     const pendingToolChainExecution = useRef<(() => Promise<void>) | null>(null);
+    const [sessionStartedFromStack, setSessionStartedFromStack] = useState(false);
 
     // Use the custom hook to manage multiple MCP connections
     const { tools: mcpTools, callTool, McpConnections, toolToServerMap } = useMultipleMcp(enabledServers, userPreferences?.preferences?.mcp);
@@ -277,6 +278,21 @@ export default function Chat ({ sessionId }) {
             handleModelChange(defaultModelId, selectedModel, setSelectedModel);
         }
     }, [selectedModel, hasUserInteractedWithModel, config?.configuration?.global?.defaultModel, allModels, handleModelChange, setSelectedModel]);
+
+    // Apply stack config when starting a new session from a Chat Assistant (US-2, US-4)
+    const initialStackApplied = useRef(false);
+    useEffect(() => {
+        if (!initialStack || session.history.length > 0 || initialStackApplied.current || !allModels?.length) return;
+        const firstModelId = initialStack.modelIds?.[0];
+        const model = firstModelId ? allModels.find((m) => m.modelId === firstModelId) : undefined;
+        if (model) {
+            handleModelChange(model.modelId, selectedModel, setSelectedModel);
+            setModelFilterValue(model.modelId);
+        }
+        setSession((prev) => ({ ...prev, name: initialStack.name }));
+        setSessionStartedFromStack(true);
+        initialStackApplied.current = true;
+    }, [initialStack, session.history.length, allModels, setSession, handleModelChange, setSelectedModel, selectedModel]);
 
     // Wrapper for handleModelChange that tracks user interaction
     const handleUserModelChange = (value: string) => {
@@ -1021,7 +1037,7 @@ export default function Chat ({ sessionId }) {
                                     label={isImageGenerationMode || isVideoGenerationMode ? <StatusIndicator type='info'>{isImageGenerationMode ? 'Image Generation Mode' : 'Video Generation Mode'}</StatusIndicator> : undefined}
                                 >
                                     <Autosuggest
-                                        disabled={isRunning || session.history.length > 0}
+                                        disabled={isRunning || session.history.length > 0 || sessionStartedFromStack}
                                         statusType={isFetchingModels ? 'loading' : 'finished'}
                                         loadingText='Loading models (might take few seconds)...'
                                         placeholder='Select a model'

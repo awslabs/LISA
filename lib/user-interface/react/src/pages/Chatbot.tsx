@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 
 import { useCallback, useEffect, useState, useRef } from 'react';
 
@@ -26,9 +26,11 @@ import { sessionApi } from '@/shared/reducers/session.reducer';
 export function Chatbot ({ setNav }) {
     const { sessionId } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const dispatch = useAppDispatch();
     const [key, setKey] = useState(() => new Date().toISOString());
     const prevSessionIdRef = useRef(sessionId);
+    const initialStack = location.state?.stack;
 
     const handleNewSession = useCallback(() => {
         // Clear specific cached session data that might interfere with new session creation
@@ -53,12 +55,17 @@ export function Chatbot ({ setNav }) {
         prevSessionIdRef.current = sessionId;
     }, [sessionId]);
 
-
+    // Remount Chat when starting from a stack so it applies stack config to new session
+    useEffect(() => {
+        if (initialStack) {
+            setKey(`stack-${initialStack.stackId}`);
+        }
+    }, [initialStack?.stackId]);
 
     useEffect(() => {
         setNav(<Sessions newSession={handleNewSession} />);
     }, [setNav, handleNewSession]);
 
-    return <Chat key={key} sessionId={sessionId} />;
+    return <Chat key={key} sessionId={sessionId} initialStack={initialStack} />;
 }
 export default Chatbot;

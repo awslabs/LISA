@@ -29,6 +29,8 @@ import {
     useListSessionsQuery,
     useUpdateSessionNameMutation,
 } from '@/shared/reducers/session.reducer';
+import { useListStacksQuery } from '@/shared/reducers/chat-assistant-stacks.reducer';
+import { IChatAssistantStack } from '@/shared/model/chat-assistant-stack.model';
 import { useAppDispatch } from '@/config/store';
 import { useNotificationService } from '@/shared/util/hooks';
 import { useEffect, useState, useMemo } from 'react';
@@ -76,6 +78,10 @@ export function Sessions ({ newSession }) {
     const [newSessionName, setNewSessionName] = useState<string>('');
     const [sessionBeingDeleted, setSessionBeingDeleted] = useState<string | null>(null);
     const { data: sessions, isLoading: isSessionsLoading } = useListSessionsQuery(null, { refetchOnMountOrArgChange: 5 });
+    const { data: availableStacks = [] } = useListStacksQuery(undefined, {
+        skip: !config?.configuration?.enabledComponents?.chatAssistantStacks,
+        refetchOnMountOrArgChange: true,
+    });
 
     // Filter sessions based on search query
     const filteredSessions = useMemo(() => {
@@ -193,9 +199,34 @@ export function Sessions ({ newSession }) {
         setNewSessionName('');
     };
 
+    const handleStartFromStack = (stack: IChatAssistantStack) => {
+        navigate('/ai-assistant', { state: { stack }, replace: true });
+    };
+
     return (
         <div className='p-5'>
             <SpaceBetween size='l' direction='vertical'>
+                {config?.configuration?.enabledComponents?.chatAssistantStacks && (
+                    <ExpandableSection headerText='Chat Assistants' defaultExpanded={true}>
+                        <SpaceBetween size='xxs'>
+                            {availableStacks.length === 0 ? (
+                                <Box variant='small' color='text-status-inactive'>
+                                    No assistants available
+                                </Box>
+                            ) : (
+                                availableStacks.map((stack) => (
+                                    <Box key={stack.stackId} padding='xxs' className={styles.sessionItem}>
+                                        <Link onClick={() => handleStartFromStack(stack)}>
+                                            <Box fontWeight='normal' color='text-body-secondary'>
+                                                {stack.name}
+                                            </Box>
+                                        </Link>
+                                    </Box>
+                                ))
+                            )}
+                        </SpaceBetween>
+                    </ExpandableSection>
+                )}
                 <Header>
                     History
                 </Header>

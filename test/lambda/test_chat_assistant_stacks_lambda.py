@@ -97,10 +97,13 @@ def chat_stacks_handlers():
 
 @pytest.fixture(autouse=True)
 def patch_is_admin_for_chat_stacks():
-    """Patch is_admin for @admin_only; conftest skips is_admin for this module. True by default; 403 tests set False."""
-    with patch("utilities.auth.is_admin", new_callable=MagicMock) as m:
-        m.return_value = True
-        yield m
+    """Patch is_admin in lambda_functions and utilities.auth. True by default; 403 tests set False."""
+    mock_is_admin = MagicMock(return_value=True)
+    with (
+        patch("chat_assistant_stacks.lambda_functions.is_admin", mock_is_admin),
+        patch("utilities.auth.is_admin", mock_is_admin),
+    ):
+        yield mock_is_admin
 
 
 @pytest.fixture
@@ -152,6 +155,22 @@ def stacks_table(dynamodb):
 def admin_event():
     """Event with admin user (is_admin patched True by patch_is_admin_for_chat_stacks)."""
     return {"requestContext": {"authorizer": {"username": "admin-user"}}}
+
+
+def _non_admin_event(groups=None):
+    """Event for non-admin user; groups is list, stored as JSON string in authorizer."""
+    if groups is None:
+        groups = []
+    import json as _json
+
+    return {
+        "requestContext": {
+            "authorizer": {
+                "username": "normal-user",
+                "groups": _json.dumps(groups),
+            }
+        },
+    }
 
 
 @pytest.fixture
@@ -342,17 +361,103 @@ def test_update_status_missing_is_active(
     assert response["statusCode"] == 400
 
 
-def test_list_stacks_forbidden_when_not_admin(
+def _put_stack_item(table, stack_id, name, is_active=True, allowed_groups=None):
+    """Insert a stack directly into the table (for testing non-admin filtering)."""
+    from datetime import datetime, timezone
+
+    now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    item = {
+        "stackId": stack_id,
+        "name": name,
+        "description": "",
+        "modelIds": [],
+        "repositoryIds": [],
+        "collectionIds": [],
+        "mcpServerIds": [],
+        "mcpToolIds": [],
+        "directivePromptIds": [],
+        "isActive": is_active,
+        "created": now,
+        "updated": now,
+    }
+    if allowed_groups is not None:
+        item["allowedGroups"] = list(allowed_groups)
+    table.put_item(Item=item)
+
+
+def test_list_stacks_non_admin_empty_table_returns_200(
     stacks_table, lambda_context, patch_is_admin_for_chat_stacks, chat_stacks_handlers
 ):
-    """Test list_stacks returns 403 when user is not admin."""
+    """Test list_stacks as non-admin returns 200 with empty list when no stacks."""
     h = chat_stacks_handlers
     patch_is_admin_for_chat_stacks.return_value = False
-    event = {"requestContext": {"authorizer": {"username": "user"}}}
+    event = _non_admin_event(groups=["team-a"])
     response = h.list_stacks(event, lambda_context)
-    assert response["statusCode"] == 403
+    assert response["statusCode"] == 200
     body = json.loads(response["body"])
-    assert "permission" in body.get("error", "").lower()
+    assert body["Items"] == []
+
+
+def test_list_stacks_non_admin_sees_only_active_and_accessible(
+    stacks_table, lambda_context, patch_is_admin_for_chat_stacks, chat_stacks_handlers
+):
+    """Non-admin sees active stacks with allowedGroups empty or user in group; inactive or wrong-group excluded."""
+    h = chat_stacks_handlers
+    _put_stack_item(stacks_table, "global-1", "Global Stack", is_active=True, allowed_groups=[])
+    _put_stack_item(stacks_table, "team-a-1", "Team A Stack", is_active=True, allowed_groups=["team-a"])
+    _put_stack_item(stacks_table, "team-b-1", "Team B Stack", is_active=True, allowed_groups=["team-b"])
+    _put_stack_item(stacks_table, "inactive-global", "Inactive Global", is_active=False, allowed_groups=[])
+
+    patch_is_admin_for_chat_stacks.return_value = False
+    event = _non_admin_event(groups=["team-a"])
+    response = h.list_stacks(event, lambda_context)
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    items = body["Items"]
+    assert len(items) == 2
+    names = {i["name"] for i in items}
+    assert "Global Stack" in names
+    assert "Team A Stack" in names
+    assert "Team B Stack" not in names
+    assert "Inactive Global" not in names
+
+
+def test_list_stacks_non_admin_no_groups_sees_only_global(
+    stacks_table, lambda_context, patch_is_admin_for_chat_stacks, chat_stacks_handlers
+):
+    """Non-admin with no groups sees only stacks that have empty allowedGroups."""
+    h = chat_stacks_handlers
+    _put_stack_item(stacks_table, "global-1", "Global", is_active=True, allowed_groups=[])
+    _put_stack_item(stacks_table, "restricted-1", "Restricted", is_active=True, allowed_groups=["some-group"])
+
+    patch_is_admin_for_chat_stacks.return_value = False
+    event = _non_admin_event(groups=[])
+    response = h.list_stacks(event, lambda_context)
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    items = body["Items"]
+    assert len(items) == 1
+    assert items[0]["name"] == "Global"
+
+
+def test_list_stacks_admin_sees_all_including_inactive_and_restricted(
+    stacks_table, lambda_context, admin_event, chat_stacks_handlers
+):
+    """Admin list_stacks returns all stacks including inactive and any allowedGroups."""
+    h = chat_stacks_handlers
+    _put_stack_item(stacks_table, "global-1", "Global", is_active=True, allowed_groups=[])
+    _put_stack_item(stacks_table, "inactive-1", "Inactive", is_active=False, allowed_groups=[])
+    _put_stack_item(stacks_table, "restricted-1", "Restricted", is_active=True, allowed_groups=["other"])
+
+    response = h.list_stacks(admin_event, lambda_context)
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    items = body["Items"]
+    assert len(items) == 3
+    names = {i["name"] for i in items}
+    assert "Global" in names
+    assert "Inactive" in names
+    assert "Restricted" in names
 
 
 def test_create_forbidden_when_not_admin(

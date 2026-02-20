@@ -6,13 +6,8 @@ omit =
     */src/*/*/*/__init__.py
     */src/*/*/*/*/__init__.py
     # Exclude FastAPI endpoint wrappers (thin wrappers around handlers)
-    */src/api/endpoints/v1/*.py
     */src/api/endpoints/v2/*.py
     # Exclude main application file (requires full integration test)
     */src/main.py
-    # Exclude model adapters (require actual model endpoints)
-    */src/lisa_serve/ecs/textgen/*.py
-    */src/lisa_serve/ecs/embedding/*.py
-    */src/lisa_serve/base/*.py
     # Exclude routes (thin wrappers)
     */src/api/routes.py

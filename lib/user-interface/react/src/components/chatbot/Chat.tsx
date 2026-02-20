@@ -117,6 +117,26 @@ export default function Chat ({ sessionId, initialStack }) {
     [allModelsRaw]
     );
 
+    // Session and effective assistant stack (from nav or loaded when resuming)
+    const {
+        session,
+        setSession,
+        setInternalSessionId,
+        loadingSession,
+        chatConfiguration,
+        setChatConfiguration,
+        selectedModel,
+        setSelectedModel,
+        ragConfig,
+        setRagConfig,
+        chatAssistantId,
+        setChatAssistantId,
+    } = useSession(sessionId, getSessionById);
+    const { data: resumedStack } = useGetStackQuery(chatAssistantId ?? '', {
+        skip: !chatAssistantId || !!initialStack,
+    });
+    const effectiveStack = initialStack ?? (chatAssistantId && resumedStack ? resumedStack : undefined);
+
     // When using an assistant stack, restrict model dropdown to stack's modelIds
     const modelsForDropdown = useMemo(() =>
         (effectiveStack?.modelIds?.length
@@ -251,25 +271,6 @@ export default function Chat ({ sessionId, initialStack }) {
 
     // Custom hooks
     const { dynamicMaxRows } = useDynamicMaxRows();
-    const {
-        session,
-        setSession,
-        setInternalSessionId,
-        loadingSession,
-        chatConfiguration,
-        setChatConfiguration,
-        selectedModel,
-        setSelectedModel,
-        ragConfig,
-        setRagConfig
-    } = useSession(sessionId, getSessionById);
-
-    // Load assistant stack when resuming a session that has chatAssistantId (no initialStack from nav)
-    const chatAssistantId = chatConfiguration?.chatAssistantId;
-    const { data: resumedStack } = useGetStackQuery(chatAssistantId ?? '', {
-        skip: !chatAssistantId || !!initialStack,
-    });
-    const effectiveStack = initialStack ?? (chatAssistantId && resumedStack ? resumedStack : undefined);
 
     // Get sessions list lastUpdated timestamp
     const { data: sessions } = useListSessionsQuery(null, { refetchOnMountOrArgChange: 5 });
@@ -312,6 +313,7 @@ export default function Chat ({ sessionId, initialStack }) {
             setModelFilterValue(model.modelId);
         }
         setSession((prev) => ({ ...prev, name: initialStack.name }));
+        setChatAssistantId(initialStack.stackId);
         setChatConfiguration((prev) => ({ ...prev, chatAssistantId: initialStack.stackId }));
 
         // Set system prompt from persona prompt if configured
@@ -338,7 +340,7 @@ export default function Chat ({ sessionId, initialStack }) {
         }
 
         initialStackApplied.current = true;
-    }, [initialStack, session.history.length, allModels, setSession, handleModelChange, setSelectedModel, selectedModel, getPromptTemplate, setChatConfiguration, setRagConfig]);
+    }, [initialStack, session.history.length, allModels, setSession, handleModelChange, setSelectedModel, selectedModel, getPromptTemplate, setChatConfiguration, setRagConfig, setChatAssistantId]);
 
 
     // Wrapper for handleModelChange that tracks user interaction
@@ -536,7 +538,7 @@ export default function Chat ({ sessionId, initialStack }) {
                         if (session.history.at(-1).metadata.imageGeneration && Array.isArray(session.history.at(-1).content)) {
                             // Session was updated and response contained images that need to be attached to the session
                             await Promise.all(
-                                (Array.isArray(message.content) ? message.content : []).map(async (content) => {
+                                (Array.isArray(message.content) ? message.content : []).map(async (content: { type?: string; image_url?: { url?: string; s3_key?: string } }) => {
                                     if (content.type === 'image_url') {
                                         const resp = await attachImageToSession({
                                             sessionId: session.sessionId,
@@ -557,10 +559,16 @@ export default function Chat ({ sessionId, initialStack }) {
                         }
                         const updatedHistory = [...session.history.slice(0, -1), message];
 
+                        const assistantId = chatAssistantId || effectiveStack?.stackId;
                         updateSession({
                             ...session,
                             history: updatedHistory,
-                            configuration: { ...chatConfiguration, selectedModel: selectedModel, ragConfig: ragConfig }
+                            configuration: {
+                                ...chatConfiguration,
+                                selectedModel: selectedModel,
+                                ragConfig: ragConfig,
+                                ...(assistantId ? { chatAssistantId: assistantId } : {}),
+                            },
                         });
                     }
                 }
@@ -618,7 +626,7 @@ export default function Chat ({ sessionId, initialStack }) {
 
         handleToolCalls();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isRunning, session.history.length, dirtySession]);
+    }, [isRunning, session.history.length, dirtySession, chatConfiguration, chatAssistantId, effectiveStack?.stackId]);
 
     // Connection health check
     useEffect(() => {
@@ -1072,7 +1080,7 @@ export default function Chat ({ sessionId, initialStack }) {
                         onVideoLoadComplete={handleVideoLoadComplete}
                         onImageLoadComplete={handleImageLoadComplete}
                     />}
-                    {!loadingSession && session.history.length === 0 && sessionId === undefined && (
+                    {!loadingSession && session.history.length === 0 && sessionId === undefined && !effectiveStack && (
                         <WelcomeScreen
                             navigate={navigate}
                             modelSelectRef={modelSelectRef}

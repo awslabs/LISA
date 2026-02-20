@@ -16,7 +16,7 @@
 
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 
-import { useCallback, useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect } from 'react';
 
 import Chat from '../components/chatbot/Chat';
 import Sessions from '../components/chatbot/components/Sessions';
@@ -28,9 +28,12 @@ export function Chatbot ({ setNav }) {
     const navigate = useNavigate();
     const location = useLocation();
     const dispatch = useAppDispatch();
-    const [key, setKey] = useState(() => new Date().toISOString());
-    const prevSessionIdRef = useRef(sessionId);
     const initialStack = location.state?.stack;
+
+    // Same "clean" key whenever there's no session ID: refresh at /ai-assistant (or /ai-assistant/) and clicking New
+    // both get key 'new', so Chat remounts and useSession runs createNewSession() (clears assistant).
+    const hasSessionInUrl = sessionId != null && sessionId !== '';
+    const chatKey = hasSessionInUrl ? sessionId : (initialStack ? `stack-${initialStack.stackId}` : 'new');
 
     const handleNewSession = useCallback(() => {
         // Clear specific cached session data that might interfere with new session creation
@@ -38,34 +41,14 @@ export function Chatbot ({ setNav }) {
             dispatch(sessionApi.util.invalidateTags([{ type: 'session', id: sessionId }]));
         }
 
-        // Always update the key to force Chat component remount and clear state
-        // This ensures state is cleared even when already on /ai-assistant (no UUID in URL)
-        setKey(new Date().toISOString());
-
-        // Navigate and clear location state so assistant stack is cleared (fixes needing New twice)
+        // Navigate and clear location state so assistant stack is cleared (same outcome as chatKey='new')
         navigate('/ai-assistant', { replace: true, state: {} });
     }, [navigate, dispatch, sessionId]);
-
-    // Update key when sessionId changes from a value to undefined (new session clicked)
-    useEffect(() => {
-        if (prevSessionIdRef.current && !sessionId) {
-            // We transitioned from having a sessionId to not having one (new session)
-            queueMicrotask(() => setKey(new Date().toISOString()));
-        }
-        prevSessionIdRef.current = sessionId;
-    }, [sessionId]);
-
-    // Remount Chat when starting from a stack so it applies stack config to new session
-    useEffect(() => {
-        if (initialStack) {
-            setKey(`stack-${initialStack.stackId}`);
-        }
-    }, [initialStack?.stackId]);
 
     useEffect(() => {
         setNav(<Sessions newSession={handleNewSession} />);
     }, [setNav, handleNewSession]);
 
-    return <Chat key={key} sessionId={sessionId} initialStack={initialStack} />;
+    return <Chat key={chatKey} sessionId={sessionId} initialStack={initialStack} />;
 }
 export default Chatbot;

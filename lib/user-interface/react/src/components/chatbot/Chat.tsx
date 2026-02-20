@@ -82,6 +82,7 @@ import {
 } from '@/shared/reducers/user-preferences.reducer';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 import { useLazyGetPromptTemplateQuery } from '@/shared/reducers/prompt-templates.reducer';
+import { useGetStackQuery } from '@/shared/reducers/chat-assistant-stacks.reducer';
 import ConfirmationModal from '@/shared/modal/confirmation-modal';
 import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
 import { conditionalDeps } from '../utils';
@@ -118,10 +119,10 @@ export default function Chat ({ sessionId, initialStack }) {
 
     // When using an assistant stack, restrict model dropdown to stack's modelIds
     const modelsForDropdown = useMemo(() =>
-        (initialStack?.modelIds?.length
-            ? allModels.filter((m) => initialStack.modelIds.includes(m.modelId))
+        (effectiveStack?.modelIds?.length
+            ? allModels.filter((m) => effectiveStack.modelIds.includes(m.modelId))
             : allModels),
-    [allModels, initialStack?.modelIds]
+    [allModels, effectiveStack?.modelIds]
     );
     const { data: userPreferences } = useGetUserPreferencesQuery();
     const { data: mcpServers } = useListMcpServersQuery(undefined, {
@@ -187,11 +188,11 @@ export default function Chat ({ sessionId, initialStack }) {
         const base = userPreferences?.preferences?.mcp?.enabledServers
             ? mcpServers.filter((server) => userPreferences.preferences.mcp.enabledServers.map((s) => s.id).includes(server.id))
             : [];
-        if (initialStack?.mcpServerIds?.length) {
-            return base.filter((server) => initialStack.mcpServerIds.includes(server.id));
+        if (effectiveStack?.mcpServerIds?.length) {
+            return base.filter((server) => effectiveStack.mcpServerIds.includes(server.id));
         }
         return base.length ? base : undefined;
-    }, [mcpServers, userPreferences?.preferences?.mcp?.enabledServers, initialStack?.mcpServerIds]);
+    }, [mcpServers, userPreferences?.preferences?.mcp?.enabledServers, effectiveStack?.mcpServerIds]);
 
     // Tool call loop prevention
     const consecutiveToolCallCount = useRef(0);
@@ -263,6 +264,13 @@ export default function Chat ({ sessionId, initialStack }) {
         setRagConfig
     } = useSession(sessionId, getSessionById);
 
+    // Load assistant stack when resuming a session that has chatAssistantId (no initialStack from nav)
+    const chatAssistantId = chatConfiguration?.chatAssistantId;
+    const { data: resumedStack } = useGetStackQuery(chatAssistantId ?? '', {
+        skip: !chatAssistantId || !!initialStack,
+    });
+    const effectiveStack = initialStack ?? (chatAssistantId && resumedStack ? resumedStack : undefined);
+
     // Get sessions list lastUpdated timestamp
     const { data: sessions } = useListSessionsQuery(null, { refetchOnMountOrArgChange: 5 });
     const currentSessionSummary = useMemo(() =>
@@ -304,6 +312,7 @@ export default function Chat ({ sessionId, initialStack }) {
             setModelFilterValue(model.modelId);
         }
         setSession((prev) => ({ ...prev, name: initialStack.name }));
+        setChatConfiguration((prev) => ({ ...prev, chatAssistantId: initialStack.stackId }));
 
         // Set system prompt from persona prompt if configured
         if (initialStack.personaPromptId) {
@@ -330,6 +339,7 @@ export default function Chat ({ sessionId, initialStack }) {
 
         initialStackApplied.current = true;
     }, [initialStack, session.history.length, allModels, setSession, handleModelChange, setSelectedModel, selectedModel, getPromptTemplate, setChatConfiguration, setRagConfig]);
+
 
     // Wrapper for handleModelChange that tracks user interaction
     const handleUserModelChange = (value: string) => {
@@ -719,7 +729,7 @@ export default function Chat ({ sessionId, initialStack }) {
         const isFirstMessage = session.history.length === 0;
         setSession((prev) => ({
             ...prev,
-            ...(initialStack && isFirstMessage ? { name: `${initialStack.name} - ${userPrompt}` } : {}),
+            ...(effectiveStack && isFirstMessage ? { name: `${effectiveStack.name} - ${userPrompt}` } : {}),
             history: prev.history.concat(new LisaChatMessage({
                 type: 'human',
                 content: userPrompt,
@@ -937,9 +947,9 @@ export default function Chat ({ sessionId, initialStack }) {
                 key={promptTemplateKey}
                 config={config}
                 type={filterPromptTemplateType}
-                allowedDirectivePromptIds={initialStack?.directivePromptIds}
+                allowedDirectivePromptIds={effectiveStack?.directivePromptIds}
                 // eslint-disable-next-line react-hooks/exhaustive-deps
-            />), conditionalDeps([modals.promptTemplate], [modals.promptTemplate], [modals.promptTemplate, session, openModal, closeModal, chatConfiguration, setChatConfiguration, promptTemplateKey, config, filterPromptTemplateType, initialStack?.directivePromptIds]))}
+            />), conditionalDeps([modals.promptTemplate], [modals.promptTemplate], [modals.promptTemplate, session, openModal, closeModal, chatConfiguration, setChatConfiguration, promptTemplateKey, config, filterPromptTemplateType, effectiveStack?.directivePromptIds]))}
 
             {/* Tool Approval Modal */}
             {toolApprovalModal && (
@@ -1002,12 +1012,12 @@ export default function Chat ({ sessionId, initialStack }) {
             )}
 
             {/* Highlight when using a Chat Assistant: name and description */}
-            {initialStack && (
+            {effectiveStack && (
                 <Box padding={{ horizontal: 'l', vertical: 's' }} variant='div'>
                     <StatusIndicator type='info'>Chat Assistant</StatusIndicator>
-                    <Box variant='h3' margin={{ top: 'xxs' }}>{initialStack.name}</Box>
-                    {initialStack.description && (
-                        <Box variant='p' color='text-body-secondary'>{initialStack.description}</Box>
+                    <Box variant='h3' margin={{ top: 'xxs' }}>{effectiveStack.name}</Box>
+                    {effectiveStack.description && (
+                        <Box variant='p' color='text-body-secondary'>{effectiveStack.description}</Box>
                     )}
                 </Box>
             )}
@@ -1109,8 +1119,8 @@ export default function Chat ({ sessionId, initialStack }) {
                                         setUseRag={setUseRag}
                                         setRagConfig={setRagConfig}
                                         ragConfig={ragConfig}
-                                        allowedRepositoryIds={initialStack?.repositoryIds}
-                                        allowedCollectionIds={initialStack?.collectionIds}
+                                        allowedRepositoryIds={effectiveStack?.repositoryIds}
+                                        allowedCollectionIds={effectiveStack?.collectionIds}
                                     />
                                 )}
                             </Grid>

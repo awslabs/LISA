@@ -26,6 +26,8 @@ export type IChatConfiguration = {
 export type IModelConfiguration = {
     selectedModel: IModel;
     ragConfig: RagConfig;
+    /** Chat Assistant stack ID when session was started from an assistant; used to load stack on resume for filtering */
+    chatAssistantId?: string;
 };
 
 export type IPromptConfiguration = {

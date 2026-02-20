@@ -17,16 +17,14 @@
 import logging
 import os
 from datetime import timedelta
-from typing import Any
+from typing import Any, cast
 
 import boto3
 from models.domain_objects import (
-    ChunkingStrategy,
     FixedChunkingStrategy,
     IngestionJob,
     IngestionStatus,
     IngestionType,
-    JobActionType,
     NoneChunkingStrategy,
 )
 from repository.collection_service import CollectionService
@@ -55,16 +53,18 @@ bedrock_agent = boto3.client("bedrock-agent", region_name=os.environ["AWS_REGION
 ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
 
 
-def extract_chunk_strategy(pipeline_config: dict) -> ChunkingStrategy:
+def extract_chunk_strategy(pipeline_config: dict) -> FixedChunkingStrategy | NoneChunkingStrategy:
     if "chunkingStrategy" in pipeline_config and pipeline_config["chunkingStrategy"]:
         chunking_strategy = pipeline_config["chunkingStrategy"]
         chunk_type = chunking_strategy.get("type", "fixed")
         if chunk_type == "fixed":
-            return FixedChunkingStrategy.model_validate(chunking_strategy)
+            return cast(FixedChunkingStrategy, FixedChunkingStrategy.model_validate(chunking_strategy))
         else:
             raise ValueError(f"Unsupported chunking strategy type: {chunk_type}")
     elif "chunkSize" in pipeline_config and "chunkOverlap" in pipeline_config:
-        return FixedChunkingStrategy(size=int(pipeline_config["chunkSize"]), overlap=int(pipeline_config["chunkOverlap"]))
+        return FixedChunkingStrategy(
+            size=int(pipeline_config["chunkSize"]), overlap=int(pipeline_config["chunkOverlap"])
+        )
     else:
         logger.warning("No chunking strategy found in pipeline config, using defaults")
         return FixedChunkingStrategy(size=512, overlap=51)
@@ -118,7 +118,9 @@ def handle_pipeline_ingest_event(event: dict[str, Any], context: Any) -> None:
         username = "system"
         ingestion_type = IngestionType.AUTO
 
-        logger.info(f"Processing Bedrock KB document {s3_path} for repository {repository_id}, collection {collection_id}")
+        logger.info(
+            f"Processing Bedrock KB document {s3_path} for repository {repository_id}, collection {collection_id}"
+        )
     else:
         embedding_model = pipeline_config.get("embeddingModel", None)
 
@@ -205,7 +207,10 @@ def handle_pipline_ingest_schedule(event: dict[str, Any], context: Any) -> None:
                         logger.info(f"Found modified file: {obj['Key']} (Last Modified: {last_modified})")
                         modified_keys.append(obj["Key"])
                     else:
-                        logger.debug(f"Skipping file {obj['Key']} - Last modified {last_modified} before cutoff {twenty_four_hours_ago}")
+                        logger.debug(
+                            f"Skipping file {obj['Key']} - Last modified {last_modified}"
+                            f" before cutoff {twenty_four_hours_ago}"
+                        )
         except Exception as e:
             logger.error(f"Error during S3 list operation: {str(e)}", exc_info=True)
             raise
@@ -273,7 +278,10 @@ def handle_pipeline_delete_event(event: dict[str, Any], context: Any) -> None:
             logger.error(f"Bedrock KB repository {repository_id} missing data source ID")
             return
 
-        logger.info(f"Processing Bedrock KB document deletion {s3_path} for repository {repository_id}, collection {collection_id}")
+        logger.info(
+            f"Processing Bedrock KB document deletion {s3_path}"
+            f" for repository {repository_id}, collection {collection_id}"
+        )
     else:
         if not pipeline_config or not isinstance(pipeline_config, dict):
             logger.warning("No pipeline_config in event, skipping deletion")

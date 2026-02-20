@@ -17,7 +17,7 @@ import os
 
 import boto3
 from boto3.dynamodb.conditions import Key
-from models.domain_objects import CollectionStatus, IngestionJob, IngestionStatus, IngestionType, JobActionType
+from models.domain_objects import CollectionStatus, IngestionJob, IngestionStatus, JobActionType
 from repository.collection_repo import CollectionRepository
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
@@ -372,5 +372,3 @@ def pipeline_delete_documents(job: IngestionJob) -> None:
         error_msg = f"Failed to process batch deletion: {str(e)}"
         logger.error(error_msg, exc_info=True)
         raise Exception(error_msg)
-
-

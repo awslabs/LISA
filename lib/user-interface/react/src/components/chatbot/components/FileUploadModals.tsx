@@ -15,6 +15,7 @@
 */
 
 import {
+    Alert,
     Box,
     Button,
     Checkbox,
@@ -182,7 +183,7 @@ export const ContextUploadModal = ({
 
     async function extractTextFromPDF (file: File): Promise<string> {
         const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer, useSystemFonts: true }).promise;
 
         let fullText = '';
         for (let i = 1; i <= pdf.numPages; i++) {
@@ -455,7 +456,10 @@ export const RagUploadModal = ({
         >
             <SpaceBetween direction='vertical' size='s'>
                 <TextContent>
-                    <h4>Upload to RAG</h4>
+                    <Alert type='warning'>
+                        PDF parsing works best with digitally-created PDFs that contain selectable text.
+                        Scanned or image-based PDFs will not be parsed correctly.
+                    </Alert>
                     <p>
                         <small>
                             Upload files to the RAG repository leveraged by {getDisplayName()}. This will provide {getDisplayName()} with trusted information for

@@ -38,7 +38,7 @@ def setup_env(monkeypatch):
 
 def test_extract_chunk_strategy_new_format(setup_env):
     """Test extract_chunk_strategy with new chunkingStrategy object format."""
-    from repository.pipeline_ingest_documents import extract_chunk_strategy
+    from repository.pipeline_ingest_handlers import extract_chunk_strategy
 
     pipeline_config = {"chunkingStrategy": {"type": "fixed", "size": 1000, "overlap": 100}}
 
@@ -50,7 +50,7 @@ def test_extract_chunk_strategy_new_format(setup_env):
 
 def test_extract_chunk_strategy_legacy_format(setup_env):
     """Test extract_chunk_strategy with legacy flat fields."""
-    from repository.pipeline_ingest_documents import extract_chunk_strategy
+    from repository.pipeline_ingest_handlers import extract_chunk_strategy
 
     pipeline_config = {"chunkSize": 800, "chunkOverlap": 80}
 
@@ -62,7 +62,7 @@ def test_extract_chunk_strategy_legacy_format(setup_env):
 
 def test_extract_chunk_strategy_defaults(setup_env):
     """Test extract_chunk_strategy uses defaults when no config."""
-    from repository.pipeline_ingest_documents import extract_chunk_strategy
+    from repository.pipeline_ingest_handlers import extract_chunk_strategy
 
     pipeline_config = {}
 
@@ -74,7 +74,7 @@ def test_extract_chunk_strategy_defaults(setup_env):
 
 def test_extract_chunk_strategy_unsupported_type(setup_env):
     """Test extract_chunk_strategy raises error for unsupported type."""
-    from repository.pipeline_ingest_documents import extract_chunk_strategy
+    from repository.pipeline_ingest_handlers import extract_chunk_strategy
 
     pipeline_config = {"chunkingStrategy": {"type": "semantic", "size": 1000}}
 
@@ -335,18 +335,18 @@ def test_handle_pipeline_ingest_event(setup_env):
         "requestContext": {"authorizer": {"username": "user1"}},
     }
 
-    with patch("repository.pipeline_ingest_documents.vs_repo") as mock_vs_repo, patch(
-        "repository.pipeline_ingest_documents.collection_service"
+    with patch("repository.pipeline_ingest_handlers.vs_repo") as mock_vs_repo, patch(
+        "repository.pipeline_ingest_handlers.collection_service"
     ) as mock_coll_service, patch(
-        "repository.pipeline_ingest_documents.ingestion_job_repository"
+        "repository.pipeline_ingest_handlers.ingestion_job_repository"
     ) as mock_job_repo, patch(
-        "repository.pipeline_ingest_documents.ingestion_service"
+        "repository.pipeline_ingest_handlers.ingestion_service"
     ) as mock_service:
 
         mock_vs_repo.find_repository_by_id.return_value = {"repositoryId": "repo1"}
         mock_coll_service.get_collection_metadata.return_value = {}
 
-        from repository.pipeline_ingest_documents import handle_pipeline_ingest_event
+        from repository.pipeline_ingest_handlers import handle_pipeline_ingest_event
 
         handle_pipeline_ingest_event(event, None)
 
@@ -369,12 +369,12 @@ def test_handle_pipline_ingest_schedule(setup_env):
     now = datetime.now(timezone.utc)
     recent = now - timedelta(hours=12)
 
-    with patch("repository.pipeline_ingest_documents.s3") as mock_s3, patch(
-        "repository.pipeline_ingest_documents.vs_repo"
-    ) as mock_vs_repo, patch("repository.pipeline_ingest_documents.collection_service") as mock_coll_service, patch(
-        "repository.pipeline_ingest_documents.ingestion_job_repository"
+    with patch("repository.pipeline_ingest_handlers.s3") as mock_s3, patch(
+        "repository.pipeline_ingest_handlers.vs_repo"
+    ) as mock_vs_repo, patch("repository.pipeline_ingest_handlers.collection_service") as mock_coll_service, patch(
+        "repository.pipeline_ingest_handlers.ingestion_job_repository"
     ) as mock_job_repo, patch(
-        "repository.pipeline_ingest_documents.ingestion_service"
+        "repository.pipeline_ingest_handlers.ingestion_service"
     ) as mock_service:
 
         mock_paginator = Mock()
@@ -390,7 +390,7 @@ def test_handle_pipline_ingest_schedule(setup_env):
         mock_vs_repo.find_repository_by_id.return_value = {"repositoryId": "repo1"}
         mock_coll_service.get_collection_metadata.return_value = {}
 
-        from repository.pipeline_ingest_documents import handle_pipline_ingest_schedule
+        from repository.pipeline_ingest_handlers import handle_pipline_ingest_schedule
 
         handle_pipline_ingest_schedule(event, None)
 
@@ -411,9 +411,9 @@ def test_handle_pipline_ingest_schedule_no_contents(setup_env):
         "requestContext": {"authorizer": {"username": "user1"}},
     }
 
-    with patch("repository.pipeline_ingest_documents.s3") as mock_s3, patch(
-        "repository.pipeline_ingest_documents.vs_repo"
-    ) as mock_vs_repo, patch("repository.pipeline_ingest_documents.collection_service") as mock_coll_service:
+    with patch("repository.pipeline_ingest_handlers.s3") as mock_s3, patch(
+        "repository.pipeline_ingest_handlers.vs_repo"
+    ) as mock_vs_repo, patch("repository.pipeline_ingest_handlers.collection_service") as mock_coll_service:
 
         mock_paginator = Mock()
         mock_paginator.paginate.return_value = [{}]  # No Contents key
@@ -421,7 +421,7 @@ def test_handle_pipline_ingest_schedule_no_contents(setup_env):
         mock_vs_repo.find_repository_by_id.return_value = {"repositoryId": "repo1"}
         mock_coll_service.get_collection_metadata.return_value = {}
 
-        from repository.pipeline_ingest_documents import handle_pipline_ingest_schedule
+        from repository.pipeline_ingest_handlers import handle_pipline_ingest_schedule
 
         # Should not raise error
         handle_pipline_ingest_schedule(event, None)

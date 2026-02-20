@@ -12,11 +12,10 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""Lambda function for pipeline document ingestion."""
+"""Batch container processing functions for pipeline document ingestion."""
 
 import logging
 import os
-from datetime import timedelta
 from typing import Any
 
 import boto3
@@ -39,12 +38,11 @@ from repository.rag_document_repo import RagDocumentRepository
 from repository.s3_metadata_manager import S3MetadataManager
 from repository.services.repository_service_factory import RepositoryServiceFactory
 from repository.vector_store_repo import VectorStoreRepository
-from utilities.auth import get_username
 from utilities.bedrock_kb import get_datasource_bucket_for_collection, ingest_document_to_kb, S3DocumentDiscoveryService
 from utilities.common_functions import retry_config
 from utilities.file_processing import generate_chunks
 from utilities.repository_types import RepositoryType
-from utilities.time import now, utc_now
+from utilities.time import now
 
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 ingestion_job_table = dynamodb.Table(os.environ["LISA_INGESTION_JOB_TABLE_NAME"])
@@ -58,7 +56,6 @@ logger = logging.getLogger(__name__)
 session = boto3.Session()
 s3 = boto3.client("s3", region_name=os.environ["AWS_REGION"], config=retry_config)
 bedrock_agent = boto3.client("bedrock-agent", region_name=os.environ["AWS_REGION"], config=retry_config)
-ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
 
 
 def pipeline_ingest(job: IngestionJob) -> None:
@@ -425,275 +422,12 @@ def remove_document_from_vectorstore(doc: RagDocument) -> None:
     vector_store.delete(doc.subdocs)  # type: ignore[union-attr]
 
 
-def handle_pipeline_ingest_event(event: dict[str, Any], context: Any) -> None:
-    """Handle pipeline document ingestion."""
-    # Extract and validate inputs
-    logger.debug(f"Received event: {event}")
-
-    detail = event.get("detail", {})
-    bucket = detail.get("bucket", None)
-    username = get_username(event)
-    key = detail.get("key", None)
-
-    # Safety check: filter out metadata files (should be filtered by EventBridge)
-    if key and key.endswith(".metadata.json"):
-        logger.warning(f"Metadata file event reached Lambda (should be filtered by EventBridge): {key}")
-        return
-    repository_id = detail.get("repositoryId", None)
-    pipeline_config = detail.get("pipelineConfig", None)
-    collection_id = detail.get("collectionId", None)
-    s3_path = f"s3://{bucket}/{key}"
-
-    # Get repository to determine type and configuration
-    repository = vs_repo.find_repository_by_id(repository_id)
-
-    # For Bedrock KB repositories, use data source ID as collection ID
-    if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
-        if not collection_id:
-            # Fallback: try to get from bedrock config (legacy support)
-            bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
-
-            # Try new structure with dataSources array
-            data_sources = bedrock_config.get("dataSources", [])
-            if data_sources:
-                first_data_source = data_sources[0]
-                collection_id_val: str | None = (
-                    first_data_source.get("id") if isinstance(first_data_source, dict) else first_data_source.id
-                )
-                if not collection_id_val:
-                    logger.error(f"Bedrock KB repository {repository_id} has invalid data source")
-                    return
-                collection_id = collection_id_val
-            else:
-                # Try legacy single data source ID
-                collection_id_val = bedrock_config.get("bedrockKnowledgeDatasourceId")
-                if not collection_id_val:
-                    logger.error(f"Bedrock KB repository {repository_id} missing data source ID")
-                    return
-                collection_id = collection_id_val
-
-        if not collection_id:
-            logger.error(f"Bedrock KB repository {repository_id} missing data source ID")
-            return
-
-        embedding_model = repository.get("embeddingModelId")
-        chunk_strategy = NoneChunkingStrategy()  # KB manages chunking
-
-        # Set username to "system" for auto-ingestion from KB bucket
-        username = "system"
-        ingestion_type = IngestionType.AUTO
-
-        logger.info(
-            f"Processing Bedrock KB document {s3_path} for repository {repository_id}, " f"collection {collection_id}"
-        )
-    else:
-        # Non-Bedrock KB path (existing logic)
-        embedding_model = pipeline_config.get("embeddingModel", None)
-
-        if collection_id:
-            collection = collection_service.get_collection(
-                collection_id=collection_id, repository_id=repository_id, is_admin=True, username="", user_groups=[]
-            )
-
-            if collection.embeddingModel is not None:
-                embedding_model = collection.embeddingModel
-        else:
-            collection_id = embedding_model
-
-        chunk_strategy = extract_chunk_strategy(pipeline_config)
-        ingestion_type = IngestionType.MANUAL
-
-        logger.info(f"Ingesting object {s3_path} for repository {repository_id}/{embedding_model}")
-
-    # Get collection for metadata merging
-    collection_dict = None
-    if collection_id and collection_id != embedding_model:
-        try:
-            collection_obj = collection_service.get_collection(
-                collection_id=collection_id, repository_id=repository_id, is_admin=True, username="", user_groups=[]
-            )
-            collection_dict = collection_obj.model_dump() if collection_obj else None
-        except Exception as e:
-            logger.warning(f"Could not fetch collection for metadata merging: {e}")
-
-    # Merge metadata from repository, collection, and pipeline sources
-    merged_metadata = MetadataGenerator.merge_metadata(
-        repository=repository,
-        collection=collection_dict,
-        document_metadata=None,
-        for_bedrock_kb=False,  # Keep tags as array for ingestion jobs
-    )
-
-    # Create ingestion job and save it to dynamodb
-    job = IngestionJob(
-        repository_id=repository_id,
-        collection_id=collection_id,
-        embedding_model=embedding_model,
-        chunk_strategy=chunk_strategy,
-        s3_path=s3_path,
-        username=username,
-        ingestion_type=ingestion_type,
-        metadata=merged_metadata,
-    )
-    ingestion_job_repository.save(job)
-    ingestion_service.submit_create_job(job)
-
-    logger.info(f"Submitted ingestion job for document {s3_path} in repository {repository_id}")
-
-
-def handle_pipline_ingest_schedule(event: dict[str, Any], context: Any) -> None:
-    """
-    Lists all objects in the specified S3 bucket and prefix that were modified in the last 24 hours.
-
-    Args:
-        event: Event data containing bucket and prefix information
-        context: Lambda context
-
-    Returns:
-        Dictionary containing array of files with their bucket and key
-    """
-    # Log the full event for debugging
-    logger.debug(f"Received event: {event}")
-
-    detail = event.get("detail", {})
-    bucket = detail.get("bucket", None)
-    username = get_username(event)
-    prefix = detail.get("prefix", None)
-    repository_id = detail.get("repositoryId", None)
-    pipeline_config = detail.get("pipelineConfig", None)
-    embedding_model = pipeline_config.get("embeddingModel", None)
-
-    # hard code fixed length chunking until more strategies are implemented
-    chunk_strategy = extract_chunk_strategy(pipeline_config)
-
-    # Get repository for metadata merging
-    repository = vs_repo.find_repository_by_id(repository_id)
-
-    try:
-        # Add debug logging
-        logger.info(f"Processing request for bucket: {bucket}, prefix: {prefix}")
-
-        # Calculate timestamp for 24 hours ago
-        twenty_four_hours_ago = utc_now() - timedelta(hours=24)
-
-        # List to store matching objects
-        modified_keys = []
-
-        # Use paginator to handle case where there are more than 1000 objects
-        paginator = s3.get_paginator("list_objects_v2")
-
-        # Add debug logging for S3 list operation
-        logger.info(f"Listing objects in {bucket}{prefix} modified after {twenty_four_hours_ago}")
-
-        # Iterate through all objects in the bucket/prefix
-        try:
-            for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
-                if "Contents" not in page:
-                    logger.info(f"No contents found in page for {bucket}{prefix}")
-                    continue
-
-                # Check each object's last modified time
-                for obj in page["Contents"]:
-                    last_modified = obj["LastModified"]
-                    if last_modified >= twenty_four_hours_ago:
-                        logger.info(f"Found modified file: {obj['Key']} (Last Modified: {last_modified})")
-                        modified_keys.append(obj["Key"])
-                    else:
-                        logger.debug(
-                            f"Skipping file {obj['Key']} - Last modified {last_modified} before cutoff "
-                            f"{twenty_four_hours_ago}"
-                        )
-        except Exception as e:
-            logger.error(f"Error during S3 list operation: {str(e)}", exc_info=True)
-            raise
-
-        # Merge metadata from repository and pipeline sources (no collection for scheduled jobs)
-        merged_metadata = MetadataGenerator.merge_metadata(
-            repository=repository,
-            collection=None,
-            document_metadata=None,
-            for_bedrock_kb=False,  # Keep tags as array for ingestion jobs
-        )
-
-        # create an IngestionJob for every object created/modified
-        for key in modified_keys:
-            job = IngestionJob(
-                repository_id=repository_id,
-                collection_id=embedding_model,
-                chunk_strategy=chunk_strategy,
-                s3_path=f"s3://{bucket}/{key}",
-                username=username,
-                ingestion_type=IngestionType.AUTO,
-                metadata=merged_metadata,
-            )
-            ingestion_job_repository.save(job)
-            ingestion_service.submit_create_job(job)
-
-        logger.info(f"Found {len(modified_keys)} modified files in {bucket}{prefix}")
-    except Exception as e:
-        logger.error(f"Error listing objects: {str(e)}", exc_info=True)
-        raise e
-
 
 def batch_texts(texts: list[str], metadatas: list[dict], batch_size: int = 256) -> list[tuple[list[str], list[dict]]]:
-    """
-    Split texts and metadata into batches of specified size.
-
-    Args:
-        texts: List of text strings to batch
-        metadatas: List of metadata dictionaries
-        batch_size: Maximum size of each batch (default 256 to match embedding server limit)
-    Returns:
-        List of tuples containing (texts_batch, metadatas_batch)
-    """
     batches = []
     for i in range(0, len(texts), batch_size):
-        text_batch = texts[i : i + batch_size]
-        metadata_batch = metadatas[i : i + batch_size]
-        batches.append((text_batch, metadata_batch))
+        batches.append((texts[i : i + batch_size], metadatas[i : i + batch_size]))
     return batches
-
-
-def extract_chunk_strategy(pipeline_config: dict) -> ChunkingStrategy:
-    """
-    Extract and validate chunking strategy from pipeline configuration.
-
-    Supports both new chunkingStrategy object format and legacy flat fields for backward compatibility.
-    Uses Pydantic model validation to ensure data integrity.
-
-    Args:
-        pipeline_config: Pipeline configuration dictionary
-
-    Returns:
-        ChunkingStrategy object (validated Pydantic model)
-
-    Raises:
-        ValueError: If chunking strategy type is unsupported or validation fails
-    """
-    # Check for new chunkingStrategy object format first
-    if "chunkingStrategy" in pipeline_config and pipeline_config["chunkingStrategy"]:
-        chunking_strategy = pipeline_config["chunkingStrategy"]
-        chunk_type = chunking_strategy.get("type", "fixed")
-
-        if chunk_type == "fixed":
-            # Use Pydantic model validation for type safety and validation
-            result: FixedChunkingStrategy = FixedChunkingStrategy.model_validate(chunking_strategy)
-            return result
-        else:
-            # Future: Handle other chunking strategy types (semantic, recursive, etc.)
-            raise ValueError(f"Unsupported chunking strategy type: {chunk_type}")
-
-    # Fall back to legacy flat fields for backward compatibility
-    elif "chunkSize" in pipeline_config and "chunkOverlap" in pipeline_config:
-        chunk_size = int(pipeline_config["chunkSize"])
-        chunk_overlap = int(pipeline_config["chunkOverlap"])
-        # Use Pydantic model for validation
-        return FixedChunkingStrategy(size=chunk_size, overlap=chunk_overlap)
-
-    # Default values if neither format is present
-    else:
-        logger.warning("No chunking strategy found in pipeline config, using defaults")
-        return FixedChunkingStrategy(size=512, overlap=51)
 
 
 def prepare_chunks(docs: list, repository_id: str, collection_id: str) -> tuple[list[str], list[dict]]:

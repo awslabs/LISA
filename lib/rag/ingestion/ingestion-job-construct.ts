@@ -202,7 +202,7 @@ export class IngestionJobConstruct extends Construct {
         const handlePipelineIngestScheduleLambda = new lambda.Function(this, 'handlePipelineIngestSchedule', {
             functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-ingest-schedule-${hash}`,
             runtime: getPythonRuntime(),
-            handler: 'repository.pipeline_ingest_documents.handle_pipline_ingest_schedule',
+            handler: 'repository.pipeline_ingest_handlers.handle_pipline_ingest_schedule',
             code: lambda.Code.fromAsset('./lambda'),
             timeout: Duration.seconds(60),
             memorySize: 256,
@@ -230,7 +230,7 @@ export class IngestionJobConstruct extends Construct {
         const handlePipelineIngestEvent = new lambda.Function(this, 'handlePipelineIngestEvent', {
             functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-ingest-event-${hash}`,
             runtime: getPythonRuntime(),
-            handler: 'repository.pipeline_ingest_documents.handle_pipeline_ingest_event',
+            handler: 'repository.pipeline_ingest_handlers.handle_pipeline_ingest_event',
             code: lambda.Code.fromAsset('./lambda'),
             timeout: Duration.seconds(60),
             memorySize: 256,
@@ -258,7 +258,7 @@ export class IngestionJobConstruct extends Construct {
         const handlePipelineDeleteEvent = new lambda.Function(this, 'handlePipelineDeleteEvent', {
             functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-delete-event-${hash}`,
             runtime: getPythonRuntime(),
-            handler: 'repository.pipeline_ingest_documents.handle_pipeline_delete_event',
+            handler: 'repository.pipeline_ingest_handlers.handle_pipeline_delete_event',
             code: lambda.Code.fromAsset('./lambda'),
             timeout: Duration.seconds(60),
             memorySize: 256,

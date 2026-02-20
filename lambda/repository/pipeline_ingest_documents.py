@@ -16,12 +16,9 @@
 
 import logging
 import os
-from typing import Any
 
 import boto3
 from models.domain_objects import (
-    ChunkingStrategy,
-    FixedChunkingStrategy,
     IngestionJob,
     IngestionStatus,
     IngestionType,
@@ -420,7 +417,6 @@ def remove_document_from_vectorstore(doc: RagDocument) -> None:
         embeddings=embeddings,
     )
     vector_store.delete(doc.subdocs)  # type: ignore[union-attr]
-
 
 
 def batch_texts(texts: list[str], metadatas: list[dict], batch_size: int = 256) -> list[tuple[list[str], list[dict]]]:

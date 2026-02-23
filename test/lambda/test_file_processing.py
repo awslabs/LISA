@@ -178,6 +178,22 @@ def test_extract_pdf_content_success():
         assert result == "Page 1 content"
 
 
+def test_extract_pdf_content_cleanup_success():
+    """Test _extract_pdf_content with valid PDF including text normalization."""
+    from utilities.file_processing import _extract_pdf_content
+
+    mock_s3_object = {"Body": BytesIO(b"mock pdf content")}
+
+    with patch("utilities.file_processing.PdfReader") as mock_reader:
+        mock_page = MagicMock()
+        # Include soft hyphen, zero-width space, and extra whitespace to test cleanup
+        mock_page.extract_text.return_value = "Page\xad1\u200b con\ufefftent  here"
+        mock_reader.return_value.pages = [mock_page]
+
+        result = _extract_pdf_content(mock_s3_object)
+        assert result == "Page1 content here"
+
+
 def test_extract_docx_content_success():
     """Test _extract_docx_content with valid DOCX."""
     from utilities.file_processing import _extract_docx_content

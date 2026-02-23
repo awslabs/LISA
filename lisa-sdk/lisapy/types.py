@@ -16,7 +16,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, TypedDict
+from typing import Any, Literal, TypedDict, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -114,6 +114,46 @@ class BedrockModelRequest(TypedDict, total=False):
     features: list[dict[str, str]]
     allowedGroups: list[str]
     apiKey: str
+
+
+class DaySchedule(TypedDict, total=False):
+    """Start/stop times for a single day (HH:MM format)."""
+
+    startTime: str
+    stopTime: str
+
+
+class WeeklySchedule(TypedDict, total=False):
+    """Per-day schedule for a full week."""
+
+    monday: DaySchedule
+    tuesday: DaySchedule
+    wednesday: DaySchedule
+    thursday: DaySchedule
+    friday: DaySchedule
+    saturday: DaySchedule
+    sunday: DaySchedule
+
+
+class DailySchedulingConfig(TypedDict, total=False):
+    """Daily (per-weekday) auto-scaling schedule."""
+
+    scheduleType: Literal["DAILY"]
+    timezone: str
+    dailySchedule: WeeklySchedule
+    scheduleEnabled: bool
+
+
+class RecurringSchedulingConfig(TypedDict, total=False):
+    """Recurring (same window every day) auto-scaling schedule."""
+
+    scheduleType: Literal["RECURRING"]
+    timezone: str
+    recurringSchedule: DaySchedule
+    scheduleEnabled: bool
+
+
+SchedulingConfig = Union[DailySchedulingConfig, RecurringSchedulingConfig]
 
 
 class RagRepositoryConfig(TypedDict, total=False):

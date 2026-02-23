@@ -151,14 +151,17 @@ TOTAL_MEM_GB=$((TOTAL_MEM_KB / 1024 / 1024))
 echo "Total system memory: ${TOTAL_MEM_GB}GB"
 
 # Check GPU availability
+GPU_MEM_GB=0
 if command -v nvidia-smi &> /dev/null; then
-    GPU_INFO=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | head -1)
-    GPU_MEM_MB=${GPU_INFO}
-    GPU_MEM_GB=$((GPU_MEM_MB / 1024))
-    echo "GPU memory available: ${GPU_MEM_GB}GB"
+    GPU_INFO=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null | head -1 | tr -d '[:space:]')
+    if [[ "${GPU_INFO}" =~ ^[0-9]+$ ]]; then
+        GPU_MEM_GB=$((GPU_INFO / 1024))
+        echo "GPU memory available: ${GPU_MEM_GB}GB"
+    else
+        echo "Warning: nvidia-smi returned unexpected output: '${GPU_INFO}', assuming no GPU"
+    fi
 else
     echo "No GPU detected or nvidia-smi not available"
-    GPU_MEM_GB=0
 fi
 
 # Memory warnings and recommendations
@@ -173,11 +176,12 @@ fi
 
 # Validate tensor parallel configuration
 if [[ -n "${VLLM_TENSOR_PARALLEL_SIZE}" ]] && [[ ${VLLM_TENSOR_PARALLEL_SIZE} -gt 1 ]]; then
-    if [[ ${GPU_MEM_GB} -eq 0 ]]; then
-        echo "Error: Tensor parallelism requires GPU but no GPU detected"
-        exit 1
+    GPU_COUNT=$(nvidia-smi --list-gpus 2>/dev/null | wc -l || echo 0)
+    if [[ ${GPU_COUNT} -eq 0 ]]; then
+        echo "Warning: Tensor parallelism requested (${VLLM_TENSOR_PARALLEL_SIZE}) but no GPUs detected - proceeding anyway"
+    else
+        echo "Using tensor parallelism with ${VLLM_TENSOR_PARALLEL_SIZE} GPUs (${GPU_COUNT} detected)"
     fi
-    echo "Using tensor parallelism with ${VLLM_TENSOR_PARALLEL_SIZE} GPUs"
 fi
 
 # Start the webserver
@@ -266,8 +270,11 @@ if [[ "${VLLM_ASYNC_SCHEDULING}" == "true" ]]; then
 fi
 
 echo "Starting vLLM with args: ${ADDITIONAL_ARGS}"
-echo "vLLM environment variables:"
-env | grep -E "^(VLLM_|MAX_TOTAL_TOKENS)=" || echo "No vLLM environment variables set"
+# Print all VLLM_ environment variables at startup
+echo "=== VLLM Environment Variables ==="
+env | grep -E "^VLLM_" || echo "No VLLM_ environment variables set"
+echo "==================================="
+
 
 python3 -m vllm.entrypoints.openai.api_server \
     --model ${LOCAL_MODEL_PATH} \

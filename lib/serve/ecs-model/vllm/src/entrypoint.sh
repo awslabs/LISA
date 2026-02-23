@@ -238,6 +238,12 @@ if [[ -n "${VLLM_TENSOR_PARALLEL_SIZE}" ]]; then
     echo "  --tensor-parallel-size ${VLLM_TENSOR_PARALLEL_SIZE}"
 fi
 
+# Attention backend override
+if [[ -n "${VLLM_ATTENTION_BACKEND}" ]]; then
+    ADDITIONAL_ARGS="${ADDITIONAL_ARGS} --attention-backend ${VLLM_ATTENTION_BACKEND}"
+    echo "  --attention-backend ${VLLM_ATTENTION_BACKEND}"
+fi
+
 # Quantization method
 if [[ -n "${VLLM_QUANTIZATION}" ]]; then
     ADDITIONAL_ARGS="${ADDITIONAL_ARGS} --quantization ${VLLM_QUANTIZATION}"

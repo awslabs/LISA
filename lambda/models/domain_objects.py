@@ -401,6 +401,7 @@ class ContainerConfig(BaseModel):
     sharedMemorySize: PositiveInt
     healthCheckConfig: ContainerHealthCheckConfig
     environment: dict[str, str] | None = {}
+    memoryReservation: int | None = Field(default=None, ge=0, description="Memory reservation in MiB for the container.")
 
     @field_validator("environment")
     @classmethod

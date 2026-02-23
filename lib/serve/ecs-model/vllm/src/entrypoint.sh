@@ -46,7 +46,7 @@ declare -a vars=("S3_BUCKET_MODELS" "LOCAL_MODEL_PATH" "MODEL_NAME" "S3_MOUNT_PO
 #   VLLM_ASYNC_SCHEDULING - Adds --async-scheduling for higher performance
 #
 # ATTENTION & BACKENDS:
-#   VLLM_ATTENTION_BACKEND - Attention backend (FLASH_ATTN/XFORMERS/ROCM_FLASH/TORCH_SDPA/FLASHINFER/etc)
+#   VLLM_ATTENTION_BACKEND - Attention backend, read natively by vLLM (FLASH_ATTN/FLASHINFER/XFORMERS)
 #   VLLM_ENABLE_PREFIX_CACHING - Enable prefix caching (true/false, default: true)
 #   VLLM_ENABLE_CHUNKED_PREFILL - Enable chunked prefill (true/false, default: true)
 #   VLLM_MAX_CHUNKED_PREFILL_TOKENS - Max tokens per prefill chunk
@@ -238,11 +238,8 @@ if [[ -n "${VLLM_TENSOR_PARALLEL_SIZE}" ]]; then
     echo "  --tensor-parallel-size ${VLLM_TENSOR_PARALLEL_SIZE}"
 fi
 
-# Attention backend override
-if [[ -n "${VLLM_ATTENTION_BACKEND}" ]]; then
-    ADDITIONAL_ARGS="${ADDITIONAL_ARGS} --attention-backend ${VLLM_ATTENTION_BACKEND}"
-    echo "  --attention-backend ${VLLM_ATTENTION_BACKEND}"
-fi
+# Attention backend override - read natively by vLLM as env var, no CLI arg needed
+# Valid values: FLASH_ATTN, FLASHINFER, XFORMERS
 
 # Quantization method
 if [[ -n "${VLLM_QUANTIZATION}" ]]; then
@@ -273,6 +270,12 @@ fi
 if [[ "${VLLM_ASYNC_SCHEDULING}" == "true" ]]; then
     ADDITIONAL_ARGS="${ADDITIONAL_ARGS} --async-scheduling"
     echo "  --async-scheduling"
+fi
+
+# Max parallel loading workers (avoids RAM OOM with tensor parallelism + large models)
+if [[ -n "${VLLM_MAX_PARALLEL_LOADING_WORKERS}" ]]; then
+    ADDITIONAL_ARGS="${ADDITIONAL_ARGS} --max-parallel-loading-workers ${VLLM_MAX_PARALLEL_LOADING_WORKERS}"
+    echo "  --max-parallel-loading-workers ${VLLM_MAX_PARALLEL_LOADING_WORKERS}"
 fi
 
 echo "Starting vLLM with args: ${ADDITIONAL_ARGS}"

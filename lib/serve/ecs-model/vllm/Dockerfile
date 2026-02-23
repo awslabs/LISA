@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=public.ecr.aws/deep-learning-containers/vllm:0.13-gpu-py312
+ARG BASE_IMAGE=public.ecr.aws/deep-learning-containers/vllm:0.15-gpu-py312-ec2
 FROM ${BASE_IMAGE}
 
 # Apply SSH security hardening - disable weak ciphers (3DES-CBC, etc.)

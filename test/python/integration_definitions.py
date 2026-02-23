@@ -99,20 +99,16 @@ MODEL_DEFINITIONS: dict[str, dict] = {
             "VLLM_ENABLE_PREFIX_CACHING": "true",
             "VLLM_ENABLE_CHUNKED_PREFILL": "true",
             "VLLM_DTYPE": "auto",
-            "VLLM_ATTENTION_BACKEND": "FLASH_ATTN",
         },
     },
     "gpt-oss-120b": {
         "model_name": "openai/gpt-oss-120b",
         # Requires Hopper (H100/H200) for MXFP4 MoE kernels — p5.xlarge = 1x H100 80GB
-        # gptoss tag required: MXFP4 kernels were not in mainline until v0.11.0
         "instance_type": "g6.48xlarge",
-        "base_image": "vllm/vllm-openai:gptoss",
         "blockDeviceVolumeSize": 200,
         "sharedMemorySize": 16384,
         "memoryReservation": 180000,
         "environment": {
-            "VLLM_ATTENTION_BACKEND": "TRITON_ATTN_VLLM_V1",
             "VLLM_TENSOR_PARALLEL_SIZE": "8",
             "VLLM_MAX_MODEL_LEN": "8192",
             "VLLM_GPU_MEMORY_UTILIZATION": "0.90",
@@ -128,13 +124,11 @@ MODEL_DEFINITIONS: dict[str, dict] = {
         "model_name": "openai/gpt-oss-20b",
         # Requires Hopper (H100/H200) for MXFP4 MoE kernels — p5.xlarge = 1x H100 80GB
         # gptoss tag required: MXFP4 kernels were not in mainline until v0.11.0
-        "instance_type": "g6.12xlarge",
-        "base_image": "vllm/vllm-openai:gptoss",
+        "instance_type": "g6.4xlarge",
         "blockDeviceVolumeSize": 100,
-        "sharedMemorySize": 8192,
-        "memoryReservation": 60000,
+        "sharedMemorySize": 4096,
+        "memoryReservation": 50000, # leaves ~136GB headroom
         "environment": {
-            "VLLM_ATTENTION_BACKEND": "TRITON_ATTN_VLLM_V1",
             "VLLM_TENSOR_PARALLEL_SIZE": "4",
             "VLLM_MAX_MODEL_LEN": "32768",
             "VLLM_GPU_MEMORY_UTILIZATION": "0.90",

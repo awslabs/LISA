@@ -857,9 +857,8 @@ def main() -> int:
         else:
             print("⚠️  No embedding models found, repositories will use default embedding model")
 
-        vllm_base_image = "vllm/vllm-openai:v0.10.2"
-        # vllm_base_image = f"{account_id}.dkr.ecr.{region}.amazonaws.com/lisa-vllm:latest"
-
+        vllm_base_image = f"{account_id}.dkr.ecr.{region}.amazonaws.com/lisa-vllm:latest"
+        
         # Deploy self-hosted textgen models
         for model_id in deploy_models:
             if model_id not in MODEL_DEFINITIONS:

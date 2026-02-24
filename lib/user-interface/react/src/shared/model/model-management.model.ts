@@ -400,7 +400,7 @@ export const containerConfigSchema = z.object({
 export const ModelRequestBaseSchema = z.object({
     modelId: z.string()
         .regex(/^[a-z\d-]+$/, {message: 'Only lowercase alphanumeric characters and hyphens allowed'})
-        .regex(/^[a-z0-9].*[a-z0-9]$/, {message: 'Must start and end with a lowercase alphanumeric character.'})
+        .regex(/^[a-z].*[a-z0-9]$/, {message: 'Must start with a lowercase letter and end with a lowercase alphanumeric character.'})
         .default(''),
     modelName: z.string().min(1).default(''),
     modelDescription: z.string().default(''),

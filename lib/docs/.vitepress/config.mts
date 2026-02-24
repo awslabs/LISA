@@ -80,6 +80,7 @@ const navLinks = [
       { text: 'MCP Connections: Third-party servers', link: '/config/mcp' },
       { text: 'MCP Workbench: Experimentation', link: '/config/mcp-workbench' },
       { text: 'Usage Analytics', link: '/config/cloudwatch' },
+      { text: 'Claude Code Setup for LISA Serve', link: '/config/claude-code-setup' },
     ],
   },
   {

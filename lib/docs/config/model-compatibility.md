@@ -28,3 +28,4 @@ See the [deployment](/admin/deploy) section for details on how to set up the vLL
 how the HuggingFace containers will serve safetensor weights downloaded from the
 HuggingFace website, vLLM will do the same, and our configuration will allow you to serve these artifacts automatically. vLLM does not have many supported models for embeddings, but as they become available,
 LISA will support them as long as the vLLM container version is updated in the config.yaml file and as long as the model's safetensors can be found in S3.
+- Please see the [vLLM Environment Variables Documentation](./vllm_variables.md) before getting started with vLLM models

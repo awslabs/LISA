@@ -606,3 +606,53 @@ def test_pipeline_ingest_routes_to_single_ingestion(setup_env):
         pipeline_ingest(job)
 
         mock_ingest_document.assert_called_once_with(job)
+
+
+def test_handle_pipeline_ingest_event_resolves_collection_by_name(setup_env):
+    """Pipeline collectionId name string must be resolved to UUID before job creation.
+    The job must be created with the UUID, not the name string."""
+    event = {
+        "detail": {
+            "bucket": "test-bucket",
+            "key": "test.txt",
+            "repositoryId": "repo1",
+            "pipelineConfig": {
+                "collectionId": "my-collection-name",  # name string, not UUID
+                "embeddingModel": "model1",
+            },
+        }
+    }
+
+    mock_collection = Mock()
+    mock_collection.collectionId = "abc-123-uuid"
+    mock_collection.embeddingModel = "model1"
+    mock_collection.model_dump.return_value = {
+        "collectionId": "abc-123-uuid",
+        "embeddingModel": "model1",
+        "metadata": None,
+    }
+
+    with patch("repository.pipeline_ingest_handlers.vs_repo") as mock_vs_repo, patch(
+        "repository.pipeline_ingest_handlers.collection_service"
+    ) as mock_coll_service, patch(
+        "repository.pipeline_ingest_handlers.ingestion_job_repository"
+    ) as mock_job_repo, patch(
+        "repository.pipeline_ingest_handlers.ingestion_service"
+    ) as mock_service:
+
+        mock_vs_repo.find_repository_by_id.return_value = {"repositoryId": "repo1", "type": "opensearch"}
+        mock_coll_service.collection_repo.find_by_id_or_name.return_value = mock_collection
+
+        from repository.pipeline_ingest_handlers import handle_pipeline_ingest_event
+
+        handle_pipeline_ingest_event(event, None)
+
+        mock_job_repo.save.assert_called_once()
+        saved_job = mock_job_repo.save.call_args[0][0]
+        # After fix: job must carry the UUID, not the raw name string
+        assert saved_job.collection_id == "abc-123-uuid", (
+            f"Expected UUID 'abc-123-uuid' but got '{saved_job.collection_id}'. "
+            "Pipeline collectionId was not resolved from name to UUID at write time."
+        )
+        mock_coll_service.collection_repo.find_by_id_or_name.assert_called_once_with("my-collection-name", "repo1")
+        mock_service.submit_create_job.assert_called_once()

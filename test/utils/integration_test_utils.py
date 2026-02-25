@@ -103,7 +103,7 @@ def create_api_token(deployment_name: str, api_key: str, region: str | None = No
     """
     try:
         dynamodb = boto3.resource("dynamodb", region_name=region) if region else boto3.resource("dynamodb")
-        table_name = f"{deployment_name}-LISAApiTokenTable"
+        table_name = f"{deployment_name}-LISAApiBaseTokenTable"
         table = dynamodb.Table(table_name)
 
         # Create token with expiration

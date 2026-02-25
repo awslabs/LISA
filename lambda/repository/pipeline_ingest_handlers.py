@@ -122,14 +122,18 @@ def handle_pipeline_ingest_event(event: dict[str, Any], context: Any) -> None:
             f"Processing Bedrock KB document {s3_path} for repository {repository_id}, collection {collection_id}"
         )
     else:
+        if not collection_id:
+            collection_id = pipeline_config.get("collectionId")
+
         embedding_model = pipeline_config.get("embeddingModel", None)
 
         if collection_id:
-            collection = collection_service.get_collection(
-                collection_id=collection_id, repository_id=repository_id, is_admin=True, username="", user_groups=[]
-            )
-            if collection.embeddingModel is not None:
-                embedding_model = collection.embeddingModel
+            resolved = collection_service.collection_repo.find_by_id_or_name(collection_id, repository_id)
+            if resolved is None:
+                raise ValueError(f"Collection '{collection_id}' not found in repository '{repository_id}'")
+            collection_id = resolved.collectionId
+            if resolved.embeddingModel is not None:
+                embedding_model = resolved.embeddingModel
         else:
             collection_id = embedding_model
 
@@ -287,13 +291,26 @@ def handle_pipeline_delete_event(event: dict[str, Any], context: Any) -> None:
             logger.warning("No pipeline_config in event, skipping deletion")
             return
 
-        embedding_model = pipeline_config.get("embeddingModel", None)
-        if embedding_model is None:
-            logger.warning("No embedding_model in pipeline_config, skipping deletion")
-            return
+        if not collection_id:
+            collection_id = pipeline_config.get("collectionId")
 
-        collection_id = embedding_model
-        logger.info(f"Deleting object {s3_path} for repository {repository_id}/{embedding_model}")
+        if collection_id:
+            resolved = collection_service.collection_repo.find_by_id_or_name(collection_id, repository_id)
+            if resolved is None:
+                logger.warning(
+                    f"Collection '{collection_id}' not found in repository '{repository_id}', skipping deletion"
+                )
+                return
+            collection_id = resolved.collectionId
+        else:
+            # Legacy fallback: pipelines without collectionId used embeddingModel as collection_id
+            embedding_model = pipeline_config.get("embeddingModel")
+            if embedding_model is None:
+                logger.warning("No collectionId or embeddingModel in pipeline_config, skipping deletion")
+                return
+            collection_id = embedding_model
+
+        logger.info(f"Deleting object {s3_path} for repository {repository_id}/{collection_id}")
 
     documents = rag_document_repository.find_by_source(
         repository_id=repository_id,

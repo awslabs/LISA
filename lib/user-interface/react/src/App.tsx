@@ -17,7 +17,7 @@
 import 'regenerator-runtime/runtime';
 import { ReactElement, useEffect, useState } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { AppLayout } from '@cloudscape-design/components';
+import { AppLayout, Box } from '@cloudscape-design/components';
 import Spinner from '@cloudscape-design/components/spinner';
 import { useAuth } from './auth/useAuth';
 
@@ -287,7 +287,7 @@ function App () {
                                 configLoading ?
                                     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
                                         <Spinner size='large' />
-                                        <span style={{ marginLeft: '10px' }}>Loading configuration...</span>
+                                        <Box margin={{ left: 's' }}>Loading configuration...</Box>
                                     </div>
                                     :
                                     <Home setNav={setNav} />

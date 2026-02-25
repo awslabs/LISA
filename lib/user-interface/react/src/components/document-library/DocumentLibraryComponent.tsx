@@ -86,7 +86,7 @@ export function DocumentLibraryComponent ({ repositoryId, collectionId }: Docume
     const isAdmin = useAppSelector(selectCurrentUserIsAdmin);
     const [preferences, setPreferences] = useLocalStorage('DocumentRagPreferences', DEFAULT_PREFERENCES);
     const dispatch = useAppDispatch();
-    
+
     // Document side panel management
     const { showDocSidePanel, selectedDocumentForPanel, handleOpenDocument, handleCloseDocPanel } = useDocumentSidePanel();
 

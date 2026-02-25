@@ -16,27 +16,27 @@
 
 import { useCallback, useState } from 'react';
 
-export interface DocumentForPanel {
+export type DocumentForPanel = {
     documentId: string;
     repositoryId: string;
     name: string;
     source: string;
-}
+};
 
-export interface UseDocumentSidePanelReturn {
+export type UseDocumentSidePanelReturn = {
     showDocSidePanel: boolean;
     selectedDocumentForPanel: DocumentForPanel | null;
     handleOpenDocument: (document: DocumentForPanel) => void;
     handleCloseDocPanel: () => void;
-}
+};
 
 /**
  * Custom hook to manage the document side panel state and handlers.
  * Provides consistent functionality for opening and closing the document viewer.
- * 
+ *
  * @returns Object containing panel state and handler functions
  */
-export function useDocumentSidePanel(): UseDocumentSidePanelReturn {
+export function useDocumentSidePanel (): UseDocumentSidePanelReturn {
     const [showDocSidePanel, setShowDocSidePanel] = useState(false);
     const [selectedDocumentForPanel, setSelectedDocumentForPanel] = useState<DocumentForPanel | null>(null);
 

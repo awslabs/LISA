@@ -143,7 +143,7 @@ export default function Chat ({ sessionId }) {
     const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
     const [updatingAutoApprovalForTool, setUpdatingAutoApprovalForTool] = useState<string | null>(null);
     const [showMarkdownPreview, setShowMarkdownPreview] = useState(false);
-    
+
     // Document side panel management
     const { showDocSidePanel, selectedDocumentForPanel, handleOpenDocument, handleCloseDocPanel } = useDocumentSidePanel();
 

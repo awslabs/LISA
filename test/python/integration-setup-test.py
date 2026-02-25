@@ -37,23 +37,21 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_HERE, "../../lisa-sdk"))
 sys.path.insert(0, _HERE)
 
+from integration_definitions import (
+    BEDROCK_KB_S3_BUCKET,
+    BEDROCK_MODEL_DEFINITIONS,
+    DEFAULT_AUTOSCALING_SCHEDULE,
+    DEFAULT_EMBEDDING_MODEL_ID,
+    deploy_bedrock_models,
+    deploy_embedded_models,
+    deploy_models,
+    deploy_vector_stores,
+    EMBEDDED_MODEL_DEFINITIONS,
+    MODEL_DEFINITIONS,
+    VECTOR_STORE_DEFINITIONS,
+)
 from lisapy.api import LisaApi
 from lisapy.types import BedrockModelRequest, ModelRequest
-
-from integration_definitions import (
-    DEFAULT_EMBEDDING_MODEL_ID,
-    RAG_PIPELINE_BUCKET,
-    BEDROCK_KB_S3_BUCKET,
-    DEFAULT_AUTOSCALING_SCHEDULE,
-    MODEL_DEFINITIONS,
-    EMBEDDED_MODEL_DEFINITIONS,
-    BEDROCK_MODEL_DEFINITIONS,
-    VECTOR_STORE_DEFINITIONS,
-    deploy_models,
-    deploy_embedded_models,
-    deploy_bedrock_models,
-    deploy_vector_stores,
-)
 
 # ---------------------------------------------------------------------------
 # Helper / utility functions
@@ -291,7 +289,11 @@ def create_self_hosted_embedded_model(
             },
             "environment": resolved_environment,
             "sharedMemorySize": definition.get("sharedMemorySize", 2048),
-            **({"memoryReservation": definition["memoryReservation"]} if "memoryReservation" in definition else {"memoryReservation": 12836}),
+            **(
+                {"memoryReservation": definition["memoryReservation"]}
+                if "memoryReservation" in definition
+                else {"memoryReservation": 12836}
+            ),
         },
         "inferenceContainer": "tei",
         "instanceType": instance_type,

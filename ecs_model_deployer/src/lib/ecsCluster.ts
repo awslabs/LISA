@@ -148,7 +148,7 @@ export class ECSCluster extends Construct {
                 // EC2 user data to mount ephemeral NVMe drive
                 const MOUNT_PATH = config.nvmeHostMountPath ?? '/nvme';
                 const NVME_PATH = Ec2Metadata.get(ecsConfig.instanceType).nvmePath;
-                /* eslint-disable no-useless-escape */
+
                 const rawUserData = `#!/bin/bash
                     set -e
                     # Check if NVMe is already formatted
@@ -185,7 +185,7 @@ DOCKEREOF
                     # Enable GPU support in ECS agent
                     echo "ECS_ENABLE_GPU_SUPPORT=true" >> /etc/ecs/ecs.config
                     `;
-                /* eslint-enable no-useless-escape */
+
                 autoScalingGroup.addUserData(rawUserData);
 
                 // Create mount point for container

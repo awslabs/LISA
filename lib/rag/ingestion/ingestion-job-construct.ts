@@ -170,6 +170,21 @@ export class IngestionJobConstruct extends Construct {
             'BUILD_DIR': buildDirName
         });
 
+        // Create execution role for ECS tasks to pull images from ECR and write logs
+        const executionRole = new iam.Role(this, 'BatchJobExecutionRole', {
+            roleName: `${config.deploymentName}-${config.deploymentStage}-batch-exec-role-${hash}`,
+            assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
+            description: 'Execution role for ECS Batch ingestion tasks',
+        });
+
+        // Add ECR permissions for pulling container images
+        executionRole.addManagedPolicy(
+            iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy')
+        );
+
+        // Grant CloudWatch Logs permissions
+        logGroup.grantWrite(executionRole);
+
         // AWS Batch job definition specifying container configuration
         const jobDefinition = new batch.EcsJobDefinition(this, 'IngestionJobDefinition', {
             jobDefinitionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job-${hash}`,
@@ -180,6 +195,7 @@ export class IngestionJobConstruct extends Construct {
                 cpu: 2,
                 command: ['-m', 'repository.pipeline_ingestion', 'Ref::ACTION', 'Ref::DOCUMENT_ID'],
                 jobRole: lambdaRole,
+                executionRole: executionRole,
                 logging: new ecs.AwsLogDriver({
                     streamPrefix: 'batch-job',
                     logGroup: logGroup

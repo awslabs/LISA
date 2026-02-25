@@ -21,11 +21,17 @@ RUN mkdir -p /etc/ssh && \
 ARG MOUNTS3_DEB_URL
 ARG MOUNTS3_DEB_SHA256
 RUN if command -v apt-get >/dev/null 2>&1; then \
-        apt update -y && apt install -y wget rsync && \
-        wget ${MOUNTS3_DEB_URL} && apt install -y ./mount-s3.deb && \
+        apt-get update -y && apt-get upgrade -y && apt-get install -y wget rsync && \
+        wget ${MOUNTS3_DEB_URL} -O mount-s3.deb && \
+        if [ -n "${MOUNTS3_DEB_SHA256}" ]; then \
+            echo "${MOUNTS3_DEB_SHA256}  mount-s3.deb" | sha256sum -c; \
+        fi && \
+        apt-get install -y ./mount-s3.deb && \
         rm mount-s3.deb && rm -rf /var/lib/apt/lists/*; \
     elif command -v yum >/dev/null 2>&1; then \
-        yum install -y wget rsync && wget ${MOUNTS3_DEB_URL} && \
+        MOUNTS3_RPM_URL=$(echo ${MOUNTS3_DEB_URL} | sed 's/\.deb$/.rpm/') && \
+        yum update -y && yum install -y wget rsync && \
+        wget ${MOUNTS3_RPM_URL} -O mount-s3.rpm && \
         yum install -y ./mount-s3.rpm && yum clean all && rm mount-s3.rpm; \
     elif command -v apk >/dev/null 2>&1; then \
         apk add --no-cache wget rsync && wget ${MOUNTS3_DEB_URL} && \

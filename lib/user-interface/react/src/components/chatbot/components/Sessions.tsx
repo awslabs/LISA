@@ -18,8 +18,7 @@ import SpaceBetween from '@cloudscape-design/components/space-between';
 import Link from '@cloudscape-design/components/link';
 import Header from '@cloudscape-design/components/header';
 import ExpandableSection from '@cloudscape-design/components/expandable-section';
-import { ButtonDropdown, Input, Modal, FormField, Grid } from '@cloudscape-design/components';
-import Button from '@cloudscape-design/components/button';
+import { ButtonDropdown, Input, Modal, FormField, Grid, Button, Box } from '@cloudscape-design/components';
 
 import { useLazyGetConfigurationQuery } from '@/shared/reducers/configuration.reducer';
 import {
@@ -29,15 +28,16 @@ import {
     useListSessionsQuery,
     useUpdateSessionNameMutation,
 } from '@/shared/reducers/session.reducer';
+import { useListStacksQuery } from '@/shared/reducers/chat-assistant-stacks.reducer';
+import { IChatAssistantStack } from '@/shared/model/chat-assistant-stack.model';
 import { useAppDispatch } from '@/config/store';
 import { useNotificationService } from '@/shared/util/hooks';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAuth } from '../../../auth/useAuth';
 import { IConfiguration } from '@/shared/model/configuration.model';
 import { useNavigate } from 'react-router-dom';
 import { getDisplayableMessage, getSessionDisplay, messageContainsImage, messageContainsVideo } from '@/components/utils';
 import { LisaChatSession } from '@/components/types';
-import Box from '@cloudscape-design/components/box';
 import JSZip from 'jszip';
 import { downloadFile } from '@/shared/util/downloader';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
@@ -75,7 +75,12 @@ export function Sessions ({ newSession }) {
     const [sessionToRename, setSessionToRename] = useState<LisaChatSession | null>(null);
     const [newSessionName, setNewSessionName] = useState<string>('');
     const [sessionBeingDeleted, setSessionBeingDeleted] = useState<string | null>(null);
+    const [assistantCarouselIndex, setAssistantCarouselIndex] = useState(0);
     const { data: sessions, isLoading: isSessionsLoading } = useListSessionsQuery(null, { refetchOnMountOrArgChange: 5 });
+    const { data: availableStacks = [] } = useListStacksQuery(undefined, {
+        skip: !config?.configuration?.enabledComponents?.chatAssistantStacks,
+        refetchOnMountOrArgChange: true,
+    });
 
     // Filter sessions based on search query
     const filteredSessions = useMemo(() => {
@@ -193,9 +198,65 @@ export function Sessions ({ newSession }) {
         setNewSessionName('');
     };
 
+    const handleStartFromStack = (stack: IChatAssistantStack) => {
+        navigate('/ai-assistant', { state: { stack }, replace: true });
+    };
+
+    const safeIndex = Math.min(assistantCarouselIndex, Math.max(0, availableStacks.length - 1));
+    const currentAssistant = availableStacks[safeIndex];
+    const canGoPrev = availableStacks.length > 1 && safeIndex > 0;
+    const canGoNext = availableStacks.length > 1 && safeIndex < availableStacks.length - 1;
+    const goPrev = useCallback(() => setAssistantCarouselIndex((i) => Math.max(0, i - 1)), []);
+    const goNext = useCallback(() => setAssistantCarouselIndex((i) => Math.min(availableStacks.length - 1, i + 1)), [availableStacks.length]);
+    useEffect(() => {
+        setAssistantCarouselIndex((i) => Math.min(i, Math.max(0, availableStacks.length - 1)));
+    }, [availableStacks.length]);
+
     return (
         <div className='p-5'>
             <SpaceBetween size='l' direction='vertical'>
+                {config?.configuration?.enabledComponents?.chatAssistantStacks && (
+                    <ExpandableSection headerText='Chat Assistants' defaultExpanded={true}>
+                        {availableStacks.length === 0 ? (
+                            <Box variant='small' color='text-status-inactive'>
+                                No assistants available
+                            </Box>
+                        ) : (
+                            <div className={styles.assistantCarousel}>
+                                <Button
+                                    iconName='angle-left'
+                                    variant='icon'
+                                    disabled={!canGoPrev}
+                                    onClick={goPrev}
+                                    ariaLabel='Previous assistant'
+                                />
+                                <div
+                                    className={styles.assistantCard}
+                                    onClick={() => currentAssistant && handleStartFromStack(currentAssistant)}
+                                    role='button'
+                                    tabIndex={0}
+                                    onKeyDown={(e) => e.key === 'Enter' && currentAssistant && handleStartFromStack(currentAssistant)}
+                                >
+                                    <Box fontWeight='bold' color='text-body-default'>
+                                        {currentAssistant?.name}
+                                    </Box>
+                                    {currentAssistant?.description && (
+                                        <Box variant='small' color='text-body-secondary' margin={{ top: 'xxs' }}>
+                                            {currentAssistant.description}
+                                        </Box>
+                                    )}
+                                </div>
+                                <Button
+                                    iconName='angle-right'
+                                    variant='icon'
+                                    disabled={!canGoNext}
+                                    onClick={goNext}
+                                    ariaLabel='Next assistant'
+                                />
+                            </div>
+                        )}
+                    </ExpandableSection>
+                )}
                 <Header>
                     History
                 </Header>

@@ -23,7 +23,7 @@ from typing import Any, cast
 
 import boto3
 from botocore.exceptions import ClientError
-from utilities.auth import admin_only
+from utilities.auth import admin_only, get_groups, is_admin, user_has_group_access
 from utilities.common_functions import api_wrapper, retry_config
 from utilities.exceptions import NotFoundException
 from utilities.time import iso_string
@@ -51,16 +51,27 @@ def _serialize_item(item: dict[str, Any]) -> dict[str, Any]:
 
 
 @api_wrapper
-@admin_only
 def list_stacks(event: dict, context: dict) -> dict:
-    """List all Chat Assistant Stacks. Admin only."""
+    """List stacks: admins get all; non-admins get active stacks (allowedGroups empty or user in group)."""
     try:
         response = table.scan()
         items = response.get("Items", [])
         while "LastEvaluatedKey" in response:
             response = table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
             items.extend(response.get("Items", []))
-        return {"Items": [_serialize_item(i) for i in items]}
+        if is_admin(event):
+            return {"Items": [_serialize_item(assistant_stack) for assistant_stack in items]}
+        user_groups = get_groups(event)
+        filtered = [
+            assistant_stack
+            for assistant_stack in items
+            if assistant_stack.get("isActive", True)
+            and (
+                not assistant_stack.get("allowedGroups")
+                or user_has_group_access(user_groups, assistant_stack.get("allowedGroups", []))
+            )
+        ]
+        return {"Items": [_serialize_item(assistant_stack) for assistant_stack in filtered]}
     except ClientError:
         logger.exception("Error listing stacks")
         raise

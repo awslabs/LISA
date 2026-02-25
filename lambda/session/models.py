@@ -164,6 +164,7 @@ class SessionConfigurationModel(BaseModel):
     promptConfiguration: PromptConfiguration | None = None
     ragConfig: RagConfig | None = None
     selectedModel: SelectedModel | None = None
+    chatAssistantId: str | None = None
 
     def model_dump_for_storage(self) -> dict[str, Any]:
         """Serialize to dict for DynamoDB storage."""

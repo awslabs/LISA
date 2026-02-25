@@ -42,6 +42,8 @@ export type PromptTemplateModalProps = {
     setChatConfiguration: (state: IChatConfiguration) => void;
     config: IConfiguration;
     type ?: PromptTemplateType;
+    /** When set (e.g. from Chat Assistant stack), only these directive prompt IDs are shown for insert prompt */
+    allowedDirectivePromptIds?: string[];
 };
 
 export const PromptTemplateModal = ({
@@ -53,6 +55,7 @@ export const PromptTemplateModal = ({
     setChatConfiguration,
     config,
     type,
+    allowedDirectivePromptIds,
 }: PromptTemplateModalProps)  => {
     const isPersona = type === PromptTemplateType.Persona;
     const [selectedOption, setSelectedOption] = useState<SelectProps.Option>({label: 'Owned by me', value: ''});
@@ -65,13 +68,18 @@ export const PromptTemplateModal = ({
     const [startingPrompt, setStartingPrompt] = useState<string>(null);
 
     const options: SelectProps.Option[] = useMemo(() => {
-        return isFetchingList ? [] : allItems.filter((item) => item.type === type || !type).map((item) => ({
+        if (isFetchingList) return [];
+        let items = allItems.filter((item) => item.type === type || !type);
+        if (type === PromptTemplateType.Directive && allowedDirectivePromptIds?.length) {
+            items = items.filter((item) => allowedDirectivePromptIds.includes(item.id));
+        }
+        return items.map((item) => ({
             value: item.title,
             label: item.title,
             labelTags: [item.id],
             id: item.id
         }));
-    }, [allItems, isFetchingList, type]);
+    }, [allItems, isFetchingList, type, allowedDirectivePromptIds]);
 
     const keyWord = isPersona ? 'Persona' : 'Prompt';
 

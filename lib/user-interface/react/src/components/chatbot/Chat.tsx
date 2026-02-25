@@ -81,12 +81,14 @@ import {
     useGetUserPreferencesQuery, UserPreferences, useUpdateUserPreferencesMutation
 } from '@/shared/reducers/user-preferences.reducer';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
+import { useLazyGetPromptTemplateQuery } from '@/shared/reducers/prompt-templates.reducer';
+import { useGetStackQuery } from '@/shared/reducers/chat-assistant-stacks.reducer';
 import ConfirmationModal from '@/shared/modal/confirmation-modal';
 import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
 import { conditionalDeps } from '../utils';
 import { formatDate } from '@/shared/util/formats';
 
-export default function Chat ({ sessionId }) {
+export default function Chat ({ sessionId, initialStack }) {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
     const config: IConfiguration = useContext(ConfigurationContext);
@@ -113,6 +115,34 @@ export default function Chat ({ sessionId }) {
             model.status === ModelStatus.InService
         ),
     [allModelsRaw]
+    );
+
+    // Session and effective assistant stack (from nav or loaded when resuming)
+    const {
+        session,
+        setSession,
+        setInternalSessionId,
+        loadingSession,
+        chatConfiguration,
+        setChatConfiguration,
+        selectedModel,
+        setSelectedModel,
+        ragConfig,
+        setRagConfig,
+        chatAssistantId,
+        setChatAssistantId,
+    } = useSession(sessionId, getSessionById);
+    const { data: resumedStack } = useGetStackQuery(chatAssistantId ?? '', {
+        skip: !chatAssistantId || !!initialStack,
+    });
+    const effectiveStack = initialStack ?? (chatAssistantId && resumedStack ? resumedStack : undefined);
+
+    // When using an assistant stack, restrict model dropdown to stack's modelIds
+    const modelsForDropdown = useMemo(() =>
+        (effectiveStack?.modelIds?.length
+            ? allModels.filter((m) => effectiveStack.modelIds.includes(m.modelId))
+            : allModels),
+    [allModels, effectiveStack?.modelIds]
     );
     const { data: userPreferences } = useGetUserPreferencesQuery();
     const { data: mcpServers } = useListMcpServersQuery(undefined, {
@@ -172,14 +202,17 @@ export default function Chat ({ sessionId }) {
     const lastProcessedMessageIndex = useRef(-1);
     const startToolChainRef = useRef<((session: LisaChatSession) => Promise<void>) | undefined>(undefined);
 
-    // Memoize enabled servers to prevent infinite re-renders
+    // Memoize enabled servers; when using an assistant stack, restrict to stack's mcpServerIds
     const enabledServers = useMemo(() => {
-        if (mcpServers && userPreferences?.preferences?.mcp?.enabledServers) {
-            const enabledServerIds = userPreferences.preferences.mcp.enabledServers.map((server) => server.id);
-            return mcpServers.filter((server) => enabledServerIds.includes(server.id));
+        if (!mcpServers) return undefined;
+        const base = userPreferences?.preferences?.mcp?.enabledServers
+            ? mcpServers.filter((server) => userPreferences.preferences.mcp.enabledServers.map((s) => s.id).includes(server.id))
+            : [];
+        if (effectiveStack?.mcpServerIds?.length) {
+            return base.filter((server) => effectiveStack.mcpServerIds.includes(server.id));
         }
-        return undefined;
-    }, [mcpServers, userPreferences?.preferences?.mcp?.enabledServers]);
+        return base.length ? base : undefined;
+    }, [mcpServers, userPreferences?.preferences?.mcp?.enabledServers, effectiveStack?.mcpServerIds]);
 
     // Tool call loop prevention
     const consecutiveToolCallCount = useRef(0);
@@ -238,18 +271,6 @@ export default function Chat ({ sessionId }) {
 
     // Custom hooks
     const { dynamicMaxRows } = useDynamicMaxRows();
-    const {
-        session,
-        setSession,
-        setInternalSessionId,
-        loadingSession,
-        chatConfiguration,
-        setChatConfiguration,
-        selectedModel,
-        setSelectedModel,
-        ragConfig,
-        setRagConfig
-    } = useSession(sessionId, getSessionById);
 
     // Get sessions list lastUpdated timestamp
     const { data: sessions } = useListSessionsQuery(null, { refetchOnMountOrArgChange: 5 });
@@ -259,7 +280,7 @@ export default function Chat ({ sessionId }) {
     );
 
     const { modelsOptions, handleModelChange } = useModels(
-        allModels,
+        modelsForDropdown,
         chatConfiguration,
         setChatConfiguration
     );
@@ -272,11 +293,55 @@ export default function Chat ({ sessionId }) {
 
     // Set default model if none is selected, default model is configured, and user hasn't interacted
     useEffect(() => {
-        if (!selectedModel && !hasUserInteractedWithModel && config?.configuration?.global?.defaultModel && allModels) {
+        if (!selectedModel && !hasUserInteractedWithModel && config?.configuration?.global?.defaultModel && modelsForDropdown?.length) {
             const defaultModelId = config.configuration.global.defaultModel;
-            handleModelChange(defaultModelId, selectedModel, setSelectedModel);
+            if (modelsForDropdown.some((m) => m.modelId === defaultModelId)) {
+                handleModelChange(defaultModelId, selectedModel, setSelectedModel);
+            }
         }
-    }, [selectedModel, hasUserInteractedWithModel, config?.configuration?.global?.defaultModel, allModels, handleModelChange, setSelectedModel]);
+    }, [selectedModel, hasUserInteractedWithModel, config?.configuration?.global?.defaultModel, modelsForDropdown, handleModelChange, setSelectedModel]);
+
+    // Apply stack config when starting a new session from a Chat Assistant
+    const initialStackApplied = useRef(false);
+    const [getPromptTemplate] = useLazyGetPromptTemplateQuery();
+    useEffect(() => {
+        if (!initialStack || session.history.length > 0 || initialStackApplied.current || !allModels?.length) return;
+        const firstModelId = initialStack.modelIds?.[0];
+        const model = firstModelId ? allModels.find((m) => m.modelId === firstModelId) : undefined;
+        if (model) {
+            handleModelChange(model.modelId, selectedModel, setSelectedModel);
+            setModelFilterValue(model.modelId);
+        }
+        setSession((prev) => ({ ...prev, name: initialStack.name }));
+        setChatAssistantId(initialStack.stackId);
+        setChatConfiguration((prev) => ({ ...prev, chatAssistantId: initialStack.stackId }));
+
+        // Set system prompt from persona prompt if configured
+        if (initialStack.personaPromptId) {
+            getPromptTemplate(initialStack.personaPromptId).then((result) => {
+                if (result.data?.body) {
+                    setChatConfiguration((prev) => ({
+                        ...prev,
+                        promptConfiguration: {
+                            ...prev.promptConfiguration,
+                            promptTemplate: result.data.body,
+                        },
+                    }));
+                }
+            });
+        }
+
+        // Set initial RAG repo from stack when present (collection resolved when RagControls loads)
+        if (initialStack.repositoryIds?.length) {
+            setRagConfig((prev) => ({
+                ...prev,
+                repositoryId: initialStack.repositoryIds[0],
+            }));
+        }
+
+        initialStackApplied.current = true;
+    }, [initialStack, session.history.length, allModels, setSession, handleModelChange, setSelectedModel, selectedModel, getPromptTemplate, setChatConfiguration, setRagConfig, setChatAssistantId]);
+
 
     // Wrapper for handleModelChange that tracks user interaction
     const handleUserModelChange = (value: string) => {
@@ -473,7 +538,7 @@ export default function Chat ({ sessionId }) {
                         if (session.history.at(-1).metadata.imageGeneration && Array.isArray(session.history.at(-1).content)) {
                             // Session was updated and response contained images that need to be attached to the session
                             await Promise.all(
-                                (Array.isArray(message.content) ? message.content : []).map(async (content) => {
+                                (Array.isArray(message.content) ? message.content : []).map(async (content: { type?: string; image_url?: { url?: string; s3_key?: string } }) => {
                                     if (content.type === 'image_url') {
                                         const resp = await attachImageToSession({
                                             sessionId: session.sessionId,
@@ -494,10 +559,16 @@ export default function Chat ({ sessionId }) {
                         }
                         const updatedHistory = [...session.history.slice(0, -1), message];
 
+                        const assistantId = chatAssistantId || effectiveStack?.stackId;
                         updateSession({
                             ...session,
                             history: updatedHistory,
-                            configuration: { ...chatConfiguration, selectedModel: selectedModel, ragConfig: ragConfig }
+                            configuration: {
+                                ...chatConfiguration,
+                                selectedModel: selectedModel,
+                                ragConfig: ragConfig,
+                                ...(assistantId ? { chatAssistantId: assistantId } : {}),
+                            },
                         });
                     }
                 }
@@ -555,7 +626,7 @@ export default function Chat ({ sessionId }) {
 
         handleToolCalls();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isRunning, session.history.length, dirtySession]);
+    }, [isRunning, session.history.length, dirtySession, chatConfiguration, chatAssistantId, effectiveStack?.stackId]);
 
     // Connection health check
     useEffect(() => {
@@ -662,8 +733,11 @@ export default function Chat ({ sessionId }) {
         // Re-enable auto-scroll when user sends a new message
         setShouldAutoScroll(true);
 
+        // When using an assistant, set session name to "{assistant name} - {first user prompt}" on first message
+        const isFirstMessage = session.history.length === 0;
         setSession((prev) => ({
             ...prev,
+            ...(effectiveStack && isFirstMessage ? { name: `${effectiveStack.name} - ${userPrompt}` } : {}),
             history: prev.history.concat(new LisaChatMessage({
                 type: 'human',
                 content: userPrompt,
@@ -881,8 +955,9 @@ export default function Chat ({ sessionId }) {
                 key={promptTemplateKey}
                 config={config}
                 type={filterPromptTemplateType}
+                allowedDirectivePromptIds={effectiveStack?.directivePromptIds}
                 // eslint-disable-next-line react-hooks/exhaustive-deps
-            />), conditionalDeps([modals.promptTemplate], [modals.promptTemplate], [modals.promptTemplate, session, openModal, closeModal, chatConfiguration, setChatConfiguration, promptTemplateKey, config, filterPromptTemplateType]))}
+            />), conditionalDeps([modals.promptTemplate], [modals.promptTemplate], [modals.promptTemplate, session, openModal, closeModal, chatConfiguration, setChatConfiguration, promptTemplateKey, config, filterPromptTemplateType, effectiveStack?.directivePromptIds]))}
 
             {/* Tool Approval Modal */}
             {toolApprovalModal && (
@@ -944,6 +1019,17 @@ export default function Chat ({ sessionId }) {
                 </div>
             )}
 
+            {/* Highlight when using a Chat Assistant: name and description */}
+            {effectiveStack && (
+                <Box padding={{ horizontal: 'l', vertical: 's' }} variant='div'>
+                    <StatusIndicator type='info'>Chat Assistant</StatusIndicator>
+                    <Box variant='h3' margin={{ top: 'xxs' }}>{effectiveStack.name}</Box>
+                    {effectiveStack.description && (
+                        <Box variant='p' color='text-body-secondary'>{effectiveStack.description}</Box>
+                    )}
+                </Box>
+            )}
+
             <div ref={scrollContainerRef} className='overflow-y-auto h-[calc(100vh-20rem)] bottom-8'>
                 <SpaceBetween direction='vertical' size='l'>
 
@@ -994,7 +1080,7 @@ export default function Chat ({ sessionId }) {
                         onVideoLoadComplete={handleVideoLoadComplete}
                         onImageLoadComplete={handleImageLoadComplete}
                     />}
-                    {!loadingSession && session.history.length === 0 && sessionId === undefined && (
+                    {!loadingSession && session.history.length === 0 && sessionId === undefined && !effectiveStack && (
                         <WelcomeScreen
                             navigate={navigate}
                             modelSelectRef={modelSelectRef}
@@ -1041,6 +1127,8 @@ export default function Chat ({ sessionId }) {
                                         setUseRag={setUseRag}
                                         setRagConfig={setRagConfig}
                                         ragConfig={ragConfig}
+                                        allowedRepositoryIds={effectiveStack?.repositoryIds}
+                                        allowedCollectionIds={effectiveStack?.collectionIds}
                                     />
                                 )}
                             </Grid>

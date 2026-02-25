@@ -162,6 +162,7 @@ class RagRepositoryConfig(TypedDict, total=False):
     repositoryId: str
     repositoryName: str
     embeddingModelId: str
+    description: str | None
     type: str
     opensearchConfig: dict[str, Any]
     rdsConfig: dict[str, Any]

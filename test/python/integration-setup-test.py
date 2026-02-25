@@ -187,13 +187,18 @@ def create_bedrock_model(
         print(f"\n⏭️  Bedrock model '{model_id}' already exists, skipping creation")
         return {"modelId": model_id}
 
+    modelName = definition.get("model_name")
     model_type = definition.get("model_type", "textgen")
-    features = definition.get("features", [
-        {"name": "summarization", "overview": ""},
-        {"name": "imageInput", "overview": ""},
-        {"name": "reasoning", "overview": ""},
-        {"name": "toolCalls", "overview": ""},
-    ])
+    features = definition.get(
+        "features",
+        [
+            {"name": "summarization", "overview": ""},
+            {"name": "imageInput", "overview": ""},
+            {"name": "reasoning", "overview": ""},
+            {"name": "toolCalls", "overview": ""},
+        ],
+    )
+    description = definition.get("description", f"Bedrock model {modelName}")
 
     print(f"\n🚀 Creating Bedrock model '{model_id}'...")
 
@@ -204,8 +209,8 @@ def create_bedrock_model(
         "instanceType": None,
         "loadBalancerConfig": None,
         "modelId": model_id,
-        "modelName": definition["model_name"],
-        "modelDescription": "",
+        "modelName": modelName,
+        "modelDescription": description,
         "modelType": model_type,
         "modelUrl": "",
         "streaming": model_type != "embedding",
@@ -242,9 +247,9 @@ def create_self_hosted_embedded_model(
         print(f"\n⏭️  Self-hosted embedded model '{model_id}' already exists, skipping creation")
         return {"modelId": model_id}
 
-    instance_type = definition.get("instance_type", "g5.xlarge")
+    instance_type = definition.get("instance_type", "g6.xlarge")
     model_name = definition["model_name"]
-
+    description = definition.get("description", f"Self-hosted embedding model for {model_name}")
     default_environment: dict[str, str] = {
         "MAX_BATCH_TOKENS": "16384",
         "MAX_CONCURRENT_REQUESTS": "512",
@@ -270,9 +275,13 @@ def create_self_hosted_embedded_model(
                 "duration": 60,
                 "estimatedInstanceWarmup": 300,
             },
+            "scheduling": DEFAULT_AUTOSCALING_SCHEDULE,
         },
         "containerConfig": {
-            "image": {"baseImage": base_image, "type": "asset" if any(x in base_image.lower() for x in ("huggingface", "openai")) else "ecr"},
+            "image": {
+                "baseImage": base_image,
+                "type": "ecr" if base_image.split(".")[0].isdigit() else "asset",
+            },
             "healthCheckConfig": {
                 "command": ["CMD-SHELL", "exit 0"],
                 "interval": 10,
@@ -281,6 +290,8 @@ def create_self_hosted_embedded_model(
                 "retries": 3,
             },
             "environment": resolved_environment,
+            "sharedMemorySize": definition.get("sharedMemorySize", 2048),
+            **({"memoryReservation": definition["memoryReservation"]} if "memoryReservation" in definition else {"memoryReservation": 12836}),
         },
         "inferenceContainer": "tei",
         "instanceType": instance_type,
@@ -295,7 +306,7 @@ def create_self_hosted_embedded_model(
         },
         "modelId": model_id,
         "modelName": model_name,
-        "modelDescription": f"Testing model for {model_name}",
+        "modelDescription": description,
         "modelType": "embedding",
         "streaming": False,
         "features": [],
@@ -335,21 +346,32 @@ def create_self_hosted_model(
     if not instances:
         raise Exception("No EC2 instances available for self-hosted model")
 
-    instance_type = definition.get("instance_type", "g5.xlarge")
+    instance_type = definition.get("instance_type", "g6.xlarge")
     model_name = definition["model_name"]
-    environment = definition.get("environment", {
-        "VLLM_MAX_MODEL_LEN": "16384",
-        "VLLM_GPU_MEMORY_UTILIZATION": "0.90",
-        "VLLM_MAX_NUM_BATCHED_TOKENS": "8192",
-        "VLLM_MAX_NUM_SEQS": "128",
-        "VLLM_ENABLE_PREFIX_CACHING": "true",
-        "VLLM_ENABLE_CHUNKED_PREFILL": "true",
-        "VLLM_DTYPE": "auto",
-    })
+    environment = definition.get(
+        "environment",
+        {
+            "VLLM_MAX_MODEL_LEN": "16384",
+            "VLLM_GPU_MEMORY_UTILIZATION": "0.90",
+            "VLLM_MAX_NUM_BATCHED_TOKENS": "8192",
+            "VLLM_MAX_NUM_SEQS": "128",
+            "VLLM_ENABLE_PREFIX_CACHING": "true",
+            "VLLM_ENABLE_CHUNKED_PREFILL": "true",
+            "VLLM_DTYPE": "auto",
+        },
+    )
     block_device = definition.get("blockDeviceVolumeSize", 50)
     shared_mem = definition.get("sharedMemorySize", 2048)
     mem_reservation = definition.get("memoryReservation", None)
-
+    description = definition.get("description", f"Self-hosted model for {model_name}")
+    features = definition.get(
+        "features",
+        [
+            {"name": "summarization", "overview": ""},
+            {"name": "reasoning", "overview": ""},
+            {"name": "toolCalls", "overview": ""},
+        ],
+    )
     print(f"\n🚀 Creating self-hosted model '{model_id}' on {instance_type}...")
 
     request: ModelRequest = {
@@ -368,7 +390,10 @@ def create_self_hosted_model(
             "scheduling": DEFAULT_AUTOSCALING_SCHEDULE,
         },
         "containerConfig": {
-            "image": {"baseImage": base_image, "type": "asset" if any(x in base_image.lower() for x in ("huggingface", "openai")) else "ecr"},
+            "image": {
+                "baseImage": base_image,
+                "type": "ecr" if base_image.split(".")[0].isdigit() else "asset",
+            },
             "sharedMemorySize": shared_mem,
             "healthCheckConfig": {
                 "command": ["CMD-SHELL", "exit 0"],
@@ -393,15 +418,10 @@ def create_self_hosted_model(
         },
         "modelId": model_id,
         "modelName": model_name,
-        "modelDescription": f"Self-hosted model for {model_name}",
+        "modelDescription": description,
         "modelType": "textgen",
         "streaming": True,
-        "features": [
-            {"name": "summarization", "overview": ""},
-            {"name": "imageInput", "overview": ""},
-            {"name": "reasoning", "overview": ""},
-            {"name": "toolCalls", "overview": ""},
-        ],
+        "features": features,
         "allowedGroups": None,
     }
 
@@ -448,6 +468,7 @@ def create_vector_store(
         "repositoryId": repository_id,
         "embeddingModelId": embedding_model_id or DEFAULT_EMBEDDING_MODEL_ID,
         "type": store_type,
+        **({"description": definition["description"]} if "description" in definition else {}),
     }
 
     try:
@@ -513,9 +534,7 @@ def create_bedrock_knowledge_base(
             if region == "us-east-1":
                 s3_client.create_bucket(Bucket=bucket_name)
             else:
-                s3_client.create_bucket(
-                    Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": region}
-                )
+                s3_client.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": region})
             print(f"✓ S3 bucket created: {bucket_name}")
         except Exception as e:
             print(f"⚠️  S3 bucket check issue: {e}")
@@ -524,7 +543,9 @@ def create_bedrock_knowledge_base(
         role_name = f"{deployment_name}-BedrockKBRole"
         trust_policy = {
             "Version": "2012-10-17",
-            "Statement": [{"Effect": "Allow", "Principal": {"Service": "bedrock.amazonaws.com"}, "Action": "sts:AssumeRole"}],
+            "Statement": [
+                {"Effect": "Allow", "Principal": {"Service": "bedrock.amazonaws.com"}, "Action": "sts:AssumeRole"}
+            ],
         }
         try:
             role_arn = iam_client.create_role(
@@ -536,15 +557,20 @@ def create_bedrock_knowledge_base(
             iam_client.put_role_policy(
                 RoleName=role_name,
                 PolicyName=f"{role_name}-Policy",
-                PolicyDocument=json.dumps({
-                    "Version": "2012-10-17",
-                    "Statement": [
-                        {"Effect": "Allow", "Action": ["s3:GetObject", "s3:ListBucket"],
-                         "Resource": [f"arn:aws:s3:::{bucket_name}", f"arn:aws:s3:::{bucket_name}/*"]},
-                        {"Effect": "Allow", "Action": ["bedrock:InvokeModel"], "Resource": "*"},
-                        {"Effect": "Allow", "Action": ["aoss:APIAccessAll"], "Resource": "*"},
-                    ],
-                }),
+                PolicyDocument=json.dumps(
+                    {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                            {
+                                "Effect": "Allow",
+                                "Action": ["s3:GetObject", "s3:ListBucket"],
+                                "Resource": [f"arn:aws:s3:::{bucket_name}", f"arn:aws:s3:::{bucket_name}/*"],
+                            },
+                            {"Effect": "Allow", "Action": ["bedrock:InvokeModel"], "Resource": "*"},
+                            {"Effect": "Allow", "Action": ["aoss:APIAccessAll"], "Resource": "*"},
+                        ],
+                    }
+                ),
             )
             time.sleep(10)
         except iam_client.exceptions.EntityAlreadyExistsException:
@@ -563,26 +589,65 @@ def create_bedrock_knowledge_base(
 
             for policy_call in [
                 lambda: aoss_client.create_security_policy(
-                    name=enc_policy_name, type="encryption",
-                    policy=json.dumps({"Rules": [{"ResourceType": "collection", "Resource": [f"collection/{collection_name}"]}], "AWSOwnedKey": True}),
+                    name=enc_policy_name,
+                    type="encryption",
+                    policy=json.dumps(
+                        {
+                            "Rules": [{"ResourceType": "collection", "Resource": [f"collection/{collection_name}"]}],
+                            "AWSOwnedKey": True,
+                        }
+                    ),
                     description=f"Encryption policy for {collection_name}",
                 ),
                 lambda: aoss_client.create_security_policy(
-                    name=net_policy_name, type="network",
-                    policy=json.dumps([{"Rules": [{"ResourceType": "collection", "Resource": [f"collection/{collection_name}"]}], "AllowFromPublic": True}]),
+                    name=net_policy_name,
+                    type="network",
+                    policy=json.dumps(
+                        [
+                            {
+                                "Rules": [
+                                    {"ResourceType": "collection", "Resource": [f"collection/{collection_name}"]}
+                                ],
+                                "AllowFromPublic": True,
+                            }
+                        ]
+                    ),
                     description=f"Network policy for {collection_name}",
                 ),
                 lambda: aoss_client.create_access_policy(
-                    name=data_policy_name, type="data",
-                    policy=json.dumps([{
-                        "Rules": [
-                            {"ResourceType": "collection", "Resource": [f"collection/{collection_name}"],
-                             "Permission": ["aoss:CreateCollectionItems", "aoss:DeleteCollectionItems", "aoss:UpdateCollectionItems", "aoss:DescribeCollectionItems"]},
-                            {"ResourceType": "index", "Resource": [f"index/{collection_name}/*"],
-                             "Permission": ["aoss:CreateIndex", "aoss:DeleteIndex", "aoss:UpdateIndex", "aoss:DescribeIndex", "aoss:ReadDocument", "aoss:WriteDocument"]},
-                        ],
-                        "Principal": [role_arn, f"arn:aws:iam::{account_id}:root"],
-                    }]),
+                    name=data_policy_name,
+                    type="data",
+                    policy=json.dumps(
+                        [
+                            {
+                                "Rules": [
+                                    {
+                                        "ResourceType": "collection",
+                                        "Resource": [f"collection/{collection_name}"],
+                                        "Permission": [
+                                            "aoss:CreateCollectionItems",
+                                            "aoss:DeleteCollectionItems",
+                                            "aoss:UpdateCollectionItems",
+                                            "aoss:DescribeCollectionItems",
+                                        ],
+                                    },
+                                    {
+                                        "ResourceType": "index",
+                                        "Resource": [f"index/{collection_name}/*"],
+                                        "Permission": [
+                                            "aoss:CreateIndex",
+                                            "aoss:DeleteIndex",
+                                            "aoss:UpdateIndex",
+                                            "aoss:DescribeIndex",
+                                            "aoss:ReadDocument",
+                                            "aoss:WriteDocument",
+                                        ],
+                                    },
+                                ],
+                                "Principal": [role_arn, f"arn:aws:iam::{account_id}:root"],
+                            }
+                        ]
+                    ),
                     description=f"Data access policy for {collection_name}",
                 ),
             ]:
@@ -591,7 +656,9 @@ def create_bedrock_knowledge_base(
                 except aoss_client.exceptions.ConflictException:
                     pass
 
-            resp = aoss_client.create_collection(name=collection_name, type="VECTORSEARCH", description=f"Collection for {kb_name}")
+            resp = aoss_client.create_collection(
+                name=collection_name, type="VECTORSEARCH", description=f"Collection for {kb_name}"
+            )
             collection_id = resp["createCollectionDetail"]["id"]
             collection_arn = resp["createCollectionDetail"]["arn"]
             print(f"✓ OpenSearch Serverless collection created: {collection_id}")
@@ -619,27 +686,46 @@ def create_bedrock_knowledge_base(
             from opensearchpy import OpenSearch, RequestsHttpConnection
             from requests_aws4auth import AWS4Auth
 
-            collection_endpoint = aoss_client.batch_get_collection(ids=[collection_id])["collectionDetails"][0]["collectionEndpoint"]
+            collection_endpoint = aoss_client.batch_get_collection(ids=[collection_id])["collectionDetails"][0][
+                "collectionEndpoint"
+            ]
             if collection_endpoint.startswith("https://"):
                 collection_endpoint = collection_endpoint[8:]
 
             credentials = boto3.Session().get_credentials()
-            awsauth = AWS4Auth(credentials.access_key, credentials.secret_key, region, "aoss", session_token=credentials.token)
+            awsauth = AWS4Auth(
+                credentials.access_key, credentials.secret_key, region, "aoss", session_token=credentials.token
+            )
             os_client = OpenSearch(
                 hosts=[{"host": collection_endpoint, "port": 443}],
-                http_auth=awsauth, use_ssl=True, verify_certs=True,
-                connection_class=RequestsHttpConnection, timeout=30,
+                http_auth=awsauth,
+                use_ssl=True,
+                verify_certs=True,
+                connection_class=RequestsHttpConnection,
+                timeout=30,
             )
             if not os_client.indices.exists(index=index_name):
-                os_client.indices.create(index=index_name, body={
-                    "settings": {"index.knn": True},
-                    "mappings": {"properties": {
-                        "embedding": {"type": "knn_vector", "dimension": 1024,
-                                      "method": {"name": "hnsw", "engine": "faiss", "parameters": {"ef_construction": 512, "m": 16}}},
-                        "text": {"type": "text"},
-                        "metadata": {"type": "text"},
-                    }},
-                })
+                os_client.indices.create(
+                    index=index_name,
+                    body={
+                        "settings": {"index.knn": True},
+                        "mappings": {
+                            "properties": {
+                                "embedding": {
+                                    "type": "knn_vector",
+                                    "dimension": 1024,
+                                    "method": {
+                                        "name": "hnsw",
+                                        "engine": "faiss",
+                                        "parameters": {"ef_construction": 512, "m": 16},
+                                    },
+                                },
+                                "text": {"type": "text"},
+                                "metadata": {"type": "text"},
+                            }
+                        },
+                    },
+                )
                 print(f"✓ Created vector index: {index_name}")
             else:
                 print(f"✓ Vector index already exists: {index_name}")
@@ -667,14 +753,23 @@ def create_bedrock_knowledge_base(
 
         if existing_kb_id:
             print("✓ Using existing Bedrock Knowledge Base")
-            return {"knowledgeBaseId": existing_kb_id, "dataSourceId": existing_ds_id, "s3Bucket": bucket_name, "collectionId": collection_id, "roleArn": role_arn}
+            return {
+                "knowledgeBaseId": existing_kb_id,
+                "dataSourceId": existing_ds_id,
+                "s3Bucket": bucket_name,
+                "collectionId": collection_id,
+                "roleArn": role_arn,
+            }
 
         # 6. Create KB
         kb_response = bedrock_agent_client.create_knowledge_base(
             name=kb_name,
             description=f"Test Knowledge Base for LISA integration testing - {deployment_name}",
             roleArn=role_arn,
-            knowledgeBaseConfiguration={"type": "VECTOR", "vectorKnowledgeBaseConfiguration": {"embeddingModelArn": embedding_model_arn}},
+            knowledgeBaseConfiguration={
+                "type": "VECTOR",
+                "vectorKnowledgeBaseConfiguration": {"embeddingModelArn": embedding_model_arn},
+            },
             storageConfiguration={
                 "type": "OPENSEARCH_SERVERLESS",
                 "opensearchServerlessConfiguration": {
@@ -692,18 +787,28 @@ def create_bedrock_knowledge_base(
             knowledgeBaseId=knowledge_base_id,
             name=f"{kb_name}-s3-source",
             description=f"S3 data source for {kb_name}",
-            dataSourceConfiguration={"type": "S3", "s3Configuration": {"bucketArn": f"arn:aws:s3:::{bucket_name}", "inclusionPrefixes": ["documents/"]}},
+            dataSourceConfiguration={
+                "type": "S3",
+                "s3Configuration": {"bucketArn": f"arn:aws:s3:::{bucket_name}", "inclusionPrefixes": ["documents/"]},
+            },
         )
         data_source_id = ds_response["dataSource"]["dataSourceId"]
         print(f"✓ Data source created: {data_source_id}")
 
-        result = {"knowledgeBaseId": knowledge_base_id, "dataSourceId": data_source_id, "s3Bucket": bucket_name, "collectionId": collection_id, "roleArn": role_arn}
+        result = {
+            "knowledgeBaseId": knowledge_base_id,
+            "dataSourceId": data_source_id,
+            "s3Bucket": bucket_name,
+            "collectionId": collection_id,
+            "roleArn": role_arn,
+        }
         print(f"✓ Bedrock Knowledge Base setup complete: {result}")
         return result
 
     except Exception as e:
         print(f"✗ Failed to create Bedrock Knowledge Base: {e}")
         import traceback
+
         traceback.print_exc()
         raise
 
@@ -786,7 +891,9 @@ def cleanup_resources(lisa_client: LisaApi, created_resources: dict[str, list]) 
                     paginator = s3_client.get_paginator("list_objects_v2")
                     for page in paginator.paginate(Bucket=s3_bucket):
                         if "Contents" in page:
-                            s3_client.delete_objects(Bucket=s3_bucket, Delete={"Objects": [{"Key": o["Key"]} for o in page["Contents"]]})
+                            s3_client.delete_objects(
+                                Bucket=s3_bucket, Delete={"Objects": [{"Key": o["Key"]} for o in page["Contents"]]}
+                            )
                     s3_client.delete_bucket(Bucket=s3_bucket)
                     print(f"✓ Deleted S3 bucket: {s3_bucket}")
                 except Exception as e:
@@ -808,6 +915,7 @@ def main() -> int:
     parser.add_argument("--deployment-name", required=True, help="LISA deployment name")
     parser.add_argument("--deployment-stage", required=True, help="LISA deployment stage")
     parser.add_argument("--deployment-prefix", required=True, help="LISA deployment prefix")
+    parser.add_argument("--region", help="AWS region (overrides AWS_DEFAULT_REGION / AWS_REGION env vars)")
     parser.add_argument("--verify", default="true", help="Verify SSL certificates (default: true)")
     parser.add_argument("--profile", help="AWS profile to use")
     parser.add_argument("--cleanup", action="store_true", help="Delete all models and repositories")
@@ -831,7 +939,7 @@ def main() -> int:
 
         sts_client = boto3.client("sts")
         account_id = sts_client.get_caller_identity()["Account"]
-        region = os.environ.get("AWS_REGION", "us-east-1")
+        region = args.region or os.environ.get("AWS_DEFAULT_REGION") or os.environ.get("AWS_REGION") or "us-east-1"
         print(f"Account ID: {account_id}")
         print(f"Region: {region}")
 
@@ -840,11 +948,13 @@ def main() -> int:
 
         if args.cleanup:
             print("\n🧹 Cleanup mode: Skipping resource creation and performing cleanup...")
-            created_resources["knowledge_bases"] = [{
-                "knowledgeBaseId": "bedrock-kb-e2e-test-id",
-                "dataSourceId": "bedrock-kb-e2e-test-ds-id",
-                "s3Bucket": f"{args.deployment_name}-{BEDROCK_KB_S3_BUCKET}",
-            }]
+            created_resources["knowledge_bases"] = [
+                {
+                    "knowledgeBaseId": "bedrock-kb-e2e-test-id",
+                    "dataSourceId": "bedrock-kb-e2e-test-ds-id",
+                    "s3Bucket": f"{args.deployment_name}-{BEDROCK_KB_S3_BUCKET}",
+                }
+            ]
             cleanup_resources(lisa_client, created_resources)
             print("\n✅ Integration setup test completed successfully!")
             return 0
@@ -857,8 +967,9 @@ def main() -> int:
         else:
             print("⚠️  No embedding models found, repositories will use default embedding model")
 
-        vllm_base_image = f"{account_id}.dkr.ecr.{region}.amazonaws.com/lisa-vllm:latest"
-        
+        # vllm_base_image = f"{account_id}.dkr.ecr.{region}.amazonaws.com/lisa-vllm:latest"
+        vllm_base_image = "public.ecr.aws/deep-learning-containers/vllm:0.15-gpu-py312-ec2"
+
         # Deploy self-hosted textgen models
         for model_id in deploy_models:
             if model_id not in MODEL_DEFINITIONS:
@@ -866,7 +977,9 @@ def main() -> int:
                 continue
             definition = MODEL_DEFINITIONS[model_id]
             result = create_self_hosted_model(
-                lisa_client, model_id, definition,
+                lisa_client,
+                model_id,
+                definition,
                 base_image=definition.get("base_image", vllm_base_image),
                 skip_create=args.skip_create,
             )
@@ -878,7 +991,9 @@ def main() -> int:
                 print(f"⚠️  Unknown embedded model '{model_id}' in deploy_embedded_models, skipping")
                 continue
             result = create_self_hosted_embedded_model(
-                lisa_client, model_id, EMBEDDED_MODEL_DEFINITIONS[model_id],
+                lisa_client,
+                model_id,
+                EMBEDDED_MODEL_DEFINITIONS[model_id],
                 skip_create=args.skip_create,
             )
             created_resources["models"].append(result["modelId"])
@@ -889,7 +1004,9 @@ def main() -> int:
                 print(f"⚠️  Unknown Bedrock model '{model_id}' in deploy_bedrock_models, skipping")
                 continue
             result = create_bedrock_model(
-                lisa_client, model_id, BEDROCK_MODEL_DEFINITIONS[model_id],
+                lisa_client,
+                model_id,
+                BEDROCK_MODEL_DEFINITIONS[model_id],
                 skip_create=args.skip_create,
             )
             created_resources["models"].append(result["modelId"])
@@ -915,7 +1032,9 @@ def main() -> int:
 
                 if kb_result.get("knowledgeBaseId") and kb_result.get("dataSourceId"):
                     result = create_vector_store(
-                        lisa_client, store_id, store_def,
+                        lisa_client,
+                        store_id,
+                        store_def,
                         embedding_model_id=embedding_model_id,
                         skip_create=args.skip_create,
                         knowledge_base_id=kb_result["knowledgeBaseId"],
@@ -926,7 +1045,9 @@ def main() -> int:
                     created_resources["repositories"].append(result["repositoryId"])
             else:
                 result = create_vector_store(
-                    lisa_client, store_id, store_def,
+                    lisa_client,
+                    store_id,
+                    store_def,
                     embedding_model_id=embedding_model_id,
                     skip_create=args.skip_create,
                 )
@@ -942,10 +1063,14 @@ def main() -> int:
             print("\n⏳ Waiting for resources to be ready...")
             all_ready = True
             for model_id in created_resources["models"]:
-                if not wait_for_resource_ready(lisa_client, "model", model_id, lambda mid: check_model_ready(lisa_client, mid)):
+                if not wait_for_resource_ready(
+                    lisa_client, "model", model_id, lambda mid: check_model_ready(lisa_client, mid)
+                ):
                     all_ready = False
             for repo_id in created_resources["repositories"]:
-                if not wait_for_resource_ready(lisa_client, "repository", repo_id, lambda rid: check_repository_ready(lisa_client, rid)):
+                if not wait_for_resource_ready(
+                    lisa_client, "repository", repo_id, lambda rid: check_repository_ready(lisa_client, rid)
+                ):
                     all_ready = False
             print("\n🎉 All resources are ready!" if all_ready else "\n⚠️  Some resources may not be ready yet")
 
@@ -956,6 +1081,7 @@ def main() -> int:
     except Exception as e:
         print(f"\n❌ Integration setup test failed: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 

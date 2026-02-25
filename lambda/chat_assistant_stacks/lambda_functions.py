@@ -60,15 +60,18 @@ def list_stacks(event: dict, context: dict) -> dict:
             response = table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
             items.extend(response.get("Items", []))
         if is_admin(event):
-            return {"Items": [_serialize_item(i) for i in items]}
+            return {"Items": [_serialize_item(assistant_stack) for assistant_stack in items]}
         user_groups = get_groups(event)
         filtered = [
-            i
-            for i in items
-            if i.get("isActive", True)
-            and (not i.get("allowedGroups") or user_has_group_access(user_groups, i.get("allowedGroups", [])))
+            assistant_stack
+            for assistant_stack in items
+            if assistant_stack.get("isActive", True)
+            and (
+                not assistant_stack.get("allowedGroups")
+                or user_has_group_access(user_groups, assistant_stack.get("allowedGroups", []))
+            )
         ]
-        return {"Items": [_serialize_item(i) for i in filtered]}
+        return {"Items": [_serialize_item(assistant_stack) for assistant_stack in filtered]}
     except ClientError:
         logger.exception("Error listing stacks")
         raise

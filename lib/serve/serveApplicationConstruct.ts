@@ -258,6 +258,7 @@ export class LisaServeApplicationConstruct extends Construct {
                 // This runs when switching to IAM auth or updating the configuration
                 // Pass parameters via payload since the Lambda is shared
                 // Use Stack.of(scope).toJsonString() to properly resolve CDK tokens in the payload
+                // Include timestamp to force re-run on every deployment
                 const lambdaInvokeParams = {
                     service: 'Lambda',
                     action: 'invoke',
@@ -271,6 +272,7 @@ export class LisaServeApplicationConstruct extends Construct {
                             dbName: config.restApiConfig.rdsConfig.dbName,
                             dbUser: config.restApiConfig.rdsConfig.username,
                             iamName: serveRole.roleName,
+                            timestamp: new Date().toISOString(), // Force re-run on every deployment
                         })
                     },
                 };

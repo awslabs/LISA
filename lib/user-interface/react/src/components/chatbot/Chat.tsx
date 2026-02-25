@@ -301,7 +301,7 @@ export default function Chat ({ sessionId, initialStack }) {
         }
     }, [selectedModel, hasUserInteractedWithModel, config?.configuration?.global?.defaultModel, modelsForDropdown, handleModelChange, setSelectedModel]);
 
-    // Apply stack config when starting a new session from a Chat Assistant (US-2, US-4)
+    // Apply stack config when starting a new session from a Chat Assistant
     const initialStackApplied = useRef(false);
     const [getPromptTemplate] = useLazyGetPromptTemplateQuery();
     useEffect(() => {

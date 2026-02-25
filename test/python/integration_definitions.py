@@ -82,7 +82,7 @@ MODEL_DEFINITIONS: dict[str, dict] = {
         "instance_type": "g6.48xlarge",
         "blockDeviceVolumeSize": 200,
         "sharedMemorySize": 4096,
-        "memoryReservation": 780800,  # 786432 - 4096 shm - 1500 OS
+        "memoryReservation": 740000,  # 786432 - 4096 shm - 1500 OS
         "environment": {
             "VLLM_TENSOR_PARALLEL_SIZE": "8",
             "VLLM_USE_TQDM_ON_LOAD": "true",

@@ -19,10 +19,14 @@ RUN mkdir -p /etc/ssh && \
 
 ##### DOWNLOAD MOUNTPOINTS S3
 ARG MOUNTS3_DEB_URL
-RUN apt update -y && apt install -y wget rsync && \
-    wget ${MOUNTS3_DEB_URL} && \
-    apt install -y ./mount-s3.deb && \
-    rm mount-s3.deb
+ARG MOUNTS3_DEB_SHA256
+RUN apt-get update -y && apt-get upgrade -y && apt-get install -y wget rsync && \
+    wget ${MOUNTS3_DEB_URL} -O mount-s3.deb && \
+    if [ -n "${MOUNTS3_DEB_SHA256}" ]; then \
+        echo "${MOUNTS3_DEB_SHA256}  mount-s3.deb" | sha256sum -c; \
+    fi && \
+    apt-get install -y ./mount-s3.deb && \
+    rm mount-s3.deb && rm -rf /var/lib/apt/lists/*
 
 COPY src/entrypoint.sh ./entrypoint.sh
 RUN chmod +x entrypoint.sh

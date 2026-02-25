@@ -60,9 +60,10 @@ type MessageProps = {
     onImageLoadComplete?: () => void;
     retryResponse?: () => Promise<void>
     errorState?: boolean;
+    onOpenDocument?: (document: any) => void;
 };
 
-export const Message = React.memo(({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration, callingToolName, showUsage = false, onMermaidRenderComplete, onVideoLoadComplete, onImageLoadComplete, retryResponse, errorState }: MessageProps) => {
+export const Message = React.memo(({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration, callingToolName, showUsage = false, onMermaidRenderComplete, onVideoLoadComplete, onImageLoadComplete, retryResponse, errorState, onOpenDocument }: MessageProps) => {
     const currentUser = useAppSelector(selectCurrentUsername);
     const ragCitations = !isStreaming && message?.metadata?.ragDocuments ? message?.metadata.ragDocuments : undefined;
     const [resend, setResend] = useState(false);
@@ -73,6 +74,9 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
     const { colorScheme } = useContext(ColorSchemeContext);
     const isDarkMode = colorScheme === Mode.Dark;
     const hasMessageContent = message?.content && typeof message.content === 'string' && message.content.trim() && message.content.trim() !== '\u00A0';
+
+    // Check if ragDocuments is an array (new format with structured data)
+    const ragDocuments = Array.isArray(ragCitations) ? ragCitations : undefined;
 
     // Auto-expand reasoning when it first appears, then auto-collapse when message content starts arriving
     useEffect(() => {
@@ -103,7 +107,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                 if (item.type === 'text' && typeof item.text === 'string') {
                     if (item.text.startsWith('File context:')) return null;
 
-                    const displayableText = getDisplayableMessage(item.text, message.type === MessageTypes.AI ? ragCitations : undefined);
+                    const displayableText = getDisplayableMessage(item.text);
 
                     return (
                         <div key={index} className={styles.messageContent} style={{ maxWidth: '60em' }}>
@@ -226,11 +230,11 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                     <ReactMarkdown
                         remarkPlugins={markdownPlugins.remarkPlugins}
                         rehypePlugins={markdownPlugins.rehypePlugins}
-                        children={getDisplayableMessage(content, message.type === MessageTypes.AI ? ragCitations : undefined)}
+                        children={getDisplayableMessage(content)}
                         components={markdownComponents}
                     />
                 ) : (
-                    <div style={{ whiteSpace: 'pre-line' }}>{getDisplayableMessage(content, message.type === MessageTypes.AI ? ragCitations : undefined)}</div>
+                    <div style={{ whiteSpace: 'pre-line' }}>{getDisplayableMessage(content)}</div>
                 )}
             </div>);
     };
@@ -343,6 +347,32 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                             </Box>
                         )}
                         {message?.content && (typeof message.content === 'string' ? (message.content.trim() && message.content.trim() !== '\u00A0') : true) && renderContent(message.content, message.metadata)}
+                        {ragDocuments && ragDocuments.length > 0 && !isStreaming && (
+                            <Box margin={{ top: 's' }}>
+                                <ExpandableSection
+                                    variant='footer'
+                                    headerText={`Citations (${ragDocuments.length})`}
+                                >
+                                    <SpaceBetween direction='vertical' size='xs'>
+                                        {ragDocuments.map((doc, index) => (
+                                            <Box key={doc.documentId || index}>
+                                                {doc.documentId && onOpenDocument ? (
+                                                    <Link
+                                                        onFollow={() => onOpenDocument(doc)}
+                                                    >
+                                                        [{index + 1}] {doc.name}
+                                                    </Link>
+                                                ) : (
+                                                    <Box variant='span' color='text-status-inactive'>
+                                                        [{index + 1}] {doc.name} (preview unavailable)
+                                                    </Box>
+                                                )}
+                                            </Box>
+                                        ))}
+                                    </SpaceBetween>
+                                </ExpandableSection>
+                            </Box>
+                        )}
                         {showMetadata && !isStreaming &&
                             <ExpandableSection
                                 variant='footer'

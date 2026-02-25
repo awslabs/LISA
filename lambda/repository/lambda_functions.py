@@ -121,6 +121,59 @@ def list_status(event: dict, context: dict) -> dict[str, Any]:
     return cast(dict, vs_repo.get_repository_status())
 
 
+def enrich_metadata_with_document_id(
+    docs: list[dict[str, Any]], repository_id: str, search_collection_id: str
+) -> list[dict[str, Any]]:
+    """Enrich document metadata with document_id by looking up in RAG document table.
+
+    Works for both new documents (that have document_id in vector store) and
+    existing documents (that don't have it yet), ensuring backward compatibility.
+
+    Args:
+        docs: Documents from vector store similarity search
+        repository_id: Repository ID for scoping the lookup
+        search_collection_id: The actual collection ID used for the search (not from metadata)
+
+    Returns:
+        Documents with enriched metadata including document_id
+    """
+    for doc in docs:
+        metadata = doc.get("metadata", {})
+
+        # Skip if document_id already present (newer documents)
+        if "document_id" in metadata:
+            logger.debug(f"Document already has document_id: {metadata.get('document_id')}")
+            continue
+
+        # Look up document_id from RAG document table using source path
+        source = metadata.get("source")
+
+        if source and search_collection_id:
+            try:
+                # Query RAG document table by source using the ACTUAL collection_id from search
+                # Not the metadata's collectionId which may be "default" in vector store
+                rag_doc = doc_repo.find_one_by_source(
+                    repository_id=repository_id, collection_id=search_collection_id, source=source
+                )
+
+                if rag_doc:
+                    metadata["document_id"] = rag_doc.document_id
+                    logger.info(f"Enriched metadata with document_id: {rag_doc.document_id} for source: {source}")
+                else:
+                    logger.warning(
+                        f"No RAG document found for source: {source} "
+                        f"in repository: {repository_id}, collection: {search_collection_id}"
+                    )
+
+            except Exception as e:
+                logger.error(f"Failed to enrich metadata for source {source}: {e}")
+                # Continue without document_id - frontend will handle gracefully
+        else:
+            logger.debug(f"Missing source ({source}) or collection_id ({search_collection_id}), skipping enrichment")
+
+    return docs
+
+
 @api_wrapper
 def similarity_search(event: dict, context: dict) -> dict[str, Any]:
     """Return documents matching the query.
@@ -197,6 +250,10 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
         include_score=include_score,
         bedrock_agent_client=bedrock_client,
     )
+
+    # Enrich metadata with documentId for documents that don't have it
+    # Pass the actual search_collection_id (not the metadata's collectionId which may be "default")
+    docs = enrich_metadata_with_document_id(docs, repository_id, search_collection_id)  # type: ignore[arg-type]
 
     doc_content = [
         {

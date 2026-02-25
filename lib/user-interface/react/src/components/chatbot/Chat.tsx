@@ -86,6 +86,7 @@ import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
 import { conditionalDeps } from '../utils';
 import { formatDate } from '@/shared/util/formats';
 import DocumentSidePanel from './components/DocumentSidePanel';
+import { useDocumentSidePanel } from '@/shared/hooks/useDocumentSidePanel';
 
 export default function Chat ({ sessionId }) {
     const dispatch = useAppDispatch();
@@ -142,8 +143,9 @@ export default function Chat ({ sessionId }) {
     const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
     const [updatingAutoApprovalForTool, setUpdatingAutoApprovalForTool] = useState<string | null>(null);
     const [showMarkdownPreview, setShowMarkdownPreview] = useState(false);
-    const [showDocSidePanel, setShowDocSidePanel] = useState(false);
-    const [selectedDocumentForPanel, setSelectedDocumentForPanel] = useState<any>(null);
+    
+    // Document side panel management
+    const { showDocSidePanel, selectedDocumentForPanel, handleOpenDocument, handleCloseDocPanel } = useDocumentSidePanel();
 
     // Get color scheme context for markdown preview
     const { colorScheme } = useContext(ColorSchemeContext);
@@ -349,15 +351,6 @@ export default function Chat ({ sessionId }) {
             setOpenAiTools(undefined);
         }
     }, [mcpTools]);
-
-    // Auto-close document panel when session changes
-    useEffect(() => {
-        if (showDocSidePanel) {
-            setShowDocSidePanel(false);
-            setSelectedDocumentForPanel(null);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [sessionId]);
 
     const fetchRelevantDocuments = useCallback(async (query: string) => {
         const { ragTopK = 3 } = chatConfiguration.sessionConfiguration;
@@ -829,18 +822,6 @@ export default function Chat ({ sessionId }) {
         handleKeyPress,
         handleButtonClick,
     ]);
-
-    // Handler to open document in side panel
-    const handleOpenDocument = useCallback((document: any) => {
-        setSelectedDocumentForPanel(document);
-        setShowDocSidePanel(true);
-    }, []);
-
-    // Handler to close document side panel
-    const handleCloseDocPanel = useCallback(() => {
-        setShowDocSidePanel(false);
-        setSelectedDocumentForPanel(null);
-    }, []);
 
     return (
         <div className='flex flex-col h-[85vh]'>

@@ -15,7 +15,7 @@
  */
 
 import * as React from 'react';
-import { ReactElement, useCallback, useState } from 'react';
+import { ReactElement, useState } from 'react';
 import {
     ButtonDropdownProps,
     CollectionPreferences,
@@ -44,6 +44,7 @@ import { useLocalStorage } from '../../shared/hooks/use-local-storage';
 import { downloadFile } from '../../shared/util/downloader';
 import { RefreshButton } from '@/components/common/RefreshButton';
 import DocumentSidePanel from '../chatbot/components/DocumentSidePanel';
+import { useDocumentSidePanel } from '@/shared/hooks/useDocumentSidePanel';
 
 type DocumentLibraryComponentProps = {
     repositoryId?: string;
@@ -85,8 +86,9 @@ export function DocumentLibraryComponent ({ repositoryId, collectionId }: Docume
     const isAdmin = useAppSelector(selectCurrentUserIsAdmin);
     const [preferences, setPreferences] = useLocalStorage('DocumentRagPreferences', DEFAULT_PREFERENCES);
     const dispatch = useAppDispatch();
-    const [showDocSidePanel, setShowDocSidePanel] = useState(false);
-    const [selectedDocumentForPanel, setSelectedDocumentForPanel] = useState<any>(null);
+    
+    // Document side panel management
+    const { showDocSidePanel, selectedDocumentForPanel, handleOpenDocument, handleCloseDocPanel } = useDocumentSidePanel();
 
     // Fetch collection data if collectionId is provided
     const { data: collectionData } = useGetCollectionQuery(
@@ -196,18 +198,6 @@ export function DocumentLibraryComponent ({ repositoryId, collectionId }: Docume
                 break;
         }
     };
-
-    // Handler to open document
-    const handleOpenDocument = useCallback((document: any) => {
-        setSelectedDocumentForPanel(document);
-        setShowDocSidePanel(true);
-    }, []);
-
-    // Handler to close document
-    const handleCloseDocPanel = useCallback(() => {
-        setShowDocSidePanel(false);
-        setSelectedDocumentForPanel(null);
-    }, []);
 
     return (
         <div

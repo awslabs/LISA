@@ -115,6 +115,241 @@ When a stack includes multiple options (e.g. several models, repos, or directive
 
 ---
 
+## API Reference
+
+The Chat Assistant Stacks API is exposed at `/chat-assistant-stacks` under the LISA API Gateway. All endpoints require a valid Bearer token. Most operations are admin-only; the list endpoint returns different results based on role and group membership.
+
+### Base URL
+
+```
+https://<apigw_endpoint>/chat-assistant-stacks
+```
+
+### Authentication
+
+All requests require the `Authorization: Bearer <token>` header with a valid LISA/OIDC token.
+
+### Endpoints
+
+| Method | Path | Description | Access |
+|--------|------|-------------|--------|
+| GET | `/chat-assistant-stacks` | List stacks | Admins: all stacks. Users: active stacks (allowedGroups empty or user in group). |
+| GET | `/chat-assistant-stacks/{stackId}` | Get a single stack | Admin only |
+| POST | `/chat-assistant-stacks` | Create a stack | Admin only |
+| PUT | `/chat-assistant-stacks/{stackId}` | Update a stack | Admin only |
+| DELETE | `/chat-assistant-stacks/{stackId}` | Delete a stack | Admin only |
+| PUT | `/chat-assistant-stacks/{stackId}/status` | Activate or deactivate a stack | Admin only |
+
+---
+
+### List Stacks
+
+Returns stacks. Admins receive all stacks; non-admin users receive only active stacks where they have access (empty `allowedGroups` or user in at least one group).
+
+#### Request Example
+
+```bash
+curl -s -H "Authorization: Bearer <token>" -X GET https://<apigw_endpoint>/chat-assistant-stacks
+```
+
+#### Response Example
+
+```json
+{
+  "Items": [
+    {
+      "stackId": "abc-123-def",
+      "name": "Developer Assistant",
+      "description": "Preconfigured for code-related tasks with RAG and MCP tools.",
+      "modelIds": ["mistral-vllm"],
+      "repositoryIds": ["repo-1"],
+      "collectionIds": ["coll-1"],
+      "mcpServerIds": [],
+      "mcpToolIds": [],
+      "personaPromptId": "prompt-1",
+      "directivePromptIds": ["dir-1", "dir-2"],
+      "allowedGroups": ["developers"],
+      "isActive": true,
+      "created": "2024-01-15T10:00:00Z",
+      "updated": "2024-01-15T10:00:00Z"
+    }
+  ]
+}
+```
+
+#### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `stackId` | string | Unique identifier for the stack |
+| `name` | string | Display name (max 256 characters) |
+| `description` | string | Description of the assistant |
+| `modelIds` | string[] | IDs of models the stack uses (≥1 required) |
+| `repositoryIds` | string[] | RAG repository IDs |
+| `collectionIds` | string[] | RAG collection IDs |
+| `mcpServerIds` | string[] | MCP server IDs |
+| `mcpToolIds` | string[] | MCP tool IDs |
+| `personaPromptId` | string \| null | Optional persona prompt ID |
+| `directivePromptIds` | string[] | Directive prompt IDs |
+| `allowedGroups` | string[] | User groups with access (empty = global) |
+| `isActive` | boolean | Whether the stack is visible to users |
+| `created` | string | ISO timestamp when created |
+| `updated` | string | ISO timestamp when last updated |
+
+---
+
+### Get Stack
+
+Retrieves a single stack by ID. Admin only.
+
+#### Request Example
+
+```bash
+curl -s -H "Authorization: Bearer <admin_token>" -X GET https://<apigw_endpoint>/chat-assistant-stacks/{stackId}
+```
+
+#### Response Example
+
+```json
+{
+  "stackId": "abc-123-def",
+  "name": "Developer Assistant",
+  "description": "Preconfigured for code-related tasks.",
+  "modelIds": ["mistral-vllm"],
+  "repositoryIds": ["repo-1"],
+  "collectionIds": ["coll-1"],
+  "mcpServerIds": [],
+  "mcpToolIds": [],
+  "personaPromptId": "prompt-1",
+  "directivePromptIds": ["dir-1"],
+  "allowedGroups": ["developers"],
+  "isActive": true,
+  "created": "2024-01-15T10:00:00Z",
+  "updated": "2024-01-15T10:00:00Z"
+}
+```
+
+---
+
+### Create Stack
+
+Creates a new Chat Assistant Stack. Admin only. The `stackId` is auto-generated if not provided.
+
+#### Request Example
+
+```bash
+curl -s -H "Authorization: Bearer <admin_token>" -H "Content-Type: application/json" \
+  -X POST https://<apigw_endpoint>/chat-assistant-stacks \
+  -d '{
+    "name": "Developer Assistant",
+    "description": "Preconfigured for code-related tasks.",
+    "modelIds": ["mistral-vllm"],
+    "repositoryIds": [],
+    "collectionIds": [],
+    "mcpServerIds": [],
+    "mcpToolIds": [],
+    "directivePromptIds": [],
+    "allowedGroups": ["developers"]
+  }'
+```
+
+#### Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Display name (max 256 characters) |
+| `description` | string | Yes | Description of the assistant |
+| `modelIds` | string[] | Yes | At least one model ID |
+| `repositoryIds` | string[] | No | RAG repository IDs (default: []) |
+| `collectionIds` | string[] | No | RAG collection IDs (default: []) |
+| `mcpServerIds` | string[] | No | MCP server IDs (default: []) |
+| `mcpToolIds` | string[] | No | MCP tool IDs (default: []) |
+| `personaPromptId` | string \| null | No | Persona prompt ID |
+| `directivePromptIds` | string[] | No | Directive prompt IDs (default: []) |
+| `allowedGroups` | string[] | No | User groups (default: [], meaning global) |
+
+#### Response
+
+Returns the created stack object (same structure as Get Stack).
+
+---
+
+### Update Stack
+
+Updates an existing stack. Admin only. Send the full stack payload (same shape as create); the stack is replaced with the provided values.
+
+#### Request Example
+
+```bash
+curl -s -H "Authorization: Bearer <admin_token>" -H "Content-Type: application/json" \
+  -X PUT https://<apigw_endpoint>/chat-assistant-stacks/{stackId} \
+  -d '{
+    "name": "Updated Developer Assistant",
+    "description": "Updated description.",
+    "modelIds": ["mistral-vllm", "another-model"],
+    "repositoryIds": ["repo-1"],
+    "collectionIds": [],
+    "mcpServerIds": [],
+    "mcpToolIds": [],
+    "directivePromptIds": [],
+    "allowedGroups": ["developers", "qa"]
+  }'
+```
+
+#### Request Body
+
+Same as [Create Stack](#create-stack) request body. All fields are required.
+
+#### Response
+
+Returns the updated stack object.
+
+---
+
+### Delete Stack
+
+Deletes a Chat Assistant Stack. Admin only. This removes the stack from the system; users can no longer start new sessions from it.
+
+#### Request Example
+
+```bash
+curl -s -H "Authorization: Bearer <admin_token>" -X DELETE https://<apigw_endpoint>/chat-assistant-stacks/{stackId}
+```
+
+#### Response Example
+
+```json
+{
+  "status": "ok"
+}
+```
+
+---
+
+### Update Stack Status (Activate/Deactivate)
+
+Activates or deactivates a stack. Admin only. Deactivated stacks are hidden from users but remain in the system and can be reactivated.
+
+#### Request Example
+
+```bash
+curl -s -H "Authorization: Bearer <admin_token>" -H "Content-Type: application/json" \
+  -X PUT https://<apigw_endpoint>/chat-assistant-stacks/{stackId}/status \
+  -d '{"isActive": false}'
+```
+
+#### Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `isActive` | boolean | Yes | `true` to activate, `false` to deactivate |
+
+#### Response
+
+Returns the updated stack object with the new `isActive` value.
+
+---
+
 ## Summary
 
 | Role | Where | What you do |
@@ -124,4 +359,4 @@ When a stack includes multiple options (e.g. several models, repos, or directive
 | **User** | Chat UI left pane → Chat Assistants | See available assistants; click to open a preconfigured session. |
 | **User** | Session | Use preconfigured models, RAG, MCP, prompts; choose among options when allowed; |
 
-For configuration schema and API details, see the LISA configuration and API documentation. For using the Chat UI in general, see [LISA Chat UI](/user/chat).
+For configuration schema, see the LISA configuration documentation. For using the Chat UI in general, see [LISA Chat UI](/user/chat).

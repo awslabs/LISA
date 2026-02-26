@@ -593,8 +593,25 @@ def handle_add_model_to_litellm(event: dict[str, Any], context: Any) -> dict[str
         litellm_params["drop_params"] = True  # drop unrecognized param instead of failing the request on it
 
     if is_lisa_managed:
-        # get load balancer from cloudformation stack
-        litellm_params["model"] = f'openai/{event["modelName"]}'
+        # Determine the correct LiteLLM provider prefix based on the inference container type
+        # - vLLM: Use hosted_vllm/ to pass through full model name (e.g., "openai/gpt-oss-20b")
+        # - TGI/TEI: Use openai/ prefix (LiteLLM strips it before sending to backend)
+        model_name = event["modelName"]
+        inference_container = event.get("inferenceContainer", "").lower()
+
+        if inference_container == "vllm":
+            # vLLM serves models with full HF repo name (e.g., "openai/gpt-oss-20b")
+            # hosted_vllm/ prefix ensures LiteLLM passes through the complete name
+            provider_prefix = "hosted_vllm"
+        else:
+            # TGI and TEI use OpenAI-compatible APIs with model name stripping
+            provider_prefix = "openai"
+
+            # Prefixing is added later, remove duplicate openai prefixing if present
+            if model_name.startswith("openai/"):
+                model_name = model_name[len("openai/") :]
+
+        litellm_params["model"] = f"{provider_prefix}/{model_name}"
         litellm_params["api_base"] = f"{event['modelUrl']}/v1"  # model's OpenAI-compliant route
     else:
         litellm_params["model"] = event["modelName"]

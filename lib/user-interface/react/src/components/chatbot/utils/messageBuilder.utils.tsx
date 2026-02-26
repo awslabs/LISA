@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import { formatDocumentsAsString, formatDocumentTitlesAsString } from '@/components/utils';
+import { formatDocumentsAsString } from '@/components/utils';
 
 export type MessageContentParams = {
     isImageGenerationMode: boolean;
@@ -60,6 +60,34 @@ export const buildMessageContent = async ({
     return userPrompt;
 };
 
+/**
+ * Structures RAG documents from search results, grouping by unique document.
+ * Multiple chunks may come from the same document.
+ * Includes all documents, even if they don't have document_id (for backward compatibility).
+ */
+export const structureRagDocuments = (docs: any) => {
+    // Group by unique document (multiple chunks may come from same doc)
+    const uniqueDocs = new Map();
+
+    docs.forEach((doc) => {
+        const metadata = doc.Document.metadata;
+        const source = metadata.source;
+
+        // Use source as the unique key since it's always present
+        if (source && !uniqueDocs.has(source)) {
+            uniqueDocs.set(source, {
+                documentId: metadata.document_id || null, // null if not enriched yet
+                name: metadata.name || source.split('/').pop() || 'Unknown',
+                source: source,
+                repositoryId: metadata.repositoryId,
+                collectionId: metadata.collectionId,
+            });
+        }
+    });
+
+    return Array.from(uniqueDocs.values());
+};
+
 export const buildMessageMetadata = async ({
     isImageGenerationMode,
     useRag,
@@ -80,7 +108,8 @@ export const buildMessageMetadata = async ({
 
     if (useRag && !isImageGenerationMode && ragDocs) {
         metadata.ragContext = formatDocumentsAsString(ragDocs.data?.docs, true);
-        metadata.ragDocuments = formatDocumentTitlesAsString(ragDocs.data?.docs);
+        // Structure RAG documents as array with document metadata
+        metadata.ragDocuments = structureRagDocuments(ragDocs.data?.docs);
     }
 
     return metadata;

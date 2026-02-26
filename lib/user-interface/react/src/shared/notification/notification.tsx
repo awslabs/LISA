@@ -14,8 +14,8 @@
   limitations under the License.
 */
 
-import { Flashbar } from '@cloudscape-design/components';
-import React, { ReactElement, useMemo } from 'react';
+import { Flashbar, Button } from '@cloudscape-design/components';
+import React, { ReactElement, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { reset, selectNotifications } from '../reducers/notification.reducer';
 import { NotificationProp } from './notifications.props';
@@ -29,20 +29,39 @@ function NotificationBanner (): ReactElement {
     const dispatch = useDispatch();
     const notificationService = useNotificationService(dispatch);
 
-    useMemo(() => {
+    useEffect(() => {
         dispatch(reset());
     }, [dispatch]);
+
+    const notificationItems = notifications
+        .slice(
+            0,
+            notifications.length > notificationDisplayMaxSize ? notificationDisplayMaxSize : notifications.length,
+        )
+        .map((props, index) => {
+            const item = notificationService.createNotification(props);
+            // Add "Dismiss all" action to the first notification if there are multiple notifications
+            if (index === 0 && notifications.length > 1) {
+                return {
+                    ...item,
+                    action: (
+                        <Button
+                            onClick={() => dispatch(reset())}
+                            ariaLabel='Dismiss all notifications'
+                        >
+                            Dismiss all
+                        </Button>
+                    ),
+                };
+            }
+            return item;
+        });
 
     return (
         <div role='status' aria-live='polite'>
             <Flashbar
                 stackItems={true}
-                items={notifications
-                    .slice(
-                        0,
-                        notifications.length > notificationDisplayMaxSize ? notificationDisplayMaxSize : notifications.length,
-                    )
-                    .map((props) => notificationService.createNotification(props))}
+                items={notificationItems}
             />
         </div>
     );

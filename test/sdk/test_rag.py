@@ -220,14 +220,14 @@ class TestRagMixin:
                 {
                     "Document": {
                         "page_content": "Machine learning is a subset of AI...",
-                        "metadata": {"source": "ml-guide.pdf", "page": 1},
+                        "metadata": {"source": "ml-guide.pdf", "page": 1, "document_id": "doc-123"},
                     },
                     "score": 0.95,
                 },
                 {
                     "Document": {
                         "page_content": "Deep learning uses neural networks...",
-                        "metadata": {"source": "dl-guide.pdf", "page": 3},
+                        "metadata": {"source": "dl-guide.pdf", "page": 3, "document_id": "doc-456"},
                     },
                     "score": 0.87,
                 },
@@ -251,6 +251,9 @@ class TestRagMixin:
         assert len(docs) == 2
         assert docs[0]["score"] == 0.95
         assert "machine learning" in docs[0]["Document"]["page_content"].lower()
+        # Verify document_id is present in metadata (enriched by similarity_search)
+        assert "document_id" in docs[0]["Document"]["metadata"]
+        assert docs[0]["Document"]["metadata"]["document_id"] == "doc-123"
         # Verify query params
         assert responses.calls[0].request.params["query"] == query
         assert responses.calls[0].request.params["topK"] == "5"

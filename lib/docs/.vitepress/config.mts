@@ -93,7 +93,30 @@ const navLinks = [
       { text: 'Breaking Changes', link: '/user/breaking-changes' },
       { text: 'Change Log', link: 'https://github.com/awslabs/LISA/releases' },
     ],
-  }];
+  },
+  {
+    text: 'API Reference',
+    items: [
+      { text: 'API Tokens', link: '/config/api-tokens#managing-tokens-via-api' },
+      { text: 'Chat Assistant Stacks', link: '/config/chat-assistant-stacks#api-reference' },
+      { text: 'Collection Management (Repository)', link: '/config/collection-management-api#endpoints' },
+      { text: 'Bedrock Guardrails', link: '/config/guardrails#managing-guardrails-via-lisa-models-api' },
+      { text: 'Hosted MCP Servers (/mcp)', link: '/config/hosted-mcp#api-operations' },
+      { text: 'Metrics', link: '/admin/api-overview#metrics-api-gateway-endpoints' },
+      { text: 'Model Management (/models)', link: '/config/model-management-api#listing-models-admin-api' },
+      { text: 'RAG Repository', link: '/config/repositories#configuration-examples' },
+      // TODO: Add API documentation for the following APIs
+      // { text: 'MCP Workbench', link: '/config/mcp-workbench#programmatic-api-access' },
+      // { text: 'Bedrock Knowledge Base (/bedrock-kb)', link: '/config/TODO-bedrock-kb#api-reference' },
+      // { text: 'Configuration (/configuration)', link: '/config/TODO-configuration#api-reference' },
+      // { text: 'MCP Server Connections (/mcp-server)', link: '/config/TODO-mcp-server#api-reference' },
+      // { text: 'MCP Workbench tool management REST API (/mcp-workbench)', link: '/config/TODO-mcp-workbench#api-reference' },
+      // { text: 'Prompt Templates (/prompt-templates)', link: '/config/TODO-prompt-templates#api-reference' },
+      // { text: 'Session (/session)', link: '/config/TODO-session#api-reference' },
+      // { text: 'User Preferences (/user-preferences)', link: '/config/TODO-user-preferences#api-reference' },
+    ],
+  },
+];
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({

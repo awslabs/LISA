@@ -15,7 +15,7 @@
 */
 
 import { Flashbar, Button } from '@cloudscape-design/components';
-import React, { ReactElement, useMemo } from 'react';
+import React, { ReactElement, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { reset, selectNotifications } from '../reducers/notification.reducer';
 import { NotificationProp } from './notifications.props';
@@ -29,7 +29,7 @@ function NotificationBanner (): ReactElement {
     const dispatch = useDispatch();
     const notificationService = useNotificationService(dispatch);
 
-    useMemo(() => {
+    useEffect(() => {
         dispatch(reset());
     }, [dispatch]);
 

@@ -147,6 +147,14 @@ export default function Chat ({ sessionId }) {
     // Document side panel management
     const { showDocSidePanel, selectedDocumentForPanel, handleOpenDocument, handleCloseDocPanel } = useDocumentSidePanel();
 
+    // Close document side panel when session changes
+    useEffect(() => {
+        if (showDocSidePanel) {
+            handleCloseDocPanel();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [sessionId]);
+
     // Get color scheme context for markdown preview
     const { colorScheme } = useContext(ColorSchemeContext);
     const isDarkMode = colorScheme === Mode.Dark;

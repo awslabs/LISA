@@ -220,7 +220,7 @@ class RagDocumentRepository:
             first_doc = next(docs_generator, None)
             return first_doc
 
-        except Exception as e:
+        except ClientError as e:
             logging.error(f"Error finding document by source: {e}")
             return None
 
@@ -492,7 +492,7 @@ class RagDocumentRepository:
             try:
                 logging.info(f"Removing S3 doc: {source}")
                 self.delete_s3_object(uri=source)
-            except Exception as e:
+            except ClientError as e:
                 logging.error(f"Failed to delete S3 object {source}: {e}")
                 # Continue with other deletions
 

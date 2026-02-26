@@ -140,11 +140,6 @@ def enrich_metadata_with_document_id(
     for doc in docs:
         metadata = doc.get("metadata", {})
 
-        # Skip if document_id already present (newer documents)
-        if "document_id" in metadata:
-            logger.debug(f"Document already has document_id: {metadata.get('document_id')}")
-            continue
-
         # Look up document_id from RAG document table using source path
         source = metadata.get("source")
 

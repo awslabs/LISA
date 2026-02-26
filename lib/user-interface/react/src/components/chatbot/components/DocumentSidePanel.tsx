@@ -24,8 +24,10 @@ import {
     StatusIndicator,
     Container,
 } from '@cloudscape-design/components';
+import { useDispatch } from 'react-redux';
 import { getFileType, normalizeDocumentName } from '@/components/utils';
 import { useLazyDownloadRagDocumentQuery } from '@/shared/reducers/rag.reducer';
+import { useNotificationService } from '@/shared/util/hooks';
 
 export type DocumentSidePanelProps = {
     visible: boolean;
@@ -39,6 +41,8 @@ export type DocumentSidePanelProps = {
 };
 
 export function DocumentSidePanel ({ visible, onClose, document }: DocumentSidePanelProps) {
+    const dispatch = useDispatch();
+    const notificationService = useNotificationService(dispatch);
     const [downloadUrl, { isLoading: isLoadingUrl }] = useLazyDownloadRagDocumentQuery();
     const [documentUrl, setDocumentUrl] = useState<string | null>(null);
     const [textContent, setTextContent] = useState('');
@@ -87,6 +91,9 @@ export function DocumentSidePanel ({ visible, onClose, document }: DocumentSideP
                 // Fetch PDF as blob and create object URL with correct MIME type
                 // This ensures browser displays it inline instead of downloading
                 const response = await fetch(urlResponse);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch document: ${response.status} ${response.statusText}`);
+                }
                 const blob = await response.blob();
 
                 // Create a new blob with the correct MIME type
@@ -96,11 +103,18 @@ export function DocumentSidePanel ({ visible, onClose, document }: DocumentSideP
             } else if (fileType === 'txt') {
                 // For text files, fetch and display content
                 const response = await fetch(urlResponse);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch document: ${response.status} ${response.statusText}`);
+                }
                 const text = await response.text();
                 setTextContent(text);
             }
         } catch (err) {
-            console.error('Error loading document:', err);
+            const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+            notificationService.generateNotification(
+                `Failed to load document: ${errorMessage}`,
+                'error'
+            );
             setError('Failed to load document. Please try again.');
         }
     };
@@ -114,9 +128,13 @@ export function DocumentSidePanel ({ visible, onClose, document }: DocumentSideP
                 repositoryId: document.repositoryId,
             }).unwrap();
 
-            window.open(url, '_blank');
+            window.open(url, '_blank', 'noopener, noreferrer');
         } catch (err) {
-            console.error('Error downloading document:', err);
+            const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+            notificationService.generateNotification(
+                `Failed to download document: ${errorMessage}`,
+                'error'
+            );
         }
     };
 

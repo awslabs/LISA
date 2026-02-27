@@ -1,63 +1,36 @@
 # v6.3.0
 
-## Key Features
+## UI Updates
+- Added RAG citation document preview side panel in Chat UI
+- Exposed the document preview panel in the document library for viewing documents
+- Added "Dismiss all" button for notification stacks
+- Fixed "Loading Configuration..." text styling to match LISA UI using Cloudscape components
+- Added last updated date/time to session displays
 
-### Fix Rag Pipeline Events
-This PR addresses issues with the RAG pipeline ingestion and deletion flow, improving the reliability of collection ID resolution. Key fixes include:
-- Resolved a bug where pipelines storing a user-entered collection name (instead of UUID) as  would fail to find the collection. Added a  fallback lookup in .
-- Fixed EventBus update mismatches on deployment.
+## Other Key Changes
+- Updated VLLM image to latest AWS deep-learning base with GPU settings for ECS, memory reservation, and tensor parallelization from GPU count
+- Dockerfiles for embedding (instructor, tei), text generation (tgi), and VLLM now run OS package upgrades during build
+- Removed deprecated LISA Serve V1 endpoints and supporting infrastructure
+- Updated dependencies across the codebase
 
-### RAG Citations Preview Side Panel
-This enhancement introduces a new RAG citation preview side panel accessible from the Chat UI, improving how RAG citations appear in chat bubbles. Additionally, it adds a Dismiss all button for dismissing all notifications in a notification stack.
+## Bug Fixes
+- Fixed RAG pipeline collection ID resolution (find_by_id_or_name fallback) and EventBus update mismatches on deployment
+- Resolved max_tokens handling for non-Anthropic models on Anthropic routes
+- Improved RAG PDF parsing quality (excessive whitespace and invisible Unicode characters)
+- Addressed consistency of UI validation warnings for field format and required fields
+- Added missing required role for batch ingestion
+- Added cache clearing at login to prevent cache corruption issues
 
-### VLLM Updates
-This update improves the VLLM image by:
-- Updating the base VLLM image to use the latest deep-learning VLLM from AWS (public.ecr.aws/deep-learning-containers/vllm:0.15-gpu-py312-ec2)
-- Adding explicit GPU settings for ECS host images, including adding the nvidia runtime to containers
-- Adding memory reservation as a field for configuring images
-- Properly setting tensor parallelization based on the number of GPUs
-- Updating example model hosting configurations to tune for improved performance
-
-### Improved Loading Configuration Text Formatting
-This change fixes the styling of the Loading Configuration... text to match the rest of the LISA UI by using Cloudscape's components.
-
-### Dockerfile Patching for Embedded Models
-The Dockerfiles for embedding models (instructor, tei), text generation models (tgi), and VLLM were not running  during the build process, meaning OS packages inherited from the base images were not updating when deploying. This change ensures that each time the images are built and pushed to the LISA ECR, the host OS packages are upgraded to their latest available versions.
-
-### Claude Code Setup Guide for LISA Serve Integration
-This addition provides documentation on how to get Claude Code working with models hosted via LISA Serve.
-
-### Resolve max_tokens Handling for Non-Anthropic Models on Anthropic Routes
-This fix resolves an issue where the  parameter was not being properly handled for non-Anthropic models when using Anthropic routes.
-
-### Improved RAG PDF Parsing Quality
-This fix improves the quality of text extraction from PDF documents ingested into the RAG pipeline. It addresses issues with excessive whitespace and the inclusion of invisible Unicode characters that degraded retrieval quality.
-
-### Dependency Updates
-This PR updates various dependencies across the LISA codebase.
-
-### Removal of LISA Serve V1 Endpoints
-These endpoints have been on the deprecation path for 2 years and have been dead code since LiteLLM was introduced to the baseline. This PR removes all V1 endpoints and the supporting infrastructure.
-
-### UI Validation Fix
-This fix addresses an issue with UI validation.
-
-## Key Changes
-- **Dependency Updates**: Updated various dependencies across the LISA codebase.
-- **Dockerfile Patching**: Ensured OS packages are upgraded to their latest available versions during the build process for embedded models, text generation models, and VLLM.
-- **RAG Pipeline Improvements**: Fixed issues with collection ID resolution and EventBus update mismatches in the RAG pipeline.
-- **RAG Citations UI**: Introduced a new RAG citation preview side panel and a Dismiss all button for notifications.
-- **VLLM Updates**: Improved the VLLM image with updated base, GPU settings, memory reservation, and tensor parallelization configurations.
-- **Endpoint Removal**: Removed deprecated LISA Serve V1 endpoints.
-- **UI Validation Fix**: Addressed an issue with UI validation.
+## Documentation
+- Added Claude Code setup guide for LISA Serve integration
+- Updated deployment guide
 
 ## Acknowledgements
-* @121983012+jmharold
-* @32586639+gingerknight
-* @49699333+dependabot[bot]
-* @99225408+Ernest-Gray
 * @bedanley
+* @Ernest-Gray
 * @estohlmann
+* @gingerknight
+* @jmharold
 
 **Full Changelog**: https://github.com/awslabs/LISA/compare/v6.2.1..v6.3.0
 

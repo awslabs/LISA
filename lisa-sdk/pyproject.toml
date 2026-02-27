@@ -1,6 +1,6 @@
 [project]
 name = "lisapy"
-version = "6.2.1"
+version = "6.3.0"
 description = "A simple SDK to help you interact with LISA. LISA is an LLM hosting solution for AWS dedicated clouds or ADCs."
 readme = "README.md"
 requires-python = ">=3.13"
@@ -15,7 +15,7 @@ dependencies = [
 
 [tool.poetry]
 name = "lisapy"
-version = "6.2.1"
+version = "6.3.0"
 description = "A simple SDK to help you interact with LISA. LISA is an LLM hosting solution for AWS dedicated clouds or ADCs."
 readme = "README.md"
 

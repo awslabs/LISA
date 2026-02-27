@@ -2,6 +2,7 @@
 
 LISA Serve supports configuring vLLM model serving through environment variables. These variables allow you to control performance, memory usage, parallelization, and advanced features when deploying models with vLLM.
 - **NOTE:** Standard vLLM environment variables are supported and passed directly into the VLLM container.  [See vLLM's documentation](https://docs.vllm.ai/en/latest/configuration/env_vars/)
+- Review your ECS instance type's specifications to determine if the model you want LISA Serve to host has the proper VRAM/RAM capacity. Instances that have multiple GPUs may require the VLLM_TENSOR_PARALLEL_SIZE environment variable set to utilize all GPUs.
 
 ## Core Performance & Memory
 
@@ -27,6 +28,7 @@ LISA Serve supports configuring vLLM model serving through environment variables
 | `VLLM_MAX_NUM_SEQS` | Maximum concurrent sequences | `256` | `128`, `512` |
 | `VLLM_ENABLE_PREFIX_CACHING` | Enable prefix caching for repeated prompts | `false` | `true` |
 | `VLLM_ENABLE_CHUNKED_PREFILL` | Enable chunked prefill | `false` | `true` |
+| `VLLM_ASYNC_SCHEDULING` | Adds --async-scheduling for higher performance if hardware supported | `false` | `true` |
 
 ## Parallel Processing
 

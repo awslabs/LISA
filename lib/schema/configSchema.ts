@@ -560,6 +560,8 @@ export type TaskDefinition = z.infer<typeof TaskDefinitionSchema>;
  */
 export const EcsBaseConfigSchema = z.object({
     amiHardwareType: z.enum(AmiHardwareType).describe('Name of the model.'),
+    amiId: z.string().optional()
+        .describe('Optional AMI ID for a custom ECS machine image (e.g. ami-0123456789abcdef0). If not provided, the default ECS-optimized AMI will be used (AL2 for ADC/iso regions, AL2023 otherwise).'),
     autoScalingConfig: AutoScalingConfigSchema.describe('Configuration for auto scaling settings.'),
     buildArgs: z.record(z.string(), z.string()).optional()
         .describe('Optional build args to be applied when creating the task container if containerConfig.image.type is ASSET'),

@@ -21,60 +21,7 @@ from pathlib import Path
 rest_api_src = Path(__file__).parent.parent.parent / "lib" / "serve" / "rest-api" / "src"
 sys.path.insert(0, str(rest_api_src))
 
-from utils.cache_manager import (
-    get_registered_models_cache,
-    set_registered_models_cache,
-)
 from utils.decorators import singleton
-from utils.resources import ModelType, RestApiResource
-
-
-class TestCacheManager:
-    """Test suite for cache_manager module."""
-
-    def test_set_and_get_cache(self):
-        """Test setting and getting cache."""
-        test_cache = {
-            ModelType.EMBEDDING: {"provider1": ["model1"]},
-            ModelType.TEXTGEN: {"provider2": ["model2"]},
-            "metadata": {},
-            "endpointUrls": {},
-        }
-
-        set_registered_models_cache(test_cache)
-        result = get_registered_models_cache()
-
-        assert result == test_cache
-
-    def test_get_cache_empty(self):
-        """Test getting cache when empty."""
-        # Reset cache
-        set_registered_models_cache({})
-        result = get_registered_models_cache()
-
-        assert result == {}
-
-    def test_cache_persistence(self):
-        """Test that cache persists across multiple gets."""
-        test_cache = {"test": "data"}
-
-        set_registered_models_cache(test_cache)
-
-        result1 = get_registered_models_cache()
-        result2 = get_registered_models_cache()
-
-        assert result1 == result2 == test_cache
-
-    def test_cache_update(self):
-        """Test updating cache."""
-        initial_cache = {"key1": "value1"}
-        updated_cache = {"key1": "value1", "key2": "value2"}
-
-        set_registered_models_cache(initial_cache)
-        assert get_registered_models_cache() == initial_cache
-
-        set_registered_models_cache(updated_cache)
-        assert get_registered_models_cache() == updated_cache
 
 
 class TestSingletonDecorator:
@@ -130,29 +77,3 @@ class TestSingletonDecorator:
 
         assert instance_a is not instance_b
         assert not isinstance(instance_a, type(instance_b))
-
-
-class TestResources:
-    """Test suite for resources module."""
-
-    def test_model_type_enum(self):
-        """Test ModelType enum values."""
-        assert ModelType.EMBEDDING == "embedding"
-        assert ModelType.TEXTGEN == "textgen"
-
-    def test_rest_api_resource_enum(self):
-        """Test RestApiResource enum values."""
-        assert RestApiResource.EMBEDDINGS == "embeddings"
-        assert RestApiResource.GENERATE == "generate"
-        assert RestApiResource.GENERATE_STREAM == "generateStream"
-
-    def test_model_type_string_comparison(self):
-        """Test that ModelType can be compared with strings."""
-        assert ModelType.EMBEDDING == "embedding"
-        assert ModelType.TEXTGEN == "textgen"
-
-    def test_rest_api_resource_string_comparison(self):
-        """Test that RestApiResource can be compared with strings."""
-        assert RestApiResource.EMBEDDINGS == "embeddings"
-        assert RestApiResource.GENERATE == "generate"
-        assert RestApiResource.GENERATE_STREAM == "generateStream"

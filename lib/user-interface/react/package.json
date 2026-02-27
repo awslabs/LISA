@@ -1,7 +1,7 @@
 {
   "name": "lisa-web",
   "private": true,
-  "version": "6.2.1",
+  "version": "6.3.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -43,6 +43,7 @@
     "luxon": "^3.7.2",
     "mermaid": "^11.12.2",
     "oidc-client-ts": "^3.1.0",
+    "pdfjs-dist": "^5.4.624",
     "react": "^19.2.1",
     "react-ace": "^14.0.1",
     "react-dom": "^19.2.1",

@@ -15,6 +15,7 @@
 */
 
 import {
+    Alert,
     Box,
     Button,
     Checkbox,
@@ -27,6 +28,8 @@ import {
 } from '@cloudscape-design/components';
 import { FileTypes, StatusTypes } from '@/components/types';
 import React, { useState, useEffect } from 'react';
+import * as pdfjsLib from 'pdfjs-dist';
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { RagConfig } from './RagOptions';
 import { useAppDispatch } from '@/config/store';
 import { useNotificationService } from '@/shared/util/hooks';
@@ -42,6 +45,64 @@ import { JobStatusTable } from '@/components/chatbot/components/JobStatusTable';
 import { ChunkingConfigForm } from '@/shared/form/ChunkingConfigForm';
 import { MetadataForm } from '@/shared/form/MetadataForm';
 import { getDisplayName } from '@/shared/util/branding';
+
+// Configure PDF.js worker to use local file
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+
+// File extension mappings as fallback if MIME types are not
+// specified. Primarily an issue with any compiled languages and
+// file types without standard MIME types (Python, YAML, Ruby, Shell).
+const AllowedExtensions =
+    [
+        '.ts', '.tsx', '.java', '.c', '.cpp', '.cxx', '.cc', '.h',
+        '.hpp', '.hxx', '.go', '.rs', '.ps1', '.sql', '.r', '.m',
+        '.py', '.yml', '.yaml', '.rb', '.sh'
+    ];
+
+// Allowed file types for image-supporting models
+const IMAGE_MODEL_FILE_TYPES = [
+    FileTypes.TEXT,
+    FileTypes.JPEG,
+    FileTypes.PNG,
+    FileTypes.WEBP,
+    FileTypes.GIF
+];
+
+// Allowed file types for text/code models (non-image)
+// Note: Python, YAML, Ruby, and Shell files are handled via AllowedExtensions fallback
+const TEXT_MODEL_FILE_TYPES = [
+    FileTypes.TEXT,
+    FileTypes.PDF,
+    FileTypes.JAVASCRIPT,
+    FileTypes.HTML,
+    FileTypes.MARKDOWN,
+    FileTypes.JSON,
+    FileTypes.CSS,
+    FileTypes.XML
+];
+
+// Allowed file types for RAG uploads
+const RAG_FILE_TYPES = [
+    FileTypes.TEXT,
+    FileTypes.DOCX,
+    FileTypes.PDF
+];
+
+/**
+ * Extract file extension from filename
+ */
+const getFileExtension = (filename: string): string => {
+    const lastDot = filename.lastIndexOf('.');
+    return lastDot !== -1 ? filename.slice(lastDot).toLowerCase() : '';
+};
+
+/**
+ * Check if file extension is allowed
+ */
+const isAllowedFileExtension = (filename: string): boolean => {
+    const ext = getFileExtension(filename);
+    return AllowedExtensions.includes(ext);
+};
 
 export const renameFile = (originalFile: File) => {
     // Add timestamp to filename for RAG uploads to not conflict with existing S3 files
@@ -64,7 +125,8 @@ export const handleUpload = async (
         for (let i = 0; i < selectedFiles.length; i++) {
             const file = selectedFiles[i];
             let error = '';
-            if (!allowedFileTypes.includes(file.type as FileTypes)) {
+            // Check both MIME type and file extension (extension as fallback for files without proper MIME types)
+            if (!allowedFileTypes.includes(file.type as FileTypes) && !isAllowedFileExtension(file.name)) {
                 error = `${file.name} has an unsupported file type for this operation. `;
             }
             if (file.size > fileSizeLimit) {
@@ -89,6 +151,7 @@ export type ContextUploadProps = {
     fileContext: string;
     setFileContext: React.Dispatch<React.SetStateAction<string>>;
     setFileContextName: React.Dispatch<React.SetStateAction<string>>;
+    setFileContextFiles: React.Dispatch<React.SetStateAction<Array<{name: string, content: string}>>>;
     selectedModel: IModel;
 };
 
@@ -98,6 +161,7 @@ export const ContextUploadModal = ({
     fileContext,
     setFileContext,
     setFileContextName,
+    setFileContextFiles,
     selectedModel
 }: ContextUploadProps) => {
     const [selectedFiles, setSelectedFiles] = useState<File[] | undefined>([]);
@@ -109,19 +173,43 @@ export const ContextUploadModal = ({
     useEffect(() => {
         if (!fileContext) {
             queueMicrotask(() => setSelectedFiles([]));
+            setFileContextFiles([]);
         }
-    }, [fileContext]);
+    }, [fileContext, setFileContextFiles]);
 
     function handleError (error: string) {
         notificationService.generateNotification(error, 'error');
     }
 
+    async function extractTextFromPDF (file: File): Promise<string> {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer, useSystemFonts: true }).promise;
+
+        let fullText = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items
+                .map((item: any) => item.str)
+                .join(' ');
+            fullText += pageText + '\n\n';
+        }
+
+        return fullText;
+    }
+
+    // Store accumulated content in a ref-like object to avoid async state issues
+    const fileContentsAccumulator: { contents: string[], files: File[] } = {
+        contents: [],
+        files: []
+    };
+
     async function processFile (file: File): Promise<boolean> {
-        //File context currently only supports single files
+        // Process file and return its contents to be accumulated
         let fileContents: string;
 
-        if (file.type === FileTypes.JPEG || file.type === FileTypes.JPG || file.type === FileTypes.PNG) {
-            // Handle JPEG files
+        // Handle image files
+        if (IMAGE_MODEL_FILE_TYPES.includes(file.type as FileTypes)) {
             fileContents = await new Promise((resolve) => {
                 const reader = new FileReader();
                 reader.onloadend = () => {
@@ -130,14 +218,17 @@ export const ContextUploadModal = ({
                 };
                 reader.readAsDataURL(file);
             });
+        } else if (file.type === FileTypes.PDF) {
+            // Handle PDF files
+            fileContents = await extractTextFromPDF(file);
         } else {
             // Handle text files
             fileContents = await file.text();
         }
 
-        setFileContext(`File context: ${fileContents}`);
-        setFileContextName(file.name);
-        setSelectedFiles([file]);
+        // Accumulate the file content with a clear separator
+        fileContentsAccumulator.contents.push(`--- File: ${file.name} ---\n${fileContents}`);
+        fileContentsAccumulator.files.push(file);
         return true;
     }
 
@@ -156,9 +247,29 @@ export const ContextUploadModal = ({
                         <Button
                             onClick={async () => {
                                 const files = selectedFiles.map((f) => renameFile(f));
-                                const successfulUploads = await handleUpload(files, handleError, processFile, modelSupportsImages ? [FileTypes.TEXT, FileTypes.JPEG, FileTypes.PNG, FileTypes.WEBP, FileTypes.GIF] : [FileTypes.TEXT], 20971520);
+                                const successfulUploads = await handleUpload(
+                                    files,
+                                    handleError,
+                                    processFile,
+                                    modelSupportsImages ? IMAGE_MODEL_FILE_TYPES : TEXT_MODEL_FILE_TYPES,
+                                    20971520
+                                );
+
                                 if (successfulUploads.length > 0) {
-                                    notificationService.generateNotification(`Successfully added file(s) to context ${successfulUploads.join(', ')}`, StatusTypes.SUCCESS);
+                                    // Combine all accumulated file contents
+                                    const combinedContext = fileContentsAccumulator.contents.join('\n\n');
+                                    setFileContext(`File context:\n${combinedContext}`);
+                                    setFileContextName(successfulUploads.join(', '));
+                                    setSelectedFiles(fileContentsAccumulator.files);
+
+                                    // Set the array of file objects for individual badge rendering
+                                    const fileObjects = fileContentsAccumulator.contents.map((content, idx) => ({
+                                        name: successfulUploads[idx],
+                                        content: content
+                                    }));
+                                    setFileContextFiles(fileObjects);
+
+                                    notificationService.generateNotification(`Successfully added ${successfulUploads.length} file(s) to context: ${successfulUploads.join(', ')}`, StatusTypes.SUCCESS);
                                     setShowContextUploadModal(false);
                                 }
                             }}
@@ -172,6 +283,7 @@ export const ContextUploadModal = ({
                                 setFileContext('');
                                 setFileContextName('');
                                 setSelectedFiles([]);
+                                setFileContextFiles([]);
                             }}
                             disabled={!fileContext}
                         >
@@ -202,9 +314,10 @@ export const ContextUploadModal = ({
                         limitShowMore: 'Show more files',
                         errorIconAriaLabel: 'Error',
                     }}
+                    multiple
                     showFileSize
                     tokenLimit={3}
-                    constraintText={`Allowed file types are ${modelSupportsImages ? 'txt, png, jpg, jpeg, gif, webp' : 'txt'}. File size limit is 20 MB.`}
+                    constraintText={`Allowed file types are ${modelSupportsImages ? 'txt, png, jpg, jpeg, gif, webp' : 'txt, pdf, md, py, js, java, and other code files'}. File size limit is 20 MB.`}
                 />
             </SpaceBetween>
         </Modal>
@@ -325,7 +438,7 @@ export const RagUploadModal = ({
                                     files,
                                     handleError,
                                     processFile,
-                                    [FileTypes.TEXT, FileTypes.DOCX, FileTypes.PDF],
+                                    RAG_FILE_TYPES,
                                     52428800,
                                 );
                                 setDisplayProgressBar(false);
@@ -343,7 +456,10 @@ export const RagUploadModal = ({
         >
             <SpaceBetween direction='vertical' size='s'>
                 <TextContent>
-                    <h4>Upload to RAG</h4>
+                    <Alert type='warning'>
+                        PDF parsing works best with digitally-created PDFs that contain selectable text.
+                        Scanned or image-based PDFs will not be parsed correctly.
+                    </Alert>
                     <p>
                         <small>
                             Upload files to the RAG repository leveraged by {getDisplayName()}. This will provide {getDisplayName()} with trusted information for

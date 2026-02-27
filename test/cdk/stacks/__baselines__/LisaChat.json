@@ -900,7 +900,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
+          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
         },
         "Description": "Lists available mcp servers for user",
         "Environment": {
@@ -980,7 +980,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
+          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
         },
         "Description": "Returns the selected mcp server",
         "Environment": {
@@ -1060,7 +1060,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
+          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
         },
         "Description": "Creates the mcp server",
         "Environment": {
@@ -1140,7 +1140,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
+          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
         },
         "Description": "Deletes selected mcp server",
         "Environment": {
@@ -1220,7 +1220,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
+          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
         },
         "Description": "Creates or updates selected mcp server",
         "Environment": {
@@ -1623,7 +1623,7 @@
               {
                 "Ref": "ConfigurationApiConfigurationTable4B2B7EE1"
               },
-              "\",\"Item\":{\"versionId\":{\"N\":\"0\"},\"changedBy\":{\"S\":\"System\"},\"configScope\":{\"S\":\"global\"},\"changeReason\":{\"S\":\"Initial deployment default config\"},\"createdAt\":{\"S\":\"1770925100\"},\"configuration\":{\"M\":{\"enabledComponents\":{\"M\":{\"deleteSessionHistory\":{\"BOOL\":\"True\"},\"viewMetaData\":{\"BOOL\":\"True\"},\"editKwargs\":{\"BOOL\":\"True\"},\"editPromptTemplate\":{\"BOOL\":\"True\"},\"editChatHistoryBuffer\":{\"BOOL\":\"True\"},\"editNumOfRagDocument\":{\"BOOL\":\"True\"},\"uploadRagDocs\":{\"BOOL\":\"True\"},\"uploadContextDocs\":{\"BOOL\":\"True\"},\"documentSummarization\":{\"BOOL\":\"True\"},\"showRagLibrary\":{\"BOOL\":\"True\"},\"showMcpWorkbench\":{\"BOOL\":\"True\"},\"showPromptTemplateLibrary\":{\"BOOL\":\"True\"},\"mcpConnections\":{\"BOOL\":\"True\"},\"modelLibrary\":{\"BOOL\":\"True\"},\"encryptSession\":{\"BOOL\":\"False\"}}},\"systemBanner\":{\"M\":{\"isEnabled\":{\"BOOL\":\"False\"},\"text\":{\"S\":\"\"},\"textColor\":{\"S\":\"\"},\"backgroundColor\":{\"S\":\"\"}}}}}}}}"
+              "\",\"Item\":{\"versionId\":{\"N\":\"0\"},\"changedBy\":{\"S\":\"System\"},\"configScope\":{\"S\":\"global\"},\"changeReason\":{\"S\":\"Initial deployment default config\"},\"createdAt\":{\"S\":\"1772206446\"},\"configuration\":{\"M\":{\"enabledComponents\":{\"M\":{\"deleteSessionHistory\":{\"BOOL\":\"True\"},\"viewMetaData\":{\"BOOL\":\"True\"},\"editKwargs\":{\"BOOL\":\"True\"},\"editPromptTemplate\":{\"BOOL\":\"True\"},\"editChatHistoryBuffer\":{\"BOOL\":\"True\"},\"editNumOfRagDocument\":{\"BOOL\":\"True\"},\"uploadRagDocs\":{\"BOOL\":\"True\"},\"uploadContextDocs\":{\"BOOL\":\"True\"},\"documentSummarization\":{\"BOOL\":\"True\"},\"showRagLibrary\":{\"BOOL\":\"True\"},\"showMcpWorkbench\":{\"BOOL\":\"True\"},\"showPromptTemplateLibrary\":{\"BOOL\":\"True\"},\"mcpConnections\":{\"BOOL\":\"True\"},\"modelLibrary\":{\"BOOL\":\"True\"},\"encryptSession\":{\"BOOL\":\"False\"}}},\"systemBanner\":{\"M\":{\"isEnabled\":{\"BOOL\":\"False\"},\"text\":{\"S\":\"\"},\"textColor\":{\"S\":\"\"},\"backgroundColor\":{\"S\":\"\"}}}}}}}}"
             ]
           ]
         },
@@ -1935,7 +1935,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
+          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
         },
         "Description": "Get configuration",
         "Environment": {
@@ -2023,7 +2023,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
+          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
         },
         "Description": "Updates config data",
         "Environment": {
@@ -3484,7 +3484,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
+          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
         },
         "Description": "Lists available sessions for user",
         "Environment": {
@@ -3581,7 +3581,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
+          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
         },
         "Description": "Returns the selected session",
         "Environment": {
@@ -3678,7 +3678,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
+          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
         },
         "Description": "Deletes selected session",
         "Environment": {
@@ -3775,7 +3775,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
+          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
         },
         "Description": "Deletes all sessions for selected user",
         "Environment": {
@@ -3872,7 +3872,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
+          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
         },
         "Description": "Creates or updates selected session",
         "Environment": {
@@ -3969,7 +3969,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
+          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
         },
         "Description": "Updates session name",
         "Environment": {
@@ -4066,7 +4066,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
+          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
         },
         "Description": "Attaches image to session",
         "Environment": {
@@ -5048,7 +5048,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
+          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
         },
         "Description": "Creates prompt template",
         "Environment": {
@@ -5128,7 +5128,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
+          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
         },
         "Description": "Retrieves specific prompt template by ID",
         "Environment": {
@@ -5208,7 +5208,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
+          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
         },
         "Description": "Lists all available prompt templates",
         "Environment": {
@@ -5288,7 +5288,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
+          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
         },
         "Description": "Updates an existing prompt template",
         "Environment": {
@@ -5368,7 +5368,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
+          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
         },
         "Description": "Deletes a specific prompt template by ID",
         "Environment": {
@@ -5862,7 +5862,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
+          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
         },
         "Description": "Returns the preferences for the calling user",
         "Environment": {
@@ -5940,7 +5940,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "7b9da1eac7762656aa12e7c319d279a382f78d06b5b8da98d7c4d014c7c8af0a.zip"
+          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
         },
         "Description": "Creates or updates user preferences for user",
         "Environment": {

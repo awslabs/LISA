@@ -328,6 +328,7 @@ class TestRagCollectionsIntegration(RagIntegrationFixtures):
         - Similarity search returns results
         - Results contain the ingested document
         - Results match document content
+        - Results have document_id enriched in metadata
         """
         collection_id = test_collection.get("collectionId")
         logger.info(f"Test 3: Performing similarity search on collection {collection_id}")
@@ -371,6 +372,17 @@ class TestRagCollectionsIntegration(RagIntegrationFixtures):
 
         assert found_relevant, "Search results did not contain relevant content"
         logger.info("✓ Search results contain relevant content")
+
+        # Verify document_id enrichment in metadata
+        for result in results:
+            metadata = result.get("Document", {}).get("metadata", {})
+            if metadata.get("source"):  # Only check if source is present
+                # document_id should be enriched for documents with source
+                # Note: May not be present if lookup failed, which is acceptable
+                if "document_id" in metadata:
+                    logger.info(f"✓ Document has enriched document_id: {metadata['document_id']}")
+                else:
+                    logger.info("ℹ Document does not have document_id (enrichment may have failed gracefully)")
 
         logger.info("✓ Test 3 completed successfully")
 

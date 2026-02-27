@@ -67,13 +67,6 @@ export const formatDocumentsAsString = (docs: any, forMetadata = false): string 
     return contents;
 };
 
-export const formatDocumentTitlesAsString = (docs: any): string => {
-    const uniqueNames = [...new Set(
-        docs.map((doc) => doc.Document.metadata.name || doc.Document.metadata.source?.split('/').pop()).filter(Boolean)
-    )];
-    return uniqueNames.length !== 0 ? `\n*Source - ${uniqueNames.join(', ')}*` : undefined;
-};
-
 export const getSessionDisplay = (session: LisaChatSession, maxLength?: number) => {
     const display = session.name || getDisplayableMessage(session.firstHumanMessage);
     return maxLength ? truncateText(display, 40, '...') : display;
@@ -178,4 +171,47 @@ export const markLastUserMessageAsGuardrailTriggered = (history: LisaChatMessage
     }
 
     return updatedHistory;
+};
+
+/**
+ * Determines the file type based on the file extension.
+ *
+ * @param {string} filename - The name of the file
+ * @returns {'pdf' | 'docx' | 'txt'} The file type
+ */
+export const getFileType = (filename: string): 'pdf' | 'docx' | 'txt' => {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    if (ext === 'pdf') return 'pdf';
+    if (ext === 'docx') return 'docx';
+    return 'txt';
+};
+
+/**
+ * Normalizes a document name by removing the prepended random number prefix
+ * and formatting for display. Handles filenames with various formats including
+ * multiple underscores, whitespace, and dots.
+ *
+ * @param {string} filename - The document name to normalize (e.g., "1772045799996_gatech_admissions_letter.pdf")
+ * @param {number} maxLength - Maximum length of returned string (default: 30)
+ * @returns {string} Normalized document name trimmed to maxLength with ellipsis if needed
+ */
+export const normalizeDocumentName = (filename: string, maxLength: number = 30): string => {
+    if (!filename) return '';
+
+    // Split by underscore to remove random number prefix
+    const parts = filename.split('_');
+    let normalized = filename;
+
+    // Remove the first part (random ID)
+    if (parts.length > 1) {
+        // Rejoin everything after the first part
+        normalized = parts.slice(1).join('_');
+    }
+
+    // Trim to maxLength and add ellipsis if needed
+    if (normalized.length > maxLength) {
+        return normalized.slice(0, maxLength) + '...';
+    }
+
+    return normalized;
 };

@@ -199,6 +199,31 @@ class RagDocumentRepository:
 
             yield from self._yield_documents(response["Items"], join_docs=join_docs)
 
+    def find_one_by_source(self, repository_id: str, collection_id: str, source: str) -> RagDocument | None:
+        """Find a single document by source path.
+
+        Args:
+            repository_id: Repository identifier
+            collection_id: Collection identifier
+            source: S3 source path (e.g., s3://bucket/key/file.docx)
+
+        Returns:
+            First matching RagDocument if found, None otherwise
+        """
+        try:
+            # Use existing find_by_source generator
+            docs_generator = self.find_by_source(
+                repository_id=repository_id, collection_id=collection_id, document_source=source, join_docs=False
+            )
+
+            # Get first document from generator
+            first_doc = next(docs_generator, None)
+            return first_doc
+
+        except ClientError as e:
+            logging.error(f"Error finding document by source: {e}")
+            return None
+
     def _yield_documents(self, items: list[dict], join_docs: bool) -> Generator[RagDocument]:
         for item in items:
             document = RagDocument(**item)
@@ -467,7 +492,7 @@ class RagDocumentRepository:
             try:
                 logging.info(f"Removing S3 doc: {source}")
                 self.delete_s3_object(uri=source)
-            except Exception as e:
+            except ClientError as e:
                 logging.error(f"Failed to delete S3 object {source}: {e}")
                 # Continue with other deletions
 

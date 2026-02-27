@@ -265,12 +265,9 @@ class VectorStoreRepositoryService(RepositoryService):
                 logger.info(f"Repository {self.repository_id} has no default embedding model")
                 return None
 
-            # Use embedding model as collection ID
-            collection_id = embedding_model
             sanitized_name = f"{self.repository.get('name', self.repository_id)}-{embedding_model}".replace(".", "-")
 
             default_collection = RagCollectionConfig(
-                collectionId=collection_id,
                 repositoryId=self.repository_id,
                 name=sanitized_name,
                 description="Default collection using repository's embedding model",

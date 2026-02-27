@@ -8,9 +8,9 @@
       "Type": "AWS::SSM::Parameter::Value<String>",
       "Default": "/dev/test-lisa/lisa/tokenTableName"
     },
-    "SsmParameterValueawsserviceecsoptimizedamiamazonlinux2023recommendedimageidC96584B6F00A464EAD1953AFF4B05118Parameter": {
+    "SsmParameterValueawsserviceecsoptimizedamiamazonlinux2recommendedimageidC96584B6F00A464EAD1953AFF4B05118Parameter": {
       "Type": "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>",
-      "Default": "/aws/service/ecs/optimized-ami/amazon-linux-2023/recommended/image_id"
+      "Default": "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id"
     },
     "SsmParameterValuedevtestlisalisarolesRESTC96584B6F00A464EAD1953AFF4B05118Parameter": {
       "Type": "AWS::SSM::Parameter::Value<String>",
@@ -312,7 +312,7 @@
           "Ref": "RestApiECSClustertestlisadevASGInstanceProfile5F0036EC"
         },
         "ImageId": {
-          "Ref": "SsmParameterValueawsserviceecsoptimizedamiamazonlinux2023recommendedimageidC96584B6F00A464EAD1953AFF4B05118Parameter"
+          "Ref": "SsmParameterValueawsserviceecsoptimizedamiamazonlinux2recommendedimageidC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
         "InstanceMonitoring": true,
         "InstanceType": "m5.xlarge",
@@ -1531,6 +1531,10 @@
                 }
               },
               {
+                "Name": "MODEL_INFO_CACHE_TTL",
+                "Value": "300"
+              },
+              {
                 "Name": "IAM_TOKEN_DB_AUTH",
                 "Value": "true"
               },
@@ -1590,7 +1594,7 @@
               "Timeout": 5
             },
             "Image": {
-              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:a19a3b0ff7139ac8e66b83819be54584e63ecd109c973a534ba36293c1ff0005"
+              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:5bc2b6ae262b9766f68ce8f85e5d700ec853742b7a176698baa6f44e571b1aa5"
             },
             "LogConfiguration": {
               "LogDriver": "awslogs",
@@ -1944,7 +1948,7 @@
               "Timeout": 5
             },
             "Image": {
-              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:8afec7b2364847d0d18f93e1c04ef0da5c9a397271bcca2cf6e263a76e983832"
+              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:45348594e5091933701585dd93f2ec9d85971f42e97380b3d3ff2ba05d05870c"
             },
             "LogConfiguration": {
               "LogDriver": "awslogs",
@@ -2389,7 +2393,7 @@
                   }
                 ]
               },
-              "\\\"}\"}}"
+              "\\\",\\\"timestamp\\\":\\\"2026-02-27T15:34:05.868Z\\\"}\"}}"
             ]
           ]
         },
@@ -2436,7 +2440,7 @@
                   }
                 ]
               },
-              "\\\"}\"}}"
+              "\\\",\\\"timestamp\\\":\\\"2026-02-27T15:34:05.868Z\\\"}\"}}"
             ]
           ]
         },

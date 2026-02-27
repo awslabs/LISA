@@ -379,35 +379,22 @@ class CollectionRepository:
         return self.find_by_name(repository_id, collection_id)
 
     def find_by_name(self, repository_id: str, collection_name: str) -> RagCollectionConfig | None:
-        """
-        Find a collection by repository ID and name.
-
-        Args:
-            repository_id: The repository ID
-            name: The collection name
-
-        Returns:
-            The collection if found, None otherwise
-
-        Raises:
-            CollectionRepositoryError: If search fails
-        """
         try:
-            response = self.table.query(
-                IndexName="RepositoryIndex",
-                KeyConditionExpression=Key("repositoryId").eq(repository_id),
-                FilterExpression="#name = :name",
-                ExpressionAttributeNames={"#name": "name"},
-                ExpressionAttributeValues={":name": collection_name},
-                Limit=1,
-            )
-
-            items = response.get("Items", [])
-            if items:
-                return RagCollectionConfig(**convert_decimal(items[0]))
-
-            return None
-
+            query_params: dict = {
+                "IndexName": "RepositoryIndex",
+                "KeyConditionExpression": Key("repositoryId").eq(repository_id),
+                "FilterExpression": "#name = :name",
+                "ExpressionAttributeNames": {"#name": "name"},
+                "ExpressionAttributeValues": {":name": collection_name},
+            }
+            while True:
+                response = self.table.query(**query_params)
+                items = response.get("Items", [])
+                if items:
+                    return RagCollectionConfig(**convert_decimal(items[0]))
+                if "LastEvaluatedKey" not in response:
+                    return None
+                query_params["ExclusiveStartKey"] = response["LastEvaluatedKey"]
         except Exception as e:
             logger.error(f"Failed to find collection by name '{collection_name}': {e}")
             raise CollectionRepositoryError(f"Failed to find collection by name: {str(e)}")

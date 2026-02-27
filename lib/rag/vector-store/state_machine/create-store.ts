@@ -26,6 +26,7 @@ import * as ssm from 'aws-cdk-lib/aws-ssm';
 
 type CreateStoreStateMachineProps = BaseProps & {
     createBedrockCollectionFnArn: string;
+    createDefaultCollectionFnArn: string;
     executionRole: iam.IRole;
     parameterName: string,
     role?: iam.IRole,
@@ -41,7 +42,7 @@ export class CreateStoreStateMachine extends Construct {
     constructor (scope: Construct, id: string, props: CreateStoreStateMachineProps) {
         super(scope, id);
 
-        const { config, createBedrockCollectionFnArn, executionRole, parameterName, role, vectorStoreConfigTable, vectorStoreDeployerFnArn } = props;
+        const { config, createBedrockCollectionFnArn, createDefaultCollectionFnArn, executionRole, parameterName, role, vectorStoreConfigTable, vectorStoreDeployerFnArn } = props;
 
         // Get reference to the Bedrock collection creation Lambda
         const createBedrockCollectionFn = lambda.Function.fromFunctionArn(
@@ -93,9 +94,21 @@ export class CreateStoreStateMachine extends Construct {
             time: sfn.WaitTime.duration(Duration.seconds(30)),
         });
 
-        // Task to create default collection for Bedrock KB
-        const createDefaultCollectionTask = new tasks.LambdaInvoke(this, 'CreateDefaultCollection', {
+        // Task to create collections for Bedrock KB repositories
+        const createBedrockCollectionTask = new tasks.LambdaInvoke(this, 'CreateBedrockCollection', {
             lambdaFunction: createBedrockCollectionFn,
+            payload: sfn.TaskInput.fromObject({
+                ragConfig: sfn.JsonPath.objectAt('$.body.ragConfig'),
+            }),
+            resultPath: '$.collectionResult',
+        });
+
+        // Task to persist default collection for non-Bedrock repositories
+        const createDefaultCollectionFn = lambda.Function.fromFunctionArn(
+            this, 'CreateDefaultCollectionFunction', createDefaultCollectionFnArn
+        );
+        const createDefaultCollectionTask = new tasks.LambdaInvoke(this, 'CreateDefaultCollection', {
+            lambdaFunction: createDefaultCollectionFn,
             payload: sfn.TaskInput.fromObject({
                 ragConfig: sfn.JsonPath.objectAt('$.body.ragConfig'),
             }),
@@ -135,19 +148,16 @@ export class CreateStoreStateMachine extends Construct {
         // Chain failure status update to fail state
         updateFailureStatus.next(failExecution);
 
-        // Check if this is a Bedrock KB repository to create default collections
-        const skipCollectionCreation = new sfn.Pass(this, 'SkipCollectionCreation');
-
         const checkIfBedrockKB = new sfn.Choice(this, 'IsBedrockKB?')
             .when(
                 sfn.Condition.stringEquals('$.body.ragConfig.type', 'bedrock_knowledge_base'),
-                createDefaultCollectionTask
+                createBedrockCollectionTask
             )
-            .otherwise(skipCollectionCreation);
+            .otherwise(createDefaultCollectionTask);
 
         // Both paths converge to update success status
+        createBedrockCollectionTask.next(updateSuccessStatus);
         createDefaultCollectionTask.next(updateSuccessStatus);
-        skipCollectionCreation.next(updateSuccessStatus);
 
         // Define the sequence of tasks and conditions in the state machine
         const deploymentComplete = new sfn.Choice(this, 'DeploymentComplete?')

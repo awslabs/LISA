@@ -416,6 +416,51 @@ def create_bedrock_collection(event: dict, context: dict) -> dict[str, Any]:
         raise
 
 
+def create_default_collection(event: dict, context: dict) -> dict[str, Any]:
+    """Persist the default collection for a non-Bedrock repository after stack creation.
+    Called by the state machine for OpenSearch/PGVector repositories.
+    """
+    try:
+        rag_config = event.get("ragConfig", {})
+        repository_id = rag_config.get("repositoryId")
+        if not repository_id:
+            raise ValidationError("repositoryId is required in ragConfig")
+
+        repository = vs_repo.find_repository_by_id(repository_id=repository_id)
+        service = RepositoryServiceFactory.create_service(repository)
+
+        if not service.should_create_default_collection():
+            return {"skipped": True, "reason": "repository type does not support default collections"}
+
+        default_collection = service.create_default_collection()
+        if not default_collection:
+            return {"skipped": True, "reason": "no embeddingModelId configured"}
+
+        try:
+            collection_service.create_collection(collection=default_collection, username="system")
+            logger.info(f"Persisted default collection {default_collection.collectionId} for {repository_id}")
+        except Exception as e:
+            if "already exists" in str(e).lower():
+                logger.info(f"Default collection already exists for {repository_id}, skipping")
+            else:
+                raise
+
+        pipelines = repository.get("pipelines") or []
+        updated_pipelines = [
+            {**p, "collectionId": default_collection.collectionId} if p.get("collectionId") == "default" else p
+            for p in pipelines
+        ]
+        if updated_pipelines != pipelines:
+            vs_repo.update(repository_id, {"pipelines": updated_pipelines})
+            logger.info(f"Updated pipeline collectionId to {default_collection.collectionId} for {repository_id}")
+
+        return {"collectionId": default_collection.collectionId, "repositoryId": repository_id}
+
+    except Exception as e:
+        logger.error(f"Error creating default collection: {str(e)}")
+        raise
+
+
 @api_wrapper
 @admin_only
 def create_collection(event: dict, context: dict) -> dict[str, Any]:

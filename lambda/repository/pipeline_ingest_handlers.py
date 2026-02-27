@@ -130,12 +130,25 @@ def handle_pipeline_ingest_event(event: dict[str, Any], context: Any) -> None:
         if collection_id:
             resolved = collection_service.collection_repo.find_by_id_or_name(collection_id, repository_id)
             if resolved is None:
-                raise ValueError(f"Collection '{collection_id}' not found in repository '{repository_id}'")
-            collection_id = resolved.collectionId
-            if resolved.embeddingModel is not None:
-                embedding_model = resolved.embeddingModel
+                logger.warning(
+                    f"Collection '{collection_id}' not found in repository '{repository_id}', "
+                    "falling back to embedding model as collection_id"
+                )
+                collection_id = embedding_model
+            else:
+                collection_id = resolved.collectionId
+                if resolved.embeddingModel is not None:
+                    embedding_model = resolved.embeddingModel
         else:
             collection_id = embedding_model
+
+        if embedding_model is None:
+            embedding_model = repository.get("embeddingModelId")
+            if embedding_model:
+                logger.info(f"Falling back to repository embeddingModelId: {embedding_model}")
+            else:
+                logger.error(f"No embedding model found for repository {repository_id}")
+                return
 
         chunk_strategy = extract_chunk_strategy(pipeline_config)
         ingestion_type = IngestionType.MANUAL
@@ -190,6 +203,12 @@ def handle_pipline_ingest_schedule(event: dict[str, Any], context: Any) -> None:
     chunk_strategy = extract_chunk_strategy(pipeline_config)
 
     repository = vs_repo.find_repository_by_id(repository_id)
+
+    if embedding_model is None:
+        embedding_model = repository.get("embeddingModelId")
+        if not embedding_model:
+            logger.error(f"No embedding model found for repository {repository_id}")
+            return
 
     try:
         logger.info(f"Processing request for bucket: {bucket}, prefix: {prefix}")

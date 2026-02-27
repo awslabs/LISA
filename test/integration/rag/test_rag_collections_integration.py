@@ -54,9 +54,8 @@ logger = logging.getLogger(__name__)
 # Test configuration
 TEST_COLLECTION_ID = "test-collection-integration"
 TEST_DOCUMENT_CONTENT = """
-This is a test document for RAG collections integration testing.
-It contains information about artificial intelligence and machine learning.
-Machine learning is a subset of artificial intelligence that focuses on learning from data.
+Ryan is a trumpet player and has recorded on various albums like:
+'3 fools on 3 stools', 'The High Road to Taos' and others.
 """
 
 
@@ -339,7 +338,7 @@ class TestRagCollectionsIntegration(RagIntegrationFixtures):
 
         # Perform similarity search with retry logic
         # Note: No need to pass model_name - it will be pulled from the collection
-        query = "machine learning and artificial intelligence"
+        query = "trumpet player"
         max_retries = 3
         results = None
 
@@ -366,7 +365,7 @@ class TestRagCollectionsIntegration(RagIntegrationFixtures):
         found_relevant = False
         for result in results:
             content = result.get("Document", {}).get("page_content", "")
-            if "machine learning" in content.lower() or "artificial intelligence" in content.lower():
+            if "trumpet" in content.lower() or "ryan" in content.lower():
                 found_relevant = True
                 break
 
@@ -594,24 +593,24 @@ class TestPipelineRagCollectionIntegration(RagIntegrationFixtures):
         pipelines = repo_resp.json().get("pipelines", [])
         assert pipelines, f"Repository {test_repository_id} has no pipelines"
         s3_bucket = pipelines[0]["s3Bucket"]
-        s3_prefix = pipelines[0].get("s3Prefix", f"pipeline-integ-test-{int(time.time())}/")
+        s3_prefix = pipelines[0].get("s3Prefix", "")
 
-        # Create a collection named 'default' — the bug scenario
+        collection_name = "default"
         collection = lisa_client.create_collection(
             repository_id=test_repository_id,
-            name="default",
+            name=collection_name,
             description="Pipeline integration test collection",
             embedding_model=test_embedding_model,
             chunking_strategy={"type": "fixed", "size": 512, "overlap": 51},
         )
         collection_uuid = collection["collectionId"]
-        assert collection_uuid != "default", f"collectionId should be UUID, got '{collection_uuid}'"
-        logger.info(f"Created collection: name='default', uuid={collection_uuid}")
+        logger.info(f"Created collection: name='{collection_name}', uuid={collection_uuid}")
 
         yield {
             "s3_bucket": s3_bucket,
             "s3_prefix": s3_prefix,
             "collection_uuid": collection_uuid,
+            "collection_name": collection_name,
         }
 
         logger.info(f"Cleanup: deleting collection {collection_uuid}")
@@ -624,6 +623,7 @@ class TestPipelineRagCollectionIntegration(RagIntegrationFixtures):
         self,
         lisa_client: LisaApi,
         test_repository_id: str,
+        test_embedding_model: str,
         pipeline_info: dict,
     ):
         """Drop a file into the pipeline S3 bucket and verify it ingests under the
@@ -637,9 +637,11 @@ class TestPipelineRagCollectionIntegration(RagIntegrationFixtures):
         collection_uuid = pipeline_info["collection_uuid"]
 
         s3_key = f"{s3_prefix}ingest-test-{int(time.time())}.txt"
-        boto3.client("s3", region_name=region).put_object(
-            Bucket=s3_bucket, Key=s3_key, Body=b"Pipeline collectionId regression test."
-        )
+        unique_content = """
+        Ryan has played various brass and string instruments with organizations
+        like the SMU Marching Band and Jazz Orchestra and the Hurricane 5 Quintet.
+        """
+        boto3.client("s3", region_name=region).put_object(Bucket=s3_bucket, Key=s3_key, Body=unique_content.encode())
         logger.info(f"Dropped s3://{s3_bucket}/{s3_key} to trigger event-driven ingest")
 
         max_wait = 300
@@ -656,11 +658,18 @@ class TestPipelineRagCollectionIntegration(RagIntegrationFixtures):
             logger.info(f"Polling for ingested document... ({int(time.time()-start)}s elapsed)")
             time.sleep(15)
 
+        collection_name = pipeline_info["collection_name"]
         assert documents, (
             f"Pipeline ingest timed out after {max_wait}s. "
-            f"Collection name 'default' was not resolved to UUID '{collection_uuid}'."
+            f"Collection name '{collection_name}' was not resolved to UUID '{collection_uuid}'."
         )
-        assert documents[0]["collection_id"] == collection_uuid
+
+        pipeline_info["resolved_collection_id"] = collection_uuid
+
+        assert documents[0]["collection_id"] == collection_uuid, (
+            f"Document stored with collection_id='{documents[0]['collection_id']}' "
+            f"instead of UUID '{collection_uuid}'. Pipeline failed to resolve collection name."
+        )
 
     def test_02_pipeline_delete_resolves_collection_name_to_uuid(
         self,
@@ -678,7 +687,6 @@ class TestPipelineRagCollectionIntegration(RagIntegrationFixtures):
         collection_uuid = pipeline_info["collection_uuid"]
 
         documents = lisa_client.list_documents(test_repository_id, collection_uuid)
-        assert documents, "No documents to delete — test_01 must pass first"
         document_id = documents[0]["document_id"]
         s3_key = documents[0]["source"].replace(f"s3://{s3_bucket}/", "")
 
@@ -696,6 +704,146 @@ class TestPipelineRagCollectionIntegration(RagIntegrationFixtures):
             time.sleep(15)
         else:
             assert False, f"Pipeline deletion timed out after {max_wait}s. Delete handler did not process the event."
+
+
+class TestDefaultCollectionPath(RagIntegrationFixtures):
+    """Tests that ingest and delete work when no collectionId is specified (default path).
+
+    The repository's embeddingModelId acts as the implicit collection. After create_default_collection
+    runs in the state machine, a real UUID-backed collection exists in DDB for this path.
+    """
+
+    @pytest.fixture(scope="class")
+    def default_collection_id(self, lisa_client: LisaApi, test_repository_id: str) -> str:
+        """Resolve the default collection UUID for the repository.
+
+        Calls list_collections and returns the one marked default, or falls back to
+        the repository's embeddingModelId if no default collection exists yet.
+        """
+        import requests as req
+
+        api_url = os.getenv("LISA_API_URL")
+        verify_ssl = os.getenv("LISA_VERIFY_SSL", "true").lower() == "true"
+        auth_headers = {
+            "Api-Key": lisa_client._session.headers.get("Api-Key", ""),
+            "Authorization": lisa_client._session.headers.get("Authorization", ""),
+        }
+
+        resp = req.get(
+            f"{api_url}/repository/{test_repository_id}/collection",
+            headers=auth_headers,
+            verify=verify_ssl,
+            timeout=30,
+        )
+        assert resp.status_code == 200, f"Failed to list collections: {resp.text}"
+        collections = resp.json().get("collections", [])
+
+        default = next((c for c in collections if c.get("default")), None)
+        if default:
+            logger.info(f"Found default collection: {default['collectionId']}")
+            return default["collectionId"]
+
+        # Fallback: use embeddingModelId (legacy / pre-state-machine repos)
+        repo_resp = req.get(
+            f"{api_url}/repository/{test_repository_id}",
+            headers=auth_headers,
+            verify=verify_ssl,
+            timeout=30,
+        )
+        assert repo_resp.status_code == 200
+        embedding_model_id = repo_resp.json().get("embeddingModelId")
+        assert embedding_model_id, "Repository has no embeddingModelId and no default collection"
+        logger.info(f"No default collection found, using embeddingModelId: {embedding_model_id}")
+        return embedding_model_id
+
+    def test_01_default_collection_exists(
+        self,
+        lisa_client: LisaApi,
+        test_repository_id: str,
+        default_collection_id: str,
+    ):
+        """Verify the default collection is resolvable via the API."""
+        logger.info(f"Test default-01: Verifying default collection {default_collection_id}")
+        retrieved = lisa_client.get_collection(test_repository_id, default_collection_id)
+        assert retrieved is not None
+        assert retrieved.get("collectionId") == default_collection_id
+        logger.info(f"✓ Default collection resolved: {default_collection_id}")
+
+    def test_02_ingest_to_default_collection(
+        self,
+        lisa_client: LisaApi,
+        test_repository_id: str,
+        test_embedding_model: str,
+        default_collection_id: str,
+        test_document_file: str,
+    ):
+        """Ingest a document using the default collection UUID (no explicit collection creation)."""
+        logger.info(f"Test default-02: Ingesting to default collection {default_collection_id}")
+
+        presigned_data = lisa_client._presigned_url(os.path.basename(test_document_file))
+        s3_key = presigned_data.get("key")
+        lisa_client._upload_document(presigned_data, test_document_file)
+
+        jobs = lisa_client.ingest_document(
+            repo_id=test_repository_id,
+            model_id=test_embedding_model,
+            file=s3_key,
+            collection_id=default_collection_id,
+        )
+        assert jobs, f"No jobs returned: {jobs}"
+        job_id = jobs[0].get("jobId")
+        assert job_id, f"No jobId in: {jobs[0]}"
+        logger.info(f"✓ Ingestion job submitted: {job_id}")
+
+        max_wait = 360
+        start = time.time()
+        documents = []
+        while time.time() - start < max_wait:
+            try:
+                documents = lisa_client.list_documents(test_repository_id, default_collection_id)
+                if documents:
+                    logger.info(f"✓ Document ingested after {int(time.time()-start)}s")
+                    break
+            except Exception as e:
+                logger.debug(f"Waiting: {e}")
+            time.sleep(10)
+
+        assert documents, f"Ingestion timed out after {max_wait}s"
+        assert (
+            documents[0].get("collection_id") == default_collection_id
+        ), f"Document stored under '{documents[0].get('collection_id')}' instead of '{default_collection_id}'"
+        logger.info("✓ Test default-02 completed")
+
+    def test_03_delete_from_default_collection(
+        self,
+        lisa_client: LisaApi,
+        test_repository_id: str,
+        default_collection_id: str,
+    ):
+        """Delete a document from the default collection and verify removal."""
+        logger.info(f"Test default-03: Deleting from default collection {default_collection_id}")
+
+        documents = lisa_client.list_documents(test_repository_id, default_collection_id)
+        assert documents, "No documents to delete in default collection"
+
+        document_id = documents[0].get("document_id")
+        delete_response = lisa_client.delete_document_by_ids(test_repository_id, default_collection_id, [document_id])
+        jobs = delete_response.get("jobs", [])
+        assert jobs, f"No deletion jobs returned: {delete_response}"
+        logger.info(f"✓ Deletion job submitted: {jobs[0].get('jobId')}")
+
+        max_wait = 120
+        start = time.time()
+        while time.time() - start < max_wait:
+            remaining = lisa_client.list_documents(test_repository_id, default_collection_id)
+            if not any(d.get("document_id") == document_id for d in remaining):
+                logger.info(f"✓ Document deleted after {int(time.time()-start)}s")
+                break
+            time.sleep(10)
+        else:
+            assert False, f"Deletion timed out after {max_wait}s"
+
+        logger.info("✓ Test default-03 completed")
 
 
 if __name__ == "__main__":

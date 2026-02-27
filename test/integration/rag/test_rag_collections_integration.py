@@ -60,10 +60,9 @@ Machine learning is a subset of artificial intelligence that focuses on learning
 """
 
 
-class TestRagCollectionsIntegration:
-    """Integration test suite for RAG Collections."""
+class RagIntegrationFixtures:
+    """Shared fixtures for RAG integration tests. Contains no test methods."""
 
-    # Track created resources for cleanup
     created_collections = []
 
     @pytest.fixture(scope="class", autouse=True)
@@ -211,6 +210,10 @@ class TestRagCollectionsIntegration:
             os.unlink(temp_path)
         except Exception as e:
             logger.warning(f"Failed to cleanup test document file: {e}")
+
+
+class TestRagCollectionsIntegration(RagIntegrationFixtures):
+    """Integration tests for RAG collections using direct API upload/ingest."""
 
     def test_01_create_collection(self, lisa_client: LisaApi, test_repository_id: str, test_collection: dict):
         """Test 1: Verify collection was created via fixture.
@@ -555,6 +558,145 @@ class TestRagCollectionsIntegration:
         logger.info("✓ Collection cleanup verified")
 
 
+class TestPipelineRagCollectionIntegration(RagIntegrationFixtures):
+    """Integration tests for RAG collections using the S3 pipeline EventBridge trigger.
+
+    Tests end-to-end pipeline ingestion and deletion by dropping/removing files
+    directly in the pipeline S3 bucket and verifying the event-driven handler
+    processes them correctly.
+    """
+
+    @pytest.fixture(scope="class")
+    def pipeline_info(self, lisa_client: LisaApi, test_repository_id: str, test_embedding_model: str):
+        """Discover the pipeline S3 bucket/prefix from TEST_REPOSITORY_ID and create
+        a collection whose name is 'default' to test pipeline name-to-UUID resolution.
+
+        Yields the info dict needed by test_01 and test_02.
+        Cleans up the collection on teardown.
+        """
+        import requests as req
+
+        api_url = os.getenv("LISA_API_URL")
+        verify_ssl = os.getenv("LISA_VERIFY_SSL", "true").lower() == "true"
+        auth_headers = {
+            "Api-Key": lisa_client._session.headers.get("Api-Key", ""),
+            "Authorization": lisa_client._session.headers.get("Authorization", ""),
+        }
+
+        # Discover pipeline S3 bucket from the existing repository
+        repo_resp = req.get(
+            f"{api_url}/repository/{test_repository_id}",
+            headers=auth_headers,
+            verify=verify_ssl,
+            timeout=30,
+        )
+        assert repo_resp.status_code == 200, f"Failed to get repository: {repo_resp.text}"
+        pipelines = repo_resp.json().get("pipelines", [])
+        assert pipelines, f"Repository {test_repository_id} has no pipelines"
+        s3_bucket = pipelines[0]["s3Bucket"]
+        s3_prefix = pipelines[0].get("s3Prefix", f"pipeline-integ-test-{int(time.time())}/")
+
+        # Create a collection named 'default' — the bug scenario
+        collection = lisa_client.create_collection(
+            repository_id=test_repository_id,
+            name="default",
+            description="Pipeline integration test collection",
+            embedding_model=test_embedding_model,
+            chunking_strategy={"type": "fixed", "size": 512, "overlap": 51},
+        )
+        collection_uuid = collection["collectionId"]
+        assert collection_uuid != "default", f"collectionId should be UUID, got '{collection_uuid}'"
+        logger.info(f"Created collection: name='default', uuid={collection_uuid}")
+
+        yield {
+            "s3_bucket": s3_bucket,
+            "s3_prefix": s3_prefix,
+            "collection_uuid": collection_uuid,
+        }
+
+        logger.info(f"Cleanup: deleting collection {collection_uuid}")
+        try:
+            lisa_client.delete_collection(test_repository_id, collection_uuid)
+        except Exception as e:
+            logger.warning(f"Cleanup: failed to delete collection {collection_uuid}: {e}")
+
+    def test_01_pipeline_ingest_resolves_collection_name_to_uuid(
+        self,
+        lisa_client: LisaApi,
+        test_repository_id: str,
+        pipeline_info: dict,
+    ):
+        """Drop a file into the pipeline S3 bucket and verify it ingests under the
+        UUID collection, confirming the pipeline resolves collection name to UUID.
+        """
+        import boto3
+
+        region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
+        s3_bucket = pipeline_info["s3_bucket"]
+        s3_prefix = pipeline_info["s3_prefix"]
+        collection_uuid = pipeline_info["collection_uuid"]
+
+        s3_key = f"{s3_prefix}ingest-test-{int(time.time())}.txt"
+        boto3.client("s3", region_name=region).put_object(
+            Bucket=s3_bucket, Key=s3_key, Body=b"Pipeline collectionId regression test."
+        )
+        logger.info(f"Dropped s3://{s3_bucket}/{s3_key} to trigger event-driven ingest")
+
+        max_wait = 300
+        start = time.time()
+        documents = []
+        while time.time() - start < max_wait:
+            try:
+                documents = lisa_client.list_documents(test_repository_id, collection_uuid)
+                if documents:
+                    logger.info(f"✓ Document ingested after {int(time.time()-start)}s under UUID {collection_uuid}")
+                    break
+            except Exception as e:
+                logger.debug(f"Waiting for pipeline ingest: {e}")
+            logger.info(f"Polling for ingested document... ({int(time.time()-start)}s elapsed)")
+            time.sleep(15)
+
+        assert documents, (
+            f"Pipeline ingest timed out after {max_wait}s. "
+            f"Collection name 'default' was not resolved to UUID '{collection_uuid}'."
+        )
+        assert documents[0]["collection_id"] == collection_uuid
+
+    def test_02_pipeline_delete_resolves_collection_name_to_uuid(
+        self,
+        lisa_client: LisaApi,
+        test_repository_id: str,
+        pipeline_info: dict,
+    ):
+        """Delete the S3 file and verify the document is removed, confirming the
+        pipeline delete handler resolves collection name to UUID.
+        """
+        import boto3
+
+        region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
+        s3_bucket = pipeline_info["s3_bucket"]
+        collection_uuid = pipeline_info["collection_uuid"]
+
+        documents = lisa_client.list_documents(test_repository_id, collection_uuid)
+        assert documents, "No documents to delete — test_01 must pass first"
+        document_id = documents[0]["document_id"]
+        s3_key = documents[0]["source"].replace(f"s3://{s3_bucket}/", "")
+
+        boto3.client("s3", region_name=region).delete_object(Bucket=s3_bucket, Key=s3_key)
+        logger.info(f"Deleted s3://{s3_bucket}/{s3_key} to trigger pipeline deletion event")
+
+        max_wait = 120
+        start = time.time()
+        while time.time() - start < max_wait:
+            remaining = lisa_client.list_documents(test_repository_id, collection_uuid)
+            if not any(d["document_id"] == document_id for d in remaining):
+                logger.info(f"✓ Document deleted after {int(time.time()-start)}s via pipeline deletion event")
+                break
+            logger.info(f"Polling for document deletion... ({int(time.time()-start)}s elapsed)")
+            time.sleep(15)
+        else:
+            assert False, f"Pipeline deletion timed out after {max_wait}s. Delete handler did not process the event."
+
+
 if __name__ == "__main__":
-    # Run tests with pytest
     pytest.main([__file__, "-v", "-s"])

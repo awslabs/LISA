@@ -211,8 +211,8 @@ class RagMixin(BaseMixin):
             results = response.json()
             docs: list[dict] = results.get("docs", [])
             for doc in docs:
-                logging.info("Document content:", doc["Document"]["page_content"])
-                logging.info("Metadata:", doc["Document"]["metadata"])
+                logging.info(f"Document content: {doc['Document']['page_content']}")
+                logging.info(f"Metadata: {doc['Document']['metadata']}")
                 logging.info("---")
 
             return docs

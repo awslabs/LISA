@@ -1,3 +1,39 @@
+# v6.3.0
+
+## UI Updates
+- Added RAG citation document preview side panel in Chat UI
+- Exposed the document preview panel in the document library for viewing documents
+- Added "Dismiss all" button for notification stacks
+- Fixed "Loading Configuration..." text styling to match LISA UI using Cloudscape components
+- Added last updated date/time to session displays
+
+## Other Key Changes
+- Updated VLLM image to latest AWS deep-learning base with GPU settings for ECS, memory reservation, and tensor parallelization from GPU count
+- Dockerfiles for embedding (instructor, tei), text generation (tgi), and VLLM now run OS package upgrades during build
+- Removed deprecated LISA Serve V1 endpoints and supporting infrastructure
+- Updated dependencies across the codebase
+
+## Bug Fixes
+- Fixed RAG pipeline collection ID resolution (find_by_id_or_name fallback) and EventBus update mismatches on deployment
+- Resolved max_tokens handling for non-Anthropic models on Anthropic routes
+- Improved RAG PDF parsing quality (excessive whitespace and invisible Unicode characters)
+- Addressed consistency of UI validation warnings for field format and required fields
+- Added missing required role for batch ingestion
+- Added cache clearing at login to prevent cache corruption issues
+
+## Documentation
+- Added Claude Code setup guide for LISA Serve integration
+- Updated deployment guide
+
+## Acknowledgements
+* @bedanley
+* @Ernest-Gray
+* @estohlmann
+* @gingerknight
+* @jmharold
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v6.2.1..v6.3.0
+
 # v6.2.1
 
 ## Bug Fixes

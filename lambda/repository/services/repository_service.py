@@ -15,7 +15,7 @@
 """Base service interface for repository operations."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from models.domain_objects import IngestionJob, RagCollectionConfig, RagDocument
 
@@ -27,7 +27,7 @@ class RepositoryService(ABC):
     interface to provide type-specific behavior for document management.
     """
 
-    def __init__(self, repository: Dict[str, Any]):
+    def __init__(self, repository: dict[str, Any]):
         """Initialize service with repository configuration.
 
         Args:
@@ -55,7 +55,7 @@ class RepositoryService(ABC):
         pass
 
     @abstractmethod
-    def get_collection_id_from_config(self, pipeline_config: Dict[str, Any]) -> str:
+    def get_collection_id_from_config(self, pipeline_config: dict[str, Any]) -> str:
         """Extract collection ID from pipeline configuration.
 
         Args:
@@ -70,8 +70,8 @@ class RepositoryService(ABC):
     def ingest_document(
         self,
         job: IngestionJob,
-        texts: List[str],
-        metadatas: List[Dict[str, Any]],
+        texts: list[str],
+        metadatas: list[dict[str, Any]],
     ) -> RagDocument:
         """Ingest a document into the repository.
 
@@ -90,7 +90,7 @@ class RepositoryService(ABC):
         self,
         document: RagDocument,
         s3_client: Any,
-        bedrock_agent_client: Optional[Any] = None,
+        bedrock_agent_client: Any | None = None,
     ) -> None:
         """Delete a document from the repository.
 
@@ -106,7 +106,7 @@ class RepositoryService(ABC):
         self,
         collection_id: str,
         s3_client: Any,
-        bedrock_agent_client: Optional[Any] = None,
+        bedrock_agent_client: Any | None = None,
     ) -> None:
         """Delete an entire collection from the repository.
 
@@ -125,8 +125,8 @@ class RepositoryService(ABC):
         top_k: int,
         model_name: str,
         include_score: bool = False,
-        bedrock_agent_client: Optional[Any] = None,
-    ) -> List[Dict[str, Any]]:
+        bedrock_agent_client: Any | None = None,
+    ) -> list[dict[str, Any]]:
         """Retrieve documents matching a query.
 
         Args:
@@ -158,7 +158,7 @@ class RepositoryService(ABC):
         pass
 
     @abstractmethod
-    def get_vector_store_client(self, collection_id: str, embeddings: Any) -> Optional[Any]:
+    def get_vector_store_client(self, collection_id: str, embeddings: Any) -> Any | None:
         """Get vector store client for this repository.
 
         Args:
@@ -171,7 +171,7 @@ class RepositoryService(ABC):
         pass
 
     @abstractmethod
-    def create_default_collection(self) -> Optional[RagCollectionConfig]:
+    def create_default_collection(self) -> RagCollectionConfig | None:
         """Create a default collection for this repository.
 
         Returns:

@@ -1,0 +1,13 @@
+[run]
+omit =
+    # Exclude __init__ files
+    */src/*/__init__.py
+    */src/*/*/__init__.py
+    */src/*/*/*/__init__.py
+    */src/*/*/*/*/__init__.py
+    # Exclude FastAPI endpoint wrappers (thin wrappers around handlers)
+    */src/api/endpoints/v2/*.py
+    # Exclude main application file (requires full integration test)
+    */src/main.py
+    # Exclude routes (thin wrappers)
+    */src/api/routes.py

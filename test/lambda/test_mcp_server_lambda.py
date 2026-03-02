@@ -133,8 +133,8 @@ from mcp_server.lambda_functions import (
     get,
     get_hosted_mcp_server,
     get_mcp_server_id,
-    list,
     list_hosted_mcp_servers,
+    list_mcp_servers,
     update,
     update_hosted_mcp_server,
 )
@@ -522,7 +522,7 @@ def test_delete_hosted_mcp_server_missing_sfn_arn(mcp_servers_table, lambda_cont
         set_auth_user(mock_auth, "admin-user", [], True)
 
         response = mcp_module.delete_hosted_mcp_server(event, lambda_context)
-        assert response["statusCode"] == 400
+        assert response["statusCode"] == 500
         body = json.loads(response["body"])
         assert "DELETE_MCP_SERVER_SFN_ARN not configured" in get_error_message(body)
 
@@ -566,7 +566,7 @@ def test_list_mcp_servers_regular_user(mcp_servers_table, sample_mcp_server, lam
 
     event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}}}}
 
-    response = list(event, lambda_context)
+    response = list_mcp_servers(event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
     assert "Items" in body
@@ -580,7 +580,7 @@ def test_list_mcp_servers_admin(mcp_servers_table, sample_mcp_server, lambda_con
 
     set_auth_user(mock_auth, "admin-user", [], True)
 
-    response = list(event, lambda_context)
+    response = list_mcp_servers(event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
     assert "Items" in body
@@ -1135,7 +1135,7 @@ def test_create_hosted_mcp_server_missing_sfn_arn(mcp_servers_table, lambda_cont
             set_auth_user(mock_auth, "admin-user", [], True)
 
             response = mcp_module.create_hosted_mcp_server(event, lambda_context)
-            assert response["statusCode"] == 400
+            assert response["statusCode"] == 500
             body = json.loads(response["body"])
             assert "CREATE_MCP_SERVER_SFN_ARN not configured" in get_error_message(body)
 
@@ -1183,7 +1183,7 @@ def test_create_hosted_mcp_server_duplicate_normalized_name(mcp_servers_table, l
         set_auth_user(mock_auth, "admin-user", [], True)
 
         response = mcp_module.create_hosted_mcp_server(event, lambda_context)
-        assert response["statusCode"] == 400
+        assert response["statusCode"] == 409
         body = json.loads(response["body"])
         assert "conflicts with existing server" in get_error_message(body).lower()
         assert "normalized names must be unique" in get_error_message(body).lower()
@@ -1246,7 +1246,7 @@ def test_delete_hosted_mcp_server_invalid_status_creating(mcp_servers_table, lam
     set_auth_user(mock_auth, "admin-user", [], True)
 
     response = mcp_module.delete_hosted_mcp_server(event, lambda_context)
-    assert response["statusCode"] == 400
+    assert response["statusCode"] == 409
     body = json.loads(response["body"])
     assert "cannot delete server" in get_error_message(body).lower()
     assert "creating" in get_error_message(body).lower()
@@ -1274,7 +1274,7 @@ def test_delete_hosted_mcp_server_invalid_status_starting(mcp_servers_table, lam
     set_auth_user(mock_auth, "admin-user", [], True)
 
     response = mcp_module.delete_hosted_mcp_server(event, lambda_context)
-    assert response["statusCode"] == 400
+    assert response["statusCode"] == 409
     body = json.loads(response["body"])
     assert "cannot delete server" in get_error_message(body).lower()
 
@@ -1301,7 +1301,7 @@ def test_delete_hosted_mcp_server_invalid_status_stopping(mcp_servers_table, lam
     set_auth_user(mock_auth, "admin-user", [], True)
 
     response = mcp_module.delete_hosted_mcp_server(event, lambda_context)
-    assert response["statusCode"] == 400
+    assert response["statusCode"] == 409
     body = json.loads(response["body"])
     assert "cannot delete server" in get_error_message(body).lower()
 
@@ -1328,7 +1328,7 @@ def test_delete_hosted_mcp_server_invalid_status_updating(mcp_servers_table, lam
     set_auth_user(mock_auth, "admin-user", [], True)
 
     response = mcp_module.delete_hosted_mcp_server(event, lambda_context)
-    assert response["statusCode"] == 400
+    assert response["statusCode"] == 409
     body = json.loads(response["body"])
     assert "cannot delete server" in get_error_message(body).lower()
 
@@ -1355,7 +1355,7 @@ def test_delete_hosted_mcp_server_invalid_status_deleting(mcp_servers_table, lam
     set_auth_user(mock_auth, "admin-user", [], True)
 
     response = mcp_module.delete_hosted_mcp_server(event, lambda_context)
-    assert response["statusCode"] == 400
+    assert response["statusCode"] == 409
     body = json.loads(response["body"])
     assert "cannot delete server" in get_error_message(body).lower()
 

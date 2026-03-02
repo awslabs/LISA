@@ -180,6 +180,7 @@ export const ragApi = createApi({
     tagTypes: ['repositories', 'docs', 'repository-status', 'jobs', 'collections'],
     refetchOnFocus: true,
     refetchOnMountOrArgChange: true,
+    keepUnusedDataFor: 60, // Keep cache for 60s to prevent cancellation during rapid navigation
     endpoints: (builder) => ({
         listRagRepositories: builder.query<RagRepositoryConfig[], void>({
             query: () => ({

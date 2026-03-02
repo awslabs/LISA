@@ -14,9 +14,9 @@
 
 """Client for interfacing with the LiteLLM proxy's management options directly."""
 
-from typing import Any, Dict, List, Union
+from typing import Any
 
-import requests
+import requests  # type: ignore[import-untyped,unused-ignore]
 from starlette.datastructures import Headers
 
 from ..exception import ModelNotFoundError
@@ -25,13 +25,13 @@ from ..exception import ModelNotFoundError
 class LiteLLMClient:
     """Client definition for interfacing directly with LiteLLM management operations."""
 
-    def __init__(self, base_uri: str, headers: Headers, verify: Union[str, bool], timeout: int = 30):
+    def __init__(self, base_uri: str, headers: Headers, verify: str | bool, timeout: int = 30):
         self._base_uri = base_uri
         self._headers = headers
         self._timeout = timeout
         self._verify = verify
 
-    def list_models(self) -> List[Dict[str, Any]]:
+    def list_models(self) -> list[dict[str, Any]]:
         """
         Retrieve all models from the database.
 
@@ -46,10 +46,10 @@ class LiteLLMClient:
             verify=self._verify,
         )
         all_models = resp.json()
-        models_list: List[Dict[str, Any]] = all_models["data"]
+        models_list: list[dict[str, Any]] = all_models["data"]
         return models_list
 
-    def add_model(self, model_name: str, litellm_params: Dict[str, str]) -> Dict[str, Any]:
+    def add_model(self, model_name: str, litellm_params: dict[str, str]) -> dict[str, Any]:
         """
         Add a new model configuration to the database.
 
@@ -86,7 +86,7 @@ class LiteLLMClient:
             verify=self._verify,
         )
 
-    def get_model(self, identifier: str) -> Dict[str, Any]:
+    def get_model(self, identifier: str) -> dict[str, Any]:
         """
         Get model metadata from the database.
 
@@ -99,7 +99,7 @@ class LiteLLMClient:
             raise ModelNotFoundError("Specified model was not found.")
         return filtered_models[0]
 
-    def create_guardrail(self, guardrail_config: Dict[str, Any]) -> Dict[str, Any]:
+    def create_guardrail(self, guardrail_config: dict[str, Any]) -> dict[str, Any]:
         """
         Create a new guardrail configuration in LiteLLM.
 
@@ -120,7 +120,7 @@ class LiteLLMClient:
         resp.raise_for_status()
         return resp.json()  # type: ignore [no-any-return]
 
-    def update_guardrail(self, guardrail_id: str, guardrail_config: Dict[str, Any]) -> Dict[str, Any]:
+    def update_guardrail(self, guardrail_id: str, guardrail_config: dict[str, Any]) -> dict[str, Any]:
         """
         Update an existing guardrail configuration in LiteLLM.
 
@@ -156,7 +156,7 @@ class LiteLLMClient:
         )
         resp.raise_for_status()
 
-    def get_guardrail_info(self, guardrail_id: str) -> Dict[str, Any]:
+    def get_guardrail_info(self, guardrail_id: str) -> dict[str, Any]:
         """
         Get information about a specific guardrail.
 
@@ -175,7 +175,7 @@ class LiteLLMClient:
         resp.raise_for_status()
         return resp.json()  # type: ignore [no-any-return]
 
-    def apply_guardrail(self, guardrail_name: str, text: str) -> Dict[str, Any]:
+    def apply_guardrail(self, guardrail_name: str, text: str) -> dict[str, Any]:
         """
         Apply a guardrail to text content for validation.
 

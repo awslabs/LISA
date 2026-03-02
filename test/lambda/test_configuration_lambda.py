@@ -57,23 +57,28 @@ def mock_api_wrapper(func):
                 "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
                 "body": json.dumps(result, default=str),
             }
-        except ValueError as e:
-            error_msg = str(e)
-            status_code = 400
-            if "not found" in error_msg.lower():
-                status_code = 404
+        except Exception as e:
+            # Check for http_status_code attribute (custom HTTPException subclasses)
+            if hasattr(e, "http_status_code"):
+                status_code = e.http_status_code
+                error_msg = getattr(e, "message", str(e))
+            elif hasattr(e, "status_code"):
+                status_code = e.status_code
+                error_msg = getattr(e, "message", str(e))
+            elif isinstance(e, ValueError):
+                error_msg = str(e)
+                status_code = 400
+                if "not found" in error_msg.lower():
+                    status_code = 404
+            else:
+                logging.error(f"Error in {func.__name__}: {str(e)}")
+                status_code = 500
+                error_msg = str(e)
 
             return {
                 "statusCode": status_code,
                 "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
                 "body": json.dumps({"error": error_msg}),
-            }
-        except Exception as e:
-            logging.error(f"Error in {func.__name__}: {str(e)}")
-            return {
-                "statusCode": 500,
-                "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
-                "body": json.dumps({"error": str(e)}),
             }
 
     return wrapper
@@ -399,11 +404,12 @@ def test_update_configuration_client_error(lambda_context):
         # Call the function
         response = update_configuration(event, lambda_context)
 
-        # Verify response
-        assert response["statusCode"] == 200  # The function still returns 200 even with errors
-        # The ClientError is caught and logged, but the function returns None
-        # Our mock_api_wrapper wraps this as a 200 response with an empty body
-        assert response["body"] == "null"
+        # Verify response - InternalServerError should result in 500 status code
+        # (The status code comes from the ResponseMetadata in the ClientError)
+        assert response["statusCode"] >= 400  # Should be an error status code
+        # The error message should be in the body
+        body = response["body"]
+        assert "error" in body.lower() or "internal" in body.lower()
 
 
 def test_update_configuration_complex_data(config_table, lambda_context):

@@ -15,6 +15,8 @@
 """Helper functions to parse documents for ingestion into RAG vector store."""
 import logging
 import os
+import re
+import unicodedata
 from io import BytesIO
 from urllib.parse import urlparse
 
@@ -96,8 +98,10 @@ def _extract_pdf_content(s3_object: dict) -> str:
     except PdfReadError as e:
         logger.error(f"Error reading PDF file: {e}")
         raise
-
-    return "".join(page.extract_text() or "" for page in pdf_reader.pages)
+    raw = " ".join(page.extract_text() or "" for page in pdf_reader.pages)
+    raw = unicodedata.normalize("NFKC", raw)
+    raw = re.sub(r"[\xad\u200b\u200c\u200d\ufeff]", "", raw)
+    return re.sub(r"\s+", " ", raw).strip()
 
 
 def _extract_docx_content(s3_object: dict) -> str:
@@ -132,7 +136,7 @@ def _extract_text_content(s3_object: dict) -> str:
     ----------
     s3_object (dict): an S3 object containing a text file body.
     """
-    return s3_object["Body"].read().decode("utf-8", errors="replace")
+    return s3_object["Body"].read().decode("utf-8", errors="replace")  # type: ignore[no-any-return]
 
 
 def generate_chunks(ingestion_job: IngestionJob) -> list[Document]:
@@ -184,8 +188,11 @@ def generate_chunks(ingestion_job: IngestionJob) -> list[Document]:
     ]
 
     # Use factory to chunk documents based on strategy
-    logger.info(f"Processing document with chunking strategy: {ingestion_job.chunk_strategy.type}")
-    doc_chunks = ChunkingStrategyFactory.chunk_documents(docs, ingestion_job.chunk_strategy)
+    chunk_strategy = ingestion_job.chunk_strategy
+    if chunk_strategy is None:
+        raise ValueError("Chunking strategy is required")
+    logger.info(f"Processing document with chunking strategy: {chunk_strategy.type}")
+    doc_chunks = ChunkingStrategyFactory.chunk_documents(docs, chunk_strategy)
 
     # Update part number of doc metadata
     for i, doc in enumerate(doc_chunks):

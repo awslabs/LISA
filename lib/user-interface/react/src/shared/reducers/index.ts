@@ -38,7 +38,7 @@ const rootReducer: ReducersMapObject = {
     [modelManagementApi.reducerPath]: modelManagementApi.reducer,
     [configurationApi.reducerPath]: configurationApi.reducer,
     [sessionApi.reducerPath]: sessionApi.reducer,
-    [ragApi.reducerPath]: ragApi.reducer,
+    ...(window.env.RAG_ENABLED ? { [ragApi.reducerPath]: ragApi.reducer } : {}),
     [promptTemplateApi.reducerPath]: promptTemplateApi.reducer,
     [mcpServerApi.reducerPath]: mcpServerApi.reducer,
     [mcpToolsApi.reducerPath]: mcpToolsApi.reducer,
@@ -46,6 +46,16 @@ const rootReducer: ReducersMapObject = {
     [apiTokenApi.reducerPath]: apiTokenApi.reducer,
 };
 
-export const rootMiddleware = [modelManagementApi.middleware, configurationApi.middleware, sessionApi.middleware, ragApi.middleware, promptTemplateApi.middleware, mcpServerApi.middleware, mcpToolsApi.middleware, userPreferencesApi.middleware, apiTokenApi.middleware];
+export const rootMiddleware = [
+    modelManagementApi.middleware,
+    configurationApi.middleware,
+    sessionApi.middleware,
+    ...(window.env.RAG_ENABLED ? [ragApi.middleware] : []),
+    promptTemplateApi.middleware,
+    mcpServerApi.middleware,
+    mcpToolsApi.middleware,
+    userPreferencesApi.middleware,
+    apiTokenApi.middleware
+];
 
 export default rootReducer;

@@ -1,0 +1,59 @@
+/* Scoped styles for Message component markdown content */
+
+/* First child margin reset */
+.messageContent div :first-child {
+    margin-top: 0;
+}
+
+/* List styling */
+.messageContent ol {
+    list-style-type: decimal;
+    padding-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.messageContent ul {
+    list-style-type: disc;
+    padding-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.messageContent li {
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+}
+
+/* Paragraph styling */
+.messageContent p {
+    margin-bottom: 1rem;
+    line-height: 1.6;
+}
+
+/* Table styling */
+.messageContent table {
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+    width: 100%;
+}
+
+/* Default/Light mode table styling */
+.messageContent th,
+.messageContent td {
+    border: 1px solid #d1d5db;
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+}
+
+.messageContent tbody tr:nth-child(even) {
+    background-color: #f9fafb;
+}
+
+/* Dark mode table styling */
+:global(.awsui-dark-mode) .messageContent th,
+:global(.awsui-dark-mode) .messageContent td {
+    border: 1px solid #4b5563;
+}
+
+:global(.awsui-dark-mode) .messageContent tbody tr:nth-child(even) {
+    background-color: #1f2937;
+}

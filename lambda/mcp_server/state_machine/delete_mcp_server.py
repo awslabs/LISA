@@ -17,7 +17,7 @@
 import logging
 import os
 from copy import deepcopy
-from typing import Any, Dict, Optional
+from typing import Any
 from uuid import uuid4
 
 import boto3
@@ -41,11 +41,11 @@ STACK_NAME = "stack_name"
 STACK_ARN = "cloudformation_stack_arn"
 
 
-def _get_mcp_connections_table_name(deployment_prefix: str) -> Optional[str]:
+def _get_mcp_connections_table_name(deployment_prefix: str) -> str | None:
     """Get MCP connections table name from SSM parameter if chat is deployed."""
     try:
         response = ssmClient.get_parameter(Name=f"{deployment_prefix}/table/mcpServersTable")
-        return response["Parameter"]["Value"]
+        return response["Parameter"]["Value"]  # type: ignore[no-any-return]
     except ssmClient.exceptions.ParameterNotFound:
         logger.info("MCP connections table SSM parameter not found, chat may not be deployed")
         return None
@@ -54,7 +54,7 @@ def _get_mcp_connections_table_name(deployment_prefix: str) -> Optional[str]:
         return None
 
 
-def handle_set_server_to_deleting(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_set_server_to_deleting(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Start deletion workflow based on user-specified server input."""
     output_dict = deepcopy(event)
     server_id = event["id"]
@@ -88,7 +88,7 @@ def handle_set_server_to_deleting(event: Dict[str, Any], context: Any) -> Dict[s
     return output_dict
 
 
-def handle_delete_stack(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_delete_stack(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Initialize stack deletion."""
     output_dict = deepcopy(event)
     stack_arn = event.get(STACK_ARN)
@@ -106,7 +106,7 @@ def handle_delete_stack(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     return output_dict
 
 
-def handle_monitor_delete_stack(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_monitor_delete_stack(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Get stack status while it is being deleted and evaluate if state machine should continue polling."""
     output_dict = deepcopy(event)
     # Prefer ARN if available, fall back to stack name
@@ -144,7 +144,7 @@ def handle_monitor_delete_stack(event: Dict[str, Any], context: Any) -> Dict[str
     return output_dict
 
 
-def handle_delete_from_ddb(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_delete_from_ddb(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Delete item from DDB after successful deletion workflow and remove from connections table."""
     server_id = event["id"]
     server_key = {"id": server_id}

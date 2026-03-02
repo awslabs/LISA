@@ -15,12 +15,17 @@
   limitations under the License.
 */
 
-import { Code, DockerImageCode } from 'aws-cdk-lib/aws-lambda';
+import { Code } from 'aws-cdk-lib/aws-lambda';
 import { EcsSourceType, ImageAsset } from '../schema';
 import { Repository } from 'aws-cdk-lib/aws-ecr';
 import { Construct } from 'constructs';
-import { ContainerImage } from 'aws-cdk-lib/aws-ecs';
+import { AssetImageProps, ContainerImage, EcsOptimizedImage } from 'aws-cdk-lib/aws-ecs';
 import { createCdkId } from '../core/utils';
+import { Platform } from 'aws-cdk-lib/aws-ecr-assets';
+import { IMachineImage, MachineImage } from 'aws-cdk-lib/aws-ec2';
+import { AmiHardwareType } from '../schema/cdk';
+
+export const DEFAULT_PLATFORM = Platform.LINUX_AMD64;
 
 export class CodeFactory {
     static createImage (image: ImageAsset, scope?: Construct, id?: string, buildArgs?: any): ContainerImage {
@@ -47,23 +52,12 @@ export class CodeFactory {
             }
             case EcsSourceType.ASSET:
             default: {
-                return ContainerImage.fromAsset(image.path, { buildArgs });
+                const assetProps: AssetImageProps = {
+                    buildArgs,
+                    platform: DEFAULT_PLATFORM
+                };
+                return ContainerImage.fromAsset(image.path, assetProps);
             }
-        }
-    }
-
-    static createDockerImageCode (image: ImageAsset | string, buildArgs?: any): DockerImageCode {
-        if (typeof image === 'string') {
-            return DockerImageCode.fromImageAsset(image, { buildArgs, exclude: ['cdk.out'] });
-        }
-
-        switch (image.type) {
-            case EcsSourceType.EXTERNAL:
-                return image.code;
-            case EcsSourceType.ASSET:
-                return DockerImageCode.fromImageAsset(image.path, { buildArgs, exclude: ['cdk.out'] });
-            default:
-                throw Error(`Unimplemented image type for DockerImageCode: ${image.type}`);
         }
     }
 
@@ -94,5 +88,19 @@ export class CodeFactory {
                 return Code.fromAsset(image.path);
             }
         }
+    }
+
+    /**
+     * Returns the appropriate ECS machine image based on config.
+     * If a custom AMI ID is provided, uses that. Otherwise falls back to
+     * the default ECS-optimized AMI (AL2 for ADC/iso regions, AL2023 otherwise).
+     */
+    static getEcsMachineImage (region: string | undefined, amiHardwareType: AmiHardwareType, amiId?: string): IMachineImage {
+        if (amiId) {
+            return MachineImage.genericLinux({ [region!]: amiId });
+        }
+        return region?.includes('iso')
+            ? EcsOptimizedImage.amazonLinux2(amiHardwareType)
+            : EcsOptimizedImage.amazonLinux2023(amiHardwareType);
     }
 }

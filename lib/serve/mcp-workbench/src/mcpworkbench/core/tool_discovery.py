@@ -20,7 +20,7 @@ import inspect
 import logging
 import sys
 from pathlib import Path
-from typing import Dict, List
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -33,11 +33,11 @@ logger = logging.getLogger(__name__)
 class RescanResult(BaseModel):
     """Result of a tool directory rescan."""
 
-    tools_added: List[str] = []
-    tools_updated: List[str] = []
-    tools_removed: List[str] = []
+    tools_added: list[str] = []
+    tools_updated: list[str] = []
+    tools_removed: list[str] = []
     total_tools: int = 0
-    errors: List[str] = []
+    errors: list[str] = []
 
 
 class ToolDiscovery:
@@ -51,8 +51,8 @@ class ToolDiscovery:
             tools_directory: Path to directory containing tool files
         """
         self.tools_directory = Path(tools_directory)
-        self.loaded_modules: Dict[str, any] = {}
-        self.current_tools: Dict[str, ToolInfo] = {}
+        self.loaded_modules: dict[str, Any] = {}
+        self.current_tools: dict[str, ToolInfo] = {}
 
         if not self.tools_directory.exists():
             raise ValueError(f"Tools directory does not exist: {tools_directory}")
@@ -60,7 +60,7 @@ class ToolDiscovery:
         if not self.tools_directory.is_dir():
             raise ValueError(f"Tools directory is not a directory: {tools_directory}")
 
-    def discover_tools(self) -> List[ToolInfo]:
+    def discover_tools(self) -> list[ToolInfo]:
         """
         Discover all tools in the tools directory.
 
@@ -125,7 +125,7 @@ class ToolDiscovery:
 
         return result
 
-    def _reload_modules(self):
+    def _reload_modules(self) -> None:
         """Reload all previously loaded modules to pick up file changes."""
         modules_to_reload = []
 
@@ -149,7 +149,7 @@ class ToolDiscovery:
                 except KeyError:
                     pass
 
-    def _discover_tools_in_file(self, file_path: Path) -> List[ToolInfo]:
+    def _discover_tools_in_file(self, file_path: Path) -> list[ToolInfo]:
         """
         Discover tools in a single Python file.
 
@@ -159,7 +159,7 @@ class ToolDiscovery:
         Returns:
             List of tools found in the file
         """
-        tools = []
+        tools: list[ToolInfo] = []
 
         try:
             # Create module name from file path
@@ -192,7 +192,7 @@ class ToolDiscovery:
 
         return tools
 
-    def _find_class_based_tools(self, module, file_path: Path, module_name: str) -> List[ToolInfo]:
+    def _find_class_based_tools(self, module: Any, file_path: Path, module_name: str) -> list[ToolInfo]:
         """Find BaseTool subclasses in the module."""
         tools = []
 
@@ -218,7 +218,7 @@ class ToolDiscovery:
                         instance = obj(name=tool_name, description=tool_description)
                     else:
                         # Custom constructor - try to instantiate with no args
-                        instance = obj()
+                        instance = obj()  # type: ignore[call-arg]
 
                     # Get tool metadata
                     tool_name = getattr(instance, "name", name.lower())
@@ -242,7 +242,7 @@ class ToolDiscovery:
 
         return tools
 
-    def _find_function_based_tools(self, module, file_path: Path, module_name: str) -> List[ToolInfo]:
+    def _find_function_based_tools(self, module: Any, file_path: Path, module_name: str) -> list[ToolInfo]:
         """Find @mcp_tool decorated functions in the module."""
         tools = []
 

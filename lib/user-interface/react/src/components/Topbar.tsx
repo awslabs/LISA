@@ -14,17 +14,22 @@
   limitations under the License.
 */
 
-import { ReactElement, useContext } from 'react';
-import { useAuth } from 'react-oidc-context';
+import { ReactElement, useContext, useEffect } from 'react';
+import { useAuth } from '../auth/useAuth';
 import { useHref, useNavigate } from 'react-router-dom';
 import { applyDensity, Density, Mode } from '@cloudscape-design/global-styles';
 import TopNavigation, { TopNavigationProps } from '@cloudscape-design/components/top-navigation';
-import { getBaseURI } from './utils';
-import { purgeStore, useAppSelector } from '../config/store';
+import { useAppDispatch, useAppSelector } from '@/config/store';
 import { selectCurrentUserIsAdmin, selectCurrentUserIsApiUser, selectCurrentUsername } from '../shared/reducers/user.reducer';
-import { IConfiguration } from '../shared/model/configuration.model';
+import { IConfiguration } from '@/shared/model/configuration.model';
 import { ButtonDropdownProps } from '@cloudscape-design/components';
 import ColorSchemeContext from '@/shared/color-scheme.provider';
+import { OidcConfig } from '@/config/oidc.config';
+import { getBrandingAssetPath } from '../shared/util/branding';
+import { getDisplayName } from '@/shared/util/branding';
+import { useDeleteAllSessionsForUserMutation } from '@/shared/reducers/session.reducer';
+import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
+import { useNotificationService } from '@/shared/util/hooks';
 
 applyDensity(Density.Comfortable);
 
@@ -35,10 +40,29 @@ export type TopbarProps = {
 function Topbar ({ configs }: TopbarProps): ReactElement {
     const navigate = useNavigate();
     const auth = useAuth();
+    const dispatch = useAppDispatch();
+    const notificationService = useNotificationService(dispatch);
     const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);
     const isApiUser = useAppSelector(selectCurrentUserIsApiUser);
     const userName = useAppSelector(selectCurrentUsername);
     const { colorScheme, setColorScheme } = useContext(ColorSchemeContext);
+
+    const [deleteUserSessions, {
+        isSuccess: isDeleteUserSessionsSuccess,
+        isError: isDeleteUserSessionsError,
+        error: deleteUserSessionsError,
+        isLoading: isDeleteUserSessionsLoading,
+    }] = useDeleteAllSessionsForUserMutation();
+
+    useEffect(() => {
+        if (!isDeleteUserSessionsLoading && isDeleteUserSessionsSuccess) {
+            notificationService.generateNotification('Successfully deleted all user sessions', 'success');
+        } else if (!isDeleteUserSessionsLoading && isDeleteUserSessionsError) {
+            const errorMessage = 'message' in deleteUserSessionsError ? deleteUserSessionsError.message : 'Unknown error';
+            notificationService.generateNotification(`Error deleting user sessions: ${errorMessage}`, 'error');
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isDeleteUserSessionsSuccess, isDeleteUserSessionsError, deleteUserSessionsError, isDeleteUserSessionsLoading]);
 
     const libraryItems = [
         ...(configs?.configuration.enabledComponents?.modelLibrary ? [{
@@ -77,15 +101,15 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
             external: false,
             href: '/mcp-connections',
         } as ButtonDropdownProps.Item] : [])
-    ];
+    ].sort((a,b) => a.text.localeCompare(b.text));
 
     return (
         <TopNavigation
             identity={{
                 href: useHref('/'),
                 logo: {
-                    src: `${getBaseURI()}logo.svg`,
-                    alt: 'AWS LISA Sample',
+                    src: getBrandingAssetPath('logo'),
+                    alt: `${getDisplayName()} logo`,
                 },
             }}
             utilities={[
@@ -137,7 +161,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                 external: false,
                                 href: '/model-management',
                             } as ButtonDropdownProps.Item,
-                            {
+                            ...(window.env.RAG_ENABLED ? [{
                                 id: 'repository-management',
                                 type: 'button',
                                 variant: 'link',
@@ -145,7 +169,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                 disableUtilityCollapse: false,
                                 external: false,
                                 href: '/repository-management',
-                            } as ButtonDropdownProps.Item,
+                            } as ButtonDropdownProps.Item] : []),
                             {
                                 id: 'api-token-management',
                                 type: 'button',
@@ -185,12 +209,28 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                             case 'api-token':
                                 navigate('/user-api-token');
                                 break;
+                            case 'delete-chat-history':
+                                dispatch(
+                                    setConfirmationModal({
+                                        action: 'Delete',
+                                        resourceName: 'All Sessions',
+                                        onConfirm: () => deleteUserSessions(),
+                                        description: 'This will delete all of your user sessions.'
+                                    })
+                                );
+                                break;
                             case 'signin':
                                 auth.signinRedirect({ redirect_uri: window.location.toString() });
                                 break;
                             case 'signout':
-                                await purgeStore();
-                                await auth.signoutSilent();
+                                await auth.removeUser();
+                                await auth.signoutRedirect({
+                                    extraQueryParams: {
+                                        client_id: OidcConfig.client_id,
+                                        redirect_uri: window.location.origin,
+                                        response_type: OidcConfig.response_type
+                                    }
+                                });
                                 break;
                             case 'color-mode':
                                 setColorScheme(colorScheme === Mode.Light ? Mode.Dark : Mode.Light);
@@ -201,10 +241,15 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                     },
                     iconName: 'user-profile',
                     items: [
-                        { id: 'version-info', text: `LISA v${window.gitInfo?.revisionTag}`, disabled: true },
+                        { id: 'version-info', text: `${getDisplayName()} v${window.gitInfo?.revisionTag}`, disabled: true },
                         ...(configs?.configuration.enabledComponents?.enableUserApiTokens && (isUserAdmin || isApiUser) ? [{
                             id: 'api-token',
                             text: 'API Token',
+                        }] : []),
+                        ...(configs?.configuration.enabledComponents?.deleteSessionHistory ? [{
+                            id: 'delete-chat-history',
+                            text: 'Delete Chat History',
+                            iconName: 'remove' as const,
                         }] : []),
                         {
                             id: 'color-mode', text: colorScheme === Mode.Light ? 'Dark mode' : 'Light mode', iconSvg: (

@@ -17,11 +17,9 @@
 import * as React from 'react';
 import { ReactElement, useState } from 'react';
 import {
-    Button,
     ButtonDropdownProps,
     CollectionPreferences,
     Header,
-    Icon,
     Pagination,
     TextFilter,
 } from '@cloudscape-design/components';
@@ -44,6 +42,9 @@ import { RagDocument } from '../types';
 import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
 import { useLocalStorage } from '../../shared/hooks/use-local-storage';
 import { downloadFile } from '../../shared/util/downloader';
+import { RefreshButton } from '@/components/common/RefreshButton';
+import DocumentSidePanel from '../chatbot/components/DocumentSidePanel';
+import { useDocumentSidePanel } from '@/shared/hooks/useDocumentSidePanel';
 
 type DocumentLibraryComponentProps = {
     repositoryId?: string;
@@ -60,6 +61,10 @@ function canDeleteAll (selectedItems: ReadonlyArray<RagDocument>, username: stri
 
 function disabledDeleteReason (selectedItems: ReadonlyArray<RagDocument>) {
     return selectedItems.length === 0 ? 'Please select an item' : 'You are not an owner of all selected items';
+}
+
+function disabledViewReason (selectedItems: ReadonlyArray<RagDocument>) {
+    return selectedItems.length === 0 ? 'Please select an item' : 'You can only view one item at a time';
 }
 
 export function DocumentLibraryComponent ({ repositoryId, collectionId }: DocumentLibraryComponentProps): ReactElement {
@@ -82,13 +87,16 @@ export function DocumentLibraryComponent ({ repositoryId, collectionId }: Docume
     const [preferences, setPreferences] = useLocalStorage('DocumentRagPreferences', DEFAULT_PREFERENCES);
     const dispatch = useAppDispatch();
 
+    // Document side panel management
+    const { showDocSidePanel, selectedDocumentForPanel, handleOpenDocument, handleCloseDocPanel } = useDocumentSidePanel();
+
     // Fetch collection data if collectionId is provided
     const { data: collectionData } = useGetCollectionQuery(
         { repositoryId, collectionId },
         { skip: !repositoryId || !collectionId }
     );
 
-    const { data: paginatedDocs, isLoading } = useListRagDocumentsQuery(
+    const { data: paginatedDocs, isLoading, isFetching } = useListRagDocumentsQuery(
         {
             repositoryId,
             collectionId,
@@ -134,11 +142,18 @@ export function DocumentLibraryComponent ({ repositoryId, collectionId }: Docume
             text: 'Delete',
             disabled: !canDeleteAll(collectionProps.selectedItems, currentUser, isAdmin),
             disabledReason: disabledDeleteReason(collectionProps.selectedItems),
-        }, {
+        },
+        {
             id: 'download',
             text: 'Download',
             disabled: collectionProps.selectedItems.length > 1,
             disabledReason: 'Only one file can be downloaded at a time',
+        },
+        {
+            id: 'view',
+            text: 'View',
+            disabled: collectionProps.selectedItems.length > 1,
+            disabledReason: disabledViewReason(collectionProps.selectedItems),
         },
     ];
     const handleAction = async (e: any) => {
@@ -168,112 +183,139 @@ export function DocumentLibraryComponent ({ repositoryId, collectionId }: Docume
                 downloadFile(resp.data, document_name);
                 break;
             }
+            case 'view': {
+                const selectedDoc = collectionProps.selectedItems[0];
+                handleOpenDocument({
+                    documentId: selectedDoc.document_id,
+                    repositoryId: selectedDoc.repository_id,
+                    name: selectedDoc.document_name,
+                    source: selectedDoc.collection_id || selectedDoc.repository_id,
+                });
+                break;
+            }
             default:
                 console.error('Action not implemented', e.detail.id);
+                break;
         }
     };
 
     return (
-        <Table
-            {...collectionProps}
-            selectedItems={collectionProps.selectedItems}
-            onSelectionChange={({ detail }) =>
-                actions.setSelectedItems(detail.selectedItems)
-            }
-            columnDefinitions={TABLE_DEFINITION}
-            columnDisplay={preferences.contentDisplay}
-            stickyColumns={{ first: 1, last: 0 }}
-            resizableColumns
-            enableKeyboardNavigation
-            items={items}
-            loading={isLoading && !paginatedDocs}
-            loadingText='Loading documents'
-            selectionType='multi'
-            filter={
-                <TextFilter
-                    {...filterProps}
-                    countText={getMatchesCountText(filteredItemsCount)}
-                />
-            }
-            header={
-                <Header
-                    counter={`(${totalDocuments})`}
-                    actions={
-                        <SpaceBetween
-                            direction='horizontal'
-                            size='xs'
-                        >
-                            <Button
-                                onClick={() => {
-                                    actions.setSelectedItems([]);
-                                    dispatch(ragApi.util.invalidateTags(['docs']));
-                                }}
-                                ariaLabel={'Refresh documents'}
-                            >
-                                <Icon name='refresh' />
-                            </Button>
-                            <ButtonDropdown
-                                items={actionItems}
-                                loading={isDeleteLoading || isDownloading}
-                                disabled={collectionProps.selectedItems.length === 0}
-                                onItemClick={async (e) => handleAction(e)}
-                            >
-                                Actions
-                            </ButtonDropdown>
-                        </SpaceBetween>
+        <div
+            style={{
+                overflow: 'scroll'
+            }}
+        >
+            <div style={{ overflow: 'auto' }}>
+                <Table
+                    {...collectionProps}
+                    selectedItems={collectionProps.selectedItems}
+                    onSelectionChange={({ detail }) =>
+                        actions.setSelectedItems(detail.selectedItems)
                     }
-                >
-                    {collectionId && collectionData
-                        ? `${collectionData.name || collectionId} Documents`
-                        : `${repositoryId} Documents`}
-                </Header>
-            }
-            pagination={
-                <Pagination
-                    currentPageIndex={currentPage}
-                    pagesCount={Math.ceil(totalDocuments / (preferences.pageSize || 10))}
-                    onNextPageClick={() => {
-                        if (hasNextPage && paginatedDocs?.lastEvaluated) {
-                            // Add current key to history before moving to next page
-                            setPageHistory([...pageHistory, lastEvaluatedKey]);
-                            setLastEvaluatedKey(paginatedDocs.lastEvaluated);
-                            // Update current page to reflect the navigation
-                            setCurrentPage((prev) => prev + 1);
-                        }
-                    }}
-                    onPreviousPageClick={() => {
-                        if (pageHistory.length > 0) {
-                            // Go back one page by popping from history
-                            const previousKey = pageHistory[pageHistory.length - 1];
-                            setPageHistory(pageHistory.slice(0, -1));
-                            setLastEvaluatedKey(previousKey);
-                            // Update current page to reflect the navigation
-                            setCurrentPage((prev) => prev - 1);
-                        } else {
-                            // If no history, go to first page
-                            setLastEvaluatedKey(null);
-                            setCurrentPage(1);
-                        }
-                    }}
-                    ariaLabels={{
-                        nextPageLabel: 'Next page',
-                        previousPageLabel: 'Previous page',
-                        pageLabel: (pageNumber) => `Page ${pageNumber} of ${Math.ceil(totalDocuments / (preferences.pageSize || 10))}`,
-                    }}
+                    columnDefinitions={TABLE_DEFINITION}
+                    columnDisplay={preferences.contentDisplay}
+                    stickyColumns={{ first: 1, last: 0 }}
+                    resizableColumns
+                    enableKeyboardNavigation
+                    items={items}
+                    variant='full-page'
+                    loading={isLoading && !paginatedDocs}
+                    loadingText='Loading documents'
+                    selectionType='multi'
+                    filter={
+                        <TextFilter
+                            {...filterProps}
+                            countText={getMatchesCountText(filteredItemsCount)}
+                        />
+                    }
+                    header={
+                        <Header
+                            counter={`(${totalDocuments})`}
+                            actions={
+                                <SpaceBetween
+                                    direction='horizontal'
+                                    size='xs'
+                                >
+                                    <RefreshButton
+                                        isLoading={isFetching}
+                                        onClick={() => {
+                                            actions.setSelectedItems([]);
+                                            dispatch(ragApi.util.invalidateTags(['docs']));
+                                        }}
+                                        ariaLabel='Refresh documents'
+                                    />
+                                    <ButtonDropdown
+                                        items={actionItems}
+                                        loading={isDeleteLoading || isDownloading}
+                                        disabled={collectionProps.selectedItems.length === 0}
+                                        onItemClick={async (e) => handleAction(e)}
+                                    >
+                                        Actions
+                                    </ButtonDropdown>
+                                </SpaceBetween>
+                            }
+                        >
+                            {collectionId && collectionData
+                                ? `${collectionData.name || collectionId} Documents`
+                                : `${repositoryId} Documents`}
+                        </Header>
+                    }
+                    pagination={
+                        <Pagination
+                            currentPageIndex={currentPage}
+                            pagesCount={Math.ceil(totalDocuments / (preferences.pageSize || 10))}
+                            onNextPageClick={() => {
+                                if (hasNextPage && paginatedDocs?.lastEvaluated) {
+                                    // Add current key to history before moving to next page
+                                    setPageHistory([...pageHistory, lastEvaluatedKey]);
+                                    setLastEvaluatedKey(paginatedDocs.lastEvaluated);
+                                    // Update current page to reflect the navigation
+                                    setCurrentPage((prev) => prev + 1);
+                                }
+                            }}
+                            onPreviousPageClick={() => {
+                                if (pageHistory.length > 0) {
+                                    // Go back one page by popping from history
+                                    const previousKey = pageHistory[pageHistory.length - 1];
+                                    setPageHistory(pageHistory.slice(0, -1));
+                                    setLastEvaluatedKey(previousKey);
+                                    // Update current page to reflect the navigation
+                                    setCurrentPage((prev) => prev - 1);
+                                } else {
+                                    // If no history, go to first page
+                                    setLastEvaluatedKey(null);
+                                    setCurrentPage(1);
+                                }
+                            }}
+                            ariaLabels={{
+                                nextPageLabel: 'Next page',
+                                previousPageLabel: 'Previous page',
+                                pageLabel: (pageNumber) => `Page ${pageNumber} of ${Math.ceil(totalDocuments / (preferences.pageSize || 10))}`,
+                            }}
+                        />
+                    }
+                    preferences={
+                        <CollectionPreferences
+                            title='Preferences'
+                            preferences={preferences}
+                            confirmLabel='Confirm'
+                            cancelLabel='Cancel'
+                            onConfirm={({ detail }) => setPreferences(detail)}
+                            contentDisplayPreference={{ title: 'Select visible columns', options: TABLE_PREFERENCES }}
+                            pageSizePreference={{ title: 'Page size', options: PAGE_SIZE_OPTIONS }}
+                        />
+                    }
                 />
-            }
-            preferences={
-                <CollectionPreferences
-                    title='Preferences'
-                    preferences={preferences}
-                    confirmLabel='Confirm'
-                    cancelLabel='Cancel'
-                    onConfirm={({ detail }) => setPreferences(detail)}
-                    contentDisplayPreference={{ title: 'Select visible columns', options: TABLE_PREFERENCES }}
-                    pageSizePreference={{ title: 'Page size', options: PAGE_SIZE_OPTIONS }}
+            </div>
+            {/* Document side panel */}
+            {showDocSidePanel && (
+                <DocumentSidePanel
+                    visible={showDocSidePanel}
+                    onClose={handleCloseDocPanel}
+                    document={selectedDocumentForPanel}
                 />
-            }
-        />
+            )}
+        </div>
     );
 }
 

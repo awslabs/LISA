@@ -14,7 +14,7 @@
 
 """Tests for Bedrock Knowledge Base collection support."""
 
-from typing import Any, Dict
+from typing import Any
 from unittest.mock import create_autospec, MagicMock
 
 import pytest
@@ -50,7 +50,7 @@ def collection_service(mock_vector_store_repo, mock_document_repo):
 
 
 @pytest.fixture
-def bedrock_kb_repository() -> Dict[str, Any]:
+def bedrock_kb_repository() -> dict[str, Any]:
     """Sample Bedrock Knowledge Base repository configuration."""
     return {
         "repositoryId": "test-bedrock-kb",

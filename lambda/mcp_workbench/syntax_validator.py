@@ -20,7 +20,7 @@ import os
 import sys
 from dataclasses import dataclass
 from types import ModuleType
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +30,8 @@ class ValidationResult:
     """Result of Python code validation."""
 
     is_valid: bool
-    syntax_errors: List[Dict[str, Any]]
-    missing_required_imports: Optional[List[str]] = None
+    syntax_errors: list[dict[str, Any]]
+    missing_required_imports: list[str] | None = None
 
     def __post_init__(self) -> None:
         """Initialize list fields if None."""
@@ -118,7 +118,7 @@ class PythonSyntaxValidator:
             is_valid=is_valid, syntax_errors=syntax_errors, missing_required_imports=missing_required_imports
         )
 
-    def _validate_module_execution(self, code: str) -> List[Dict[str, Any]]:
+    def _validate_module_execution(self, code: str) -> list[dict[str, Any]]:
         """Validate code by attempting to execute it as a module."""
         errors = []
 
@@ -222,7 +222,7 @@ class PythonSyntaxValidator:
         else:
             logger.info("Real MCP Workbench package is already available in sys.modules")
 
-    def _check_required_mcp_imports(self, tree: ast.AST) -> List[str]:
+    def _check_required_mcp_imports(self, tree: ast.AST) -> list[str]:
         """Check if required MCP imports are present in the AST."""
         missing_required = []
 
@@ -248,9 +248,9 @@ class PythonSyntaxValidator:
 
         return missing_required
 
-    def _collect_imports(self, tree: ast.AST) -> Dict[str, Any]:
+    def _collect_imports(self, tree: ast.AST) -> dict[str, Any]:
         """Collect all import statements from the AST."""
-        imports: Dict[str, Any] = {
+        imports: dict[str, Any] = {
             "modules": set(),  # Direct module imports: import os
             "from_imports": {},  # From imports: from os import path -> {'os': {'path'}}
             "aliases": {},  # Import aliases: import numpy as np -> {'np': 'numpy'}
@@ -290,7 +290,7 @@ class PythonSyntaxValidator:
         visitor.visit(tree)
         return imports
 
-    def _format_syntax_error(self, syntax_error: SyntaxError) -> Dict[str, Any]:
+    def _format_syntax_error(self, syntax_error: SyntaxError) -> dict[str, Any]:
         """Format a SyntaxError into a standardized error dictionary."""
         return {
             "type": "SyntaxError",

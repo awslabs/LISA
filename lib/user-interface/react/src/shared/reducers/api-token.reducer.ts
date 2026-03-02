@@ -30,6 +30,7 @@ export const apiTokenApi = createApi({
     tagTypes: ['apiTokens'],
     refetchOnFocus: true,
     refetchOnReconnect: true,
+    keepUnusedDataFor: 60, // Keep cache for 60s to prevent cancellation during rapid navigation
     endpoints: (builder) => ({
         listTokens: builder.query<ITokenInfo[], void>({
             query: () => ({

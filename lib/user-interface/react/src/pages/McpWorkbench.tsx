@@ -15,7 +15,6 @@
  */
 
 import { ReactElement, useEffect } from 'react';
-import { Route, Routes } from 'react-router-dom';
 import McpWorkbenchManagementComponent from '../components/mcp-workbench/McpWorkbenchManagementComponent';
 
 export function McpWorkbench ({ setNav }): ReactElement {
@@ -23,11 +22,7 @@ export function McpWorkbench ({ setNav }): ReactElement {
         setNav(null);
     }, [setNav]);
 
-    return (
-        <Routes>
-            <Route index path='*' element={<McpWorkbenchManagementComponent />} />
-        </Routes>
-    );
+    return <McpWorkbenchManagementComponent />;
 }
 
 export default McpWorkbench;

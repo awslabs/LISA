@@ -16,13 +16,15 @@
 
 import logging
 import sys
+from collections.abc import Callable
 from datetime import datetime
-from typing import Callable
+from typing import Any
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware as StarletteCORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
+from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
 from ..config.models import CORSConfig
 from ..core.tool_discovery import ToolDiscovery
@@ -34,7 +36,7 @@ logger = logging.getLogger(__name__)
 class CORSMiddleware(StarletteCORSMiddleware):
     """CORS middleware wrapper for configuration compatibility."""
 
-    def __init__(self, app, cors_config: CORSConfig):
+    def __init__(self, app: Any, cors_config: CORSConfig) -> None:
         super().__init__(
             app,
             allow_origins=cors_config.allow_origins,
@@ -49,7 +51,7 @@ class CORSMiddleware(StarletteCORSMiddleware):
 class ExitRouteMiddleware(BaseHTTPMiddleware):
     """Middleware to handle application exit requests."""
 
-    def __init__(self, app, exit_path: str):
+    def __init__(self, app: Any, exit_path: str) -> None:
         super().__init__(app)
         self.exit_path = exit_path.rstrip("/")
 
@@ -76,7 +78,7 @@ class ExitRouteMiddleware(BaseHTTPMiddleware):
         # Continue with normal request processing
         return await call_next(request)
 
-    async def _delayed_exit(self):
+    async def _delayed_exit(self) -> None:
         """Exit the application after a short delay."""
         import asyncio  # noqa: PLC0415
 
@@ -88,7 +90,7 @@ class ExitRouteMiddleware(BaseHTTPMiddleware):
 class RescanMiddleware(BaseHTTPMiddleware):
     """Middleware to handle tool rescanning requests."""
 
-    def __init__(self, app, rescan_path: str, tool_discovery: ToolDiscovery, tool_registry: ToolRegistry):
+    def __init__(self, app: Any, rescan_path: str, tool_discovery: ToolDiscovery, tool_registry: ToolRegistry) -> None:
         super().__init__(app)
         self.rescan_path = rescan_path.rstrip("/")
         self.tool_discovery = tool_discovery
@@ -133,7 +135,7 @@ class RescanMiddleware(BaseHTTPMiddleware):
                 logger.error(f"Error during rescan: {e}")
                 return JSONResponse(
                     {"status": "error", "message": f"Rescan failed: {str(e)}", "timestamp": datetime.now().isoformat()},
-                    status_code=500,
+                    status_code=HTTP_500_INTERNAL_SERVER_ERROR,
                 )
 
         # Continue with normal request processing

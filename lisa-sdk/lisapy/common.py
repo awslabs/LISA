@@ -12,15 +12,14 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from typing import Dict, Optional, Union
 
-from requests import Session
+from requests import Session  # type: ignore[import-untyped,unused-ignore]
 
 
 class BaseMixin:
     url: str
-    headers: Optional[Dict[str, str]]
-    cookies: Optional[Dict[str, str]]
-    verify: Optional[Union[str, bool]]
+    headers: dict[str, str] | None
+    cookies: dict[str, str] | None
+    verify: str | bool | None
     timeout: int
     _session: Session

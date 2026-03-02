@@ -15,7 +15,7 @@
 */
 
 // es-lint-disable
-import { AuthProvider, useAuth } from 'react-oidc-context';
+import { AuthProvider } from 'react-oidc-context';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import App from '../App';
 import { onMcpAuthorization } from 'use-mcp';
@@ -24,8 +24,31 @@ import Spinner from '@cloudscape-design/components/spinner';
 
 import { OidcConfig } from '../config/oidc.config';
 import { User, UserProfile } from 'oidc-client-ts';
-import { purgeStore, useAppDispatch } from '../config/store';
+import { useAppDispatch } from '../config/store';
 import { updateUserState } from '../shared/reducers/user.reducer';
+import { useAuth } from '../auth/useAuth';
+
+function UserStateSync () {
+    const dispatch = useAppDispatch();
+    const auth = useAuth();
+
+    useEffect(() => {
+        if (auth.user) {
+            const userGroups = getGroups(auth.user.profile);
+            dispatch(updateUserState({
+                name: auth.user.profile.name,
+                preferred_username: auth.user.profile.preferred_username,
+                email: auth.user.profile.email,
+                groups: userGroups,
+                isAdmin: userGroups ? isAdmin(userGroups) : false,
+                isUser: window.env.USER_GROUP ? userGroups && isUser(userGroups) : true,
+                isApiUser: window.env.API_GROUP ? userGroups && isApiUser(userGroups) : false,
+            }));
+        }
+    }, [auth.user, dispatch]);
+
+    return null;
+}
 
 function OAuthCallback () {
     useEffect(() => {
@@ -45,10 +68,39 @@ function OAuthCallback () {
     );
 }
 
+const getGroups = (oidcUserProfile: UserProfile): any => {
+    if (window.env.JWT_GROUPS_PROP) {
+        const props: string[] = window.env.JWT_GROUPS_PROP.split('.');
+        let currentNode: any = oidcUserProfile;
+        let found = true;
+        props.forEach((prop) => {
+            if (prop in currentNode) {
+                currentNode = currentNode[prop];
+            } else {
+                found = false;
+            }
+        });
+        return found ? currentNode : undefined;
+    } else {
+        return undefined;
+    }
+};
+
+const isAdmin = (userGroups: any): boolean => {
+    return window.env.ADMIN_GROUP ? userGroups.includes(window.env.ADMIN_GROUP) : false;
+};
+
+const isUser = (userGroups: any): boolean => {
+    return window.env.USER_GROUP ? userGroups.includes(window.env.USER_GROUP) : false;
+};
+
+const isApiUser = (userGroups: any): boolean => {
+    return window.env.API_GROUP ? userGroups.includes(window.env.API_GROUP) : false;
+};
+
 function AppConfigured () {
     const dispatch = useAppDispatch();
     const [oidcUser, setOidcUser] = useState<User | void>();
-    const auth = useAuth();
 
     useEffect(() => {
         if (oidcUser) {
@@ -66,36 +118,6 @@ function AppConfigured () {
             );
         }
     }, [dispatch, oidcUser]);
-
-    const getGroups = (oidcUserProfile: UserProfile): any => {
-        if (window.env.JWT_GROUPS_PROP) {
-            const props: string[] = window.env.JWT_GROUPS_PROP.split('.');
-            let currentNode: any = oidcUserProfile;
-            let found = true;
-            props.forEach((prop) => {
-                if (prop in currentNode) {
-                    currentNode = currentNode[prop];
-                } else {
-                    found = false;
-                }
-            });
-            return found ? currentNode : undefined;
-        } else {
-            return undefined;
-        }
-    };
-
-    const isAdmin = (userGroups: any): boolean => {
-        return window.env.ADMIN_GROUP ? userGroups.includes(window.env.ADMIN_GROUP) : false;
-    };
-
-    const isUser = (userGroups: any): boolean => {
-        return window.env.USER_GROUP ? userGroups.includes(window.env.USER_GROUP) : false;
-    };
-
-    const isApiUser = (userGroups: any): boolean => {
-        return window.env.API_GROUP ? userGroups.includes(window.env.API_GROUP) : false;
-    };
 
     const baseHref = document?.querySelector('base')?.getAttribute('href')?.replace(/\/$/, '');
 
@@ -115,15 +137,18 @@ function AppConfigured () {
                     <AuthProvider
                         {...OidcConfig}
                         onSigninCallback={async (user: User | void) => {
-                            if ((window.env.USER_GROUP && user && isUser(getGroups(user.profile))) || !window.env.USER_GROUP){
+                            if ((window.env.USER_GROUP && user && isUser(getGroups(user.profile))) || !window.env.USER_GROUP) {
                                 window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.hash}`);
                                 setOidcUser(user);
-                            } else  {
-                                await purgeStore();
-                                await auth.signoutSilent();
+                            } else {
+                                // Clear OIDC session storage to force re-authentication
+                                const oidcStorageKey = `oidc.user:${window.env.AUTHORITY}:${window.env.CLIENT_ID}`;
+                                sessionStorage.removeItem(oidcStorageKey);
+                                window.location.href = window.location.origin;
                             }
                         }}
                     >
+                        <UserStateSync />
                         <App />
                     </AuthProvider>
                 } />

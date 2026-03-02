@@ -16,11 +16,10 @@
 
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from 'react-oidc-context';
+import { useAuth } from '../auth/useAuth';
 
-import chatImg from '../assets/chat.png';
 import { Alert, Box, Button, Modal } from '@cloudscape-design/components';
-import { purgeStore } from '../config/store';
+import { getBrandingAssetPath } from '../shared/util/branding';
 
 export function Home ({ setNav }) {
     const navigate = useNavigate();
@@ -38,16 +37,9 @@ export function Home ({ setNav }) {
     // eslint-disable-next-line
   }, [auth.isAuthenticated]);
 
-    useEffect(() => {
-        if (!auth.isAuthenticated && !window.location.href.includes('?')) {
-            purgeStore();
-        }
-        // eslint-disable-next-line
-    }, []);
-
     return (
         <Modal
-            visible={!auth.isAuthenticated}
+            visible={!auth.isAuthenticated && !auth.isLoading}
             onDismiss={() => setVisible(true)}
             header='Log in to start chatting'
             footer={
@@ -70,16 +62,13 @@ export function Home ({ setNav }) {
                 <div>
                     <figure>
                         <img
-                            src={chatImg}
+                            src={getBrandingAssetPath('login')}
                             style={{
                                 objectFit: 'cover',
                                 width: '100%',
                                 height: '100%',
                             }}
                         />
-                        <figcaption style={{ textAlign: 'right' }}>
-                            Image generated via StableDiffusion-XL on Amazon Bedrock
-                        </figcaption>
                     </figure>
                 </div>
             </Box>

@@ -15,7 +15,7 @@
  */
 
 import { useState, useCallback, useMemo, useRef } from 'react';
-import { useAuth } from 'react-oidc-context';
+import { useAuth } from '../../../auth/useAuth';
 import { ChatOpenAI } from '@langchain/openai';
 import { SelectProps } from '@cloudscape-design/components';
 import { IModel, ModelStatus } from '../../../shared/model/model-management.model';

@@ -15,7 +15,7 @@
  */
 
 import { ReactElement, useState } from 'react';
-import { Box, Button, ButtonDropdown, CollectionPreferences, Header, Icon, Pagination, Table, TextFilter } from '@cloudscape-design/components';
+import { Box, Button, ButtonDropdown, CollectionPreferences, Header, Pagination, Table, TextFilter } from '@cloudscape-design/components';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import {
     COLLECTION_COLUMN_DEFINITIONS,
@@ -30,6 +30,7 @@ import { useAppDispatch } from '@/config/store';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 import { CreateCollectionModal } from '@/components/document-library/createCollection/CreateCollectionModal';
 import { CollectionStatus } from '#root/lib/schema/collectionSchema';
+import { RefreshButton } from '@/components/common/RefreshButton';
 
 type CollectionLibraryComponentProps = {
     admin?: boolean;
@@ -39,6 +40,7 @@ export function CollectionLibraryComponent ({ admin = false }: CollectionLibrary
     const {
         data: allCollections,
         isLoading: fetchingCollections,
+        isFetching: isFetchingCollections,
     } = useListAllCollectionsQuery(undefined, { refetchOnMountOrArgChange: 5 });
 
     const [deleteCollection, { isLoading: isDeleteLoading }] = useDeleteCollectionMutation();
@@ -186,6 +188,7 @@ export function CollectionLibraryComponent ({ admin = false }: CollectionLibrary
                 stickyColumns={{ first: 1, last: 0 }}
                 resizableColumns
                 enableKeyboardNavigation
+                variant='full-page'
                 items={items}
                 loading={fetchingCollections && !allCollections}
                 loadingText='Loading collections'
@@ -206,7 +209,8 @@ export function CollectionLibraryComponent ({ admin = false }: CollectionLibrary
                         }
                         actions={
                             <SpaceBetween direction='horizontal' size='xs'>
-                                <Button
+                                <RefreshButton
+                                    isLoading={isFetchingCollections}
                                     onClick={() => {
                                         if (admin) {
                                             actions.setSelectedItems([]);
@@ -214,12 +218,11 @@ export function CollectionLibraryComponent ({ admin = false }: CollectionLibrary
                                         dispatch(ragApi.util.invalidateTags(['collections']));
                                     }}
                                     ariaLabel='Refresh collections'
-                                >
-                                    <Icon name='refresh' />
-                                </Button>
+                                />
                                 {admin && (
                                     <>
                                         <ButtonDropdown
+                                            data-testid='collection-actions-button'
                                             items={[
                                                 {
                                                     id: 'edit',

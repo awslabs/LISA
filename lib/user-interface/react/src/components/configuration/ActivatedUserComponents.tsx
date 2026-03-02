@@ -19,19 +19,19 @@ import React, { useCallback } from 'react';
 import { SetFieldsFunction } from '../../shared/validation';
 
 const ragOptions = {
-    uploadRagDocs: 'Allow document upload from Chat',
+    uploadRagDocs: 'Document upload from Chat',
     editNumOfRagDocument: 'Edit number of referenced documents',
 };
 
 const libraryOptions = {
-    modelLibrary: 'Show Model Library',
-    showRagLibrary: 'Show Document Library',
-    showPromptTemplateLibrary: 'Show Prompt Template Library'
+    modelLibrary: 'Model Library',
+    showRagLibrary: 'Document Library',
+    showPromptTemplateLibrary: 'Prompt Template Library'
 };
 
 const inContextOptions = {
-    uploadContextDocs: 'Allow document upload to context',
-    documentSummarization: 'Allow Document Summarization',
+    uploadContextDocs: 'Document upload to context',
+    documentSummarization: 'Document Summarization',
 };
 
 const advancedOptions = {
@@ -45,12 +45,12 @@ const advancedOptions = {
 };
 
 const mcpOptions = {
-    mcpConnections: 'Allow MCP Server Connections',
-    showMcpWorkbench: 'Show MCP Workbench'
+    mcpConnections: 'MCP Server Connections',
+    showMcpWorkbench: 'MCP Workbench'
 };
 
 const apiTokenOptions = {
-    enableUserApiTokens: 'Allow user managed API tokens'
+    enableUserApiTokens: 'User managed API tokens'
 };
 
 type AllOptionKeys<G extends Record<string, Record<string, unknown>>> = {

@@ -13,17 +13,20 @@
 #   limitations under the License.
 
 """Lambda functions for managing prompt templates in AWS DynamoDB."""
+from __future__ import annotations
+
 import json
 import logging
 import os
 from decimal import Decimal
 from functools import reduce
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import boto3
 from boto3.dynamodb.conditions import Attr, Key
 from utilities.auth import get_user_context, get_username
 from utilities.common_functions import api_wrapper, get_item, retry_config
+from utilities.exceptions import BadRequestException, ForbiddenException, NotFoundException
 
 from .models import PromptTemplateModel
 
@@ -35,10 +38,10 @@ table = dynamodb.Table(os.environ["PROMPT_TEMPLATES_TABLE_NAME"])
 
 
 def _get_prompt_templates(
-    user_id: Optional[str] = None,
-    groups: Optional[List] = None,
-    latest: Optional[bool] = None,
-) -> Dict[str, Any]:
+    user_id: str | None = None,
+    groups: list[str] | None = None,
+    latest: bool | None = None,
+) -> dict[str, Any]:
     """Helper function to retrieve prompt templates from DynamoDB."""
     filter_expression = None
 
@@ -60,7 +63,7 @@ def _get_prompt_templates(
             condition = reduce(lambda a, b: a | b, conditions, condition)
         filter_expression = condition if filter_expression is None else filter_expression & condition
 
-    scan_arguments = {
+    scan_arguments: dict[str, Any] = {
         "TableName": os.environ["PROMPT_TEMPLATES_TABLE_NAME"],
         "IndexName": os.environ["PROMPT_TEMPLATES_BY_LATEST_INDEX_NAME"],
     }
@@ -93,7 +96,7 @@ def get(event: dict, context: dict) -> Any:
     item = get_item(response)
 
     if item is None:
-        raise ValueError(f"Prompt template {prompt_template_id} not found.")
+        raise NotFoundException(f"Prompt template {prompt_template_id} not found.")
 
     # Check if the user is authorized to get the prompt template
     is_owner = item["owner"] == user_id
@@ -103,10 +106,10 @@ def get(event: dict, context: dict) -> Any:
             item["isOwner"] = True
         return item
 
-    raise ValueError(f"Not authorized to get {prompt_template_id}.")
+    raise ForbiddenException(f"Not authorized to get {prompt_template_id}.")
 
 
-def is_member(user_groups: List[str], prompt_groups: List[str]) -> bool:
+def is_member(user_groups: list[str], prompt_groups: list[str]) -> bool:
     if "lisa:public" in prompt_groups:
         return True
 
@@ -114,7 +117,7 @@ def is_member(user_groups: List[str], prompt_groups: List[str]) -> bool:
 
 
 @api_wrapper
-def list(event: dict, context: dict) -> Dict[str, Any]:
+def list_prompt(event: dict, context: dict) -> dict[str, Any]:
     """List prompt templates for a user from DynamoDB."""
     query_params = event.get("queryStringParameters", {})
     user_id, is_admin, groups = get_user_context(event)
@@ -154,14 +157,14 @@ def update(event: dict, context: dict) -> Any:
     prompt_template_model = PromptTemplateModel(**body)
 
     if prompt_template_id != prompt_template_model.id:
-        raise ValueError(f"URL id {prompt_template_id} doesn't match body id {prompt_template_model.id}")
+        raise BadRequestException(f"URL id {prompt_template_id} doesn't match body id {prompt_template_model.id}")
 
     # Query for the latest prompt template revision
     response = table.query(KeyConditionExpression=Key("id").eq(prompt_template_id), Limit=1, ScanIndexForward=False)
     item = get_item(response)
 
     if item is None:
-        raise ValueError(f"Prompt template {prompt_template_model} not found.")
+        raise NotFoundException(f"Prompt template {prompt_template_id} not found.")
 
     # Check if the user is authorized to update the prompt template
     if is_admin or item["owner"] == user_id:
@@ -182,11 +185,11 @@ def update(event: dict, context: dict) -> Any:
         response = table.put_item(Item=prompt_template_model.model_dump(exclude_none=True))
         return prompt_template_model.model_dump()
 
-    raise ValueError(f"Not authorized to update {prompt_template_id}.")
+    raise ForbiddenException(f"Not authorized to update {prompt_template_id}.")
 
 
 @api_wrapper
-def delete(event: dict, context: dict) -> Dict[str, str]:
+def delete(event: dict, context: dict) -> dict[str, str]:
     """Logically delete a prompt template from DynamoDB."""
     user_id, is_admin, _ = get_user_context(event)
     prompt_template_id = get_prompt_template_id(event)
@@ -196,7 +199,7 @@ def delete(event: dict, context: dict) -> Dict[str, str]:
     item = get_item(response)
 
     if item is None:
-        raise ValueError(f"Prompt template {prompt_template_id} not found.")
+        raise NotFoundException(f"Prompt template {prompt_template_id} not found.")
 
     # Check if the user is authorized to delete the prompt template
     if is_admin or item["owner"] == user_id:
@@ -210,7 +213,7 @@ def delete(event: dict, context: dict) -> Dict[str, str]:
 
         return {"status": "ok"}
 
-    raise ValueError(f"Not authorized to delete {prompt_template_id}.")
+    raise ForbiddenException(f"Not authorized to delete {prompt_template_id}.")
 
 
 def get_prompt_template_id(event: dict) -> str:

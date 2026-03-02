@@ -30,7 +30,6 @@ export default defineConfig({
     e2e: {
         specPattern: `${PROJECT_ROOT}/src/smoke/specs/**/*.smoke.spec.ts`,
         supportFile: `${PROJECT_ROOT}/src/smoke/support/index.ts`,
-        experimentalStudio: true,
         fixturesFolder: `${PROJECT_ROOT}/src/smoke/fixtures`,
         setupNodeEvents () {
         },

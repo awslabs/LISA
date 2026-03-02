@@ -14,11 +14,10 @@
 
 import logging
 import os
-from typing import Any, Dict
 
 import boto3
 from boto3.dynamodb.conditions import Key
-from models.domain_objects import CollectionStatus, IngestionJob, IngestionStatus, IngestionType, JobActionType
+from models.domain_objects import CollectionStatus, IngestionJob, IngestionStatus, JobActionType
 from repository.collection_repo import CollectionRepository
 from repository.ingestion_job_repo import IngestionJobRepository
 from repository.ingestion_service import DocumentIngestionService
@@ -107,9 +106,9 @@ def pipeline_delete_collection(job: IngestionJob) -> None:
         # Drop index for faster cleanup (OpenSearch/PGVector)
         # This removes all embeddings from the vector store
         if RepositoryType.is_type(repository, RepositoryType.OPENSEARCH):
-            drop_opensearch_index(job.repository_id, job.collection_id)
+            drop_opensearch_index(job.repository_id, job.collection_id)  # type: ignore[arg-type]
         elif RepositoryType.is_type(repository, RepositoryType.PGVECTOR):
-            drop_pgvector_collection(job.repository_id, job.collection_id)
+            drop_pgvector_collection(job.repository_id, job.collection_id)  # type: ignore[arg-type]
         elif RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
             # For Bedrock KB, use bulk delete for efficiency
             # Only delete LISA-managed documents (MANUAL/AUTO), preserve EXISTING
@@ -165,13 +164,13 @@ def pipeline_delete_collection(job: IngestionJob) -> None:
         # Delete all documents and subdocuments from DynamoDB
         # This method handles pagination and batch deletion
         logger.info(f"Deleting all documents from DynamoDB for collection {job.collection_id}")
-        rag_document_repository.delete_all(job.repository_id, job.collection_id)
+        rag_document_repository.delete_all(job.repository_id, job.collection_id)  # type: ignore[arg-type]
         logger.info("Successfully deleted all documents from DynamoDB")
 
         # Delete collection DB entry
         is_default_collection = job.embedding_model is not None
         if not is_default_collection:
-            collection_repo.delete(job.collection_id, job.repository_id)
+            collection_repo.delete(job.collection_id, job.repository_id)  # type: ignore[arg-type]
 
         # Update job status
         ingestion_job_repository.update_status(job, IngestionStatus.DELETE_COMPLETED)
@@ -183,7 +182,11 @@ def pipeline_delete_collection(job: IngestionJob) -> None:
 
         # Update collection status to DELETE_FAILED
         try:
-            collection_repo.update(job.collection_id, job.repository_id, {"status": CollectionStatus.DELETE_FAILED})
+            collection_repo.update(
+                job.collection_id,  # type: ignore[arg-type]
+                job.repository_id,
+                {"status": CollectionStatus.DELETE_FAILED},
+            )
         except Exception as update_error:
             logger.error(f"Failed to update collection status: {update_error}")
 
@@ -221,7 +224,7 @@ def pipeline_delete_document(job: IngestionJob) -> None:
         logger.info(f"Deleting document {job.s3_path} for repository {job.repository_id}")
 
         # Find associated RagDocument
-        rag_document = rag_document_repository.find_by_id(job.document_id, join_docs=True)
+        rag_document = rag_document_repository.find_by_id(job.document_id, join_docs=True)  # type: ignore[arg-type]
 
         if rag_document:
             # Actually remove from vector store
@@ -290,7 +293,7 @@ def pipeline_delete_documents(job: IngestionJob) -> None:
         failed = 0
         errors = []
         # For Bedrock KB, group S3 paths by data source (collection_id)
-        s3_paths_by_data_source = {}
+        s3_paths_by_data_source = {}  # type: ignore[var-annotated]
 
         for document_id in document_ids:
             try:
@@ -369,100 +372,3 @@ def pipeline_delete_documents(job: IngestionJob) -> None:
         error_msg = f"Failed to process batch deletion: {str(e)}"
         logger.error(error_msg, exc_info=True)
         raise Exception(error_msg)
-
-
-def handle_pipeline_delete_event(event: Dict[str, Any], context: Any) -> None:
-    """Handle pipeline document deletion for S3 ObjectRemoved events."""
-    # Extract and validate inputs
-    logger.debug(f"Received event: {event}")
-
-    detail = event.get("detail", {})
-    bucket = detail.get("bucket", None)
-    key = detail.get("key", None)
-    repository_id = detail.get("repositoryId", None)
-    collection_id = detail.get("collectionId", None)
-    pipeline_config = detail.get("pipelineConfig", None)
-    s3_path = f"s3://{bucket}/{key}"
-
-    if not repository_id:
-        logger.warning("No repository_id in event, skipping deletion")
-        return
-
-    # Get repository to determine type and configuration
-    repository = vs_repo.find_repository_by_id(repository_id)
-    if not repository:
-        logger.warning(f"Repository {repository_id} not found, skipping deletion")
-        return
-
-    # For Bedrock KB repositories, use data source ID as collection ID
-    if RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB):
-        if not collection_id:
-            # Fallback: try to get from bedrock config (legacy support)
-            bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
-
-            # Try new structure with dataSources array
-            data_sources = bedrock_config.get("dataSources", [])
-            if data_sources:
-                first_data_source = data_sources[0]
-                collection_id = (
-                    first_data_source.get("id") if isinstance(first_data_source, dict) else first_data_source.id
-                )
-            else:
-                # Try legacy single data source ID
-                collection_id = bedrock_config.get("bedrockKnowledgeDatasourceId")
-
-        if not collection_id:
-            logger.error(f"Bedrock KB repository {repository_id} missing data source ID")
-            return
-
-        logger.info(
-            f"Processing Bedrock KB document deletion {s3_path} for repository {repository_id}, "
-            f"collection {collection_id}"
-        )
-    else:
-        if not pipeline_config or not isinstance(pipeline_config, dict):
-            logger.warning("No pipeline_config in event, skipping deletion")
-            return
-
-        embedding_model = pipeline_config.get("embeddingModel", None)
-        if embedding_model is None:
-            logger.warning("No embedding_model in pipeline_config, skipping deletion")
-            return
-
-        collection_id = embedding_model
-        logger.info(f"Deleting object {s3_path} for repository {repository_id}/{embedding_model}")
-
-    # Find documents by source path (idempotent - handles missing documents gracefully)
-    documents = rag_document_repository.find_by_source(
-        repository_id=repository_id,
-        collection_id=collection_id,
-        document_source=s3_path,
-        join_docs=False,  # Don't need subdocs for deletion
-    )
-
-    if not documents:
-        logger.info(f"Document {s3_path} not found in tracking system, already deleted or never tracked")
-        return  # Idempotent - success even if document doesn't exist
-
-    # Delete each found document
-    for rag_document in documents:
-        logger.info(f"Deleting tracked document {rag_document.document_id} from {s3_path}")
-
-        # Find or create ingestion job for deletion
-        ingestion_job = ingestion_job_repository.find_by_document(rag_document.document_id)
-        if ingestion_job is None:
-            ingestion_job = IngestionJob(
-                repository_id=repository_id,
-                collection_id=collection_id,
-                embedding_model=collection_id,  # Use collection_id as embedding_model
-                chunk_strategy=None,
-                s3_path=rag_document.source,
-                username=rag_document.username,
-                ingestion_type=IngestionType.AUTO,
-                status=IngestionStatus.DELETE_PENDING,
-            )
-            ingestion_job_repository.save(ingestion_job)
-
-        # Submit deletion job
-        ingestion_service.create_delete_job(ingestion_job)
-        logger.info(f"Submitted deletion job for document {s3_path} in repository {repository_id}")

@@ -17,7 +17,7 @@
 import json
 import logging
 import re
-from typing import Any, Dict, Optional
+from typing import Any
 
 from models.domain_objects import RagCollectionConfig
 from utilities.validation import ValidationError
@@ -58,11 +58,11 @@ class MetadataGenerator:
 
     @staticmethod
     def merge_metadata(
-        repository: Dict[str, Any],
-        collection: Optional[Dict[str, Any]],
-        document_metadata: Optional[Dict[str, Any]] = None,
+        repository: dict[str, Any],
+        collection: dict[str, Any] | None,
+        document_metadata: dict[str, Any] | None = None,
         for_bedrock_kb: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Merge metadata from repository, collection, and document sources.
 
@@ -79,11 +79,11 @@ class MetadataGenerator:
         Returns:
             Merged metadata dictionary
         """
-        merged_metadata: Dict[str, Any] = {}
+        merged_metadata: dict[str, Any] = {}
         all_tags: set = set()
 
         # Helper function to merge non-tag metadata
-        def merge_non_tag_metadata(metadata_source: Dict[str, Any]) -> None:
+        def merge_non_tag_metadata(metadata_source: dict[str, Any]) -> None:
             for key, value in metadata_source.items():
                 if key != "tags" and not isinstance(value, dict):
                     merged_metadata[key] = value
@@ -127,10 +127,10 @@ class MetadataGenerator:
 
     @staticmethod
     def generate_metadata_json(
-        repository: Dict[str, Any],
-        collection: Optional[RagCollectionConfig],
-        document_metadata: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        repository: dict[str, Any],
+        collection: RagCollectionConfig | None,
+        document_metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Generate metadata.json content for Bedrock KB.
 
         Merges metadata from three sources with precedence:
@@ -174,7 +174,7 @@ class MetadataGenerator:
         return {"metadataAttributes": merged_metadata}
 
     @staticmethod
-    def validate_metadata(metadata: Dict[str, Any]) -> bool:
+    def validate_metadata(metadata: dict[str, Any]) -> bool:
         """Validate metadata against Bedrock KB requirements.
 
         Args:

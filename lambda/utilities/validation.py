@@ -14,7 +14,7 @@
 
 """Validation utilities for Lambda functions."""
 import logging
-from typing import Any, List
+from typing import Any
 
 import botocore.session
 
@@ -78,7 +78,7 @@ def validate_instance_type(type: str) -> str:
     raise ValueError("Invalid EC2 instance type.")
 
 
-def validate_all_fields_defined(fields: List[Any]) -> bool:
+def validate_all_fields_defined(fields: list[Any]) -> bool:
     """Validate that all fields are non-null in the field list.
 
     Args:
@@ -87,10 +87,10 @@ def validate_all_fields_defined(fields: List[Any]) -> bool:
     Returns:
         bool: True if all fields are non-null, False otherwise
     """
-    return all((field is not None for field in fields))
+    return all(field is not None for field in fields)
 
 
-def validate_any_fields_defined(fields: List[Any]) -> bool:
+def validate_any_fields_defined(fields: list[Any]) -> bool:
     """Validate that at least one field is non-null in the field list.
 
     Args:
@@ -99,7 +99,7 @@ def validate_any_fields_defined(fields: List[Any]) -> bool:
     Returns:
         bool: True if at least one field is non-null, False otherwise
     """
-    return any((field is not None for field in fields))
+    return any(field is not None for field in fields)
 
 
 def safe_error_response(error: Exception) -> dict:

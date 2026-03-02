@@ -197,6 +197,29 @@ export class CreateModelStateMachine extends Construct {
             time: POLLING_TIMEOUT,
         });
 
+        const pollModelReady = new LambdaInvoke(this, 'PollModelReady', {
+            lambdaFunction: new Function(this, 'PollModelReadyFunc', {
+                runtime: getPythonRuntime(),
+                handler: 'models.state_machine.create_model.handle_poll_model_ready',
+                code: Code.fromAsset(lambdaPath),
+                timeout: LAMBDA_TIMEOUT,
+                memorySize: LAMBDA_MEMORY,
+                role: role,
+                vpc: vpc.vpc,
+                vpcSubnets: vpc.subnetSelection,
+                securityGroups: securityGroups,
+                layers: lambdaLayers,
+                environment: environment,
+            }),
+            outputPath: OUTPUT_PATH,
+        });
+
+        const pollModelReadyChoice = new Choice(this, 'PollModelReadyChoice');
+
+        const waitBeforePollingModelReady = new Wait(this, 'WaitBeforePollingModelReady', {
+            time: POLLING_TIMEOUT,
+        });
+
         const createSchedule = new LambdaInvoke(this, 'CreateSchedule', {
             lambdaFunction: new Function(this, 'CreateScheduleFunc', {
                 runtime: getPythonRuntime(),
@@ -299,10 +322,17 @@ export class CreateModelStateMachine extends Construct {
         });
         pollCreateStackChoice
             .when(Condition.booleanEquals('$.continue_polling_stack', true), waitBeforePollingCreateStack)
-            .otherwise(createSchedule);
+            .otherwise(pollModelReady);
         waitBeforePollingCreateStack.next(pollCreateStack);
 
-        // Create schedule after stack is created
+        // Poll for model instances to be healthy before proceeding
+        pollModelReady.next(pollModelReadyChoice);
+        pollModelReadyChoice
+            .when(Condition.booleanEquals('$.continue_polling_capacity', true), waitBeforePollingModelReady)
+            .otherwise(createSchedule);
+        waitBeforePollingModelReady.next(pollModelReady);
+
+        // Create schedule after model is ready
         createSchedule.next(addModelToLitellm);
 
         // Check for guardrails and add them if present

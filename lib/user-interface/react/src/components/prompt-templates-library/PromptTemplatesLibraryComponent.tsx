@@ -61,6 +61,7 @@ export function PromptTemplatesLibraryComponent () {
                     selectedItems={collectionProps.selectedItems || []}
                     setSelectedItems={actions.setSelectedItems}
                     showPublic={args.showPublic}
+                    isFetching={isFetching}
                 />}>
                     Prompt Templates
                 </Header>

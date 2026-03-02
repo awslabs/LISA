@@ -21,7 +21,8 @@
         "documentSummarization": true,
         "showRagLibrary": true,
         "showPromptTemplateLibrary": true,
-        "mcpConnections": true
+        "mcpConnections": true,
+        "showMcpWorkbench": true
       }
     },
     "changedBy": "System",

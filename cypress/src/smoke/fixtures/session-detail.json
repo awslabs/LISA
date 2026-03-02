@@ -1,0 +1,100 @@
+{
+  "sessionId": "f56fc284-629c-4ba7-ab3d-56f4a21c13ee",
+  "userId": "testuser",
+  "name": "Technical Discussion",
+  "startTime": "2026-01-02T08:30:00.000000+00:00",
+  "lastUpdated": "2026-01-02T09:15:00.000000+00:00",
+  "createTime": "2026-01-02T08:30:00.000000+00:00",
+  "isEncrypted": false,
+  "configuration": {
+    "sessionConfiguration": {
+      "ragTopK": 3,
+      "streaming": true,
+      "imageGenerationArgs": {
+        "size": "1024x1024",
+        "numberOfImages": 1,
+        "quality": "standard"
+      },
+      "chatHistoryBufferSize": 7,
+      "max_tokens": null,
+      "markdownDisplay": true,
+      "showMetadata": false,
+      "modelArgs": {
+        "top_p": 0.01,
+        "frequency_penalty": null,
+        "seed": null,
+        "stop": [],
+        "presence_penalty": null,
+        "temperature": null,
+        "n": null
+      }
+    },
+    "ragConfig": {
+      "repositoryId": "repo-001",
+      "collection": {
+        "collectionId": "550e8400-e29b-41d4-a716-446655440001",
+        "name": "API Documentation Collection"
+      },
+      "embeddingModel": {
+        "modelId": "text-embedding-ada-002"
+      }
+    },
+    "promptConfiguration": {
+      "promptTemplate": "You are a helpful assistant."
+    },
+    "selectedModel": {
+      "modelId": "mistral-vllm",
+      "modelName": "mistralai/Mistral-7B-Instruct-v0.2",
+      "modelType": "textgen",
+      "status": "InService",
+      "streaming": true,
+      "features": [
+        {
+          "name": "summarization",
+          "overview": ""
+        }
+      ],
+      "containerConfig": null,
+      "inferenceContainer": null,
+      "instanceType": null,
+      "autoScalingConfig": null,
+      "loadBalancerConfig": null,
+      "modelUrl": "",
+      "allowedGroups": null,
+      "guardrailsConfig": null,
+      "modelDescription": ""
+    }
+  },
+  "history": [
+    {
+      "type": "system",
+      "content": "You are a helpful assistant.",
+      "metadata": {},
+      "toolCalls": [],
+      "guardrailTriggered": false
+    },
+    {
+      "type": "human",
+      "content": "What is the difference between REST and GraphQL?",
+      "metadata": {},
+      "toolCalls": [],
+      "guardrailTriggered": false
+    },
+    {
+      "type": "ai",
+      "content": "REST and GraphQL are both API architectures, but they differ in several key ways. REST uses multiple endpoints for different resources, while GraphQL uses a single endpoint with flexible queries. GraphQL allows clients to request exactly the data they need, reducing over-fetching and under-fetching issues common in REST APIs.",
+      "metadata": {
+        "modelName": "mistral-vllm",
+        "modelKwargs": {
+          "max_tokens": null,
+          "modelKwargs": {
+            "top_p": 0.01,
+            "temperature": null
+          }
+        }
+      },
+      "toolCalls": [],
+      "guardrailTriggered": false
+    }
+  ]
+}

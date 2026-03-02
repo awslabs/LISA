@@ -63,29 +63,28 @@ def mock_api_wrapper(func):
                 "body": json.dumps(result, default=str),
                 "headers": {"Access-Control-Allow-Origin": "*", "Content-Type": "application/json"},
             }
-        except ValueError as e:
-            error_msg = str(e)
-            # For tests that need to assert specific errors with pytest.raises, re-raise
-            if "test" in event.get("raise_errors", ""):
-                raise
-
-            # Handle specific error patterns with appropriate status codes
-            status_code = 400
-            if "not found" in error_msg.lower():
-                status_code = 404
-            elif "Not authorized" in error_msg:
-                status_code = 403
+        except Exception as e:
+            # Handle HTTPException and its subclasses (NotFoundException, ForbiddenException, etc.)
+            if hasattr(e, "http_status_code"):
+                status_code = e.http_status_code
+                error_message = getattr(e, "message", str(e))
+            elif isinstance(e, ValueError):
+                error_msg = str(e)
+                # Handle specific error patterns with appropriate status codes
+                status_code = 400
+                if "not found" in error_msg.lower():
+                    status_code = 404
+                elif "Not authorized" in error_msg:
+                    status_code = 403
+                error_message = error_msg
+            else:
+                # For other errors, return a general 400 response
+                status_code = 400
+                error_message = f"Bad Request: {str(e)}"
 
             return {
                 "statusCode": status_code,
-                "body": json.dumps({"error": error_msg}, default=str),
-                "headers": {"Access-Control-Allow-Origin": "*", "Content-Type": "application/json"},
-            }
-        except Exception as e:
-            # For other errors, return a general 400 response
-            return {
-                "statusCode": 400,
-                "body": json.dumps({"error": f"Bad Request: {str(e)}"}, default=str),
+                "body": json.dumps({"error": error_message}, default=str),
                 "headers": {"Access-Control-Allow-Origin": "*", "Content-Type": "application/json"},
             }
 
@@ -121,7 +120,7 @@ patch("utilities.common_functions.retry_config", retry_config).start()
 patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()  # Patch the API wrapper
 
 # Now import the lambda functions
-from prompt_templates.lambda_functions import _get_prompt_templates, create, delete, get, list, update
+from prompt_templates.lambda_functions import _get_prompt_templates, create, delete, get, list_prompt, update
 
 
 @pytest.fixture
@@ -338,7 +337,7 @@ def test_list_prompt_templates(prompt_templates_table, lambda_context, mock_is_a
     mock_common.get_username.return_value = "different-user"
     mock_common.get_groups.return_value = ["different-group"]
 
-    response = list(list_event, lambda_context)
+    response = list_prompt(list_event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
     assert len(body["Items"]) == 1
@@ -378,7 +377,7 @@ def test_list_prompt_templates_admin(prompt_templates_table, lambda_context, moc
     # Set admin to True for this test to increase coverage
     mock_is_admin.return_value = True
 
-    response = list(list_event, lambda_context)
+    response = list_prompt(list_event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
     assert len(body["Items"]) == 1
@@ -413,7 +412,7 @@ def test_list_prompt_templates_for_user(prompt_templates_table, lambda_context):
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
     }
 
-    response = list(list_event, lambda_context)
+    response = list_prompt(list_event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
     assert len(body["Items"]) == 1

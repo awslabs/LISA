@@ -429,7 +429,6 @@ def create_default_collection(event: dict, context: dict) -> dict[str, Any]:
         repository = vs_repo.find_repository_by_id(repository_id)
         service = RepositoryServiceFactory.create_service(repository)
 
-
         if not service.should_create_default_collection():
             return {"skipped": True, "reason": "repository type does not support default collections"}
 

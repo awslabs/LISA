@@ -1147,7 +1147,6 @@ class PipelineConfig(BaseModel):
         return v.strip()
 
 
-
 class CollectionMetadata(BaseModel):
     """Defines metadata for a collection."""
 

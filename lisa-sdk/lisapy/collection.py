@@ -197,7 +197,7 @@ class CollectionMixin(BaseMixin):
         if status_filter:
             params["statusFilter"] = status_filter
 
-        response = self._session.get(f"{self.url}/repository/{repository_id}/collections", params=params)
+        response = self._session.get(f"{self.url}/repository/{repository_id}/collection", params=params)
         if response.status_code == 200:
             return response.json()  # type: ignore[no-any-return]
         else:

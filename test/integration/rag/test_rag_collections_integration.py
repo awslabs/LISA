@@ -573,24 +573,9 @@ class TestPipelineRagCollectionIntegration(RagIntegrationFixtures):
         Yields the info dict needed by test_01 and test_02.
         Cleans up the collection on teardown.
         """
-        import requests as req
-
-        api_url = os.getenv("LISA_API_URL")
-        verify_ssl = os.getenv("LISA_VERIFY_SSL", "true").lower() == "true"
-        auth_headers = {
-            "Api-Key": lisa_client._session.headers.get("Api-Key", ""),
-            "Authorization": lisa_client._session.headers.get("Authorization", ""),
-        }
-
         # Discover pipeline S3 bucket from the existing repository
-        repo_resp = req.get(
-            f"{api_url}/repository/{test_repository_id}",
-            headers=auth_headers,
-            verify=verify_ssl,
-            timeout=30,
-        )
-        assert repo_resp.status_code == 200, f"Failed to get repository: {repo_resp.text}"
-        pipelines = repo_resp.json().get("pipelines", [])
+        repo = lisa_client.get_repository(test_repository_id)
+        pipelines = repo.get("pipelines", [])
         assert pipelines, f"Repository {test_repository_id} has no pipelines"
         s3_bucket = pipelines[0]["s3Bucket"]
         s3_prefix = pipelines[0].get("s3Prefix", "")
@@ -720,48 +705,23 @@ class TestDefaultCollectionPath(RagIntegrationFixtures):
         Calls list_collections and returns the one marked default, or falls back to
         the repository's embeddingModelId if no default collection exists yet.
         """
-        import requests as req
-
-        api_url = os.getenv("LISA_API_URL")
-        verify_ssl = os.getenv("LISA_VERIFY_SSL", "true").lower() == "true"
-        auth_headers = {
-            "Api-Key": lisa_client._session.headers.get("Api-Key", ""),
-            "Authorization": lisa_client._session.headers.get("Authorization", ""),
-        }
-
-        resp = req.get(
-            f"{api_url}/repository/{test_repository_id}/collection",
-            headers=auth_headers,
-            verify=verify_ssl,
-            timeout=30,
-        )
-        assert resp.status_code == 200, f"Failed to list collections: {resp.text}"
-        collections = resp.json().get("collections", [])
+        collections_resp = lisa_client.list_collections(test_repository_id)
+        collections = collections_resp.get("collections", [])
 
         default = next((c for c in collections if c.get("default")), None)
         if default:
             collection_id = default["collectionId"]
             # Verify the collection is actually persisted (not just a virtual default)
-            verify = req.get(
-                f"{api_url}/repository/{test_repository_id}/collection/{collection_id}",
-                headers=auth_headers,
-                verify=verify_ssl,
-                timeout=30,
-            )
-            if verify.status_code == 200:
+            try:
+                lisa_client.get_collection(test_repository_id, collection_id)
                 logger.info(f"Found default collection: {collection_id}")
                 return collection_id
-            logger.info(f"Default collection {collection_id} is virtual (not in DDB), falling back to embeddingModelId")
+            except Exception:
+                logger.info(f"Default collection {collection_id} is virtual (not in DDB), falling back to embeddingModelId")
 
         # Fallback: use embeddingModelId (legacy / pre-state-machine repos)
-        repo_resp = req.get(
-            f"{api_url}/repository/{test_repository_id}",
-            headers=auth_headers,
-            verify=verify_ssl,
-            timeout=30,
-        )
-        assert repo_resp.status_code == 200
-        embedding_model_id = repo_resp.json().get("embeddingModelId")
+        repo = lisa_client.get_repository(test_repository_id)
+        embedding_model_id = repo.get("embeddingModelId")
         assert embedding_model_id, "Repository has no embeddingModelId and no default collection"
         logger.info(f"No default collection found, using embeddingModelId: {embedding_model_id}")
         return embedding_model_id

@@ -13,11 +13,11 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 */
-import { CfnOutput, Duration, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
+import { CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
-import { ISecurityGroup, IVpc, SubnetSelection } from 'aws-cdk-lib/aws-ec2';
-import { Code, Function, IFunction, ILayerVersion, LayerVersion } from 'aws-cdk-lib/aws-lambda';
-import { Bucket, HttpMethods } from 'aws-cdk-lib/aws-s3';
+import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
+import { ILayerVersion, LayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { BlockPublicAccess, Bucket, BucketEncryption, HttpMethods } from 'aws-cdk-lib/aws-s3';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { AttributeType, BillingMode, StreamViewType, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -28,12 +28,12 @@ import { ARCHITECTURE } from '../core';
 import { Layer } from '../core/layers';
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
-import { APP_MANAGEMENT_KEY, BaseProps, Config, RDSConfig } from '../schema';
+import { APP_MANAGEMENT_KEY, BaseProps, Config } from '../schema';
 import { SecurityGroupEnum } from '../core/iam/SecurityGroups';
 import { SecurityGroupFactory } from '../networking/vpc/security-group-factory';
 import { Roles } from '../core/iam/roles';
 import { VectorStoreCreatorStack as VectorStoreCreator } from './vector-store/vector-store-creator';
-import { AnyPrincipal, CfnServiceLinkedRole, Effect, IRole, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { AnyPrincipal, CfnServiceLinkedRole, Effect, IRole, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
 import { IAMClient, ListRolesCommand } from '@aws-sdk/client-iam';
 import { RagRepositoryConfig, RagRepositoryType } from '../schema';
 import { Domain, EngineVersion, IDomain } from 'aws-cdk-lib/aws-opensearchservice';
@@ -41,13 +41,10 @@ import { ISecret, Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
 import { LegacyIngestPipelineStateMachine } from './state_machine/legacy-ingest-pipeline';
 import * as customResources from 'aws-cdk-lib/custom-resources';
-import DynamoDB from 'aws-sdk/clients/dynamodb';
+import { marshall } from '@aws-sdk/util-dynamodb';
 import * as readlineSync from 'readline-sync';
-import { LAMBDA_PATH, RAG_LAYER_PATH } from '../util';
+import { RAG_LAYER_PATH } from '../util';
 import { IngestionStack } from './ingestion/ingestion-stack';
-import * as child_process from 'child_process';
-import * as path from 'path';
-import { getPythonRuntime } from '../api-base/utils';
 import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
 
 export type LisaRagProps = {
@@ -107,7 +104,9 @@ export class LisaRagConstruct extends Construct {
                 },
             ],
             serverAccessLogsBucket: bucketAccessLogsBucket,
-            serverAccessLogsPrefix: 'logs/rag-bucket/'
+            serverAccessLogsPrefix: 'logs/rag-bucket/',
+            blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+            encryption: BucketEncryption.S3_MANAGED
         });
 
         const ragTableName = createCdkId([config.deploymentName, 'RagDocumentTable']);
@@ -123,6 +122,7 @@ export class LisaRagConstruct extends Construct {
             billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
             encryption: dynamodb.TableEncryption.AWS_MANAGED,
             removalPolicy: config.removalPolicy,
+            deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
         });
         docMetaTable.addGlobalSecondaryIndex({
             indexName: 'document_index',
@@ -150,6 +150,7 @@ export class LisaRagConstruct extends Construct {
             billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
             encryption: dynamodb.TableEncryption.AWS_MANAGED,
             removalPolicy: config.removalPolicy,
+            deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
         });
 
         // Create Collections table
@@ -166,6 +167,7 @@ export class LisaRagConstruct extends Construct {
             billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
             encryption: dynamodb.TableEncryption.AWS_MANAGED,
             removalPolicy: config.removalPolicy,
+            deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
             timeToLiveAttribute: 'ttl',
         });
 
@@ -254,21 +256,8 @@ export class LisaRagConstruct extends Construct {
             StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/layerVersion/common`),
         );
 
-        // Pre-generate the tiktoken cache to ensure it does not attempt to fetch data from the internet at runtime.
-        if (config.restApiConfig.imageConfig === undefined) {
-            const cache_dir = path.join(RAG_LAYER_PATH, 'TIKTOKEN_CACHE');
-            // Skip tiktoken cache generation in test environment
-            if (process.env.NODE_ENV !== 'test') {
-                try {
-                    child_process.execSync(`python3 scripts/cache-tiktoken-for-offline.py ${cache_dir}`, { stdio: 'inherit' });
-                } catch (error) {
-                    console.warn('Failed to generate tiktoken cache:', error);
-                    // Continue execution even if cache generation fails
-                }
-            }
-        }
-
         // Build RAG Lambda layer
+        // Note: tiktoken and document processing deps moved to container-based batch ingestion
         const ragLambdaLayer = new Layer(scope, 'RagLayer', {
             config: config,
             path: RAG_LAYER_PATH,
@@ -276,9 +265,6 @@ export class LisaRagConstruct extends Construct {
             architecture: ARCHITECTURE,
             autoUpgrade: true,
             assetPath: config.lambdaLayerAssets?.ragLayerPath,
-            afterBundle: (inputDir: string, outputDir: string) => [
-                `cp -r ${inputDir}/TIKTOKEN_CACHE/* ${outputDir}/TIKTOKEN_CACHE/`
-            ],
         });
 
         new StringParameter(scope, createCdkId([config.deploymentName, config.deploymentStage, 'RagLayer']), {
@@ -287,20 +273,6 @@ export class LisaRagConstruct extends Construct {
         });
 
         const layers = [commonLambdaLayer, ragLambdaLayer.layer];
-
-        // Pre-generate the tiktoken cache to ensure it does not attempt to fetch data from the internet at runtime.
-        if (config.restApiConfig.imageConfig === undefined) {
-            const cache_dir = path.join(RAG_LAYER_PATH, 'TIKTOKEN_CACHE');
-            // Skip tiktoken cache generation in test environment
-            if (process.env.NODE_ENV !== 'test') {
-                try {
-                    child_process.execSync(`python3 scripts/cache-tiktoken-for-offline.py ${cache_dir}`, { stdio: 'inherit' });
-                } catch (error) {
-                    console.warn('Failed to generate tiktoken cache:', error);
-                    // Continue execution even if cache generation fails
-                }
-            }
-        }
 
         // create a security group for opensearch
         const openSearchSg = SecurityGroupFactory.createSecurityGroup(
@@ -351,8 +323,8 @@ export class LisaRagConstruct extends Construct {
                 type: AttributeType.STRING
             },
             removalPolicy: config.removalPolicy,
+            deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
             billingMode: BillingMode.PAY_PER_REQUEST,
-            pointInTimeRecovery: true,
             timeToLiveAttribute: 'ttl',
             stream: StreamViewType.NEW_AND_OLD_IMAGES,
             encryption: TableEncryption.AWS_MANAGED,
@@ -363,14 +335,14 @@ export class LisaRagConstruct extends Construct {
             value: ragRepositoryConfigTable.tableArn
         });
 
-        // Create SSM parameter for vector store table name so other stacks can optionally reference it
+        // Create SSM parameter for vector store table name so other stacks can optionally reference it.
         new StringParameter(scope, createCdkId(['RagVectorStoreTableName', 'Parameter']), {
             parameterName: `${config.deploymentPrefix}/ragVectorStoreTableName`,
             stringValue: ragRepositoryConfigTable.tableName,
             description: 'RAG Vector Store (Repository Config) DynamoDB table name',
         });
 
-        // Create SSM parameter for collections table name so other stacks can optionally reference it
+        // Create SSM parameter for collections table name so other stacks can optionally reference it.
         new StringParameter(scope, createCdkId(['RagCollectionsTableName', 'Parameter']), {
             parameterName: `${config.deploymentPrefix}/ragCollectionsTableName`,
             stringValue: collectionsTable.tableName,
@@ -508,7 +480,7 @@ export class LisaRagConstruct extends Construct {
                                 principals: [new AnyPrincipal()],
                             }),
                         ],
-                        removalPolicy: RemovalPolicy.DESTROY,
+                        removalPolicy: config.removalPolicy,
                         securityGroups: [securityGroups.opensearch],
                     });
                 }
@@ -537,42 +509,47 @@ export class LisaRagConstruct extends Construct {
                 openSearchEndpointPs.node.addDependency(openSearchDomain);
                 openSearchEndpointPs.grantRead(lambdaRole);
             } else if (ragConfig.type === RagRepositoryType.PGVECTOR && ragConfig.rdsConfig) {
-                let rdsPasswordSecret: ISecret;
+                // Determine authentication method - default to IAM auth (iamRdsAuth = false)
+                const useIamAuth = config.iamRdsAuth ?? false;
+
+                let rdsSecret: ISecret;
                 let rdsConnectionInfoPs: StringParameter;
-                // if dbHost and passwordSecretId are defined, then connect to DB with existing params
-                if (!!ragConfig.rdsConfig.dbHost && !!ragConfig.rdsConfig.passwordSecretId) {
+                let pgvector_db: DatabaseInstance | undefined;
+
+                // if dbHost and passwordSecretId are defined, connect to existing DB
+                if (ragConfig.rdsConfig.dbHost && ragConfig.rdsConfig.passwordSecretId) {
                     rdsConnectionInfoPs = new StringParameter(this.scope, createCdkId([connectionParamName, ragConfig.repositoryId, 'StringParameter']), {
                         parameterName: `${config.deploymentPrefix}/${connectionParamName}/${ragConfig.repositoryId}`,
                         stringValue: JSON.stringify({
-                            ...(config.iamRdsAuth ? {} : {
-                                passwordSecretId: ragConfig.rdsConfig?.passwordSecretId
-                            }),
                             username: ragConfig.rdsConfig?.username,
                             dbHost: ragConfig.rdsConfig?.dbHost,
                             dbName: ragConfig.rdsConfig?.dbName,
                             dbPort: ragConfig.rdsConfig?.dbPort,
-                            type: RagRepositoryType.PGVECTOR
+                            type: RagRepositoryType.PGVECTOR,
+                            // Include passwordSecretId only when using password auth
+                            ...(!useIamAuth ? { passwordSecretId: ragConfig.rdsConfig?.passwordSecretId } : {})
                         }),
                         description: 'Connection info for LISA Serve PGVector database',
                     });
-                    rdsPasswordSecret = Secret.fromSecretNameV2(
+                    rdsSecret = Secret.fromSecretNameV2(
                         this.scope,
-                        createCdkId([config.deploymentName, ragConfig.repositoryId, 'RagRDSPwdSecret']),
+                        createCdkId([config.deploymentName, ragConfig.repositoryId, 'RagRDSSecret']),
                         ragConfig.rdsConfig.passwordSecretId,
                     );
                 } else {
                     const username = ragConfig.rdsConfig.username;
                     const dbCreds = Credentials.fromGeneratedSecret(username);
-                    const pgvector_db = new DatabaseInstance(this.scope, createCdkId([ragConfig.repositoryId, 'PGVectorDB']), {
+                    pgvector_db = new DatabaseInstance(this.scope, createCdkId([ragConfig.repositoryId, 'PGVectorDB']), {
                         engine: DatabaseInstanceEngine.POSTGRES,
                         vpc: vpc.vpc,
                         subnetGroup: vpc.subnetGroup,
                         credentials: dbCreds,
-                        iamAuthentication: true,
+                        iamAuthentication: useIamAuth, // Enable IAM auth when iamRdsAuth is false
                         securityGroups: [securityGroups.pgvector],
-                        removalPolicy: RemovalPolicy.DESTROY,
+                        removalPolicy: config.removalPolicy,
+                        deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
                     });
-                    rdsPasswordSecret = pgvector_db.secret!;
+                    rdsSecret = pgvector_db.secret!;
                     rdsConnectionInfoPs = new StringParameter(this.scope, createCdkId([connectionParamName, ragConfig.repositoryId, 'StringParameter']), {
                         parameterName: `${config.deploymentPrefix}/${connectionParamName}/${ragConfig.repositoryId}`,
                         stringValue: JSON.stringify({
@@ -581,53 +558,98 @@ export class LisaRagConstruct extends Construct {
                             dbPort: ragConfig.rdsConfig.dbPort,
                             type: RagRepositoryType.PGVECTOR,
                             username: username,
-                            ...(config.iamRdsAuth ? {} : { passwordSecretId: rdsPasswordSecret.secretName }),
+                            // Include passwordSecretId only when using password auth
+                            ...(!useIamAuth ? { passwordSecretId: rdsSecret.secretName } : {})
                         }),
                         description: 'Connection info for LISA Serve PGVector database',
                     });
 
-                    if (config.iamRdsAuth) {
-                        // grant the role permissions to connect as the IAM role itself
-                        pgvector_db.grantConnect(lambdaRole, lambdaRole.roleName);
+                    if (!useIamAuth) {
+                        // Password auth: secret read access granted below (grantConnect requires IAM auth)
                     } else {
-                        // grant the role permissions to connect as the postgres user
-                        pgvector_db.grantConnect(lambdaRole);
+                        // IAM auth: manually grant rds-db:connect permission
+                        // Note: We do NOT use pgvector_db.grantConnect() due to CDK bug #11851
+                        // The grantConnect method generates incorrect ARN format (uses rds: instead of rds-db:)
+                        // Per AWS docs: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html
+                        // The correct format is: arn:aws:rds-db:region:account-id:dbuser:DbiResourceId/db-user-name
+                        lambdaRole.addToPrincipalPolicy(new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: ['rds-db:connect'],
+                            resources: [
+                                // Use wildcard for DbiResourceId since it's not available in CloudFormation
+                                // Format: arn:aws:rds-db:region:account:dbuser:*/username
+                                `arn:${config.partition}:rds-db:${config.region}:${config.accountNumber}:dbuser:*/${lambdaRole.roleName}`
+                            ]
+                        }));
                     }
+
+                    // Update ragConfig with the endpoint address for use in AwsCustomResource
+                    ragConfig.rdsConfig.dbHost = pgvector_db.dbInstanceEndpointAddress;
                 }
 
-                if (config.iamRdsAuth) {
-                    // Create the lambda for generating DB users for IAM auth
-                    const createDbUserLambda = this.getIAMAuthLambda(config, ragConfig.repositoryId, ragConfig.rdsConfig!, rdsPasswordSecret, lambdaRole.roleName, vpc.vpc, [securityGroups.pgvector], vpc.subnetSelection);
-
-                    const customResourceRole = new Role(this.scope, createCdkId(['CustomResourceRole', ragConfig.repositoryId]), {
-                        assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
-                    });
-                    createDbUserLambda.grantInvoke(customResourceRole);
-
-                    // run updateInstanceKmsConditionsLambda every deploy
-                    new AwsCustomResource(this.scope, createCdkId([ragConfig.repositoryId, 'CreateDbUserCustomResource']), {
-                        onCreate: {
-                            service: 'Lambda',
-                            action: 'invoke',
-                            physicalResourceId: PhysicalResourceId.of(createCdkId([ragConfig.repositoryId, 'CreateDbUserCustomResource'])),
-                            parameters: {
-                                FunctionName: createDbUserLambda.functionName,
-                                Payload: '{}'
-                            },
-                        },
-                        onUpdate: {
-                            service: 'Lambda',
-                            action: 'invoke',
-                            physicalResourceId: PhysicalResourceId.of(createCdkId([ragConfig.repositoryId, 'CreateDbUserCustomResource'])),
-                            parameters: {
-                                FunctionName: createDbUserLambda.functionName,
-                                Payload: '{}'
-                            },
-                        },
-                        role: customResourceRole
-                    });
+                if (!useIamAuth) {
+                    // Password auth: grant secret read access
+                    rdsSecret.grantRead(lambdaRole);
                 } else {
-                    rdsPasswordSecret.grantRead(lambdaRole);
+                    // Use the shared IAM auth setup Lambda from API Base stack
+                    const iamAuthSetupFnArn = StringParameter.valueForStringParameter(
+                        this.scope,
+                        `${config.deploymentPrefix}/iamAuthSetupFnArn`
+                    );
+
+                    // Get the IAM auth setup Lambda role ARN from SSM to grant it permissions
+                    const iamAuthSetupRoleArn = StringParameter.valueForStringParameter(
+                        this.scope,
+                        `${config.deploymentPrefix}/iamAuthSetupRoleArn`
+                    );
+
+                    // Import the IAM auth setup role to grant it secret permissions
+                    const iamAuthSetupRole = Role.fromRoleArn(
+                        this.scope,
+                        createCdkId([ragConfig.repositoryId, 'IamAuthSetupRoleRef']),
+                        iamAuthSetupRoleArn
+                    );
+
+                    // Grant the IAM auth setup Lambda role permission to read the bootstrap secret
+                    rdsSecret.grantRead(iamAuthSetupRole);
+
+                    // Run the shared IAM auth setup Lambda on create and update
+                    // Pass parameters via payload since the Lambda is shared
+                    // Use Stack.of(this.scope).toJsonString() to properly resolve CDK tokens in the payload
+                    const lambdaInvokeParams = {
+                        service: 'Lambda',
+                        action: 'invoke',
+                        physicalResourceId: PhysicalResourceId.of(createCdkId([ragConfig.repositoryId, 'CreateDbUserCustomResource'])),
+                        parameters: {
+                            FunctionName: iamAuthSetupFnArn,
+                            Payload: Stack.of(this.scope).toJsonString({
+                                secretArn: rdsSecret.secretArn,
+                                dbHost: ragConfig.rdsConfig!.dbHost,
+                                dbPort: ragConfig.rdsConfig!.dbPort,
+                                dbName: ragConfig.rdsConfig!.dbName,
+                                dbUser: ragConfig.rdsConfig!.username,
+                                iamName: lambdaRole.roleName,
+                            })
+                        },
+                    };
+
+                    const createDbUserResource = new AwsCustomResource(this.scope, createCdkId([ragConfig.repositoryId, 'CreateDbUserCustomResource']), {
+                        onCreate: lambdaInvokeParams,
+                        onUpdate: lambdaInvokeParams,  // Also run on updates to ensure IAM user is created
+                        policy: customResources.AwsCustomResourcePolicy.fromStatements([
+                            new PolicyStatement({
+                                effect: Effect.ALLOW,
+                                actions: ['lambda:InvokeFunction'],
+                                resources: [iamAuthSetupFnArn],
+                            })
+                        ]),
+                    });
+
+                    // Ensure the RDS instance is fully available before running IAM auth setup
+                    // (only when we created a new RDS instance)
+                    if (pgvector_db) {
+                        createDbUserResource.node.addDependency(pgvector_db);
+                    }
                 }
 
                 rdsConnectionInfoPs.grantRead(lambdaRole);
@@ -639,8 +661,8 @@ export class LisaRagConstruct extends Construct {
 
             const createOrUpdateParameters = {
                 TableName: ragRepositoryConfigTable.tableName,
-                Item: this.toDynamoDBItem({
-                    repositoryId: ragConfig.repositoryId, // Partition key value
+                Item: marshall({
+                    repositoryId: ragConfig.repositoryId,
                     status: 'CREATE_COMPLETE',
                     config: ragConfig,
                     legacy: true
@@ -665,7 +687,7 @@ export class LisaRagConstruct extends Construct {
                     action: 'deleteItem',
                     parameters: {
                         TableName: ragRepositoryConfigTable.tableName,
-                        Key: this.toDynamoDBItem({ repositoryId: ragConfig.repositoryId }),
+                        Key: marshall({ repositoryId: ragConfig.repositoryId }),
                     },
                 },
                 policy: customResources.AwsCustomResourcePolicy.fromSdkCalls({
@@ -719,79 +741,6 @@ export class LisaRagConstruct extends Construct {
             repositoriesParameter.grantRead(lambdaRole);
             repositoriesParameter.grantWrite(lambdaRole);
         }
-    }
-
-    getIAMAuthLambda (config: Config, repositoryId: string, rdsConfig: NonNullable<RDSConfig>, secret: ISecret, user: string, vpc: IVpc, securityGroups: ISecurityGroup[], vpcSubnets?: SubnetSelection): IFunction {
-        // Create the IAM role for updating the database to allow IAM authentication
-        const iamAuthLambdaRole = new Role(this.scope, createCdkId([repositoryId, 'IAMAuthLambdaRole']), {
-            assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
-            inlinePolicies: {
-                'EC2NetworkInterfaces': new PolicyDocument({
-                    statements: [
-                        new PolicyStatement({
-                            effect: Effect.ALLOW,
-                            actions: ['ec2:CreateNetworkInterface', 'ec2:DescribeNetworkInterfaces', 'ec2:DeleteNetworkInterface'],
-                            resources: ['*'],
-                        }),
-                    ],
-                }),
-            },
-        });
-
-        secret.grantRead(iamAuthLambdaRole);
-
-        const commonLayer = this.getLambdaLayer(repositoryId, config);
-        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
-
-        return new Function(this.scope, createCdkId([repositoryId, 'CreateDbUserLambda']), {
-            runtime: getPythonRuntime(),
-            handler: 'utilities.db_setup_iam_auth.handler',
-            code: Code.fromAsset(lambdaPath),
-            timeout: Duration.minutes(2),
-            environment: {
-                SECRET_ARN: secret.secretArn, // ARN of the RDS secret
-                DB_HOST: rdsConfig.dbHost!,
-                DB_PORT: String(rdsConfig.dbPort), // Default PostgreSQL port
-                DB_NAME: rdsConfig.dbName, // Database name
-                DB_USER: rdsConfig.username, // Admin user for RDS
-                IAM_NAME: user, // IAM role for Lambda execution
-            },
-            role: iamAuthLambdaRole, // Lambda execution role
-            layers: [commonLayer],
-            vpc,
-            securityGroups,
-            vpcSubnets
-        });
-    }
-
-    getLambdaLayer (repositoryId: string, config: Config): ILayerVersion {
-        return LayerVersion.fromLayerVersionArn(
-            this.scope,
-            createCdkId([repositoryId, 'CommonLayerVersion']),
-            StringParameter.valueForStringParameter(this.scope, `${config.deploymentPrefix}/layerVersion/common`),
-        );
-    }
-
-    toDynamoDBItem (obj: Record<string, any>): DynamoDB.PutItemInputAttributeMap {
-        const dynamoItem: DynamoDB.PutItemInputAttributeMap = {};
-
-        for (const [key, value] of Object.entries(obj)) {
-            if (typeof value === 'string') {
-                dynamoItem[key] = { S: value };
-            } else if (typeof value === 'number') {
-                dynamoItem[key] = { N: value.toString() };
-            } else if (typeof value === 'boolean') {
-                dynamoItem[key] = { BOOL: value };
-            } else if (Array.isArray(value)) {
-                dynamoItem[key] = { L: value.map((item) => this.toDynamoDBItem({ item })['item']) };
-            } else if (typeof value === 'object' && value !== null) {
-                dynamoItem[key] = { M: this.toDynamoDBItem(value) };
-            } else if (value === null) {
-                dynamoItem[key] = { NULL: true };
-            }
-        }
-
-        return dynamoItem;
     }
 
     /**

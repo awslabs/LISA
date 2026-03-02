@@ -71,7 +71,8 @@ def test_get_all_dynamodb_models_no_prefix(monkeypatch):
     assert result == []
 
 
-def test_get_database_connection_success(setup_env):
+def test_get_database_connection_password_auth(setup_env):
+    """Test database connection using password authentication."""
     with patch("boto3.client") as mock_client:
         mock_ssm = MagicMock()
         mock_secrets = MagicMock()
@@ -104,6 +105,42 @@ def test_get_database_connection_success(setup_env):
 
             conn = get_database_connection()
             assert conn is not None
+
+
+def test_get_database_connection_iam_auth(setup_env):
+    """Test database connection using IAM authentication."""
+    with patch("boto3.client") as mock_client:
+        mock_ssm = MagicMock()
+
+        def client_factory(service, **kwargs):
+            return mock_ssm
+
+        mock_client.side_effect = client_factory
+        mock_ssm.get_parameter.return_value = {
+            "Parameter": {
+                "Value": json.dumps(
+                    {
+                        "dbHost": "localhost",
+                        "dbPort": 5432,
+                        "dbName": "test",
+                    }
+                )
+            }
+        }
+
+        with patch("psycopg2.connect") as mock_connect:
+            mock_connect.return_value = MagicMock()
+
+            with patch("models.model_api_key_cleanup.get_lambda_role_name") as mock_role:
+                mock_role.return_value = "test-role"
+
+                with patch("models.model_api_key_cleanup.generate_auth_token") as mock_token:
+                    mock_token.return_value = "test-token"
+
+                    from models.model_api_key_cleanup import get_database_connection
+
+                    conn = get_database_connection()
+                    assert conn is not None
 
 
 def test_lambda_handler_missing_env_var(monkeypatch):

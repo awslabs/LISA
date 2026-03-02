@@ -47,6 +47,11 @@ export type ImageGenerationParams = {
     prompt: string;
 };
 
+export type VideoGenerationParams = {
+    prompt: string;
+    model?: string;
+};
+
 /**
  * Stores metadata for messages returned from LISA
  */
@@ -59,6 +64,13 @@ export type LisaChatMessageMetadata = {
     ragDocuments?: string;
     imageGeneration?: boolean;
     imageGenerationParams?: ImageGenerationParams;
+    imageGenerationStatus?: string;
+    videoGeneration?: boolean;
+    videoGenerationParams?: VideoGenerationParams;
+    videoId?: string;
+    videoStatus?: string;
+    hasFileContext?: boolean;
+    isImageEdit?: boolean;
 };
 /**
  * Usage information from OpenAI API responses
@@ -81,6 +93,8 @@ export type LisaChatMessageFields = {
     toolCalls?: any[];
     usage?: UsageInfo;
     guardrailTriggered?: boolean;
+    reasoningContent?: string;
+    reasoningSignature?: string;
 } & BaseMessageFields;
 
 /**
@@ -92,6 +106,8 @@ export class LisaChatMessage extends BaseMessage implements LisaChatMessageField
     toolCalls?: any[];
     usage?: UsageInfo;
     guardrailTriggered?: boolean;
+    reasoningContent?: string;
+    reasoningSignature?: string;
 
     constructor (fields: LisaChatMessageFields) {
         super(fields);
@@ -100,6 +116,8 @@ export class LisaChatMessage extends BaseMessage implements LisaChatMessageField
         this.toolCalls = fields.toolCalls ?? [];
         this.usage = fields.usage;
         this.guardrailTriggered = fields.guardrailTriggered ?? false;
+        this.reasoningContent = fields.reasoningContent;
+        this.reasoningSignature = fields.reasoningSignature;
     }
 
     static lc_name () {
@@ -209,17 +227,26 @@ export type PutSessionRequestBody = {
 };
 
 /**
- * File types that can be uploaded for context or for RAG
+ * File types that can be uploaded as context in RAG or non-RAG use cases
+ * Ref: https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/MIME_types/Common_types
+ *
+ * Note: Only standard MIME types are included. Non-standard file types (Python, Java, Shell)
+ * are handled via file extension matching in AllowedExtensions fallback (FileUploadModals.tsx).
  */
 export enum FileTypes {
     TEXT = 'text/plain',
     DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     PDF = 'application/pdf',
     JPEG = 'image/jpeg',
-    JPG = 'image/jpg',
     PNG = 'image/png',
     GIF = 'image/gif',
-    WEBP = 'image/webp'
+    WEBP = 'image/webp',
+    JAVASCRIPT = 'text/javascript',
+    HTML = 'text/html',
+    MARKDOWN = 'text/markdown',
+    JSON = 'application/json',
+    CSS = 'text/css',
+    XML = 'text/xml'
 }
 
 /**
@@ -248,6 +275,7 @@ export enum ModelFeatures {
     SUMMARIZATION = 'summarization',
     IMAGE_INPUT = 'imageInput',
     TOOL_CALLS = 'toolCalls',
+    REASONING = 'reasoning',
 }
 
 /**

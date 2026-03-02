@@ -28,7 +28,7 @@ import { getJsonDifference, normalizeError } from '../../../shared/util/validati
 import { ModifyMethod } from '../../../shared/validation/modify-method';
 import { PipelineConfigForm } from './PipelineConfigForm';
 import _ from 'lodash';
-import { RagRepositoryConfig, RagRepositoryConfigSchema, RagRepositoryType, ChunkingStrategyType } from '#root/lib/schema';
+import { RagRepositoryConfig, RagRepositoryConfigSchema, RagRepositoryType, ChunkingStrategyType, BaseRagRepositoryConfigSchema } from '#root/lib/schema';
 
 export type CreateRepositoryModalProps = {
     visible: boolean;
@@ -69,7 +69,7 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
         },
     ] = useUpdateRagRepositoryMutation();
 
-    const initialForm: RagRepositoryConfig = RagRepositoryConfigSchema.partial().parse({
+    const initialForm: RagRepositoryConfig = BaseRagRepositoryConfigSchema.partial().parse({
         metadata: { tags: [] }
     }) as RagRepositoryConfig;
     const dispatch = useAppDispatch();
@@ -269,20 +269,24 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
     }
 
     return (
-        <Modal size={'large'} onDismiss={() => {
-            dispatch(
-                setConfirmationModal({
-                    action: 'Discard',
-                    resourceName: 'Model Creation',
-                    onConfirm: () => {
-                        setVisible(false);
-                        setIsEdit(false);
-                        resetState();
-                    },
-                    description: 'Are you sure you want to discard your changes?',
-                }));
-        }} visible={visible} header={`${isEdit ? 'Update' : 'Create'} Repository`}>
+        <Modal
+            data-testid='create-repository-modal'
+            size={'large'}
+            onDismiss={() => {
+                dispatch(
+                    setConfirmationModal({
+                        action: 'Discard',
+                        resourceName: 'Model Creation',
+                        onConfirm: () => {
+                            setVisible(false);
+                            setIsEdit(false);
+                            resetState();
+                        },
+                        description: 'Are you sure you want to discard your changes?',
+                    }));
+            }} visible={visible} header={`${isEdit ? 'Update' : 'Create'} Repository`}>
             <Wizard
+                data-testid='create-repository-wizard'
                 i18nStrings={{
                     stepNumberLabel: (stepNumber) => `Step ${stepNumber}`,
                     collapsedStepsLabel: (stepNumber, stepsCount) => `Step ${stepNumber} of ${stepsCount}`,

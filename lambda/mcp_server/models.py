@@ -14,10 +14,9 @@
 
 import uuid
 from enum import StrEnum
-from typing import Dict, List, Optional, Union
+from typing import Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
-from typing_extensions import Self
 from utilities.time import iso_string
 from utilities.validation import validate_any_fields_defined
 
@@ -49,10 +48,10 @@ class McpServerModel(BaseModel):
     """
 
     # Unique identifier for the mcp server
-    id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()))
+    id: str | None = Field(default_factory=lambda: str(uuid.uuid4()))
 
     # Timestamp of when the mcp server was created
-    created: Optional[str] = Field(default_factory=iso_string)
+    created: str | None = Field(default_factory=iso_string)
 
     # Owner of the MCP user
     owner: str
@@ -64,19 +63,19 @@ class McpServerModel(BaseModel):
     name: str
 
     # Description of the MCP server
-    description: Optional[str] = Field(default_factory=lambda: None)
+    description: str | None = Field(default_factory=lambda: None)
 
     # Custom headers for the MCP client
-    customHeaders: Optional[dict] = Field(default_factory=lambda: None)
+    customHeaders: dict | None = Field(default_factory=lambda: None)
 
     # Custom client properties for the MCP client
-    clientConfig: Optional[dict] = Field(default_factory=lambda: None)
+    clientConfig: dict | None = Field(default_factory=lambda: None)
 
     # Status of the server set by admins
-    status: Optional[McpServerStatus] = Field(default=McpServerStatus.ACTIVE)
+    status: McpServerStatus | None = Field(default=McpServerStatus.ACTIVE)
 
     # Groups of the MCP server
-    groups: Optional[List[str]] = Field(default_factory=lambda: None)
+    groups: list[str] | None = Field(default_factory=lambda: None)
 
 
 class LoadBalancerHealthCheckConfig(BaseModel):
@@ -98,7 +97,7 @@ class LoadBalancerConfig(BaseModel):
 class ContainerHealthCheckConfig(BaseModel):
     """Specifies container health check parameters."""
 
-    command: Union[str, List[str]]
+    command: str | list[str]
     interval: int = Field(gt=0)
     startPeriod: int = Field(ge=0)
     timeout: int = Field(gt=0)
@@ -110,21 +109,21 @@ class AutoScalingConfig(BaseModel):
 
     minCapacity: int
     maxCapacity: int
-    targetValue: Optional[int] = Field(default=None)
-    metricName: Optional[str] = Field(default=None)
-    duration: Optional[int] = Field(default=None)
-    cooldown: Optional[int] = Field(default=None)
+    targetValue: int | None = Field(default=None)
+    metricName: str | None = Field(default=None)
+    duration: int | None = Field(default=None)
+    cooldown: int | None = Field(default=None)
 
 
 class AutoScalingConfigUpdate(BaseModel):
     """Updatable auto-scaling configuration for hosted MCP servers (all fields optional)."""
 
-    minCapacity: Optional[int] = Field(default=None)
-    maxCapacity: Optional[int] = Field(default=None)
-    targetValue: Optional[int] = Field(default=None)
-    metricName: Optional[str] = Field(default=None)
-    duration: Optional[int] = Field(default=None)
-    cooldown: Optional[int] = Field(default=None)
+    minCapacity: int | None = Field(default=None)
+    maxCapacity: int | None = Field(default=None)
+    targetValue: int | None = Field(default=None)
+    metricName: str | None = Field(default=None)
+    duration: int | None = Field(default=None)
+    cooldown: int | None = Field(default=None)
 
 
 class HostedMcpServerModel(BaseModel):
@@ -134,10 +133,10 @@ class HostedMcpServerModel(BaseModel):
     """
 
     # Unique identifier for the mcp server
-    id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()))
+    id: str | None = Field(default_factory=lambda: str(uuid.uuid4()))
 
     # Timestamp of when the mcp server was created
-    created: Optional[str] = Field(default_factory=iso_string)
+    created: str | None = Field(default_factory=iso_string)
 
     # Owner of the MCP server
     owner: str
@@ -146,13 +145,13 @@ class HostedMcpServerModel(BaseModel):
     name: str
 
     # Description of the MCP server
-    description: Optional[str] = Field(default_factory=lambda: None)
+    description: str | None = Field(default_factory=lambda: None)
 
     # Command to start the server
     startCommand: str
 
     # Port number (optional, used for HTTP/SSE servers)
-    port: Optional[int] = Field(default=None)
+    port: int | None = Field(default=None)
 
     # Server type: 'stdio', 'http', or 'sse'
     serverType: str
@@ -160,56 +159,56 @@ class HostedMcpServerModel(BaseModel):
     # Container image (optional)
     # If provided without s3Path: use as pre-built container image
     # If provided with s3Path: use as base image for building from S3 artifacts
-    image: Optional[str] = Field(default=None)
+    image: str | None = Field(default=None)
 
     # S3 path to server artifacts (binaries, Python files, etc.)
     # If provided with image: image is used as base image for building
     # If provided without image: default base image is used
-    s3Path: Optional[str] = Field(default=None)
+    s3Path: str | None = Field(default=None)
 
     # Auto-scaling configuration
     autoScalingConfig: AutoScalingConfig
 
     # Load balancer configuration (optional, will use defaults if not provided)
-    loadBalancerConfig: Optional[LoadBalancerConfig] = Field(default=None)
+    loadBalancerConfig: LoadBalancerConfig | None = Field(default=None)
 
     # Container health check configuration (optional, will use defaults if not provided)
-    containerHealthCheckConfig: Optional[ContainerHealthCheckConfig] = Field(default=None)
+    containerHealthCheckConfig: ContainerHealthCheckConfig | None = Field(default=None)
 
     # Environment variables for the container
-    environment: Optional[Dict[str, str]] = Field(default_factory=lambda: None)
+    environment: dict[str, str] | None = Field(default_factory=lambda: None)
 
     # IAM role ARN for task execution (optional, will be auto-created if not provided)
-    taskExecutionRoleArn: Optional[str] = Field(default=None)
+    taskExecutionRoleArn: str | None = Field(default=None)
 
     # IAM role ARN for running tasks (optional, will be auto-created if not provided)
-    taskRoleArn: Optional[str] = Field(default=None)
+    taskRoleArn: str | None = Field(default=None)
 
     # Fargate CPU units (defaults to 256 which equals 0.25 vCPU)
-    cpu: Optional[int] = Field(default=256)
+    cpu: int | None = Field(default=256)
 
     # Fargate memory limit in MiB (defaults to 512 MiB)
-    memoryLimitMiB: Optional[int] = Field(default=512)
+    memoryLimitMiB: int | None = Field(default=512)
 
     # Groups of the MCP server (for authorization)
-    groups: Optional[List[str]] = Field(default_factory=lambda: None)
+    groups: list[str] | None = Field(default_factory=lambda: None)
 
     # Status of the server
-    status: Optional[HostedMcpServerStatus] = Field(default=HostedMcpServerStatus.CREATING)
+    status: HostedMcpServerStatus | None = Field(default=HostedMcpServerStatus.CREATING)
 
 
 class UpdateHostedMcpServerRequest(BaseModel):
     """Specifies parameters for hosted MCP server update requests."""
 
-    enabled: Optional[bool] = None
-    autoScalingConfig: Optional[AutoScalingConfigUpdate] = None
-    environment: Optional[Dict[str, str]] = None
-    containerHealthCheckConfig: Optional[ContainerHealthCheckConfig] = None
-    loadBalancerConfig: Optional[LoadBalancerConfig] = None
-    cpu: Optional[int] = None
-    memoryLimitMiB: Optional[int] = None
-    description: Optional[str] = None
-    groups: Optional[List[str]] = None
+    enabled: bool | None = None
+    autoScalingConfig: AutoScalingConfigUpdate | None = None
+    environment: dict[str, str] | None = None
+    containerHealthCheckConfig: ContainerHealthCheckConfig | None = None
+    loadBalancerConfig: LoadBalancerConfig | None = None
+    cpu: int | None = None
+    memoryLimitMiB: int | None = None
+    description: str | None = None
+    groups: list[str] | None = None
 
     @model_validator(mode="after")
     def validate_update_request(self) -> Self:
@@ -235,7 +234,7 @@ class UpdateHostedMcpServerRequest(BaseModel):
 
     @field_validator("autoScalingConfig")
     @classmethod
-    def validate_autoscaling_config(cls, config: Optional[AutoScalingConfig]) -> Optional[AutoScalingConfig]:
+    def validate_autoscaling_config(cls, config: AutoScalingConfig | None) -> AutoScalingConfig | None:
         """Validates auto-scaling configuration."""
         if config is not None and not config:
             raise ValueError("The autoScalingConfig must not be null if defined in request payload.")
@@ -244,8 +243,8 @@ class UpdateHostedMcpServerRequest(BaseModel):
     @field_validator("containerHealthCheckConfig")
     @classmethod
     def validate_container_health_check_config(
-        cls, config: Optional[ContainerHealthCheckConfig]
-    ) -> Optional[ContainerHealthCheckConfig]:
+        cls, config: ContainerHealthCheckConfig | None
+    ) -> ContainerHealthCheckConfig | None:
         """Validates container health check configuration."""
         if config is not None and not config:
             raise ValueError("The containerHealthCheckConfig must not be null if defined in request payload.")
@@ -253,7 +252,7 @@ class UpdateHostedMcpServerRequest(BaseModel):
 
     @field_validator("loadBalancerConfig")
     @classmethod
-    def validate_load_balancer_config(cls, config: Optional[LoadBalancerConfig]) -> Optional[LoadBalancerConfig]:
+    def validate_load_balancer_config(cls, config: LoadBalancerConfig | None) -> LoadBalancerConfig | None:
         """Validates load balancer configuration."""
         if config is not None and not config:
             raise ValueError("The loadBalancerConfig must not be null if defined in request payload.")
@@ -261,7 +260,7 @@ class UpdateHostedMcpServerRequest(BaseModel):
 
     @field_validator("cpu")
     @classmethod
-    def validate_cpu(cls, cpu: Optional[int]) -> Optional[int]:
+    def validate_cpu(cls, cpu: int | None) -> int | None:
         """Validates CPU units."""
         if cpu is not None:
             # Fargate CPU must be in valid units: 256, 512, 1024, 2048, 4096
@@ -272,7 +271,7 @@ class UpdateHostedMcpServerRequest(BaseModel):
 
     @field_validator("memoryLimitMiB")
     @classmethod
-    def validate_memory(cls, memory: Optional[int]) -> Optional[int]:
+    def validate_memory(cls, memory: int | None) -> int | None:
         """Validates memory limit."""
         if memory is not None:
             if memory < 512:

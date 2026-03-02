@@ -19,6 +19,7 @@ import { CfnOutput, Duration, RemovalPolicy } from 'aws-cdk-lib';
 import { BlockDeviceVolume, GroupMetrics, Monitoring } from 'aws-cdk-lib/aws-autoscaling';
 import { Metric, Stats } from 'aws-cdk-lib/aws-cloudwatch';
 import { InstanceType, ISecurityGroup, IVpc, SubnetSelection } from 'aws-cdk-lib/aws-ec2';
+import { Alias } from 'aws-cdk-lib/aws-kms';
 import {
     Cluster,
     ContainerDefinition,
@@ -26,12 +27,12 @@ import {
     Ec2Service,
     Ec2ServiceProps,
     Ec2TaskDefinition,
-    EcsOptimizedImage,
     HealthCheck,
     Host,
     LinuxParameters,
     LogDriver,
     MountPoint,
+    NetworkMode,
     Protocol,
     Volume,
 } from 'aws-cdk-lib/aws-ecs';
@@ -94,14 +95,21 @@ export class ECSCluster extends Construct {
             containerInsightsV2: !config.region?.includes('iso') ? ContainerInsights.ENABLED : ContainerInsights.DISABLED,
         });
 
-        // Create auto scaling group
+        // SNS encryption key for ECS lifecycle hooks (AppSec Finding #5)
+        const snsEncryptionKey = Alias.fromAliasName(
+            this,
+            createCdkId([identifier, 'SnsKey']),
+            'alias/aws/sns'
+        );
+
+        // Create auto scaling group with SNS topic encryption for lifecycle hooks
+        // Note: cooldown is not set here because we use target tracking scaling which manages its own cooldown.
         const autoScalingGroup = cluster.addCapacity(createCdkId([identifier, 'ASG']), {
             vpcSubnets: subnetSelection,
             instanceType: new InstanceType(ecsConfig.instanceType),
-            machineImage: EcsOptimizedImage.amazonLinux2(ecsConfig.amiHardwareType),
+            machineImage: CodeFactory.getEcsMachineImage(config.region, ecsConfig.amiHardwareType, ecsConfig.amiId),
             minCapacity: ecsConfig.autoScalingConfig.minCapacity,
             maxCapacity: ecsConfig.autoScalingConfig.maxCapacity,
-            cooldown: Duration.seconds(ecsConfig.autoScalingConfig.cooldown),
             groupMetrics: [GroupMetrics.all()],
             instanceMonitoring: Monitoring.DETAILED,
             newInstancesProtectedFromScaleIn: false,
@@ -114,6 +122,7 @@ export class ECSCluster extends Construct {
                     }),
                 },
             ],
+            topicEncryptionKey: snsEncryptionKey,
         });
 
         new CfnOutput(this, 'autoScalingGroup', {
@@ -139,7 +148,7 @@ export class ECSCluster extends Construct {
                 // EC2 user data to mount ephemeral NVMe drive
                 const MOUNT_PATH = config.nvmeHostMountPath ?? '/nvme';
                 const NVME_PATH = Ec2Metadata.get(ecsConfig.instanceType).nvmePath;
-                /* eslint-disable no-useless-escape */
+
                 const rawUserData = `#!/bin/bash
                     set -e
                     # Check if NVMe is already formatted
@@ -155,12 +164,28 @@ export class ECSCluster extends Construct {
                         echo ${NVME_PATH} ${MOUNT_PATH} xfs defaults,nofail 0 2 >> /etc/fstab
                     fi
 
-                    # Update Docker root location and restart Docker service
+                    # Configure Docker: set data-root on NVMe and ensure nvidia runtime is registered
                     mkdir -p ${MOUNT_PATH}/docker
-                    echo '{\"data-root\": \"${MOUNT_PATH}/docker\"}' | tee /etc/docker/daemon.json
+                    cat > /etc/docker/daemon.json <<'DOCKEREOF'
+{
+    "data-root": "${MOUNT_PATH}/docker",
+    "runtimes": {
+        "nvidia": {
+            "path": "nvidia-container-runtime",
+            "runtimeArgs": []
+        }
+    },
+    "default-runtime": "nvidia"
+}
+DOCKEREOF
+                    # Substitute the actual mount path
+                    sed -i "s|\${MOUNT_PATH}|${MOUNT_PATH}|g" /etc/docker/daemon.json
                     systemctl restart docker
+
+                    # Enable GPU support in ECS agent
+                    echo "ECS_ENABLE_GPU_SUPPORT=true" >> /etc/ecs/ecs.config
                     `;
-                /* eslint-enable no-useless-escape */
+
                 autoScalingGroup.addUserData(rawUserData);
 
                 // Create mount point for container
@@ -174,6 +199,11 @@ export class ECSCluster extends Construct {
                 };
                 volumes.push(nvmeVolume);
                 mountPoints.push(nvmeMountPoint);
+            }
+
+            // Enable GPU support in ECS agent for GPU instances without NVMe (NVMe path sets it in user data)
+            if (ecsConfig.amiHardwareType === AmiHardwareType.GPU && !Ec2Metadata.get(ecsConfig.instanceType).nvmePath) {
+                autoScalingGroup.addUserData('echo "ECS_ENABLE_GPU_SUPPORT=true" >> /etc/ecs/ecs.config');
             }
 
             // Add permissions to use SSM in dev environment for EC2 debugging purposes only
@@ -208,6 +238,7 @@ export class ECSCluster extends Construct {
             // Create ECS task definition
             const ec2TaskDefinition = new Ec2TaskDefinition(this, createCdkId([roleId, 'Ec2TaskDefinition']), {
                 family: createCdkId([config.deploymentName, roleId], 32, 2),
+                networkMode: NetworkMode.BRIDGE,
                 volumes: volumes,
                 taskRole,
                 ...(executionRoleName && { executionRole: Role.fromRoleName(this, createCdkId([config.deploymentName, roleId, 'EX']), executionRoleName) }),
@@ -234,7 +265,11 @@ export class ECSCluster extends Construct {
             container = ec2TaskDefinition.addContainer(createCdkId([identifier, 'Container']), {
                 containerName: createCdkId([config.deploymentName, identifier], 32, 2),
                 image,
-                environment,
+                environment: {
+                    ...environment,
+                    // Required for NVIDIA container runtime when not using NVIDIA base images
+                    ...(ecsConfig.amiHardwareType === AmiHardwareType.GPU && { NVIDIA_DRIVER_CAPABILITIES: 'utility,compute' }),
+                },
                 logging: LogDriver.awsLogs({ streamPrefix: identifier }),
                 gpuCount: Ec2Metadata.get(ecsConfig.instanceType).gpuCount,
                 memoryReservationMiB: taskDefinition.containerConfig.memoryReservation ??
@@ -273,6 +308,10 @@ export class ECSCluster extends Construct {
             });
 
             // Add listener
+            // Note: This ALB is internal (internetFacing: false) and uses HTTP only.
+            // If HTTPS is enabled in the future, use SslPolicy.TLS13_RES for AppSec compliance.
+            // SslPolicy.TLS13_RES maps to ELBSecurityPolicy-TLS13-1-2-2021-06
+            // This policy provides forward secrecy with ECDHE cipher suites and excludes RSA key exchange.
             const listenerProps: BaseApplicationListenerProps = {
                 port: 80,
                 open: false,
@@ -288,7 +327,8 @@ export class ECSCluster extends Construct {
             // Add targets
             const loadBalancerHealthCheckConfig = ecsConfig.loadBalancerConfig.healthCheckConfig;
             const targetGroup = listener.addTargets(createCdkId([identifier, 'TgtGrp']), {
-                targetGroupName: createCdkId([config.deploymentName, identifier], 32, 2).toLowerCase(),
+                // Note: targetGroupName intentionally omitted to allow CloudFormation to generate unique names.
+                // This enables seamless replacement when immutable properties (like TargetType) change.
                 healthCheck: {
                     path: loadBalancerHealthCheckConfig.path,
                     interval: Duration.seconds(loadBalancerHealthCheckConfig.interval),
@@ -298,7 +338,13 @@ export class ECSCluster extends Construct {
                 },
                 port: 80,
                 targets: [service],
+                // Slow start gives new targets time to warm up before receiving full traffic
+                slowStart: Duration.seconds(60),
             });
+
+            // Configure target group for LLM workloads which may have long response times
+            // This prevents 504 Gateway Timeout errors during model inference
+            targetGroup.setAttribute('deregistration_delay.timeout_seconds', '30');
 
             // ALB metric for ASG to use for auto scaling EC2 instances
             // TODO: Update this to step scaling for embedding models??

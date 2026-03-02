@@ -104,7 +104,7 @@ export const useMultipleMcp = (servers: McpServer[], mcpPreferences: McpPreferen
     useEffect(() => {
         // Combine all tools from all servers
         const combinedTools = Array.from(serverToolsMap.values()).flat();
-        setAllTools(combinedTools);
+        queueMicrotask(() => setAllTools(combinedTools));
     }, [serverToolsMap]);
 
     const callTool = useCallback(async (toolName: string, args: any) => {

@@ -16,12 +16,15 @@ import json
 import logging
 import os
 import secrets
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any
 
 import boto3
 from botocore.config import Config
-from utilities.exceptions import HTTPException
+from utilities.exceptions import ForbiddenException
+
+from .auth_provider import get_authorization_provider
 
 logger = logging.getLogger(__name__)
 
@@ -42,26 +45,27 @@ def get_username(event: dict) -> str:
     return username
 
 
-def get_groups(event: Any) -> List[str]:
+def get_groups(event: Any) -> list[str]:
     """Get user groups from event."""
-    groups: List[str] = json.loads(event.get("requestContext", {}).get("authorizer", {}).get("groups", "[]"))
+    groups: list[str] = json.loads(event.get("requestContext", {}).get("authorizer", {}).get("groups", "[]"))
     return groups
 
 
 def is_admin(event: dict) -> bool:
-    """Get admin status from event."""
-    admin_group = os.environ.get("ADMIN_GROUP", "")
+    """Get admin status from event using the configured authorization provider."""
+    username = get_username(event)
     groups = get_groups(event)
-    logger.info(f"User groups: {groups} and admin: {admin_group}")
-    return admin_group in groups
+    auth_provider = get_authorization_provider()
+    result = auth_provider.check_admin_access(username, groups)
+    return result
 
 
-def get_user_context(event: Dict[str, Any]) -> Tuple[str, bool, List[str]]:
+def get_user_context(event: dict[str, Any]) -> tuple[str, bool, list[str]]:
     """Extract user context from event."""
     return get_username(event), is_admin(event), get_groups(event)
 
 
-def user_has_group_access(user_groups: List[str], allowed_groups: List[str]) -> bool:
+def user_has_group_access(user_groups: list[str], allowed_groups: list[str]) -> bool:
     """
     Check if user has access based on group membership.
 
@@ -81,12 +85,12 @@ def user_has_group_access(user_groups: List[str], allowed_groups: List[str]) -> 
 
 
 def admin_only(func: Callable) -> Callable:
-    """Annotation to wrap is_admin"""
+    """Annotation to wrap is_admin for traditional Lambda handlers (event, context signature)."""
 
     @wraps(func)
-    def wrapper(event: Dict[str, Any], context: Dict[str, Any], *args: Any, **kwargs: Any) -> Any:
+    def wrapper(event: dict[str, Any], context: dict[str, Any], *args: Any, **kwargs: Any) -> Any:
         if not is_admin(event):
-            raise HTTPException(status_code=403, message="User does not have permission to access this repository")
+            raise ForbiddenException("User does not have permission to access this repository")
         return func(event, context, *args, **kwargs)
 
     return wrapper
@@ -96,7 +100,7 @@ def get_management_key() -> str:
     secret_name_param = ssm_client.get_parameter(Name=os.environ["MANAGEMENT_KEY_SECRET_NAME_PS"])
     secret_name = secret_name_param["Parameter"]["Value"]
     secret_response = secrets_client.get_secret_value(SecretId=secret_name)
-    return secret_response["SecretString"]
+    return secret_response["SecretString"]  # type: ignore[no-any-return]
 
 
 # API token utility functions

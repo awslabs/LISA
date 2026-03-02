@@ -307,7 +307,7 @@ def test_read_not_admin(s3_setup, lambda_context):
     ), patch("mcp_workbench.lambda_functions.api_wrapper", mock_api_wrapper):
         response = read(event, lambda_context)
 
-    assert response["statusCode"] == 400
+    assert response["statusCode"] == 403
     body = json.loads(response["body"])
     # Handle both string and dict response formats
     error_text = body if isinstance(body, str) else body.get("error", "")
@@ -331,7 +331,7 @@ def test_read_not_found(s3_setup, lambda_context):
     ), patch("mcp_workbench.lambda_functions.WORKBENCH_BUCKET", WORKBENCH_BUCKET):
         response = read(event, lambda_context)
 
-    assert response["statusCode"] == 500
+    assert response["statusCode"] == 404
     body = json.loads(response["body"])
     # Handle both string and dict response formats
     error_text = body if isinstance(body, str) else body.get("error", "")
@@ -413,7 +413,7 @@ def test_list_not_admin(s3_setup, lambda_context):
     ), patch("mcp_workbench.lambda_functions.api_wrapper", mock_api_wrapper):
         response = list_tools(event, lambda_context)
 
-    assert response["statusCode"] == 400
+    assert response["statusCode"] == 403
     body = json.loads(response["body"])
     # Handle both string and dict response formats
     error_text = body if isinstance(body, str) else body.get("error", "")
@@ -512,7 +512,7 @@ def test_create_not_admin(s3_setup, lambda_context):
     ), patch("mcp_workbench.lambda_functions.api_wrapper", mock_api_wrapper):
         response = create(event, lambda_context)
 
-    assert response["statusCode"] == 400
+    assert response["statusCode"] == 403
     body = json.loads(response["body"])
     # Handle both string and dict response formats
     error_text = body if isinstance(body, str) else body.get("error", "")
@@ -604,7 +604,7 @@ def test_update_not_admin(s3_setup, lambda_context):
     ), patch("mcp_workbench.lambda_functions.api_wrapper", mock_api_wrapper):
         response = update(event, lambda_context)
 
-    assert response["statusCode"] == 400
+    assert response["statusCode"] == 403
     body = json.loads(response["body"])
     # Handle both string and dict response formats
     error_text = body if isinstance(body, str) else body.get("error", "")
@@ -629,11 +629,11 @@ def test_update_not_found(s3_setup, lambda_context):
     ), patch("mcp_workbench.lambda_functions.WORKBENCH_BUCKET", WORKBENCH_BUCKET):
         response = update(event, lambda_context)
 
-    assert response["statusCode"] == 400
+    assert response["statusCode"] == 404
     body = json.loads(response["body"])
     # Handle both string and dict response formats
     error_text = body if isinstance(body, str) else body.get("error", "")
-    assert "does not exist" in error_text
+    assert "not found" in error_text.lower()
 
 
 def test_update_missing_tool_id(s3_setup, lambda_context):
@@ -751,7 +751,7 @@ def test_delete_not_admin(s3_setup, lambda_context):
     ), patch("mcp_workbench.lambda_functions.api_wrapper", mock_api_wrapper):
         response = delete(event, lambda_context)
 
-    assert response["statusCode"] == 400
+    assert response["statusCode"] == 403
     body = json.loads(response["body"])
     # Handle both string and dict response formats
     error_text = body if isinstance(body, str) else body.get("error", "")
@@ -775,11 +775,11 @@ def test_delete_not_found(s3_setup, lambda_context):
     ), patch("mcp_workbench.lambda_functions.WORKBENCH_BUCKET", WORKBENCH_BUCKET):
         response = delete(event, lambda_context)
 
-    assert response["statusCode"] == 400
+    assert response["statusCode"] == 404
     body = json.loads(response["body"])
     # Handle both string and dict response formats
     error_text = body if isinstance(body, str) else body.get("error", "")
-    assert "does not exist" in error_text
+    assert "not found" in error_text.lower()
 
 
 def test_delete_missing_tool_id(s3_setup, lambda_context):

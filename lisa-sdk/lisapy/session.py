@@ -12,7 +12,6 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from typing import Dict, List
 
 from .common import BaseMixin
 from .errors import parse_error
@@ -21,18 +20,18 @@ from .errors import parse_error
 class SessionMixin(BaseMixin):
     """Mixin for session-related operations."""
 
-    def list_sessions(self) -> List[Dict]:
+    def list_sessions(self) -> list[dict]:
         response = self._session.get(f"{self.url}/session")
         if response.status_code == 200:
-            sessions: List[Dict] = response.json()
+            sessions: list[dict] = response.json()
             return sessions
         else:
             raise parse_error(response.status_code, response)
 
-    def get_session_by_user(self) -> Dict:
+    def get_session_by_user(self) -> dict:
         response = self._session.get(f"{self.url}/session")
         if response.status_code == 200:
-            session: Dict = response.json()
+            session: dict = response.json()
             return session
         else:
             raise parse_error(response.status_code, response)

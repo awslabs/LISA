@@ -24,6 +24,7 @@ export const configurationApi = createApi({
     tagTypes: ['configuration'],
     refetchOnFocus: true,
     refetchOnMountOrArgChange: true,
+    keepUnusedDataFor: 60, // Keep cache for 60s to prevent cancellation during rapid navigation
     endpoints: (builder) => ({
         getConfiguration: builder.query<IConfiguration[], string>({
             query: (configScope) => ({

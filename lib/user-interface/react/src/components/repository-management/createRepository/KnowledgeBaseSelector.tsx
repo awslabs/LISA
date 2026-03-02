@@ -120,6 +120,7 @@ export function KnowledgeBaseSelector ({ selectedKbId, onSelect }: KnowledgeBase
                         placeholder='Search Knowledge Bases...'
                         type='search'
                         clearAriaLabel='Clear search'
+                        controlId='knowledge-base-search-input'
                     />
                 </FormField>
 

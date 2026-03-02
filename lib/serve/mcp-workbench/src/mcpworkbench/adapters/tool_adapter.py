@@ -17,7 +17,7 @@
 import asyncio
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any
 
 from ..core.base_tool import BaseTool
 from ..core.tool_discovery import ToolInfo, ToolType
@@ -32,7 +32,7 @@ class ToolAdapter(ABC):
         self.tool_info = tool_info
 
     @abstractmethod
-    async def execute(self, arguments: Dict[str, Any]) -> Any:
+    async def execute(self, arguments: dict[str, Any]) -> Any:
         """Execute the tool with the given arguments."""
         pass
 
@@ -60,7 +60,7 @@ class BaseToolAdapter(ToolAdapter):
         super().__init__(tool_info)
         self.tool_instance: BaseTool = tool_info.tool_instance
 
-    async def execute(self, arguments: Dict[str, Any]) -> Any:
+    async def execute(self, arguments: dict[str, Any]) -> Any:
         """Execute the BaseTool instance."""
         try:
             # Call the tool's execute method
@@ -84,7 +84,7 @@ class FunctionToolAdapter(ToolAdapter):
         super().__init__(tool_info)
         self.function = tool_info.tool_instance
 
-    async def execute(self, arguments: Dict[str, Any]) -> Any:
+    async def execute(self, arguments: dict[str, Any]) -> Any:
         """Execute the decorated function."""
         try:
             # Check if the function is async

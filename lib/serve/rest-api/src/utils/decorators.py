@@ -13,14 +13,15 @@
 #   limitations under the License.
 
 """Utility decorators."""
-from typing import Any, Callable, cast, Dict, TypeVar
+from collections.abc import Callable
+from typing import Any, cast, TypeVar
 
 T = TypeVar("T")
 
 
 def singleton(cls: type[T]) -> Callable[..., T]:
     """Singleton decorator."""
-    instances: Dict[type, Any] = {}
+    instances: dict[type, Any] = {}
 
     def get_instance(*args: Any, **kwargs: Any) -> T:
         if cls not in instances:

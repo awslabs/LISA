@@ -172,6 +172,7 @@ export function BedrockKnowledgeBaseConfigForm (
                             </Box>
                         ) : (
                             <Select
+                                data-testid='knowledge-base-select'
                                 selectedOption={
                                     selectedKbId
                                         ? {
@@ -226,6 +227,7 @@ export function BedrockKnowledgeBaseConfigForm (
                             </Box>
                         ) : (
                             <Table
+                                data-testid='data-sources-table'
                                 columnDefinitions={[
                                     {
                                         id: 'name',

@@ -27,14 +27,15 @@ const navLinks = [
           { text: 'What is LISA', link: '/admin/getting-started#what-is-lisa' },
           { text: 'Major Features', link: '/admin/getting-started#major-features' },
           { text: 'Key Features & Benefits', link: '/admin/getting-started#key-features-benefits' },
+          { text: 'Access Control', link: '/admin/getting-started#access-control' },
         ]
       },
       {
         text: 'Architecture Overview',  link: '/admin/architecture',
         items: [
-          { text: 'Serve', link: '/admin/architecture#serve' },
+          { text: 'Serve', link: '/admin/architecture#lisa-serve' },
+          { text: 'MCP', link: '/admin/architecture#lisa-mcp' },
           { text: 'Chat UI', link: '/admin/architecture#chat-ui' },
-          { text: 'Model Management', link: '/admin/architecture#model-management' },
         ],
       },
       { text: 'Deployment', link: '/admin/deploy',
@@ -53,17 +54,23 @@ const navLinks = [
     text: 'Advanced Configuration',
     items: [
       { text: 'API Token Management', link: '/config/api-tokens' },
-      { text: 'Model Compatibility', link: '/config/model-compatibility' },
+      { text: 'Model Compatibility', link: '/config/model-compatibility',
+        items: [
+          {text: "vLLM Variables", link: '/config/vllm_variables'}
+        ]
+      },
       { text: 'Model Management API', link: '/config/model-management-api' },
       { text: 'Model Management UI', link: '/config/model-management-ui' },
-      { text: 'Guardrails', link: '/config/guardrails' },
+      { text: 'Bedrock Guardrails', link: '/config/guardrails' },
       { text: 'Usage & Features', link: '/config/usage' },
       { text: 'RAG Repository', link: '/config/repositories' },
       { text: 'Langfuse Tracing', link: '/config/langfuse-tracing'},
+      { text: 'Private Labeling', link: '/config/custom-branding' },
       {
         text: 'Configuration Schema',
         link: '/config/configuration',
         items: [
+          { text: 'Config Generator CLI', link: '/config/config-generator' },
           { text: 'VPC & Subnet Overrides', link: '/config/vpc-overrides' },
           { text: 'Security Group Overrides', link: '/config/security-group-overrides' },
           { text: 'Role Overrides', link: '/config/role-overrides' },
@@ -73,6 +80,7 @@ const navLinks = [
       { text: 'MCP Connections: Third-party servers', link: '/config/mcp' },
       { text: 'MCP Workbench: Experimentation', link: '/config/mcp-workbench' },
       { text: 'Usage Analytics', link: '/config/cloudwatch' },
+      { text: 'Claude Code Setup for LISA Serve', link: '/config/claude-code-setup' },
     ],
   },
   {

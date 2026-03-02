@@ -17,9 +17,17 @@
 /// <reference types="node" />
 
 import { defineConfig } from 'cypress';
+import * as dotenv from 'dotenv';
+import * as fs from 'fs';
 import path from 'path';
 
 const PROJECT_ROOT = path.resolve(__dirname);
+
+// Load local environment file if it exists
+const envPath = path.join(PROJECT_ROOT, '.env.local');
+if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+}
 
 export default defineConfig({
     video: true,                        // turn on video recording
@@ -28,16 +36,22 @@ export default defineConfig({
     screenshotOnRunFailure: true,       // auto‑snap on any test failure
     screenshotsFolder: `${PROJECT_ROOT}/screenshots/e2e`,
     trashAssetsBeforeRuns: true,        // wipe out old videos/screenshots
+    defaultCommandTimeout: 30000,       // 30 seconds for real API calls
+    requestTimeout: 30000,              // 30 seconds for API requests
+    responseTimeout: 30000,             // 30 seconds for API responses
+    chromeWebSecurity: false,           // Disable web security to allow cross-origin requests
     e2e: {
         specPattern: `${PROJECT_ROOT}/src/e2e/specs/**/*.e2e.spec.ts`,
         supportFile: `${PROJECT_ROOT}/src/e2e/support/index.ts`,
-        experimentalStudio: true,
         fixturesFolder: `${PROJECT_ROOT}/src/e2e/fixtures`,
         setupNodeEvents () {
         },
-        baseUrl: 'https://5bma74uv9c.execute-api.us-east-1.amazonaws.com/dev',
+        baseUrl: process.env.BASE_URL || 'https://chat.dev.lisa.aiml-adc.aws.dev',
         env: {
-            TEST_ACCOUNT_PASSWORD: process.env.TEST_ACCOUNT_PASSWORD,
+            ADMIN_USER_NAME: process.env.ADMIN_USER_NAME,
+            ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
+            USER_NAME: process.env.USER_NAME,
+            USER_PASSWORD: process.env.USER_PASSWORD,
         },
     },
 });

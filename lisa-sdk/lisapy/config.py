@@ -12,7 +12,6 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from typing import Dict, List
 
 from .common import BaseMixin
 from .errors import parse_error
@@ -21,10 +20,10 @@ from .errors import parse_error
 class ConfigMixin(BaseMixin):
     """Mixin for config-related operations."""
 
-    def get_configs(self, config_scope: str = "global") -> List[Dict]:
+    def get_configs(self, config_scope: str = "global") -> list[dict]:
         response = self._session.get(f"{self.url}/configuration?configScope={config_scope}")
         if response.status_code == 200:
-            json_configs: List[Dict] = response.json()
+            json_configs: list[dict] = response.json()
             return json_configs
         else:
             raise parse_error(response.status_code, response)

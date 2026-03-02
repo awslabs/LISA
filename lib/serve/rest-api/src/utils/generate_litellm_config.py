@@ -16,12 +16,44 @@
 
 import json
 import os
-from typing import Tuple
 
 import boto3
 import click
 import yaml
-from rds_auth import generate_auth_token, get_lambda_role_name
+
+
+def _is_embedding_model(model: dict) -> bool:
+    """Check if a model is an embedding model based on naming conventions."""
+    model_name = model.get("modelName", "").lower()
+    model_id = model.get("modelId", "").lower()
+    return "embed" in model_name or "embed" in model_id
+
+
+def _build_model_config(model: dict) -> dict:
+    """Build LiteLLM model configuration for a registered model."""
+    model_name = model["modelName"]
+    is_embedding = _is_embedding_model(model)
+
+    # Use hosted_vllm provider for embedding models to avoid encoding_format issues
+    # LiteLLM 1.80+ has issues with openai/ provider sending invalid encoding_format to vLLM
+    if is_embedding:
+        provider_prefix = "hosted_vllm"
+    else:
+        provider_prefix = "openai"
+
+    litellm_params = {
+        "model": f"{provider_prefix}/{model_name}",
+        "api_base": model["endpointUrl"] + "/v1",  # Local containers require the /v1 for OpenAI API routing.
+    }
+
+    # For embedding models, also add drop_params as a safety measure
+    if is_embedding:
+        litellm_params["drop_params"] = True
+
+    return {
+        "model_name": model["modelId"],  # Use user-provided name if one given, otherwise it is the model name.
+        "litellm_params": litellm_params,
+    }
 
 
 @click.command()
@@ -30,7 +62,7 @@ def generate_config(filepath: str) -> None:
     """Read LiteLLM configuration and rewrite it with LISA-deployed model information."""
     ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"])
 
-    with open(filepath, "r") as fp:
+    with open(filepath) as fp:
         config_contents = yaml.safe_load(fp)
     # Get and load registered models from ParameterStore
     param_response = ssm_client.get_parameter(Name=os.environ["REGISTERED_MODELS_PS_NAME"])
@@ -55,6 +87,10 @@ def generate_config(filepath: str) -> None:
         {
             "drop_params": True,  # drop unrecognized param instead of failing the request on it
             "request_timeout": 600,
+            # Performance optimizations for embeddings
+            "num_retries": 2,  # Reduce retries for faster failure detection
+            "retry_after": 1,  # Shorter retry delay
+            "embedding_cache": True,  # Enable embedding caching (if Redis configured)
         }
     )
 
@@ -62,21 +98,34 @@ def generate_config(filepath: str) -> None:
     db_param_response = ssm_client.get_parameter(Name=os.environ["LITELLM_DB_INFO_PS_NAME"])
     db_params = json.loads(db_param_response["Parameter"]["Value"])
 
-    username, password = get_database_credentials(db_params)
-    connection_str = (
-        f"postgresql://{username}:{password}@{db_params['dbHost']}:{db_params['dbPort']}" f"/{db_params['dbName']}"
-    )
+    # Check if using IAM auth - either via environment variable (preferred) or SSM parameter
+    # IAM_TOKEN_DB_AUTH is set by CDK when iamRdsAuth=true
+    use_iam_auth = os.environ.get("IAM_TOKEN_DB_AUTH", "").lower() == "true" or "passwordSecretId" not in db_params
 
     if "general_settings" not in config_contents:
         config_contents["general_settings"] = {}
 
-    config_contents["general_settings"].update(
-        {
-            "store_model_in_db": True,
-            "database_url": connection_str,
-            "master_key": config_contents["db_key"],
-        }
-    )
+    if use_iam_auth:
+        config_contents["general_settings"].update(
+            {
+                "store_model_in_db": True,
+                "master_key": config_contents["db_key"],
+            }
+        )
+    else:
+        # Password auth: build connection string with password from Secrets Manager
+        username, password = get_database_credentials(db_params)
+        connection_str = (
+            f"postgresql://{username}:{password}@{db_params['dbHost']}:{db_params['dbPort']}" f"/{db_params['dbName']}"
+        )
+
+        config_contents["general_settings"].update(
+            {
+                "store_model_in_db": True,
+                "database_url": connection_str,
+                "master_key": config_contents["db_key"],
+            }
+        )
 
     print(f"Generated config_contents file: \n{json.dumps(config_contents, indent=2)}")
 
@@ -85,17 +134,22 @@ def generate_config(filepath: str) -> None:
         yaml.safe_dump(config_contents, fp)
 
 
-def get_database_credentials(db_params: dict[str, str]) -> Tuple:
-    """Get database password from Secrets Manager or using IAM auth."""
-
-    if "passwordSecretId" in db_params:
-        secrets_client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"])
+def get_database_credentials(db_params: dict[str, str]) -> tuple:
+    """Get database credentials using password auth from Secrets Manager."""
+    secrets_client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"])
+    try:
         secret_response = secrets_client.get_secret_value(SecretId=db_params["passwordSecretId"])
-        secret = json.loads(secret_response["SecretString"])
-        return (db_params["username"], secret["password"])
-    else:
-        iam_name = get_lambda_role_name()
-        return (iam_name, generate_auth_token(db_params["dbHost"], db_params["dbPort"], iam_name))
+    except secrets_client.exceptions.ResourceNotFoundException:
+        raise RuntimeError(
+            f"Database password secret '{db_params['passwordSecretId']}' not found. "
+            "This typically occurs when switching from IAM authentication (iamRdsAuth=true) "
+            "back to password authentication (iamRdsAuth=false). The master password is "
+            "permanently deleted when IAM auth is enabled. To resolve this, either: "
+            "1) Set iamRdsAuth=true in your config, or "
+            "2) Recreate the database by deleting and redeploying the stack."
+        )
+    secret = json.loads(secret_response["SecretString"])
+    return (db_params["username"], secret["password"])
 
 
 if __name__ == "__main__":

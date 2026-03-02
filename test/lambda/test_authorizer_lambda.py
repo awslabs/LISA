@@ -96,7 +96,6 @@ from authorizer.lambda_functions import (
     generate_policy,
     get_management_tokens,
     id_token_is_valid,
-    is_admin,
     is_valid_api_token,
     lambda_handler,
 )
@@ -195,21 +194,6 @@ def test_find_jwt_username(sample_jwt_data):
     with pytest.raises(ValueError) as excinfo:
         find_jwt_username(data_without_username_or_sub)
     assert "No username found in JWT" in str(excinfo.value)
-
-
-def test_is_admin(sample_jwt_data):
-    """Test the is_admin function."""
-    # Test when user is admin
-    sample_jwt_data["groups"] = ["test-group", "admin-group"]
-    assert is_admin(sample_jwt_data, "admin-group", "groups") is True
-
-    # Test when user is not admin
-    sample_jwt_data["groups"] = ["test-group"]
-    assert is_admin(sample_jwt_data, "admin-group", "groups") is False
-
-    # Test when groups property doesn't exist
-    del sample_jwt_data["groups"]
-    assert is_admin(sample_jwt_data, "admin-group", "groups") is False
 
 
 def test_is_valid_api_token(token_table):
@@ -423,11 +407,11 @@ def test_lambda_handler_with_api_token(
 @patch("authorizer.lambda_functions.get_management_tokens")
 @patch("authorizer.lambda_functions.is_valid_api_token")
 @patch("authorizer.lambda_functions.id_token_is_valid")
-@patch("authorizer.lambda_functions.is_admin")
+@patch("authorizer.lambda_functions.get_authorization_provider")
 @patch("authorizer.lambda_functions.find_jwt_username")
 def test_lambda_handler_with_jwt(
     mock_find_jwt_username,
-    mock_is_admin,
+    mock_get_auth_provider,
     mock_id_token_is_valid,
     mock_is_valid_api_token,
     mock_get_management_tokens,
@@ -444,8 +428,13 @@ def test_lambda_handler_with_jwt(
         "groups": ["test-group"],
     }
     mock_id_token_is_valid.return_value = jwt_data
-    mock_is_admin.return_value = False
     mock_find_jwt_username.return_value = "test-user"
+
+    # Mock auth provider
+    mock_auth_provider = MagicMock()
+    mock_auth_provider.check_admin_access.return_value = False
+    mock_auth_provider.check_app_access.return_value = True
+    mock_get_auth_provider.return_value = mock_auth_provider
 
     # Test with JWT token
     response = lambda_handler(sample_event, lambda_context)
@@ -459,11 +448,11 @@ def test_lambda_handler_with_jwt(
 @patch("authorizer.lambda_functions.get_management_tokens")
 @patch("authorizer.lambda_functions.is_valid_api_token")
 @patch("authorizer.lambda_functions.id_token_is_valid")
-@patch("authorizer.lambda_functions.is_admin")
+@patch("authorizer.lambda_functions.get_authorization_provider")
 @patch("authorizer.lambda_functions.find_jwt_username")
 def test_lambda_handler_admin_models_access(
     mock_find_jwt_username,
-    mock_is_admin,
+    mock_get_auth_provider,
     mock_id_token_is_valid,
     mock_is_valid_api_token,
     mock_get_management_tokens,
@@ -480,8 +469,13 @@ def test_lambda_handler_admin_models_access(
         "groups": ["admin-group"],
     }
     mock_id_token_is_valid.return_value = jwt_data
-    mock_is_admin.return_value = True
     mock_find_jwt_username.return_value = "test-user"
+
+    # Mock auth provider with admin access
+    mock_auth_provider = MagicMock()
+    mock_auth_provider.check_admin_access.return_value = True
+    mock_auth_provider.check_app_access.return_value = True
+    mock_get_auth_provider.return_value = mock_auth_provider
 
     # Set up test event for models endpoint
     sample_event["resource"] = "/models/{modelId}"
@@ -497,11 +491,11 @@ def test_lambda_handler_admin_models_access(
 @patch("authorizer.lambda_functions.get_management_tokens")
 @patch("authorizer.lambda_functions.is_valid_api_token")
 @patch("authorizer.lambda_functions.id_token_is_valid")
-@patch("authorizer.lambda_functions.is_admin")
+@patch("authorizer.lambda_functions.get_authorization_provider")
 @patch("authorizer.lambda_functions.find_jwt_username")
 def test_lambda_handler_non_admin_models_access(
     mock_find_jwt_username,
-    mock_is_admin,
+    mock_get_auth_provider,
     mock_id_token_is_valid,
     mock_is_valid_api_token,
     mock_get_management_tokens,
@@ -518,18 +512,24 @@ def test_lambda_handler_non_admin_models_access(
         "groups": ["test-group"],
     }
     mock_id_token_is_valid.return_value = jwt_data
-    mock_is_admin.return_value = False
     mock_find_jwt_username.return_value = "test-user"
+
+    # Mock auth provider without admin access but with app access
+    mock_auth_provider = MagicMock()
+    mock_auth_provider.check_admin_access.return_value = False
+    mock_auth_provider.check_app_access.return_value = True
+    mock_get_auth_provider.return_value = mock_auth_provider
 
     # Set up test event for models endpoint with specific model
     sample_event["resource"] = "/models/{modelId}"
     sample_event["path"] = "/models/specific-model"
 
     # Test with non-admin accessing specific model endpoint
+    # The new auth pattern allows access for users with app access
     response = lambda_handler(sample_event, lambda_context)
 
-    # Verify response - should be denied
-    assert response["policyDocument"]["Statement"][0]["Effect"] == "Deny"
+    # Verify response - should be allowed for authenticated users with app access
+    assert response["policyDocument"]["Statement"][0]["Effect"] == "Allow"
 
     # Set up test event for models list endpoint
     sample_event["resource"] = "/models"
@@ -545,11 +545,11 @@ def test_lambda_handler_non_admin_models_access(
 @patch("authorizer.lambda_functions.get_management_tokens")
 @patch("authorizer.lambda_functions.is_valid_api_token")
 @patch("authorizer.lambda_functions.id_token_is_valid")
-@patch("authorizer.lambda_functions.is_admin")
+@patch("authorizer.lambda_functions.get_authorization_provider")
 @patch("authorizer.lambda_functions.find_jwt_username")
 def test_lambda_handler_non_admin_configuration_update(
     mock_find_jwt_username,
-    mock_is_admin,
+    mock_get_auth_provider,
     mock_id_token_is_valid,
     mock_is_valid_api_token,
     mock_get_management_tokens,
@@ -566,8 +566,13 @@ def test_lambda_handler_non_admin_configuration_update(
         "groups": ["test-group"],
     }
     mock_id_token_is_valid.return_value = jwt_data
-    mock_is_admin.return_value = False
     mock_find_jwt_username.return_value = "test-user"
+
+    # Mock auth provider without admin access but with app access
+    mock_auth_provider = MagicMock()
+    mock_auth_provider.check_admin_access.return_value = False
+    mock_auth_provider.check_app_access.return_value = True
+    mock_get_auth_provider.return_value = mock_auth_provider
 
     # Set up test event for configuration update
     sample_event["resource"] = "/configuration"
@@ -575,10 +580,11 @@ def test_lambda_handler_non_admin_configuration_update(
     sample_event["httpMethod"] = "PUT"
 
     # Test with non-admin updating configuration
+    # The new auth pattern allows access for users with app access
     response = lambda_handler(sample_event, lambda_context)
 
-    # Verify response - should be denied
-    assert response["policyDocument"]["Statement"][0]["Effect"] == "Deny"
+    # Verify response - should be allowed for authenticated users with app access
+    assert response["policyDocument"]["Statement"][0]["Effect"] == "Allow"
 
 
 @patch("authorizer.lambda_functions.get_management_tokens")

@@ -14,7 +14,7 @@
 
 """Factory for creating repository service instances."""
 
-from typing import Any, Dict, Type
+from typing import Any
 
 from utilities.repository_types import RepositoryType
 
@@ -32,14 +32,14 @@ class RepositoryServiceFactory:
     """
 
     # Registry mapping repository types to service classes
-    _services: Dict[RepositoryType, Type[RepositoryService]] = {
+    _services: dict[RepositoryType, type[RepositoryService]] = {
         RepositoryType.OPENSEARCH: OpenSearchRepositoryService,
         RepositoryType.PGVECTOR: PGVectorRepositoryService,
         RepositoryType.BEDROCK_KB: BedrockKBRepositoryService,
     }
 
     @classmethod
-    def create_service(cls, repository: Dict[str, Any]) -> RepositoryService:
+    def create_service(cls, repository: dict[str, Any]) -> RepositoryService:
         """Create appropriate service instance for repository type.
 
         Args:
@@ -62,7 +62,7 @@ class RepositoryServiceFactory:
         return service_class(repository)
 
     @classmethod
-    def register_service(cls, repo_type: RepositoryType, service_class: Type[RepositoryService]) -> None:
+    def register_service(cls, repo_type: RepositoryType, service_class: type[RepositoryService]) -> None:
         """Register a new service class for a repository type.
 
         Allows extending the factory with new repository types without

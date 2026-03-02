@@ -104,8 +104,7 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
         // Update tracking when repository changes
         if (repositoryHasChanged) {
             lastRepositoryIdRef.current = currentRepositoryId;
-
-            setUserHasSelectedCollection(false);
+            queueMicrotask(() => setUserHasSelectedCollection(false));
         }
 
         if (currentRepositoryId && filteredRepositories && allModels && (!userHasSelectedCollection || repositoryHasChanged)) {
@@ -234,6 +233,7 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
                         value: repository.repositoryId,
                         label: repository?.repositoryName?.length ? repository?.repositoryName : repository.repositoryId
                     })) || []}
+                    controlId='rag-repository-autosuggest'
                 />
                 <Autosuggest
                     disabled={!selectedRepositoryOption || isRunning}
@@ -246,6 +246,7 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
                     enteredTextLabel={(text) => `Use: "${text}"`}
                     onChange={handleCollectionChange}
                     options={collectionOptions}
+                    controlId='rag-collection-autosuggest'
                 />
             </Grid>
         </SpaceBetween>

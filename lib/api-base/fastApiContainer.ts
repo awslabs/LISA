@@ -24,7 +24,7 @@ import { dump as yamlDump } from 'js-yaml';
 import { ECSCluster, ECSTasks } from './ecsCluster';
 import { BaseProps, Ec2Metadata, ECSConfig, EcsSourceType } from '../schema';
 import { Vpc } from '../networking/vpc';
-import { REST_API_PATH } from '../util';
+import { REST_API_PATH, ROOT_PATH } from '../util';
 import * as child_process from 'child_process';
 import * as path from 'path';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -71,7 +71,7 @@ export class FastApiContainer extends Construct {
 
         const { config, securityGroup, tokenTable, vpc, managementKeyName} = props;
 
-        const instanceType = 'm5.large';
+        const instanceType = 'm5.xlarge';
 
         const buildArgs: Record<string, string> | undefined = {
             BASE_IMAGE: config.baseImage,
@@ -128,7 +128,8 @@ export class FastApiContainer extends Construct {
             // Skip tiktoken cache generation in test environment
             if (process.env.NODE_ENV !== 'test') {
                 try {
-                    child_process.execSync(`python3 scripts/cache-tiktoken-for-offline.py ${cache_dir}`, { stdio: 'inherit' });
+                    const scriptPath = path.join(ROOT_PATH, 'scripts', 'cache-tiktoken-for-offline.py');
+                    child_process.execSync(`python3 ${scriptPath} ${cache_dir}`, { stdio: 'inherit' });
                 } catch (error) {
                     console.warn('Failed to generate tiktoken cache:', error);
                     // Continue execution even if cache generation fails
@@ -176,7 +177,7 @@ export class FastApiContainer extends Construct {
                     interval: 60,
                     timeout: 30,
                     healthyThresholdCount: 2,
-                    unhealthyThresholdCount: 10
+                    unhealthyThresholdCount: 3  // Reduced from 10 to 3 for faster failure detection
                 },
                 domainName: config.restApiConfig.domainName,
                 sslCertIamArn: config.restApiConfig?.sslCertIamArn ?? null,

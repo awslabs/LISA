@@ -16,7 +16,8 @@
 import json
 import logging
 import sys
-from typing import Any, AsyncGenerator, Dict, Generator, List, Optional, Union
+from collections.abc import AsyncGenerator, Generator
+from typing import Any
 
 import requests
 from aiohttp import ClientSession, ClientTimeout
@@ -43,11 +44,11 @@ class LisaLlm(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     url: str = Field(..., description="REST API url for LiteLLM")
-    headers: Optional[Dict[str, str]] = Field(None, description="Headers for request.")
-    cookies: Optional[Dict[str, str]] = Field(None, description="Cookies for request.")
+    headers: dict[str, str] | None = Field(None, description="Headers for request.")
+    cookies: dict[str, str] | None = Field(None, description="Cookies for request.")
     timeout: int = Field(10, description="Timeout in minutes request.")
-    verify: Optional[Union[str, bool]] = Field(None, description="Whether to verify SSL certificates.")
-    async_timeout: Optional[ClientTimeout] = None  # Do not provide a default value here
+    verify: str | bool | None = Field(None, description="Whether to verify SSL certificates.")
+    async_timeout: ClientTimeout | None = None  # Do not provide a default value here
     _session: Session
 
     @field_validator("url")
@@ -63,15 +64,15 @@ class LisaLlm(BaseModel):
 
         self._session = requests.Session()
         if self.headers:
-            self._session.headers = self.headers  # type: ignore
+            self._session.headers.update(self.headers)
         if self.verify is not None:
             self._session.verify = self.verify
         if self.cookies:
-            self._session.cookies = self.cookies  # type: ignore
+            self._session.cookies.update(self.cookies)
 
         self.async_timeout = ClientTimeout(self.timeout * 60)
 
-    def list_models(self) -> List[Dict[str, Any]]:
+    def list_models(self) -> list[dict[str, Any]]:
         """List all foundation models.
 
         Returns
@@ -82,7 +83,7 @@ class LisaLlm(BaseModel):
         response = self._session.get(f"{self.url}/serve/models")
         if response.status_code == 200:
             json_models = response.json()
-            models: List[Dict] = json_models.get("data")
+            models: list[dict] = json_models.get("data")
         else:
             raise parse_error(response.status_code, response)
         return models
@@ -163,7 +164,7 @@ class LisaLlm(BaseModel):
                 else:
                     raise parse_error(response.status_code, response)
 
-    def generate_stream(self, prompt: str, model: FoundationModel) -> Generator[StreamingResponse, None, None]:
+    def generate_stream(self, prompt: str, model: FoundationModel) -> Generator[StreamingResponse]:
         """Generate text with streaming based on the provided prompt using a specific model.
 
         Parameters
@@ -210,7 +211,7 @@ class LisaLlm(BaseModel):
         self,
         prompt: str,
         model: FoundationModel,
-    ) -> AsyncGenerator[StreamingResponse, None]:
+    ) -> AsyncGenerator[StreamingResponse]:
         """Generate text with streaming based on the provided prompt using a specific model.
 
         Parameters
@@ -237,7 +238,11 @@ class LisaLlm(BaseModel):
             cookies=self.cookies,
             timeout=self.async_timeout,
         ) as session:
-            async with session.post(f"{self.url}/generateStream", json=request, ssl=self.verify) as response:
+            async with session.post(
+                f"{self.url}/generateStream",
+                json=request,
+                ssl=self.verify,
+            ) as response:
                 if response.status != 200:
                     payload = await response.json()
                     # TODO this probably won't work
@@ -259,7 +264,7 @@ class LisaLlm(BaseModel):
                                 token=json_payload["token"]["text"],
                             )
 
-    def embed(self, texts: Union[str, List[str]], model: FoundationModel) -> List[List[float]]:
+    def embed(self, texts: str | list[str], model: FoundationModel) -> list[list[float]]:
         """Generate text embeddings based on the provided prompt using a specific model.
 
         Parameters
@@ -284,11 +289,12 @@ class LisaLlm(BaseModel):
         response = self._session.post(f"{self.url}/embeddings", json=payload)
         if response.status_code == 200:
             output = response.json()
-            return output["embeddings"]  # type: ignore
+            embeddings: list[list[float]] = output["embeddings"]
+            return embeddings
         else:
             raise parse_error(response.status_code, response)
 
-    async def aembed(self, texts: Union[str, List[str]], model: FoundationModel) -> List[List[float]]:
+    async def aembed(self, texts: str | list[str], model: FoundationModel) -> list[list[float]]:
         """Generate text embeddings based on the provided prompt using a specific model.
 
         Parameters
@@ -321,7 +327,8 @@ class LisaLlm(BaseModel):
                     raise parse_error(response.status_code, response)
 
                 output = await response.json()
-                return output["embeddings"]  # type: ignore
+                embeddings: list[list[float]] = output["embeddings"]
+                return embeddings
 
     def __del__(self) -> None:
         """Close session."""

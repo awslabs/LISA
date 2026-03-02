@@ -33,6 +33,7 @@ export type McpPreferences = {
 
 export type Preferences = {
     mcp?: McpPreferences;
+    showMarkdownPreview?: boolean;
 };
 
 export type UserPreferences = {
@@ -51,6 +52,7 @@ export const userPreferencesApi = createApi({
     tagTypes: ['user-preferences'],
     refetchOnFocus: true,
     refetchOnMountOrArgChange: true,
+    keepUnusedDataFor: 60, // Keep cache for 60s to prevent cancellation during rapid navigation
     endpoints: (builder) => ({
         updateUserPreferences: builder.mutation<UserPreferences, UserPreferences>({
             query: (userPreferences) => ({

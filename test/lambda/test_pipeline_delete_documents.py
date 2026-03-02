@@ -278,9 +278,11 @@ def test_handle_pipeline_delete_event(setup_env):
         }
     }
 
-    with patch("repository.pipeline_delete_documents.rag_document_repository") as mock_doc_repo, patch(
-        "repository.pipeline_delete_documents.ingestion_job_repository"
-    ) as mock_job_repo, patch("repository.pipeline_delete_documents.ingestion_service") as mock_service:
+    with patch("repository.pipeline_ingest_handlers.rag_document_repository") as mock_doc_repo, patch(
+        "repository.pipeline_ingest_handlers.ingestion_job_repository"
+    ) as mock_job_repo, patch("repository.pipeline_ingest_handlers.ingestion_service") as mock_service, patch(
+        "repository.pipeline_ingest_handlers.vs_repo"
+    ) as mock_vs_repo:
 
         from models.domain_objects import FixedChunkingStrategy, RagDocument
 
@@ -295,10 +297,11 @@ def test_handle_pipeline_delete_event(setup_env):
             chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
         )
 
+        mock_vs_repo.find_repository_by_id.return_value = {"repositoryId": "repo1"}
         mock_doc_repo.find_by_source.return_value = [rag_doc]
         mock_job_repo.find_by_document.return_value = None
 
-        from repository.pipeline_delete_documents import handle_pipeline_delete_event
+        from repository.pipeline_ingest_handlers import handle_pipeline_delete_event
 
         handle_pipeline_delete_event(event, None)
 
@@ -309,10 +312,13 @@ def test_handle_pipeline_delete_event_no_pipeline_config(setup_env):
     """Test handle_pipeline_delete_event skips when no pipeline config."""
     event = {"detail": {"bucket": "test-bucket", "key": "test-key", "repositoryId": "repo1"}}
 
-    from repository.pipeline_delete_documents import handle_pipeline_delete_event
+    with patch("repository.pipeline_ingest_handlers.vs_repo") as mock_vs_repo:
+        mock_vs_repo.find_repository_by_id.return_value = {"repositoryId": "repo1"}
 
-    # Should return without error
-    handle_pipeline_delete_event(event, None)
+        from repository.pipeline_ingest_handlers import handle_pipeline_delete_event
+
+        # Should return without error
+        handle_pipeline_delete_event(event, None)
 
 
 def test_pipeline_delete_routes_to_collection_deletion(setup_env):

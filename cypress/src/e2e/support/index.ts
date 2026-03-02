@@ -16,3 +16,26 @@
 
 import './commands';
 import '../../support/adminHelpers';
+
+declare global {
+    // eslint-disable-next-line @typescript-eslint/no-namespace
+    namespace Cypress {
+        // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
+        interface Chainable {
+            /**
+             * Custom command to log in a user via Cognito OAuth2/OIDC.
+             * Uses cy.session() for caching across specs.
+             * @param role - The role to log in as ('admin' or 'user')
+             * @example cy.loginAs('admin')
+             */
+            loginAs(role?: 'admin' | 'user'): Chainable<void>;
+
+            /**
+             * Custom command to ensure the app is ready for testing.
+             * Waits for critical APIs to complete without re-visiting if already on app.
+             * @example cy.waitForApp()
+             */
+            waitForApp(): Chainable<void>;
+        }
+    }
+}

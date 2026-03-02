@@ -12,7 +12,6 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from typing import Dict, List
 
 from .common import BaseMixin
 from .errors import parse_error
@@ -22,59 +21,59 @@ from .types import RagRepositoryConfig
 class RepositoryMixin(BaseMixin):
     """Mixin for repository-related operations."""
 
-    def list_repositories(self) -> List[Dict]:
+    def list_repositories(self) -> list[dict]:
         """List all available repositories.
 
         Returns:
-            List[Dict]: List of repository configurations
+            List[dict]: List of repository configurations
 
         Raises:
             Exception: If the request fails
         """
         response = self._session.get(f"{self.url}/repository")
         if response.status_code == 200:
-            json_models: List[Dict] = response.json()
+            json_models: list[dict] = response.json()
             return json_models
         else:
             raise parse_error(response.status_code, response)
 
-    def create_repository(self, rag_config: RagRepositoryConfig) -> Dict:
+    def create_repository(self, rag_config: RagRepositoryConfig) -> dict:
         """Create a new RAG repository.
 
         Args:
             rag_config: Configuration for the RAG repository
 
         Returns:
-            Dict: Created repository information
+            dict: Created repository information
 
         Raises:
             Exception: If the request fails
         """
         response = self._session.post(f"{self.url}/repository", json=rag_config)
         if response.status_code in [200, 201]:
-            return response.json()
+            return response.json()  # type: ignore[no-any-return]
         else:
             raise parse_error(response.status_code, response)
 
-    def create_pgvector_repository(self, rag_config: Dict) -> Dict:
+    def create_pgvector_repository(self, rag_config: dict) -> dict:
         """Create a PGVector repository configuration.
 
         Args:
             rag_config: RAG configuration for the PGVector repository (will be wrapped in ragConfig)
 
         Returns:
-            Dict: Created repository information
+            dict: Created repository information
         """
-        return self.create_repository(rag_config)
+        return self.create_repository(rag_config)  # type: ignore[arg-type]
 
     def create_opensearch_repository(
         self,
         repository_id: str,
-        repository_name: str = None,
-        embedding_model_id: str = None,
-        opensearch_config: Dict = None,
-        allowed_groups: List[str] = None,
-    ) -> Dict:
+        repository_name: str | None = None,
+        embedding_model_id: str | None = None,
+        opensearch_config: dict | None = None,
+        allowed_groups: list[str] | None = None,
+    ) -> dict:
         """Create an OpenSearch repository configuration.
 
         Args:
@@ -85,7 +84,7 @@ class RepositoryMixin(BaseMixin):
             allowed_groups: List of groups allowed access
 
         Returns:
-            Dict: Created repository information
+            dict: Created repository information
         """
         rag_config = {
             "repositoryId": repository_id,
@@ -96,10 +95,10 @@ class RepositoryMixin(BaseMixin):
         }
 
         if opensearch_config:
-            rag_config["opensearchConfig"] = opensearch_config
+            rag_config["opensearchConfig"] = opensearch_config  # type: ignore[assignment]
         else:
             # Create new OpenSearch cluster config
-            rag_config["opensearchConfig"] = {
+            rag_config["opensearchConfig"] = {  # type: ignore[assignment]
                 "dataNodes": 2,
                 "dataNodeInstanceType": "r7g.large.search",
                 "masterNodes": 0,
@@ -109,7 +108,18 @@ class RepositoryMixin(BaseMixin):
                 "multiAzWithStandby": False,
             }
 
-        return self.create_repository(rag_config)
+        return self.create_repository(rag_config)  # type: ignore[arg-type]
+
+    def create_bedrock_kb_repository(self, rag_config: dict) -> dict:
+        """Create a Bedrock Knowledge Base repository configuration.
+
+        Args:
+            rag_config: RAG configuration for the Bedrock KB repository
+
+        Returns:
+            dict: Created repository information
+        """
+        return self.create_repository(rag_config)  # type: ignore[arg-type]
 
     def delete_repository(self, repository_id: str) -> bool:
         """Delete a repository.
@@ -129,17 +139,17 @@ class RepositoryMixin(BaseMixin):
         else:
             raise parse_error(response.status_code, response)
 
-    def get_repository_status(self) -> Dict:
+    def get_repository_status(self) -> dict:
         """Get the status of RAG repositories.
 
         Returns:
-            Dict: Repository status information
+            dict: Repository status information
 
         Raises:
             Exception: If the request fails
         """
         response = self._session.get(f"{self.url}/repository/status")
         if response.status_code == 200:
-            return response.json()
+            return response.json()  # type: ignore[no-any-return]
         else:
             raise parse_error(response.status_code, response)

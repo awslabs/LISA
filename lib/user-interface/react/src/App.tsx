@@ -36,6 +36,7 @@ import UserApiToken from './pages/UserApiToken';
 import NotificationBanner from './shared/notification/notification';
 import ConfirmationModal, { ConfirmationModalProps } from './shared/modal/confirmation-modal';
 import Configuration from './pages/Configuration';
+import ChatAssistantStacks from './pages/ChatAssistantStacks';
 import { useGetConfigurationQuery } from './shared/reducers/configuration.reducer';
 import { IConfiguration } from './shared/model/configuration.model';
 import DocumentLibrary from './pages/DocumentLibrary';
@@ -266,6 +267,14 @@ function App () {
                                     </AdminRoute>
                                 }
                             />
+                            {config?.configuration?.enabledComponents?.chatAssistantStacks && <Route
+                                path='chat-assistant-stacks'
+                                element={
+                                    <AdminRoute>
+                                        <ChatAssistantStacks setNav={setNav} />
+                                    </AdminRoute>
+                                }
+                            />}
                             {config?.configuration?.enabledComponents?.mcpConnections && <Route
                                 path='mcp-connections/*'
                                 element={

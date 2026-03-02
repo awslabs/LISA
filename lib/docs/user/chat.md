@@ -4,6 +4,10 @@ This repository include an example chatbot web application. The react based web 
 
 ## Key Features
 
+### Chat Assistant Stacks
+
+When enabled by an administrator, the Chat UI shows a **Chat Assistants** section in the left pane (above History). Each assistant is a preconfigured stack of models, RAG repositories and collections, MCP servers and tools, and prompts. Clicking an assistant starts a new session with that configuration. Sessions appear in History and follow the same behavior as other chats (e.g. you can rename them; the model cannot be changed after selection). See [Chat Assistant Stacks](/config/chat-assistant-stacks) for administrator and user details.
+
 ### Document Summarization Feature
 
 The Document Summarization feature enables efficient document processing through LISA's non-RAG context functionality. Users can streamline their workflow via an intuitive modal interface that facilitates document upload, LLM selection, and customized summarization template configuration. The system generates comprehensive document summaries tailored to specific requirements.

@@ -34,9 +34,13 @@ type RagControlProps = {
     setUseRag: React.Dispatch<React.SetStateAction<boolean>>;
     setRagConfig: React.Dispatch<React.SetStateAction<RagConfig>>;
     ragConfig: RagConfig;
+    /** When set (e.g. from Chat Assistant stack), only these repositories are shown */
+    allowedRepositoryIds?: string[];
+    /** When set (e.g. from Chat Assistant stack), only these collection IDs are shown */
+    allowedCollectionIds?: string[];
 };
 
-export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragConfig }: RagControlProps) {
+export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragConfig, allowedRepositoryIds, allowedCollectionIds }: RagControlProps) {
     const { data: repositories, isLoading: isLoadingRepositories } = useListRagRepositoriesQuery(undefined, {
         refetchOnMountOrArgChange: 5
     });
@@ -66,21 +70,28 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
 
     const filteredRepositories = useMemo(() => {
         if (!repositories) return [];
-        return repositories.filter((repo) =>
+        const statusFiltered = repositories.filter((repo) =>
             repo.status === VectorStoreStatus.CREATE_COMPLETE || repo.status === VectorStoreStatus.UPDATE_COMPLETE
         );
-    }, [repositories]);
+        if (allowedRepositoryIds?.length) {
+            return statusFiltered.filter((repo) => allowedRepositoryIds.includes(repo.repositoryId));
+        }
+        return statusFiltered;
+    }, [repositories, allowedRepositoryIds]);
 
     const collectionOptions = useMemo(() => {
         if (!collections) return [];
-        // Filter to only show ACTIVE collections
-        return collections
+        const active = collections
             .filter((collection) => collection.status === CollectionStatus.ACTIVE)
             .map((collection) => ({
                 value: collection.collectionId,
                 label: collection.name,
             }));
-    }, [collections]);
+        if (allowedCollectionIds?.length) {
+            return active.filter((opt) => allowedCollectionIds.includes(opt.value));
+        }
+        return active;
+    }, [collections, allowedCollectionIds]);
 
     // Update useRag flag based on repository type and configuration
     useEffect(() => {
@@ -115,7 +126,9 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
             if (isNonBedrockRepo && collections && collections.length > 0 && !ragConfig?.collection) {
                 const activeCollections = collections.filter((c) => c.status === CollectionStatus.ACTIVE);
                 if (activeCollections.length > 0) {
-                    const defaultCollection = activeCollections[0];
+                    const defaultCollection = allowedCollectionIds?.length
+                        ? activeCollections.find((c) => allowedCollectionIds.includes(c.collectionId)) ?? activeCollections[0]
+                        : activeCollections[0];
                     const embeddingModel = allModels.find((model) => model.modelId === defaultCollection.embeddingModel);
 
                     setRagConfig((config) => ({
@@ -147,7 +160,8 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
         allModels,
         collections,
         userHasSelectedCollection,
-        setRagConfig
+        setRagConfig,
+        allowedCollectionIds,
     ]);
 
     const handleRepositoryChange = ({ detail }) => {

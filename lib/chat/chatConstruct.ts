@@ -27,6 +27,7 @@ import { ConfigurationApi } from './api/configuration';
 import { PromptTemplateApi } from './api/prompt-template-api';
 import { McpApi } from './api/mcp';
 import { UserPreferencesApi } from './api/user-preferences';
+import { ChatAssistantStacksApi } from './api/chat-assistant-stacks-api';
 
 export type LisaChatProps = {
     authorizer: IAuthorizer;
@@ -92,6 +93,15 @@ export class LisaChatApplicationConstruct extends Construct {
         });
 
         new UserPreferencesApi(scope, 'UserPreferencesApi', {
+            authorizer,
+            config,
+            restApiId,
+            rootResourceId,
+            securityGroups,
+            vpc,
+        });
+
+        new ChatAssistantStacksApi(scope, 'ChatAssistantStacksApi', {
             authorizer,
             config,
             restApiId,

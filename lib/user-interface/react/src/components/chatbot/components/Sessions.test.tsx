@@ -31,6 +31,10 @@ vi.mock('@/shared/reducers/configuration.reducer', () => ({
     ]),
 }));
 
+vi.mock('@/shared/reducers/chat-assistant-stacks.reducer', () => ({
+    useListStacksQuery: vi.fn(() => ({ data: [] })),
+}));
+
 vi.mock('@/shared/reducers/session.reducer', () => ({
     sessionApi: {
         util: {

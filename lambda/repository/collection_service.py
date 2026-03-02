@@ -137,7 +137,7 @@ class CollectionService:
             user_groups: User groups for access control
             is_admin: Whether user is admin
         """
-        collection = self.collection_repo.find_by_id(collection_id, repository_id)
+        collection = self.collection_repo.find_by_id_or_name(collection_id, repository_id)
         if not collection:
             raise ValidationError(f"Collection {collection_id} not found")
         if not self.has_access(collection, username, user_groups, is_admin):

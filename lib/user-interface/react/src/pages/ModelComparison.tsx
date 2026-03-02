@@ -54,7 +54,7 @@ export default function ModelComparisonPage (): ReactElement {
         refetchOnMountOrArgChange: 5,
         selectFromResult: (state) => ({
             data: (state.data || []).filter((model) =>
-                (model.modelType === ModelType.textgen || model.modelType === ModelType.imagegen) &&
+                (model.modelType === ModelType.textgen || model.modelType === ModelType.imagegen || model.modelType === ModelType.videogen) &&
                 model.status === ModelStatus.InService
             ),
         })

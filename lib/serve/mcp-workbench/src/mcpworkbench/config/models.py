@@ -14,7 +14,6 @@
 
 """Configuration models for MCP Workbench."""
 
-from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -22,11 +21,11 @@ from pydantic import BaseModel, Field
 class CORSConfig(BaseModel):
     """CORS configuration settings."""
 
-    allow_origins: List[str] = Field(default=["*"], description="Allowed origins for CORS")
-    allow_methods: List[str] = Field(default=["GET", "POST", "OPTIONS"], description="Allowed HTTP methods")
-    allow_headers: List[str] = Field(default=["*"], description="Allowed headers")
+    allow_origins: list[str] = Field(default=["*"], description="Allowed origins for CORS")
+    allow_methods: list[str] = Field(default=["GET", "POST", "OPTIONS"], description="Allowed HTTP methods")
+    allow_headers: list[str] = Field(default=["*"], description="Allowed headers")
     allow_credentials: bool = Field(default=True, description="Allow credentials in CORS requests")
-    expose_headers: List[str] = Field(default=[], description="Headers to expose to the browser")
+    expose_headers: list[str] = Field(default=[], description="Headers to expose to the browser")
     max_age: int = Field(default=600, description="Maximum age for CORS preflight cache")
 
 
@@ -41,8 +40,8 @@ class ServerConfig(BaseModel):
     tools_directory: str = Field(..., description="Directory containing tool files")
 
     # Management tool settings
-    exit_route_path: Optional[str] = Field(default=None, description="Enable exit_server MCP tool when set")
-    rescan_route_path: Optional[str] = Field(default=None, description="Enable rescan_tools MCP tool when set")
+    exit_route_path: str | None = Field(default=None, description="Enable exit_server MCP tool when set")
+    rescan_route_path: str | None = Field(default=None, description="Enable rescan_tools MCP tool when set")
 
     # CORS settings
     cors_settings: CORSConfig = Field(default_factory=CORSConfig, description="CORS configuration")
@@ -83,8 +82,15 @@ class ServerConfig(BaseModel):
             if not isinstance(config_data["cors_settings"], dict):
                 config_data["cors_settings"] = {}
 
-            # Set the origins
-            config_data["cors_settings"]["allow_origins"] = cors_origins
+            # Convert cors_origins to a list if it's a string (comma-separated)
+            if isinstance(cors_origins, str):
+                origins_list = [origin.strip() for origin in cors_origins.split(",") if origin.strip()]
+                config_data["cors_settings"]["allow_origins"] = origins_list
+            elif isinstance(cors_origins, list):
+                config_data["cors_settings"]["allow_origins"] = cors_origins
+            else:
+                # Fallback to default
+                config_data["cors_settings"]["allow_origins"] = ["*"]
 
         # Handle cors_settings
         if "cors_settings" in config_data and isinstance(config_data["cors_settings"], dict):

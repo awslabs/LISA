@@ -46,27 +46,31 @@ export function ModelLibraryComponent () : ReactElement {
     useEffect(() => {
         const finalStatePredicate = (model) => [ModelStatus.InService, ModelStatus.Failed, ModelStatus.Stopped].includes(model.status);
         if (allModels?.every(finalStatePredicate)) {
-            setShouldPoll(false);
+            queueMicrotask(() => setShouldPoll(false));
         }
-    }, [allModels, setShouldPoll]);
+    }, [allModels]);
 
     useEffect(() => {
         let newPageCount = 0;
         if (searchText){
             const filteredModels = allModels.filter((model) => JSON.stringify(model).toLowerCase().includes(searchText.toLowerCase()));
-            setMatchedModels(filteredModels.slice(preferences.pageSize * (currentPageIndex - 1), preferences.pageSize * currentPageIndex));
+            queueMicrotask(() => {
+                setMatchedModels(filteredModels.slice(preferences.pageSize * (currentPageIndex - 1), preferences.pageSize * currentPageIndex));
+                setCount(filteredModels.length.toString());
+            });
             newPageCount = Math.ceil(filteredModels.length / preferences.pageSize);
-            setCount(filteredModels.length.toString());
         } else {
-            setMatchedModels(allModels ? allModels.slice(preferences.pageSize * (currentPageIndex - 1), preferences.pageSize * currentPageIndex) : []);
+            queueMicrotask(() => {
+                setMatchedModels(allModels ? allModels.slice(preferences.pageSize * (currentPageIndex - 1), preferences.pageSize * currentPageIndex) : []);
+                setCount(allModels ? allModels.length.toString() : '0');
+            });
             newPageCount = Math.ceil(allModels ? (allModels.length / preferences.pageSize) : 1);
-            setCount(allModels ? allModels.length.toString() : '0');
         }
 
         if (newPageCount < numberOfPages){
-            setCurrentPageIndex(1);
+            queueMicrotask(() => setCurrentPageIndex(1));
         }
-        setNumberOfPages(newPageCount);
+        queueMicrotask(() => setNumberOfPages(newPageCount));
     }, [allModels, searchText, preferences, currentPageIndex, numberOfPages]);
 
     return (

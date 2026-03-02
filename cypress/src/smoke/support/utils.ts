@@ -16,7 +16,7 @@
 
 import { times, random } from 'lodash';
 
-export const toBase64Url = (obj: { alg: string; typ: string; }) =>
+export const toBase64Url = (obj: Record<string, unknown>) =>
     btoa(JSON.stringify(obj))
         .replace(/=+$/, '')
         .replace(/\+/g, '-')

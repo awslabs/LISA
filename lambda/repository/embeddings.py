@@ -14,11 +14,14 @@
 
 import logging
 import os
-from typing import List
+import time
+from typing import Any
 
 import boto3
 import requests
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from utilities.auth import get_management_key
 from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint, retry_config
 from utilities.validation import validate_model_name, ValidationError
@@ -30,11 +33,44 @@ iam_client = boto3.client("iam", region_name=os.environ["AWS_REGION"], config=re
 
 lisa_api_endpoint = ""
 
+# Max texts per embedding API call — TEI containers enforce a 256 limit
+MAX_EMBEDDING_BATCH_SIZE = 256
+# Retry configuration for transient embedding failures
+MAX_RETRIES = 3
+INITIAL_BACKOFF_SECONDS = 1.0
+
+# Module-level session with connection pooling for better performance
+# This reuses TCP connections across multiple embedding requests
+_http_session: requests.Session | None = None
+
+
+def _get_http_session() -> requests.Session:
+    """Get or create a shared HTTP session with connection pooling."""
+    global _http_session
+    if _http_session is None:
+        _http_session = requests.Session()
+        # Configure retry strategy for transient failures
+        retry_strategy = Retry(
+            total=2,
+            backoff_factor=0.5,
+            status_forcelist=[502, 503, 504],
+        )
+        adapter = HTTPAdapter(
+            pool_connections=10,  # Number of connection pools
+            pool_maxsize=20,  # Max connections per pool
+            max_retries=retry_strategy,
+        )
+        _http_session.mount("http://", adapter)
+        _http_session.mount("https://", adapter)
+    return _http_session
+
 
 class RagEmbeddings(BaseModel):
     """
     Handles document embeddings through LiteLLM using management credentials.
     """
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     model_name: str
     token: str
@@ -48,7 +84,7 @@ class RagEmbeddings(BaseModel):
         validate_model_name(v)
         return v
 
-    def __init__(self, model_name: str, id_token: str | None = None, **data) -> None:
+    def __init__(self, model_name: str, id_token: str | None = None, **data: Any) -> None:
         # Prepare initialization data
         init_data = {"model_name": model_name, **data}
         try:
@@ -69,12 +105,13 @@ class RagEmbeddings(BaseModel):
             logger.error("Failed to initialize pipeline embeddings", exc_info=True)
             raise
 
-    class Config:
-        arbitrary_types_allowed = True
-
-    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """
-        Generate embeddings for a list of documents.
+        Generate embeddings for a list of documents, automatically batching
+        to stay within the embedding server's max batch size.
+
+        Uses input_type="passage" so litellm applies the correct model-specific
+        prefix for document indexing (e.g. "passage: " for E5 models).
 
         Args:
             texts: List of text strings to embed
@@ -84,74 +121,118 @@ class RagEmbeddings(BaseModel):
 
         Raises:
             ValidationError: If input texts are invalid
-            Exception: If embedding request fails
+            Exception: If embedding request fails after retries
         """
         if not texts:
             raise ValidationError("No texts provided for embedding")
 
         logger.info(f"Embedding {len(texts)} documents using {self.model_name}")
+
+        all_embeddings: list[list[float]] = []
+        batch_size = MAX_EMBEDDING_BATCH_SIZE
+
+        for batch_start in range(0, len(texts), batch_size):
+            batch = texts[batch_start : batch_start + batch_size]
+            batch_num = batch_start // batch_size + 1
+            total_batches = (len(texts) + batch_size - 1) // batch_size
+            logger.info(f"Embedding batch {batch_num}/{total_batches} ({len(batch)} texts)")
+
+            batch_embeddings = self._embed_batch_with_retry(batch)
+            all_embeddings.extend(batch_embeddings)
+
+        if len(all_embeddings) != len(texts):
+            raise Exception(f"Embedding count mismatch: expected {len(texts)}, got {len(all_embeddings)}")
+
+        logger.info(f"Successfully embedded {len(texts)} documents")
+        return all_embeddings
+
+    def _embed_batch_with_retry(self, texts: list[str], input_type: str | None = None) -> list[list[float]]:
+        """Send a single batch to the embedding API with exponential backoff on failure."""
+        last_exception: Exception | None = None
+
+        for attempt in range(1, MAX_RETRIES + 1):
+            try:
+                return self._call_embedding_api(texts, input_type=input_type)
+            except Exception as e:
+                last_exception = e
+                if attempt < MAX_RETRIES:
+                    backoff = INITIAL_BACKOFF_SECONDS * (2 ** (attempt - 1))
+                    logger.warning(
+                        f"Embedding attempt {attempt}/{MAX_RETRIES} failed: {e}. " f"Retrying in {backoff:.1f}s..."
+                    )
+                    time.sleep(backoff)
+                else:
+                    logger.error(f"Embedding failed after {MAX_RETRIES} attempts: {e}")
+
+        raise last_exception  # type: ignore[misc]
+
+    def _call_embedding_api(self, texts: list[str], input_type: str | None = None) -> list[list[float]]:
+        """Make a single embedding HTTP request and parse the response."""
+        url = f"{self.base_url}/embeddings"
+        request_data: dict[str, Any] = {
+            "input": texts,
+            "model": self.model_name,
+            "encoding_format": "float",
+        }
+        if input_type is not None:
+            request_data["input_type"] = input_type
+
+        session = _get_http_session()
         try:
-            url = f"{self.base_url}/embeddings"
-            request_data = {"input": texts, "model": self.model_name}
-            response = requests.post(
+            response = session.post(
                 url,
                 json=request_data,
                 headers={"Authorization": f"Bearer {self.token}", "Content-Type": "application/json"},
-                verify=self.cert_path,  # Use proper SSL verification
-                timeout=300,  # 5 minute timeout
+                verify=self.cert_path,
+                timeout=300,
             )
-
-            if response.status_code != 200:
-                logger.error(f"Embedding request failed with status {response.status_code}")
-                raise Exception(f"Embedding request failed with status {response.status_code}")
-
-            result = response.json()
-            logger.debug(f"API Response: {result}")  # Log the full response for debugging
-
-            # Handle different response formats
-            embeddings = []
-            if isinstance(result, dict):
-                if "data" in result:
-                    # OpenAI-style format
-                    for item in result["data"]:
-                        if isinstance(item, dict) and "embedding" in item:
-                            embeddings.append(item["embedding"])
-                        else:
-                            embeddings.append(item)  # Assume the item itself is the embedding
-                else:
-                    # Try to find embeddings in the response
-                    for key in ["embeddings", "embedding", "vectors", "vector"]:
-                        if key in result:
-                            embeddings = result[key]
-                            break
-            elif isinstance(result, list):
-                # Direct list format
-                embeddings = result
-
-            if not embeddings:
-                logger.error(f"Could not find embeddings in response: {result}")
-                raise Exception("No embeddings found in API response")
-
-            if len(embeddings) != len(texts):
-                logger.error(f"Mismatch between number of texts ({len(texts)}) and embeddings ({len(embeddings)})")
-                raise Exception("Number of embeddings does not match number of input texts")
-
-            logger.info(f"Successfully embedded {len(texts)} documents")
-            return embeddings
-
         except requests.Timeout:
-            logger.error("Embedding request timed out")
             raise Exception("Embedding request timed out after 5 minutes")
         except requests.RequestException as e:
-            logger.error(f"Request failed: {str(e)}", exc_info=True)
-            raise
-        except Exception as e:
-            logger.error(f"Failed to get embeddings: {str(e)}", exc_info=True)
-            raise
+            raise Exception(f"Embedding HTTP request failed: {e}") from e
 
-    def embed_query(self, text: str) -> List[float]:
+        if response.status_code != 200:
+            logger.error(f"Embedding request failed with status {response.status_code}: {response.text}")
+            raise Exception(f"Embedding request failed with status {response.status_code}")
+
+        result = response.json()
+        return self._parse_embeddings(result, expected_count=len(texts))
+
+    @staticmethod
+    def _parse_embeddings(result: Any, expected_count: int) -> list[list[float]]:
+        """Extract embedding vectors from the API response."""
+        embeddings: list[list[float]] = []
+
+        if isinstance(result, dict):
+            if "data" in result:
+                # OpenAI-style format
+                for item in result["data"]:
+                    if isinstance(item, dict) and "embedding" in item:
+                        embeddings.append(item["embedding"])
+                    else:
+                        embeddings.append(item)
+            else:
+                for key in ["embeddings", "embedding", "vectors", "vector"]:
+                    if key in result:
+                        embeddings = result[key]
+                        break
+        elif isinstance(result, list):
+            embeddings = result
+
+        if not embeddings:
+            logger.error(f"Could not find embeddings in response: {result}")
+            raise Exception("No embeddings found in API response")
+
+        if len(embeddings) != expected_count:
+            raise Exception(f"Embedding count mismatch: expected {expected_count}, got {len(embeddings)}")
+
+        return embeddings
+
+    def embed_query(self, text: str) -> list[float]:
+        """Embed a single query text using input_type="query" for retrieval."""
         if not text or not isinstance(text, str):
             raise ValidationError("Invalid query text")
 
         logger.info("Embedding single query text")
-        return self.embed_documents([text])[0]
+        result = self._embed_batch_with_retry([text])
+        return result[0]

@@ -29,6 +29,7 @@ import { getJsonDifference } from '../../shared/util/validationUtils';
 import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
 import { useNotificationService } from '../../shared/util/hooks';
 import { mcpServerApi } from '@/shared/reducers/mcp-server.reducer';
+import { getDisplayName } from '../../shared/util/branding';
 
 export type ConfigState = {
     validateAll: boolean;
@@ -152,7 +153,7 @@ export function ConfigurationComponent (): ReactElement {
                 variant='h1'
                 description={'Activate and deactivate platform features'}
             >
-                LISA Feature Configuration
+                {getDisplayName()} Feature Configuration
             </Header>
             <ActivatedUserComponents setFields={setFields} enabledComponents={state.form.enabledComponents} />
             <SystemBannerConfiguration setFields={setFields}

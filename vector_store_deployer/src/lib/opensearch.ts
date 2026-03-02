@@ -13,7 +13,7 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 */
-import { CustomResource, Duration, RemovalPolicy, StackProps } from 'aws-cdk-lib';
+import { CustomResource, Duration, StackProps } from 'aws-cdk-lib';
 import { Domain, EngineVersion, IDomain } from 'aws-cdk-lib/aws-opensearchservice';
 import { Construct } from 'constructs';
 import { RagRepositoryDeploymentConfig, RagRepositoryType,PartialConfig } from '../../../lib/schema';
@@ -207,8 +207,7 @@ def handler(event, context):
                 encryptionAtRest: {
                     enabled: true
                 },
-                // todo: validate if this should use the config removal policy
-                removalPolicy: RemovalPolicy.DESTROY,
+                removalPolicy: config.removalPolicy,
                 securityGroups: [openSearchSecurityGroup],
             });
 

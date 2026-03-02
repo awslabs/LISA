@@ -17,9 +17,9 @@
 import 'regenerator-runtime/runtime';
 import { ReactElement, useEffect, useState } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { AppLayout } from '@cloudscape-design/components';
+import { AppLayout, Box } from '@cloudscape-design/components';
 import Spinner from '@cloudscape-design/components/spinner';
-import { useAuth } from 'react-oidc-context';
+import { useAuth } from './auth/useAuth';
 
 import Home from './pages/Home';
 import Chatbot from './pages/Chatbot';
@@ -105,7 +105,6 @@ const ApiUserRoute = ({ children }: RouteProps) => {
 };
 
 function App () {
-    const [showNavigation, setShowNavigation] = useState(false);
     const [nav, setNav] = useState(null);
     const confirmationModal: ConfirmationModalProps = useAppSelector((state) => state.modal.confirmationModal);
     const auth = useAuth();
@@ -131,13 +130,7 @@ function App () {
         applyMode(colorScheme);
     }, [colorScheme]);
 
-    useEffect(() => {
-        if (nav) {
-            setShowNavigation(true);
-        } else {
-            setShowNavigation(false);
-        }
-    }, [nav]);
+    const showNavigation = !!nav;
 
     return (
         <ColorSchemeContext.Provider value={{ colorScheme, setColorScheme }}>
@@ -194,20 +187,32 @@ function App () {
                                     </AdminRoute>
                                 }
                             />}
-                            <Route
+                            {window.env.RAG_ENABLED && <Route
                                 path='repository-management'
                                 element={
                                     <AdminRoute>
                                         <RepositoryManagement setNav={setNav} />
                                     </AdminRoute>
                                 }
-                            />
+                            />}
                             <Route
                                 path='api-token-management'
                                 element={
                                     <AdminRoute>
                                         <ApiTokenManagement setNav={setNav} />
                                     </AdminRoute>
+                                }
+                            />
+                            <Route
+                                path='mcp-workbench'
+                                element={
+                                    config?.configuration?.enabledComponents?.showMcpWorkbench ? (
+                                        <AdminRoute>
+                                            <McpWorkbench setNav={setNav} />
+                                        </AdminRoute>
+                                    ) : (
+                                        <Navigate to={import.meta.env.BASE_URL} replace />
+                                    )
                                 }
                             />
                             {config?.configuration?.enabledComponents?.enableUserApiTokens && <Route
@@ -269,14 +274,6 @@ function App () {
                                     </PrivateRoute>
                                 }
                             />}
-                            {config?.configuration?.enabledComponents?.showMcpWorkbench &&
-                                <Route
-                                    path='mcp-workbench/*'
-                                    element={
-                                        <McpWorkbench setNav={setNav} />
-                                    }
-                                />
-                            }
                             {config?.configuration?.enabledComponents?.enableModelComparisonUtility && <Route
                                 path='model-comparison'
                                 element={
@@ -290,7 +287,7 @@ function App () {
                                 configLoading ?
                                     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
                                         <Spinner size='large' />
-                                        <span style={{ marginLeft: '10px' }}>Loading configuration...</span>
+                                        <Box margin={{ left: 's' }}>Loading configuration...</Box>
                                     </div>
                                     :
                                     <Home setNav={setNav} />

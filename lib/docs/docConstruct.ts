@@ -84,7 +84,7 @@ export class LisaDocsConstruct extends Construct {
         // Create API Gateway
         const api = new RestApi(scope, 'DocsApi', {
             description: 'API Gateway for S3 hosted website',
-            endpointConfiguration: { types: [EndpointType.REGIONAL] },
+            endpointTypes: [EndpointType.REGIONAL],
             deployOptions: {
                 stageName: 'LISA',
             },

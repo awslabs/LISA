@@ -13,7 +13,7 @@
 #   limitations under the License.
 import logging
 import os
-from typing import Any, cast, List
+from typing import Any, cast
 
 import boto3
 from boto3.dynamodb.conditions import Attr
@@ -34,7 +34,7 @@ class VectorStoreRepository:
             table_name = os.environ["LISA_RAG_VECTOR_STORE_TABLE"]
         self.table = dynamodb.Table(table_name)
 
-    def get_registered_repositories(self) -> List[dict]:
+    def get_registered_repositories(self) -> list[dict]:
         """Get a list of all registered RAG repositories with default values for new fields."""
         response = self.table.scan()
         items = response["Items"]
@@ -181,7 +181,7 @@ class VectorStoreRepository:
         except Exception as e:
             raise ValueError(f"Failed to delete repository: {repository_id}", e)
 
-    def find_repositories_using_model(self, model_id: str) -> List[dict]:
+    def find_repositories_using_model(self, model_id: str) -> list[dict]:
         """
         Find all repositories that use a specific model.
         Excludes repositories with status indicating they are deleted or archived.

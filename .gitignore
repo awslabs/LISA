@@ -32,6 +32,7 @@ lib/rag/ingestion/ingestion-image/build
 .DS_Store
 *.iml
 *.code-workspace
+.hf_token_cache
 
 # AI Tools
 .cursor
@@ -48,8 +49,14 @@ coverage
 # Deployment configuration file
 config.yaml
 config-custom.yaml
+config-generated.yaml
 /.coverage
 
 # Test Artifacts
 /cypress/videos
 /cypress/screenshots
+/cypress/logs
+
+# Cypress local environment
+/cypress/.env.local
+.npmrc

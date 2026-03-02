@@ -16,7 +16,7 @@ import logging
 import os
 import shlex
 import uuid
-from typing import Any, Dict
+from typing import Any
 
 import boto3
 from botocore.exceptions import ClientError
@@ -87,7 +87,7 @@ function buildTagPush() {
 """
 
 
-def handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: ignore [no-untyped-def]
+def handler(event: dict[str, Any], context) -> dict[str, Any]:  # type: ignore [no-untyped-def]
     logger.info(f"Starting Docker image builder with event: {event}")
 
     base_image = event["base_image"]
@@ -99,7 +99,7 @@ def handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: ignore [
     ec2_resource = boto3.resource("ec2", region_name=os.environ["AWS_REGION"])
     ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"])
 
-    response = ssm_client.get_parameter(Name="/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2")
+    response = ssm_client.get_parameter(Name="/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64")
     ami_id = response["Parameter"]["Value"]
     image_tag = str(uuid.uuid4())
 
@@ -125,7 +125,13 @@ def handler(event: Dict[str, Any], context) -> Dict[str, Any]:  # type: ignore [
             "UserData": rendered_userdata,
             "IamInstanceProfile": {"Arn": os.environ["LISA_INSTANCE_PROFILE"]},
             "BlockDeviceMappings": [
-                {"DeviceName": "/dev/xvda", "Ebs": {"VolumeSize": int(os.environ["LISA_IMAGEBUILDER_VOLUME_SIZE"])}}
+                {
+                    "DeviceName": "/dev/xvda",
+                    "Ebs": {
+                        "VolumeSize": int(os.environ["LISA_IMAGEBUILDER_VOLUME_SIZE"]),
+                        "Encrypted": True,
+                    },
+                }
             ],
             "TagSpecifications": [
                 {

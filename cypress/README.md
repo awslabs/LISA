@@ -54,7 +54,6 @@ DevTools listening on ws://127.0.0.1:51352/devtools/browser/2f804c68-414e-4004-9
   │ Node Version:   v18.20.4 (/.../.nvm/versions/node/v18.20.4/bin/node)                           │
   │ Specs:          1 found (administration.e2e.spec.ts)                                           │
   │ Searched:       src/e2e/specs/**/*.e2e.spec.ts                                                 │
-  │ Experiments:    experimentalStudio=true                                                        │
   └────────────────────────────────────────────────────────────────────────────────────────────────┘
 
 

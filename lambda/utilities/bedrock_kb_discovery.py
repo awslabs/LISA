@@ -20,7 +20,7 @@ efficient resource discovery.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import boto3
 from botocore.exceptions import ClientError
@@ -36,8 +36,8 @@ logger = logging.getLogger(__name__)
 
 
 def list_knowledge_bases(
-    bedrock_agent_client: Optional[Any] = None,
-) -> List[KnowledgeBaseMetadata]:
+    bedrock_agent_client: Any | None = None,
+) -> list[KnowledgeBaseMetadata]:
     """
     List all Knowledge Bases accessible in the AWS account.
 
@@ -93,8 +93,8 @@ def list_knowledge_bases(
 
 def discover_kb_data_sources(
     kb_id: str,
-    bedrock_agent_client: Optional[Any] = None,
-) -> List[DataSourceMetadata]:
+    bedrock_agent_client: Any | None = None,
+) -> list[DataSourceMetadata]:
     """
     Discover all data sources in a Bedrock Knowledge Base.
 
@@ -174,7 +174,7 @@ def discover_kb_data_sources(
         raise ValidationError(f"Unexpected error discovering data sources: {str(e)}")
 
 
-def extract_s3_configuration(data_source: Dict[str, Any]) -> Dict[str, str]:
+def extract_s3_configuration(data_source: dict[str, Any]) -> dict[str, str]:
     """Extract S3 bucket and prefix from data source configuration.
 
     Args:
@@ -199,7 +199,7 @@ def extract_s3_configuration(data_source: Dict[str, Any]) -> Dict[str, str]:
 
 def build_pipeline_configs_from_kb_config(
     kb_config: Any,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Build PipelineConfigs from BedrockKnowledgeBaseConfig.
 
     Args:
@@ -276,9 +276,9 @@ def build_pipeline_configs_from_kb_config(
 
 def get_available_data_sources(
     kb_id: str,
-    repository_id: Optional[str] = None,
-    bedrock_agent_client: Optional[Any] = None,
-) -> List[DataSourceMetadata]:
+    repository_id: str | None = None,
+    bedrock_agent_client: Any | None = None,
+) -> list[DataSourceMetadata]:
     """
     Get all data sources for a Knowledge Base.
 

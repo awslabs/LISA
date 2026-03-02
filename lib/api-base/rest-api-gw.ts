@@ -52,7 +52,7 @@ export class RestApiGateway extends Construct {
 
         this.restApi = new RestApi(this, `${id}-RestApi`, {
             description: 'The User Interface and session management Lambda API Layer.',
-            endpointConfiguration: { types: [EndpointType.REGIONAL] },
+            endpointTypes: [EndpointType.REGIONAL],
             deployOptions,
             defaultCorsPreflightOptions: {
                 allowOrigins: Cors.ALL_ORIGINS,

@@ -20,15 +20,28 @@ import os
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import boto3
 import create_env_variables  # noqa: F401
 from botocore.exceptions import ClientError
-from cachetools import cached, TTLCache
+from cachetools import cached, TTLCache  # type: ignore[import-untyped,unused-ignore]
+from metrics.models import MetricsEvent
+from models.domain_objects import DeleteResponse, SuccessResponse
+from pydantic import ValidationError
+from session.models import (
+    AttachImageRequest,
+    PutSessionRequest,
+    RenameSessionRequest,
+    SelectedModelFeature,
+    Session,
+    SessionConfigurationModel,
+    SessionSummary,
+)
 from utilities.auth import get_user_context, get_username
 from utilities.common_functions import api_wrapper, get_session_id, retry_config
 from utilities.encoders import convert_decimal
+from utilities.input_validation import MAX_LARGE_REQUEST_SIZE
 from utilities.session_encryption import decrypt_session_fields, migrate_session_to_encrypted, SessionEncryptionError
 from utilities.time import iso_string
 
@@ -50,7 +63,7 @@ config_table = dynamodb.Table(os.environ["CONFIG_TABLE_NAME"])
 executor = ThreadPoolExecutor(max_workers=10)
 
 # Cache for configuration values to avoid repeated database queries
-cache = TTLCache(maxsize=1, ttl=300)  # 5 minutes
+cache: TTLCache = TTLCache(maxsize=1, ttl=300)  # 5 minutes
 
 
 @cached(cache=cache)
@@ -81,7 +94,7 @@ def _is_session_encryption_enabled() -> bool:
             enabled_components = configuration.get("enabledComponents", {})
             encrypt_session = enabled_components.get("encryptSession", False)  # Default to False
             logger.info(f"Retrieved session encryption setting from global config: {encrypt_session}")
-            return encrypt_session
+            return encrypt_session  # type: ignore[no-any-return]
         else:
             logger.warning("No global configuration found, defaulting session encryption to disabled")
             return False
@@ -119,27 +132,26 @@ def _get_current_model_config(model_id: str) -> Any:
         return {}
 
 
-def _update_session_with_current_model_config(session_config: Dict[str, Any]) -> Dict[str, Any]:
+def _update_session_with_current_model_config(
+    session_config: SessionConfigurationModel,
+) -> SessionConfigurationModel:
     """Update session configuration with the most recent model configuration.
 
     Parameters
     ----------
-    session_config : Dict[str, Any]
+    session_config : SessionConfigurationModel
         The session configuration containing model information.
 
     Returns
     -------
-    Dict[str, Any]
+    SessionConfigurationModel
         Updated configuration with current model settings.
     """
-    if not session_config:
+    if not session_config or not session_config.selectedModel:
         return session_config
 
-    # Extract model ID from selectedModel section
-    selected_model = session_config.get("selectedModel", {})
-
-    # Get the modelId directly
-    model_id = selected_model.get("modelId")
+    selected_model = session_config.selectedModel
+    model_id = selected_model.modelId
     if not model_id:
         logger.warning("No modelId found in session selectedModel")
         return session_config
@@ -150,34 +162,32 @@ def _update_session_with_current_model_config(session_config: Dict[str, Any]) ->
         logger.warning(f"Could not fetch current config for model {model_id}, using existing session config")
         return session_config
 
-    # Create updated config with current model settings
-    updated_config = session_config.copy()
+    # Build updated SelectedModel with current model settings
+    updated_selected = selected_model.model_copy(deep=True)
 
-    # Update the selectedModel section with current model configuration
-    if "selectedModel" not in updated_config:
-        updated_config["selectedModel"] = {}
-
-    selected_model_section = updated_config["selectedModel"]
-
-    # Update features from current model config
     if "features" in current_model_config:
-        selected_model_section["features"] = current_model_config["features"]
-
-    # Update streaming setting
+        updated_selected.features = [
+            SelectedModelFeature.model_validate(f) if isinstance(f, dict) else f
+            for f in current_model_config["features"]
+        ]
     if "streaming" in current_model_config:
-        selected_model_section["streaming"] = current_model_config["streaming"]
-
-    # Update other model-specific settings that might have changed
-    for key in ["modelType", "modelDescription", "allowedGroups"]:
-        if key in current_model_config:
-            selected_model_section[key] = current_model_config[key]
+        updated_selected.streaming = current_model_config["streaming"]
+    if "modelType" in current_model_config:
+        updated_selected.modelType = str(current_model_config["modelType"])
+    if "modelDescription" in current_model_config:
+        updated_selected.modelDescription = current_model_config["modelDescription"]
+    if "allowedGroups" in current_model_config:
+        updated_selected.allowedGroups = current_model_config["allowedGroups"]
 
     logger.info(f"Updated session selectedModel config for model {model_id} with current model settings")
+    updated_config: SessionConfigurationModel = session_config.model_copy(update={"selectedModel": updated_selected})
     return updated_config
 
 
-def _get_all_user_sessions(user_id: str) -> List[Dict[str, Any]]:
+def _get_all_user_sessions(user_id: str) -> list[dict[str, Any]]:
     """Get all sessions for a user from DynamoDB.
+
+    Paginates through all results when DynamoDB returns more than one page.
 
     Parameters
     ----------
@@ -189,23 +199,62 @@ def _get_all_user_sessions(user_id: str) -> List[Dict[str, Any]]:
     List[Dict[str, Any]]
         A list of user sessions.
     """
-    response = {}
+    all_items: list[dict[str, Any]] = []
+    exclusive_start_key: dict[str, Any] | None = None
+
     try:
-        response = table.query(
-            KeyConditionExpression="userId = :user_id",
-            ExpressionAttributeValues={":user_id": user_id},
-            IndexName=os.environ["SESSIONS_BY_USER_ID_INDEX_NAME"],
-            ScanIndexForward=False,
-        )
+        while True:
+            query_params: dict[str, Any] = {
+                "KeyConditionExpression": "userId = :user_id",
+                "ExpressionAttributeValues": {":user_id": user_id},
+                "IndexName": os.environ["SESSIONS_BY_USER_ID_INDEX_NAME"],
+                "ScanIndexForward": False,
+            }
+            if exclusive_start_key is not None:
+                query_params["ExclusiveStartKey"] = exclusive_start_key
+
+            response = table.query(**query_params)
+            items = response.get("Items", [])
+            all_items.extend(items)
+
+            exclusive_start_key = response.get("LastEvaluatedKey")
+            if exclusive_start_key is None:
+                break
     except ClientError as error:
         if error.response["Error"]["Code"] == "ResourceNotFoundException":
             logger.warning(f"No sessions found for user {user_id}")
         else:
             logger.exception("Error listing sessions")
-    return response.get("Items", [])  # type: ignore [no-any-return]
+    return all_items
 
 
-def _delete_user_session(session_id: str, user_id: str) -> Dict[str, bool]:
+def _extract_video_s3_keys(session: dict) -> list[str]:
+    """Extract all video S3 keys from a session's history.
+
+    Parameters
+    ----------
+    session : dict
+        The session object containing history.
+
+    Returns
+    -------
+    list[str]
+        A list of S3 keys for videos in the session.
+    """
+    video_keys: list[str] = []
+    for message in session.get("history", []):
+        content = message.get("content")
+        if isinstance(content, list):
+            for item in content:
+                if isinstance(item, dict) and item.get("type") == "video_url":
+                    video_url = item.get("video_url", {})
+                    s3_key = video_url.get("s3_key")
+                    if s3_key:
+                        video_keys.append(s3_key)
+    return video_keys
+
+
+def _delete_user_session(session_id: str, user_id: str) -> DeleteResponse:
     """Delete a session from DynamoDB.
 
     Parameters
@@ -217,21 +266,51 @@ def _delete_user_session(session_id: str, user_id: str) -> Dict[str, bool]:
 
     Returns
     -------
-    Dict[str, bool]
-        A dictionary containing the deleted status.
+    DeleteResponse
+        Response containing the deleted status.
     """
     deleted = False
     try:
+        # First, get the session to extract any video S3 keys before deleting
+        response = table.get_item(Key={"sessionId": session_id, "userId": user_id})
+        session = response.get("Item", {})
+
+        # Decrypt session if encrypted to access history for video keys
+        if session.get("is_encrypted", False):
+            try:
+                logger.info(f"Decrypting session {session_id} to extract video keys for deletion")
+                session = decrypt_session_fields(session, user_id, session_id)
+            except SessionEncryptionError as e:
+                logger.warning(f"Failed to decrypt session {session_id} for video cleanup: {e}")
+                # Continue with deletion even if decryption fails - videos may remain orphaned
+
+        # Extract video S3 keys from the session history
+        video_keys = _extract_video_s3_keys(session)
+
+        # Delete the session from DynamoDB
         table.delete_item(Key={"sessionId": session_id, "userId": user_id})
+
+        # Delete associated images from S3
         bucket = s3_resource.Bucket(s3_bucket_name)
         bucket.objects.filter(Prefix=f"images/{session_id}").delete()
+
+        # Delete associated videos from S3
+        if video_keys:
+            logger.info(f"Deleting {len(video_keys)} videos from S3 for session {session_id}")
+            for video_key in video_keys:
+                try:
+                    s3_client.delete_object(Bucket=s3_bucket_name, Key=video_key)
+                    logger.debug(f"Deleted video: {video_key}")
+                except ClientError as video_error:
+                    logger.warning(f"Failed to delete video {video_key}: {video_error}")
+
         deleted = True
     except ClientError as error:
         if error.response["Error"]["Code"] == "ResourceNotFoundException":
             logger.warning(f"No record found with session id: {session_id}")
         else:
             logger.exception("Error deleting session")
-    return {"deleted": deleted}
+    return DeleteResponse(deleted=deleted)
 
 
 def _generate_presigned_image_url(key: str) -> str:
@@ -248,21 +327,33 @@ def _generate_presigned_image_url(key: str) -> str:
     return url
 
 
-def _map_session(session: dict, user_id: Optional[str] = None) -> Dict[str, Any]:
-    return {
-        "sessionId": session.get("sessionId", None),
-        "name": session.get("name", None),
-        "firstHumanMessage": _find_first_human_message(session, user_id),
-        "startTime": session.get("startTime", None),
-        "createTime": session.get("createTime", None),
-        "lastUpdated": session.get(
-            "lastUpdated", session.get("startTime", None)
-        ),  # Fallback to startTime for backward compatibility
-        "isEncrypted": session.get("is_encrypted", False),
-    }
+def _generate_presigned_video_url(key: str) -> str:
+    url: str = s3_client.generate_presigned_url(
+        "get_object",
+        Params={
+            "Bucket": s3_bucket_name,
+            "Key": key,
+            "ResponseContentType": "video/mp4",
+            "ResponseCacheControl": "no-cache",
+            "ResponseContentDisposition": "inline",
+        },
+    )
+    return url
 
 
-def _find_first_human_message(session: dict, user_id: Optional[str] = None) -> str:
+def _map_session(session: dict, user_id: str | None = None) -> SessionSummary:
+    return SessionSummary(
+        sessionId=session.get("sessionId"),
+        name=session.get("name"),
+        firstHumanMessage=_find_first_human_message(session, user_id),
+        startTime=session.get("startTime"),
+        createTime=session.get("createTime"),
+        lastUpdated=session.get("lastUpdated", session.get("startTime")),
+        isEncrypted=session.get("is_encrypted", False),
+    )
+
+
+def _find_first_human_message(session: dict, user_id: str | None = None) -> str:
     # Check if session is encrypted
     if session.get("is_encrypted", False):
         # For encrypted sessions, decrypt to get the first message
@@ -300,7 +391,7 @@ def _find_first_human_message(session: dict, user_id: Optional[str] = None) -> s
 
 
 @api_wrapper
-def list_sessions(event: dict, context: dict) -> List[Dict[str, Any]]:
+def list_sessions(event: dict, context: dict) -> list[SessionSummary]:
     """List sessions by user ID from DynamoDB."""
     user_id = get_username(event)
 
@@ -310,17 +401,26 @@ def list_sessions(event: dict, context: dict) -> List[Dict[str, Any]]:
     return list(executor.map(lambda session: _map_session(session, user_id), sessions))
 
 
-def _process_image(task: Tuple[dict, str]) -> None:
+def _process_image(task: tuple[dict, str]) -> None:
     msg, key = task
     try:
         image_url = _generate_presigned_image_url(key)
         msg["image_url"]["url"] = image_url
     except Exception as e:
-        print(f"Error uploading to S3: {e}")
+        print(f"Error generating presigned image URL: {e}")
+
+
+def _process_video(task: tuple[dict, str]) -> None:
+    msg, key = task
+    try:
+        video_url = _generate_presigned_video_url(key)
+        msg["video_url"]["url"] = video_url
+    except Exception as e:
+        print(f"Error generating presigned video URL: {e}")
 
 
 @api_wrapper
-def get_session(event: dict, context: dict) -> dict:
+def get_session(event: dict, context: dict) -> Session | dict:
     """Get a session from DynamoDB."""
     try:
         user_id = get_username(event)
@@ -329,51 +429,53 @@ def get_session(event: dict, context: dict) -> dict:
         logging.info(f"Fetching session with ID {session_id} for user {user_id}")
 
         response = table.get_item(Key={"sessionId": session_id, "userId": user_id})
-        resp = response.get("Item", {})
+        item = response.get("Item", {})
 
-        if not resp:
+        if not item:
             return {"statusCode": 404, "body": json.dumps({"error": "Session not found"})}
 
         # Check if session data is encrypted and decrypt if necessary
         try:
-            if resp.get("is_encrypted", False):
+            if item.get("is_encrypted", False):
                 logging.info(f"Decrypting encrypted session {session_id} for user {user_id}")
-                resp = decrypt_session_fields(resp, user_id, session_id)
+                item = decrypt_session_fields(item, user_id, session_id)
         except SessionEncryptionError as e:
             logging.error(f"Failed to decrypt session {session_id}: {e}")
             return {"statusCode": 500, "body": json.dumps({"error": "Failed to decrypt session data"})}
 
+        # Create Session object from DynamoDB item
+        session = Session.from_dynamodb_item(item)
+
         # Update configuration with current model settings before returning
-        if resp and resp.get("configuration"):
-            configuration = resp.get("configuration", {})
-            # Update the selectedModel within the configuration with current model settings
-            if configuration.get("selectedModel"):
-                temp_config = {"selectedModel": configuration["selectedModel"]}
-                updated_temp_config = _update_session_with_current_model_config(temp_config)
-                configuration["selectedModel"] = updated_temp_config.get(
-                    "selectedModel", configuration["selectedModel"]
-                )
-                # Update the configuration in the response
-                resp["configuration"] = configuration
+        if session.configuration and session.configuration.selectedModel:
+            session = session.model_copy(
+                update={"configuration": _update_session_with_current_model_config(session.configuration)}
+            )
 
-        # Create a list of tasks for parallel processing
-        tasks = []
-        for message in resp.get("history", []):
-            if isinstance(message.get("content", None), List):
-                for item in message.get("content", None):
-                    if item.get("type", None) == "image_url":
-                        s3_key = item.get("image_url", {}).get("s3_key", None)
+        # Create a list of tasks for parallel processing presigned URLs
+        image_tasks = []
+        video_tasks = []
+        for message in session.history:
+            if isinstance(message.get("content"), list):
+                for item in message.get("content", []):
+                    if item.get("type") == "image_url":
+                        s3_key = item.get("image_url", {}).get("s3_key")
                         if s3_key:
-                            tasks.append((item, s3_key))
+                            image_tasks.append((item, s3_key))
+                    elif item.get("type") == "video_url":
+                        s3_key = item.get("video_url", {}).get("s3_key")
+                        if s3_key:
+                            video_tasks.append((item, s3_key))
 
-        list(executor.map(_process_image, tasks))
-        return resp  # type: ignore [no-any-return]
+        list(executor.map(_process_image, image_tasks))
+        list(executor.map(_process_video, video_tasks))
+        return session
     except ValueError as e:
         return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
 
 
 @api_wrapper
-def delete_session(event: dict, context: dict) -> dict:
+def delete_session(event: dict, context: dict) -> DeleteResponse:
     """Delete session from DynamoDB."""
     user_id = get_username(event)
     session_id = get_session_id(event)
@@ -383,7 +485,7 @@ def delete_session(event: dict, context: dict) -> dict:
 
 
 @api_wrapper
-def delete_user_sessions(event: dict, context: dict) -> Dict[str, bool]:
+def delete_user_sessions(event: dict, context: dict) -> DeleteResponse:
     """Delete sessions by user ID from DyanmoDB."""
     user_id = get_username(event)
 
@@ -392,10 +494,10 @@ def delete_user_sessions(event: dict, context: dict) -> Dict[str, bool]:
     logger.debug(f"Found user sessions: {sessions}")
 
     list(executor.map(lambda session: _delete_user_session(session["sessionId"], user_id), sessions))
-    return {"deleted": True}
+    return DeleteResponse(deleted=True)
 
 
-@api_wrapper
+@api_wrapper(max_request_size=MAX_LARGE_REQUEST_SIZE)
 def attach_image_to_session(event: dict, context: dict) -> dict:
     """Append the message to the record in DynamoDB."""
     try:
@@ -406,10 +508,12 @@ def attach_image_to_session(event: dict, context: dict) -> dict:
         except json.JSONDecodeError as e:
             return {"statusCode": 400, "body": json.dumps({"error": f"Invalid JSON: {str(e)}"})}
 
-        if "message" not in body:
-            return {"statusCode": 400, "body": json.dumps({"error": "Missing required fields: messages"})}
+        try:
+            request = AttachImageRequest.model_validate(body)
+        except ValidationError as e:
+            return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
 
-        message = body["message"]
+        message = request.message
         image_content = message.get("image_url", {}).get("url", None)
 
         if (
@@ -440,7 +544,7 @@ def attach_image_to_session(event: dict, context: dict) -> dict:
 
 
 @api_wrapper
-def rename_session(event: dict, context: dict) -> dict:
+def rename_session(event: dict, context: dict) -> SuccessResponse | dict:
     """Update session name in DynamoDB."""
     try:
         user_id = get_username(event)
@@ -451,22 +555,24 @@ def rename_session(event: dict, context: dict) -> dict:
         except json.JSONDecodeError as e:
             return {"statusCode": 400, "body": json.dumps({"error": f"Invalid JSON: {str(e)}"})}
 
-        if "name" not in body:
-            return {"statusCode": 400, "body": json.dumps({"error": "Missing required field: name"})}
+        try:
+            request = RenameSessionRequest.model_validate(body)
+        except ValidationError as e:
+            return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
 
         table.update_item(
             Key={"sessionId": session_id, "userId": user_id},
             UpdateExpression="SET #name = :name, #lastUpdated = :lastUpdated",
             ExpressionAttributeNames={"#name": "name", "#lastUpdated": "lastUpdated"},
-            ExpressionAttributeValues={":name": body.get("name"), ":lastUpdated": iso_string()},
+            ExpressionAttributeValues={":name": request.name, ":lastUpdated": iso_string()},
         )
-        return {"statusCode": 200, "body": json.dumps({"message": "Session name updated successfully"})}
+        return SuccessResponse(message="Session name updated successfully")
     except ValueError as e:
         return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
 
 
-@api_wrapper
-def put_session(event: dict, context: dict) -> dict:
+@api_wrapper(max_request_size=MAX_LARGE_REQUEST_SIZE)
+def put_session(event: dict, context: dict) -> SuccessResponse | dict:
     """Append the message to the record in DynamoDB."""
     try:
         user_id, _, groups = get_user_context(event)
@@ -477,38 +583,29 @@ def put_session(event: dict, context: dict) -> dict:
         except json.JSONDecodeError as e:
             return {"statusCode": 400, "body": json.dumps({"error": f"Invalid JSON: {str(e)}"})}
 
-        if "messages" not in body:
-            return {"statusCode": 400, "body": json.dumps({"error": "Missing required fields: messages"})}
-
-        messages = body["messages"]
+        try:
+            request = PutSessionRequest.model_validate(body)
+        except ValidationError as e:
+            return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
 
         # Get the configuration from the request body (what the frontend sends)
-        configuration = body.get("configuration", {})
+        configuration = request.configuration or SessionConfigurationModel()
 
         # Update the selectedModel within the configuration with current model settings
-        if configuration and configuration.get("selectedModel"):
-            temp_config = {"selectedModel": configuration["selectedModel"]}
-            updated_temp_config = _update_session_with_current_model_config(temp_config)
-            configuration["selectedModel"] = updated_temp_config.get("selectedModel", configuration["selectedModel"])
+        if configuration and configuration.selectedModel:
+            configuration = _update_session_with_current_model_config(configuration)
 
         # Check if encryption is enabled via configuration table
         encryption_enabled = _is_session_encryption_enabled()
 
         # Prepare session data for storage
-        session_data = {
-            "history": messages,
-            "name": body.get("name", None),
-            "configuration": configuration,
-            "startTime": iso_string(),
-            "createTime": iso_string(),
-            "lastUpdated": iso_string(),
-        }
+        session_data = request.to_session_data(configuration)
 
         # Encrypt sensitive data if encryption is enabled
         if encryption_enabled:
             try:
                 logging.info(f"Encrypting session {session_id} for user {user_id}")
-                encrypted_session = migrate_session_to_encrypted(session_data, user_id, session_id)
+                encrypted_session = migrate_session_to_encrypted(session_data.model_dump(), user_id, session_id)
 
                 # Update DynamoDB with encrypted data
                 table.update_item(
@@ -559,38 +656,44 @@ def put_session(event: dict, context: dict) -> dict:
                     "#is_encrypted": "is_encrypted",
                 },
                 ExpressionAttributeValues={
-                    ":history": messages,
-                    ":name": body.get("name", None),
-                    ":configuration": configuration,
-                    ":startTime": iso_string(),
-                    ":createTime": iso_string(),
-                    ":lastUpdated": iso_string(),
+                    ":history": session_data.history,
+                    ":name": session_data.name,
+                    ":configuration": session_data.configuration.model_dump_for_storage(),
+                    ":startTime": session_data.startTime,
+                    ":createTime": session_data.createTime,
+                    ":lastUpdated": session_data.lastUpdated,
                     ":is_encrypted": False,
                 },
                 ReturnValues="UPDATED_NEW",
             )
 
-        # Publish event to SQS queue for metrics processing (use unencrypted data for metrics)
+        # Publish metrics to SQS queue for non-API-token users
+        # API token users have their metrics tracked in litellm_passthrough.py
         try:
-            if "USAGE_METRICS_QUEUE_NAME" in os.environ:
-                # Create a copy of the event to send to SQS
-                metrics_event = {
-                    "userId": user_id,
-                    "sessionId": session_id,
-                    "messages": messages,
-                    "userGroups": groups,
-                    "timestamp": iso_string(),
-                }
+            # Get auth type from authorizer context
+            request_context = event.get("requestContext", {})
+            authorizer_context = request_context.get("authorizer", {})
+            auth_type = authorizer_context.get("authType", "jwt")  # Default to jwt for backwards compatibility
+
+            # Only publish metrics for non-API-token users (JWT/UI users)
+            if auth_type != "api_token" and "USAGE_METRICS_QUEUE_NAME" in os.environ:
+                metrics_event = MetricsEvent(
+                    userId=user_id,
+                    sessionId=session_id,
+                    messages=session_data.history,
+                    userGroups=groups,
+                    timestamp=session_data.lastUpdated,
+                )
                 sqs_client.send_message(
                     QueueUrl=os.environ["USAGE_METRICS_QUEUE_NAME"],
-                    MessageBody=json.dumps(convert_decimal(metrics_event)),
+                    MessageBody=json.dumps(convert_decimal(metrics_event.model_dump())),
                 )
-                logger.info(f"Published event to metrics queue for user {user_id}")
+                logger.info(f"Published metrics event to queue for user: {user_id}")
             else:
                 logger.warning("USAGE_METRICS_QUEUE_NAME environment variable not set, metrics not published")
         except Exception as e:
             logger.error(f"Failed to publish to metrics queue: {e}")
 
-        return {"statusCode": 200, "body": json.dumps({"message": "Session updated successfully"})}
+        return SuccessResponse(message="Session updated successfully")
     except ValueError as e:
         return {"statusCode": 400, "body": json.dumps({"error": str(e)})}

@@ -17,7 +17,7 @@
 import logging
 import os
 from copy import deepcopy
-from typing import Any, Dict
+from typing import Any
 from uuid import uuid4
 
 import boto3
@@ -54,7 +54,7 @@ CFN_STACK_ARN = "cloudformation_stack_arn"
 LITELLM_ID = "litellm_id"
 
 
-def handle_set_model_to_deleting(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_set_model_to_deleting(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Start deletion workflow based on user-specified model input."""
     output_dict = deepcopy(event)
     model_id = event["modelId"]
@@ -81,14 +81,14 @@ def handle_set_model_to_deleting(event: Dict[str, Any], context: Any) -> Dict[st
     return output_dict
 
 
-def handle_delete_from_litellm(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_delete_from_litellm(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Delete model reference from LiteLLM."""
     if event[LITELLM_ID]:  # if non-null ID
         litellm_client.delete_model(identifier=event[LITELLM_ID])
     return event
 
 
-def handle_delete_guardrails(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_delete_guardrails(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Delete all guardrails associated with the model from both LiteLLM and DynamoDB."""
     logger.info(f"Deleting guardrails for model: {event.get('modelId')}")
     output_dict = deepcopy(event)
@@ -150,7 +150,7 @@ def handle_delete_guardrails(event: Dict[str, Any], context: Any) -> Dict[str, A
     return output_dict
 
 
-def handle_delete_stack(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_delete_stack(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Initialize stack deletion."""
     stack_arn = event[CFN_STACK_ARN]
     logger.info(f"Deleting CloudFormation stack: {stack_arn}")
@@ -162,7 +162,7 @@ def handle_delete_stack(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     return event  # no payload mutations needed between this and next state
 
 
-def handle_monitor_delete_stack(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_monitor_delete_stack(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Get stack status while it is being deleted and evaluate if state machine should continue polling."""
     output_dict = deepcopy(event)
     stack_arn = event[CFN_STACK_ARN]
@@ -179,7 +179,7 @@ def handle_monitor_delete_stack(event: Dict[str, Any], context: Any) -> Dict[str
     return output_dict
 
 
-def handle_delete_from_ddb(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_delete_from_ddb(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Delete item from DDB after successful deletion workflow."""
     model_key = {"model_id": event["modelId"]}
     ddb_table.delete_item(Key=model_key)

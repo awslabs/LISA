@@ -32,7 +32,7 @@ curl -s -H "Authorization: Bearer <admin_token>" -X GET https://<apigw_endpoint>
       },
       "containerConfig": {
         "image": {
-          "baseImage": "vllm/vllm-openai:v0.5.0",
+          "baseImage": "vllm/vllm-openai:latest",
           "type": "asset"
         },
         "sharedMemorySize": 2048,
@@ -118,7 +118,7 @@ POST https://<apigw_endpoint>/models
   "streaming": true,
   "containerConfig": {
     "image": {
-      "baseImage": "vllm/vllm-openai:v0.5.0",
+      "baseImage": "vllm/vllm-openai:latest",
       "type": "asset"
     },
     "sharedMemorySize": 2048,

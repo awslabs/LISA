@@ -13,6 +13,8 @@
 #   limitations under the License.
 
 """Lambda functions for managing MCP Servers in AWS DynamoDB."""
+from __future__ import annotations
+
 import json
 import logging
 import os
@@ -20,12 +22,19 @@ import re
 import uuid
 from decimal import Decimal
 from functools import reduce
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import boto3
 from boto3.dynamodb.conditions import Attr, Key
 from utilities.auth import admin_only, get_user_context
 from utilities.common_functions import api_wrapper, get_bearer_token, get_item, retry_config
+from utilities.exceptions import (
+    BadRequestException,
+    ConflictException,
+    ForbiddenException,
+    InternalServerErrorException,
+    NotFoundException,
+)
 
 from .models import (
     HostedMcpServerModel,
@@ -48,7 +57,7 @@ def _normalize_server_name(name: str) -> str:
     return re.sub(r"[^a-zA-Z0-9]", "", name)
 
 
-def replace_bearer_token_header(mcp_server: dict, replacement: str):
+def replace_bearer_token_header(mcp_server: dict, replacement: str) -> None:
     """Replace {LISA_BEARER_TOKEN} placeholder with actual bearer token in custom headers."""
     custom_headers = mcp_server.get("customHeaders", {})
     for key, value in custom_headers.items():
@@ -56,7 +65,7 @@ def replace_bearer_token_header(mcp_server: dict, replacement: str):
             custom_headers[key] = value.replace("{LISA_BEARER_TOKEN}", replacement)
 
 
-def _build_groups_condition(groups: List[str]) -> Any:
+def _build_groups_condition(groups: list[str]) -> Any:
     """Build DynamoDB condition for groups filtering."""
     # Servers with no groups (groups attribute doesn't exist, is null, or is empty array) should be included
     no_groups_condition = Attr("groups").not_exists() | Attr("groups").eq(None) | Attr("groups").eq([])
@@ -70,11 +79,11 @@ def _build_groups_condition(groups: List[str]) -> Any:
 
 
 def _get_mcp_servers(
-    user_id: Optional[str] = None,
-    active: Optional[bool] = None,
-    replace_bearer_token: Optional[str] = None,
-    groups: Optional[List] = None,
-) -> Dict[str, Any]:
+    user_id: str | None = None,
+    active: bool | None = None,
+    replace_bearer_token: str | None = None,
+    groups: list[str] | None = None,
+) -> dict[str, Any]:
     """Helper function to retrieve mcp servers from DynamoDB."""
     filter_expression = None
     condition = None
@@ -123,7 +132,7 @@ def _get_mcp_servers(
         condition = _build_groups_condition(groups)
         filter_expression = condition if filter_expression is None else filter_expression & condition
 
-    scan_arguments = {
+    scan_arguments: dict[str, Any] = {
         "TableName": os.environ["MCP_SERVERS_TABLE_NAME"],
         "IndexName": os.environ["MCP_SERVERS_BY_OWNER_INDEX_NAME"],
     }
@@ -167,7 +176,7 @@ def get(event: dict, context: dict) -> Any:
     item = get_item(response)
 
     if item is None:
-        raise ValueError(f"MCP Server {mcp_server_id} not found.")
+        raise NotFoundException(f"MCP Server {mcp_server_id} not found.")
 
     # Check if the user is authorized to get the mcp server
     is_owner = item["owner"] == user_id or item["owner"] == "lisa:public"
@@ -185,20 +194,20 @@ def get(event: dict, context: dict) -> Any:
 
         return item
 
-    raise ValueError(f"Not authorized to get {mcp_server_id}.")
+    raise ForbiddenException(f"Not authorized to get {mcp_server_id}.")
 
 
-def _is_member(user_groups: List[str], prompt_groups: List[str]) -> bool:
+def _is_member(user_groups: list[str], prompt_groups: list[str]) -> bool:
     return bool(set(user_groups) & set(prompt_groups))
 
 
 def _set_can_use(
-    connections: Dict[str, Any], user_id: Optional[str] = None, groups: Optional[List[str]] = None
-) -> Dict[str, Any]:
+    connections: dict[str, Any], user_id: str | None = None, groups: list[str] | None = None
+) -> dict[str, Any]:
     if groups is None:
         groups = []
     items = connections.get("Items", [])
-    formatted_groups = [f"group:{group}" for group in groups]
+    formatted_groups: list[str] = [f"group:{group}" for group in groups]
     for item in items:
         item["canUse"] = (
             _is_member(formatted_groups, item.get("groups", []))
@@ -210,7 +219,7 @@ def _set_can_use(
 
 
 @api_wrapper
-def list(event: dict, context: dict) -> Dict[str, Any]:
+def list_mcp_servers(event: dict, context: dict) -> dict[str, Any]:
     """List mcp servers for a user from DynamoDB."""
     user_id, is_admin_user, groups = get_user_context(event)
 
@@ -252,14 +261,14 @@ def update(event: dict, context: dict) -> Any:
     mcp_server_model = McpServerModel(**body)
 
     if mcp_server_id != mcp_server_model.id:
-        raise ValueError(f"URL id {mcp_server_id} doesn't match body id {mcp_server_model.id}")
+        raise BadRequestException(f"URL id {mcp_server_id} doesn't match body id {mcp_server_model.id}")
 
     # Query for the latest mcp server revision
     response = table.query(KeyConditionExpression=Key("id").eq(mcp_server_id), Limit=1, ScanIndexForward=False)
     item = get_item(response)
 
     if item is None:
-        raise ValueError(f"MCP Server {mcp_server_model} not found.")
+        raise NotFoundException(f"MCP Server {mcp_server_id} not found.")
 
     # Check if the user is authorized to update the mcp server
     if is_admin_user or item["owner"] == user_id:
@@ -271,11 +280,11 @@ def update(event: dict, context: dict) -> Any:
         table.put_item(Item=mcp_server_model.model_dump(exclude_none=True))
         return mcp_server_model.model_dump()
 
-    raise ValueError(f"Not authorized to update {mcp_server_id}.")
+    raise ForbiddenException(f"Not authorized to update {mcp_server_id}.")
 
 
 @api_wrapper
-def delete(event: dict, context: dict) -> Dict[str, str]:
+def delete(event: dict, context: dict) -> dict[str, str]:
     """Logically delete a mcp server from DynamoDB."""
     user_id, is_admin_user, _ = get_user_context(event)
     mcp_server_id = get_mcp_server_id(event)
@@ -285,7 +294,7 @@ def delete(event: dict, context: dict) -> Dict[str, str]:
     item = get_item(response)
 
     if item is None:
-        raise ValueError(f"MCP Server {mcp_server_id} not found.")
+        raise NotFoundException(f"MCP Server {mcp_server_id} not found.")
 
     # Check if the user is authorized to delete the mcp server
     if is_admin_user or item["owner"] == user_id:
@@ -293,7 +302,7 @@ def delete(event: dict, context: dict) -> Dict[str, str]:
         table.delete_item(Key={"id": mcp_server_id, "owner": item.get("owner")})
         return {"status": "ok"}
 
-    raise ValueError(f"Not authorized to delete {mcp_server_id}.")
+    raise ForbiddenException(f"Not authorized to delete {mcp_server_id}.")
 
 
 def get_mcp_server_id(event: dict) -> str:
@@ -318,11 +327,11 @@ def create_hosted_mcp_server(event: dict, context: dict) -> Any:
         # Check if normalized name is unique
         normalized_name = _normalize_server_name(hosted_server_model.name)
         if not normalized_name:
-            raise ValueError("Server name must contain at least one alphanumeric character.")
+            raise BadRequestException("Server name must contain at least one alphanumeric character.")
 
         # Scan all items to check for duplicate normalized names
         items = []
-        scan_arguments = {}
+        scan_arguments: dict[str, Any] = {}
         while True:
             response = table.scan(**scan_arguments)
             items.extend(response.get("Items", []))
@@ -337,7 +346,7 @@ def create_hosted_mcp_server(event: dict, context: dict) -> Any:
             existing_name = item.get("name", "")
             existing_normalized = _normalize_server_name(existing_name)
             if existing_normalized == normalized_name and item.get("id") != body["id"]:
-                raise ValueError(
+                raise ConflictException(
                     f"Server name '{hosted_server_model.name}' conflicts with existing server '{existing_name}'. "
                     f"Normalized names must be unique (alphanumeric characters only)."
                 )
@@ -348,7 +357,7 @@ def create_hosted_mcp_server(event: dict, context: dict) -> Any:
         # kick off state machine
         sfn_arn = os.environ.get("CREATE_MCP_SERVER_SFN_ARN")
         if not sfn_arn:
-            raise ValueError("CREATE_MCP_SERVER_SFN_ARN not configured")
+            raise InternalServerErrorException("CREATE_MCP_SERVER_SFN_ARN not configured")
         stepfunctions.start_execution(
             stateMachineArn=sfn_arn,
             input=json.dumps(hosted_server_model.model_dump(exclude_none=True)),
@@ -357,12 +366,12 @@ def create_hosted_mcp_server(event: dict, context: dict) -> Any:
         result = hosted_server_model.model_dump(exclude_none=True)
         result["status"] = HostedMcpServerStatus.CREATING
         return result
-    raise ValueError(f"Not authorized to create hosted MCP server. User {user_id} is not an admin.")
+    raise ForbiddenException(f"Not authorized to create hosted MCP server. User {user_id} is not an admin.")
 
 
 @api_wrapper
 @admin_only
-def list_hosted_mcp_servers(event: dict, context: dict) -> Dict[str, Any]:
+def list_hosted_mcp_servers(event: dict, context: dict) -> dict[str, Any]:
     """List all hosted MCP servers from DynamoDB."""
     user_id, is_admin_user, groups = get_user_context(event)
 
@@ -371,7 +380,7 @@ def list_hosted_mcp_servers(event: dict, context: dict) -> Dict[str, Any]:
         logger.info(f"Listing all hosted MCP servers for user {user_id} (is_admin)")
         # Get all items from the table
         items = []
-        scan_arguments = {}
+        scan_arguments: dict[str, Any] = {}
         while True:
             response = table.scan(**scan_arguments)
             items.extend(response.get("Items", []))
@@ -383,7 +392,7 @@ def list_hosted_mcp_servers(event: dict, context: dict) -> Dict[str, Any]:
 
         return {"Items": items}
 
-    raise ValueError(f"Not authorized to list hosted MCP servers. User {user_id} is not an admin.")
+    raise ForbiddenException(f"Not authorized to list hosted MCP servers. User {user_id} is not an admin.")
 
 
 @api_wrapper
@@ -398,13 +407,15 @@ def get_hosted_mcp_server(event: dict, context: dict) -> Any:
     item = get_item(response)
 
     if item is None:
-        raise ValueError(f"Hosted MCP Server {mcp_server_id} not found.")
+        raise NotFoundException(f"Hosted MCP Server {mcp_server_id} not found.")
 
     # Check if the user is authorized to get the hosted mcp server
     if is_admin_user:
         return item
 
-    raise ValueError(f"Not authorized to get hosted MCP server {mcp_server_id}. User {user_id} is not an admin.")
+    raise ForbiddenException(
+        f"Not authorized to get hosted MCP server {mcp_server_id}. User {user_id} is not an admin."
+    )
 
 
 @api_wrapper
@@ -419,7 +430,7 @@ def delete_hosted_mcp_server(event: dict, context: dict) -> Any:
     item = get_item(response)
 
     if item is None:
-        raise ValueError(f"Hosted MCP Server {mcp_server_id} not found.")
+        raise NotFoundException(f"Hosted MCP Server {mcp_server_id} not found.")
 
     # Validate server status - only allow deletion if in specific states
     server_status = item.get("status", "")
@@ -429,7 +440,7 @@ def delete_hosted_mcp_server(event: dict, context: dict) -> Any:
         HostedMcpServerStatus.FAILED,
     ]
     if server_status not in allowed_statuses:
-        raise ValueError(
+        raise ConflictException(
             f"Cannot delete server {mcp_server_id} with status '{server_status}'. "
             f"Only servers with status '{HostedMcpServerStatus.IN_SERVICE}', "
             f"'{HostedMcpServerStatus.STOPPED}', or '{HostedMcpServerStatus.FAILED}' can be deleted."
@@ -438,7 +449,7 @@ def delete_hosted_mcp_server(event: dict, context: dict) -> Any:
     # Kick off state machine
     sfn_arn = os.environ.get("DELETE_MCP_SERVER_SFN_ARN")
     if not sfn_arn:
-        raise ValueError("DELETE_MCP_SERVER_SFN_ARN not configured")
+        raise InternalServerErrorException("DELETE_MCP_SERVER_SFN_ARN not configured")
 
     stepfunctions.start_execution(
         stateMachineArn=sfn_arn,
@@ -460,13 +471,13 @@ def update_hosted_mcp_server(event: dict, context: dict) -> Any:
     item = get_item(response)
 
     if item is None:
-        raise ValueError(f"Hosted MCP Server {mcp_server_id} not found.")
+        raise NotFoundException(f"Hosted MCP Server {mcp_server_id} not found.")
 
     server_status = item.get("status", "")
 
     # Validate server is not actively mutating or failed before starting
     if server_status not in (HostedMcpServerStatus.IN_SERVICE, HostedMcpServerStatus.STOPPED):
-        raise ValueError(
+        raise ConflictException(
             f"Server cannot be updated when it is not in the '{HostedMcpServerStatus.IN_SERVICE}' or "
             f"'{HostedMcpServerStatus.STOPPED}' states"
         )
@@ -479,13 +490,17 @@ def update_hosted_mcp_server(event: dict, context: dict) -> Any:
     if update_request.enabled is not None:
         # Force capacity changes and enable/disable operations to happen in separate requests
         if update_request.autoScalingConfig is not None:
-            raise ValueError("Start or Stop operations and AutoScaling changes must happen in separate requests.")
+            raise BadRequestException(
+                "Start or Stop operations and AutoScaling changes must happen in separate requests."
+            )
         # Server cannot be enabled if it isn't already stopped
         if update_request.enabled and server_status != HostedMcpServerStatus.STOPPED:
-            raise ValueError(f"Server cannot be enabled when it is not in the '{HostedMcpServerStatus.STOPPED}' state.")
+            raise ConflictException(
+                f"Server cannot be enabled when it is not in the '{HostedMcpServerStatus.STOPPED}' state."
+            )
         # Server cannot be stopped if it isn't already in service
         elif not update_request.enabled and server_status != HostedMcpServerStatus.IN_SERVICE:
-            raise ValueError(
+            raise ConflictException(
                 f"Server cannot be stopped when it is not in the '{HostedMcpServerStatus.IN_SERVICE}' state."
             )
 
@@ -493,7 +508,9 @@ def update_hosted_mcp_server(event: dict, context: dict) -> Any:
     if update_request.autoScalingConfig is not None:
         stack_name = item.get("stack_name")
         if not stack_name:
-            raise ValueError("Cannot update AutoScaling Config for server that does not have a CloudFormation stack.")
+            raise BadRequestException(
+                "Cannot update AutoScaling Config for server that does not have a CloudFormation stack."
+            )
 
         asg_config = update_request.autoScalingConfig.model_dump(exclude_none=True)
         current_asg_config = item.get("autoScalingConfig", {})
@@ -503,13 +520,15 @@ def update_hosted_mcp_server(event: dict, context: dict) -> Any:
         max_capacity = asg_config.get("maxCapacity", current_asg_config.get("maxCapacity", 1))
 
         if min_capacity > max_capacity:
-            raise ValueError(f"Min capacity ({min_capacity}) cannot be greater than max capacity ({max_capacity}).")
+            raise BadRequestException(
+                f"Min capacity ({min_capacity}) cannot be greater than max capacity ({max_capacity})."
+            )
 
         # Validate min and max are positive
         if min_capacity < 1:
-            raise ValueError("Min capacity must be at least 1.")
+            raise BadRequestException("Min capacity must be at least 1.")
         if max_capacity < 1:
-            raise ValueError("Max capacity must be at least 1.")
+            raise BadRequestException("Max capacity must be at least 1.")
 
     # Validate container config updates
     if (
@@ -520,12 +539,14 @@ def update_hosted_mcp_server(event: dict, context: dict) -> Any:
     ):
         stack_name = item.get("stack_name")
         if not stack_name:
-            raise ValueError("Cannot update container config for server that does not have a CloudFormation stack.")
+            raise BadRequestException(
+                "Cannot update container config for server that does not have a CloudFormation stack."
+            )
 
     # Kick off state machine
     sfn_arn = os.environ.get("UPDATE_MCP_SERVER_SFN_ARN")
     if not sfn_arn:
-        raise ValueError("UPDATE_MCP_SERVER_SFN_ARN not configured")
+        raise InternalServerErrorException("UPDATE_MCP_SERVER_SFN_ARN not configured")
 
     # Package server ID and request payload into single payload for step functions
     state_machine_payload = {"server_id": mcp_server_id, "update_payload": update_request.model_dump()}

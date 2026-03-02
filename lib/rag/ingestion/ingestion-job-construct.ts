@@ -20,7 +20,7 @@
  * - AWS Batch compute environment and job queue for processing documents
  * - Lambda functions for handling scheduled ingestion and S3 events
  */
-import { Duration, Size, StackProps } from 'aws-cdk-lib';
+import { Duration, RemovalPolicy, Size, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { BaseProps, EcsSourceType } from '../../schema';
 import * as logs from 'aws-cdk-lib/aws-logs';
@@ -75,7 +75,8 @@ export class IngestionJobConstruct extends Construct {
                 type: dynamodb.AttributeType.STRING
             },
             billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-            removalPolicy: config.removalPolicy
+            removalPolicy: config.removalPolicy,
+            deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
         });
 
         // GSI for querying by document ID
@@ -169,6 +170,21 @@ export class IngestionJobConstruct extends Construct {
             'BUILD_DIR': buildDirName
         });
 
+        // Create execution role for ECS tasks to pull images from ECR and write logs
+        const executionRole = new iam.Role(this, 'BatchJobExecutionRole', {
+            roleName: `${config.deploymentName}-${config.deploymentStage}-batch-exec-role-${hash}`,
+            assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
+            description: 'Execution role for ECS Batch ingestion tasks',
+        });
+
+        // Add ECR permissions for pulling container images
+        executionRole.addManagedPolicy(
+            iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy')
+        );
+
+        // Grant CloudWatch Logs permissions
+        logGroup.grantWrite(executionRole);
+
         // AWS Batch job definition specifying container configuration
         const jobDefinition = new batch.EcsJobDefinition(this, 'IngestionJobDefinition', {
             jobDefinitionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job-${hash}`,
@@ -179,6 +195,7 @@ export class IngestionJobConstruct extends Construct {
                 cpu: 2,
                 command: ['-m', 'repository.pipeline_ingestion', 'Ref::ACTION', 'Ref::DOCUMENT_ID'],
                 jobRole: lambdaRole,
+                executionRole: executionRole,
                 logging: new ecs.AwsLogDriver({
                     streamPrefix: 'batch-job',
                     logGroup: logGroup
@@ -199,9 +216,9 @@ export class IngestionJobConstruct extends Construct {
 
         // Lambda function for handling scheduled document ingestion - using container image
         const handlePipelineIngestScheduleLambda = new lambda.Function(this, 'handlePipelineIngestSchedule', {
-            functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-ingest-schedule-${hash}`,
+            functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-ingest-schedule`,
             runtime: getPythonRuntime(),
-            handler: 'repository.pipeline_ingest_documents.handle_pipline_ingest_schedule',
+            handler: 'repository.pipeline_ingest_handlers.handle_pipline_ingest_schedule',
             code: lambda.Code.fromAsset('./lambda'),
             timeout: Duration.seconds(60),
             memorySize: 256,
@@ -227,9 +244,9 @@ export class IngestionJobConstruct extends Construct {
 
         // Lambda function for handling S3 event-based document ingestion - using container image
         const handlePipelineIngestEvent = new lambda.Function(this, 'handlePipelineIngestEvent', {
-            functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-ingest-event-${hash}`,
+            functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-ingest-event`,
             runtime: getPythonRuntime(),
-            handler: 'repository.pipeline_ingest_documents.handle_pipeline_ingest_event',
+            handler: 'repository.pipeline_ingest_handlers.handle_pipeline_ingest_event',
             code: lambda.Code.fromAsset('./lambda'),
             timeout: Duration.seconds(60),
             memorySize: 256,
@@ -255,9 +272,9 @@ export class IngestionJobConstruct extends Construct {
 
         // Lambda function for handling document deletion events - using container image
         const handlePipelineDeleteEvent = new lambda.Function(this, 'handlePipelineDeleteEvent', {
-            functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-delete-event-${hash}`,
+            functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-delete-event`,
             runtime: getPythonRuntime(),
-            handler: 'repository.pipeline_ingest_documents.handle_pipeline_delete_event',
+            handler: 'repository.pipeline_ingest_handlers.handle_pipeline_delete_event',
             code: lambda.Code.fromAsset('./lambda'),
             timeout: Duration.seconds(60),
             memorySize: 256,

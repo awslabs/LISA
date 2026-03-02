@@ -15,7 +15,7 @@
  */
 
 import React, { ReactElement, useEffect } from 'react';
-import { Button, ButtonDropdown, Icon, SpaceBetween } from '@cloudscape-design/components';
+import { Button, ButtonDropdown, SpaceBetween } from '@cloudscape-design/components';
 import { useAppDispatch, useAppSelector } from '../../config/store';
 import { useNotificationService } from '../../shared/util/hooks';
 import { INotificationService } from '../../shared/notification/notification.service';
@@ -24,8 +24,9 @@ import { Action, ThunkDispatch } from '@reduxjs/toolkit';
 import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
 import { NavigateFunction, useNavigate } from 'react-router-dom';
 import { selectCurrentUserIsAdmin, selectCurrentUsername } from '../../shared/reducers/user.reducer';
-import { McpServer, mcpServerApi, useDeleteMcpServerMutation } from '@/shared/reducers/mcp-server.reducer';
+import { McpServer, mcpServerApi, useDeleteMcpServerMutation, useListMcpServersQuery } from '@/shared/reducers/mcp-server.reducer';
 import { McpPreferences } from '@/shared/reducers/user-preferences.reducer';
+import { RefreshButton } from '@/components/common/RefreshButton';
 
 export type McpServerActionsProps = {
     selectedItems: readonly McpServer[];
@@ -41,18 +42,18 @@ export function McpServerActions (props: McpServerActionsProps): ReactElement {
     const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);
     const username = useAppSelector(selectCurrentUsername);
     const preferences = props.preferences;
+    const { isFetching } = useListMcpServersQuery();
 
     return (
         <SpaceBetween direction='horizontal' size='xs'>
-            <Button
+            <RefreshButton
+                isLoading={isFetching}
                 onClick={() => {
                     props.setSelectedItems([]);
                     dispatch(mcpServerApi.util.invalidateTags(['mcpServers']));
                 }}
-                ariaLabel={'Refresh MCP Connections'}
-            >
-                <Icon name='refresh' />
-            </Button>
+                ariaLabel='Refresh MCP Connections'
+            />
             {McpServerActionButton(dispatch, notificationService, props, {isUserAdmin, username, preferences})}
             <Button variant='primary' onClick={() => {
                 navigate('./new');

@@ -21,7 +21,7 @@ vector stores with chunking and embedding pipelines.
 import logging
 import os
 from abc import abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import boto3
 from langchain_core.embeddings import Embeddings
@@ -63,26 +63,34 @@ class VectorStoreRepositoryService(RepositoryService):
         """Vector stores create virtual default collections."""
         return True
 
-    def get_collection_id_from_config(self, pipeline_config: Dict[str, Any]) -> str:
+    def get_collection_id_from_config(self, pipeline_config: dict[str, Any]) -> str:
         """Extract collection ID from pipeline config or use embedding model."""
-        collection_id = pipeline_config.get("collectionId")
+        collection_id: str | None = pipeline_config.get("collectionId")
         if not collection_id:
             collection_id = pipeline_config.get("embeddingModel")
+        if not collection_id:
+            raise ValueError("No collection ID or embedding model found in pipeline config")
         return collection_id
 
     def ingest_document(
         self,
         job: IngestionJob,
-        texts: List[str],
-        metadatas: List[Dict[str, Any]],
+        texts: list[str],
+        metadatas: list[dict[str, Any]],
     ) -> RagDocument:
         """Ingest document into vector store with chunking and embedding."""
         # Store chunks in vector store
+        collection_id_str: str = job.collection_id if job.collection_id else ""
+        embedding_model_str: str = job.embedding_model if job.embedding_model else ""
+
+        if not collection_id_str or not embedding_model_str:
+            raise ValueError("collection_id and embedding_model are required for ingestion")
+
         all_ids = self._store_chunks(
             texts=texts,
             metadatas=metadatas,
-            collection_id=job.collection_id,
-            embedding_model=job.embedding_model,
+            collection_id=collection_id_str,
+            embedding_model=embedding_model_str,
         )
 
         # Create document record
@@ -112,7 +120,7 @@ class VectorStoreRepositoryService(RepositoryService):
         self,
         document: RagDocument,
         s3_client: Any,
-        bedrock_agent_client: Optional[Any] = None,
+        bedrock_agent_client: Any | None = None,
     ) -> None:
         """Delete document from vector store."""
         embeddings = RagEmbeddings(model_name=document.collection_id)
@@ -126,7 +134,7 @@ class VectorStoreRepositoryService(RepositoryService):
         self,
         collection_id: str,
         s3_client: Any,
-        bedrock_agent_client: Optional[Any] = None,
+        bedrock_agent_client: Any | None = None,
     ) -> None:
         """Delete collection from vector store.
 
@@ -142,8 +150,8 @@ class VectorStoreRepositoryService(RepositoryService):
         top_k: int,
         model_name: str,
         include_score: bool = False,
-        bedrock_agent_client: Optional[Any] = None,
-    ) -> List[Dict[str, Any]]:
+        bedrock_agent_client: Any | None = None,
+    ) -> list[dict[str, Any]]:
         """Retrieve documents from vector store using similarity search.
 
         Args:
@@ -233,7 +241,7 @@ class VectorStoreRepositoryService(RepositoryService):
         """
         return score
 
-    def create_default_collection(self) -> Optional[RagCollectionConfig]:
+    def create_default_collection(self) -> RagCollectionConfig | None:
         """Create a default collection for vector store repositories.
 
         Returns:
@@ -288,11 +296,11 @@ class VectorStoreRepositoryService(RepositoryService):
 
     def _store_chunks(
         self,
-        texts: List[str],
-        metadatas: List[Dict[str, Any]],
+        texts: list[str],
+        metadatas: list[dict[str, Any]],
         collection_id: str,
         embedding_model: str,
-    ) -> List[str]:
+    ) -> list[str]:
         """Store document chunks in vector store."""
         embeddings = RagEmbeddings(model_name=embedding_model)
         vector_store = self._get_vector_store_client(

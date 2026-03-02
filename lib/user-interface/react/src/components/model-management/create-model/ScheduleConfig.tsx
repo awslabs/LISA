@@ -206,7 +206,7 @@ export function ScheduleConfig (props: ScheduleConfigProps): ReactElement {
             }
         }
 
-        setValidationErrors(errors);
+        queueMicrotask(() => setValidationErrors(errors));
     }, [isScheduleEnabled, scheduleType, props.item.dailySchedule, props.item.recurringSchedule, props.item.timezone]);
 
     // Helper functions for weekly schedule management

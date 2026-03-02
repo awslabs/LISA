@@ -15,7 +15,7 @@
 import json
 import logging
 import os
-from typing import Any, Dict
+from typing import Any
 
 import boto3
 from botocore.config import Config
@@ -32,7 +32,7 @@ dynamodb = boto3.resource("dynamodb", config=retry_config)
 model_table = dynamodb.Table(os.environ.get("MODEL_TABLE_NAME"))
 
 
-def handle_schedule_creation(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_schedule_creation(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Create Auto Scaling scheduled actions for the model if scheduling is configured"""
     logger.info(f"Processing schedule creation for model: {event.get('modelId')}")
     output_dict = event.copy()
@@ -84,7 +84,7 @@ def handle_schedule_creation(event: Dict[str, Any], context: Any) -> Dict[str, A
     return output_dict
 
 
-def handle_schedule_update(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_schedule_update(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Update Auto Scaling scheduled actions when schedule configuration changes"""
     logger.info(f"Processing schedule update for model: {event.get('modelId')}")
     output_dict = event.copy()
@@ -126,7 +126,7 @@ def handle_schedule_update(event: Dict[str, Any], context: Any) -> Dict[str, Any
     return output_dict
 
 
-def handle_cleanup_schedule(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def handle_cleanup_schedule(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Clean up scheduled actions before deleting the model"""
     logger.info(f"Cleaning up schedule for model: {event.get('modelId')}")
     output_dict = event.copy()

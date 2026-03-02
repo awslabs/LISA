@@ -13,8 +13,8 @@
 #   limitations under the License.
 import logging
 import os
+from collections.abc import Generator
 from concurrent.futures import as_completed, ThreadPoolExecutor
-from typing import Generator, Optional
 
 import boto3
 from boto3.dynamodb.conditions import Key
@@ -94,7 +94,7 @@ class RagDocumentRepository:
             logging.error(f"Error saving document: {e.response['Error']['Message']}")
             raise
 
-    def find_by_id(self, document_id: str, join_docs: bool = False) -> Optional[RagDocument]:
+    def find_by_id(self, document_id: str, join_docs: bool = False) -> RagDocument | None:
         """Query documents using GSI.
 
         Args:
@@ -167,7 +167,7 @@ class RagDocumentRepository:
 
     def find_by_source(
         self, repository_id: str, collection_id: str, document_source: str, join_docs: bool = False
-    ) -> Generator[RagDocument, None, None]:
+    ) -> Generator[RagDocument]:
         """Get a list of documents from the RagDocTable by source.
 
         Args:
@@ -199,7 +199,32 @@ class RagDocumentRepository:
 
             yield from self._yield_documents(response["Items"], join_docs=join_docs)
 
-    def _yield_documents(self, items: list[dict], join_docs: bool) -> Generator[RagDocument, None, None]:
+    def find_one_by_source(self, repository_id: str, collection_id: str, source: str) -> RagDocument | None:
+        """Find a single document by source path.
+
+        Args:
+            repository_id: Repository identifier
+            collection_id: Collection identifier
+            source: S3 source path (e.g., s3://bucket/key/file.docx)
+
+        Returns:
+            First matching RagDocument if found, None otherwise
+        """
+        try:
+            # Use existing find_by_source generator
+            docs_generator = self.find_by_source(
+                repository_id=repository_id, collection_id=collection_id, document_source=source, join_docs=False
+            )
+
+            # Get first document from generator
+            first_doc = next(docs_generator, None)
+            return first_doc
+
+        except ClientError as e:
+            logging.error(f"Error finding document by source: {e}")
+            return None
+
+    def _yield_documents(self, items: list[dict], join_docs: bool) -> Generator[RagDocument]:
         for item in items:
             document = RagDocument(**item)
             if join_docs:
@@ -209,11 +234,11 @@ class RagDocumentRepository:
     def list_all(
         self,
         repository_id: str,
-        collection_id: Optional[str] = None,
-        last_evaluated_key: Optional[dict] = None,
+        collection_id: str | None = None,
+        last_evaluated_key: dict | None = None,
         limit: int = 100,
         join_docs: bool = False,
-    ) -> tuple[list[RagDocument], Optional[dict], int]:
+    ) -> tuple[list[RagDocument], dict | None, int]:
         """List all documents in a collection.
 
         Args:
@@ -261,7 +286,7 @@ class RagDocumentRepository:
             logging.error(f"Error listing documents: {e.response['Error']['Message']}")
             raise
 
-    def count_documents(self, repository_id: str, collection_id: Optional[str] = None) -> int:
+    def count_documents(self, repository_id: str, collection_id: str | None = None) -> int:
         """Count total documents in a repository/collection.
         Args:
             repository_id: Repository ID
@@ -269,7 +294,7 @@ class RagDocumentRepository:
         Returns:
             Total number of documents
         """
-        count = 0
+        count: int = 0
         # Count all rag documents using repo id only
         if not collection_id:
             response = self.doc_table.query(
@@ -277,11 +302,11 @@ class RagDocumentRepository:
                 KeyConditionExpression=Key("repository_id").eq(repository_id),
                 Select="COUNT",
             )
-            count = response.get("Count", 0)
+            count = int(response.get("Count", 0))
         else:
             pk = RagDocument.createPartitionKey(repository_id, collection_id)
             response = self.doc_table.query(KeyConditionExpression=Key("pk").eq(pk), Select="COUNT")
-            count = response.get("Count", 0)
+            count = int(response.get("Count", 0))
         return count
 
     def find_subdocs_by_id(self, document_id: str) -> list[RagSubDocument]:
@@ -467,7 +492,7 @@ class RagDocumentRepository:
             try:
                 logging.info(f"Removing S3 doc: {source}")
                 self.delete_s3_object(uri=source)
-            except Exception as e:
+            except ClientError as e:
                 logging.error(f"Failed to delete S3 object {source}: {e}")
                 # Continue with other deletions
 

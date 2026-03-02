@@ -205,6 +205,8 @@ export class UserInterfaceConstruct extends Construct {
             RAG_ENABLED: config.deployRag,
             HOSTED_MCP_ENABLED: config.deployMcp,
             API_BASE_URL: config.apiGatewayConfig?.domainName ? '/' : `/${config.deploymentStage}/`,
+            USE_CUSTOM_BRANDING: config.useCustomBranding,
+            CUSTOM_DISPLAY_NAME: config.customDisplayName,
         };
 
         const appEnvSource = Source.data('env.js', `window.env = ${JSON.stringify(appEnvConfig)}`);

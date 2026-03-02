@@ -148,12 +148,13 @@ export type OpenSearchConfig =
 
 export const RdsInstanceConfig = z.object({
     username: z.string().default('postgres').describe('The username used for database connection.'),
-    passwordSecretId: z.string().optional().describe('The SecretsManager Secret ID that stores the existing database password.'),
+    passwordSecretId: z.string().optional().describe('The SecretsManager Secret ID that stores the existing database password. Only used when iamRdsAuth is false.'),
     dbHost: z.string().optional().describe('The database hostname for the existing database instance.'),
     dbName: z.string().default('postgres').describe('The name of the database for the database instance.'),
     dbPort: z.number().default(5432).describe('The port of the existing database instance or the port to be opened on the database instance.'),
 }).describe('Configuration schema for RDS Instances needed for LiteLLM scaling or PGVector RAG operations.\n \n ' +
-    'The optional fields can be omitted to create a new database instance, otherwise fill in all fields to use an existing database instance.');
+    'The optional fields can be omitted to create a new database instance, otherwise fill in all fields to use an existing database instance. ' +
+    'By default, IAM authentication is used. Set iamRdsAuth to false in config to use password-based authentication.');
 
 export type RdsConfig = z.infer<typeof RdsInstanceConfig>;
 
@@ -163,28 +164,29 @@ export const RagRepositoryMetadata = MetadataSchema.extend({
     customFields: z.record(z.string(), z.any()).optional().describe('Custom metadata fields for the repository.'),
 });
 
-export const RagRepositoryConfigSchema = z
-    .object({
-        repositoryId: z.string()
-            .nonempty()
-            .regex(/^[a-z0-9-]{3,20}/, 'Only lowercase alphanumeric characters and \'-\' are supported.')
-            .regex(/^(?!-).*(?<!-)$/, 'Cannot start or end with a \'-\'.')
-            .describe('A unique identifier for the repository, used in API calls and the UI. It must be distinct across all repositories.'),
-        repositoryName: z.string().optional().describe('The user-friendly name displayed in the UI.'),
-        description: z.string().optional().describe('Description of the repository.'),
-        embeddingModelId: z.string().optional().describe('The default embedding model to be used when selecting repository.'),
-        type: z.enum(RagRepositoryType).describe('The vector store designated for this repository.'),
-        opensearchConfig: z.union([OpenSearchExistingClusterConfig, OpenSearchNewClusterConfig]).optional(),
-        rdsConfig: RdsInstanceConfig.optional(),
-        bedrockKnowledgeBaseConfig: BedrockKnowledgeBaseInstanceConfig.optional(),
-        pipelines: z.array(RagRepositoryPipeline).optional().default([]).describe('Rag ingestion pipeline for automated inclusion into a vector store from S3'),
-        allowedGroups: z.array(z.string()).optional().describe('The groups provided by the Identity Provider that have access to this repository. If no groups are specified, access is granted to everyone.'),
-        createdBy: z.string().describe('User ID of creator'),
-        createdAt: z.iso.datetime().describe('Creation timestamp (ISO 8601)'),
-        updatedAt: z.iso.datetime().describe('Last update timestamp (ISO 8601)'),
-        metadata: RagRepositoryMetadata.optional().describe('Metadata for the repository including tags and custom fields.'),
-        status: z.enum(VectorStoreStatus).optional().describe('Current deployment status of the repository')
-    })
+export const BaseRagRepositoryConfigSchema = z.object({
+    repositoryId: z.string()
+        .nonempty()
+        .regex(/^[a-z0-9-]{3,20}/, 'Only lowercase alphanumeric characters and \'-\' are supported.')
+        .regex(/^(?!-).*(?<!-)$/, 'Cannot start or end with a \'-\'.')
+        .describe('A unique identifier for the repository, used in API calls and the UI. It must be distinct across all repositories.'),
+    repositoryName: z.string().optional().describe('The user-friendly name displayed in the UI.'),
+    description: z.string().optional().describe('Description of the repository.'),
+    embeddingModelId: z.string().optional().describe('The default embedding model to be used when selecting repository.'),
+    type: z.enum(RagRepositoryType).describe('The vector store designated for this repository.'),
+    opensearchConfig: z.union([OpenSearchExistingClusterConfig, OpenSearchNewClusterConfig]).optional(),
+    rdsConfig: RdsInstanceConfig.optional(),
+    bedrockKnowledgeBaseConfig: BedrockKnowledgeBaseInstanceConfig.optional(),
+    pipelines: z.array(RagRepositoryPipeline).optional().default([]).describe('Rag ingestion pipeline for automated inclusion into a vector store from S3'),
+    allowedGroups: z.array(z.string()).optional().describe('The groups provided by the Identity Provider that have access to this repository. If no groups are specified, access is granted to everyone.'),
+    createdBy: z.string().describe('User ID of creator'),
+    createdAt: z.iso.datetime().describe('Creation timestamp (ISO 8601)'),
+    updatedAt: z.iso.datetime().describe('Last update timestamp (ISO 8601)'),
+    metadata: RagRepositoryMetadata.optional().describe('Metadata for the repository including tags and custom fields.'),
+    status: z.enum(VectorStoreStatus).optional().describe('Current deployment status of the repository')
+});
+
+export const RagRepositoryConfigSchema = BaseRagRepositoryConfigSchema
     .refine((input) => {
         return !((input.type === RagRepositoryType.OPENSEARCH && input.opensearchConfig === undefined) ||
             (input.type === RagRepositoryType.PGVECTOR && input.rdsConfig === undefined) ||
@@ -199,9 +201,16 @@ export type RDSConfig = RagRepositoryConfig['rdsConfig'];
  * Schema for RAG repository configuration used during deployment.
  * Omits database-managed fields like updatedAt that are set during DB operations.
  */
-export const RagRepositoryDeploymentConfigSchema = RagRepositoryConfigSchema.omit({
-    updatedAt: true,
-    status: true,
-});
+export const RagRepositoryDeploymentConfigSchema = BaseRagRepositoryConfigSchema
+    .omit({
+        updatedAt: true,
+        status: true,
+    })
+    .refine((input) => {
+        return !((input.type === RagRepositoryType.OPENSEARCH && input.opensearchConfig === undefined) ||
+            (input.type === RagRepositoryType.PGVECTOR && input.rdsConfig === undefined) ||
+            (input.type === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE && input.bedrockKnowledgeBaseConfig === undefined));
+    })
+    .describe('Configuration schema for RAG repository used during deployment.');
 
 export type RagRepositoryDeploymentConfig = z.infer<typeof RagRepositoryDeploymentConfigSchema>;

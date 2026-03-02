@@ -24,3 +24,14 @@ def convert_decimal(obj: Any) -> Any:
     elif isinstance(obj, Decimal):
         return float(obj)
     return obj
+
+
+def convert_float_to_decimal(obj: Any) -> Any:
+    """Recursively convert float values to Decimal for DynamoDB compatibility."""
+    if isinstance(obj, dict):
+        return {key: convert_float_to_decimal(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_float_to_decimal(element) for element in obj]
+    elif isinstance(obj, float):
+        return Decimal(str(obj))
+    return obj

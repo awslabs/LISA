@@ -313,9 +313,27 @@ export class LisaServeApplicationStage extends Stage {
                 securityGroups: [networkingStack.vpc.securityGroups.ecsModelAlbSg],
                 vpc: networkingStack.vpc,
             });
-            apiDeploymentStack.addDependency(mcpApiStack);
             mcpApiStack.addDependency(apiBaseStack);
+            // McpApiStack reads: layerVersion/*, bucket/bucket-access-logs, APP_MANAGEMENT_KEY
+            mcpApiStack.addDependency(coreStack);
+            apiDeploymentStack.addDependency(mcpApiStack);
             this.stacks.push(mcpApiStack);
+        }
+        let metricsStack: LisaMetricsStack | undefined;
+        if (config.deployMetrics) {
+            metricsStack = new LisaMetricsStack(this, 'LisaMetrics', {
+                ...baseStackProps,
+                authorizer: apiBaseStack.authorizer!,
+                stackName: createCdkId([config.deploymentName, config.appName, 'metrics', config.deploymentStage]),
+                description: `LISA-metrics: ${config.deploymentName}-${config.deploymentStage}`,
+                restApiId: apiBaseStack.restApiId,
+                rootResourceId: apiBaseStack.rootResourceId,
+                securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
+                vpc: networkingStack.vpc,
+            });
+            metricsStack.addDependency(apiBaseStack);
+            metricsStack.addDependency(coreStack);
+            this.stacks.push(metricsStack);
         }
 
         if (config.deployServe) {
@@ -325,11 +343,18 @@ export class LisaServeApplicationStage extends Stage {
                 stackName: createCdkId([config.deploymentName, config.appName, 'serve', config.deploymentStage]),
                 vpc: networkingStack.vpc,
                 securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
+                metricsQueueUrl: metricsStack ? `${config.deploymentPrefix}/queue-url/usage-metrics` : undefined,
             });
             this.stacks.push(serveStack);
             serveStack.addDependency(networkingStack);
+            // ServeStack reads: roles/* from IAMStack (via EcsCluster)
             serveStack.addDependency(iamStack);
+            // ServeStack reads: tokenTableName, APP_MANAGEMENT_KEY, iamAuthSetupFnArn, iamAuthSetupRoleArn from ApiBaseStack
             serveStack.addDependency(apiBaseStack);
+            // ServeStack reads: queue-url/usage-metrics from MetricsStack (if deployMetrics)
+            if (metricsStack) {
+                serveStack.addDependency(metricsStack);
+            }
 
             const modelsApiDeploymentStack = new LisaModelsApiStack(this, 'LisaModelsApiDeployment', {
                 ...baseStackProps,
@@ -343,6 +368,11 @@ export class LisaServeApplicationStage extends Stage {
                 securityGroups: [networkingStack.vpc.securityGroups.ecsModelAlbSg],
                 vpc: networkingStack.vpc,
             });
+            // ModelsApiStack reads: layerVersion/*, bucket/bucket-access-logs from CoreStack
+            modelsApiDeploymentStack.addDependency(coreStack);
+            // ModelsApiStack reads: APP_MANAGEMENT_KEY from ApiBaseStack
+            modelsApiDeploymentStack.addDependency(apiBaseStack);
+            // ModelsApiStack reads: guardrailsTable from ServeStack (passed as prop, creates implicit dep)
             modelsApiDeploymentStack.addDependency(serveStack);
             apiDeploymentStack.addDependency(modelsApiDeploymentStack);
             this.stacks.push(modelsApiDeploymentStack);
@@ -378,30 +408,16 @@ export class LisaServeApplicationStage extends Stage {
                     securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
                     vpc: networkingStack.vpc,
                 });
+                // RagStack reads: layerVersion/*, bucket/bucket-access-logs from CoreStack
                 ragStack.addDependency(coreStack);
+                // RagStack reads: roles/ragLambdaRoleId from IAMStack
                 ragStack.addDependency(iamStack);
+                // RagStack reads: iamAuthSetupFnArn, iamAuthSetupRoleArn from ApiBaseStack
                 ragStack.addDependency(apiBaseStack);
+                // RagStack reads: modelTableName from ModelsApiStack
+                ragStack.addDependency(modelsApiDeploymentStack);
                 this.stacks.push(ragStack);
                 apiDeploymentStack.addDependency(ragStack);
-            }
-
-            // Declare metricsStack here so that we can reference it in chatStack
-            let metricsStack: LisaMetricsStack | undefined;
-            if (config.deployMetrics) {
-                metricsStack = new LisaMetricsStack(this, 'LisaMetrics', {
-                    ...baseStackProps,
-                    authorizer: apiBaseStack.authorizer!,
-                    stackName: createCdkId([config.deploymentName, config.appName, 'metrics', config.deploymentStage]),
-                    description: `LISA-metrics: ${config.deploymentName}-${config.deploymentStage}`,
-                    restApiId: apiBaseStack.restApiId,
-                    rootResourceId: apiBaseStack.rootResourceId,
-                    securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
-                    vpc: networkingStack.vpc,
-                });
-                metricsStack.addDependency(apiBaseStack);
-                metricsStack.addDependency(coreStack);
-                apiDeploymentStack.addDependency(metricsStack);
-                this.stacks.push(metricsStack);
             }
 
             if (config.deployChat) {
@@ -415,8 +431,14 @@ export class LisaServeApplicationStage extends Stage {
                     securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
                     vpc: networkingStack.vpc,
                 });
-                chatStack.addDependency(apiBaseStack);
+                // ChatStack reads: layerVersion/*, bucket/bucket-access-logs from CoreStack
                 chatStack.addDependency(coreStack);
+                chatStack.addDependency(apiBaseStack);
+                // ChatStack reads: modelTableName from ModelsApiStack
+                chatStack.addDependency(modelsApiDeploymentStack);
+                // ChatStack reads: serve/endpoint from ServeStack
+                chatStack.addDependency(serveStack);
+                // ChatStack reads: queue-name/usage-metrics from MetricsStack (if deployMetrics)
                 if (metricsStack) {
                     chatStack.addDependency(metricsStack);
                 }
@@ -432,7 +454,10 @@ export class LisaServeApplicationStage extends Stage {
                         restApiId: apiBaseStack.restApiId,
                         rootResourceId: apiBaseStack.rootResourceId,
                     });
+                    // UIStack reads: bucket/bucket-access-logs from CoreStack
+                    uiStack.addDependency(coreStack);
                     uiStack.addDependency(chatStack);
+                    // UIStack reads: lisaServeRestApiUri from ServeStack
                     uiStack.addDependency(serveStack);
                     uiStack.addDependency(apiBaseStack);
                     apiDeploymentStack.addDependency(uiStack);
@@ -446,6 +471,8 @@ export class LisaServeApplicationStage extends Stage {
             const docsStack = new LisaDocsStack(this, 'LisaDocs', {
                 ...baseStackProps
             });
+            // DocsStack reads: bucket/bucket-access-logs from CoreStack
+            docsStack.addDependency(coreStack);
             this.stacks.push(docsStack);
         }
 

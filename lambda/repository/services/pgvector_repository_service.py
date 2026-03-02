@@ -110,15 +110,18 @@ class PGVectorRepositoryService(VectorStoreRepositoryService):
         if not RepositoryType.is_type(connection_info, RepositoryType.PGVECTOR):
             raise ValueError(f"Repository {self.repository_id} is not a PGVector repository")
 
+        # Check if using password auth (passwordSecretId present) or IAM auth
         if "passwordSecretId" in connection_info:
-            # Provides backwards compatibility to non-IAM authenticated vector stores
+            # Password auth: get credentials from Secrets Manager
             secrets_response = secretsmanager_client.get_secret_value(SecretId=connection_info.get("passwordSecretId"))
             user = connection_info.get("username")
             password = json.loads(secrets_response.get("SecretString")).get("password")
+            use_ssl = False
         else:
-            # Use IAM auth token to connect
+            # IAM auth: generate auth token
             user = get_lambda_role_name()
             password = generate_auth_token(connection_info.get("dbHost"), connection_info.get("dbPort"), user)
+            use_ssl = True  # IAM auth requires SSL
 
         connection_string = PGVector.connection_string_from_db_params(
             driver="psycopg2",
@@ -128,6 +131,9 @@ class PGVectorRepositoryService(VectorStoreRepositoryService):
             user=user,
             password=password,
         )
+
+        if use_ssl:
+            connection_string = f"{connection_string}?sslmode=require"
 
         return PGVector(
             collection_name=collection_id,

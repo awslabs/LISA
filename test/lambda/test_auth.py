@@ -203,10 +203,12 @@ def test_is_admin_logging(sample_event_with_username):
     """Test is_admin logs the groups and admin group."""
     if "utilities.auth" in sys.modules:
         del sys.modules["utilities.auth"]
+    if "utilities.auth_provider" in sys.modules:
+        del sys.modules["utilities.auth_provider"]
 
     with patch.dict(os.environ, {"ADMIN_GROUP": "admin"}):
         with patch("utilities.auth.get_groups", return_value=["group1", "admin"]):
-            with patch("utilities.auth.logger") as mock_logger:
+            with patch("utilities.auth_provider.logger") as mock_logger:
                 from utilities.auth import is_admin
 
                 is_admin(sample_event_with_username)

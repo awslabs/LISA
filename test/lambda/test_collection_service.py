@@ -86,7 +86,7 @@ def test_get_collection():
         private=False,
     )
 
-    mock_repo.find_by_id.return_value = collection
+    mock_repo.find_by_id_or_name.return_value = collection
     result = service.get_collection("test-repo", "test-coll", "user", ["group1"], False)
 
     assert result.collectionId == "test-coll"

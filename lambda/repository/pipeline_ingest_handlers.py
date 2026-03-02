@@ -316,11 +316,19 @@ def handle_pipeline_delete_event(event: dict[str, Any], context: Any) -> None:
         if collection_id:
             resolved = collection_service.collection_repo.find_by_id_or_name(collection_id, repository_id)
             if resolved is None:
-                logger.warning(
-                    f"Collection '{collection_id}' not found in repository '{repository_id}', skipping deletion"
-                )
-                return
-            collection_id = resolved.collectionId
+                # Legacy fallback: collection_id may be the embeddingModel itself
+                embedding_model = pipeline_config.get("embeddingModel") or repository.get("embeddingModelId")
+                if collection_id == embedding_model:
+                    logger.info(
+                        f"Collection '{collection_id}' is legacy embeddingModel, using as collection_id directly"
+                    )
+                else:
+                    logger.warning(
+                        f"Collection '{collection_id}' not found in repository '{repository_id}', skipping deletion"
+                    )
+                    return
+            else:
+                collection_id = resolved.collectionId
         else:
             # Legacy fallback: pipelines without collectionId used embeddingModel as collection_id
             embedding_model = pipeline_config.get("embeddingModel")

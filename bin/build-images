@@ -155,7 +155,7 @@ build_all_images() {
     # lisa-vllm
     build_image "Dockerfile" "lisa-vllm" "latest" "./lib/serve/ecs-model/vllm" \
         "NODE_ENV=production" \
-        "BASE_IMAGE=public.ecr.aws/deep-learning-containers/vllm:0.13-gpu-py312" \
+        "BASE_IMAGE=public.ecr.aws/deep-learning-containers/vllm:0.15-gpu-py312-ec2" \
         "MOUNTS3_DEB_URL=https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb"
 
     echo "All images built successfully!"

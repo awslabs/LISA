@@ -119,7 +119,6 @@ async def auth_middleware(request: Request, call_next: Callable[[Request], Respo
         return await call_next(request)
 
     except HTTPException as e:
-        # For OpenAI/Anthropic routes, provide more specific error messages
         if is_openai_route:
             logger.warning(f"Authentication failed for OpenAI/Anthropic route {path}: {e.detail}")
             return JSONResponse(
@@ -132,7 +131,11 @@ async def auth_middleware(request: Request, call_next: Callable[[Request], Respo
                     }
                 },
             )
-        raise
+        logger.warning(f"Authentication failed for {path}: {e.detail}")
+        return JSONResponse(
+            status_code=e.status_code,
+            content={"error": "Unauthorized", "message": e.detail},
+        )
     except Exception as e:
         logger.error(f"Authentication error: {e}")
         if is_openai_route:

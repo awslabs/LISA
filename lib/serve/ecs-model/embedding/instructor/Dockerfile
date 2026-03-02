@@ -1,6 +1,8 @@
 ARG BASE_IMAGE=public.ecr.aws/docker/library/python:3.13-slim
 FROM ${BASE_IMAGE}
 
+RUN apt-get update -y && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
+
 # Apply SSH security hardening - disable weak ciphers (3DES-CBC, etc.)
 RUN mkdir -p /etc/ssh && \
     echo "" >> /etc/ssh/ssh_config && \

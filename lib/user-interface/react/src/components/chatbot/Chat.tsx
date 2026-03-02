@@ -85,6 +85,8 @@ import ConfirmationModal from '@/shared/modal/confirmation-modal';
 import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
 import { conditionalDeps } from '../utils';
 import { formatDate } from '@/shared/util/formats';
+import DocumentSidePanel from './components/DocumentSidePanel';
+import { useDocumentSidePanel } from '@/shared/hooks/useDocumentSidePanel';
 
 export default function Chat ({ sessionId }) {
     const dispatch = useAppDispatch();
@@ -141,6 +143,17 @@ export default function Chat ({ sessionId }) {
     const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
     const [updatingAutoApprovalForTool, setUpdatingAutoApprovalForTool] = useState<string | null>(null);
     const [showMarkdownPreview, setShowMarkdownPreview] = useState(false);
+
+    // Document side panel management
+    const { showDocSidePanel, selectedDocumentForPanel, handleOpenDocument, handleCloseDocPanel } = useDocumentSidePanel();
+
+    // Close document side panel when session changes
+    useEffect(() => {
+        if (showDocSidePanel) {
+            handleCloseDocPanel();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [sessionId]);
 
     // Get color scheme context for markdown preview
     const { colorScheme } = useContext(ColorSchemeContext);
@@ -944,30 +957,58 @@ export default function Chat ({ sessionId }) {
                 </div>
             )}
 
-            <div ref={scrollContainerRef} className='overflow-y-auto h-[calc(100vh-20rem)] bottom-8'>
-                <SpaceBetween direction='vertical' size='l'>
+            {/* Split layout container */}
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: showDocSidePanel ? '1fr 1fr' : '1fr',
+                gap: '0',
+                height: 'calc(100vh - 20rem)',
+                overflow: 'hidden'
+            }}>
+                {/* Chat messages area */}
+                <div ref={scrollContainerRef} className='overflow-y-auto bottom-8'>
+                    <SpaceBetween direction='vertical' size='l'>
 
-                    {loadingSession && (
-                        <Box textAlign='center' padding='l'>
-                            <SpaceBetween size='s' direction='vertical'>
-                                <Spinner size='large' />
-                                <Box color='text-status-info'>Loading session...</Box>
-                                <Box variant='small' color='text-status-inactive'>Please wait while we load your conversation history</Box>
-                            </SpaceBetween>
-                        </Box>
-                    )}
+                        {loadingSession && (
+                            <Box textAlign='center' padding='l'>
+                                <SpaceBetween size='s' direction='vertical'>
+                                    <Spinner size='large' />
+                                    <Box color='text-status-info'>Loading session...</Box>
+                                    <Box variant='small' color='text-status-inactive'>Please wait while we load your conversation history</Box>
+                                </SpaceBetween>
+                            </Box>
+                        )}
 
-                    {useMemo(() => {
-                        if (loadingSession) return null;
+                        {useMemo(() => {
+                            if (loadingSession) return null;
 
-                        return session.history.map((message, idx) => (<Message
-                            key={idx}
-                            message={message}
-                            showMetadata={chatConfiguration.sessionConfiguration.showMetadata}
-                            isRunning={false}
-                            callingToolName={undefined}
-                            isStreaming={isStreaming && idx === session.history.length - 1}
+                            return session.history.map((message, idx) => (<Message
+                                key={idx}
+                                message={message}
+                                showMetadata={chatConfiguration.sessionConfiguration.showMetadata}
+                                isRunning={false}
+                                callingToolName={undefined}
+                                isStreaming={isStreaming && idx === session.history.length - 1}
+                                markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay}
+                                setChatConfiguration={setChatConfiguration}
+                                handleSendGenerateRequest={handleSendGenerateRequest}
+                                chatConfiguration={chatConfiguration}
+                                setUserPrompt={setUserPrompt}
+                                onMermaidRenderComplete={handleMermaidRenderComplete}
+                                onVideoLoadComplete={handleVideoLoadComplete}
+                                onImageLoadComplete={handleImageLoadComplete}
+                                retryResponse={retryResponse}
+                                errorState={errorState && idx === session.history.length - 1 }
+                                onOpenDocument={handleOpenDocument}
+                            />));
+                            // eslint-disable-next-line react-hooks/exhaustive-deps
+                        }, [session.history, chatConfiguration, loadingSession])}
+
+                        {!loadingSession && (isRunning || callingToolName) && !isStreaming && !isImageGenerationMode && !isVideoGenerationMode && <Message
+                            isRunning={isRunning}
+                            callingToolName={callingToolName}
                             markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay}
+                            message={new LisaChatMessage({ type: 'ai', content: '' })}
                             setChatConfiguration={setChatConfiguration}
                             handleSendGenerateRequest={handleSendGenerateRequest}
                             chatConfiguration={chatConfiguration}
@@ -975,38 +1016,32 @@ export default function Chat ({ sessionId }) {
                             onMermaidRenderComplete={handleMermaidRenderComplete}
                             onVideoLoadComplete={handleVideoLoadComplete}
                             onImageLoadComplete={handleImageLoadComplete}
-                            retryResponse={retryResponse}
-                            errorState={errorState && idx === session.history.length - 1 }
-                        />));
-                    // eslint-disable-next-line react-hooks/exhaustive-deps
-                    }, [session.history, chatConfiguration, loadingSession])}
+                            onOpenDocument={handleOpenDocument}
+                        />}
+                        {!loadingSession && session.history.length === 0 && sessionId === undefined && (
+                            <WelcomeScreen
+                                navigate={navigate}
+                                modelSelectRef={modelSelectRef}
+                                config={config}
+                                refreshPromptTemplate={refreshPromptTemplate}
+                                setFilterPromptTemplateType={setFilterPromptTemplateType}
+                                openModal={openModal}
+                            />
+                        )}
+                        <div ref={bottomRef} />
+                    </SpaceBetween>
+                </div>
 
-                    {!loadingSession && (isRunning || callingToolName) && !isStreaming && !isImageGenerationMode && !isVideoGenerationMode && <Message
-                        isRunning={isRunning}
-                        callingToolName={callingToolName}
-                        markdownDisplay={chatConfiguration.sessionConfiguration.markdownDisplay}
-                        message={new LisaChatMessage({ type: 'ai', content: '' })}
-                        setChatConfiguration={setChatConfiguration}
-                        handleSendGenerateRequest={handleSendGenerateRequest}
-                        chatConfiguration={chatConfiguration}
-                        setUserPrompt={setUserPrompt}
-                        onMermaidRenderComplete={handleMermaidRenderComplete}
-                        onVideoLoadComplete={handleVideoLoadComplete}
-                        onImageLoadComplete={handleImageLoadComplete}
-                    />}
-                    {!loadingSession && session.history.length === 0 && sessionId === undefined && (
-                        <WelcomeScreen
-                            navigate={navigate}
-                            modelSelectRef={modelSelectRef}
-                            config={config}
-                            refreshPromptTemplate={refreshPromptTemplate}
-                            setFilterPromptTemplateType={setFilterPromptTemplateType}
-                            openModal={openModal}
-                        />
-                    )}
-                    <div ref={bottomRef} />
-                </SpaceBetween>
+                {/* Document side panel */}
+                {showDocSidePanel && (
+                    <DocumentSidePanel
+                        visible={showDocSidePanel}
+                        onClose={handleCloseDocPanel}
+                        document={selectedDocumentForPanel}
+                    />
+                )}
             </div>
+
             <div className='sticky bottom-8 mt-2'>
                 <form onSubmit={(e) => e.preventDefault()}>
                     <Form>

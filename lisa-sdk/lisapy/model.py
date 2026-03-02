@@ -114,6 +114,61 @@ class ModelMixin(BaseMixin):
         else:
             raise parse_error(response.status_code, response)
 
+    def get_model_schedule(self, model_id: str) -> dict:
+        """Get the auto-scaling schedule for a model.
+
+        Args:
+            model_id: The ID of the model
+
+        Returns:
+            Dict: Schedule configuration
+
+        Raises:
+            Exception: If the request fails
+        """
+        response = self._session.get(f"{self.url}/models/{model_id}/schedule")
+        if response.status_code == 200:
+            return response.json()  # type: ignore[no-any-return]
+        else:
+            raise parse_error(response.status_code, response)
+
+    def update_model_schedule(self, model_id: str, schedule_config: dict) -> dict:
+        """Create or update the auto-scaling schedule for a model.
+
+        Args:
+            model_id: The ID of the model
+            schedule_config: Schedule configuration (DailySchedulingConfig or RecurringSchedulingConfig)
+
+        Returns:
+            Dict: Updated schedule configuration
+
+        Raises:
+            Exception: If the request fails
+        """
+        response = self._session.put(f"{self.url}/models/{model_id}/schedule", json=schedule_config)
+        if response.status_code in [200, 201]:
+            return response.json()  # type: ignore[no-any-return]
+        else:
+            raise parse_error(response.status_code, response)
+
+    def delete_model_schedule(self, model_id: str) -> bool:
+        """Delete the auto-scaling schedule for a model.
+
+        Args:
+            model_id: The ID of the model
+
+        Returns:
+            bool: True if deletion was successful
+
+        Raises:
+            Exception: If the request fails
+        """
+        response = self._session.delete(f"{self.url}/models/{model_id}/schedule")
+        if response.status_code in [200, 204]:
+            return True
+        else:
+            raise parse_error(response.status_code, response)
+
     def get_model(self, model_id: str) -> dict:
         """Get details of a specific model.
 

@@ -5,15 +5,15 @@
 PROJECT_DIR="$(pwd)/../../"
 
 # Read config values with defaults for missing fields
-PROFILE=$(cat ${PROJECT_DIR}/config-custom.yaml | yq -r '.profile // "default"')
+PROFILE=$(cat ${PROJECT_DIR}/config-custom.yaml | yq -r '.profile // ""')
 REGION=$(cat ${PROJECT_DIR}/config-custom.yaml | yq -r '.region // "us-west-2"')
 DEPLOYMENT_NAME=$(cat ${PROJECT_DIR}/config-custom.yaml | yq -r '.deploymentName // "prod"')
 APP_NAME=$(cat ${PROJECT_DIR}/config-custom.yaml | yq -r '.appName // "lisa"')
 DEPLOYMENT_STAGE=$(cat ${PROJECT_DIR}/config-custom.yaml | yq -r '.deploymentStage // "prod"')
 
-# Override with null check and provide defaults
+# Treat "null" as unset for profile — no default fallback
 if [ "$PROFILE" = "null" ]; then
-  PROFILE="default"
+  PROFILE=""
 fi
 
 if [ "$REGION" = "null" ]; then
@@ -85,11 +85,11 @@ if [ -z $VERIFY ]; then
   VERIFY=true
 fi
 
-echo "Using settings: PROFILE-${PROFILE}, DEPLOYMENT_NAME-${DEPLOYMENT_NAME}, APP_NAME-${APP_NAME}, DEPLOYMENT_STAGE-${DEPLOYMENT_STAGE}, REGION-${REGION}, VERIFY-${VERIFY}, API_URL-${API_URL}, ALB_URL-${ALB_URL}"
+echo "Using settings: PROFILE-${PROFILE:-<env/default>}, DEPLOYMENT_NAME-${DEPLOYMENT_NAME}, APP_NAME-${APP_NAME}, DEPLOYMENT_STAGE-${DEPLOYMENT_STAGE}, REGION-${REGION}, VERIFY-${VERIFY}, API_URL-${API_URL}, ALB_URL-${ALB_URL}"
 PREFIX="/${DEPLOYMENT_STAGE}/${DEPLOYMENT_NAME}/${APP_NAME}"
 echo "Prefix: ${PREFIX}"
 
-# Check for AWS credentials - try with env vars first, then profile
+# Check for AWS credentials - use env vars if present, then profile if set, else default chain
 AWS_ARGS=""
 if [ -n "${AWS_ACCESS_KEY_ID}" ] && [ -n "${AWS_SECRET_ACCESS_KEY}" ]; then
   echo "Using AWS credentials from environment variables"
@@ -97,11 +97,17 @@ if [ -n "${AWS_ACCESS_KEY_ID}" ] && [ -n "${AWS_SECRET_ACCESS_KEY}" ]; then
     echo "❌ Error: AWS credentials from environment are invalid"
     exit 1
   fi
-else
+elif [ -n "${PROFILE}" ]; then
   echo "Using AWS profile: ${PROFILE}"
   AWS_ARGS="--profile ${PROFILE}"
   if ! aws sts get-caller-identity ${AWS_ARGS} --region "${REGION}" &>/dev/null; then
     echo "❌ Error: AWS credentials not configured for profile '${PROFILE}'"
+    exit 1
+  fi
+else
+  echo "No profile configured — using default AWS credential chain"
+  if ! aws sts get-caller-identity --region "${REGION}" &>/dev/null; then
+    echo "❌ Error: No valid AWS credentials found in environment or default credential chain"
     exit 1
   fi
 fi
@@ -172,9 +178,9 @@ if [ -z "$ALB_URL" ] || [ -z "$API_URL" ]; then
 fi
 
 # Construct Python script arguments
-PYTHON_ARGS="--url $ALB_URL --api $API_URL --deployment-name $DEPLOYMENT_NAME --deployment-stage $DEPLOYMENT_STAGE --deployment-prefix $PREFIX --verify $VERIFY"
+PYTHON_ARGS="--url $ALB_URL --api $API_URL --deployment-name $DEPLOYMENT_NAME --deployment-stage $DEPLOYMENT_STAGE --deployment-prefix $PREFIX --verify $VERIFY --region $REGION"
 
-if [ ! -z "$PROFILE" ]; then
+if [ -n "$PROFILE" ]; then
   PYTHON_ARGS="$PYTHON_ARGS --profile $PROFILE"
 fi
 
@@ -193,8 +199,14 @@ fi
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 PYTHON_SCRIPT="${SCRIPT_DIR}/integration-setup-test.py"
 
+# Export region so boto3 in the Python script uses the correct region
+export AWS_DEFAULT_REGION="${REGION}"
+
 echo ""
-echo "🚀 Running integration setup test..."
+echo "Active AWS identity:"
+aws sts get-caller-identity --region "${REGION}" ${AWS_ARGS}
+echo ""
+echo "Running integration setup test..."
 echo "Command: python3 $PYTHON_SCRIPT $PYTHON_ARGS"
 echo ""
 

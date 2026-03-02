@@ -234,7 +234,7 @@
         ],
         "Content": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "6d33eab3e8e206597598f33d7a30f5c5d4b7a646c969bd3fbb466413fad41296.zip"
+          "S3Key": "4405fa119510373db5d4866ad067844f8ddcd47601d2803346e735a0e8e0714b.zip"
         },
         "Description": "FastAPI requirements for REST API Lambdas"
       },
@@ -249,7 +249,7 @@
         ],
         "Content": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "58507a18bf315ccf57bdd734393a3f6991a7958b05069b0b930610dc84d4b46a.zip"
+          "S3Key": "5cd3e5653648c388b9d534f729f60bb6b8be9f6c4270fa45210cf5bed2920e81.zip"
         },
         "Description": "API authorization dependencies for REST API"
       },

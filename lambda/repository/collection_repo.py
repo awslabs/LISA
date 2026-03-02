@@ -368,6 +368,16 @@ class CollectionRepository:
             logger.error(f"Failed to count collections for repository {repository_id}: {e}")
             raise CollectionRepositoryError(f"Failed to count collections: {str(e)}")
 
+    def find_by_id_or_name(self, collection_id: str, repository_id: str) -> RagCollectionConfig | None:
+        """Find a collection by UUID primary key, falling back to name lookup.
+
+        Handles the case where a pipeline stores a user-entered name as collectionId.
+        """
+        collection = self.find_by_id(collection_id, repository_id)
+        if collection:
+            return collection
+        return self.find_by_name(repository_id, collection_id)
+
     def find_by_name(self, repository_id: str, collection_name: str) -> RagCollectionConfig | None:
         """
         Find a collection by repository ID and name.

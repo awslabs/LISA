@@ -41,7 +41,7 @@ args = parser.parse_args()
 
 # pull down model files from HF Hub if needed
 model_dir_fpath = Path(args.output_dir, args.model_id)
-if not model_dir_fpath.exists():
+if not model_dir_fpath.exists() or not any(model_dir_fpath.iterdir()):
     from huggingface_hub import login, snapshot_download
 
     if args.access_token:

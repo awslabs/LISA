@@ -717,7 +717,9 @@ class TestDefaultCollectionPath(RagIntegrationFixtures):
                 logger.info(f"Found default collection: {collection_id}")
                 return collection_id
             except Exception:
-                logger.info(f"Default collection {collection_id} is virtual (not in DDB), falling back to embeddingModelId")
+                logger.info(
+                    f"Default collection {collection_id} is virtual (not in DDB), falling back to embeddingModelId"
+                )
 
         # Fallback: use embeddingModelId (legacy / pre-state-machine repos)
         repo = lisa_client.get_repository(test_repository_id)

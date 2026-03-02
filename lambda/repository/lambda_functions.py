@@ -426,8 +426,9 @@ def create_default_collection(event: dict, context: dict) -> dict[str, Any]:
         if not repository_id:
             raise ValidationError("repositoryId is required in ragConfig")
 
-        repository = vs_repo.find_repository_by_id(repository_id=repository_id)
+        repository = vs_repo.find_repository_by_id(repository_id)
         service = RepositoryServiceFactory.create_service(repository)
+
 
         if not service.should_create_default_collection():
             return {"skipped": True, "reason": "repository type does not support default collections"}
@@ -565,7 +566,14 @@ def get_collection(event: dict, context: dict) -> dict[str, Any]:
     repo = get_repository(event, repository_id=repository_id)
 
     if repo.get("embeddingModelId") == collection_id:
-        # Not a real collection - create virtual default collection
+        active_statuses = [
+            VectorStoreStatus.CREATE_COMPLETE,
+            VectorStoreStatus.UPDATE_COMPLETE,
+            VectorStoreStatus.UPDATE_COMPLETE_CLEANUP_IN_PROGRESS,
+            VectorStoreStatus.UPDATE_IN_PROGRESS,
+        ]
+        if repo.get("status") not in active_statuses:
+            raise NotFoundException(f"Repository '{repository_id}' is not active")
         service = RepositoryServiceFactory.create_service(repo)
         collection = service.create_default_collection()
     else:

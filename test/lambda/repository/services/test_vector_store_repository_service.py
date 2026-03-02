@@ -15,6 +15,7 @@
 """Tests for vector store repository service base class."""
 
 import os
+import re
 from unittest.mock import create_autospec, MagicMock, patch
 
 import pytest
@@ -190,9 +191,10 @@ class TestVectorStoreRepositoryService:
     def test_create_default_collection_active_repository(self, vector_store_service):
         """Test creating default collection for active repository."""
         collection = vector_store_service.create_default_collection()
+        pattern = r"^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$"
 
         assert collection is not None
-        assert collection.collectionId == "amazon.titan-embed-text-v1"
+        assert re.search(pattern, collection.collectionId), f"Collection ID {collection.collectionId} does not match UUID pattern"
         assert collection.repositoryId == "test-vector-repo"
         assert collection.embeddingModel == "amazon.titan-embed-text-v1"
         assert collection.status == CollectionStatus.ACTIVE

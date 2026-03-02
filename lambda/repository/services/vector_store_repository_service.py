@@ -254,12 +254,13 @@ class VectorStoreRepositoryService(RepositoryService):
                 VectorStoreStatus.UPDATE_COMPLETE,
                 VectorStoreStatus.UPDATE_COMPLETE_CLEANUP_IN_PROGRESS,
                 VectorStoreStatus.UPDATE_IN_PROGRESS,
+                VectorStoreStatus.CREATE_IN_PROGRESS,
             ]
 
             if not active:
                 logger.info(f"Repository {self.repository_id} is not active")
                 return None
-
+            
             embedding_model = self.repository.get("embeddingModelId")
             if not embedding_model:
                 logger.info(f"Repository {self.repository_id} has no default embedding model")

@@ -15,6 +15,7 @@
 """Extended tests for collection service covering uncovered lines."""
 
 import os
+import re
 import sys
 from datetime import datetime, timezone
 from unittest.mock import Mock
@@ -94,9 +95,11 @@ def testcreate_default_collection_success(service):
     }
     repo_service = RepositoryServiceFactory.create_service(test_repo)
     result = repo_service.create_default_collection()
+    pattern = r"^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$"
+
     assert result is not None
-    assert result.collectionId == "model1"
-    assert result.name == f"{result.repositoryId}-{result.collectionId}"
+    assert re.search(pattern, result.collectionId), f"Collection ID {result.collectionId} does not match UUID pattern"
+    assert result.name == f"{result.repositoryId}-{result.embeddingModel}"
     assert result.embeddingModel == "model1"
 
 

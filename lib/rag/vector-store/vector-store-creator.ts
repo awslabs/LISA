@@ -246,14 +246,31 @@ export class VectorStoreCreatorStack extends Construct {
         // Grant permissions
         vectorStoreTable.grantReadWriteData(createBedrockCollectionFn);
 
+        const createDefaultCollectionFn = new lambda.Function(this, 'CreateDefaultCollectionFn', {
+            functionName: createCdkId([config.deploymentName, config.deploymentStage, 'create_default_collection']),
+            runtime: getPythonRuntime(),
+            handler: 'repository.lambda_functions.create_default_collection',
+            code: lambda.Code.fromAsset(config.lambdaPath || LAMBDA_PATH),
+            timeout: Duration.minutes(5),
+            memorySize: 512,
+            role: lambdaExecutionRole,
+            environment: baseEnvironment,
+            vpc: vpc.vpc,
+            vpcSubnets: vpc.subnetSelection,
+            securityGroups: [vpc.securityGroups.lambdaSg],
+            layers: layers,
+        });
+        vectorStoreTable.grantReadWriteData(createDefaultCollectionFn);
+
         // Allow the state machine to invoke the deployer Lambda
         this.vectorStoreCreatorFn.grantInvoke(stateMachineRole);
         createBedrockCollectionFn.grantInvoke(stateMachineRole);
+        createDefaultCollectionFn.grantInvoke(stateMachineRole);
 
         // Minimal policies for state machine role
         stateMachineRole.addToPolicy(new iam.PolicyStatement({
             actions: ['lambda:InvokeFunction'],
-            resources: [this.vectorStoreCreatorFn.functionArn, createBedrockCollectionFn.functionArn],
+            resources: [this.vectorStoreCreatorFn.functionArn, createBedrockCollectionFn.functionArn, createDefaultCollectionFn.functionArn],
         }));
         stateMachineRole.addToPolicy(new iam.PolicyStatement({
             actions: ['cloudformation:DescribeStacks', 'cloudformation:DeleteStack'],
@@ -267,6 +284,7 @@ export class VectorStoreCreatorStack extends Construct {
         new CreateStoreStateMachine(this, 'CreateVectorStoreStateMachine', {
             config: props.config,
             createBedrockCollectionFnArn: createBedrockCollectionFn.functionArn,
+            createDefaultCollectionFnArn: createDefaultCollectionFn.functionArn,
             executionRole: lambdaExecutionRole,
             parameterName: baseEnvironment['LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER'],
             role: stateMachineRole,

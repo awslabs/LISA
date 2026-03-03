@@ -117,6 +117,9 @@
     "util": "^0.12.5",
     "zod": "^4.1.13"
   },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "4.59.0"
+  },
   "peerDependencies": {
     "@cfworker/json-schema": "^4.1.0",
     "@types/lodash": "^4.17.14",

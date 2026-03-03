@@ -34,7 +34,6 @@ import { ModelType } from '@/shared/model/model-management.model';
 import { useGetAllModelsQuery } from '@/shared/reducers/model-management.reducer';
 import { useListRagRepositoriesQuery, useListAllCollectionsQuery } from '@/shared/reducers/rag.reducer';
 import { useListMcpServersQuery, useListHostedMcpServersQuery } from '@/shared/reducers/mcp-server.reducer';
-import { useListMcpToolsQuery } from '@/shared/reducers/mcp-tools.reducer';
 import { useListPromptTemplatesQuery } from '@/shared/reducers/prompt-templates.reducer';
 import { PromptTemplateType } from '@/shared/reducers/prompt-templates.reducer';
 import { VectorStoreStatus } from '#root/lib/schema';
@@ -167,9 +166,7 @@ export function StackAgentsStep (props: StackFormProps): ReactElement {
     const { item, setFields } = props;
     const { data: connectionServers } = useListMcpServersQuery(undefined, { refetchOnMountOrArgChange: true });
     const { data: hostedServers } = useListHostedMcpServersQuery(undefined, { refetchOnMountOrArgChange: true });
-    const { data: tools } = useListMcpToolsQuery(undefined, { refetchOnMountOrArgChange: true });
     const mcpServerIds = item.mcpServerIds || [];
-    const mcpToolIds = item.mcpToolIds || [];
     const servers = useMemo(() => {
         const byId = new Map<string, { id: string; name: string }>();
         (connectionServers?.Items || []).forEach((s) => byId.set(s.id, { id: s.id, name: s.name }));
@@ -179,10 +176,6 @@ export function StackAgentsStep (props: StackFormProps): ReactElement {
     const toggleServer = (id: string) => {
         if (mcpServerIds.includes(id)) setFields({ mcpServerIds: mcpServerIds.filter((x) => x !== id) });
         else setFields({ mcpServerIds: [...mcpServerIds, id] });
-    };
-    const toggleTool = (id: string) => {
-        if (mcpToolIds.includes(id)) setFields({ mcpToolIds: mcpToolIds.filter((x) => x !== id) });
-        else setFields({ mcpToolIds: [...mcpToolIds, id] });
     };
     return (
         <SpaceBetween size='m'>
@@ -195,16 +188,6 @@ export function StackAgentsStep (props: StackFormProps): ReactElement {
                         </Checkbox>
                     ))}
                     {servers.length === 0 && <Box color='text-body-secondary'>No MCP servers available.</Box>}
-                </SpaceBetween>
-            </FormField>
-            <FormField label='MCP Tools' description='Optional.'>
-                <SpaceBetween size='s'>
-                    {(tools || []).map((t) => (
-                        <Checkbox key={t.id} checked={mcpToolIds.includes(t.id)} onChange={() => toggleTool(t.id)}>
-                            {t.name || t.id}
-                        </Checkbox>
-                    ))}
-                    {(!tools || tools.length === 0) && <Box color='text-body-secondary'>No MCP tools available.</Box>}
                 </SpaceBetween>
             </FormField>
         </SpaceBetween>

@@ -133,6 +133,7 @@ export default function Chat ({ sessionId, initialStack }) {
         setRagConfig,
         chatAssistantId,
         setChatAssistantId,
+        internalSessionId,
     } = useSession(sessionId, getSessionById);
     const { data: resumedStack } = useGetStackQuery(chatAssistantId ?? '', {
         skip: !chatAssistantId || !!initialStack,
@@ -314,11 +315,12 @@ export default function Chat ({ sessionId, initialStack }) {
         }
     }, [selectedModel, hasUserInteractedWithModel, config?.configuration?.global?.defaultModel, modelsForDropdown, handleModelChange, setSelectedModel]);
 
-    // Apply stack config when starting a new session from a Chat Assistant
+    // Apply stack config when starting a new session from a Chat Assistant (after session exists so RAG isn't overwritten by createNewSession)
     const initialStackApplied = useRef(false);
     const [getPromptTemplate] = useLazyGetPromptTemplateQuery();
     useEffect(() => {
-        if (!initialStack || session.history.length > 0 || initialStackApplied.current || !allModels?.length) return;
+        const sessionReady = sessionId != null || internalSessionId != null;
+        if (!initialStack || session.history.length > 0 || initialStackApplied.current || !allModels?.length || !sessionReady) return;
         const firstModelId = initialStack.modelIds?.[0];
         const model = firstModelId ? allModels.find((m) => m.modelId === firstModelId) : undefined;
         if (model) {
@@ -353,7 +355,7 @@ export default function Chat ({ sessionId, initialStack }) {
         }
 
         initialStackApplied.current = true;
-    }, [initialStack, session.history.length, allModels, setSession, handleModelChange, setSelectedModel, selectedModel, getPromptTemplate, setChatConfiguration, setRagConfig, setChatAssistantId]);
+    }, [initialStack, session.history.length, sessionId, internalSessionId, allModels, setSession, handleModelChange, setSelectedModel, selectedModel, getPromptTemplate, setChatConfiguration, setRagConfig, setChatAssistantId]);
 
 
     // Wrapper for handleModelChange that tracks user interaction
@@ -1032,14 +1034,20 @@ export default function Chat ({ sessionId, initialStack }) {
                 </div>
             )}
 
-            {/* Highlight when using a Chat Assistant: name and description */}
             {effectiveStack && (
                 <Box padding={{ horizontal: 'l', vertical: 's' }} variant='div'>
-                    <StatusIndicator type='info'>Chat Assistant</StatusIndicator>
-                    <Box variant='h3' margin={{ top: 'xxs' }}>{effectiveStack.name}</Box>
-                    {effectiveStack.description && (
-                        <Box variant='p' color='text-body-secondary'>{effectiveStack.description}</Box>
-                    )}
+                    <SpaceBetween direction='horizontal' size='s' alignItems='center'>
+                        <StatusIndicator type='info'>Chat Assistant</StatusIndicator>
+                        <Box variant='strong'>{effectiveStack.name}</Box>
+                        {effectiveStack.description && (
+                            <Box
+                                variant='p'
+                                color='text-body-secondary'
+                            >
+                                - {effectiveStack.description}
+                            </Box>
+                        )}
+                    </SpaceBetween>
                 </Box>
             )}
 

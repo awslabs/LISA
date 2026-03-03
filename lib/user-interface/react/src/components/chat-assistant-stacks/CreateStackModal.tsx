@@ -242,7 +242,7 @@ export function CreateStackModal (props: CreateStackModalProps): ReactElement {
         },
         {
             title: 'Agents',
-            description: 'Optional MCP servers and tools.',
+            description: 'Optional MCP servers.',
             isOptional: true,
             content: <StackAgentsStep item={state.form} setFields={setFields} touchFields={touchFields} formErrors={errors} />,
         },

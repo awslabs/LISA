@@ -127,7 +127,7 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
                 const activeCollections = collections.filter((c) => c.status === CollectionStatus.ACTIVE);
                 if (activeCollections.length > 0) {
                     const defaultCollection = allowedCollectionIds?.length
-                        ? activeCollections.find((c) => allowedCollectionIds.includes(c.collectionId)) ?? activeCollections[0]
+                        ? activeCollections.find((c) => c.collectionId === allowedCollectionIds[0]) ?? activeCollections.find((c) => allowedCollectionIds.includes(c.collectionId)) ?? activeCollections[0]
                         : activeCollections[0];
                     const embeddingModel = allModels.find((model) => model.modelId === defaultCollection.embeddingModel);
 

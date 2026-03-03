@@ -43,10 +43,12 @@ export default class ConfigParser {
         } catch (error) {
             if (error instanceof Error) {
                 console.error('Error parsing the configuration:', error.message);
-                throw new Error(`Configuration parsing failed: ${error.message}`);
+                throw new Error(`Configuration parsing failed: ${error.message}`, { cause: error });
             } else {
                 console.error('An unexpected error occurred:', error);
-                throw new Error('Configuration parsing failed: An unexpected error occurred');
+                throw new Error('Configuration parsing failed: An unexpected error occurred', {
+                    cause: error,
+                });
             }
         }
         return config;

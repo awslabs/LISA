@@ -19,9 +19,14 @@ calls receive() and can get a second http.request from the ASGI server, causing:
   RuntimeError: Unexpected message received: http.request
 
 This middleware consumes the request body once at the ASGI layer and passes a receive
-that returns the body once then only http.disconnect, so the app and StreamingResponse
-never see a second http.request.
+that replays the body once. For streaming requests (body has "stream": true), subsequent
+calls return http.disconnect so the app never sees a second http.request. For
+non-streaming requests, subsequent calls pass through to the real receive() so the
+framework does not think the client disconnected and close the stream before sending
+the response (which caused "No response returned").
 """
+
+import json
 
 from starlette.types import ASGIApp, Receive, Scope, Send
 
@@ -37,10 +42,7 @@ class StreamingSafeMiddleware:
             await self.app(scope, receive, send)
             return
 
-        # Consume the full request body so we can replay it once and then only return
-        # http.disconnect (avoids "Unexpected message received: http.request" when
-        # StreamingResponse calls receive() and a middleware above returns a second
-        # http.request).
+        # Consume the full request body so we can replay it once.
         body = b""
         while True:
             message = await receive()
@@ -52,12 +54,27 @@ class StreamingSafeMiddleware:
                 if not message.get("more_body", True):
                     break
 
+        # Only fake disconnect after first call for streaming; otherwise pass through
+        # so BaseHTTPMiddleware does not close the stream before the response is sent.
+        is_streaming = False
+        if body and scope.get("method") in ("POST", "PUT", "PATCH"):
+            try:
+                params = json.loads(body)
+                is_streaming = params.get("stream", False) is True
+            except (json.JSONDecodeError, TypeError):
+                pass
+
         first_call = [True]
 
         async def safe_receive() -> dict:
             if first_call[0]:
                 first_call[0] = False
                 return {"type": "http.request", "body": body, "more_body": False}
-            return {"type": "http.disconnect"}
+            if is_streaming:
+                # Avoid second http.request for StreamingResponse.listen_for_disconnect.
+                return {"type": "http.disconnect"}
+            # Non-streaming: pass through so the framework sees real disconnect only
+            # when the client disconnects (avoids "No response returned").
+            return await receive()
 
         await self.app(scope, safe_receive, send)

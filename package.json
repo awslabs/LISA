@@ -118,7 +118,8 @@
     "zod": "^4.1.13"
   },
   "optionalDependencies": {
-    "@rollup/rollup-linux-x64-gnu": "4.59.0"
+    "@rollup/rollup-linux-x64-gnu": "4.59.0",
+    "@tailwindcss/oxide-linux-x64-gnu": "4.1.18"
   },
   "peerDependencies": {
     "@cfworker/json-schema": "^4.1.0",

@@ -37,6 +37,24 @@ class RepositoryMixin(BaseMixin):
         else:
             raise parse_error(response.status_code, response)
 
+    def get_repository(self, repository_id: str) -> dict:
+        """Get a repository by ID.
+
+        Args:
+            repository_id: The ID of the repository to retrieve
+
+        Returns:
+            dict: Repository configuration
+
+        Raises:
+            Exception: If the request fails
+        """
+        response = self._session.get(f"{self.url}/repository/{repository_id}")
+        if response.status_code == 200:
+            return response.json()  # type: ignore[no-any-return]
+        else:
+            raise parse_error(response.status_code, response)
+
     def create_repository(self, rag_config: RagRepositoryConfig) -> dict:
         """Create a new RAG repository.
 

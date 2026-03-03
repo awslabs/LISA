@@ -39,6 +39,7 @@ export type IEnabledComponents = {
     modelLibrary: boolean;
     encryptSession: boolean;
     enableUserApiTokens: boolean;
+    chatAssistantStacks: boolean;
 };
 
 export type ISystemBannerConfiguration = {
@@ -91,6 +92,7 @@ export const enabledComponentsSchema = z.object({
     enableModelComparisonUtility: z.boolean().default(false),
     encryptSession: z.boolean().default(false),
     enableUserApiTokens: z.boolean().default(false),
+    chatAssistantStacks: z.boolean().default(false),
 });
 
 export const globalConfigSchema = z.object({

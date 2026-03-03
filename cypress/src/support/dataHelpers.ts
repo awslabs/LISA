@@ -50,11 +50,11 @@ export function verifyCloudscapeTableHasData (minRows: number = 1) {
 
 /**
  * Verify that cards (used in model management) have rendered with data
+ * Uses data-testid from ModelManagementUtils (model-card-{modelId}) for stability across Cloudscape updates
  * @param minCards - Minimum number of cards expected (defaults to 1)
  */
 export function verifyCardsHaveData (minCards: number = 1) {
-    // Cloudscape cards use dynamic class names with hashes
-    cy.get('[class*="awsui_card_"][class*="awsui_card-selectable_"]')
+    cy.get('[data-testid^="model-card-"]')
         .should('have.length.at.least', minCards);
 }
 

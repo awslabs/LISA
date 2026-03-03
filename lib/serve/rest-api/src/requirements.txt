@@ -16,7 +16,7 @@ gunicorn>=23.0.0,<24.0.0
 
 # LiteLLM - Upgraded to 1.81.3 for RDS IAM token refresh fix (PR #18795)
 # Fixes: "All connection attempts failed" errors every 15 minutes with IAM auth
-litellm[proxy]==1.81.16
+litellm[proxy]==1.81.3
 
 loguru==0.7.3
 pydantic>=2.5.0,<3.0.0
@@ -26,4 +26,4 @@ starlette>=0.40.0,<0.51.0
 
 # ASGI Server - Version constrained by litellm[proxy]==1.81.3
 # litellm requires uvicorn>=0.31.1,<0.32.0
-uvicorn>=0.31.1,<0.42.0
+uvicorn>=0.31.1,<0.32.0

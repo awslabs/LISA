@@ -52,7 +52,7 @@ export const useToolChain = ({
     }, [callTool]);
 
     const formatToolResult = useCallback((result: any) => {
-        let toolResultContent = '';
+        let toolResultContent: string;
         if (Array.isArray(result)) {
             toolResultContent = result.map((item) => {
                 if (item.type === 'text') {

@@ -136,11 +136,6 @@ async def auth_middleware(request: Request, call_next: Callable[[Request], Respo
             status_code=e.status_code,
             content={"error": "Unauthorized", "message": e.detail},
         )
-    except (RuntimeError, BaseExceptionGroup) as e:
-        # Re-raise middleware/streaming errors (e.g. BaseHTTPMiddleware "No response
-        # returned", "Unexpected message received: http.request") so they are not
-        # turned into 401 and can be handled by the exception handler.
-        raise
     except Exception as e:
         logger.error(f"Authentication error: {e}")
         if is_openai_route:

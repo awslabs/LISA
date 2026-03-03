@@ -21,11 +21,13 @@ from api.routes import router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
-from starlette.middleware.base import BaseHTTPMiddleware
-
-from middleware import register_exception_handlers
-from middleware.combined_http import combined_http_dispatch
-from middleware.streaming_safe import StreamingSafeMiddleware
+from middleware import (
+    auth_middleware,
+    process_request_middleware,
+    register_exception_handlers,
+    security_middleware,
+    validate_input_middleware,
+)
 
 logger.remove()
 logger_level = os.environ.get("LOG_LEVEL", "INFO")
@@ -73,12 +75,42 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Consume request body at ASGI layer and provide a receive that returns body once then
-# only http.disconnect, so StreamingResponse never sees a second http.request (avoids
-# RuntimeError when BaseHTTPMiddleware or similar is in the chain). Add last so it is
-# outermost and receives the server's receive first.
-app.add_middleware(StreamingSafeMiddleware)
 
-# Single BaseHTTPMiddleware that chains security, process_request, validate_input, and
-# auth (one layer instead of four) to avoid "No response returned" with StreamingResponse.
-app.add_middleware(BaseHTTPMiddleware, dispatch=combined_http_dispatch)
+##############
+# MIDDLEWARE #
+##############
+
+
+@app.middleware("http")
+async def authenticate(request, call_next):  # type: ignore
+    """Authentication middleware.
+
+    Validates tokens and sets user context on request.state.
+    Runs after security checks but before request processing.
+    """
+    return await auth_middleware(request, call_next)
+
+
+@app.middleware("http")
+async def validate_input(request, call_next):  # type: ignore
+    """Middleware for validating all HTTP request inputs."""
+    return await validate_input_middleware(request, call_next)
+
+
+@app.middleware("http")
+async def process_request(request, call_next):  # type: ignore
+    """Middleware for processing all HTTP requests (logging)."""
+    return await process_request_middleware(request, call_next)
+
+
+@app.middleware("http")
+async def security_check(request, call_next):  # type: ignore
+    """Security middleware for input validation.
+
+    This middleware runs FIRST (before request logging) to validate:
+    - HTTP method is allowed
+    - No null bytes in path, query, or body
+    - Request body is valid JSON for POST/PUT/PATCH
+    - Request size is within limits (model proxy endpoints are exempt)
+    """
+    return await security_middleware(request, call_next)

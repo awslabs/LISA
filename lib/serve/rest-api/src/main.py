@@ -28,6 +28,7 @@ from middleware import (
     security_middleware,
     validate_input_middleware,
 )
+from middleware.streaming_safe import StreamingSafeMiddleware
 
 logger.remove()
 logger_level = os.environ.get("LOG_LEVEL", "INFO")
@@ -74,6 +75,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Consume request body at ASGI layer and provide a receive that returns body once then
+# only http.disconnect, so StreamingResponse never sees a second http.request (avoids
+# RuntimeError when BaseHTTPMiddleware or similar is in the chain). Add last so it is
+# outermost and receives the server's receive first.
+app.add_middleware(StreamingSafeMiddleware)
 
 
 ##############

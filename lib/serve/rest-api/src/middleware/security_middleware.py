@@ -212,20 +212,5 @@ async def security_middleware(
                     message="Request body exceeds maximum size",
                 )
 
-        # After consuming the body, wrap receive so downstream (route + StreamingResponse)
-        # get the body once and then only http.disconnect. Prevents "Unexpected message
-        # received: http.request" when StreamingResponse.listen_for_disconnect calls
-        # receive() and a middleware (e.g. BaseHTTPMiddleware) returns a second
-        # http.request from the ASGI server.
-        first_call = [True]
-
-        async def receive() -> dict:
-            if first_call[0]:
-                first_call[0] = False
-                return {"type": "http.request", "body": body, "more_body": False}
-            return {"type": "http.disconnect"}
-
-        request._receive = receive
-
     # All validations passed, continue to next handler
     return await call_next(request)

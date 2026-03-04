@@ -477,6 +477,32 @@ def test_handle_add_model_to_litellm_lisa_managed(model_table, sample_event, lam
         mock_litellm_client.add_model.assert_called_once()
         call_args = mock_litellm_client.add_model.call_args
         assert call_args[1]["model_name"] == "test-model"
+        assert "hosted_vllm/test-model-name" in call_args[1]["litellm_params"]["model"]
+
+        # Verify DDB update
+        item = model_table.get_item(Key={"model_id": "test-model"})["Item"]
+        assert item["model_status"] == ModelStatus.IN_SERVICE
+        assert item["litellm_id"] == "test-litellm-id"
+
+
+def test_handle_add_model_to_litellm_lisa_managed_non_vllm(model_table, sample_event, lambda_context):
+    """Test adding a tgi LISA-managed model to LiteLLM."""
+    event = deepcopy(sample_event)
+    event["inferenceContainer"] = "tgi"
+    event["create_infra"] = True
+    event["modelUrl"] = "https://test-model.example.com"
+    event["autoScalingGroup"] = "test-asg"
+    mock_litellm_client.reset_mock()
+
+    with patch("models.state_machine.create_model.model_table", model_table):
+        result = handle_add_model_to_litellm(event, lambda_context)
+
+        assert result["litellm_id"] == "test-litellm-id"
+
+        # Verify LiteLLM client call
+        mock_litellm_client.add_model.assert_called_once()
+        call_args = mock_litellm_client.add_model.call_args
+        assert call_args[1]["model_name"] == "test-model"
         assert "openai/test-model-name" in call_args[1]["litellm_params"]["model"]
 
         # Verify DDB update

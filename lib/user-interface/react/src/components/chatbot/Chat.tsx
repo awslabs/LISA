@@ -140,13 +140,12 @@ export default function Chat ({ sessionId, initialStack }) {
     });
     const effectiveStack = initialStack ?? (chatAssistantId && resumedStack ? resumedStack : undefined);
 
-    // When using an assistant stack, restrict model dropdown to stack's modelIds
-    const modelsForDropdown = useMemo(() =>
-        (effectiveStack?.modelIds?.length
-            ? allModels.filter((m) => effectiveStack.modelIds.includes(m.modelId))
-            : allModels),
-    [allModels, effectiveStack?.modelIds]
-    );
+    // When using an assistant stack, restrict model dropdown to stack's modelIds; empty/null => no options
+    const modelsForDropdown = useMemo(() => {
+        if (!effectiveStack) return allModels;
+        const ids = effectiveStack.modelIds ?? [];
+        return ids.length ? allModels.filter((m) => ids.includes(m.modelId)) : [];
+    }, [allModels, effectiveStack]);
     const { data: userPreferences } = useGetUserPreferencesQuery();
     const { data: mcpServers } = useListMcpServersQuery(undefined, {
         refetchOnMountOrArgChange: true,
@@ -216,17 +215,19 @@ export default function Chat ({ sessionId, initialStack }) {
     const lastProcessedMessageIndex = useRef(-1);
     const startToolChainRef = useRef<((session: LisaChatSession) => Promise<void>) | undefined>(undefined);
 
-    // Memoize enabled servers; when using an assistant stack, restrict to stack's mcpServerIds
+    // Memoize enabled servers. When using an assistant stack with mcpServerIds, use those servers
+    // directly (turned on for this session) regardless of user preferences; otherwise use preferences.
     const enabledServers = useMemo(() => {
         if (!mcpServers) return undefined;
+        if (effectiveStack) {
+            const ids = effectiveStack.mcpServerIds ?? [];
+            return ids.length ? mcpServers.filter((server) => ids.includes(server.id)) : [];
+        }
         const base = userPreferences?.preferences?.mcp?.enabledServers
             ? mcpServers.filter((server) => userPreferences.preferences.mcp.enabledServers.map((s) => s.id).includes(server.id))
             : [];
-        if (effectiveStack?.mcpServerIds?.length) {
-            return base.filter((server) => effectiveStack.mcpServerIds.includes(server.id));
-        }
         return base.length ? base : undefined;
-    }, [mcpServers, userPreferences?.preferences?.mcp?.enabledServers, effectiveStack?.mcpServerIds]);
+    }, [mcpServers, userPreferences?.preferences?.mcp?.enabledServers, effectiveStack]);
 
     // Tool call loop prevention
     const consecutiveToolCallCount = useRef(0);
@@ -346,12 +347,15 @@ export default function Chat ({ sessionId, initialStack }) {
             });
         }
 
-        // Set initial RAG repo from stack when present (collection resolved when RagControls loads)
-        if (initialStack.repositoryIds?.length) {
+        // Set initial RAG from stack when present; clear RAG when stack has no repos
+        const repoIds = initialStack.repositoryIds ?? [];
+        if (repoIds.length) {
             setRagConfig((prev) => ({
                 ...prev,
-                repositoryId: initialStack.repositoryIds[0],
+                repositoryId: repoIds[0],
             }));
+        } else {
+            setRagConfig({} as import('./components/RagOptions').RagConfig);
         }
 
         initialStackApplied.current = true;
@@ -862,6 +866,11 @@ export default function Chat ({ sessionId, initialStack }) {
         }
     }, [shouldShowStopButton, userPrompt.length, isRunning, callingToolName, loadingSession, handleSendGenerateRequest]);
 
+    const getButtonItemsWithAssistantMode = useCallback((...args: Parameters<typeof getButtonItems>) => {
+        const [config, useRag, isImageGen, isVideoGen, isConnected, isModelDel, showMd] = args;
+        return getButtonItems(config, useRag, isImageGen, isVideoGen, isConnected, isModelDel, showMd, !!effectiveStack);
+    }, [effectiveStack]);
+
     const promptInputProps = useMemo(() => ({
         userPrompt,
         shouldShowStopButton,
@@ -885,7 +894,7 @@ export default function Chat ({ sessionId, initialStack }) {
         handleAction,
         handleKeyPress,
         handleButtonClick,
-        getButtonItems,
+        getButtonItems: getButtonItemsWithAssistantMode,
     }), [
         userPrompt,
         shouldShowStopButton,
@@ -905,6 +914,7 @@ export default function Chat ({ sessionId, initialStack }) {
         handleAction,
         handleKeyPress,
         handleButtonClick,
+        getButtonItemsWithAssistantMode,
     ]);
 
     return (
@@ -970,7 +980,7 @@ export default function Chat ({ sessionId, initialStack }) {
                 key={promptTemplateKey}
                 config={config}
                 type={filterPromptTemplateType}
-                allowedDirectivePromptIds={effectiveStack?.directivePromptIds}
+                allowedDirectivePromptIds={effectiveStack ? (effectiveStack.directivePromptIds ?? []) : undefined}
                 // eslint-disable-next-line react-hooks/exhaustive-deps
             />), conditionalDeps([modals.promptTemplate], [modals.promptTemplate], [modals.promptTemplate, session, openModal, closeModal, chatConfiguration, setChatConfiguration, promptTemplateKey, config, filterPromptTemplateType, effectiveStack?.directivePromptIds]))}
 
@@ -1170,8 +1180,8 @@ export default function Chat ({ sessionId, initialStack }) {
                                         setUseRag={setUseRag}
                                         setRagConfig={setRagConfig}
                                         ragConfig={ragConfig}
-                                        allowedRepositoryIds={effectiveStack?.repositoryIds}
-                                        allowedCollectionIds={effectiveStack?.collectionIds}
+                                        allowedRepositoryIds={effectiveStack ? (effectiveStack.repositoryIds ?? []) : undefined}
+                                        allowedCollectionIds={effectiveStack ? (effectiveStack.collectionIds ?? []) : undefined}
                                     />
                                 )}
                             </Grid>

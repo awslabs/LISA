@@ -113,8 +113,15 @@ export function StackRagStep (props: StackFormProps): ReactElement {
     const repoIds = item.repositoryIds || [];
     const collIds = item.collectionIds || [];
     const toggleRepo = (id: string) => {
-        if (repoIds.includes(id)) setFields({ repositoryIds: repoIds.filter((x) => x !== id) });
-        else setFields({ repositoryIds: [...repoIds, id] });
+        if (repoIds.includes(id)) {
+            const newRepoIds = repoIds.filter((x) => x !== id);
+            const collectionsByRepo = (allCollections || []).filter((c) => c.repositoryId === id);
+            const idsToRemove = new Set(collectionsByRepo.map((c) => c.collectionId));
+            const newCollIds = collIds.filter((cid) => !idsToRemove.has(cid));
+            setFields({ repositoryIds: newRepoIds, collectionIds: newCollIds });
+        } else {
+            setFields({ repositoryIds: [...repoIds, id] });
+        }
     };
     const toggleColl = (id: string) => {
         if (collIds.includes(id)) setFields({ collectionIds: collIds.filter((x) => x !== id) });
@@ -126,11 +133,18 @@ export function StackRagStep (props: StackFormProps): ReactElement {
             (r) => r.status === VectorStoreStatus.CREATE_COMPLETE || r.status === VectorStoreStatus.UPDATE_COMPLETE
         );
     }, [repositories]);
-    const collections = useMemo(() => allCollections || [], [allCollections]);
+    const allCollectionsList = useMemo(() => allCollections || [], [allCollections]);
+    const collectionsForSelectedRepos = useMemo(() => {
+        if (repoIds.length === 0) return [];
+        return allCollectionsList.filter((c) => c.repositoryId && repoIds.includes(c.repositoryId));
+    }, [allCollectionsList, repoIds]);
     if (loadingRepos || loadingCollections) return <Spinner />;
     return (
         <SpaceBetween size='m'>
-            <FormField label='RAG Repositories' description='Optional. Select repositories for RAG.'>
+            <FormField
+                label='RAG Repositories'
+                description='Select one or more repositories first. Collections below are limited to the repositories you select here.'
+            >
                 <SpaceBetween size='s'>
                     {repos.map((r) => (
                         <Checkbox
@@ -144,18 +158,29 @@ export function StackRagStep (props: StackFormProps): ReactElement {
                     {repos.length === 0 && <Box color='text-body-secondary'>No repositories available.</Box>}
                 </SpaceBetween>
             </FormField>
-            <FormField label='RAG Collections' description='Optional. Select collections.'>
+            <FormField
+                label='RAG Collections'
+                description={repoIds.length === 0
+                    ? 'Select at least one repository above to see and choose collections.'
+                    : 'Only collections from the selected repositories are shown.'}
+            >
                 <SpaceBetween size='s'>
-                    {collections.map((c) => (
-                        <Checkbox
-                            key={c.collectionId}
-                            checked={collIds.includes(c.collectionId)}
-                            onChange={() => toggleColl(c.collectionId)}
-                        >
-                            {c.name || c.collectionId} {c.repositoryId && `(${c.repositoryId})`}
-                        </Checkbox>
-                    ))}
-                    {collections.length === 0 && <Box color='text-body-secondary'>No collections available.</Box>}
+                    {repoIds.length === 0 ? (
+                        <></>
+                    ) : (
+                        collectionsForSelectedRepos.map((c) => (
+                            <Checkbox
+                                key={c.collectionId}
+                                checked={collIds.includes(c.collectionId)}
+                                onChange={() => toggleColl(c.collectionId)}
+                            >
+                                {c.name || c.collectionId} {c.repositoryId && `(${c.repositoryId})`}
+                            </Checkbox>
+                        ))
+                    )}
+                    {repoIds.length > 0 && collectionsForSelectedRepos.length === 0 && (
+                        <Box color='text-body-secondary'>No collections in the selected repositories.</Box>
+                    )}
                 </SpaceBetween>
             </FormField>
         </SpaceBetween>

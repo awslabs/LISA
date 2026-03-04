@@ -39,10 +39,13 @@ export const useSession = (sessionId: string, getSessionById: any) => {
     const [chatConfiguration, setChatConfiguration] = useState<IChatConfiguration>(baseConfig);
     const [selectedModel, setSelectedModel] = useState<IModel>();
     const [ragConfig, setRagConfig] = useState<RagConfig>({} as RagConfig);
+    const [chatAssistantId, setChatAssistantId] = useState<string | null>(null);
     const hasCreatedNewSessionRef = useRef(false);
+    /** SessionId from URL on first run; used so we only clear assistant on refresh (not when opening a session from sidebar). */
+    const initialUrlSessionIdRef = useRef<string | undefined | null>(null);
 
     // Memoize the session loading function to prevent unnecessary re-renders
-    const loadSession = useCallback(async (id: string) => {
+    const loadSession = useCallback(async (id: string, restoreAssistant: boolean) => {
         try {
             setLoadingSession(true);
             const resp = await getSessionById(id);
@@ -60,6 +63,11 @@ export const useSession = (sessionId: string, getSessionById: any) => {
             setChatConfiguration(sess.configuration ?? baseConfig);
             setSelectedModel(sess.configuration?.selectedModel ?? undefined);
             setRagConfig(sess.configuration?.ragConfig ?? {} as RagConfig);
+            if (restoreAssistant) {
+                setChatAssistantId((sess.configuration as { chatAssistantId?: string })?.chatAssistantId ?? null);
+            } else {
+                setChatAssistantId(null);
+            }
         } catch (error) {
             console.error('Error loading session:', error);
         } finally {
@@ -74,6 +82,7 @@ export const useSession = (sessionId: string, getSessionById: any) => {
         setChatConfiguration(baseConfig);
         setSelectedModel(undefined);
         setRagConfig({} as RagConfig);
+        setChatAssistantId(null);
         setInternalSessionId(newSessionId);
 
         const newSession = {
@@ -90,6 +99,11 @@ export const useSession = (sessionId: string, getSessionById: any) => {
         // always hide breadcrumbs
         dispatch(setBreadcrumbs([]));
 
+        // Capture sessionId from URL on first run (used to clear assistant only on refresh, not when opening from sidebar)
+        if (initialUrlSessionIdRef.current === null) {
+            initialUrlSessionIdRef.current = sessionId;
+        }
+
         if (sessionId) {
             // Reset the ref when we have a sessionId
             hasCreatedNewSessionRef.current = false;
@@ -97,12 +111,15 @@ export const useSession = (sessionId: string, getSessionById: any) => {
             if (internalSessionId !== sessionId) {
                 setInternalSessionId(sessionId);
                 setSession((prev) => ({ ...prev, history: [] }));
-                loadSession(sessionId);
+                const nav = performance.getEntriesByType?.('navigation')?.[0] as { type?: string } | undefined;
+                const isReload = nav?.type === 'reload';
+                const isInitialLoadWithThisSession = initialUrlSessionIdRef.current === sessionId;
+                const restoreAssistant = !(isReload && isInitialLoadWithThisSession);
+                loadSession(sessionId, restoreAssistant);
             }
         } else if (!internalSessionId || internalSessionId !== session.sessionId || session.history.length > 0) {
-            // Create new session when:
-            // - No sessionId provided AND no internal session yet, OR
-            // - Transitioning from an existing session (internalSessionId doesn't match current session or has history)
+            // Create new session when: no sessionId in URL, or transitioning from another session.
+            // New session => clear assistant selection.
             createNewSession();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -120,5 +137,7 @@ export const useSession = (sessionId: string, getSessionById: any) => {
         setSelectedModel,
         ragConfig,
         setRagConfig,
+        chatAssistantId,
+        setChatAssistantId,
     };
 };

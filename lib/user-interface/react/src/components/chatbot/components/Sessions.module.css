@@ -32,3 +32,22 @@
 .sessionItemActive:hover {
     background-color: #007bff33;
 }
+
+.assistantCard {
+    flex: 1;
+    min-width: 0;
+    min-height: 60px;
+    padding: 12px;
+    cursor: pointer;
+}
+
+.assistantCard:hover {
+    background-color: #007bff14;
+}
+
+.assistantCarousel {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    width: 100%;
+}

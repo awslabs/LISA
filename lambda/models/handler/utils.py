@@ -32,6 +32,8 @@ def to_lisa_model(model_dict: dict[str, Any]) -> LISAModel:
     model_config["status"] = model_dict.get("model_status", "Unknown")
     if "model_url" in model_dict:
         model_config["modelUrl"] = model_dict["model_url"]
+    if "context_window" in model_dict:
+        model_config["contextWindow"] = model_dict["context_window"]
     lisa_model: LISAModel = LISAModel.model_validate(model_config)
     return lisa_model
 

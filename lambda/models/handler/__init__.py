@@ -12,6 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+from .bulk_enrich_context_window_handler import BulkEnrichContextWindowHandler  # noqa: F401
 from .create_model_handler import CreateModelHandler  # noqa: F401
 from .delete_model_handler import DeleteModelHandler  # noqa: F401
 from .get_model_handler import GetModelHandler  # noqa: F401
@@ -22,4 +23,5 @@ from .schedule_handlers import (  # noqa: F401
     GetScheduleStatusHandler,
     UpdateScheduleHandler,
 )
+from .update_context_window_handler import UpdateContextWindowHandler  # noqa: F401
 from .update_model_handler import UpdateModelHandler  # noqa: F401

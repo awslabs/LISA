@@ -236,19 +236,19 @@ export function CreateStackModal (props: CreateStackModalProps): ReactElement {
         },
         {
             title: 'RAG',
-            description: 'Optional repositories and collections.',
+            description: 'Repositories and collections.',
             isOptional: true,
             content: <StackRagStep item={state.form} setFields={setFields} touchFields={touchFields} formErrors={errors} />,
         },
         {
             title: 'Agents',
-            description: 'Optional MCP servers.',
+            description: 'MCP servers.',
             isOptional: true,
             content: <StackAgentsStep item={state.form} setFields={setFields} touchFields={touchFields} formErrors={errors} />,
         },
         {
             title: 'Prompts',
-            description: 'Optional persona and directive prompts.',
+            description: 'Persona and directive prompts.',
             isOptional: true,
             content: <StackPromptsStep item={state.form} setFields={setFields} touchFields={touchFields} formErrors={errors} />,
         },

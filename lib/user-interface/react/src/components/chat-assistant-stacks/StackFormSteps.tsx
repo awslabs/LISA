@@ -205,7 +205,7 @@ export function StackAgentsStep (props: StackFormProps): ReactElement {
     return (
         <SpaceBetween size='m'>
             <Alert type='info'>If you select at least one MCP server, at least one selected model must support MCP tools (e.g. text generation models).</Alert>
-            <FormField label='MCP Servers' description='Optional. From LISA MCP, Workbench, or Connections.'>
+            <FormField label='MCP Servers' description='From LISA MCP, Workbench, or Connections.'>
                 <SpaceBetween size='s'>
                     {servers.map((s) => (
                         <Checkbox key={s.id} checked={mcpServerIds.includes(s.id)} onChange={() => toggleServer(s.id)}>
@@ -235,14 +235,14 @@ export function StackPromptsStep (props: StackFormProps): ReactElement {
     const personaOptions = [{ value: '', label: 'None' }, ...persona.map((t) => ({ value: t.id, label: t.title || t.id }))];
     return (
         <SpaceBetween size='m'>
-            <FormField label='Persona Prompt' description='Optional. One prompt applied in the background (e.g. developer persona).'>
+            <FormField label='Persona Prompt' description='System promptapplied in the background (e.g. developer persona).'>
                 <Select
                     selectedOption={personaOptions.find((o) => o.value === personaPromptId) || personaOptions[0]}
                     options={personaOptions}
                     onChange={({ detail }) => setFields({ personaPromptId: detail.selectedOption.value ? detail.selectedOption.value : null })}
                 />
             </FormField>
-            <FormField label='Directive Prompts' description='Optional. User can select from these.'>
+            <FormField label='Directive Prompts' description='User can select from these.'>
                 <SpaceBetween size='s'>
                     {directive.map((t) => (
                         <Checkbox

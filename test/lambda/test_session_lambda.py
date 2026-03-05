@@ -1854,7 +1854,24 @@ def projects_table(dynamodb):
         BillingMode="PAY_PER_REQUEST",
     )
     table.wait_until_exists()
-    with patch("session.lambda_functions.projects_table", table):
+
+    def fake_batch_get_item(RequestItems=None, **kwargs):
+        items = []
+        for key in (RequestItems or {}).get(table.name, {}).get("Keys", []):
+            resp = table.get_item(Key={"userId": key["userId"]["S"], "projectId": key["projectId"]["S"]})
+            item = resp.get("Item")
+            if item:
+                result = {"projectId": {"S": item["projectId"]}}
+                if "status" in item:
+                    result["status"] = {"S": item["status"]}
+                items.append(result)
+        return {"Responses": {table.name: items}, "UnprocessedKeys": {}}
+
+    mock_ddb_client = MagicMock()
+    mock_ddb_client.batch_get_item.side_effect = fake_batch_get_item
+
+    with patch("session.lambda_functions.projects_table", table), patch("session.lambda_functions.boto3") as mock_boto3:
+        mock_boto3.client.return_value = mock_ddb_client
         yield table
 
 

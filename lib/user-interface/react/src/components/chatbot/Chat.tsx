@@ -133,6 +133,10 @@ export default function Chat ({ sessionId, initialStack }) {
         setRagConfig,
         chatAssistantId,
         setChatAssistantId,
+        pendingProjectId,
+        assignSessionProject,
+        notificationService: sessionNotificationService,
+        setPendingProjectId,
     } = useSession(sessionId, getSessionById);
     const { data: resumedStack } = useGetStackQuery(chatAssistantId ?? '', {
         skip: !chatAssistantId || !!initialStack,
@@ -573,7 +577,7 @@ export default function Chat ({ sessionId, initialStack }) {
                         const updatedHistory = [...session.history.slice(0, -1), message];
 
                         const assistantId = chatAssistantId || effectiveStack?.stackId;
-                        updateSession({
+                        const updateResult = await updateSession({
                             ...session,
                             history: updatedHistory,
                             configuration: {
@@ -583,6 +587,17 @@ export default function Chat ({ sessionId, initialStack }) {
                                 ...(assistantId ? { chatAssistantId: assistantId } : {}),
                             },
                         });
+                        // After first PUT /session succeeds, assign to pending project if set
+                        if (pendingProjectId && 'data' in updateResult) {
+                            const pid = pendingProjectId;
+                            setPendingProjectId(null);
+                            assignSessionProject({ projectId: pid, sessionId: session.sessionId }).catch(() => {
+                                sessionNotificationService.generateNotification(
+                                    'Session created but could not be assigned to project. Assign it manually from History.',
+                                    'warning'
+                                );
+                            });
+                        }
                     }
                 }
 

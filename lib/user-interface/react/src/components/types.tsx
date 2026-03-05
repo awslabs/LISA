@@ -141,6 +141,7 @@ export type LisaChatSession = {
     name?: string;
     firstHumanMessage?: MessageContent;
     configuration?: IChatConfiguration & IModelConfiguration;
+    projectId?: string;
 };
 
 export type LisaAttachImageRequest = {

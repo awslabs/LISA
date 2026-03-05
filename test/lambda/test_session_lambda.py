@@ -1572,7 +1572,7 @@ def test_delete_user_session_with_video_cleanup(mock_table, mock_s3_resource, mo
     mock_s3_client.delete_object.assert_any_call(Bucket="bucket", Key="videos/v2.mp4")
 
 
-@patch("session.lambda_functions.decrypt_session_fields")
+@patch("session.repository.decrypt_session_fields")
 @patch("session.lambda_functions.s3_client")
 @patch("session.lambda_functions.s3_resource")
 @patch("session.lambda_functions.table")
@@ -1829,3 +1829,198 @@ def test_find_first_human_message_list_content_no_text_key():
 
     result = _find_first_human_message(session, "test-user")
     assert result == "Message after image"
+
+
+# ---------------------------------------------------------------------------
+# list_sessions — project feature (projectId resolution via BatchGetItem)
+# ---------------------------------------------------------------------------
+
+os.environ.setdefault("PROJECTS_TABLE_NAME", "projects-table")
+
+
+@pytest.fixture(scope="function")
+def projects_table(dynamodb):
+    """Create a mock projects DynamoDB table."""
+    table = dynamodb.create_table(
+        TableName="projects-table",
+        KeySchema=[
+            {"AttributeName": "userId", "KeyType": "HASH"},
+            {"AttributeName": "projectId", "KeyType": "RANGE"},
+        ],
+        AttributeDefinitions=[
+            {"AttributeName": "userId", "AttributeType": "S"},
+            {"AttributeName": "projectId", "AttributeType": "S"},
+        ],
+        BillingMode="PAY_PER_REQUEST",
+    )
+    table.wait_until_exists()
+    with patch("session.lambda_functions.projects_table", table):
+        yield table
+
+
+def test_list_sessions_project_id_preserved_for_valid_project(dynamodb_table, projects_table, lambda_context):
+    """Sessions whose projectId exists and is not deleting retain their projectId."""
+    projects_table.put_item(Item={"userId": "test-user", "projectId": "proj-1", "name": "Active"})
+    dynamodb_table.put_item(
+        Item={
+            "sessionId": "s1",
+            "userId": "test-user",
+            "projectId": "proj-1",
+            "history": [],
+        }
+    )
+
+    event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}}}}
+    response = list_sessions(event, lambda_context)
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert len(body) == 1
+    assert body[0]["projectId"] == "proj-1"
+
+
+def test_list_sessions_project_id_cleared_for_nonexistent_project(dynamodb_table, projects_table, lambda_context):
+    """Sessions referencing a projectId that doesn't exist in the projects table get projectId=None."""
+    # No project inserted — dangling reference
+    dynamodb_table.put_item(
+        Item={
+            "sessionId": "s1",
+            "userId": "test-user",
+            "projectId": "ghost-proj",
+            "history": [],
+        }
+    )
+
+    event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}}}}
+    response = list_sessions(event, lambda_context)
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert body[0]["projectId"] is None
+
+
+def test_list_sessions_project_id_cleared_for_deleting_project(dynamodb_table, projects_table, lambda_context):
+    """Sessions referencing a soft-deleted project (status='deleting') get projectId=None."""
+    projects_table.put_item(
+        Item={
+            "userId": "test-user",
+            "projectId": "proj-del",
+            "name": "Gone",
+            "status": "deleting",
+        }
+    )
+    dynamodb_table.put_item(
+        Item={
+            "sessionId": "s1",
+            "userId": "test-user",
+            "projectId": "proj-del",
+            "history": [],
+        }
+    )
+
+    event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}}}}
+    response = list_sessions(event, lambda_context)
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert body[0]["projectId"] is None
+
+
+def test_list_sessions_no_project_id_unaffected(dynamodb_table, projects_table, lambda_context):
+    """Sessions without a projectId are returned with projectId=None and no BatchGetItem is issued."""
+    dynamodb_table.put_item(Item={"sessionId": "s1", "userId": "test-user", "history": []})
+
+    event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}}}}
+    response = list_sessions(event, lambda_context)
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert body[0]["projectId"] is None
+
+
+def test_list_sessions_projects_table_none_skips_validation(dynamodb_table, lambda_context):
+    """When projects_table is None the projectId is always resolved to None."""
+    dynamodb_table.put_item(
+        Item={
+            "sessionId": "s1",
+            "userId": "test-user",
+            "projectId": "proj-1",
+            "history": [],
+        }
+    )
+
+    event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}}}}
+    with patch("session.lambda_functions.projects_table", None):
+        response = list_sessions(event, lambda_context)
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert body[0]["projectId"] is None
+
+
+def test_list_sessions_batch_get_item_error_falls_back_gracefully(dynamodb_table, projects_table, lambda_context):
+    """A BatchGetItem failure is swallowed; all projectIds resolve to None."""
+    dynamodb_table.put_item(
+        Item={
+            "sessionId": "s1",
+            "userId": "test-user",
+            "projectId": "proj-1",
+            "history": [],
+        }
+    )
+
+    event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}}}}
+    with patch("boto3.client") as mock_boto_client:
+        mock_ddb_client = MagicMock()
+        mock_ddb_client.batch_get_item.side_effect = Exception("DynamoDB unavailable")
+        mock_boto_client.return_value = mock_ddb_client
+
+        response = list_sessions(event, lambda_context)
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert body[0]["projectId"] is None
+
+
+def test_list_sessions_mixed_valid_and_dangling_project_ids(dynamodb_table, projects_table, lambda_context):
+    """Only sessions with valid, non-deleting projects retain their projectId."""
+    projects_table.put_item(Item={"userId": "test-user", "projectId": "valid", "name": "Active"})
+    projects_table.put_item(Item={"userId": "test-user", "projectId": "deleting", "status": "deleting"})
+
+    dynamodb_table.put_item(Item={"sessionId": "s-valid", "userId": "test-user", "projectId": "valid", "history": []})
+    dynamodb_table.put_item(Item={"sessionId": "s-del", "userId": "test-user", "projectId": "deleting", "history": []})
+    dynamodb_table.put_item(Item={"sessionId": "s-ghost", "userId": "test-user", "projectId": "ghost", "history": []})
+    dynamodb_table.put_item(Item={"sessionId": "s-none", "userId": "test-user", "history": []})
+
+    event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}}}}
+    response = list_sessions(event, lambda_context)
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    by_id = {s["sessionId"]: s for s in body}
+
+    assert by_id["s-valid"]["projectId"] == "valid"
+    assert by_id["s-del"]["projectId"] is None
+    assert by_id["s-ghost"]["projectId"] is None
+    assert by_id["s-none"]["projectId"] is None
+
+
+def test_map_session_project_id_in_valid_set():
+    """_map_session returns projectId when it is in valid_project_ids."""
+    session = {"sessionId": "s1", "projectId": "p1", "history": []}
+    result = _map_session(session, "test-user", valid_project_ids={"p1", "p2"})
+    assert result.projectId == "p1"
+
+
+def test_map_session_project_id_not_in_valid_set():
+    """_map_session clears projectId when it is absent from valid_project_ids."""
+    session = {"sessionId": "s1", "projectId": "p-gone", "history": []}
+    result = _map_session(session, "test-user", valid_project_ids={"p1"})
+    assert result.projectId is None
+
+
+def test_map_session_project_id_valid_set_is_none():
+    """_map_session clears projectId when valid_project_ids is None (no projects table)."""
+    session = {"sessionId": "s1", "projectId": "p1", "history": []}
+    result = _map_session(session, "test-user", valid_project_ids=None)
+    assert result.projectId is None
+
+
+def test_map_session_no_project_id():
+    """_map_session returns projectId=None when session has no projectId."""
+    session = {"sessionId": "s1", "history": []}
+    result = _map_session(session, "test-user", valid_project_ids={"p1"})
+    assert result.projectId is None

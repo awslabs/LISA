@@ -44,6 +44,7 @@ from utilities.encoders import convert_decimal
 from utilities.input_validation import MAX_LARGE_REQUEST_SIZE
 from utilities.session_encryption import decrypt_session_fields, migrate_session_to_encrypted, SessionEncryptionError
 from utilities.time import iso_string
+from session.repository import delete_user_session, extract_video_s3_keys, get_all_user_sessions
 
 logger = logging.getLogger(__name__)
 
@@ -52,10 +53,11 @@ s3_client = boto3.client("s3", region_name=os.environ["AWS_REGION"], config=retr
 s3_resource = boto3.resource("s3", region_name=os.environ["AWS_REGION"])
 sqs_client = boto3.client("sqs", region_name=os.environ["AWS_REGION"], config=retry_config)
 table = dynamodb.Table(os.environ["SESSIONS_TABLE_NAME"])
-s3_bucket_name = os.environ["GENERATED_IMAGES_S3_BUCKET_NAME"]
+projects_table = dynamodb.Table(os.environ["PROJECTS_TABLE_NAME"]) if os.environ.get("PROJECTS_TABLE_NAME") else None
+s3_bucket_name = os.environ.get("GENERATED_IMAGES_S3_BUCKET_NAME", "")
 
 # Get model table for real-time feature validation
-model_table = dynamodb.Table(os.environ.get("MODEL_TABLE_NAME"))
+model_table = dynamodb.Table(os.environ["MODEL_TABLE_NAME"]) if os.environ.get("MODEL_TABLE_NAME") else None
 
 # Get configuration table for system settings
 config_table = dynamodb.Table(os.environ["CONFIG_TABLE_NAME"])
@@ -185,132 +187,15 @@ def _update_session_with_current_model_config(
 
 
 def _get_all_user_sessions(user_id: str) -> list[dict[str, Any]]:
-    """Get all sessions for a user from DynamoDB.
-
-    Paginates through all results when DynamoDB returns more than one page.
-
-    Parameters
-    ----------
-    user_id : str
-        The user id.
-
-    Returns
-    -------
-    List[Dict[str, Any]]
-        A list of user sessions.
-    """
-    all_items: list[dict[str, Any]] = []
-    exclusive_start_key: dict[str, Any] | None = None
-
-    try:
-        while True:
-            query_params: dict[str, Any] = {
-                "KeyConditionExpression": "userId = :user_id",
-                "ExpressionAttributeValues": {":user_id": user_id},
-                "IndexName": os.environ["SESSIONS_BY_USER_ID_INDEX_NAME"],
-                "ScanIndexForward": False,
-            }
-            if exclusive_start_key is not None:
-                query_params["ExclusiveStartKey"] = exclusive_start_key
-
-            response = table.query(**query_params)
-            items = response.get("Items", [])
-            all_items.extend(items)
-
-            exclusive_start_key = response.get("LastEvaluatedKey")
-            if exclusive_start_key is None:
-                break
-    except ClientError as error:
-        if error.response["Error"]["Code"] == "ResourceNotFoundException":
-            logger.warning(f"No sessions found for user {user_id}")
-        else:
-            logger.exception("Error listing sessions")
-    return all_items
-
-
-def _extract_video_s3_keys(session: dict) -> list[str]:
-    """Extract all video S3 keys from a session's history.
-
-    Parameters
-    ----------
-    session : dict
-        The session object containing history.
-
-    Returns
-    -------
-    list[str]
-        A list of S3 keys for videos in the session.
-    """
-    video_keys: list[str] = []
-    for message in session.get("history", []):
-        content = message.get("content")
-        if isinstance(content, list):
-            for item in content:
-                if isinstance(item, dict) and item.get("type") == "video_url":
-                    video_url = item.get("video_url", {})
-                    s3_key = video_url.get("s3_key")
-                    if s3_key:
-                        video_keys.append(s3_key)
-    return video_keys
+    return get_all_user_sessions(table, user_id)
 
 
 def _delete_user_session(session_id: str, user_id: str) -> DeleteResponse:
-    """Delete a session from DynamoDB.
+    return delete_user_session(table, s3_resource, s3_client, s3_bucket_name, session_id, user_id)
 
-    Parameters
-    ----------
-    session_id : str
-        The session id.
-    user_id : str
-        The user id.
 
-    Returns
-    -------
-    DeleteResponse
-        Response containing the deleted status.
-    """
-    deleted = False
-    try:
-        # First, get the session to extract any video S3 keys before deleting
-        response = table.get_item(Key={"sessionId": session_id, "userId": user_id})
-        session = response.get("Item", {})
-
-        # Decrypt session if encrypted to access history for video keys
-        if session.get("is_encrypted", False):
-            try:
-                logger.info(f"Decrypting session {session_id} to extract video keys for deletion")
-                session = decrypt_session_fields(session, user_id, session_id)
-            except SessionEncryptionError as e:
-                logger.warning(f"Failed to decrypt session {session_id} for video cleanup: {e}")
-                # Continue with deletion even if decryption fails - videos may remain orphaned
-
-        # Extract video S3 keys from the session history
-        video_keys = _extract_video_s3_keys(session)
-
-        # Delete the session from DynamoDB
-        table.delete_item(Key={"sessionId": session_id, "userId": user_id})
-
-        # Delete associated images from S3
-        bucket = s3_resource.Bucket(s3_bucket_name)
-        bucket.objects.filter(Prefix=f"images/{session_id}").delete()
-
-        # Delete associated videos from S3
-        if video_keys:
-            logger.info(f"Deleting {len(video_keys)} videos from S3 for session {session_id}")
-            for video_key in video_keys:
-                try:
-                    s3_client.delete_object(Bucket=s3_bucket_name, Key=video_key)
-                    logger.debug(f"Deleted video: {video_key}")
-                except ClientError as video_error:
-                    logger.warning(f"Failed to delete video {video_key}: {video_error}")
-
-        deleted = True
-    except ClientError as error:
-        if error.response["Error"]["Code"] == "ResourceNotFoundException":
-            logger.warning(f"No record found with session id: {session_id}")
-        else:
-            logger.exception("Error deleting session")
-    return DeleteResponse(deleted=deleted)
+def _extract_video_s3_keys(session: dict) -> list[str]:
+    return extract_video_s3_keys(session)
 
 
 def _generate_presigned_image_url(key: str) -> str:
@@ -341,7 +226,16 @@ def _generate_presigned_video_url(key: str) -> str:
     return url
 
 
-def _map_session(session: dict, user_id: str | None = None) -> SessionSummary:
+def _map_session(
+    session: dict, user_id: str | None = None, valid_project_ids: set[str] | None = None
+) -> SessionSummary:
+    raw_project_id = session.get("projectId")
+    # Resolve dangling projectId: treat as None if not in the validated set
+    resolved_project_id = (
+        raw_project_id
+        if (raw_project_id and valid_project_ids is not None and raw_project_id in valid_project_ids)
+        else None
+    )
     return SessionSummary(
         sessionId=session.get("sessionId"),
         name=session.get("name"),
@@ -350,6 +244,7 @@ def _map_session(session: dict, user_id: str | None = None) -> SessionSummary:
         createTime=session.get("createTime"),
         lastUpdated=session.get("lastUpdated", session.get("startTime")),
         isEncrypted=session.get("is_encrypted", False),
+        projectId=resolved_project_id,
     )
 
 
@@ -398,7 +293,31 @@ def list_sessions(event: dict, context: dict) -> list[SessionSummary]:
     logger.info(f"Listing sessions for user {user_id}")
     sessions = _get_all_user_sessions(user_id)
 
-    return list(executor.map(lambda session: _map_session(session, user_id), sessions))
+    # Resolve dangling projectId values via a single BatchGetItem against ProjectsTable
+    valid_project_ids: set[str] = set()
+    if projects_table is not None:
+        unique_project_ids = {s["projectId"] for s in sessions if s.get("projectId")}
+        if unique_project_ids:
+            try:
+                keys = [{"userId": {"S": user_id}, "projectId": {"S": pid}} for pid in unique_project_ids]
+                dynamodb_client = boto3.client("dynamodb", region_name=os.environ["AWS_REGION"])
+                batch_resp = dynamodb_client.batch_get_item(
+                    RequestItems={
+                        projects_table.name: {
+                            "Keys": keys,
+                            "ProjectionExpression": "projectId, #s",
+                            "ExpressionAttributeNames": {"#s": "status"},
+                        }
+                    }
+                )
+                for item in batch_resp.get("Responses", {}).get(projects_table.name, []):
+                    # Exclude soft-deleted projects
+                    if item.get("status", {}).get("S") != "deleting":
+                        valid_project_ids.add(item["projectId"]["S"])
+            except Exception as e:
+                logger.warning(f"BatchGetItem for project validation failed: {e}")
+
+    return list(executor.map(lambda session: _map_session(session, user_id, valid_project_ids), sessions))
 
 
 def _process_image(task: tuple[dict, str]) -> None:

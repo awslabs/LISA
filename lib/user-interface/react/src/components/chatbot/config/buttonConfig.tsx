@@ -26,7 +26,8 @@ export const getButtonItems = (
     isVideoGenerationMode: boolean,
     isConnected: boolean,
     isModelDeleted: boolean = false,
-    showMarkdownPreview: boolean = false
+    showMarkdownPreview: boolean = false,
+    isChatAssistantMode: boolean = false
 ): ButtonGroupProps.Item[] => {
     const baseItems: ButtonGroupProps.Item[] = [
         {
@@ -105,7 +106,8 @@ export const getButtonItems = (
                 {
                     id: 'edit-prompt-template',
                     iconName: 'contact',
-                    text: 'Edit Persona'
+                    text: 'Edit Persona',
+                    disabled: isChatAssistantMode,
                 },
             ]
         });

@@ -70,7 +70,7 @@ export const PromptTemplateModal = ({
     const options: SelectProps.Option[] = useMemo(() => {
         if (isFetchingList) return [];
         let items = allItems.filter((item) => item.type === type || !type);
-        if (type === PromptTemplateType.Directive && allowedDirectivePromptIds?.length) {
+        if (type === PromptTemplateType.Directive && allowedDirectivePromptIds !== undefined) {
             items = items.filter((item) => allowedDirectivePromptIds.includes(item.id));
         }
         return items.map((item) => ({

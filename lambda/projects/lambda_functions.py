@@ -21,10 +21,10 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 import boto3
-from boto3.dynamodb.conditions import Key
 import create_env_variables  # noqa: F401
+from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
-from cachetools import TTLCache, cached  # type: ignore[import-untyped,unused-ignore]
+from cachetools import cached, TTLCache  # type: ignore[import-untyped,unused-ignore]
 from models.domain_objects import DeleteResponse, SuccessResponse
 from pydantic import BaseModel, Field, field_validator
 from session.repository import delete_user_session, get_all_user_sessions
@@ -68,6 +68,7 @@ def _get_max_projects_per_user() -> int:
 
 # --- Pydantic request models ---
 
+
 class CreateProjectRequest(BaseModel):
     name: str = Field(min_length=1, max_length=100)
 
@@ -100,21 +101,23 @@ class AssignSessionProjectRequest(BaseModel):
 
 # --- Helpers ---
 
+
 def _get_project_id(event: dict) -> str:
     project_id = event.get("pathParameters", {}).get("projectId")
     if not project_id:
         raise ValueError("projectId path parameter is required")
-    return project_id
+    return str(project_id)
 
 
 def _get_session_id(event: dict) -> str:
     session_id = event.get("pathParameters", {}).get("sessionId")
     if not session_id:
         raise ValueError("sessionId path parameter is required")
-    return session_id
+    return str(session_id)
 
 
 # --- Handlers ---
+
 
 @api_wrapper
 def list_projects(event: dict, context: dict) -> list[dict]:
@@ -249,10 +252,14 @@ def delete_project(event: dict, context: dict) -> DeleteResponse | dict:
     project_sessions = [s for s in all_sessions if s.get("projectId") == project_id]
 
     if request.deleteSessions:
-        list(executor.map(
-            lambda s: delete_user_session(sessions_table, _s3_resource, _s3_client, _s3_bucket_name, s["sessionId"], user_id),
-            project_sessions,
-        ))
+        list(
+            executor.map(
+                lambda s: delete_user_session(
+                    sessions_table, _s3_resource, _s3_client, _s3_bucket_name, s["sessionId"], user_id
+                ),
+                project_sessions,
+            )
+        )
     else:
         # Clear projectId from sessions so they return to History
         def _clear_project_id(session: dict) -> None:

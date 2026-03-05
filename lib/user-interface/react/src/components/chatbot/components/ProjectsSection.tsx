@@ -236,13 +236,17 @@ export function ProjectsSection ({ projects, sessions, maxProjects, currentSessi
 
             {/* Create Project Modal */}
             <Modal
-                onDismiss={() => { setCreateModalVisible(false); setNewProjectName(''); }}
+                onDismiss={() => {
+                    setCreateModalVisible(false); setNewProjectName('');
+                }}
                 visible={createModalVisible}
                 header='New Project'
                 footer={
                     <Box float='right'>
                         <SpaceBetween direction='horizontal' size='xs'>
-                            <Button variant='link' onClick={() => { setCreateModalVisible(false); setNewProjectName(''); }}>
+                            <Button variant='link' onClick={() => {
+                                setCreateModalVisible(false); setNewProjectName('');
+                            }}>
                                 Cancel
                             </Button>
                             <Button
@@ -262,20 +266,26 @@ export function ProjectsSection ({ projects, sessions, maxProjects, currentSessi
                         value={newProjectName}
                         onChange={({ detail }) => setNewProjectName(detail.value)}
                         placeholder='Enter project name...'
-                        onKeyDown={(e) => { if (e.detail.key === 'Enter' && newProjectName.trim()) handleCreateConfirm(); }}
+                        onKeyDown={(e) => {
+                            if (e.detail.key === 'Enter' && newProjectName.trim()) handleCreateConfirm();
+                        }}
                     />
                 </FormField>
             </Modal>
 
             {/* Rename Project Modal */}
             <Modal
-                onDismiss={() => { setRenameModalVisible(false); setProjectToRename(null); }}
+                onDismiss={() => {
+                    setRenameModalVisible(false); setProjectToRename(null);
+                }}
                 visible={renameModalVisible}
                 header='Rename Project'
                 footer={
                     <Box float='right'>
                         <SpaceBetween direction='horizontal' size='xs'>
-                            <Button variant='link' onClick={() => { setRenameModalVisible(false); setProjectToRename(null); }}>
+                            <Button variant='link' onClick={() => {
+                                setRenameModalVisible(false); setProjectToRename(null);
+                            }}>
                                 Cancel
                             </Button>
                             <Button
@@ -294,20 +304,26 @@ export function ProjectsSection ({ projects, sessions, maxProjects, currentSessi
                     <Input
                         value={renameValue}
                         onChange={({ detail }) => setRenameValue(detail.value)}
-                        onKeyDown={(e) => { if (e.detail.key === 'Enter' && renameValue.trim()) handleRenameConfirm(); }}
+                        onKeyDown={(e) => {
+                            if (e.detail.key === 'Enter' && renameValue.trim()) handleRenameConfirm();
+                        }}
                     />
                 </FormField>
             </Modal>
 
             {/* Delete Project Modal — two explicit action buttons */}
             <Modal
-                onDismiss={() => { setDeleteModalVisible(false); setProjectToDelete(null); }}
+                onDismiss={() => {
+                    setDeleteModalVisible(false); setProjectToDelete(null);
+                }}
                 visible={deleteModalVisible}
                 header='Delete Project'
                 footer={
                     <Box float='right'>
                         <SpaceBetween direction='horizontal' size='xs'>
-                            <Button variant='link' onClick={() => { setDeleteModalVisible(false); setProjectToDelete(null); }}>
+                            <Button variant='link' onClick={() => {
+                                setDeleteModalVisible(false); setProjectToDelete(null);
+                            }}>
                                 Cancel
                             </Button>
                             <Button

@@ -38,13 +38,13 @@ from session.models import (
     SessionConfigurationModel,
     SessionSummary,
 )
+from session.repository import delete_user_session, extract_video_s3_keys, get_all_user_sessions
 from utilities.auth import get_user_context, get_username
 from utilities.common_functions import api_wrapper, get_session_id, retry_config
 from utilities.encoders import convert_decimal
 from utilities.input_validation import MAX_LARGE_REQUEST_SIZE
 from utilities.session_encryption import decrypt_session_fields, migrate_session_to_encrypted, SessionEncryptionError
 from utilities.time import iso_string
-from session.repository import delete_user_session, extract_video_s3_keys, get_all_user_sessions
 
 logger = logging.getLogger(__name__)
 

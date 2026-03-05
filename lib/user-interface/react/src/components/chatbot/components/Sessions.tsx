@@ -76,9 +76,9 @@ export function Sessions ({ newSession }) {
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [historyView, setHistoryView] = useState<string>(() => {
         try {
-            return localStorage.getItem('lisa-history-view') || 'history'; 
+            return localStorage.getItem('lisa-history-view') || 'history';
         } catch {
-            return 'history'; 
+            return 'history';
         }
     });
 
@@ -280,7 +280,7 @@ export function Sessions ({ newSession }) {
                         onChange={({ detail }) => {
                             setHistoryView(detail.selectedId);
                             try {
-                                localStorage.setItem('lisa-history-view', detail.selectedId); 
+                                localStorage.setItem('lisa-history-view', detail.selectedId);
                             } catch { /* noop */ }
                         }}
                         options={[

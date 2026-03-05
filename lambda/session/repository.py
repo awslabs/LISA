@@ -22,7 +22,6 @@ import logging
 import os
 from typing import Any
 
-import boto3
 from botocore.exceptions import ClientError
 from models.domain_objects import DeleteResponse
 from utilities.session_encryption import decrypt_session_fields, SessionEncryptionError

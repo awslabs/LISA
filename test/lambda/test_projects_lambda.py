@@ -54,6 +54,7 @@ def _mock_api_wrapper(_func=None, **kwargs):
                 return generate_html_response(200, result)
             except Exception as e:
                 return generate_exception_response(e)
+
         return wrapper
 
     if _func is not None:
@@ -65,12 +66,20 @@ mock_create_env = MagicMock()
 patch.dict("sys.modules", {"create_env_variables": mock_create_env}).start()
 patch("utilities.common_functions.api_wrapper", _mock_api_wrapper).start()
 
-from projects.lambda_functions import list_projects, create_project, rename_project, assign_session_project, delete_project, _get_max_projects_per_user, _config_cache  # noqa: E402
-
+from projects.lambda_functions import (  # noqa: E402
+    _config_cache,
+    _get_max_projects_per_user,
+    assign_session_project,
+    create_project,
+    delete_project,
+    list_projects,
+    rename_project,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def lambda_context():
@@ -148,6 +157,7 @@ def _event(username="test-user"):
 # list_projects — happy path
 # ---------------------------------------------------------------------------
 
+
 def test_list_projects_empty(projects_table, lambda_context):
     """Returns empty list when user has no projects."""
     response = list_projects(_event(), lambda_context)
@@ -157,12 +167,22 @@ def test_list_projects_empty(projects_table, lambda_context):
 
 def test_list_projects_returns_user_projects(projects_table, lambda_context):
     """Returns all projects belonging to the calling user."""
-    projects_table.put_item(Item={
-        "userId": "test-user", "projectId": "p1", "name": "Alpha", "createTime": "2024-01-01T00:00:00",
-    })
-    projects_table.put_item(Item={
-        "userId": "test-user", "projectId": "p2", "name": "Beta", "createTime": "2024-01-02T00:00:00",
-    })
+    projects_table.put_item(
+        Item={
+            "userId": "test-user",
+            "projectId": "p1",
+            "name": "Alpha",
+            "createTime": "2024-01-01T00:00:00",
+        }
+    )
+    projects_table.put_item(
+        Item={
+            "userId": "test-user",
+            "projectId": "p2",
+            "name": "Beta",
+            "createTime": "2024-01-02T00:00:00",
+        }
+    )
 
     response = list_projects(_event(), lambda_context)
     assert response["statusCode"] == 200
@@ -174,12 +194,22 @@ def test_list_projects_returns_user_projects(projects_table, lambda_context):
 
 def test_list_projects_sorted_by_create_time(projects_table, lambda_context):
     """Projects are returned sorted ascending by createTime."""
-    projects_table.put_item(Item={
-        "userId": "test-user", "projectId": "p2", "name": "Later", "createTime": "2024-02-01T00:00:00",
-    })
-    projects_table.put_item(Item={
-        "userId": "test-user", "projectId": "p1", "name": "Earlier", "createTime": "2024-01-01T00:00:00",
-    })
+    projects_table.put_item(
+        Item={
+            "userId": "test-user",
+            "projectId": "p2",
+            "name": "Later",
+            "createTime": "2024-02-01T00:00:00",
+        }
+    )
+    projects_table.put_item(
+        Item={
+            "userId": "test-user",
+            "projectId": "p1",
+            "name": "Earlier",
+            "createTime": "2024-01-01T00:00:00",
+        }
+    )
 
     response = list_projects(_event(), lambda_context)
     body = json.loads(response["body"])
@@ -189,12 +219,22 @@ def test_list_projects_sorted_by_create_time(projects_table, lambda_context):
 
 def test_list_projects_excludes_other_users(projects_table, lambda_context):
     """Projects belonging to other users are not returned."""
-    projects_table.put_item(Item={
-        "userId": "test-user", "projectId": "mine", "name": "Mine", "createTime": "2024-01-01T00:00:00",
-    })
-    projects_table.put_item(Item={
-        "userId": "other-user", "projectId": "theirs", "name": "Theirs", "createTime": "2024-01-01T00:00:00",
-    })
+    projects_table.put_item(
+        Item={
+            "userId": "test-user",
+            "projectId": "mine",
+            "name": "Mine",
+            "createTime": "2024-01-01T00:00:00",
+        }
+    )
+    projects_table.put_item(
+        Item={
+            "userId": "other-user",
+            "projectId": "theirs",
+            "name": "Theirs",
+            "createTime": "2024-01-01T00:00:00",
+        }
+    )
 
     response = list_projects(_event("test-user"), lambda_context)
     body = json.loads(response["body"])
@@ -206,15 +246,26 @@ def test_list_projects_excludes_other_users(projects_table, lambda_context):
 # list_projects — soft-deleted projects filtered out
 # ---------------------------------------------------------------------------
 
+
 def test_list_projects_excludes_deleting_projects(projects_table, lambda_context):
     """Projects with status='deleting' are excluded from results."""
-    projects_table.put_item(Item={
-        "userId": "test-user", "projectId": "active", "name": "Active", "createTime": "2024-01-01T00:00:00",
-    })
-    projects_table.put_item(Item={
-        "userId": "test-user", "projectId": "gone", "name": "Gone", "createTime": "2024-01-01T00:00:00",
-        "status": "deleting",
-    })
+    projects_table.put_item(
+        Item={
+            "userId": "test-user",
+            "projectId": "active",
+            "name": "Active",
+            "createTime": "2024-01-01T00:00:00",
+        }
+    )
+    projects_table.put_item(
+        Item={
+            "userId": "test-user",
+            "projectId": "gone",
+            "name": "Gone",
+            "createTime": "2024-01-01T00:00:00",
+            "status": "deleting",
+        }
+    )
 
     response = list_projects(_event(), lambda_context)
     body = json.loads(response["body"])
@@ -224,10 +275,15 @@ def test_list_projects_excludes_deleting_projects(projects_table, lambda_context
 
 def test_list_projects_all_deleting_returns_empty(projects_table, lambda_context):
     """Returns empty list when all projects are soft-deleted."""
-    projects_table.put_item(Item={
-        "userId": "test-user", "projectId": "p1", "name": "P1", "createTime": "2024-01-01T00:00:00",
-        "status": "deleting",
-    })
+    projects_table.put_item(
+        Item={
+            "userId": "test-user",
+            "projectId": "p1",
+            "name": "P1",
+            "createTime": "2024-01-01T00:00:00",
+            "status": "deleting",
+        }
+    )
 
     response = list_projects(_event(), lambda_context)
     assert json.loads(response["body"]) == []
@@ -237,13 +293,13 @@ def test_list_projects_all_deleting_returns_empty(projects_table, lambda_context
 # list_projects — DynamoDB error handling
 # ---------------------------------------------------------------------------
 
+
 @patch("projects.lambda_functions.projects_table")
 def test_list_projects_dynamodb_error_propagates(mock_table, lambda_context):
     """ClientError from DynamoDB is re-raised (500 from api_wrapper)."""
     from botocore.exceptions import ClientError
-    mock_table.query.side_effect = ClientError(
-        {"Error": {"Code": "InternalServerError", "Message": "boom"}}, "Query"
-    )
+
+    mock_table.query.side_effect = ClientError({"Error": {"Code": "InternalServerError", "Message": "boom"}}, "Query")
     response = list_projects(_event(), lambda_context)
     assert response["statusCode"] == 400
 
@@ -252,13 +308,16 @@ def test_list_projects_dynamodb_error_propagates(mock_table, lambda_context):
 # _get_max_projects_per_user — config cache
 # ---------------------------------------------------------------------------
 
+
 def test_get_max_projects_per_user_from_config(config_table):
     """Reads maxProjectsPerUser from the config table."""
-    config_table.put_item(Item={
-        "configScope": "global",
-        "versionId": 0,
-        "configuration": {"maxProjectsPerUser": 5},
-    })
+    config_table.put_item(
+        Item={
+            "configScope": "global",
+            "versionId": 0,
+            "configuration": {"maxProjectsPerUser": 5},
+        }
+    )
     _config_cache.clear()
     assert _get_max_projects_per_user() == 5
 
@@ -266,6 +325,7 @@ def test_get_max_projects_per_user_from_config(config_table):
 # ---------------------------------------------------------------------------
 # create_project — happy path
 # ---------------------------------------------------------------------------
+
 
 def _create_event(username="test-user", body=None):
     return {
@@ -302,21 +362,28 @@ def test_create_project_persists_to_dynamo(projects_table, config_table, lambda_
 # create_project — limit enforcement
 # ---------------------------------------------------------------------------
 
+
 def test_create_project_enforces_limit(projects_table, config_table, lambda_context):
     """Returns 400 when the user has reached maxProjectsPerUser."""
     _config_cache.clear()
-    config_table.put_item(Item={
-        "configScope": "global",
-        "versionId": 1,
-        "configuration": {"maxProjectsPerUser": 2},
-    })
+    config_table.put_item(
+        Item={
+            "configScope": "global",
+            "versionId": 1,
+            "configuration": {"maxProjectsPerUser": 2},
+        }
+    )
     _config_cache.clear()
 
     for i in range(2):
-        projects_table.put_item(Item={
-            "userId": "test-user", "projectId": f"p{i}",
-            "name": f"Project {i}", "createTime": "2024-01-01T00:00:00",
-        })
+        projects_table.put_item(
+            Item={
+                "userId": "test-user",
+                "projectId": f"p{i}",
+                "name": f"Project {i}",
+                "createTime": "2024-01-01T00:00:00",
+            }
+        )
 
     response = create_project(_create_event(body={"name": "One Too Many"}), lambda_context)
     assert response["statusCode"] == 400
@@ -326,6 +393,7 @@ def test_create_project_enforces_limit(projects_table, config_table, lambda_cont
 # ---------------------------------------------------------------------------
 # create_project — input validation
 # ---------------------------------------------------------------------------
+
 
 def test_create_project_invalid_json_returns_400(projects_table, config_table, lambda_context):
     """Malformed JSON body returns 400."""
@@ -353,14 +421,14 @@ def test_create_project_missing_name_returns_400(projects_table, config_table, l
 # create_project — DynamoDB error handling
 # ---------------------------------------------------------------------------
 
+
 @patch("projects.lambda_functions.projects_table")
 @patch("projects.lambda_functions._get_max_projects_per_user", return_value=10)
 def test_create_project_dynamo_count_error_propagates(mock_limit, mock_table, lambda_context):
     """ClientError during count query is re-raised (400 from api_wrapper)."""
     from botocore.exceptions import ClientError
-    mock_table.query.side_effect = ClientError(
-        {"Error": {"Code": "InternalServerError", "Message": "boom"}}, "Query"
-    )
+
+    mock_table.query.side_effect = ClientError({"Error": {"Code": "InternalServerError", "Message": "boom"}}, "Query")
     response = create_project(_create_event(body={"name": "Test"}), lambda_context)
     assert response["statusCode"] == 400
 
@@ -383,6 +451,7 @@ def test_get_max_projects_per_user_error_returns_default(mock_config_table):
 # rename_project — helpers
 # ---------------------------------------------------------------------------
 
+
 def _rename_event(project_id="proj-1", username="test-user", body=None):
     return {
         "requestContext": {"authorizer": {"username": username}},
@@ -395,11 +464,17 @@ def _rename_event(project_id="proj-1", username="test-user", body=None):
 # rename_project — happy path
 # ---------------------------------------------------------------------------
 
+
 def test_rename_project_success(projects_table, lambda_context):
     """Successfully renames an existing project and returns 200."""
-    projects_table.put_item(Item={
-        "userId": "test-user", "projectId": "proj-1", "name": "Old Name", "createTime": "2024-01-01T00:00:00",
-    })
+    projects_table.put_item(
+        Item={
+            "userId": "test-user",
+            "projectId": "proj-1",
+            "name": "Old Name",
+            "createTime": "2024-01-01T00:00:00",
+        }
+    )
     response = rename_project(_rename_event(body={"name": "New Name"}), lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
@@ -408,9 +483,14 @@ def test_rename_project_success(projects_table, lambda_context):
 
 def test_rename_project_updates_dynamo(projects_table, lambda_context):
     """The name attribute is actually updated in DynamoDB."""
-    projects_table.put_item(Item={
-        "userId": "test-user", "projectId": "proj-1", "name": "Old Name", "createTime": "2024-01-01T00:00:00",
-    })
+    projects_table.put_item(
+        Item={
+            "userId": "test-user",
+            "projectId": "proj-1",
+            "name": "Old Name",
+            "createTime": "2024-01-01T00:00:00",
+        }
+    )
     rename_project(_rename_event(body={"name": "Updated"}), lambda_context)
     item = projects_table.get_item(Key={"userId": "test-user", "projectId": "proj-1"})["Item"]
     assert item["name"] == "Updated"
@@ -419,6 +499,7 @@ def test_rename_project_updates_dynamo(projects_table, lambda_context):
 # ---------------------------------------------------------------------------
 # rename_project — input validation
 # ---------------------------------------------------------------------------
+
 
 def test_rename_project_missing_project_id_returns_400(projects_table, lambda_context):
     """Missing projectId path parameter returns 400."""
@@ -454,6 +535,7 @@ def test_rename_project_missing_name_returns_400(projects_table, lambda_context)
 # rename_project — not found / error handling
 # ---------------------------------------------------------------------------
 
+
 def test_rename_project_not_found_returns_404(projects_table, lambda_context):
     """Returns 404 when the project does not exist (ConditionalCheckFailedException)."""
     response = rename_project(_rename_event(body={"name": "Ghost"}), lambda_context)
@@ -465,6 +547,7 @@ def test_rename_project_not_found_returns_404(projects_table, lambda_context):
 def test_rename_project_dynamo_error_propagates(mock_table, lambda_context):
     """Unexpected ClientError from DynamoDB is re-raised (400 from api_wrapper)."""
     from botocore.exceptions import ClientError
+
     mock_table.update_item.side_effect = ClientError(
         {"Error": {"Code": "InternalServerError", "Message": "boom"}}, "UpdateItem"
     )
@@ -475,6 +558,7 @@ def test_rename_project_dynamo_error_propagates(mock_table, lambda_context):
 # ---------------------------------------------------------------------------
 # assign_session_project — helpers
 # ---------------------------------------------------------------------------
+
 
 def _assign_event(project_id="proj-1", session_id="sess-1", username="test-user", body=None):
     path_params = {}
@@ -493,6 +577,7 @@ def _assign_event(project_id="proj-1", session_id="sess-1", username="test-user"
 # assign_session_project — input validation
 # ---------------------------------------------------------------------------
 
+
 def test_assign_session_project_missing_project_id_returns_400(sessions_table, projects_table, lambda_context):
     """Missing projectId path parameter returns 400."""
     response = assign_session_project(_assign_event(project_id=None), lambda_context)
@@ -508,6 +593,7 @@ def test_assign_session_project_missing_session_id_returns_400(sessions_table, p
 # ---------------------------------------------------------------------------
 # assign_session_project — ownership checks
 # ---------------------------------------------------------------------------
+
 
 def test_assign_session_project_session_not_found_returns_404(sessions_table, projects_table, lambda_context):
     """Returns 404 when the session does not belong to the calling user."""
@@ -527,9 +613,14 @@ def test_assign_session_project_project_not_found_returns_404(sessions_table, pr
 def test_assign_session_project_deleting_project_returns_409(sessions_table, projects_table, lambda_context):
     """Returns 409 when the target project is being deleted."""
     sessions_table.put_item(Item={"sessionId": "sess-1", "userId": "test-user"})
-    projects_table.put_item(Item={
-        "userId": "test-user", "projectId": "proj-1", "name": "P", "status": "deleting",
-    })
+    projects_table.put_item(
+        Item={
+            "userId": "test-user",
+            "projectId": "proj-1",
+            "name": "P",
+            "status": "deleting",
+        }
+    )
     response = assign_session_project(_assign_event(), lambda_context)
     assert response["statusCode"] == 409
     assert "deleted" in json.loads(response["body"])["error"].lower()
@@ -539,12 +630,18 @@ def test_assign_session_project_deleting_project_returns_409(sessions_table, pro
 # assign_session_project — happy path (assign)
 # ---------------------------------------------------------------------------
 
+
 def test_assign_session_project_success(sessions_table, projects_table, lambda_context):
     """Assigns a session to a project and returns 200."""
     sessions_table.put_item(Item={"sessionId": "sess-1", "userId": "test-user"})
-    projects_table.put_item(Item={
-        "userId": "test-user", "projectId": "proj-1", "name": "P", "lastUpdated": "2024-01-01T00:00:00",
-    })
+    projects_table.put_item(
+        Item={
+            "userId": "test-user",
+            "projectId": "proj-1",
+            "name": "P",
+            "lastUpdated": "2024-01-01T00:00:00",
+        }
+    )
     response = assign_session_project(_assign_event(), lambda_context)
     assert response["statusCode"] == 200
     assert "updated" in json.loads(response["body"])["message"].lower()
@@ -553,9 +650,14 @@ def test_assign_session_project_success(sessions_table, projects_table, lambda_c
 def test_assign_session_project_sets_project_id_on_session(sessions_table, projects_table, lambda_context):
     """After assignment the session item has the correct projectId."""
     sessions_table.put_item(Item={"sessionId": "sess-1", "userId": "test-user"})
-    projects_table.put_item(Item={
-        "userId": "test-user", "projectId": "proj-1", "name": "P", "lastUpdated": "2024-01-01T00:00:00",
-    })
+    projects_table.put_item(
+        Item={
+            "userId": "test-user",
+            "projectId": "proj-1",
+            "name": "P",
+            "lastUpdated": "2024-01-01T00:00:00",
+        }
+    )
     assign_session_project(_assign_event(), lambda_context)
     item = sessions_table.get_item(Key={"sessionId": "sess-1", "userId": "test-user"})["Item"]
     assert item.get("projectId") == "proj-1"
@@ -564,9 +666,14 @@ def test_assign_session_project_sets_project_id_on_session(sessions_table, proje
 def test_assign_session_project_updates_project_last_updated(sessions_table, projects_table, lambda_context):
     """After assignment the project's lastUpdated timestamp is refreshed."""
     sessions_table.put_item(Item={"sessionId": "sess-1", "userId": "test-user"})
-    projects_table.put_item(Item={
-        "userId": "test-user", "projectId": "proj-1", "name": "P", "lastUpdated": "2024-01-01T00:00:00",
-    })
+    projects_table.put_item(
+        Item={
+            "userId": "test-user",
+            "projectId": "proj-1",
+            "name": "P",
+            "lastUpdated": "2024-01-01T00:00:00",
+        }
+    )
     assign_session_project(_assign_event(), lambda_context)
     item = projects_table.get_item(Key={"userId": "test-user", "projectId": "proj-1"})["Item"]
     assert item["lastUpdated"] > "2024-01-01T00:00:00"
@@ -576,12 +683,18 @@ def test_assign_session_project_updates_project_last_updated(sessions_table, pro
 # assign_session_project — happy path (unassign)
 # ---------------------------------------------------------------------------
 
+
 def test_unassign_session_project_success(sessions_table, projects_table, lambda_context):
     """Unassigns a session from a project and returns 200."""
     sessions_table.put_item(Item={"sessionId": "sess-1", "userId": "test-user", "projectId": "proj-1"})
-    projects_table.put_item(Item={
-        "userId": "test-user", "projectId": "proj-1", "name": "P", "lastUpdated": "2024-01-01T00:00:00",
-    })
+    projects_table.put_item(
+        Item={
+            "userId": "test-user",
+            "projectId": "proj-1",
+            "name": "P",
+            "lastUpdated": "2024-01-01T00:00:00",
+        }
+    )
     response = assign_session_project(_assign_event(body={"unassign": True}), lambda_context)
     assert response["statusCode"] == 200
 
@@ -589,9 +702,14 @@ def test_unassign_session_project_success(sessions_table, projects_table, lambda
 def test_unassign_session_project_removes_project_id(sessions_table, projects_table, lambda_context):
     """After unassign the session item no longer has a projectId."""
     sessions_table.put_item(Item={"sessionId": "sess-1", "userId": "test-user", "projectId": "proj-1"})
-    projects_table.put_item(Item={
-        "userId": "test-user", "projectId": "proj-1", "name": "P", "lastUpdated": "2024-01-01T00:00:00",
-    })
+    projects_table.put_item(
+        Item={
+            "userId": "test-user",
+            "projectId": "proj-1",
+            "name": "P",
+            "lastUpdated": "2024-01-01T00:00:00",
+        }
+    )
     assign_session_project(_assign_event(body={"unassign": True}), lambda_context)
     item = sessions_table.get_item(Key={"sessionId": "sess-1", "userId": "test-user"})["Item"]
     assert "projectId" not in item
@@ -610,6 +728,7 @@ def test_unassign_skips_project_ownership_check(sessions_table, projects_table, 
 # delete_project — helpers
 # ---------------------------------------------------------------------------
 
+
 def _delete_event(project_id="proj-1", username="test-user", body=None):
     return {
         "requestContext": {"authorizer": {"username": username}},
@@ -622,6 +741,7 @@ def _delete_event(project_id="proj-1", username="test-user", body=None):
 # delete_project — input validation
 # ---------------------------------------------------------------------------
 
+
 def test_delete_project_missing_project_id_returns_400(projects_table, sessions_table, lambda_context):
     """Missing projectId path parameter returns 400."""
     response = delete_project(_delete_event(project_id=None), lambda_context)
@@ -631,6 +751,7 @@ def test_delete_project_missing_project_id_returns_400(projects_table, sessions_
 # ---------------------------------------------------------------------------
 # delete_project — not found
 # ---------------------------------------------------------------------------
+
 
 def test_delete_project_not_found_returns_404(projects_table, sessions_table, lambda_context):
     """Returns 404 when the project does not exist."""
@@ -643,11 +764,17 @@ def test_delete_project_not_found_returns_404(projects_table, sessions_table, la
 # delete_project — happy path (keep sessions)
 # ---------------------------------------------------------------------------
 
+
 def test_delete_project_success_returns_deleted_true(projects_table, sessions_table, lambda_context):
     """Returns 200 with deleted=True when project exists."""
-    projects_table.put_item(Item={
-        "userId": "test-user", "projectId": "proj-1", "name": "P", "createTime": "2024-01-01T00:00:00",
-    })
+    projects_table.put_item(
+        Item={
+            "userId": "test-user",
+            "projectId": "proj-1",
+            "name": "P",
+            "createTime": "2024-01-01T00:00:00",
+        }
+    )
     with patch("projects.lambda_functions.get_all_user_sessions", return_value=[]):
         response = delete_project(_delete_event(), lambda_context)
     assert response["statusCode"] == 200
@@ -656,9 +783,14 @@ def test_delete_project_success_returns_deleted_true(projects_table, sessions_ta
 
 def test_delete_project_removes_item_from_dynamo(projects_table, sessions_table, lambda_context):
     """Project item is hard-deleted from DynamoDB."""
-    projects_table.put_item(Item={
-        "userId": "test-user", "projectId": "proj-1", "name": "P", "createTime": "2024-01-01T00:00:00",
-    })
+    projects_table.put_item(
+        Item={
+            "userId": "test-user",
+            "projectId": "proj-1",
+            "name": "P",
+            "createTime": "2024-01-01T00:00:00",
+        }
+    )
     with patch("projects.lambda_functions.get_all_user_sessions", return_value=[]):
         delete_project(_delete_event(), lambda_context)
     result = projects_table.get_item(Key={"userId": "test-user", "projectId": "proj-1"})
@@ -667,9 +799,14 @@ def test_delete_project_removes_item_from_dynamo(projects_table, sessions_table,
 
 def test_delete_project_clears_project_id_from_sessions(projects_table, sessions_table, lambda_context):
     """Sessions belonging to the project have their projectId cleared (not deleted)."""
-    projects_table.put_item(Item={
-        "userId": "test-user", "projectId": "proj-1", "name": "P", "createTime": "2024-01-01T00:00:00",
-    })
+    projects_table.put_item(
+        Item={
+            "userId": "test-user",
+            "projectId": "proj-1",
+            "name": "P",
+            "createTime": "2024-01-01T00:00:00",
+        }
+    )
     sessions_table.put_item(Item={"sessionId": "sess-1", "userId": "test-user", "projectId": "proj-1"})
     project_sessions = [{"sessionId": "sess-1", "userId": "test-user", "projectId": "proj-1"}]
     with patch("projects.lambda_functions.get_all_user_sessions", return_value=project_sessions):
@@ -680,9 +817,14 @@ def test_delete_project_clears_project_id_from_sessions(projects_table, sessions
 
 def test_delete_project_ignores_sessions_from_other_projects(projects_table, sessions_table, lambda_context):
     """Sessions belonging to a different project are not modified."""
-    projects_table.put_item(Item={
-        "userId": "test-user", "projectId": "proj-1", "name": "P", "createTime": "2024-01-01T00:00:00",
-    })
+    projects_table.put_item(
+        Item={
+            "userId": "test-user",
+            "projectId": "proj-1",
+            "name": "P",
+            "createTime": "2024-01-01T00:00:00",
+        }
+    )
     sessions_table.put_item(Item={"sessionId": "sess-other", "userId": "test-user", "projectId": "proj-other"})
     all_sessions = [{"sessionId": "sess-other", "userId": "test-user", "projectId": "proj-other"}]
     with patch("projects.lambda_functions.get_all_user_sessions", return_value=all_sessions):
@@ -695,17 +837,24 @@ def test_delete_project_ignores_sessions_from_other_projects(projects_table, ses
 # delete_project — cascade delete sessions
 # ---------------------------------------------------------------------------
 
+
 def test_delete_project_cascade_deletes_sessions(projects_table, sessions_table, lambda_context):
     """With deleteSessions=True, delete_user_session is called for each project session."""
-    projects_table.put_item(Item={
-        "userId": "test-user", "projectId": "proj-1", "name": "P", "createTime": "2024-01-01T00:00:00",
-    })
+    projects_table.put_item(
+        Item={
+            "userId": "test-user",
+            "projectId": "proj-1",
+            "name": "P",
+            "createTime": "2024-01-01T00:00:00",
+        }
+    )
     project_sessions = [
         {"sessionId": "sess-1", "userId": "test-user", "projectId": "proj-1"},
         {"sessionId": "sess-2", "userId": "test-user", "projectId": "proj-1"},
     ]
-    with patch("projects.lambda_functions.get_all_user_sessions", return_value=project_sessions), \
-         patch("projects.lambda_functions.delete_user_session") as mock_delete_session:
+    with patch("projects.lambda_functions.get_all_user_sessions", return_value=project_sessions), patch(
+        "projects.lambda_functions.delete_user_session"
+    ) as mock_delete_session:
         delete_project(_delete_event(body={"deleteSessions": True}), lambda_context)
     assert mock_delete_session.call_count == 2
 
@@ -714,10 +863,12 @@ def test_delete_project_cascade_deletes_sessions(projects_table, sessions_table,
 # delete_project — DynamoDB error handling
 # ---------------------------------------------------------------------------
 
+
 @patch("projects.lambda_functions.projects_table")
 def test_delete_project_dynamo_error_propagates(mock_table, lambda_context):
     """Unexpected ClientError from DynamoDB soft-delete is re-raised."""
     from botocore.exceptions import ClientError
+
     mock_table.update_item.side_effect = ClientError(
         {"Error": {"Code": "InternalServerError", "Message": "boom"}}, "UpdateItem"
     )

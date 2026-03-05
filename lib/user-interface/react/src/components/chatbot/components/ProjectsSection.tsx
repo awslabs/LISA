@@ -175,7 +175,7 @@ export function ProjectsSection ({ projects, sessions, maxProjects, currentSessi
                             return (
                                 <ExpandableSection
                                     key={project.projectId}
-                                    headerText={project.name}
+                                    headerText={project.name.length > 15 ? `${project.name.slice(0, 15)}...` : project.name}
                                     headerActions={
                                         <ButtonDropdown
                                             items={[

@@ -631,7 +631,7 @@ def test_assign_session_project_deleting_project_returns_409(sessions_table, pro
 # ---------------------------------------------------------------------------
 
 
-def test_assign_session_project_success(sessions_table, projects_table, lambda_context):
+def test_assign_session_project_success(sessions_table, projects_table, dynamodb, lambda_context):
     """Assigns a session to a project and returns 200."""
     sessions_table.put_item(Item={"sessionId": "sess-1", "userId": "test-user"})
     projects_table.put_item(
@@ -647,7 +647,7 @@ def test_assign_session_project_success(sessions_table, projects_table, lambda_c
     assert "updated" in json.loads(response["body"])["message"].lower()
 
 
-def test_assign_session_project_sets_project_id_on_session(sessions_table, projects_table, lambda_context):
+def test_assign_session_project_sets_project_id_on_session(sessions_table, projects_table, dynamodb, lambda_context):
     """After assignment the session item has the correct projectId."""
     sessions_table.put_item(Item={"sessionId": "sess-1", "userId": "test-user"})
     projects_table.put_item(
@@ -663,7 +663,7 @@ def test_assign_session_project_sets_project_id_on_session(sessions_table, proje
     assert item.get("projectId") == "proj-1"
 
 
-def test_assign_session_project_updates_project_last_updated(sessions_table, projects_table, lambda_context):
+def test_assign_session_project_updates_project_last_updated(sessions_table, projects_table, dynamodb, lambda_context):
     """After assignment the project's lastUpdated timestamp is refreshed."""
     sessions_table.put_item(Item={"sessionId": "sess-1", "userId": "test-user"})
     projects_table.put_item(
@@ -684,7 +684,7 @@ def test_assign_session_project_updates_project_last_updated(sessions_table, pro
 # ---------------------------------------------------------------------------
 
 
-def test_unassign_session_project_success(sessions_table, projects_table, lambda_context):
+def test_unassign_session_project_success(sessions_table, projects_table, dynamodb, lambda_context):
     """Unassigns a session from a project and returns 200."""
     sessions_table.put_item(Item={"sessionId": "sess-1", "userId": "test-user", "projectId": "proj-1"})
     projects_table.put_item(
@@ -699,7 +699,7 @@ def test_unassign_session_project_success(sessions_table, projects_table, lambda
     assert response["statusCode"] == 200
 
 
-def test_unassign_session_project_removes_project_id(sessions_table, projects_table, lambda_context):
+def test_unassign_session_project_removes_project_id(sessions_table, projects_table, dynamodb, lambda_context):
     """After unassign the session item no longer has a projectId."""
     sessions_table.put_item(Item={"sessionId": "sess-1", "userId": "test-user", "projectId": "proj-1"})
     projects_table.put_item(
@@ -715,7 +715,7 @@ def test_unassign_session_project_removes_project_id(sessions_table, projects_ta
     assert "projectId" not in item
 
 
-def test_unassign_skips_project_ownership_check(sessions_table, projects_table, lambda_context):
+def test_unassign_skips_project_ownership_check(sessions_table, projects_table, dynamodb, lambda_context):
     """Unassign bypasses the project ownership check (no 404 from that path)."""
     sessions_table.put_item(Item={"sessionId": "sess-1", "userId": "test-user", "projectId": "proj-1"})
     # No project item — ownership check is skipped; TransactWrite fails with TransactionCanceledException → 404

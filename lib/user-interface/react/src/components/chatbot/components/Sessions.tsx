@@ -414,7 +414,7 @@ export function Sessions ({ newSession }) {
                                                                         </Box>
                                                                         {projectsEnabled && item.projectId && (() => {
                                                                             const proj = projects.find((p) => p.projectId === item.projectId);
-                                                                            return proj ? <Badge color='blue'>{proj.name}</Badge> : null;
+                                                                            return proj ? <Badge color='blue'>{proj.name.length > 15 ? `${proj.name.slice(0, 15)}...` : proj.name}</Badge> : null;
                                                                         })()}
                                                                     </SpaceBetween>
                                                                 </SpaceBetween>
@@ -428,7 +428,8 @@ export function Sessions ({ newSession }) {
                                                                         ...(projectsEnabled && !item.projectId && projects.length > 0 ? [{
                                                                             id: 'add-to-project',
                                                                             text: 'Add to Project',
-                                                                            items: projects.map((p) => ({ id: `assign:${p.projectId}`, text: p.name })),
+                                                                            // Trim the project title down. Spread list of projects into the drop down puts it as text, and has no hover tooltip functionality.
+                                                                            items: projects.map((p) => ({ id: `assign:${p.projectId}`, text: p.name.length > 20 ? `${p.name.slice(0, 20)}...` : p.name })),
                                                                         }] : []),
                                                                         ...(projectsEnabled && item.projectId ? [{ id: 'remove-from-project', text: 'Remove from Project', iconName: 'undo' as const }] : []),
                                                                         ...(config?.configuration.enabledComponents.deleteSessionHistory ? [{ id: 'delete-session', text: 'Delete Session', iconName: 'delete-marker' as const }] : [])

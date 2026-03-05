@@ -280,7 +280,7 @@ def delete_project(event: dict, context: dict) -> DeleteResponse | dict:
 
 @api_wrapper
 def assign_session_project(event: dict, context: dict) -> SuccessResponse | dict:
-    """Assign or unassign a session to/from a project atomically via TransactWriteItems."""
+    """Assign or unassign a session to/from a project."""
     user_id = get_username(event)
     try:
         project_id = _get_project_id(event)
@@ -309,76 +309,33 @@ def assign_session_project(event: dict, context: dict) -> SuccessResponse | dict
         if project_resp["Item"].get("status") == "deleting":
             return {"statusCode": 409, "body": json.dumps({"error": "Project is being deleted"})}
 
-    dynamodb_client = boto3.client("dynamodb", region_name=os.environ["AWS_REGION"])
-    sessions_table_name = os.environ["SESSIONS_TABLE_NAME"]
-    projects_table_name = os.environ["PROJECTS_TABLE_NAME"]
-
+    now = iso_string()
     if request.unassign:
-        # Remove projectId from session; update project lastUpdated
+        sessions_table.update_item(
+            Key={"sessionId": session_id, "userId": user_id},
+            UpdateExpression="REMOVE projectId",
+        )
         try:
-            dynamodb_client.transact_write_items(
-                TransactItems=[
-                    {
-                        "Update": {
-                            "TableName": sessions_table_name,
-                            "Key": {
-                                "sessionId": {"S": session_id},
-                                "userId": {"S": user_id},
-                            },
-                            "UpdateExpression": "REMOVE projectId",
-                        }
-                    },
-                    {
-                        "Update": {
-                            "TableName": projects_table_name,
-                            "Key": {
-                                "userId": {"S": user_id},
-                                "projectId": {"S": project_id},
-                            },
-                            "UpdateExpression": "SET lastUpdated = :ts",
-                            "ExpressionAttributeValues": {":ts": {"S": iso_string()}},
-                            "ConditionExpression": "attribute_exists(projectId)",
-                        }
-                    },
-                ]
+            projects_table.update_item(
+                Key={"userId": user_id, "projectId": project_id},
+                UpdateExpression="SET lastUpdated = :ts",
+                ConditionExpression="attribute_exists(projectId)",
+                ExpressionAttributeValues={":ts": now},
             )
         except ClientError as e:
-            if e.response["Error"]["Code"] == "TransactionCanceledException":
+            if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
                 return {"statusCode": 404, "body": json.dumps({"error": "Project not found"})}
             raise e
     else:
-        # Set projectId on session; update project lastUpdated
-        try:
-            dynamodb_client.transact_write_items(
-                TransactItems=[
-                    {
-                        "Update": {
-                            "TableName": sessions_table_name,
-                            "Key": {
-                                "sessionId": {"S": session_id},
-                                "userId": {"S": user_id},
-                            },
-                            "UpdateExpression": "SET projectId = :pid",
-                            "ExpressionAttributeValues": {":pid": {"S": project_id}},
-                        }
-                    },
-                    {
-                        "Update": {
-                            "TableName": projects_table_name,
-                            "Key": {
-                                "userId": {"S": user_id},
-                                "projectId": {"S": project_id},
-                            },
-                            "UpdateExpression": "SET lastUpdated = :ts",
-                            "ExpressionAttributeValues": {":ts": {"S": iso_string()}},
-                            "ConditionExpression": "attribute_exists(projectId)",
-                        }
-                    },
-                ]
-            )
-        except ClientError as e:
-            if e.response["Error"]["Code"] == "TransactionCanceledException":
-                return {"statusCode": 404, "body": json.dumps({"error": "Project not found"})}
-            raise e
+        sessions_table.update_item(
+            Key={"sessionId": session_id, "userId": user_id},
+            UpdateExpression="SET projectId = :pid",
+            ExpressionAttributeValues={":pid": project_id},
+        )
+        projects_table.update_item(
+            Key={"userId": user_id, "projectId": project_id},
+            UpdateExpression="SET lastUpdated = :ts",
+            ExpressionAttributeValues={":ts": now},
+        )
 
     return SuccessResponse(message="Session assignment updated successfully")

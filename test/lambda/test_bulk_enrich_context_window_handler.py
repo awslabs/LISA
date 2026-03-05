@@ -91,12 +91,11 @@ def mock_boto3_client(*args, **kwargs):
 patch("boto3.client", side_effect=mock_boto3_client).start()
 
 from models.handler.bulk_enrich_context_window_handler import (
-    BulkEnrichContextWindowHandler,
     _fetch_from_litellm,
     _fetch_from_s3,
     _is_lisa_managed,
+    BulkEnrichContextWindowHandler,
 )
-
 
 # ============================================================================
 # Fixtures
@@ -312,9 +311,7 @@ def test_fetch_from_s3_no_max_position_embeddings():
     """Test when config.json exists but lacks max_position_embeddings."""
     local_mock_s3 = MagicMock()
     local_mock_s3.exceptions = MockS3Exceptions()
-    local_mock_s3.get_object.return_value = {
-        "Body": MagicMock(read=lambda: json.dumps({"hidden_size": 4096}).encode())
-    }
+    local_mock_s3.get_object.return_value = {"Body": MagicMock(read=lambda: json.dumps({"hidden_size": 4096}).encode())}
 
     with patch("models.handler.bulk_enrich_context_window_handler.s3_client", local_mock_s3):
         result = _fetch_from_s3("test-bucket", "some-model", "textgen")
@@ -339,7 +336,9 @@ def test_bulk_enrich_skips_models_with_context_window(model_table, guardrails_ta
 
     handler = _make_handler(model_table, guardrails_table)
 
-    with patch("models.handler.bulk_enrich_context_window_handler._get_litellm_client", return_value=mock_litellm_client):
+    with patch(
+        "models.handler.bulk_enrich_context_window_handler._get_litellm_client", return_value=mock_litellm_client
+    ):
         result = handler()
 
     assert "already-enriched" in result.skipped
@@ -402,9 +401,11 @@ def test_bulk_enrich_lisa_managed_via_s3(model_table, guardrails_table):
 
     handler = _make_handler(model_table, guardrails_table)
 
-    with patch("models.handler.bulk_enrich_context_window_handler._get_litellm_client", return_value=MagicMock()), \
-         patch("models.handler.bulk_enrich_context_window_handler.s3_client", local_mock_s3), \
-         patch.dict(os.environ, {"MODELS_BUCKET_NAME": "test-bucket"}):
+    with patch(
+        "models.handler.bulk_enrich_context_window_handler._get_litellm_client", return_value=MagicMock()
+    ), patch("models.handler.bulk_enrich_context_window_handler.s3_client", local_mock_s3), patch.dict(
+        os.environ, {"MODELS_BUCKET_NAME": "test-bucket"}
+    ):
         result = handler()
 
     assert "lisa-model" in result.enriched
@@ -455,9 +456,12 @@ def test_bulk_enrich_exception_during_processing(model_table, guardrails_table):
 
     handler = _make_handler(model_table, guardrails_table)
 
-    with patch("models.handler.bulk_enrich_context_window_handler._get_litellm_client", return_value=MagicMock()), \
-         patch("models.handler.bulk_enrich_context_window_handler._fetch_from_litellm",
-               side_effect=RuntimeError("Unexpected crash")):
+    with patch(
+        "models.handler.bulk_enrich_context_window_handler._get_litellm_client", return_value=MagicMock()
+    ), patch(
+        "models.handler.bulk_enrich_context_window_handler._fetch_from_litellm",
+        side_effect=RuntimeError("Unexpected crash"),
+    ):
         result = handler()
 
     assert "error-model" in result.failed
@@ -551,8 +555,9 @@ def test_bulk_enrich_no_bucket_for_lisa_managed(model_table, guardrails_table):
 
     handler = _make_handler(model_table, guardrails_table)
 
-    with patch("models.handler.bulk_enrich_context_window_handler._get_litellm_client", return_value=MagicMock()), \
-         patch.dict(os.environ, {"MODELS_BUCKET_NAME": ""}):
+    with patch(
+        "models.handler.bulk_enrich_context_window_handler._get_litellm_client", return_value=MagicMock()
+    ), patch.dict(os.environ, {"MODELS_BUCKET_NAME": ""}):
         result = handler()
 
     # With no bucket, S3 fetch returns None, so it should be in failed

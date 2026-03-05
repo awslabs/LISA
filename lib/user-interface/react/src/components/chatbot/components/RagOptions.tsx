@@ -73,7 +73,7 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
         const statusFiltered = repositories.filter((repo) =>
             repo.status === VectorStoreStatus.CREATE_COMPLETE || repo.status === VectorStoreStatus.UPDATE_COMPLETE
         );
-        if (allowedRepositoryIds?.length) {
+        if (allowedRepositoryIds !== undefined) {
             return statusFiltered.filter((repo) => allowedRepositoryIds.includes(repo.repositoryId));
         }
         return statusFiltered;
@@ -87,7 +87,7 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
                 value: collection.collectionId,
                 label: collection.name,
             }));
-        if (allowedCollectionIds?.length) {
+        if (allowedCollectionIds !== undefined) {
             return active.filter((opt) => allowedCollectionIds.includes(opt.value));
         }
         return active;
@@ -122,12 +122,13 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
             const repository = filteredRepositories.find((repo) => repo.repositoryId === currentRepositoryId);
             const isNonBedrockRepo = repository?.type !== RagRepositoryType.BEDROCK_KNOWLEDGE_BASE;
 
-            // For non-bedrock repositories, auto-select the first available collection if it exists
-            if (isNonBedrockRepo && collections && collections.length > 0 && !ragConfig?.collection) {
+            // For non-bedrock repositories, auto-select the first available collection if it exists (skip when stack allows none)
+            const maySelectCollection = allowedCollectionIds === undefined || allowedCollectionIds.length > 0;
+            if (maySelectCollection && isNonBedrockRepo && collections && collections.length > 0 && !ragConfig?.collection) {
                 const activeCollections = collections.filter((c) => c.status === CollectionStatus.ACTIVE);
                 if (activeCollections.length > 0) {
                     const defaultCollection = allowedCollectionIds?.length
-                        ? activeCollections.find((c) => allowedCollectionIds.includes(c.collectionId)) ?? activeCollections[0]
+                        ? activeCollections.find((c) => c.collectionId === allowedCollectionIds[0]) ?? activeCollections.find((c) => allowedCollectionIds.includes(c.collectionId)) ?? activeCollections[0]
                         : activeCollections[0];
                     const embeddingModel = allModels.find((model) => model.modelId === defaultCollection.embeddingModel);
 

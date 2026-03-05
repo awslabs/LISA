@@ -217,7 +217,9 @@ export const useModelComparison = (models: IModel[], chatConfig: IChatConfigurat
             }
         } catch (error) {
             console.error(`Error generating response for model ${modelId}:`, error);
-            throw new Error(`Failed to generate response: ${error.message || 'Unknown error'}`);
+            throw new Error(`Failed to generate response: ${error instanceof Error ? error.message : 'Unknown error'}`, {
+                cause: error,
+            });
         }
     };
 

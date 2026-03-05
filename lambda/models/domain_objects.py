@@ -1164,6 +1164,11 @@ class PipelineConfig(BaseModel):
 
         return self
 
+    @field_validator("s3Bucket")
+    @classmethod
+    def strip_s3_bucket(cls, v: str) -> str:
+        return v.strip()
+
 
 class CollectionMetadata(BaseModel):
     """Defines metadata for a collection."""

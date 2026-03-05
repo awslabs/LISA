@@ -197,6 +197,8 @@ def pipeline_ingest_document(job: IngestionJob) -> None:
 
         # Non-Bedrock KB path
         documents = generate_chunks(job)
+        if not job.collection_id and job.metadata:
+            job.collection_id = job.metadata.get("collectionId")
         texts, metadatas = prepare_chunks(documents, job.repository_id, job.collection_id)  # type: ignore[arg-type]
         all_ids = store_chunks_in_vectorstore(
             texts=texts,

@@ -19,7 +19,7 @@ import boto3
 from boto3.dynamodb.conditions import Attr
 from models.domain_objects import VectorStoreStatus
 from utilities.common_functions import retry_config
-from utilities.encoders import convert_decimal
+from utilities.encoders import convert_decimal, convert_float_to_decimal
 from utilities.time import now
 
 logger = logging.getLogger(__name__)
@@ -140,7 +140,7 @@ class VectorStoreRepository:
 
             # Keep original config with Decimal types intact
             config: dict[str, Any] = current["Item"].get("config", {})
-            config.update(updates)
+            config.update(convert_float_to_decimal(updates))
 
             update_expr = "SET #config = :config, #updatedAt = :updatedAt"
             expr_names = {"#config": "config", "#updatedAt": "updatedAt"}

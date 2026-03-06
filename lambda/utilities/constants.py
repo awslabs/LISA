@@ -29,6 +29,7 @@ RAG_FILES = [
     TEXT_FILE,
     DOCX_FILE,
     RICH_TEXT_FILE,
+    MD_FILE,
     JSON_FILE,
     CSV_FILE,
     YAML_FILE,

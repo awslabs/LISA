@@ -24,7 +24,18 @@ CSV_FILE = "csv"
 YAML_FILE = "yaml"
 YML_FILE = "yml"
 LOG_FILE = "log"
-RAG_FILES = [PDF_FILE, TEXT_FILE, DOCX_FILE, RICH_TEXT_FILE, JSON_FILE, CSV_FILE, YAML_FILE, YML_FILE, XML_FILE, LOG_FILE]
+RAG_FILES = [
+    PDF_FILE,
+    TEXT_FILE,
+    DOCX_FILE,
+    RICH_TEXT_FILE,
+    JSON_FILE,
+    CSV_FILE,
+    YAML_FILE,
+    YML_FILE,
+    XML_FILE,
+    LOG_FILE,
+]
 
 """Constants for pagination and time limits"""
 DEFAULT_TIME_LIMIT_HOURS = 720  # 30 days

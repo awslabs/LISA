@@ -95,6 +95,7 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
     const toSubmit = {
         ...state.form,
         // Strip _isNew UI marker from pipelines so it doesn't appear in review or submission
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         pipelines: state.form.pipelines?.map(({ _isNew, ...pipeline }: any) => pipeline),
     };
 
@@ -127,6 +128,7 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
                 delete submissionData.bedrockKnowledgeBaseConfig;
                 // Strip _isNew marker from pipelines before submission
                 if (submissionData.pipelines) {
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
                     submissionData.pipelines = submissionData.pipelines.map(({ _isNew, ...pipeline }: any) => pipeline);
                 }
             }
@@ -146,6 +148,7 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
                 }
                 // Strip _isNew marker from pipelines in the diff
                 if (updates.pipelines) {
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
                     updates.pipelines = updates.pipelines.map(({ _isNew, ...pipeline }: any) => pipeline);
                 }
 

@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-import React, { ReactElement, useMemo } from 'react';
+import { ReactElement, useMemo } from 'react';
 import {
     Alert,
     Box,
@@ -110,7 +110,7 @@ export function StackRagStep (props: StackFormProps): ReactElement {
     const ragEnabled = typeof window !== 'undefined' && (window as any).env?.RAG_ENABLED;
     const { data: repositories, isLoading: loadingRepos } = useListRagRepositoriesQuery(undefined, { refetchOnMountOrArgChange: true, skip: !ragEnabled });
     const { data: allCollections, isLoading: loadingCollections } = useListAllCollectionsQuery(undefined, { refetchOnMountOrArgChange: true, skip: !ragEnabled });
-    const repoIds = item.repositoryIds || [];
+    const repoIds = useMemo(() => item.repositoryIds || [], [item.repositoryIds]);
     const collIds = item.collectionIds || [];
     const toggleRepo = (id: string) => {
         if (repoIds.includes(id)) {

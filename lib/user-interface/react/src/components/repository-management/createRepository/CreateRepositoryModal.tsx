@@ -94,6 +94,8 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
 
     const toSubmit = {
         ...state.form,
+        // Strip _isNew UI marker from pipelines so it doesn't appear in review or submission
+        pipelines: state.form.pipelines?.map(({ _isNew, ...pipeline }: any) => pipeline),
     };
 
     const changesDiff = useMemo(() => {
@@ -123,6 +125,10 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
             } else {
                 // For non-Bedrock repositories, remove bedrockKnowledgeBaseConfig
                 delete submissionData.bedrockKnowledgeBaseConfig;
+                // Strip _isNew marker from pipelines before submission
+                if (submissionData.pipelines) {
+                    submissionData.pipelines = submissionData.pipelines.map(({ _isNew, ...pipeline }: any) => pipeline);
+                }
             }
 
             // Additional validation: ensure repositoryId is not empty
@@ -137,6 +143,10 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
                 const updates: any = { ...changesDiff };
                 if (submissionData.type === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE && submissionData.bedrockKnowledgeBaseConfig) {
                     updates.bedrockKnowledgeBaseConfig = submissionData.bedrockKnowledgeBaseConfig;
+                }
+                // Strip _isNew marker from pipelines in the diff
+                if (updates.pipelines) {
+                    updates.pipelines = updates.pipelines.map(({ _isNew, ...pipeline }: any) => pipeline);
                 }
 
                 updateRepositoryMutation({

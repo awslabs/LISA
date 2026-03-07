@@ -465,6 +465,7 @@ class LISAModel(BaseModel):
     features: list[ModelFeature] | None = None
     allowedGroups: list[str] | None = None
     guardrailsConfig: GuardrailsConfig | None = None
+    contextWindow: int | None = None
 
 
 class ApiResponseBase(BaseModel):
@@ -592,6 +593,28 @@ class UpdateModelResponse(ApiResponseBase):
     """Defines response structure for model updates."""
 
     pass
+
+
+class UpdateContextWindowRequest(BaseModel):
+    """Request body for manually setting a model's context window."""
+
+    contextWindow: int = Field(gt=0, description="The maximum context window size (number of tokens) for the model.")
+
+
+class UpdateContextWindowResponse(ApiResponseBase):
+    """Response for a single-model context window update."""
+
+    pass
+
+
+class BulkEnrichContextWindowResponse(BaseModel):
+    """Response for bulk retroactive context window enrichment across all models."""
+
+    enriched: list[str] = Field(default_factory=list, description="Model IDs that were successfully enriched.")
+    skipped: list[str] = Field(
+        default_factory=list, description="Model IDs that were skipped (already had context_window)."
+    )
+    failed: dict[str, str] = Field(default_factory=dict, description="Model IDs mapped to error reason for failures.")
 
 
 class DeleteModelResponse(ApiResponseBase):

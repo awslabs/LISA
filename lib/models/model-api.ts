@@ -286,6 +286,8 @@ export class ModelsApi extends Construct {
             SCHEDULE_MANAGEMENT_FUNCTION_NAME: scheduleManagementLambda.functionName,
             GUARDRAILS_TABLE_NAME: guardrailsTable.tableName,
             ADMIN_GROUP: config.authConfig?.adminGroup || '',
+            MODELS_BUCKET_NAME: config.s3BucketModels ?? '',
+            MANAGEMENT_KEY_NAME: managementKeyName,
             // SSM parameter names for RAG tables (optional - only exist if RAG is deployed)
             ...(config.deployRag && {
                 LISA_RAG_VECTOR_STORE_TABLE_PS_NAME: `${config.deploymentPrefix}/ragVectorStoreTableName`,
@@ -448,6 +450,18 @@ export class ModelsApi extends Construct {
                         scheduleManagementLambda.functionArn,
                     ],
                 }),
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: ['s3:GetObject'],
+                    resources: [`arn:${config.partition}:s3:::${config.s3BucketModels ?? ''}/*`],
+                }),
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: ['secretsmanager:GetSecretValue'],
+                    resources: [
+                        `arn:${config.partition}:secretsmanager:${config.region}:${config.accountNumber}:secret:*`,
+                    ],
+                }),
                 ...(config.deployRag ? [
                     new PolicyStatement({
                         effect: Effect.ALLOW,
@@ -606,6 +620,11 @@ export class ModelsApi extends Construct {
                                 'secretsmanager:GetSecretValue'
                             ],
                             resources: [`${Secret.fromSecretNameV2(this, 'ManagementKeySecret', managementKeyName).secretArn}-??????`],  // question marks required to resolve the ARN correctly
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: ['s3:GetObject'],
+                            resources: [`arn:${config.partition}:s3:::${config.s3BucketModels ?? ''}/*`],
                         }),
                         new PolicyStatement({
                             effect: Effect.ALLOW,

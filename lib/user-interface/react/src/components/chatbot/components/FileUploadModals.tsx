@@ -83,9 +83,8 @@ const TEXT_MODEL_FILE_TYPES = [
 
 // Allowed file types for RAG uploads
 const RAG_FILE_TYPES = [
-    FileTypes.TEXT,
+    ...TEXT_MODEL_FILE_TYPES,
     FileTypes.DOCX,
-    FileTypes.PDF
 ];
 
 /**

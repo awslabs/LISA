@@ -50,6 +50,7 @@ import ModelComparisonPage from './pages/ModelComparison';
 import McpWorkbench from './pages/McpWorkbench';
 import ColorSchemeContext from './shared/color-scheme.provider';
 import { applyMode, Mode } from '@cloudscape-design/global-styles';
+import { useAnnouncementNotifier } from './shared/hooks/useAnnouncementNotifier';
 
 
 export type RouteProps = {
@@ -113,6 +114,8 @@ function App () {
         skip: !auth.isAuthenticated || auth.isLoading || !auth.user
     });
     const config = fullConfig?.[0];
+
+    useAnnouncementNotifier(config);
 
     const [colorScheme, setColorScheme] = useState(() => {
         // Check to see if Media-Queries are supported

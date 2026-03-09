@@ -95,6 +95,7 @@
     "eslint-plugin-prettier": "^5.5.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
+    "fast-check": "^4.6.0",
     "jsdom": "^28.1.0",
     "linkify-it": "^5.0.0",
     "markdown-it": "^14.1.0",

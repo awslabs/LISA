@@ -18,6 +18,7 @@ import _ from 'lodash';
 import React, { ReactElement, useEffect, useMemo } from 'react';
 import ActivatedUserComponents from './ActivatedUserComponents';
 import SystemBannerConfiguration from './SystemBannerConfiguration';
+import AnnouncementConfiguration from './AnnouncementConfiguration';
 import { scrollToInvalid, useValidationReducer } from '../../shared/validation';
 import { IConfiguration, SystemConfiguration, SystemConfigurationSchema } from '../../shared/model/configuration.model';
 import SpaceBetween from '@cloudscape-design/components/space-between';
@@ -163,6 +164,12 @@ export function ConfigurationComponent (): ReactElement {
                 isEnabled={state.form.systemBanner.isEnabled}
                 touchFields={touchFields}
                 errors={errors} />
+            <AnnouncementConfiguration
+                setFields={setFields}
+                touchFields={touchFields}
+                errors={errors}
+                isEnabled={state.form.announcement.isEnabled}
+                message={state.form.announcement.message} />
             <SpaceBetween alignItems='end' direction='vertical' size={'s'}>
                 <Button
                     iconAlt='Update configuration'

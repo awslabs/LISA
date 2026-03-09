@@ -22,4 +22,5 @@ export type NotificationProp = {
     id: string;
     content?: React.ReactNode;
     dismissible?: boolean;
+    onDismiss?: () => void;
 };

@@ -346,8 +346,10 @@ DOCKEREOF
             // This prevents 504 Gateway Timeout errors during model inference
             targetGroup.setAttribute('deregistration_delay.timeout_seconds', '30');
 
-            // ALB metric for ASG to use for auto scaling EC2 instances
-            // TODO: Update this to step scaling for embedding models??
+            // Scale ASG based on the configured ALB metric
+            // TargetResponseTime uses p90 statistic to scale on latency degradation (ideal for text gen LLMs)
+            // RequestCountPerTarget uses SampleCount to scale on request volume (good for embedding models)
+            const isLatencyMetric = ecsConfig.autoScalingConfig.metricConfig.albMetricName === 'TargetResponseTime';
             const requestCountPerTargetMetric = new Metric({
                 metricName: ecsConfig.autoScalingConfig.metricConfig.albMetricName,
                 namespace: 'AWS/ApplicationELB',
@@ -355,7 +357,7 @@ DOCKEREOF
                     TargetGroup: targetGroup.targetGroupFullName,
                     LoadBalancer: loadBalancer.loadBalancerFullName,
                 },
-                statistic: Stats.SAMPLE_COUNT,
+                statistic: isLatencyMetric ? 'p90' : Stats.SAMPLE_COUNT,
                 period: Duration.seconds(ecsConfig.autoScalingConfig.metricConfig.duration),
             });
 

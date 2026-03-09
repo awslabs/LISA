@@ -132,8 +132,8 @@ class GuardrailsTableEntry(BaseModel):
 class MetricConfig(BaseModel):
     """Defines metrics configuration for auto-scaling policies."""
 
-    albMetricName: str = Field(min_length=1)
-    targetValue: NonNegativeInt
+    albMetricName: str = Field(default="RequestCountPerTarget", min_length=1)
+    targetValue: NonNegativeInt = Field(default=30)
     duration: PositiveInt
     estimatedInstanceWarmup: PositiveInt
 

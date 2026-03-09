@@ -490,8 +490,12 @@ export const LoadBalancerConfigSchema = z.object({
     .describe('Configuration for load balancer settings.');
 
 export const MetricConfigSchema = z.object({
-    albMetricName: z.string().default('RequestCountPerTarget').describe('Name of the ALB metric.'),
-    targetValue: z.number().default(30).describe('Target value for the metric.'),
+    albMetricName: z.string().default('RequestCountPerTarget')
+        .describe('ALB metric for scaling. Use "RequestCountPerTarget" for request volume scaling (good for embedding models) ' +
+            'or "TargetResponseTime" for latency-based scaling (recommended for text generation LLMs). ' +
+            'When using TargetResponseTime, set targetValue to the max acceptable p90 latency in seconds (e.g., 10).'),
+    targetValue: z.number().default(30).describe('Target value for the metric. For RequestCountPerTarget this is requests per target. ' +
+        'For TargetResponseTime this is the target p90 latency in seconds.'),
     duration: z.number().default(60).describe('Duration in seconds for metric evaluation.'),
     estimatedInstanceWarmup: z.number().min(0).default(180).describe('Estimated warm-up time in seconds until a newly launched instance can send metrics to CloudWatch.'),
 })

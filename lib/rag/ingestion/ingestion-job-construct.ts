@@ -36,7 +36,7 @@ import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
-import { BATCH_INGESTION_PATH, CodeFactory } from '../../util';
+import { BATCH_INGESTION_PATH, CodeFactory, LAMBDA_PATH } from '../../util';
 
 // Props interface for the IngestionJobConstruct
 export type IngestionJobConstructProps = StackProps & BaseProps & {
@@ -64,6 +64,7 @@ export class IngestionJobConstruct extends Construct {
         super(scope, id);
 
         const { config, vpc, layers, lambdaRole, baseEnvironment } = props;
+        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         const hash = crypto.randomBytes(6).toString('hex');
 
         // DynamoDB table for tracking ingestion jobs
@@ -219,7 +220,7 @@ export class IngestionJobConstruct extends Construct {
             functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-ingest-schedule`,
             runtime: getPythonRuntime(),
             handler: 'repository.pipeline_ingest_handlers.handle_pipline_ingest_schedule',
-            code: lambda.Code.fromAsset('./lambda'),
+            code: lambda.Code.fromAsset(lambdaPath),
             timeout: Duration.seconds(60),
             memorySize: 256,
             vpc: vpc!.vpc,
@@ -247,7 +248,7 @@ export class IngestionJobConstruct extends Construct {
             functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-ingest-event`,
             runtime: getPythonRuntime(),
             handler: 'repository.pipeline_ingest_handlers.handle_pipeline_ingest_event',
-            code: lambda.Code.fromAsset('./lambda'),
+            code: lambda.Code.fromAsset(lambdaPath),
             timeout: Duration.seconds(60),
             memorySize: 256,
             vpc: vpc!.vpc,
@@ -275,7 +276,7 @@ export class IngestionJobConstruct extends Construct {
             functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-delete-event`,
             runtime: getPythonRuntime(),
             handler: 'repository.pipeline_ingest_handlers.handle_pipeline_delete_event',
-            code: lambda.Code.fromAsset('./lambda'),
+            code: lambda.Code.fromAsset(lambdaPath),
             timeout: Duration.seconds(60),
             memorySize: 256,
             vpc: vpc!.vpc,

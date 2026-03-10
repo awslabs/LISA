@@ -125,8 +125,9 @@ def setup_auth_patches(request, mock_auth, aws_credentials):
     # Chat assistant stacks tests use their own is_admin patch (patch_is_admin_for_chat_stacks).
     if "test_chat_assistant_stacks" not in request.node.nodeid:
         patches.append(patch("utilities.auth.is_admin", mock_auth.is_admin))
-    # Avoid importing models.lambda_functions for test_chat_assistant_stacks (that module requires MODEL_TABLE_NAME).
-    if "test_chat_assistant_stacks" not in request.node.nodeid:
+    # Avoid importing models.lambda_functions for tests that don't need it (that module requires MODEL_TABLE_NAME).
+    _skip_models = ("test_chat_assistant_stacks", "test_projects_lambda")
+    if not any(s in request.node.nodeid for s in _skip_models):
         patches.extend(
             [
                 patch("models.lambda_functions.is_admin", mock_auth.is_admin),

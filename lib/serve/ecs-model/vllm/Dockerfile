@@ -38,6 +38,19 @@ RUN if command -v apt-get >/dev/null 2>&1; then \
         apk add --allow-untrusted ./mount-s3.apk && rm mount-s3.apk; \
     fi
 
+##### PRE-DOWNLOAD TIKTOKEN CACHE FOR OFFLINE/AIRGAPPED DEPLOYMENTS
+# This fixes the "error downloading or loading vocab file" issue for OpenAI models
+# Reference: https://huggingface.co/openai/gpt-oss-120b/discussions/39
+ENV TIKTOKEN_CACHE_DIR=/root/.cache/tiktoken
+ENV TIKTOKEN_RS_CACHE_DIR=$TIKTOKEN_CACHE_DIR
+
+# Download all tiktoken encodings for offline use
+RUN mkdir -p ${TIKTOKEN_CACHE_DIR} && \
+    TIKTOKEN_CACHE_DIR=${TIKTOKEN_CACHE_DIR} python3 -c "\
+import tiktoken; \
+[tiktoken.get_encoding(enc) for enc in tiktoken.list_encoding_names()]" && \
+    chmod -R 755 ${TIKTOKEN_CACHE_DIR}
+
 COPY src/entrypoint.sh ./entrypoint.sh
 RUN chmod +x entrypoint.sh
 

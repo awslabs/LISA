@@ -60,6 +60,7 @@ from utilities.bedrock_kb_validation import validate_bedrock_kb_exists
 from utilities.common_functions import api_wrapper, retry_config
 from utilities.exceptions import ForbiddenException, NotFoundException
 from utilities.repository_types import RepositoryType
+from utilities.response_builder import DecimalEncoder
 from utilities.validation import ValidationError
 
 logger = logging.getLogger(__name__)
@@ -1703,7 +1704,8 @@ def update_repository(event: dict, context: dict) -> dict[str, Any]:
                 {
                     "body": input_data,
                     "config": {key: serializer.serialize(value) for key, value in rag_config.items()},
-                }
+                },
+                cls=DecimalEncoder,
             ),
         )
 

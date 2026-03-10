@@ -56,7 +56,7 @@ const AllowedExtensions =
     [
         '.ts', '.tsx', '.java', '.c', '.cpp', '.cxx', '.cc', '.h',
         '.hpp', '.hxx', '.go', '.rs', '.ps1', '.sql', '.r', '.m',
-        '.py', '.yml', '.yaml', '.rb', '.sh'
+        '.py', '.yml', '.yaml', '.rb', '.sh', '.log'
     ];
 
 // Allowed file types for image-supporting models

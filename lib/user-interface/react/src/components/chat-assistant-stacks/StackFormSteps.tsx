@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-import React, { ReactElement, useMemo } from 'react';
+import { ReactElement, useMemo } from 'react';
 import {
     Alert,
     Box,
@@ -34,7 +34,6 @@ import { ModelType } from '@/shared/model/model-management.model';
 import { useGetAllModelsQuery } from '@/shared/reducers/model-management.reducer';
 import { useListRagRepositoriesQuery, useListAllCollectionsQuery } from '@/shared/reducers/rag.reducer';
 import { useListMcpServersQuery, useListHostedMcpServersQuery } from '@/shared/reducers/mcp-server.reducer';
-import { useListMcpToolsQuery } from '@/shared/reducers/mcp-tools.reducer';
 import { useListPromptTemplatesQuery } from '@/shared/reducers/prompt-templates.reducer';
 import { PromptTemplateType } from '@/shared/reducers/prompt-templates.reducer';
 import { VectorStoreStatus } from '#root/lib/schema';
@@ -111,11 +110,18 @@ export function StackRagStep (props: StackFormProps): ReactElement {
     const ragEnabled = typeof window !== 'undefined' && (window as any).env?.RAG_ENABLED;
     const { data: repositories, isLoading: loadingRepos } = useListRagRepositoriesQuery(undefined, { refetchOnMountOrArgChange: true, skip: !ragEnabled });
     const { data: allCollections, isLoading: loadingCollections } = useListAllCollectionsQuery(undefined, { refetchOnMountOrArgChange: true, skip: !ragEnabled });
-    const repoIds = item.repositoryIds || [];
+    const repoIds = useMemo(() => item.repositoryIds || [], [item.repositoryIds]);
     const collIds = item.collectionIds || [];
     const toggleRepo = (id: string) => {
-        if (repoIds.includes(id)) setFields({ repositoryIds: repoIds.filter((x) => x !== id) });
-        else setFields({ repositoryIds: [...repoIds, id] });
+        if (repoIds.includes(id)) {
+            const newRepoIds = repoIds.filter((x) => x !== id);
+            const collectionsByRepo = (allCollections || []).filter((c) => c.repositoryId === id);
+            const idsToRemove = new Set(collectionsByRepo.map((c) => c.collectionId));
+            const newCollIds = collIds.filter((cid) => !idsToRemove.has(cid));
+            setFields({ repositoryIds: newRepoIds, collectionIds: newCollIds });
+        } else {
+            setFields({ repositoryIds: [...repoIds, id] });
+        }
     };
     const toggleColl = (id: string) => {
         if (collIds.includes(id)) setFields({ collectionIds: collIds.filter((x) => x !== id) });
@@ -127,11 +133,18 @@ export function StackRagStep (props: StackFormProps): ReactElement {
             (r) => r.status === VectorStoreStatus.CREATE_COMPLETE || r.status === VectorStoreStatus.UPDATE_COMPLETE
         );
     }, [repositories]);
-    const collections = useMemo(() => allCollections || [], [allCollections]);
+    const allCollectionsList = useMemo(() => allCollections || [], [allCollections]);
+    const collectionsForSelectedRepos = useMemo(() => {
+        if (repoIds.length === 0) return [];
+        return allCollectionsList.filter((c) => c.repositoryId && repoIds.includes(c.repositoryId));
+    }, [allCollectionsList, repoIds]);
     if (loadingRepos || loadingCollections) return <Spinner />;
     return (
         <SpaceBetween size='m'>
-            <FormField label='RAG Repositories' description='Optional. Select repositories for RAG.'>
+            <FormField
+                label='RAG Repositories'
+                description='Select one or more repositories first. Collections below are limited to the repositories you select here.'
+            >
                 <SpaceBetween size='s'>
                     {repos.map((r) => (
                         <Checkbox
@@ -145,18 +158,29 @@ export function StackRagStep (props: StackFormProps): ReactElement {
                     {repos.length === 0 && <Box color='text-body-secondary'>No repositories available.</Box>}
                 </SpaceBetween>
             </FormField>
-            <FormField label='RAG Collections' description='Optional. Select collections.'>
+            <FormField
+                label='RAG Collections'
+                description={repoIds.length === 0
+                    ? 'Select at least one repository above to see and choose collections.'
+                    : 'Only collections from the selected repositories are shown.'}
+            >
                 <SpaceBetween size='s'>
-                    {collections.map((c) => (
-                        <Checkbox
-                            key={c.collectionId}
-                            checked={collIds.includes(c.collectionId)}
-                            onChange={() => toggleColl(c.collectionId)}
-                        >
-                            {c.name || c.collectionId} {c.repositoryId && `(${c.repositoryId})`}
-                        </Checkbox>
-                    ))}
-                    {collections.length === 0 && <Box color='text-body-secondary'>No collections available.</Box>}
+                    {repoIds.length === 0 ? (
+                        <></>
+                    ) : (
+                        collectionsForSelectedRepos.map((c) => (
+                            <Checkbox
+                                key={c.collectionId}
+                                checked={collIds.includes(c.collectionId)}
+                                onChange={() => toggleColl(c.collectionId)}
+                            >
+                                {c.name || c.collectionId} {c.repositoryId && `(${c.repositoryId})`}
+                            </Checkbox>
+                        ))
+                    )}
+                    {repoIds.length > 0 && collectionsForSelectedRepos.length === 0 && (
+                        <Box color='text-body-secondary'>No collections in the selected repositories.</Box>
+                    )}
                 </SpaceBetween>
             </FormField>
         </SpaceBetween>
@@ -167,9 +191,7 @@ export function StackAgentsStep (props: StackFormProps): ReactElement {
     const { item, setFields } = props;
     const { data: connectionServers } = useListMcpServersQuery(undefined, { refetchOnMountOrArgChange: true });
     const { data: hostedServers } = useListHostedMcpServersQuery(undefined, { refetchOnMountOrArgChange: true });
-    const { data: tools } = useListMcpToolsQuery(undefined, { refetchOnMountOrArgChange: true });
     const mcpServerIds = item.mcpServerIds || [];
-    const mcpToolIds = item.mcpToolIds || [];
     const servers = useMemo(() => {
         const byId = new Map<string, { id: string; name: string }>();
         (connectionServers?.Items || []).forEach((s) => byId.set(s.id, { id: s.id, name: s.name }));
@@ -180,14 +202,10 @@ export function StackAgentsStep (props: StackFormProps): ReactElement {
         if (mcpServerIds.includes(id)) setFields({ mcpServerIds: mcpServerIds.filter((x) => x !== id) });
         else setFields({ mcpServerIds: [...mcpServerIds, id] });
     };
-    const toggleTool = (id: string) => {
-        if (mcpToolIds.includes(id)) setFields({ mcpToolIds: mcpToolIds.filter((x) => x !== id) });
-        else setFields({ mcpToolIds: [...mcpToolIds, id] });
-    };
     return (
         <SpaceBetween size='m'>
             <Alert type='info'>If you select at least one MCP server, at least one selected model must support MCP tools (e.g. text generation models).</Alert>
-            <FormField label='MCP Servers' description='Optional. From LISA MCP, Workbench, or Connections.'>
+            <FormField label='MCP Servers' description='From LISA MCP, Workbench, or Connections.'>
                 <SpaceBetween size='s'>
                     {servers.map((s) => (
                         <Checkbox key={s.id} checked={mcpServerIds.includes(s.id)} onChange={() => toggleServer(s.id)}>
@@ -195,16 +213,6 @@ export function StackAgentsStep (props: StackFormProps): ReactElement {
                         </Checkbox>
                     ))}
                     {servers.length === 0 && <Box color='text-body-secondary'>No MCP servers available.</Box>}
-                </SpaceBetween>
-            </FormField>
-            <FormField label='MCP Tools' description='Optional.'>
-                <SpaceBetween size='s'>
-                    {(tools || []).map((t) => (
-                        <Checkbox key={t.id} checked={mcpToolIds.includes(t.id)} onChange={() => toggleTool(t.id)}>
-                            {t.name || t.id}
-                        </Checkbox>
-                    ))}
-                    {(!tools || tools.length === 0) && <Box color='text-body-secondary'>No MCP tools available.</Box>}
                 </SpaceBetween>
             </FormField>
         </SpaceBetween>
@@ -227,14 +235,14 @@ export function StackPromptsStep (props: StackFormProps): ReactElement {
     const personaOptions = [{ value: '', label: 'None' }, ...persona.map((t) => ({ value: t.id, label: t.title || t.id }))];
     return (
         <SpaceBetween size='m'>
-            <FormField label='Persona Prompt' description='Optional. One prompt applied in the background (e.g. developer persona).'>
+            <FormField label='Persona Prompt' description='System promptapplied in the background (e.g. developer persona).'>
                 <Select
                     selectedOption={personaOptions.find((o) => o.value === personaPromptId) || personaOptions[0]}
                     options={personaOptions}
                     onChange={({ detail }) => setFields({ personaPromptId: detail.selectedOption.value ? detail.selectedOption.value : null })}
                 />
             </FormField>
-            <FormField label='Directive Prompts' description='Optional. User can select from these.'>
+            <FormField label='Directive Prompts' description='User can select from these.'>
                 <SpaceBetween size='s'>
                     {directive.map((t) => (
                         <Checkbox

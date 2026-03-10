@@ -855,7 +855,7 @@ export const RawConfigObject = z.object({
     removalPolicy: z.enum([RemovalPolicy.DESTROY, RemovalPolicy.RETAIN])
         .default(RemovalPolicy.DESTROY)
         .describe('Removal policy for resources (destroy or retain).'),
-    maxAzs: z.int().optional().default(2).describe("Number of AZs that LISA will deploy to. This must be set before deploying the network stack."),
+    maxAzs: z.int().optional().default(2).describe('Number of AZs that LISA will deploy to. This must be set before deploying the network stack.'),
     runCdkNag: z.boolean().default(false).describe('Whether to run CDK Nag checks.'),
     privateEndpoints: z.boolean().default(false).describe('Whether to use privateEndpoints for REST API.'),
     s3BucketModels: z.string().describe('S3 bucket for models.'),

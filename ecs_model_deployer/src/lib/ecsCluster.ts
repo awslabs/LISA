@@ -357,7 +357,7 @@ DOCKEREOF
                     TargetGroup: targetGroup.targetGroupFullName,
                     LoadBalancer: loadBalancer.loadBalancerFullName,
                 },
-                statistic: isLatencyMetric ? 'p90' : Stats.SAMPLE_COUNT,
+                statistic: isLatencyMetric ? Stats.p(90) : Stats.SAMPLE_COUNT,
                 period: Duration.seconds(ecsConfig.autoScalingConfig.metricConfig.duration),
             });
 

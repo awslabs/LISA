@@ -57,7 +57,7 @@ export function ProjectsSection ({ projects, sessions, maxProjects, currentSessi
     const [isCreating, setIsCreating] = useState(false);
 
     useEffect(() => {
-        const handler = () => setCreateModalVisible(true);
+        const handler = () => !atLimit && setCreateModalVisible(true);
         window.addEventListener('lisa:create-project', handler);
         return () => window.removeEventListener('lisa:create-project', handler);
     }, []);
@@ -251,7 +251,7 @@ export function ProjectsSection ({ projects, sessions, maxProjects, currentSessi
                             <Button
                                 variant='primary'
                                 onClick={handleCreateConfirm}
-                                disabled={!newProjectName.trim() || isCreating}
+                                disabled={!newProjectName.trim() || isCreating || atLimit}
                                 loading={isCreating}
                             >
                                 Create

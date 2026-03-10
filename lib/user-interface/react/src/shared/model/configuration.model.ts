@@ -107,3 +107,11 @@ export const SystemConfigurationSchema = z.object({
     global: globalConfigSchema.default(globalConfigSchema.parse({})),
     maxProjectsPerUser: z.number().default(10),
 });
+
+export const announcementConfigSchema = z.object({
+    isEnabled: z.boolean().default(false),
+    message: z.string().default(''),
+}).refine((data) => !data.isEnabled || data.message.length >= 1, {
+    message: 'Message is required when announcement is enabled.',
+    path: ['message'],
+});

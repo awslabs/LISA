@@ -63,7 +63,7 @@ def _get_max_projects_per_user() -> int:
             return int(items[0].get("configuration", {}).get("maxProjectsPerUser", 10))
     except Exception as e:
         logger.error(f"Failed to read maxProjectsPerUser from config: {e}")
-    return 10
+    return 50
 
 
 # --- Pydantic request models ---

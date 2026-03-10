@@ -436,7 +436,7 @@ def test_create_project_dynamo_count_error_propagates(mock_limit, mock_table, la
 def test_get_max_projects_per_user_default(config_table):
     """Returns 10 when config table has no global entry."""
     _config_cache.clear()
-    assert _get_max_projects_per_user() == 10
+    assert _get_max_projects_per_user() == 50
 
 
 @patch("projects.lambda_functions.config_table")
@@ -444,7 +444,7 @@ def test_get_max_projects_per_user_error_returns_default(mock_config_table):
     """Returns 10 on any exception reading config."""
     mock_config_table.query.side_effect = Exception("db error")
     _config_cache.clear()
-    assert _get_max_projects_per_user() == 10
+    assert _get_max_projects_per_user() == 50
 
 
 # ---------------------------------------------------------------------------

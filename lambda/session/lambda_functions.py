@@ -300,7 +300,7 @@ def _batch_get_valid_project_ids(dynamodb_client: Any, table_name: str, keys: li
             }
         }
         delay = 0.1
-        for attempt in range(5):
+        for _attempt in range(5):
             resp = dynamodb_client.batch_get_item(RequestItems=request_items)
             for item in resp.get("Responses", {}).get(table_name, []):
                 if item.get("status", {}).get("S") != "deleting":

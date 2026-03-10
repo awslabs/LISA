@@ -129,7 +129,7 @@ def _query_count(table: Any, limit: int | None = None, **kwargs: Any) -> int:
         if last_key is None or (limit is not None and total >= limit):
             break
         kwargs["ExclusiveStartKey"] = last_key
-    return total
+    return int(total)
 
 
 def _get_project_id(event: dict) -> str:
@@ -179,7 +179,9 @@ def create_project(event: dict, context: dict) -> dict:
 
     # Count existing projects for this user
     try:
-        current_count = _query_count(projects_table, limit=max_projects, KeyConditionExpression=Key("userId").eq(user_id))
+        current_count = _query_count(
+            projects_table, limit=max_projects, KeyConditionExpression=Key("userId").eq(user_id)
+        )
     except ClientError as e:
         logger.exception("Error counting projects")
         raise e

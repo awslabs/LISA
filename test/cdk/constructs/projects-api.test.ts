@@ -80,6 +80,11 @@ describe('ProjectsApi Construct', () => {
             configTable,
         });
 
+        // CDK requires at least one method on the RestApi to pass synthesis validation.
+        // ProjectsApi adds methods via fromRestApiAttributes (imported ref), so we add a
+        // placeholder method directly on the original restApi construct.
+        restApi.root.addMethod('ANY');
+
         template = Template.fromStack(stack);
     });
 

@@ -133,7 +133,6 @@ export const PromptTemplateModal = ({
                             }}
                             disabled={disabled}
                             disabledReason={'The Prompt cannot be updated after session has started.'}
-                            data-testid='use-prompt-button'
                         >
                             Use {keyWord}
                         </Button>

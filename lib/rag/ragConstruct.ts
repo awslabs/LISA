@@ -33,8 +33,7 @@ import { SecurityGroupEnum } from '../core/iam/SecurityGroups';
 import { SecurityGroupFactory } from '../networking/vpc/security-group-factory';
 import { Roles } from '../core/iam/roles';
 import { VectorStoreCreatorStack as VectorStoreCreator } from './vector-store/vector-store-creator';
-import { AnyPrincipal, CfnServiceLinkedRole, Effect, IRole, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
-import { IAMClient, ListRolesCommand } from '@aws-sdk/client-iam';
+import { AnyPrincipal, Effect, IRole, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
 import { RagRepositoryConfig, RagRepositoryType } from '../schema';
 import { Domain, EngineVersion, IDomain } from 'aws-cdk-lib/aws-opensearchservice';
 import { ISecret, Secret } from 'aws-cdk-lib/aws-secretsmanager';
@@ -62,8 +61,6 @@ export type LisaRagProps = {
  */
 export class LisaRagConstruct extends Construct {
     private readonly scope: Stack;
-    // Used to link service role if OpenSeach is used
-    openSearchRegion?: string;
 
     /**
    * @param {Stack} scope - The parent or owner of the construct.
@@ -363,6 +360,26 @@ export class LisaRagConstruct extends Construct {
             layers,
         });
 
+        // Service-linked role for OpenSearch — uses AwsCustomResource so that
+        // re-deployments into accounts where the SLR already exists don't fail
+        // with "AlreadyExists". The ignoreErrorCodesMatching swallows that error.
+        const openSearchSLR = new AwsCustomResource(scope, 'OpenSearchServiceLinkedRole', {
+            onCreate: {
+                service: 'IAM',
+                action: 'createServiceLinkedRole',
+                parameters: { AWSServiceName: 'opensearchservice.amazonaws.com' },
+                physicalResourceId: PhysicalResourceId.of('OpenSearchSLR'),
+                ignoreErrorCodesMatching: 'InvalidInput|AlreadyExists',
+            },
+            policy: customResources.AwsCustomResourcePolicy.fromStatements([
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: ['iam:CreateServiceLinkedRole'],
+                    resources: ['*'],
+                }),
+            ]),
+        });
+
         this.legacyRepositories(
             config,
             vpc,
@@ -372,7 +389,8 @@ export class LisaRagConstruct extends Construct {
             docMetaTable,
             subDocTable,
             { pgvector: pgvectorSg, opensearch: openSearchSg },
-            ragRepositoryConfigTable
+            ragRepositoryConfigTable,
+            openSearchSLR
         );
 
         // Add REST API Lambdas to APIGW
@@ -413,7 +431,8 @@ export class LisaRagConstruct extends Construct {
         docMetaTable: dynamodb.ITable,
         subDocTable: dynamodb.ITable,
         securityGroups: { [key in 'pgvector' | 'opensearch']: ISecurityGroup },
-        ragRepositoryConfigTable: dynamodb.ITable
+        ragRepositoryConfigTable: dynamodb.ITable,
+        openSearchSLR: AwsCustomResource
     ) {
         const registeredRepositories = [];
         const connectionParamName = 'LisaServeRagConnectionInfo';
@@ -446,9 +465,6 @@ export class LisaRagConstruct extends Construct {
                         ragConfig.opensearchConfig.endpoint,
                     );
                 } else {
-                    // Service-linked role that Amazon OpenSearch Service will use
-                    this.openSearchRegion = config.region;
-
                     openSearchDomain = new Domain(this.scope, createCdkId(['LisaServeRagRepository', ragConfig.repositoryId]), {
                         domainName: ['lisa-rag', ragConfig.repositoryId].join('-'),
                         // 2.9 is the latest available in ADC regions as of 1/11/24
@@ -483,6 +499,9 @@ export class LisaRagConstruct extends Construct {
                         removalPolicy: config.removalPolicy,
                         securityGroups: [securityGroups.opensearch],
                     });
+
+                    // Ensure the SLR exists before the domain is created
+                    openSearchDomain.node.addDependency(openSearchSLR);
                 }
 
                 // Rag API task execution role will read and write
@@ -743,30 +762,4 @@ export class LisaRagConstruct extends Construct {
         }
     }
 
-    /**
-     * This method links the OpenSearch Service role to the service-linked role if it exists.
-     * If the role doesn't exist, it will be created.
-     */
-    async linkServiceRole () {
-        // Only link open search role if being used
-        if (!this.openSearchRegion) {
-            return;
-        }
-
-        const iam = new IAMClient({
-            region: this.openSearchRegion
-        });
-        const response = await iam.send(
-            new ListRolesCommand({
-                PathPrefix: '/aws-service-role/opensearchservice.amazonaws.com/',
-            }),
-        );
-
-        // Only if the role for OpenSearch Service doesn't exist, it will be created.
-        if (response.Roles && response.Roles?.length === 0) {
-            new CfnServiceLinkedRole(this.scope, 'OpensearchServiceLinkedRole', {
-                awsServiceName: 'opensearchservice.amazonaws.com',
-            });
-        }
-    }
 }

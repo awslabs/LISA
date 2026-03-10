@@ -40,7 +40,7 @@ export function useAnnouncementNotifier (config: IConfiguration | undefined): vo
             return;
         }
 
-        const { announcement } = config.configuration;
+        const announcement = config.configuration.announcement ?? { isEnabled: false, message: '' };
         const { isEnabled, message } = announcement;
 
         if (!isEnabled || !message) {

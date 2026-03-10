@@ -168,8 +168,8 @@ export function ConfigurationComponent (): ReactElement {
                 setFields={setFields}
                 touchFields={touchFields}
                 errors={errors}
-                isEnabled={state.form.announcement.isEnabled}
-                message={state.form.announcement.message} />
+                isEnabled={state.form.announcement?.isEnabled ?? false}
+                message={state.form.announcement?.message ?? ''} />
             <SpaceBetween alignItems='end' direction='vertical' size={'s'}>
                 <Button
                     iconAlt='Update configuration'

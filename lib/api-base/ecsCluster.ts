@@ -613,18 +613,16 @@ export class ECSCluster extends Construct {
             maxCapacity: this.ecsConfig.autoScalingConfig.maxCapacity,
         });
 
-        // Scale on ALB request count per target — primary metric for load-driven scaling
+        // Scale on ALB request count per target — sole scaling metric.
+        // Memory-based scaling was removed because AWS target tracking treats missing data as
+        // "breaching" on the AlarmHigh (scale-out) side. When ECS isn't emitting memory metrics
+        // (during deployment, task cycling, or startup), the alarm sees missing data → treats it
+        // as breaching → triggers phantom scale-out. The hard memory limits (memoryLimitMiB) on
+        // each container already protect against OOM at the container level.
         const { metricConfig } = this.ecsConfig.autoScalingConfig;
         scalableTaskCount.scaleOnRequestCount(createCdkId([taskName, 'ReqScaling']), {
             requestsPerTarget: metricConfig.targetValue,
             targetGroup,
-            scaleInCooldown: Duration.seconds(this.ecsConfig.autoScalingConfig.cooldown),
-            scaleOutCooldown: Duration.seconds(metricConfig.estimatedInstanceWarmup),
-        });
-
-        // Scale on memory utilization — protects against memory-heavy workloads (especially MCP Workbench)
-        scalableTaskCount.scaleOnMemoryUtilization(createCdkId([taskName, 'MemScaling']), {
-            targetUtilizationPercent: 75,
             scaleInCooldown: Duration.seconds(this.ecsConfig.autoScalingConfig.cooldown),
             scaleOutCooldown: Duration.seconds(metricConfig.estimatedInstanceWarmup),
         });

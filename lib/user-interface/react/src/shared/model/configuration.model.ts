@@ -19,6 +19,7 @@ export type SystemConfiguration = {
     systemBanner: ISystemBannerConfiguration,
     enabledComponents: IEnabledComponents,
     global: IGlobalConfiguration,
+    announcement: IAnnouncementConfiguration,
 };
 
 export type IEnabledComponents = {
@@ -48,6 +49,11 @@ export type ISystemBannerConfiguration = {
     text: string;
     textColor: string;
     backgroundColor: string;
+};
+
+export type IAnnouncementConfiguration = {
+    isEnabled: boolean;
+    message: string;
 };
 
 export type IGlobalConfiguration = {
@@ -101,17 +107,18 @@ export const globalConfigSchema = z.object({
     defaultModel: z.string().optional()
 });
 
-export const SystemConfigurationSchema = z.object({
-    systemBanner: systemBannerConfigSchema.default(systemBannerConfigSchema.parse({})),
-    enabledComponents: enabledComponentsSchema.default(enabledComponentsSchema.parse({})),
-    global: globalConfigSchema.default(globalConfigSchema.parse({})),
-    maxProjectsPerUser: z.number().default(10),
-});
-
 export const announcementConfigSchema = z.object({
     isEnabled: z.boolean().default(false),
     message: z.string().default(''),
 }).refine((data) => !data.isEnabled || data.message.length >= 1, {
     message: 'Message is required when announcement is enabled.',
     path: ['message'],
+});
+
+export const SystemConfigurationSchema = z.object({
+    systemBanner: systemBannerConfigSchema.default(systemBannerConfigSchema.parse({})),
+    enabledComponents: enabledComponentsSchema.default(enabledComponentsSchema.parse({})),
+    global: globalConfigSchema.default(globalConfigSchema.parse({})),
+    maxProjectsPerUser: z.number().default(10),
+    announcement: announcementConfigSchema.default(announcementConfigSchema.parse({})),
 });

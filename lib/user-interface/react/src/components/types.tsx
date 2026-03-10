@@ -236,18 +236,19 @@ export type PutSessionRequestBody = {
  */
 export enum FileTypes {
     TEXT = 'text/plain',
+    CSV = 'text/csv',
+    JAVASCRIPT = 'text/javascript',
+    MARKDOWN = 'text/markdown',
+    CSS = 'text/css',
+    HTML = 'text/html',
+    XML = 'application/xml',
     DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     PDF = 'application/pdf',
+    JSON = 'application/json',
     JPEG = 'image/jpeg',
     PNG = 'image/png',
     GIF = 'image/gif',
     WEBP = 'image/webp',
-    JAVASCRIPT = 'text/javascript',
-    HTML = 'text/html',
-    MARKDOWN = 'text/markdown',
-    JSON = 'application/json',
-    CSS = 'text/css',
-    XML = 'text/xml'
 }
 
 /**

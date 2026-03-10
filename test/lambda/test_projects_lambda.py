@@ -296,7 +296,7 @@ def test_list_projects_all_deleting_returns_empty(projects_table, lambda_context
 
 @patch("projects.lambda_functions.projects_table")
 def test_list_projects_dynamodb_error_propagates(mock_table, lambda_context):
-    """ClientError from DynamoDB is re-raised (500 from api_wrapper)."""
+    """ClientError from DynamoDB is re-raised (400 from api_wrapper)."""
     from botocore.exceptions import ClientError
 
     mock_table.query.side_effect = ClientError({"Error": {"Code": "InternalServerError", "Message": "boom"}}, "Query")
@@ -387,7 +387,7 @@ def test_create_project_enforces_limit(projects_table, config_table, lambda_cont
 
     response = create_project(_create_event(body={"name": "One Too Many"}), lambda_context)
     assert response["statusCode"] == 400
-    assert "limit" in json.loads(response["body"])["error"].lower()
+    assert "limit" in json.loads(response["body"]).lower()
 
 
 # ---------------------------------------------------------------------------
@@ -434,14 +434,14 @@ def test_create_project_dynamo_count_error_propagates(mock_limit, mock_table, la
 
 
 def test_get_max_projects_per_user_default(config_table):
-    """Returns 10 when config table has no global entry."""
+    """Returns 50 when config table has no global entry."""
     _config_cache.clear()
     assert _get_max_projects_per_user() == 50
 
 
 @patch("projects.lambda_functions.config_table")
 def test_get_max_projects_per_user_error_returns_default(mock_config_table):
-    """Returns 10 on any exception reading config."""
+    """Returns 50 on any exception reading config."""
     mock_config_table.query.side_effect = Exception("db error")
     _config_cache.clear()
     assert _get_max_projects_per_user() == 50
@@ -540,7 +540,7 @@ def test_rename_project_not_found_returns_404(projects_table, lambda_context):
     """Returns 404 when the project does not exist (ConditionalCheckFailedException)."""
     response = rename_project(_rename_event(body={"name": "Ghost"}), lambda_context)
     assert response["statusCode"] == 404
-    assert "not found" in json.loads(response["body"])["error"].lower()
+    assert "not found" in json.loads(response["body"]).lower()
 
 
 @patch("projects.lambda_functions.projects_table")
@@ -599,7 +599,7 @@ def test_assign_session_project_session_not_found_returns_404(sessions_table, pr
     """Returns 404 when the session does not belong to the calling user."""
     response = assign_session_project(_assign_event(), lambda_context)
     assert response["statusCode"] == 404
-    assert "session" in json.loads(response["body"])["error"].lower()
+    assert "session" in json.loads(response["body"]).lower()
 
 
 def test_assign_session_project_project_not_found_returns_404(sessions_table, projects_table, lambda_context):
@@ -607,7 +607,7 @@ def test_assign_session_project_project_not_found_returns_404(sessions_table, pr
     sessions_table.put_item(Item={"sessionId": "sess-1", "userId": "test-user"})
     response = assign_session_project(_assign_event(), lambda_context)
     assert response["statusCode"] == 404
-    assert "project" in json.loads(response["body"])["error"].lower()
+    assert "project" in json.loads(response["body"]).lower()
 
 
 def test_assign_session_project_deleting_project_returns_409(sessions_table, projects_table, lambda_context):
@@ -623,7 +623,7 @@ def test_assign_session_project_deleting_project_returns_409(sessions_table, pro
     )
     response = assign_session_project(_assign_event(), lambda_context)
     assert response["statusCode"] == 409
-    assert "deleted" in json.loads(response["body"])["error"].lower()
+    assert "deleted" in json.loads(response["body"]).lower()
 
 
 # ---------------------------------------------------------------------------
@@ -716,12 +716,11 @@ def test_unassign_session_project_removes_project_id(sessions_table, projects_ta
 
 
 def test_unassign_skips_project_ownership_check(sessions_table, projects_table, dynamodb, lambda_context):
-    """Unassign bypasses the project ownership check (no 404 from that path)."""
+    """Unassign bypasses the project ownership check and succeeds even if project no longer exists."""
     sessions_table.put_item(Item={"sessionId": "sess-1", "userId": "test-user", "projectId": "proj-1"})
-    # No project item — ownership check is skipped; TransactWrite fails with TransactionCanceledException → 404
+    # No project item — ownership check is skipped; lastUpdated update silently swallows ConditionalCheckFailedException
     response = assign_session_project(_assign_event(body={"unassign": True}), lambda_context)
-    assert response["statusCode"] == 404
-    assert "project" in json.loads(response["body"])["error"].lower()
+    assert response["statusCode"] == 200
 
 
 # ---------------------------------------------------------------------------
@@ -757,7 +756,7 @@ def test_delete_project_not_found_returns_404(projects_table, sessions_table, la
     """Returns 404 when the project does not exist."""
     response = delete_project(_delete_event(), lambda_context)
     assert response["statusCode"] == 404
-    assert "not found" in json.loads(response["body"])["error"].lower()
+    assert "not found" in json.loads(response["body"]).lower()
 
 
 # ---------------------------------------------------------------------------

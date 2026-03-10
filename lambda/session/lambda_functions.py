@@ -17,6 +17,7 @@ import base64
 import json
 import logging
 import os
+import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal
@@ -285,6 +286,36 @@ def _find_first_human_message(session: dict, user_id: str | None = None) -> str:
     return ""
 
 
+def _batch_get_valid_project_ids(dynamodb_client: Any, table_name: str, keys: list[dict]) -> set[str]:
+    """Fetch valid project IDs via BatchGetItem, handling the 100-key limit and UnprocessedKeys."""
+    valid: set[str] = set()
+    pending_keys = list(keys)
+    while pending_keys:
+        chunk, pending_keys = pending_keys[:100], pending_keys[100:]
+        request_items = {
+            table_name: {
+                "Keys": chunk,
+                "ProjectionExpression": "projectId, #s",
+                "ExpressionAttributeNames": {"#s": "status"},
+            }
+        }
+        delay = 0.1
+        for attempt in range(5):
+            resp = dynamodb_client.batch_get_item(RequestItems=request_items)
+            for item in resp.get("Responses", {}).get(table_name, []):
+                if item.get("status", {}).get("S") != "deleting":
+                    valid.add(item["projectId"]["S"])
+            unprocessed = resp.get("UnprocessedKeys", {})
+            if not unprocessed:
+                break
+            request_items = unprocessed
+            time.sleep(delay)
+            delay = min(delay * 2, 5)
+        else:
+            logger.warning("BatchGetItem: gave up retrying UnprocessedKeys after 5 attempts")
+    return valid
+
+
 @api_wrapper
 def list_sessions(event: dict, context: dict) -> list[SessionSummary]:
     """List sessions by user ID from DynamoDB."""
@@ -293,7 +324,6 @@ def list_sessions(event: dict, context: dict) -> list[SessionSummary]:
     logger.info(f"Listing sessions for user {user_id}")
     sessions = _get_all_user_sessions(user_id)
 
-    # Resolve dangling projectId values via a single BatchGetItem against ProjectsTable
     valid_project_ids: set[str] = set()
     if projects_table is not None:
         unique_project_ids = {s["projectId"] for s in sessions if s.get("projectId")}
@@ -301,19 +331,7 @@ def list_sessions(event: dict, context: dict) -> list[SessionSummary]:
             try:
                 keys = [{"userId": {"S": user_id}, "projectId": {"S": pid}} for pid in unique_project_ids]
                 dynamodb_client = boto3.client("dynamodb", region_name=os.environ["AWS_REGION"])
-                batch_resp = dynamodb_client.batch_get_item(
-                    RequestItems={
-                        projects_table.name: {
-                            "Keys": keys,
-                            "ProjectionExpression": "projectId, #s",
-                            "ExpressionAttributeNames": {"#s": "status"},
-                        }
-                    }
-                )
-                for item in batch_resp.get("Responses", {}).get(projects_table.name, []):
-                    # Exclude soft-deleted projects
-                    if item.get("status", {}).get("S") != "deleting":
-                        valid_project_ids.add(item["projectId"]["S"])
+                valid_project_ids = _batch_get_valid_project_ids(dynamodb_client, projects_table.name, keys)
             except Exception as e:
                 logger.warning(f"BatchGetItem for project validation failed: {e}")
 

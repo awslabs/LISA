@@ -29,14 +29,15 @@ from models.domain_objects import DeleteResponse, SuccessResponse
 from pydantic import BaseModel, Field, field_validator
 from session.repository import delete_user_session, get_all_user_sessions
 from utilities.auth import get_username
-from utilities.common_functions import api_wrapper
+from utilities.common_functions import api_wrapper, retry_config
+from utilities.exceptions import BadRequestException, ConflictException, NotFoundException
 from utilities.time import iso_string
 
 logger = logging.getLogger(__name__)
 
-dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"])
-_s3_client = boto3.client("s3", region_name=os.environ["AWS_REGION"])
-_s3_resource = boto3.resource("s3", region_name=os.environ["AWS_REGION"])
+dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
+_s3_client = boto3.client("s3", region_name=os.environ["AWS_REGION"], config=retry_config)
+_s3_resource = boto3.resource("s3", region_name=os.environ["AWS_REGION"], config=retry_config)
 _s3_bucket_name = os.environ.get("GENERATED_IMAGES_S3_BUCKET_NAME", "")
 projects_table = dynamodb.Table(os.environ["PROJECTS_TABLE_NAME"])
 sessions_table = dynamodb.Table(os.environ["SESSIONS_TABLE_NAME"])
@@ -60,7 +61,7 @@ def _get_max_projects_per_user() -> int:
         )
         items = response.get("Items", [])
         if items:
-            return int(items[0].get("configuration", {}).get("maxProjectsPerUser", 10))
+            return int(items[0].get("configuration", {}).get("maxProjectsPerUser", 50))
     except Exception as e:
         logger.error(f"Failed to read maxProjectsPerUser from config: {e}")
     return 50
@@ -102,17 +103,46 @@ class AssignSessionProjectRequest(BaseModel):
 # --- Helpers ---
 
 
+def _query_all(table: Any, **kwargs: Any) -> list[dict]:
+    """Paginate a DynamoDB Query, returning all items across pages."""
+    items: list[dict] = []
+    while True:
+        response = table.query(**kwargs)
+        items.extend(response.get("Items", []))
+        if "LastEvaluatedKey" not in response:
+            break
+        kwargs["ExclusiveStartKey"] = response["LastEvaluatedKey"]
+    return items
+
+
+def _query_count(table: Any, limit: int | None = None, **kwargs: Any) -> int:
+    """Paginate a DynamoDB Query with Select=COUNT, accumulating Count across pages.
+
+    If limit is provided, stops early once the count reaches or exceeds it.
+    """
+    kwargs["Select"] = "COUNT"
+    total = 0
+    while True:
+        response = table.query(**kwargs)
+        total += response.get("Count", 0)
+        last_key = response.get("LastEvaluatedKey")
+        if last_key is None or (limit is not None and total >= limit):
+            break
+        kwargs["ExclusiveStartKey"] = last_key
+    return total
+
+
 def _get_project_id(event: dict) -> str:
     project_id = event.get("pathParameters", {}).get("projectId")
     if not project_id:
-        raise ValueError("projectId path parameter is required")
+        raise BadRequestException("projectId path parameter is required")
     return str(project_id)
 
 
 def _get_session_id(event: dict) -> str:
     session_id = event.get("pathParameters", {}).get("sessionId")
     if not session_id:
-        raise ValueError("sessionId path parameter is required")
+        raise BadRequestException("sessionId path parameter is required")
     return str(session_id)
 
 
@@ -124,10 +154,8 @@ def list_projects(event: dict, context: dict) -> list[dict]:
     """List all projects for the calling user, sorted by createTime."""
     user_id = get_username(event)
     try:
-        response = projects_table.query(
-            KeyConditionExpression=Key("userId").eq(user_id),
-        )
-        items = [i for i in response.get("Items", []) if i.get("status") != "deleting"]
+        items = _query_all(projects_table, KeyConditionExpression=Key("userId").eq(user_id))
+        items = [i for i in items if i.get("status") != "deleting"]
         items.sort(key=lambda x: x.get("createTime", ""))
         return items
     except ClientError as e:
@@ -143,31 +171,21 @@ def create_project(event: dict, context: dict) -> dict:
     try:
         body = json.loads(event.get("body") or "{}")
     except json.JSONDecodeError as e:
-        return {"statusCode": 400, "body": json.dumps({"error": f"Invalid JSON: {e}"})}
+        raise BadRequestException(f"Invalid JSON: {e}")
 
-    try:
-        request = CreateProjectRequest.model_validate(body)
-    except Exception as e:
-        return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
+    request = CreateProjectRequest.model_validate(body)
 
     max_projects = _get_max_projects_per_user()
 
     # Count existing projects for this user
     try:
-        count_response = projects_table.query(
-            KeyConditionExpression=Key("userId").eq(user_id),
-            Select="COUNT",
-        )
-        current_count = count_response.get("Count", 0)
+        current_count = _query_count(projects_table, limit=max_projects, KeyConditionExpression=Key("userId").eq(user_id))
     except ClientError as e:
         logger.exception("Error counting projects")
         raise e
 
     if current_count >= max_projects:
-        return {
-            "statusCode": 400,
-            "body": json.dumps({"error": f"Project limit of {max_projects} reached"}),
-        }
+        raise BadRequestException(f"Project limit of {max_projects} reached")
 
     now = iso_string()
     project_id = str(uuid.uuid4())
@@ -183,23 +201,17 @@ def create_project(event: dict, context: dict) -> dict:
 
 
 @api_wrapper
-def rename_project(event: dict, context: dict) -> SuccessResponse | dict:
+def rename_project(event: dict, context: dict) -> SuccessResponse:
     """Rename a project; validates ownership."""
     user_id = get_username(event)
-    try:
-        project_id = _get_project_id(event)
-    except ValueError as e:
-        return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
+    project_id = _get_project_id(event)
 
     try:
         body = json.loads(event.get("body") or "{}")
     except json.JSONDecodeError as e:
-        return {"statusCode": 400, "body": json.dumps({"error": f"Invalid JSON: {e}"})}
+        raise BadRequestException(f"Invalid JSON: {e}")
 
-    try:
-        request = RenameProjectRequest.model_validate(body)
-    except Exception as e:
-        return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
+    request = RenameProjectRequest.model_validate(body)
 
     try:
         projects_table.update_item(
@@ -211,20 +223,17 @@ def rename_project(event: dict, context: dict) -> SuccessResponse | dict:
         )
     except ClientError as e:
         if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
-            return {"statusCode": 404, "body": json.dumps({"error": "Project not found"})}
+            raise NotFoundException("Project not found")
         raise e
 
     return SuccessResponse(message="Project renamed successfully")
 
 
 @api_wrapper
-def delete_project(event: dict, context: dict) -> DeleteResponse | dict:
+def delete_project(event: dict, context: dict) -> DeleteResponse:
     """Delete a project; optionally cascade-delete its sessions."""
     user_id = get_username(event)
-    try:
-        project_id = _get_project_id(event)
-    except ValueError as e:
-        return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
+    project_id = _get_project_id(event)
 
     try:
         body = json.loads(event.get("body") or "{}")
@@ -244,7 +253,7 @@ def delete_project(event: dict, context: dict) -> DeleteResponse | dict:
         )
     except ClientError as e:
         if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
-            return {"statusCode": 404, "body": json.dumps({"error": "Project not found"})}
+            raise NotFoundException("Project not found")
         raise e
 
     # Phase 2: find sessions belonging to this project via byUserId GSI + Python filter
@@ -279,14 +288,11 @@ def delete_project(event: dict, context: dict) -> DeleteResponse | dict:
 
 
 @api_wrapper
-def assign_session_project(event: dict, context: dict) -> SuccessResponse | dict:
+def assign_session_project(event: dict, context: dict) -> SuccessResponse:
     """Assign or unassign a session to/from a project."""
     user_id = get_username(event)
-    try:
-        project_id = _get_project_id(event)
-        session_id = _get_session_id(event)
-    except ValueError as e:
-        return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
+    project_id = _get_project_id(event)
+    session_id = _get_session_id(event)
 
     try:
         body = json.loads(event.get("body") or "{}")
@@ -298,16 +304,16 @@ def assign_session_project(event: dict, context: dict) -> SuccessResponse | dict
     # Ownership check 1: session must belong to calling user
     session_resp = sessions_table.get_item(Key={"sessionId": session_id, "userId": user_id})
     if not session_resp.get("Item"):
-        return {"statusCode": 404, "body": json.dumps({"error": "Session not found"})}
+        raise NotFoundException("Session not found")
 
     # Ownership check 2: project must belong to calling user (skip for unassign)
     if not request.unassign:
         project_resp = projects_table.get_item(Key={"userId": user_id, "projectId": project_id})
         if not project_resp.get("Item"):
-            return {"statusCode": 404, "body": json.dumps({"error": "Project not found"})}
+            raise NotFoundException("Project not found")
         # Reject assignment to a project that is being deleted
         if project_resp["Item"].get("status") == "deleting":
-            return {"statusCode": 409, "body": json.dumps({"error": "Project is being deleted"})}
+            raise ConflictException("Project is being deleted")
 
     now = iso_string()
     if request.unassign:
@@ -323,9 +329,9 @@ def assign_session_project(event: dict, context: dict) -> SuccessResponse | dict
                 ExpressionAttributeValues={":ts": now},
             )
         except ClientError as e:
-            if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
-                return {"statusCode": 404, "body": json.dumps({"error": "Project not found"})}
-            raise e
+            if e.response["Error"]["Code"] != "ConditionalCheckFailedException":
+                raise e
+            logger.warning("Project %s not found when updating lastUpdated on unassign", project_id)
     else:
         sessions_table.update_item(
             Key={"sessionId": session_id, "userId": user_id},

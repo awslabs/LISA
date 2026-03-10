@@ -286,7 +286,7 @@ export class ModelsApi extends Construct {
             SCHEDULE_MANAGEMENT_FUNCTION_NAME: scheduleManagementLambda.functionName,
             GUARDRAILS_TABLE_NAME: guardrailsTable.tableName,
             ADMIN_GROUP: config.authConfig?.adminGroup || '',
-            MODELS_BUCKET_NAME: config.s3BucketModels ?? '',
+            MODELS_BUCKET_NAME: config.s3BucketModels,
             MANAGEMENT_KEY_NAME: managementKeyName,
             // SSM parameter names for RAG tables (optional - only exist if RAG is deployed)
             ...(config.deployRag && {
@@ -453,14 +453,12 @@ export class ModelsApi extends Construct {
                 new PolicyStatement({
                     effect: Effect.ALLOW,
                     actions: ['s3:GetObject'],
-                    resources: [`arn:${config.partition}:s3:::${config.s3BucketModels ?? ''}/*`],
+                    resources: [`arn:${config.partition}:s3:::${config.s3BucketModels}/*`],
                 }),
                 new PolicyStatement({
                     effect: Effect.ALLOW,
                     actions: ['secretsmanager:GetSecretValue'],
-                    resources: [
-                        `arn:${config.partition}:secretsmanager:${config.region}:${config.accountNumber}:secret:*`,
-                    ],
+                    resources: [`${Secret.fromSecretNameV2(this, 'ModelApiManagementKeySecret', managementKeyName).secretArn}-??????`],
                 }),
                 ...(config.deployRag ? [
                     new PolicyStatement({
@@ -522,6 +520,44 @@ export class ModelsApi extends Construct {
                 // Only runs once - increment this version number if you need to run cleanup again
                 CleanupVersion: '1',
             },
+        });
+
+        // Context window backfill — runs exactly once.
+        // The static PhysicalResourceId returned by the Lambda handler ('context-window-backfill')
+        // combined with a stable CDK construct ID means CloudFormation will never trigger this
+        // Lambda again on subsequent deployments unless the resource is explicitly deleted.
+        const contextWindowBackfillLambda = new Function(this, 'ContextWindowBackfill', {
+            runtime: getPythonRuntime(),
+            handler: 'models.model_context_window_backfill.lambda_handler',
+            code: Code.fromAsset(lambdaPath),
+            layers: lambdaLayers,
+            environment: {
+                MODEL_TABLE_NAME: modelTable.tableName,
+                MODELS_BUCKET_NAME: config.s3BucketModels ?? '',
+                LISA_API_URL_PS_NAME: lisaServeEndpointUrlPs.parameterName,
+                MANAGEMENT_KEY_NAME: managementKeyName,
+                REST_API_VERSION: 'v2',
+                RESTAPI_SSL_CERT_ARN: config.restApiConfig?.sslCertIamArn ?? '',
+            },
+            role: stateMachinesLambdaRole,
+            vpc: vpc.vpc,
+            vpcSubnets: vpc.subnetSelection,
+            securityGroups: securityGroups,
+            timeout: Duration.minutes(15),
+            description: 'One-time backfill of context_window for existing model DynamoDB records',
+        });
+
+        const contextWindowBackfillProvider = new Provider(this, 'ContextWindowBackfillProvider', {
+            onEventHandler: contextWindowBackfillLambda,
+        });
+
+        // DO NOT change the logical ID 'ContextWindowBackfillResource' — changing it would
+        // cause CloudFormation to delete and re-create the resource, re-running the backfill.
+        new CustomResource(this, 'ContextWindowBackfillResource', {
+            serviceToken: contextWindowBackfillProvider.serviceToken,
+            // No mutable properties — keeping this object empty ensures CloudFormation
+            // never sends an Update event to the Lambda on subsequent deployments.
+            properties: {},
         });
 
     }
@@ -624,7 +660,7 @@ export class ModelsApi extends Construct {
                         new PolicyStatement({
                             effect: Effect.ALLOW,
                             actions: ['s3:GetObject'],
-                            resources: [`arn:${config.partition}:s3:::${config.s3BucketModels ?? ''}/*`],
+                            resources: [`arn:${config.partition}:s3:::${config.s3BucketModels}/*`],
                         }),
                         new PolicyStatement({
                             effect: Effect.ALLOW,

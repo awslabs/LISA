@@ -607,16 +607,6 @@ class UpdateContextWindowResponse(ApiResponseBase):
     pass
 
 
-class BulkEnrichContextWindowResponse(BaseModel):
-    """Response for bulk retroactive context window enrichment across all models."""
-
-    enriched: list[str] = Field(default_factory=list, description="Model IDs that were successfully enriched.")
-    skipped: list[str] = Field(
-        default_factory=list, description="Model IDs that were skipped (already had context_window)."
-    )
-    failed: dict[str, str] = Field(default_factory=dict, description="Model IDs mapped to error reason for failures.")
-
-
 class DeleteModelResponse(ApiResponseBase):
     """Defines response structure for model deletion."""
 

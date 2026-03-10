@@ -773,7 +773,7 @@ def _fetch_context_window_from_litellm(litellm_id: str) -> Any | None:
     """Fetch max_input_tokens from LiteLLM for non-LISA-managed (Bedrock/third-party) models."""
     try:
         model_info = litellm_client.get_model(litellm_id)
-        return model_info.get("model_info", {}).get("max_input_tokens")
+        return int(model_info.get("model_info", {}).get("max_input_tokens"))
     except Exception as e:
         logger.warning(f"Could not fetch context window from LiteLLM for {litellm_id}: {e}")
         return None

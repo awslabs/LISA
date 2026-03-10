@@ -15,65 +15,58 @@
 */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import * as fc from 'fast-check';
-import { setDismissedTimestamp, getDismissedTimestamp, shouldShowAnnouncement } from './announcementDismissal';
+import { setDismissedTimestamp, getDismissedTimestamp, shouldShowAnnouncement, clearDismissedTimestamp } from './announcementDismissal';
 
-// Feature: ui-announcements, Property 4: Dismissal timestamp persistence
-// Validates: Requirements 4.1
-describe('Property 4: Dismissal timestamp persistence', () => {
+describe('announcementDismissal', () => {
     beforeEach(() => {
         localStorage.clear();
     });
 
-    it('setDismissedTimestamp then getDismissedTimestamp returns the same value', () => {
-        fc.assert(
-            fc.property(
-                fc.integer({ min: 1 }),
-                (timestamp) => {
-                    localStorage.clear();
-                    setDismissedTimestamp(timestamp);
-                    expect(getDismissedTimestamp()).toBe(timestamp);
-                },
-            ),
-            { numRuns: 100 },
-        );
-    });
-});
+    describe('getDismissedTimestamp', () => {
+        it('returns null when nothing is stored', () => {
+            expect(getDismissedTimestamp()).toBeNull();
+        });
 
-// Feature: ui-announcements, Property 5: Announcement visibility based on timestamp comparison
-// Validates: Requirements 4.3, 5.1
-describe('Property 5: Announcement visibility based on timestamp comparison', () => {
-    beforeEach(() => {
-        localStorage.clear();
+        it('returns the stored string value', () => {
+            setDismissedTimestamp('1773105679.3095705509185791015625');
+            expect(getDismissedTimestamp()).toBe('1773105679.3095705509185791015625');
+        });
     });
 
-    it('returns false when stored timestamp matches config timestamp', () => {
-        fc.assert(
-            fc.property(
-                fc.integer({ min: 1 }),
-                (timestamp) => {
-                    localStorage.clear();
-                    setDismissedTimestamp(timestamp);
-                    expect(shouldShowAnnouncement(timestamp)).toBe(false);
-                },
-            ),
-            { numRuns: 100 },
-        );
+    describe('setDismissedTimestamp / getDismissedTimestamp roundtrip', () => {
+        it('preserves high-precision timestamp strings exactly', () => {
+            const timestamp = '1773105679.3095705509185791015625';
+            setDismissedTimestamp(timestamp);
+            expect(getDismissedTimestamp()).toBe(timestamp);
+        });
     });
 
-    it('returns true when stored timestamp differs from config timestamp', () => {
-        fc.assert(
-            fc.property(
-                fc.integer({ min: 1 }),
-                fc.integer({ min: 1 }),
-                (storedTimestamp, configTimestamp) => {
-                    fc.pre(storedTimestamp !== configTimestamp);
-                    localStorage.clear();
-                    setDismissedTimestamp(storedTimestamp);
-                    expect(shouldShowAnnouncement(configTimestamp)).toBe(true);
-                },
-            ),
-            { numRuns: 100 },
-        );
+    describe('clearDismissedTimestamp', () => {
+        it('removes the stored value', () => {
+            setDismissedTimestamp('123456');
+            clearDismissedTimestamp();
+            expect(getDismissedTimestamp()).toBeNull();
+        });
+    });
+
+    describe('shouldShowAnnouncement', () => {
+        it('returns true when configTimestamp is undefined', () => {
+            expect(shouldShowAnnouncement(undefined)).toBe(true);
+        });
+
+        it('returns true when no dismissal is stored', () => {
+            expect(shouldShowAnnouncement('1773105679.3095705509185791015625')).toBe(true);
+        });
+
+        it('returns false when stored timestamp matches config timestamp', () => {
+            const ts = '1773105679.3095705509185791015625';
+            setDismissedTimestamp(ts);
+            expect(shouldShowAnnouncement(ts)).toBe(false);
+        });
+
+        it('returns true when stored timestamp differs from config timestamp', () => {
+            setDismissedTimestamp('1772740008.1396915912628173828125');
+            expect(shouldShowAnnouncement('1773105679.3095705509185791015625')).toBe(true);
+        });
     });
 });

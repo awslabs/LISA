@@ -62,7 +62,7 @@ export type IGlobalConfiguration = {
 export type BaseConfiguration = {
     configScope: string;
     versionId: number;
-    createdAt?: number;
+    createdAt?: string;
     changedBy: string;
     changeReason: string;
 };

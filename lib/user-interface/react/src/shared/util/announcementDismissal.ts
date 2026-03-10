@@ -18,16 +18,11 @@ export const DISMISSAL_KEY = 'lisa-announcement-dismissed-at';
 
 /**
  * Reads the dismissed announcement timestamp from localStorage.
- * Returns the parsed number or null if missing or corrupted.
+ * Returns the stored string or null if missing.
  */
-export function getDismissedTimestamp (): number | null {
+export function getDismissedTimestamp (): string | null {
     try {
-        const value = localStorage.getItem(DISMISSAL_KEY);
-        if (value === null) {
-            return null;
-        }
-        const parsed = Number(value);
-        return Number.isFinite(parsed) ? parsed : null;
+        return localStorage.getItem(DISMISSAL_KEY);
     } catch {
         return null;
     }
@@ -37,9 +32,9 @@ export function getDismissedTimestamp (): number | null {
  * Writes the dismissed announcement timestamp to localStorage.
  * Fails silently if localStorage is unavailable.
  */
-export function setDismissedTimestamp (timestamp: number): void {
+export function setDismissedTimestamp (timestamp: string): void {
     try {
-        localStorage.setItem(DISMISSAL_KEY, String(timestamp));
+        localStorage.setItem(DISMISSAL_KEY, timestamp);
     } catch {
         // Fail silently when localStorage is unavailable
     }
@@ -61,7 +56,7 @@ export function clearDismissedTimestamp (): void {
  * Returns true if there is no stored dismissal timestamp or if the
  * stored timestamp differs from the provided config timestamp.
  */
-export function shouldShowAnnouncement (configTimestamp: number | undefined): boolean {
+export function shouldShowAnnouncement (configTimestamp: string | undefined): boolean {
     if (configTimestamp === undefined) {
         return true;
     }

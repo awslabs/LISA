@@ -30,6 +30,11 @@ export const configurationApi = createApi({
             query: (configScope) => ({
                 url: `/configuration?configScope=${configScope}`
             }),
+            transformResponse: (response: Record<string, any>[]) =>
+                response.map((item) => ({
+                    ...item,
+                    createdAt: item.createdAt ?? item.created_at,
+                })) as IConfiguration[],
             providesTags:['configuration'],
         }),
         updateConfiguration: builder.mutation<IConfiguration, IConfiguration>({

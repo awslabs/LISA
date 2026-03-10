@@ -122,7 +122,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                 <Select
                     selectedOption={{label: props.item.modelType.toUpperCase(), value: props.item.modelType}}
                     onChange={({ detail }) => {
-                        const fields = {
+                        const fields: Record<string, any> = {
                             'modelType': detail.selectedOption.value,
                         };
 
@@ -136,6 +136,15 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                         // turn off summarization and image input for embedded and imagegen models
                         if ((fields.modelType === ModelType.embedding || fields.modelType === ModelType.imagegen || fields.modelType === ModelType.videogen)) {
                             fields['features'] = props.item.features.filter((feature) => feature.name !== ModelFeatures.SUMMARIZATION && feature.name !== ModelFeatures.IMAGE_INPUT && feature.name !== ModelFeatures.TOOL_CALLS);
+                        }
+
+                        // Auto-default scaling metric based on model type
+                        if (fields.modelType === ModelType.embedding) {
+                            fields['autoScalingConfig.metricConfig.albMetricName'] = 'RequestCountPerTarget';
+                            fields['autoScalingConfig.metricConfig.targetValue'] = 30;
+                        } else if (fields.modelType === ModelType.textgen) {
+                            fields['autoScalingConfig.metricConfig.albMetricName'] = 'TargetResponseTime';
+                            fields['autoScalingConfig.metricConfig.targetValue'] = 10;
                         }
 
                         props.setFields(fields);

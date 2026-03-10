@@ -14,71 +14,177 @@
   limitations under the License.
 */
 
-import { describe, it, expect } from 'vitest';
-import * as fc from 'fast-check';
-import { NotificationProp } from '@/shared/notification/notifications.props';
+import { renderHook } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { configureStore } from '@reduxjs/toolkit';
+import { Provider } from 'react-redux';
+import React from 'react';
 
-// Feature: ui-announcements, Property 2: Announcement notification shape
-// Validates: Requirements 3.1, 3.2, 3.3
-describe('Property 2: Announcement notification shape', () => {
-    it('for any non-empty message, the announcement notification has the correct header, type, dismissible flag, and id', () => {
-        fc.assert(
-            fc.property(
-                fc.string({ minLength: 1 }),
-                (message) => {
-                    const notification: NotificationProp = {
-                        id: 'announcement-notification',
-                        header: '📢 Announcement: ' + message,
-                        type: 'info',
-                        dismissible: true,
-                    };
+import { useAnnouncementNotifier } from '@/shared/hooks/useAnnouncementNotifier';
+import notificationReducer from '@/shared/reducers/notification.reducer';
+import { selectNotifications } from '@/shared/reducers/notification.reducer';
+import { IConfiguration } from '@/shared/model/configuration.model';
+import * as announcementDismissal from '@/shared/util/announcementDismissal';
 
-                    expect(notification.header).toBe('📢 Announcement: ' + message);
-                    expect(notification.type).toBe('info');
-                    expect(notification.dismissible).toBe(true);
-                    expect(notification.id).toBe('announcement-notification');
-                },
-            ),
-            { numRuns: 100 },
-        );
+vi.mock('@/shared/util/announcementDismissal', () => ({
+    shouldShowAnnouncement: vi.fn(),
+    setDismissedTimestamp: vi.fn(),
+    getDismissedTimestamp: vi.fn(),
+    clearDismissedTimestamp: vi.fn(),
+    DISMISSAL_KEY: 'lisa-announcement-dismissed-at',
+}));
+
+function createTestStore () {
+    return configureStore({
+        reducer: { notification: notificationReducer },
+        middleware: (getDefaultMiddleware) =>
+            getDefaultMiddleware({ serializableCheck: false }),
     });
-});
+}
 
-// Feature: ui-announcements, Property 3: Disabled announcement suppression
-// Validates: Requirements 3.4
-describe('Property 3: Disabled announcement suppression', () => {
-    it('for any message string, when isEnabled is false, no notification should be produced', () => {
-        fc.assert(
-            fc.property(
-                fc.string(),
-                (message) => {
-                    const isEnabled = false;
+function createWrapper (store: ReturnType<typeof createTestStore>) {
+    return function Wrapper ({ children }: { children: React.ReactNode }) {
+        return React.createElement(Provider, { store }, children);
+    };
+}
 
-                    // Simulate the hook's guard condition: when isEnabled is false,
-                    // the system should not produce a notification regardless of message content.
-                    const shouldDispatchNotification = isEnabled && message.length > 0;
+function buildConfig (overrides: {
+    isEnabled?: boolean;
+    message?: string;
+    createdAt?: string;
+} = {}): IConfiguration {
+    return {
+        configScope: 'system',
+        versionId: 1,
+        createdAt: overrides.createdAt ?? '2025-01-01T00:00:00Z',
+        changedBy: 'test-user',
+        changeReason: 'test',
+        configuration: {
+            systemBanner: { isEnabled: false, text: '', textColor: '#000', backgroundColor: '#fff' },
+            enabledComponents: {
+                deleteSessionHistory: true,
+                viewMetaData: true,
+                editKwargs: true,
+                editPromptTemplate: true,
+                editNumOfRagDocument: true,
+                editChatHistoryBuffer: true,
+                uploadRagDocs: true,
+                uploadContextDocs: true,
+                documentSummarization: true,
+                showRagLibrary: true,
+                showPromptTemplateLibrary: true,
+                enableModelComparisonUtility: false,
+                mcpConnections: true,
+                showMcpWorkbench: false,
+                modelLibrary: true,
+                encryptSession: false,
+                enableUserApiTokens: false,
+                chatAssistantStacks: false,
+            },
+            global: { defaultModel: '' },
+            announcement: {
+                isEnabled: overrides.isEnabled ?? true,
+                message: overrides.message ?? 'System maintenance tonight',
+            },
+        },
+    };
+}
 
-                    expect(shouldDispatchNotification).toBe(false);
-                },
-            ),
-            { numRuns: 100 },
-        );
+describe('useAnnouncementNotifier', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
     });
 
-    it('for any non-empty message string, when isEnabled is false, the suppression still holds', () => {
-        fc.assert(
-            fc.property(
-                fc.string({ minLength: 1 }),
-                (message) => {
-                    const isEnabled = false;
+    it('generates a notification when announcement is enabled and should be shown', () => {
+        vi.mocked(announcementDismissal.shouldShowAnnouncement).mockReturnValue(true);
+        const store = createTestStore();
 
-                    // Even with a valid non-empty message, disabled announcements must not dispatch
-                    const shouldDispatchNotification = isEnabled && message.length > 0;
+        renderHook(() => useAnnouncementNotifier(buildConfig()), {
+            wrapper: createWrapper(store),
+        });
 
-                    expect(shouldDispatchNotification).toBe(false);
-                },
-            ),
-            { numRuns: 100 },
+        const notifications = selectNotifications(store.getState());
+        expect(notifications).toHaveLength(1);
+        expect(notifications[0]).toMatchObject({
+            id: 'announcement-notification',
+            header: '📢 Announcement: System maintenance tonight',
+            type: 'info',
+            dismissible: true,
+        });
+    });
+
+    it('does not generate a notification when config is undefined', () => {
+        const store = createTestStore();
+
+        renderHook(() => useAnnouncementNotifier(undefined), {
+            wrapper: createWrapper(store),
+        });
+
+        expect(selectNotifications(store.getState())).toHaveLength(0);
+    });
+
+    it('does not generate a notification when isEnabled is false', () => {
+        vi.mocked(announcementDismissal.shouldShowAnnouncement).mockReturnValue(true);
+        const store = createTestStore();
+
+        renderHook(() => useAnnouncementNotifier(buildConfig({ isEnabled: false })), {
+            wrapper: createWrapper(store),
+        });
+
+        expect(selectNotifications(store.getState())).toHaveLength(0);
+    });
+
+    it('does not generate a notification when message is empty', () => {
+        vi.mocked(announcementDismissal.shouldShowAnnouncement).mockReturnValue(true);
+        const store = createTestStore();
+
+        renderHook(() => useAnnouncementNotifier(buildConfig({ message: '' })), {
+            wrapper: createWrapper(store),
+        });
+
+        expect(selectNotifications(store.getState())).toHaveLength(0);
+    });
+
+    it('does not generate a notification when announcement was already dismissed', () => {
+        vi.mocked(announcementDismissal.shouldShowAnnouncement).mockReturnValue(false);
+        const store = createTestStore();
+
+        renderHook(() => useAnnouncementNotifier(buildConfig()), {
+            wrapper: createWrapper(store),
+        });
+
+        expect(selectNotifications(store.getState())).toHaveLength(0);
+    });
+
+    it('clears existing notification when announcement becomes disabled', () => {
+        vi.mocked(announcementDismissal.shouldShowAnnouncement).mockReturnValue(true);
+        const store = createTestStore();
+        const wrapper = createWrapper(store);
+
+        const { rerender } = renderHook(
+            ({ config }) => useAnnouncementNotifier(config),
+            {
+                wrapper,
+                initialProps: { config: buildConfig() as IConfiguration | undefined },
+            },
         );
+
+        expect(selectNotifications(store.getState())).toHaveLength(1);
+
+        rerender({ config: buildConfig({ isEnabled: false }) });
+
+        expect(selectNotifications(store.getState())).toHaveLength(0);
+    });
+
+    it('passes createdAt to shouldShowAnnouncement', () => {
+        vi.mocked(announcementDismissal.shouldShowAnnouncement).mockReturnValue(true);
+        const store = createTestStore();
+        const config = buildConfig({ createdAt: '2025-06-15T12:00:00Z' });
+
+        renderHook(() => useAnnouncementNotifier(config), {
+            wrapper: createWrapper(store),
+        });
+
+        expect(announcementDismissal.shouldShowAnnouncement).toHaveBeenCalledWith('2025-06-15T12:00:00Z');
     });
 });

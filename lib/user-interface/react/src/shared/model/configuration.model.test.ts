@@ -15,44 +15,32 @@
 */
 
 import { describe, it, expect } from 'vitest';
-import * as fc from 'fast-check';
 import { announcementConfigSchema } from './configuration.model';
 
-// Feature: ui-announcements, Property 1: Announcement schema validation
-// Validates: Requirements 1.1, 1.3
-describe('Property 1: Announcement schema validation', () => {
-    it('parse succeeds iff !isEnabled || message.length >= 1', () => {
-        fc.assert(
-            fc.property(
-                fc.boolean(),
-                fc.string(),
-                (isEnabled, message) => {
-                    const result = announcementConfigSchema.safeParse({ isEnabled, message });
-                    const shouldSucceed = !isEnabled || message.length >= 1;
-                    expect(result.success).toBe(shouldSucceed);
-                },
-            ),
-            { numRuns: 100 },
-        );
+describe('announcementConfigSchema', () => {
+    it('accepts when isEnabled is false with empty message', () => {
+        const result = announcementConfigSchema.safeParse({ isEnabled: false, message: '' });
+        expect(result.success).toBe(true);
     });
 
-    it('parse fails with error on message path when isEnabled && message === ""', () => {
-        fc.assert(
-            fc.property(
-                fc.constant(true),
-                fc.constant(''),
-                (isEnabled, message) => {
-                    const result = announcementConfigSchema.safeParse({ isEnabled, message });
-                    expect(result.success).toBe(false);
-                    if (!result.success) {
-                        const messageErrors = result.error.issues.filter(
-                            (issue) => issue.path.includes('message'),
-                        );
-                        expect(messageErrors.length).toBeGreaterThanOrEqual(1);
-                    }
-                },
-            ),
-            { numRuns: 100 },
-        );
+    it('accepts when isEnabled is false with non-empty message', () => {
+        const result = announcementConfigSchema.safeParse({ isEnabled: false, message: 'hello' });
+        expect(result.success).toBe(true);
+    });
+
+    it('accepts when isEnabled is true with non-empty message', () => {
+        const result = announcementConfigSchema.safeParse({ isEnabled: true, message: 'System maintenance' });
+        expect(result.success).toBe(true);
+    });
+
+    it('rejects when isEnabled is true with empty message', () => {
+        const result = announcementConfigSchema.safeParse({ isEnabled: true, message: '' });
+        expect(result.success).toBe(false);
+        if (!result.success) {
+            const messageErrors = result.error.issues.filter(
+                (issue) => issue.path.includes('message'),
+            );
+            expect(messageErrors.length).toBeGreaterThanOrEqual(1);
+        }
     });
 });

@@ -30,6 +30,7 @@ import { mcpToolsApi } from '@/shared/reducers/mcp-tools.reducer';
 import { userPreferencesApi } from '@/shared/reducers/user-preferences.reducer';
 import { apiTokenApi } from './api-token.reducer';
 import { chatAssistantStacksApi } from './chat-assistant-stacks.reducer';
+import { projectApi } from './project.reducer';
 
 const rootReducer: ReducersMapObject = {
     user: userReducer,
@@ -46,6 +47,7 @@ const rootReducer: ReducersMapObject = {
     [userPreferencesApi.reducerPath]: userPreferencesApi.reducer,
     [apiTokenApi.reducerPath]: apiTokenApi.reducer,
     [chatAssistantStacksApi.reducerPath]: chatAssistantStacksApi.reducer,
+    [projectApi.reducerPath]: projectApi.reducer,
 };
 
 export const rootMiddleware = [
@@ -59,6 +61,7 @@ export const rootMiddleware = [
     userPreferencesApi.middleware,
     apiTokenApi.middleware,
     chatAssistantStacksApi.middleware,
+    projectApi.middleware,
 ];
 
 export default rootReducer;

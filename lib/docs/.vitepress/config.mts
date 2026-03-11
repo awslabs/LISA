@@ -63,6 +63,7 @@ const navLinks = [
       { text: 'Model Management UI', link: '/config/model-management-ui' },
       { text: 'Chat Assistant Stacks', link: '/config/chat-assistant-stacks' },
       { text: 'Bedrock Guardrails', link: '/config/guardrails' },
+      { text: 'Configuration UI', link: '/config/configuration-ui' },
       { text: 'Usage & Features', link: '/config/usage' },
       { text: 'RAG Repository', link: '/config/repositories' },
       { text: 'Langfuse Tracing', link: '/config/langfuse-tracing'},
@@ -108,7 +109,6 @@ const navLinks = [
       // TODO: Add API documentation for the following APIs
       // { text: 'MCP Workbench', link: '/config/mcp-workbench#programmatic-api-access' },
       // { text: 'Bedrock Knowledge Base (/bedrock-kb)', link: '/config/TODO-bedrock-kb#api-reference' },
-      // { text: 'Configuration (/configuration)', link: '/config/TODO-configuration#api-reference' },
       // { text: 'MCP Server Connections (/mcp-server)', link: '/config/TODO-mcp-server#api-reference' },
       // { text: 'MCP Workbench tool management REST API (/mcp-workbench)', link: '/config/TODO-mcp-workbench#api-reference' },
       // { text: 'Prompt Templates (/prompt-templates)', link: '/config/TODO-prompt-templates#api-reference' },

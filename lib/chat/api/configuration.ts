@@ -130,6 +130,7 @@ export class ConfigurationApi extends Construct {
                                         'projectOrganization': { 'BOOL': 'False' },
                                     }
                                 },
+                                'maxProjectsPerUser': { 'N': '50' },
                                 'systemBanner': {
                                     'M': {
                                         'isEnabled': { 'BOOL': 'False' },

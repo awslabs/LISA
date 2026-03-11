@@ -18,6 +18,7 @@ import json
 import logging
 import os
 import urllib.parse
+from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
 from typing import Any, cast
 
@@ -806,45 +807,56 @@ def list_collections(event: dict, context: dict) -> dict[str, Any]:
     filter_text = filter_params.filter_text
     status_filter = filter_params.status_filter
 
+    # includeTotalCount=true triggers an extra count query; default False for faster response (saves ~1 DDB round-trip)
+    include_total_count = (query_params.get("includeTotalCount") or "").lower() in ("true", "1", "yes")
+
     # Parse sort parameters using SortParams composition object
     # sort_params = SortParams.from_query_params(query_params)
     # sort_by = sort_params.sort_by
     # sort_order = sort_params.sort_order
 
-    # List collections via service (includes access control filtering)
-    collections, next_key = _get_collection_service().list_collections(
-        repository_id=repository_id,
-        username=username,
-        user_groups=groups,
-        is_admin=is_admin,
-        page_size=page_size,
-        last_evaluated_key=last_evaluated_key,
-        repository=repository,
-    )
+    # List collections; only run count in parallel when explicitly requested and no filters
+    total_count = None
+    current_page = None
+    total_pages = None
+    collection_svc = _get_collection_service()
+
+    if include_total_count and not filter_text and not status_filter:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            list_future = executor.submit(
+                collection_svc.list_collections,
+                repository_id=repository_id,
+                username=username,
+                user_groups=groups,
+                is_admin=is_admin,
+                page_size=page_size,
+                last_evaluated_key=last_evaluated_key,
+                repository=repository,
+            )
+            count_future = executor.submit(collection_svc.count_collections, repository_id=repository_id)
+            collections, next_key = list_future.result()
+            try:
+                total_count = count_future.result()
+                total_pages = (total_count + page_size - 1) // page_size
+                current_page = 1 if not last_evaluated_key else None
+            except Exception as e:
+                logger.warning(f"Failed to get total count for repository {repository_id}: {e}")
+    else:
+        collections, next_key = collection_svc.list_collections(
+            repository_id=repository_id,
+            username=username,
+            user_groups=groups,
+            is_admin=is_admin,
+            page_size=page_size,
+            last_evaluated_key=last_evaluated_key,
+            repository=repository,
+        )
 
     # Calculate pagination metadata
     pagination_result = PaginationResult.from_keys(
         original_key=last_evaluated_key,
         returned_key=next_key,
     )
-
-    # Get total count (optional - can be expensive for large datasets)
-    total_count = None
-    current_page = None
-    total_pages = None
-
-    # Only calculate total count if no filters are applied (for performance)
-    if not filter_text and not status_filter:
-        try:
-            total_count = _get_collection_service().count_collections(repository_id=repository_id)
-
-            # Calculate page numbers if we have total count
-            if total_count is not None:
-                total_pages = (total_count + page_size - 1) // page_size
-                # Estimate current page based on whether we have a last_evaluated_key
-                current_page = 1 if not last_evaluated_key else None
-        except Exception as e:
-            logger.warning(f"Failed to get total count for repository {repository_id}: {e}")
 
     # Build response
     response = {

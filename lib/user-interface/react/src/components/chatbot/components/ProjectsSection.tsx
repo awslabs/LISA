@@ -55,6 +55,8 @@ export function ProjectsSection ({ projects, sessions, maxProjects, currentSessi
     const [createModalVisible, setCreateModalVisible] = useState(false);
     const [newProjectName, setNewProjectName] = useState('');
     const [isCreating, setIsCreating] = useState(false);
+    const atLimit = projects.length >= maxProjects;
+
 
     useEffect(() => {
         const handler = () => !atLimit && setCreateModalVisible(true);
@@ -72,8 +74,6 @@ export function ProjectsSection ({ projects, sessions, maxProjects, currentSessi
     const [deleteModalVisible, setDeleteModalVisible] = useState(false);
     const [projectToDelete, setProjectToDelete] = useState<LisaProject | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
-
-    const atLimit = projects.length >= maxProjects;
 
     const sessionsByProject = useCallback((projectId: string) =>
         sessions.filter((s) => s.projectId === projectId),

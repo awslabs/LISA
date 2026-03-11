@@ -37,22 +37,31 @@ export const buildMessageContent = async ({
 
     if (fileContext?.startsWith('File context: data:image')) {
         const imageData = fileContext.replace('File context: ', '');
-        return [
+        const content: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
             { type: 'image_url', image_url: { url: imageData } },
-            { type: 'text', text: userPrompt },
         ];
+        if (useRag && ragDocs) {
+            content.push({
+                type: 'text',
+                text: 'Context from document search:\n' + formatDocumentsAsString(ragDocs.data?.docs),
+            });
+        }
+        content.push({ type: 'text', text: userPrompt });
+        return content;
     }
 
-    if (useRag && ragDocs) {
-        return [
-            { type: 'text', text: 'File context: ' + formatDocumentsAsString(ragDocs.data?.docs) },
-            { type: 'text', text: userPrompt },
-        ];
-    }
-
+    const contextParts: string[] = [];
     if (fileContext) {
+        contextParts.push(fileContext);
+    }
+    if (useRag && ragDocs) {
+        contextParts.push(
+            'Context from document search:\n' + formatDocumentsAsString(ragDocs.data?.docs),
+        );
+    }
+    if (contextParts.length > 0) {
         return [
-            { type: 'text', text: fileContext },
+            { type: 'text', text: contextParts.join('\n\n') },
             { type: 'text', text: userPrompt },
         ];
     }

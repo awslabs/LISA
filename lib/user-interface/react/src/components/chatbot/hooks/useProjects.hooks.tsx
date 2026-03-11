@@ -18,8 +18,8 @@ import { useListProjectsQuery } from '@/shared/reducers/project.reducer';
 import { IConfiguration } from '@/shared/model/configuration.model';
 
 export const useProjects = (config: IConfiguration | undefined) => {
-    const projectsEnabled = config?.configuration?.enabledComponents?.projectOrganization === true;
-    const maxProjects = config?.configuration?.maxProjectsPerUser ?? 10; // fallback for pre-migration configs
+    const projectsEnabled = config?.configuration?.enabledComponents?.projectOrganization ?? false;
+    const maxProjects = config?.configuration?.maxProjectsPerUser ?? 50; // fallback for pre-migration configs
     const { data: projects = [] } = useListProjectsQuery(undefined, { skip: !projectsEnabled });
 
     return { projects, projectsEnabled, maxProjects };

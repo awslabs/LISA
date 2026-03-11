@@ -60,7 +60,7 @@ export function ProjectsSection ({ projects, sessions, maxProjects, currentSessi
         const handler = () => !atLimit && setCreateModalVisible(true);
         window.addEventListener('lisa:create-project', handler);
         return () => window.removeEventListener('lisa:create-project', handler);
-    }, []);
+    }, [atLimit]);
 
     // Rename project modal
     const [renameModalVisible, setRenameModalVisible] = useState(false);

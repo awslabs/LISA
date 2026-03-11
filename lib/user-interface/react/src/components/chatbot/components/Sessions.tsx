@@ -83,6 +83,7 @@ export function Sessions ({ newSession }) {
     });
 
     const { projects, projectsEnabled, maxProjects } = useProjects(config);
+    const projectsById = useMemo(() => new Map(projects.map((p) => [p.projectId, p])), [projects]);
 
     // If projects feature is disabled, force history view
     const effectiveHistoryView = !projectsEnabled && historyView === 'projects' ? 'history' : historyView;
@@ -92,7 +93,7 @@ export function Sessions ({ newSession }) {
     const [newSessionName, setNewSessionName] = useState<string>('');
     const [sessionBeingDeleted, setSessionBeingDeleted] = useState<string | null>(null);
     const [assistantCarouselIndex, setAssistantCarouselIndex] = useState(0);
-    const { data: sessions, isLoading: isSessionsLoading } = useListSessionsQuery(null, { refetchOnMountOrArgChange: 5 });
+    const { data: sessions, isLoading: isSessionsLoading } = useListSessionsQuery(undefined, { refetchOnMountOrArgChange: 5 });
     const { data: availableStacks = [] } = useListStacksQuery(undefined, {
         skip: !config?.configuration?.enabledComponents?.chatAssistantStacks,
         refetchOnMountOrArgChange: true,
@@ -389,7 +390,7 @@ export function Sessions ({ newSession }) {
                                         <ExpandableSection
                                             key={timeGroup}
                                             headerText={timeGroup}
-                                            defaultExpanded={effectiveHistoryView === 'history'}
+                                            defaultExpanded={timeGroup === 'Last Day' || timeGroup === 'Last 7 Days'}
                                         >
                                             <SpaceBetween size='xxs'>
                                                 {sessions.map((item) => (
@@ -414,7 +415,7 @@ export function Sessions ({ newSession }) {
                                                                             {formatDate(item.lastUpdated || item.startTime)}
                                                                         </Box>
                                                                         {projectsEnabled && item.projectId && (() => {
-                                                                            const proj = projects.find((p) => p.projectId === item.projectId);
+                                                                            const proj = projectsById.get(item.projectId);
                                                                             return proj ? <Badge color='blue'>{proj.name.length > 15 ? `${proj.name.slice(0, 15)}...` : proj.name}</Badge> : null;
                                                                         })()}
                                                                     </SpaceBetween>
@@ -505,12 +506,12 @@ export function Sessions ({ newSession }) {
                                                                             handleRenameSession(item);
                                                                         } else if (e.detail.id.startsWith('assign:')) {
                                                                             const projectId = e.detail.id.replace('assign:', '');
-                                                                            assignSessionProject({ projectId, sessionId: item.sessionId }).catch(() => {
+                                                                            assignSessionProject({ projectId, sessionId: item.sessionId }).unwrap().catch(() => {
                                                                                 notificationService.generateNotification('Failed to assign session to project', 'error');
                                                                             });
                                                                         } else if (e.detail.id === 'remove-from-project') {
                                                                             if (item.projectId) {
-                                                                                assignSessionProject({ projectId: item.projectId, sessionId: item.sessionId, unassign: true }).catch(() => {
+                                                                                assignSessionProject({ projectId: item.projectId, sessionId: item.sessionId, unassign: true }).unwrap().catch(() => {
                                                                                     notificationService.generateNotification('Failed to remove session from project', 'error');
                                                                                 });
                                                                             }

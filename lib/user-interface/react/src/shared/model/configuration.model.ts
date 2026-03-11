@@ -63,7 +63,7 @@ export type IGlobalConfiguration = {
 export type BaseConfiguration = {
     configScope: string;
     versionId: number;
-    createdAt?: number;
+    createdAt?: string;
     changedBy: string;
     changeReason: string;
 };
@@ -119,6 +119,6 @@ export const SystemConfigurationSchema = z.object({
     systemBanner: systemBannerConfigSchema.default(systemBannerConfigSchema.parse({})),
     enabledComponents: enabledComponentsSchema.default(enabledComponentsSchema.parse({})),
     global: globalConfigSchema.default(globalConfigSchema.parse({})),
-    maxProjectsPerUser: z.number().default(10),
+    maxProjectsPerUser: z.number().default(50),
     announcement: announcementConfigSchema.default(announcementConfigSchema.parse({})),
 });

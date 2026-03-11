@@ -127,6 +127,7 @@ export class ConfigurationApi extends Construct {
                                         'modelLibrary': { 'BOOL': 'True' },
                                         'encryptSession': { 'BOOL': 'False' },
                                         'chatAssistantStacks': { 'BOOL': 'False' },
+                                        'projectOrganization': { 'BOOL': 'False' },
                                     }
                                 },
                                 'systemBanner': {

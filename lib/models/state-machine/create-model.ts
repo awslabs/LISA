@@ -79,6 +79,7 @@ export class CreateModelStateMachine extends Construct {
             LITELLM_CONFIG_OBJ: JSON.stringify(config.litellmConfig),
             AWS_ACCOUNT_ID: config.accountNumber,
             AWS_PARTITION: config.partition,
+            MODELS_BUCKET_NAME: config.s3BucketModels ?? '',
         };
 
         const setModelToCreating = new LambdaInvoke(this, 'SetModelToCreating', {
@@ -257,6 +258,23 @@ export class CreateModelStateMachine extends Construct {
             outputPath: OUTPUT_PATH,
         });
 
+        const enrichContextWindow = new LambdaInvoke(this, 'EnrichContextWindow', {
+            lambdaFunction: new Function(this, 'EnrichContextWindowFunc', {
+                runtime: getPythonRuntime(),
+                handler: 'models.state_machine.create_model.handle_enrich_context_window',
+                code: Code.fromAsset(lambdaPath),
+                timeout: LAMBDA_TIMEOUT,
+                memorySize: LAMBDA_MEMORY,
+                role: role,
+                vpc: vpc.vpc,
+                vpcSubnets: vpc.subnetSelection,
+                securityGroups: securityGroups,
+                layers: lambdaLayers,
+                environment: environment,
+            }),
+            outputPath: OUTPUT_PATH,
+        });
+
         const addGuardrailsToLitellm = new LambdaInvoke(this, 'AddGuardrailsToLitellm', {
             lambdaFunction: new Function(this, 'AddGuardrailsToLitellmFunc', {
                 runtime: getPythonRuntime(),
@@ -335,8 +353,11 @@ export class CreateModelStateMachine extends Construct {
         // Create schedule after model is ready
         createSchedule.next(addModelToLitellm);
 
+        // Enrich context window after model is added to LiteLLM (non-blocking)
+        addModelToLitellm.next(enrichContextWindow);
+        enrichContextWindow.next(checkGuardrailsChoice);
+
         // Check for guardrails and add them if present
-        addModelToLitellm.next(checkGuardrailsChoice);
         checkGuardrailsChoice
             .when(Condition.isPresent('$.guardrailsConfig'), addGuardrailsToLitellm)
             .otherwise(successState);

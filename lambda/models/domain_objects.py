@@ -465,6 +465,7 @@ class LISAModel(BaseModel):
     features: list[ModelFeature] | None = None
     allowedGroups: list[str] | None = None
     guardrailsConfig: GuardrailsConfig | None = None
+    contextWindow: int | None = None
 
 
 class ApiResponseBase(BaseModel):
@@ -590,6 +591,18 @@ class UpdateModelRequest(BaseModel):
 
 class UpdateModelResponse(ApiResponseBase):
     """Defines response structure for model updates."""
+
+    pass
+
+
+class UpdateContextWindowRequest(BaseModel):
+    """Request body for manually setting a model's context window."""
+
+    contextWindow: int = Field(gt=0, description="The maximum context window size (number of tokens) for the model.")
+
+
+class UpdateContextWindowResponse(ApiResponseBase):
+    """Response for a single-model context window update."""
 
     pass
 

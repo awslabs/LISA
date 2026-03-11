@@ -157,9 +157,12 @@ from models.domain_objects import InferenceContainer, ModelStatus
 
 # Now import the state machine functions
 from models.state_machine.create_model import (
+    _fetch_context_window_from_litellm,
+    _fetch_context_window_from_s3,
     get_container_path,
     handle_add_guardrails_to_litellm,
     handle_add_model_to_litellm,
+    handle_enrich_context_window,
     handle_failure,
     handle_poll_create_stack,
     handle_poll_docker_image_available,
@@ -772,3 +775,225 @@ def test_handle_add_guardrails_to_litellm_no_guardrails(lambda_context):
     result = handle_add_guardrails_to_litellm(event, lambda_context)
 
     assert result["guardrail_ids"] == []
+
+
+# ============================================================================
+# Tests for handle_enrich_context_window and helpers
+# ============================================================================
+
+
+def test_fetch_context_window_from_litellm_success():
+    """Test fetching context window from LiteLLM when model has max_input_tokens."""
+    mock_litellm_client.get_model.return_value = {
+        "model_info": {"id": "test-litellm-id", "max_input_tokens": 200000},
+    }
+
+    with patch("models.state_machine.create_model.litellm_client", mock_litellm_client):
+        result = _fetch_context_window_from_litellm("test-litellm-id")
+        assert result == 200000
+        mock_litellm_client.get_model.assert_called_with("test-litellm-id")
+
+
+def test_fetch_context_window_from_litellm_no_max_input_tokens():
+    """Test fetching context window from LiteLLM when model lacks max_input_tokens."""
+    mock_litellm_client.get_model.return_value = {
+        "model_info": {"id": "test-litellm-id"},
+    }
+
+    with patch("models.state_machine.create_model.litellm_client", mock_litellm_client):
+        result = _fetch_context_window_from_litellm("test-litellm-id")
+        assert result is None
+
+
+def test_fetch_context_window_from_litellm_exception():
+    """Test fetching context window from LiteLLM when get_model raises an exception."""
+    mock_litellm_client.get_model.side_effect = Exception("Connection error")
+
+    with patch("models.state_machine.create_model.litellm_client", mock_litellm_client):
+        result = _fetch_context_window_from_litellm("test-litellm-id")
+        assert result is None
+
+    # Reset side_effect
+    mock_litellm_client.get_model.side_effect = None
+
+
+def test_fetch_context_window_from_s3_success():
+    """Test fetching context window from S3 config.json."""
+    mock_s3 = MagicMock()
+    mock_s3.get_object.return_value = {
+        "Body": MagicMock(read=lambda: json.dumps({"max_position_embeddings": 32768}).encode())
+    }
+
+    # Add NoSuchKey exception class
+    class MockS3Exceptions:
+        class NoSuchKey(Exception):
+            pass
+
+    mock_s3.exceptions = MockS3Exceptions()
+
+    with patch("models.state_machine.create_model.s3_client", mock_s3), patch.dict(
+        os.environ, {"MODELS_BUCKET_NAME": "test-bucket"}
+    ):
+        result = _fetch_context_window_from_s3("mistralai/Mistral-7B-Instruct-v0.3", "textgen")
+        assert result == 32768
+        mock_s3.get_object.assert_called_with(
+            Bucket="test-bucket", Key="mistralai/Mistral-7B-Instruct-v0.3/config.json"
+        )
+
+
+def test_fetch_context_window_from_s3_no_bucket():
+    """Test fetching context window from S3 when MODELS_BUCKET_NAME is not set."""
+    with patch.dict(os.environ, {"MODELS_BUCKET_NAME": ""}):
+        result = _fetch_context_window_from_s3("test-model", "textgen")
+        assert result is None
+
+
+def test_fetch_context_window_from_s3_imagegen_fallback():
+    """Test fetching context window for IMAGEGEN model falls back to text_encoder/config.json."""
+    mock_s3 = MagicMock()
+
+    class MockS3Exceptions:
+        class NoSuchKey(Exception):
+            pass
+
+    mock_s3.exceptions = MockS3Exceptions()
+
+    # First call (primary path) raises NoSuchKey, second call (text_encoder) succeeds
+    mock_s3.get_object.side_effect = [
+        MockS3Exceptions.NoSuchKey("not found"),
+        {"Body": MagicMock(read=lambda: json.dumps({"max_position_embeddings": 77}).encode())},
+    ]
+
+    with patch("models.state_machine.create_model.s3_client", mock_s3), patch.dict(
+        os.environ, {"MODELS_BUCKET_NAME": "test-bucket"}
+    ):
+        result = _fetch_context_window_from_s3("sd-model/stable-diffusion-v1", "imagegen")
+        assert result == 77
+
+        # Verify both paths were tried
+        assert mock_s3.get_object.call_count == 2
+        calls = mock_s3.get_object.call_args_list
+        assert calls[0][1]["Key"] == "sd-model/stable-diffusion-v1/config.json"
+        assert calls[1][1]["Key"] == "sd-model/stable-diffusion-v1/text_encoder/config.json"
+
+
+def test_fetch_context_window_from_s3_no_key_found():
+    """Test fetching context window from S3 when config.json does not exist."""
+    mock_s3 = MagicMock()
+
+    class MockS3Exceptions:
+        class NoSuchKey(Exception):
+            pass
+
+    mock_s3.exceptions = MockS3Exceptions()
+    mock_s3.get_object.side_effect = MockS3Exceptions.NoSuchKey("not found")
+
+    with patch("models.state_machine.create_model.s3_client", mock_s3), patch.dict(
+        os.environ, {"MODELS_BUCKET_NAME": "test-bucket"}
+    ):
+        result = _fetch_context_window_from_s3("nonexistent-model", "textgen")
+        assert result is None
+
+
+def test_handle_enrich_context_window_non_lisa_managed(model_table, lambda_context):
+    """Test enriching context window for a non-LISA-managed (Bedrock) model."""
+    event = {
+        "modelId": "bedrock-model",
+        "modelName": "bedrock/claude-v2",
+        "modelType": "textgen",
+        "create_infra": False,
+        "litellm_id": "test-litellm-id",
+    }
+
+    mock_litellm_client.get_model.return_value = {
+        "model_info": {"id": "test-litellm-id", "max_input_tokens": 100000},
+    }
+
+    with patch("models.state_machine.create_model.model_table", model_table), patch(
+        "models.state_machine.create_model.litellm_client", mock_litellm_client
+    ):
+        result = handle_enrich_context_window(event, lambda_context)
+
+        # Should pass through all event data
+        assert result["modelId"] == "bedrock-model"
+        assert result["litellm_id"] == "test-litellm-id"
+
+        # Verify DDB was updated with context_window
+        item = model_table.get_item(Key={"model_id": "bedrock-model"})["Item"]
+        assert item["context_window"] == 100000
+
+
+def test_handle_enrich_context_window_lisa_managed(model_table, lambda_context):
+    """Test enriching context window for a LISA-managed (S3-hosted) model."""
+    event = {
+        "modelId": "lisa-model",
+        "modelName": "mistralai/Mistral-7B-Instruct-v0.3",
+        "modelType": "textgen",
+        "create_infra": True,
+    }
+
+    mock_s3 = MagicMock()
+
+    class MockS3Exceptions:
+        class NoSuchKey(Exception):
+            pass
+
+    mock_s3.exceptions = MockS3Exceptions()
+    mock_s3.get_object.return_value = {
+        "Body": MagicMock(read=lambda: json.dumps({"max_position_embeddings": 32768}).encode())
+    }
+
+    with patch("models.state_machine.create_model.model_table", model_table), patch(
+        "models.state_machine.create_model.s3_client", mock_s3
+    ), patch.dict(os.environ, {"MODELS_BUCKET_NAME": "test-bucket"}):
+        result = handle_enrich_context_window(event, lambda_context)
+
+        assert result["modelId"] == "lisa-model"
+
+        # Verify DDB was updated
+        item = model_table.get_item(Key={"model_id": "lisa-model"})["Item"]
+        assert item["context_window"] == 32768
+
+
+def test_handle_enrich_context_window_no_litellm_id(model_table, lambda_context):
+    """Test enriching context window when litellm_id is missing for non-managed model."""
+    event = {
+        "modelId": "old-model",
+        "modelName": "some-model",
+        "modelType": "textgen",
+        "create_infra": False,
+        # No litellm_id
+    }
+
+    with patch("models.state_machine.create_model.model_table", model_table):
+        result = handle_enrich_context_window(event, lambda_context)
+
+        # Should not raise, just skip
+        assert result["modelId"] == "old-model"
+
+        # DDB should NOT have context_window
+        response = model_table.get_item(Key={"model_id": "old-model"})
+        assert "Item" not in response  # no record was written because update_item only updates
+
+
+def test_handle_enrich_context_window_non_blocking_on_failure(model_table, lambda_context):
+    """Test that handle_enrich_context_window does not raise even when enrichment fails."""
+    event = {
+        "modelId": "fail-model",
+        "modelName": "some-model",
+        "modelType": "textgen",
+        "create_infra": False,
+        "litellm_id": "bad-id",
+    }
+
+    mock_litellm_client.get_model.side_effect = Exception("LiteLLM is down")
+
+    with patch("models.state_machine.create_model.model_table", model_table), patch(
+        "models.state_machine.create_model.litellm_client", mock_litellm_client
+    ):
+        # Should NOT raise
+        result = handle_enrich_context_window(event, lambda_context)
+        assert result["modelId"] == "fail-model"
+
+    # Reset side_effect
+    mock_litellm_client.get_model.side_effect = None

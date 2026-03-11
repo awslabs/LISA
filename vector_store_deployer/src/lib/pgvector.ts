@@ -13,14 +13,14 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 */
-import { RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
+import { Duration, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { RagRepositoryDeploymentConfig, RagRepositoryType, PartialConfig } from '../../../lib/schema';
 import { createCdkId } from '../../../lib/core/utils';
-import { SecurityGroup, Subnet, SubnetSelection, Vpc } from 'aws-cdk-lib/aws-ec2';
+import { Port, SecurityGroup, Subnet, SubnetSelection, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { Effect, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
-import { ISecret, Secret } from 'aws-cdk-lib/aws-secretsmanager';
+import { HostedRotation, ISecret, Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
 import { Roles } from '../../../lib/core/iam/roles';
 import { PipelineStack } from './pipeline-stack';
@@ -131,6 +131,24 @@ export class PGVectorStoreStack extends PipelineStack {
                 if (!useIamAuth) {
                     // Password auth: only need secret access (grantConnect requires IAM auth)
                     rdsConfig.passwordSecretId = rdsSecret.secretName;
+
+                    // Add rotation for the database password secret
+                    // Allow the rotation Lambda to connect to the database
+                    pgSecurityGroup.connections.allowFrom(
+                        pgSecurityGroup,
+                        Port.tcp(rdsConfig.dbPort),
+                        'Allow rotation Lambda to connect to PGVector database'
+                    );
+
+                    rdsSecret.addRotationSchedule(createCdkId([repositoryId, 'PGVectorPasswordRotation']), {
+                        automaticallyAfter: Duration.days(30),
+                        hostedRotation: HostedRotation.postgreSqlSingleUser({
+                            functionName: `${config.deploymentName}-PGVector-${repositoryId}-Rotation`,
+                            vpc: vpc,
+                            vpcSubnets: subnetSelection,
+                            securityGroups: [pgSecurityGroup]
+                        })
+                    });
                 } else {
                     // IAM auth: manually grant rds-db:connect permission
                     // Note: We do NOT use pgvectorDb.grantConnect() due to CDK bug #11851

@@ -141,6 +141,7 @@ export type LisaChatSession = {
     name?: string;
     firstHumanMessage?: MessageContent;
     configuration?: IChatConfiguration & IModelConfiguration;
+    projectId?: string;
 };
 
 export type LisaAttachImageRequest = {
@@ -247,7 +248,7 @@ export enum FileTypes {
     JPEG = 'image/jpeg',
     PNG = 'image/png',
     GIF = 'image/gif',
-    WEBP = 'image/webp'
+    WEBP = 'image/webp',
 }
 
 /**

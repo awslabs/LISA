@@ -288,7 +288,7 @@ export default function Chat ({ sessionId, initialStack }) {
     const { dynamicMaxRows } = useDynamicMaxRows();
 
     // Get sessions list lastUpdated timestamp
-    const { data: sessions } = useListSessionsQuery(null, { refetchOnMountOrArgChange: 5 });
+    const { data: sessions } = useListSessionsQuery(undefined, { refetchOnMountOrArgChange: 5 });
     const currentSessionSummary = useMemo(() =>
         sessions?.find((s) => s.sessionId === session.sessionId),
     [sessions, session.sessionId]

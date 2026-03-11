@@ -33,7 +33,7 @@ export function Chatbot ({ setNav }) {
     // Same "clean" key whenever there's no session ID: refresh at /ai-assistant (or /ai-assistant/) and clicking New
     // both get key 'new', so Chat remounts and useSession runs createNewSession() (clears assistant).
     const hasSessionInUrl = sessionId != null && sessionId !== '';
-    const chatKey = hasSessionInUrl ? sessionId : (initialStack ? `stack-${initialStack.stackId}` : 'new');
+    const chatKey = hasSessionInUrl ? sessionId : (initialStack ? `stack-${initialStack.stackId}` : `new-${location.key}`);
 
     const handleNewSession = useCallback(() => {
         // Clear specific cached session data that might interfere with new session creation
@@ -41,8 +41,7 @@ export function Chatbot ({ setNav }) {
             dispatch(sessionApi.util.invalidateTags([{ type: 'session', id: sessionId }]));
         }
 
-        // Navigate and clear location state so assistant stack is cleared (same outcome as chatKey='new')
-        navigate('/ai-assistant', { replace: true, state: {} });
+        navigate('/ai-assistant', { replace: true, state: null });
     }, [navigate, dispatch, sessionId]);
 
     useEffect(() => {

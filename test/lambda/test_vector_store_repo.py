@@ -93,6 +93,12 @@ def test_vector_store_repo_get_registered():
 
         assert len(result) == 1
         mock_table.scan.assert_called_once()
+        # Scan should use projection for efficiency
+        call_kwargs = mock_table.scan.call_args[1]
+        assert "ProjectionExpression" in call_kwargs
+        assert "repositoryId" in call_kwargs["ProjectionExpression"]
+        assert "config" in call_kwargs["ProjectionExpression"]
+        assert call_kwargs["ExpressionAttributeNames"].get("#status") == "status"
 
 
 def test_vector_store_repo_save():

@@ -152,6 +152,7 @@ class CollectionService:
         is_admin: bool,
         page_size: int = 20,
         last_evaluated_key: dict[str, str] | None = None,
+        repository: dict[str, Any] | None = None,
     ) -> tuple[list[RagCollectionConfig], dict[str, str] | None]:
         """List collections with access control.
 
@@ -159,6 +160,10 @@ class CollectionService:
         and will be included in the query results automatically.
 
         For other repository types, a virtual default collection is generated if needed.
+
+        Args:
+            repository: Optional pre-fetched repository config; when provided and on first
+                page, avoids a separate find_repository_by_id call.
         """
         collections, key = self.collection_repo.list_by_repository(
             repository_id, page_size=page_size, last_evaluated_key=last_evaluated_key
@@ -168,7 +173,8 @@ class CollectionService:
         # On first page, check if virtual default collection needs to be added
         # (only for non-Bedrock KB repositories)
         if not last_evaluated_key:
-            repository = self.vector_store_repo.find_repository_by_id(repository_id)
+            if repository is None:
+                repository = self.vector_store_repo.find_repository_by_id(repository_id)
 
             # Only create virtual collection if repository supports it
             if repository:

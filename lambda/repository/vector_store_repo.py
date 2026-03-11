@@ -36,10 +36,17 @@ class VectorStoreRepository:
 
     def get_registered_repositories(self) -> list[dict]:
         """Get a list of all registered RAG repositories with default values for new fields."""
-        response = self.table.scan()
+        scan_kwargs: dict[str, Any] = {
+            "ProjectionExpression": "repositoryId, #config, #status, legacy",
+            "ExpressionAttributeNames": {"#config": "config", "#status": "status"},
+        }
+        response = self.table.scan(**scan_kwargs)
         items = response["Items"]
         while "LastEvaluatedKey" in response:
-            response = self.table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
+            response = self.table.scan(
+                ExclusiveStartKey=response["LastEvaluatedKey"],
+                **scan_kwargs,
+            )
             items.extend(response["Items"])
         # Convert all ddb Numbers to floats to correctly serialize to json
         items = convert_decimal(items)

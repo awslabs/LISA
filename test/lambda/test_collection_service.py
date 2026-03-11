@@ -15,7 +15,7 @@
 
 import os
 import sys
-from unittest.mock import Mock
+from unittest.mock import MagicMock, Mock
 
 import pytest
 
@@ -282,9 +282,9 @@ def test_create_collection_lambda_with_embedding_model():
     )
 
     with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
-        "repository.lambda_functions.collection_service"
-    ) as mock_service, patch("utilities.auth.is_admin") as mock_is_admin:
-
+        "repository.lambda_functions._get_collection_service", return_value=MagicMock()
+    ) as mock_get_service, patch("utilities.auth.is_admin") as mock_is_admin:
+        mock_service = mock_get_service.return_value
         mock_get_repo.return_value = mock_repository
         mock_service.create_collection.return_value = mock_collection
         mock_is_admin.return_value = True  # Mock admin check to pass
@@ -347,9 +347,9 @@ def test_create_collection_lambda_without_embedding_model_with_repository_defaul
     )
 
     with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
-        "repository.lambda_functions.collection_service"
-    ) as mock_service, patch("utilities.auth.is_admin") as mock_is_admin:
-
+        "repository.lambda_functions._get_collection_service", return_value=MagicMock()
+    ) as mock_get_service, patch("utilities.auth.is_admin") as mock_is_admin:
+        mock_service = mock_get_service.return_value
         mock_get_repo.return_value = mock_repository
         mock_service.create_collection.return_value = mock_collection
         mock_is_admin.return_value = True  # Mock admin check to pass
@@ -402,9 +402,9 @@ def test_create_collection_lambda_without_embedding_model_no_repository_default(
     }
 
     with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
-        "repository.lambda_functions.collection_service"
-    ) as mock_service, patch("utilities.auth.is_admin") as mock_is_admin:
-
+        "repository.lambda_functions._get_collection_service", return_value=MagicMock()
+    ) as mock_get_service, patch("utilities.auth.is_admin") as mock_is_admin:
+        mock_service = mock_get_service.return_value
         mock_get_repo.return_value = mock_repository
         mock_is_admin.return_value = True  # Mock admin check to pass
 
@@ -464,9 +464,9 @@ def test_create_collection_lambda_original_payload():
     )
 
     with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
-        "repository.lambda_functions.collection_service"
-    ) as mock_service, patch("utilities.auth.is_admin") as mock_is_admin:
-
+        "repository.lambda_functions._get_collection_service", return_value=MagicMock()
+    ) as mock_get_service, patch("utilities.auth.is_admin") as mock_is_admin:
+        mock_service = mock_get_service.return_value
         mock_get_repo.return_value = mock_repository
         mock_service.create_collection.return_value = mock_collection
         mock_is_admin.return_value = True  # Mock admin check to pass

@@ -141,7 +141,7 @@ class TestRepositoryUpdateMetadataPreservation:
         }
 
         # Act
-        with patch("repository.lambda_functions.vs_repo", mock_vector_store_repo), patch(
+        with patch("repository.lambda_functions._get_vs_repo", return_value=mock_vector_store_repo), patch(
             "repository.lambda_functions.build_pipeline_configs_from_kb_config"
         ) as mock_build_pipelines, patch("utilities.auth.is_admin", return_value=True), patch(
             "utilities.auth.user_has_group_access", return_value=True
@@ -213,7 +213,7 @@ class TestRepositoryUpdateMetadataPreservation:
         }
 
         # Act
-        with patch("repository.lambda_functions.vs_repo", mock_vector_store_repo), patch(
+        with patch("repository.lambda_functions._get_vs_repo", return_value=mock_vector_store_repo), patch(
             "utilities.auth.is_admin", return_value=True
         ), patch("utilities.auth.user_has_group_access", return_value=True):
             _result = update_repository(event, lambda_context)
@@ -270,7 +270,7 @@ class TestRepositoryUpdateMetadataPreservation:
         }
 
         # Act
-        with patch("repository.lambda_functions.vs_repo", mock_vector_store_repo), patch(
+        with patch("repository.lambda_functions._get_vs_repo", return_value=mock_vector_store_repo), patch(
             "utilities.auth.is_admin", return_value=True
         ), patch("utilities.auth.user_has_group_access", return_value=True):
             _result = update_repository(event, lambda_context)
@@ -322,7 +322,7 @@ class TestRepositoryUpdateMetadataPreservation:
         }
 
         # Act
-        with patch("repository.lambda_functions.vs_repo", mock_vector_store_repo), patch(
+        with patch("repository.lambda_functions._get_vs_repo", return_value=mock_vector_store_repo), patch(
             "utilities.auth.is_admin", return_value=True
         ), patch("utilities.auth.user_has_group_access", return_value=True):
             _result = update_repository(event, lambda_context)
@@ -371,7 +371,7 @@ class TestRepositoryUpdateMetadataPreservation:
         }
 
         # Act
-        with patch("repository.lambda_functions.vs_repo", mock_vector_store_repo), patch(
+        with patch("repository.lambda_functions._get_vs_repo", return_value=mock_vector_store_repo), patch(
             "repository.lambda_functions.build_pipeline_configs_from_kb_config"
         ) as mock_build_pipelines, patch("utilities.auth.is_admin", return_value=True), patch(
             "utilities.auth.user_has_group_access", return_value=True

@@ -82,11 +82,46 @@ s3 = session.client(
         signature_version="s3v4",
     ),
 )
-doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"])
-vs_repo = VectorStoreRepository()
-ingestion_service = DocumentIngestionService()
-ingestion_job_repository = IngestionJobRepository()
-collection_service = CollectionService(vector_store_repo=vs_repo, document_repo=doc_repo)
+_vs_repo: VectorStoreRepository | None = None
+_doc_repo: RagDocumentRepository | None = None
+_collection_service: CollectionService | None = None
+_ingestion_service: DocumentIngestionService | None = None
+_ingestion_job_repository: IngestionJobRepository | None = None
+
+
+def _get_vs_repo() -> VectorStoreRepository:
+    global _vs_repo
+    if _vs_repo is None:
+        _vs_repo = VectorStoreRepository()
+    return _vs_repo
+
+
+def _get_doc_repo() -> RagDocumentRepository:
+    global _doc_repo
+    if _doc_repo is None:
+        _doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"])
+    return _doc_repo
+
+
+def _get_collection_service() -> CollectionService:
+    global _collection_service
+    if _collection_service is None:
+        _collection_service = CollectionService(vector_store_repo=_get_vs_repo(), document_repo=_get_doc_repo())
+    return _collection_service
+
+
+def _get_ingestion_service() -> DocumentIngestionService:
+    global _ingestion_service
+    if _ingestion_service is None:
+        _ingestion_service = DocumentIngestionService()
+    return _ingestion_service
+
+
+def _get_ingestion_job_repository() -> IngestionJobRepository:
+    global _ingestion_job_repository
+    if _ingestion_job_repository is None:
+        _ingestion_job_repository = IngestionJobRepository()
+    return _ingestion_job_repository
 
 
 @api_wrapper
@@ -102,7 +137,7 @@ def list_all(event: dict, context: dict) -> list[dict[str, Any]]:
         List of repository configurations user can access
     """
     _, is_admin, groups = get_user_context(event)
-    registered_repositories = vs_repo.get_registered_repositories()
+    registered_repositories = _get_vs_repo().get_registered_repositories()
     return [
         repo
         for repo in registered_repositories
@@ -119,7 +154,7 @@ def list_status(event: dict, context: dict) -> dict[str, Any]:
     Returns:
         List of repository status
     """
-    return cast(dict, vs_repo.get_repository_status())
+    return cast(dict, _get_vs_repo().get_repository_status())
 
 
 def enrich_metadata_with_document_id(
@@ -148,7 +183,7 @@ def enrich_metadata_with_document_id(
             try:
                 # Query RAG document table by source using the ACTUAL collection_id from search
                 # Not the metadata's collectionId which may be "default" in vector store
-                rag_doc = doc_repo.find_one_by_source(
+                rag_doc = _get_doc_repo().find_one_by_source(
                     repository_id=repository_id, collection_id=search_collection_id, source=source
                 )
 
@@ -212,7 +247,7 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
     is_default = collection_id is not None and collection_id == repository.get("embeddingModelId")
     # Determine embedding model
     model_name = (
-        collection_service.get_collection_model(
+        _get_collection_service().get_collection_model(
             repository_id=repository_id,
             collection_id=collection_id if not is_default else None,  # type: ignore[arg-type]
             username=username,
@@ -268,7 +303,7 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
 
 def get_repository(event: dict[str, Any], repository_id: str) -> dict[str, Any]:
     """Ensures a user has access to the repository or else raises an HTTPException."""
-    repo: dict[str, Any] = vs_repo.find_repository_by_id(repository_id)
+    repo: dict[str, Any] = _get_vs_repo().find_repository_by_id(repository_id)
 
     # Admins have access to all repositories
     if is_admin(event):
@@ -314,7 +349,7 @@ def create_bedrock_collection(event: dict, context: dict) -> dict[str, Any]:
         logger.info(f"Creating collection(s) for Bedrock KB repository: {repository_id}")
 
         # Get repository configuration
-        repository = vs_repo.find_repository_by_id(repository_id=repository_id)
+        repository = _get_vs_repo().find_repository_by_id(repository_id=repository_id)
 
         # Get pipeline configurations - each pipeline should have a collectionId
         pipelines = repository.get("pipelines", [])
@@ -343,7 +378,7 @@ def create_bedrock_collection(event: dict, context: dict) -> dict[str, Any]:
 
             # Check if collection already exists
             try:
-                existing_collection = collection_service.get_collection(
+                existing_collection = _get_collection_service().get_collection(
                     repository_id=repository_id,
                     collection_id=collection_id,
                     username="system",
@@ -369,7 +404,7 @@ def create_bedrock_collection(event: dict, context: dict) -> dict[str, Any]:
             )
 
             # Save the collection
-            collection_service.create_collection(collection=collection, username="system")
+            _get_collection_service().create_collection(collection=collection, username="system")
             logger.info(f"Successfully saved collection: {collection.collectionId}")
             created_collections.append(collection.model_dump(mode="json"))
 
@@ -386,8 +421,8 @@ def create_bedrock_collection(event: dict, context: dict) -> dict[str, Any]:
                 )
 
                 job_id = create_s3_scan_job(
-                    ingestion_job_repository=ingestion_job_repository,
-                    ingestion_service=ingestion_service,
+                    ingestion_job_repository=_get_ingestion_job_repository(),
+                    ingestion_service=_get_ingestion_service(),
                     repository_id=repository_id,
                     collection_id=collection_id,
                     embedding_model=collection.embeddingModel,
@@ -427,7 +462,7 @@ def create_default_collection(event: dict, context: dict) -> dict[str, Any]:
         if not repository_id:
             raise ValidationError("repositoryId is required in ragConfig")
 
-        repository = vs_repo.find_repository_by_id(repository_id)
+        repository = _get_vs_repo().find_repository_by_id(repository_id)
         service = RepositoryServiceFactory.create_service(repository)
 
         if not service.should_create_default_collection():
@@ -438,7 +473,7 @@ def create_default_collection(event: dict, context: dict) -> dict[str, Any]:
             return {"skipped": True, "reason": "no embeddingModelId configured"}
 
         try:
-            collection_service.create_collection(collection=default_collection, username="system")
+            _get_collection_service().create_collection(collection=default_collection, username="system")
             logger.info(f"Persisted default collection {default_collection.collectionId} for {repository_id}")
         except Exception as e:
             if "already exists" in str(e).lower():
@@ -452,7 +487,7 @@ def create_default_collection(event: dict, context: dict) -> dict[str, Any]:
             for p in pipelines
         ]
         if updated_pipelines != pipelines:
-            vs_repo.update(repository_id, {"pipelines": updated_pipelines})
+            _get_vs_repo().update(repository_id, {"pipelines": updated_pipelines})
             logger.info(f"Updated pipeline collectionId to {default_collection.collectionId} for {repository_id}")
 
         return {"collectionId": default_collection.collectionId, "repositoryId": repository_id}
@@ -521,7 +556,7 @@ def create_collection(event: dict, context: dict) -> dict[str, Any]:
         )
 
     # Create collection via service
-    created_collection = collection_service.create_collection(
+    created_collection = _get_collection_service().create_collection(
         collection=collection,
         username=username,
     )
@@ -578,7 +613,7 @@ def get_collection(event: dict, context: dict) -> dict[str, Any]:
         collection = service.create_default_collection()
     else:
         # Get collection via service (includes access control check)
-        collection = collection_service.get_collection(
+        collection = _get_collection_service().get_collection(
             repository_id=repository_id,
             collection_id=collection_id,
             username=username,
@@ -643,7 +678,7 @@ def update_collection(event: dict, context: dict) -> dict[str, Any]:
     request = SimpleNamespace(**body)
 
     # Update collection via service (includes access control check)
-    updated_collection = collection_service.update_collection(
+    updated_collection = _get_collection_service().update_collection(
         collection_id=collection_id,
         repository_id=repository_id,
         collection_data=request,
@@ -701,7 +736,7 @@ def delete_collection(event: dict, context: dict) -> dict[str, Any]:
 
     is_default_collection = repo.get("embeddingModelId") == collection_id
     # Delete collection via service
-    result: dict[str, Any] = collection_service.delete_collection(
+    result: dict[str, Any] = _get_collection_service().delete_collection(
         repository_id=repository_id,
         collection_id=collection_id,  # None for default collections
         embedding_name=embedding_name if is_default_collection else None,  # None for regular collections
@@ -752,8 +787,8 @@ def list_collections(event: dict, context: dict) -> dict[str, Any]:
     # Get user context
     username, is_admin, groups = get_user_context(event)
 
-    # Ensure repository exists and user has access
-    _ = get_repository(event, repository_id=repository_id)
+    # Ensure repository exists and user has access (reuse for list_collections to avoid extra DDB call)
+    repository = get_repository(event, repository_id=repository_id)
 
     # Parse query parameters
     query_params = event.get("queryStringParameters", {}) or {}
@@ -777,13 +812,14 @@ def list_collections(event: dict, context: dict) -> dict[str, Any]:
     # sort_order = sort_params.sort_order
 
     # List collections via service (includes access control filtering)
-    collections, next_key = collection_service.list_collections(
+    collections, next_key = _get_collection_service().list_collections(
         repository_id=repository_id,
         username=username,
         user_groups=groups,
         is_admin=is_admin,
         page_size=page_size,
         last_evaluated_key=last_evaluated_key,
+        repository=repository,
     )
 
     # Calculate pagination metadata
@@ -800,7 +836,7 @@ def list_collections(event: dict, context: dict) -> dict[str, Any]:
     # Only calculate total count if no filters are applied (for performance)
     if not filter_text and not status_filter:
         try:
-            total_count = collection_service.count_collections(repository_id=repository_id)
+            total_count = _get_collection_service().count_collections(repository_id=repository_id)
 
             # Calculate page numbers if we have total count
             if total_count is not None:
@@ -879,7 +915,7 @@ def list_user_collections(event: dict, context: dict) -> dict[str, Any]:
     sort_params = SortParams.from_query_params(query_params)
 
     # List collections via service
-    collections, next_token = collection_service.list_all_user_collections(
+    collections, next_token = _get_collection_service().list_all_user_collections(
         username=username,
         user_groups=groups,
         is_admin=is_admin,
@@ -970,7 +1006,7 @@ def delete_documents(event: dict, context: dict) -> dict[str, Any]:
         rag_documents = [
             doc
             for doc in (
-                doc_repo.find_by_id(document_id=document_id)
+                _get_doc_repo().find_by_id(document_id=document_id)
                 for document_id in document_ids  # type: ignore[arg-type,unused-ignore]
             )
             if doc is not None
@@ -983,14 +1019,14 @@ def delete_documents(event: dict, context: dict) -> dict[str, Any]:
 
     # todo don't delete object from s3 if still referenced by another repository/collection
     # delete s3 files if
-    doc_repo.delete_s3_docs(repository_id, rag_documents)
+    _get_doc_repo().delete_s3_docs(repository_id, rag_documents)
 
     jobs = []
     for rag_document in rag_documents:
         logger.info(f"Deleting document {rag_document.model_dump()}")
 
         # lookup previous ingestion job, or create one (if document was ingested before batch was implemented)
-        ingestion_job = ingestion_job_repository.find_by_document(rag_document.document_id)
+        ingestion_job = _get_ingestion_job_repository().find_by_document(rag_document.document_id)
         if ingestion_job is None:
             ingestion_job = IngestionJob(
                 document_id=rag_document.document_id,
@@ -1003,8 +1039,8 @@ def delete_documents(event: dict, context: dict) -> dict[str, Any]:
                 status=IngestionStatus.DELETE_PENDING,
             )
 
-        ingestion_job_repository.save(ingestion_job)
-        ingestion_service.create_delete_job(ingestion_job)
+        _get_ingestion_job_repository().save(ingestion_job)
+        _get_ingestion_service().create_delete_job(ingestion_job)
         logger.info(f"Deleting document {rag_document.source} for repository {rag_document.repository_id}")
 
         jobs.append(
@@ -1078,13 +1114,17 @@ def ingest_documents(event: dict, context: dict) -> dict:
     # Get collection if specified
     collection: dict[str, Any] | None = None
     if request.collectionId and request.collectionId != repository.get("embeddingModelId"):
-        collection = collection_service.get_collection(
-            collection_id=request.collectionId,
-            repository_id=repository_id,
-            username=username,
-            user_groups=groups,
-            is_admin=is_admin,
-        ).model_dump()
+        collection = (
+            _get_collection_service()
+            .get_collection(
+                collection_id=request.collectionId,
+                repository_id=repository_id,
+                username=username,
+                user_groups=groups,
+                is_admin=is_admin,
+            )
+            .model_dump()
+        )
 
     # For Bedrock KB repositories, upload metadata files BEFORE documents
     is_bedrock_kb = RepositoryType.is_type(repository, RepositoryType.BEDROCK_KB)
@@ -1093,7 +1133,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
     # Create jobs
     jobs = []
     for key in request.keys:
-        job = ingestion_service.create_ingestion_job(
+        job = _get_ingestion_service().create_ingestion_job(
             repository=repository,
             collection=collection,
             request=request,
@@ -1103,7 +1143,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
             metadata=request.metadata,
             ingestion_type=IngestionType.MANUAL,
         )
-        ingestion_job_repository.save(job)
+        _get_ingestion_job_repository().save(job)
         if is_bedrock_kb:
             # Upload metadata file
             try:
@@ -1116,7 +1156,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
                 logger.info(f"Uploaded metadata file for {key}")
             except Exception as e:
                 logger.error(f"Failed to upload metadata file for {key}: {e}")
-        ingestion_service.submit_create_job(job)
+        _get_ingestion_service().submit_create_job(job)
         jobs.append({"jobId": job.id, "documentId": job.document_id, "status": job.status, "s3Path": job.s3_path})
 
     collection_id = job.collection_id
@@ -1150,7 +1190,7 @@ def get_document(event: dict, context: dict) -> dict[str, Any]:
     if not isinstance(repository_id, str):
         raise ValidationError("repositoryId must be a string")
     _ = get_repository(event, repository_id=repository_id)
-    doc = doc_repo.find_by_id(document_id=document_id)
+    doc = _get_doc_repo().find_by_id(document_id=document_id)
 
     result: dict[str, Any] = doc.model_dump()  # type: ignore[union-attr]
     return result
@@ -1178,7 +1218,7 @@ def download_document(event: dict, context: dict) -> str:
     if not repository_id:
         raise ValidationError("repositoryId is required")
     _ = get_repository(event, repository_id=repository_id)
-    doc = doc_repo.find_by_id(document_id=document_id)  # type: ignore[arg-type]
+    doc = _get_doc_repo().find_by_id(document_id=document_id)  # type: ignore[arg-type]
 
     source = doc.source  # type: ignore[union-attr]
     bucket, key = source.replace("s3://", "").split("/", 1)
@@ -1286,7 +1326,7 @@ def list_docs(event: dict, context: dict) -> dict[str, Any]:
     # Use shared pagination utility
     page_size = PaginationParams.parse_page_size(query_string_params)
 
-    docs, last_evaluated, total_documents = doc_repo.list_all(
+    docs, last_evaluated, total_documents = _get_doc_repo().list_all(
         repository_id=repository_id, collection_id=collection_id, last_evaluated_key=last_evaluated, limit=page_size
     )
     return {
@@ -1324,7 +1364,7 @@ def list_jobs(event: dict[str, Any], context: dict) -> dict[str, Any]:
     username, is_admin_user, _ = get_user_context(event)
 
     # Fetch jobs from repository
-    jobs, returned_last_evaluated_key = ingestion_job_repository.list_jobs_by_repository(
+    jobs, returned_last_evaluated_key = _get_ingestion_job_repository().list_jobs_by_repository(
         repository_id=params.repository_id,
         username=username,
         is_admin=is_admin_user,
@@ -1561,7 +1601,7 @@ def update_repository(event: dict, context: dict) -> dict[str, Any]:
         raise ValidationError(f"Invalid request: {e}")
 
     # Get current repository configuration to check for pipeline changes
-    current_repo = vs_repo.find_repository_by_id(repository_id, raw_config=True)
+    current_repo = _get_vs_repo().find_repository_by_id(repository_id, raw_config=True)
     current_config = current_repo.get("config", {})
     current_pipelines = current_config.get("pipelines")
 
@@ -1678,7 +1718,7 @@ def update_repository(event: dict, context: dict) -> dict[str, Any]:
     status = VectorStoreStatus.UPDATE_IN_PROGRESS if require_deployment else VectorStoreStatus.UPDATE_COMPLETE
 
     # Update repository
-    updated_config: dict[str, Any] = vs_repo.update(repository_id, updates, status=status)
+    updated_config: dict[str, Any] = _get_vs_repo().update(repository_id, updates, status=status)
 
     # Trigger infrastructure deployment if pipeline changed
     if require_deployment:
@@ -1742,12 +1782,12 @@ def delete(event: dict, context: dict) -> Any:
     if not repository_id:
         raise ValidationError("repositoryId is required")
 
-    repository = vs_repo.find_repository_by_id(repository_id=repository_id, raw_config=True)
+    repository = _get_vs_repo().find_repository_by_id(repository_id=repository_id, raw_config=True)
 
     # Delete all collections associated with this repository
     try:
         logger.info(f"Deleting all collections for repository: {repository_id}")
-        collections, _ = collection_service.list_collections(
+        collections, _ = _get_collection_service().list_collections(
             repository_id=repository_id,
             username="admin",
             user_groups=[],
@@ -1758,7 +1798,7 @@ def delete(event: dict, context: dict) -> Any:
         for collection in collections:
             try:
                 logger.info(f"Deleting collection: {collection.collectionId}")
-                collection_service.delete_collection(
+                _get_collection_service().delete_collection(
                     collection_id=collection.collectionId,
                     repository_id=repository_id,
                     embedding_name=collection.embeddingModel if collection.default else None,
@@ -1775,7 +1815,7 @@ def delete(event: dict, context: dict) -> Any:
 
     if repository.get("legacy", False) is True:
         _remove_legacy(repository_id)
-        vs_repo.delete(repository_id=repository_id)
+        _get_vs_repo().delete(repository_id=repository_id)
         return {"status": "success", "executionArn": "legacy"}
     else:
         # Fetch the ARN of the State Machine for deletion from the SSM Parameter Store
@@ -1836,7 +1876,7 @@ def list_bedrock_knowledge_bases(event: dict, context: dict) -> dict[str, Any]:
     active_kbs = [kb for kb in all_kbs if kb.status == "ACTIVE"]
 
     # Get all existing repositories to check which KBs are already in use
-    existing_repos = vs_repo.get_registered_repositories()
+    existing_repos = _get_vs_repo().get_registered_repositories()
     used_kb_ids = set()
 
     for repo in existing_repos:

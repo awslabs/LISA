@@ -26,6 +26,7 @@ import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { LAMBDA_PATH, MCP_WORKBENCH_PATH } from '../util';
+import { WORKBENCH_CONTAINER_MEMORY_RESERVATION, WORKBENCH_CONTAINER_MEMORY_LIMIT } from '../api-base/fastApiContainer';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
@@ -224,7 +225,8 @@ export class McpWorkbenchConstruct extends Construct {
                 sharedMemorySize: 0,
                 privileged: true
             },
-            containerMemoryReservationMiB: 1024,
+            containerMemoryReservationMiB: WORKBENCH_CONTAINER_MEMORY_RESERVATION,
+            memoryLimitMiB: WORKBENCH_CONTAINER_MEMORY_LIMIT,
             applicationTarget: {
                 port: 8000,
                 priority: 80,

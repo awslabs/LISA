@@ -25,9 +25,6 @@ export * from './ragConstruct';
  */
 export class LisaRagStack extends Stack {
 
-    // Used to link service role if OpenSeach is used
-    openSearchRegion?: string;
-
     /**
    * @param {Construct} scope - The parent or owner of the construct.
    * @param {string} id - The unique identifier for the construct within its scope.
@@ -38,8 +35,5 @@ export class LisaRagStack extends Stack {
 
         const rag = new LisaRagConstruct(this, id + 'Resources', props);
         rag.node.addMetadata('aws:cdk:path', this.node.path);
-        if (rag.openSearchRegion) {
-            rag.linkServiceRole(); // Ignore async response
-        }
     }
 }

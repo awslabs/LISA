@@ -29,11 +29,15 @@ import * as child_process from 'child_process';
 import * as path from 'path';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 
-// This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,
-// the container can have a hard time finding available RAM resources to start and the tasks will fail deployment
-const INSTANCE_MEMORY_RESERVATION = 1024;
-const SERVE_CONTAINER_MEMORY_RESERVATION = 1024 * 2;
-const WORKBENCH_CONTAINER_MEMORY_RESERVATION = 1024;
+// Memory reservations (soft limits) - what ECS uses for task placement decisions
+// Sized so that one REST + one Workbench task fully reserves the instance (~14 GiB usable on m5.xlarge)
+const SERVE_CONTAINER_MEMORY_RESERVATION = 1024 * 4; // 4 GiB soft reservation for REST/LiteLLM
+export const WORKBENCH_CONTAINER_MEMORY_RESERVATION = 1024 * 8; // 8 GiB soft reservation for MCP Workbench
+
+// Memory hard limits - maximum memory each container can use before being OOM killed
+// Sized for 1 task pair per m5.xlarge (16 GiB), leaving ~2 GiB for OS/ECS agent
+const SERVE_CONTAINER_MEMORY_LIMIT = 1024 * 4; // 4 GiB hard limit for REST/LiteLLM proxy
+export const WORKBENCH_CONTAINER_MEMORY_LIMIT = 1024 * 8; // 8 GiB hard limit for MCP Workbench (user code)
 
 
 /**
@@ -167,8 +171,10 @@ export class FastApiContainer extends Construct {
             },
             buildArgs,
             tasks: {},
-            // reserve at least enough memory for each task and a buffer for the instance to use
-            containerMemoryBuffer: Ec2Metadata.get(instanceType).memory - (INSTANCE_MEMORY_RESERVATION + SERVE_CONTAINER_MEMORY_RESERVATION + (config.deployMcpWorkbench ? WORKBENCH_CONTAINER_MEMORY_RESERVATION : 0)),
+            // containerMemoryBuffer is no longer used as a shared memoryLimitMiB across containers.
+            // Each container now specifies its own memoryLimitMiB via the task definition.
+            // This value is kept for backward compatibility but is not applied to containers.
+            containerMemoryBuffer: 0,
             instanceType,
             internetFacing: config.restApiConfig.internetFacing,
             loadBalancerConfig: {
@@ -207,6 +213,7 @@ export class FastApiContainer extends Construct {
                 sharedMemorySize: 0
             },
             containerMemoryReservationMiB: SERVE_CONTAINER_MEMORY_RESERVATION,
+            memoryLimitMiB: SERVE_CONTAINER_MEMORY_LIMIT,
             applicationTarget: {
                 port: 8080
             }

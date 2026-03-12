@@ -28,10 +28,12 @@ export const useModels = (
         (allModels || []).map((model) => ({
             label: model.status === ModelStatus.Stopped ? `${model.modelId} - Not Running` : model.modelId,
             value: model.modelId,
-            ...(model.status === ModelStatus.Stopped && {
-                disabled: true,
-                disabledReason: 'Stopped',
-            }),
+            ...(model.status === ModelStatus.Stopped
+                ? {
+                    disabled: true,
+                    disabledReason: 'Stopped',
+                }
+                : {}),
         })),
     [allModels]
     );

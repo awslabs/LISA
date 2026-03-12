@@ -22,4 +22,5 @@ from .schedule_handlers import (  # noqa: F401
     GetScheduleStatusHandler,
     UpdateScheduleHandler,
 )
+from .update_context_window_handler import UpdateContextWindowHandler  # noqa: F401
 from .update_model_handler import UpdateModelHandler  # noqa: F401

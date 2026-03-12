@@ -39,6 +39,8 @@ from .domain_objects import (
     GetScheduleStatusResponse,
     ListModelsResponse,
     SchedulingConfig,
+    UpdateContextWindowRequest,
+    UpdateContextWindowResponse,
     UpdateModelRequest,
     UpdateModelResponse,
     UpdateScheduleResponse,
@@ -52,6 +54,7 @@ from .handler import (
     GetScheduleHandler,
     GetScheduleStatusHandler,
     ListModelsHandler,
+    UpdateContextWindowHandler,
     UpdateModelHandler,
     UpdateScheduleHandler,
 )
@@ -304,6 +307,30 @@ async def delete_model(
 async def get_instances() -> list[str]:
     """Endpoint to list available instances in this region."""
     return list(sess.get_service_model("ec2").shape_for("InstanceType").enum)
+
+
+@app.put(path="/{model_id}/context-window")
+@require_admin("User does not have permission to update context window")
+async def update_context_window(
+    model_id: Annotated[str, Path(title="The unique model ID of the model to update context window for")],
+    update_request: UpdateContextWindowRequest,
+    request: Request,
+) -> UpdateContextWindowResponse:
+    """Override the context window for a specific model.
+
+    Useful when automatic enrichment during model creation failed, or when
+    the stored value is incorrect and needs to be corrected.
+    """
+    handler = UpdateContextWindowHandler(
+        autoscaling_client=autoscaling,
+        stepfunctions_client=stepfunctions,
+        model_table_resource=model_table,
+        guardrails_table_resource=guardrails_table,
+    )
+    try:
+        return handler(model_id=model_id, update_request=update_request)
+    except ModelNotFoundError as e:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=str(e))
 
 
 @app.post(path="/{model_id}/schedule")

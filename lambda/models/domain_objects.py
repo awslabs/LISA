@@ -324,7 +324,7 @@ class AutoScalingConfig(BaseModel):
     maxCapacity: PositiveInt
     desiredCapacity: PositiveInt | None = None
     cooldown: PositiveInt
-    defaultInstanceWarmup: PositiveInt
+    defaultInstanceWarmup: Annotated[int, Field(gt=0, le=3600)]
     metricConfig: MetricConfig
     scheduling: SchedulingConfig | None = None
 
@@ -349,7 +349,7 @@ class AutoScalingInstanceConfig(BaseModel):
     maxCapacity: PositiveInt | None = None
     desiredCapacity: PositiveInt | None = None
     cooldown: PositiveInt | None = None
-    defaultInstanceWarmup: PositiveInt | None = None
+    defaultInstanceWarmup: Annotated[int, Field(gt=0, le=3600)] | None = None
 
     @model_validator(mode="after")
     def validate_auto_scaling_instance_config(self) -> Self:
@@ -465,6 +465,7 @@ class LISAModel(BaseModel):
     features: list[ModelFeature] | None = None
     allowedGroups: list[str] | None = None
     guardrailsConfig: GuardrailsConfig | None = None
+    contextWindow: int | None = None
 
 
 class ApiResponseBase(BaseModel):
@@ -590,6 +591,18 @@ class UpdateModelRequest(BaseModel):
 
 class UpdateModelResponse(ApiResponseBase):
     """Defines response structure for model updates."""
+
+    pass
+
+
+class UpdateContextWindowRequest(BaseModel):
+    """Request body for manually setting a model's context window."""
+
+    contextWindow: int = Field(gt=0, description="The maximum context window size (number of tokens) for the model.")
+
+
+class UpdateContextWindowResponse(ApiResponseBase):
+    """Response for a single-model context window update."""
 
     pass
 

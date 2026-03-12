@@ -5,6 +5,90 @@
 LISA's Model Management UI allows Administrators to configure models for use with LISA.  LISA supports third party models that are hosted externally to LISA that are compatible with LiteLLM. LISA also supports self-hosting models within Amazon ECS. LISA's Model Management wizard walks Administrators through configuration steps.
 
 
+## Scaling Models
+
+### Overview
+
+LISA-hosted models run on Amazon ECS with EC2 Auto Scaling Groups (ASGs) that manage the underlying compute instances. Scaling configuration controls how many instances serve your model and how the system responds to changes in demand. Understanding these parameters helps you balance cost, availability, and performance for your workloads.
+
+### Auto Scaling Architecture
+
+Each LISA-hosted model is backed by:
+
+- An ECS cluster with an Auto Scaling Group that manages EC2 instances
+- An Application Load Balancer (ALB) that distributes traffic across instances
+- A target tracking scaling policy that adjusts capacity based on ALB metrics
+
+The ASG scales EC2 instances in and out, while ECS task count scaling ensures the right number of containers are running across those instances. Both layers use the same min/max capacity bounds.
+
+### Auto Scaling Configuration Parameters
+
+The following parameters are configurable through the Model Management UI under **Auto Scaling Configuration**:
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| Min Capacity | 1 | Minimum number of instances. The ASG will never scale below this value. Must be at least 1. |
+| Max Capacity | 2 | Maximum number of instances. The ASG will never scale above this value. Must be at least 1. |
+| Desired Capacity | — | The target number of running instances. Typically managed automatically by the scaling policy. |
+| Cooldown | 420s | Cool-down period in seconds between scaling activities. Prevents rapid scale-in/scale-out oscillation. |
+| Default Instance Warmup | 180s | Time in seconds for a newly launched instance to warm up before it contributes to scaling metrics. Maximum 3600s (1 hour). Larger models (e.g. gpt-oss-120b) will require a significantly longer warmup period — potentially close to the maximum — due to the time needed to download and load model weights into GPU memory. |
+| Block Device Volume Size | 50 GB | EBS volume size (in GB) attached to each instance. Minimum 30 GB. Larger models or those with significant disk I/O may need more. |
+
+### Scaling Metrics
+
+LISA supports two ALB-based scaling metrics. The metric determines what signal triggers scale-out and scale-in events:
+
+| Metric | Best For | Statistic | Description |
+|--------|----------|-----------|-------------|
+| `RequestCountPerTarget` | Embedding models, high-throughput workloads | Sample Count | Scales based on the number of requests per target. Set `targetValue` to the max requests per instance before scaling out (default: 30). |
+| `TargetResponseTime` | Text generation LLMs, latency-sensitive workloads | p90 | Scales based on response latency degradation. Set `targetValue` to the maximum acceptable p90 latency in seconds (e.g., 10). |
+
+#### Metric Configuration Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| ALB Metric Name | `RequestCountPerTarget` | The ALB metric used for scaling decisions. |
+| Target Value | 30 | Threshold for the chosen metric. Meaning depends on the metric: request count or latency in seconds. |
+| Duration | 60s | Evaluation period in seconds for the metric. |
+| Estimated Instance Warmup | 180s | Time in seconds until a newly launched instance begins sending metrics to CloudWatch. |
+
+### Scaling Recommendations
+
+#### Text Generation Models
+- Use `TargetResponseTime` as the scaling metric
+- Set `targetValue` to your acceptable p90 latency (e.g., 10 seconds)
+- These models are compute-intensive with longer inference times, so latency-based scaling reacts to actual user impact
+- Consider a higher `defaultInstanceWarmup` (300–3600s) since large models take time to load
+
+#### Embedding Models
+- Use `RequestCountPerTarget` as the scaling metric
+- Embedding requests are typically fast and uniform, so request volume is a reliable scaling signal
+- A lower `targetValue` (e.g., 20–50) keeps latency consistent under load
+
+#### Cost Optimization
+- Set `minCapacity` to 0 or 1 depending on whether you need always-on availability
+- Use [Model Scheduling](#model-scheduling) to automatically stop models during off-hours
+- Monitor actual utilization through CloudWatch to right-size `maxCapacity`
+- Increase `cooldown` to avoid unnecessary scaling churn during bursty traffic
+
+#### High Availability
+- Set `minCapacity` to at least 2 for production workloads to survive a single instance failure
+- Ensure `maxCapacity` provides enough headroom for peak traffic
+- Keep `defaultInstanceWarmup` accurate to avoid premature traffic routing to cold instances
+
+### Modifying Scaling Configuration
+
+Auto scaling parameters can be updated on running models without requiring a container restart. See [Update Capabilities by Hosting Type](#update-capabilities-by-hosting-type) for the full list of no-interruption updates.
+
+1. Navigate to `Administration` &#8594; `Model Management`
+2. Select the target model
+3. Select `Actions` &#8594; `Update`
+4. Navigate to **Auto Scaling Configuration** in the update wizard
+5. Adjust parameters as needed
+6. Submit the update
+
+The system validates that `minCapacity` does not exceed `maxCapacity` before applying changes.
+
 ## Updating Models
 
 ### Overview

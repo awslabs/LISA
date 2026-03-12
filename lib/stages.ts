@@ -54,6 +54,7 @@ import { LisaApiTokensStack } from './api-tokens';
 import fs from 'node:fs';
 import { VERSION_PATH } from './util';
 import { AdcLambdaCABundleAspect } from './util/adcCertBundleAspect';
+import { LambdaVersioningAspect } from './util/lambdaVersioningAspect';
 
 
 export const VERSION: string = fs.readFileSync(VERSION_PATH, 'utf8').trim();
@@ -530,6 +531,9 @@ export class LisaServeApplicationStage extends Stage {
                 Aspects.of(stack).add(new RemoveSecurityGroupAspect(config.securityGroupConfig?.modelSecurityGroupId));
             });
         }
+
+        // Apply Lambda versioning to all Lambda functions for rollback safety
+        Aspects.of(this).add(new LambdaVersioningAspect());
 
         // Enforce updates to EC2 launch templates
         Aspects.of(this).add(new UpdateLaunchTemplateMetadataOptions());

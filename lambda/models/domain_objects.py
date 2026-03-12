@@ -324,7 +324,7 @@ class AutoScalingConfig(BaseModel):
     maxCapacity: PositiveInt
     desiredCapacity: PositiveInt | None = None
     cooldown: PositiveInt
-    defaultInstanceWarmup: PositiveInt
+    defaultInstanceWarmup: Annotated[int, Field(gt=0, le=3600)]
     metricConfig: MetricConfig
     scheduling: SchedulingConfig | None = None
 
@@ -349,7 +349,7 @@ class AutoScalingInstanceConfig(BaseModel):
     maxCapacity: PositiveInt | None = None
     desiredCapacity: PositiveInt | None = None
     cooldown: PositiveInt | None = None
-    defaultInstanceWarmup: PositiveInt | None = None
+    defaultInstanceWarmup: Annotated[int, Field(gt=0, le=3600)] | None = None
 
     @model_validator(mode="after")
     def validate_auto_scaling_instance_config(self) -> Self:

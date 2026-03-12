@@ -22,6 +22,7 @@ import { Construct } from 'constructs';
 import { ECSCluster } from './ecsCluster';
 import { getModelIdentifier } from './utils';
 import { APP_MANAGEMENT_KEY, Ec2Metadata, EcsClusterConfig, EcsSourceType, PartialConfig } from '../../../lib/schema';
+import { createCdkId } from '../../../lib/core/utils';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 
 // Default memory buffer if not specified in config (2GB)
@@ -99,13 +100,17 @@ export class EcsModel extends Construct {
     *                   represent the environment variables for Docker at runtime.
     */
     private getEnvironmentVariables (config: PartialConfig, modelConfig: EcsClusterConfig): { [key: string]: string } {
+        const identifier = getModelIdentifier(modelConfig);
         const environment: { [key: string]: string } = {
             LOCAL_MODEL_PATH: `${config.nvmeContainerMountPath ?? '/nvme'}/model`,
             S3_BUCKET_MODELS: config.s3BucketModels ?? '',
             MODEL_NAME: modelConfig.modelName,
             LOCAL_CODE_PATH: modelConfig.localModelCode, // Only needed when s5cmd is used, but just keep for now
             AWS_REGION: config.region ?? '', // needed for s5cmd
-            MANAGEMENT_KEY_NAME: StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/${APP_MANAGEMENT_KEY}`)
+            MANAGEMENT_KEY_NAME: StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/${APP_MANAGEMENT_KEY}`),
+            // Used by metrics_publisher.py for CloudWatch dimensions
+            CLUSTER_NAME: createCdkId([config.deploymentName, identifier], 32, 2),
+            SERVICE_NAME: createCdkId([config.deploymentName, identifier], 32, 2),
         };
 
         if (modelConfig.modelType === 'embedding') {

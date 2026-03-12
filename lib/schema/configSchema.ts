@@ -902,6 +902,7 @@ export const RawConfigObject = z.object({
     useCustomBranding: z.boolean().optional().describe('Whether to use custom branding assets in the UI.'),
     customDisplayName: z.string().optional().describe('Custom display name to replace "LISA" branding in titles and descriptions. Requires "useCustomBranding" to be enabled.'),
     deployMetrics: z.boolean().default(true).describe('Whether to deploy Metrics stack.'),
+    deployHealthDashboard: z.boolean().default(true).describe('Whether to deploy the ECS Model Health CloudWatch dashboard for monitoring model container health, errors, latency, and resource utilization.'),
     deployMcp: z.boolean().default(true).describe('Whether to deploy LISA MCP stack.'),
     deployServe: z.boolean().default(true).describe('Whether to deploy LISA Serve stack.'),
     deployMcpWorkbench: z.boolean().default(true).describe('Whether to deploy MCP Workbench stack.'),

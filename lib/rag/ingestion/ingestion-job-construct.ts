@@ -37,7 +37,6 @@ import path from 'path';
 import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import * as fs from 'fs';
-import * as crypto from 'crypto';
 import { BATCH_INGESTION_PATH, CodeFactory, LAMBDA_PATH } from '../../util';
 
 // Props interface for the IngestionJobConstruct
@@ -67,7 +66,6 @@ export class IngestionJobConstruct extends Construct {
 
         const { config, vpc, layers, lambdaRole, baseEnvironment } = props;
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
-        const hash = crypto.randomBytes(6).toString('hex');
 
         // DynamoDB table for tracking ingestion jobs
         // Uses id as partition key with additional GSIs for querying by created date, s3 path and document id
@@ -111,7 +109,7 @@ export class IngestionJobConstruct extends Construct {
         // AWS Batch Fargate compute environment for running ingestion jobs
         const maxvCpus = this.getMaxCpus(vpc);
         const computeEnv = new batch.FargateComputeEnvironment(this, 'IngestionJobFargateEnv', {
-            computeEnvironmentName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job-${hash}`,
+            computeEnvironmentName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job`,
             vpc: vpc.vpc,
             vpcSubnets: vpc.subnetSelection,
             maxvCpus: maxvCpus,
@@ -119,7 +117,7 @@ export class IngestionJobConstruct extends Construct {
 
         // AWS Batch job queue that uses the Fargate compute environment
         const jobQueue = new batch.JobQueue(this, 'IngestionJobQueue', {
-            jobQueueName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job-${hash}`,
+            jobQueueName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job`,
             computeEnvironments: [
                 {
                     computeEnvironment: computeEnv,
@@ -175,7 +173,7 @@ export class IngestionJobConstruct extends Construct {
 
         // Create execution role for ECS tasks to pull images from ECR and write logs
         const executionRole = new iam.Role(this, 'BatchJobExecutionRole', {
-            roleName: `${config.deploymentName}-${config.deploymentStage}-batch-exec-role-${hash}`,
+            roleName: `${config.deploymentName}-${config.deploymentStage}-batch-exec-role`,
             assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
             description: 'Execution role for ECS Batch ingestion tasks',
         });
@@ -190,7 +188,7 @@ export class IngestionJobConstruct extends Construct {
 
         // AWS Batch job definition specifying container configuration
         const jobDefinition = new batch.EcsJobDefinition(this, 'IngestionJobDefinition', {
-            jobDefinitionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job-${hash}`,
+            jobDefinitionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job`,
             container: new batch.EcsFargateContainerDefinition(this, 'IngestionJobContainer', {
                 environment: baseEnvironment,
                 image,

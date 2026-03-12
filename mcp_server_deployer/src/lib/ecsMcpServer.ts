@@ -134,6 +134,7 @@ export class EcsMcpServer extends Construct {
                 modelCluster.albListener,
                 mcpServerConfig,
                 config,
+                subnetSelection,
             );
         }
 
@@ -153,6 +154,7 @@ export class EcsMcpServer extends Construct {
         albListener: ApplicationListener,
         mcpServerConfig: McpServerConfig,
         config: PartialConfig,
+        subnetSelection?: SubnetSelection,
     ): void {
         // Get authorizer ID from environment variable
         const authorizerId = process.env['LISA_AUTHORIZER_ID'];
@@ -176,7 +178,7 @@ export class EcsMcpServer extends Construct {
             vpc: vpc,
             internetFacing: false,
             loadBalancerName: createCdkId([identifier, 'NLB'], 32, 2).toLowerCase(),
-            vpcSubnets: {
+            vpcSubnets: subnetSelection ?? {
                 subnets: vpc.publicSubnets.length > 0 ? vpc.publicSubnets : vpc.privateSubnets,
             },
         });

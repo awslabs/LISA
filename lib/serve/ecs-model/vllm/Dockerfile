@@ -51,6 +51,9 @@ import tiktoken; \
 [tiktoken.get_encoding(enc) for enc in tiktoken.list_encoding_names()]" && \
     chmod -R 755 ${TIKTOKEN_CACHE_DIR}
 
+# Metrics publisher for CloudWatch (scrapes Prometheus /metrics endpoint)
+COPY metrics_publisher.py /opt/metrics_publisher.py
+
 COPY src/entrypoint.sh ./entrypoint.sh
 RUN chmod +x entrypoint.sh
 

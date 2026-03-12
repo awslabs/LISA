@@ -186,4 +186,15 @@ echo "Starting TEI with args: ${ADDITIONAL_ARGS}"
 echo "TEI environment variables:"
 env | grep -E "^(MAX_CONCURRENT_REQUESTS|MAX_BATCH_TOKENS|MAX_BATCH_REQUESTS|MAX_CLIENT_BATCH_SIZE|TOKENIZATION_WORKERS|REVISION|DTYPE|POOLING|DEFAULT_PROMPT|DENSE_PATH|SERVED_MODEL_NAME|AUTO_TRUNCATE|PAYLOAD_LIMIT|HF_TOKEN|API_KEY|OTLP_ENDPOINT|PROMETHEUS_PORT|CORS_ALLOW_ORIGIN)=" || echo "No TEI environment variables set"
 
+# Start metrics publisher in background (publishes Prometheus metrics to CloudWatch)
+# TEI exposes Prometheus metrics on a separate port (default 9000)
+if [ -f /opt/metrics_publisher.py ]; then
+    TEI_PROM_PORT="${PROMETHEUS_PORT:-9000}"
+    export METRICS_ENDPOINT="http://localhost:${TEI_PROM_PORT}/metrics"
+    echo "Starting metrics publisher daemon (endpoint: ${METRICS_ENDPOINT})..."
+    python3 /opt/metrics_publisher.py &
+    METRICS_PID=$!
+    echo "Metrics publisher started (PID: ${METRICS_PID})"
+fi
+
 text-embeddings-router --model-id $LOCAL_MODEL_PATH --port 8080 --json-output ${ADDITIONAL_ARGS}

@@ -306,6 +306,8 @@ export class MetricsConstruct extends Construct {
             }),
         );
 
+        // ECS Model Health is in a separate dashboard — see modelHealthDashboard.ts
+
         const env = {
             USAGE_METRICS_TABLE_NAME: usageMetricsTable.tableName
         };

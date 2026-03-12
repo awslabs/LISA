@@ -78,4 +78,12 @@ echo "Starting TGI with args: ${startArgs[*]}"
 echo "TGI environment variables:"
 env | grep -E "^(MAX_CONCURRENT_REQUESTS|MAX_INPUT_LENGTH|MAX_TOTAL_TOKENS|MAX_BATCH_PREFILL_TOKENS|MAX_BATCH_TOTAL_TOKENS|WAITING_SERVED_RATIO|QUANTIZE|DTYPE|TRUST_REMOTE_CODE|REVISION|NUM_SHARD|CUDA_VISIBLE_DEVICES|CUDA_MEMORY_FRACTION|ATTENTION|SPECULATE|ROPE_SCALING|ROPE_FACTOR|JSON_OUTPUT|LOG_LEVEL|OTLP_ENDPOINT|TOKENIZER_CONFIG_PATH|DISABLE_CUSTOM_KERNELS)=" || echo "No TGI environment variables set"
 
+# Start metrics publisher in background (publishes Prometheus metrics to CloudWatch)
+if [ -f /opt/metrics_publisher.py ]; then
+    echo "Starting metrics publisher daemon..."
+    python3 /opt/metrics_publisher.py &
+    METRICS_PID=$!
+    echo "Metrics publisher started (PID: ${METRICS_PID})"
+fi
+
 text-generation-launcher "${startArgs[@]}"

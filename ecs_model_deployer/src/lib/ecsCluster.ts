@@ -92,7 +92,7 @@ export class ECSCluster extends Construct {
         const cluster = new Cluster(this, createCdkId([identifier, 'Cl']), {
             clusterName: createCdkId([config.deploymentName, identifier], 32, 2),
             vpc: vpc,
-            containerInsightsV2: !config.region?.includes('iso') ? ContainerInsights.ENABLED : ContainerInsights.DISABLED,
+            containerInsightsV2: ContainerInsights.ENHANCED,
         });
 
         // SNS encryption key for ECS lifecycle hooks (AppSec Finding #5)

@@ -235,6 +235,7 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
                 ]}
             >
                 <Autosuggest
+                    data-testid='rag-repository-autosuggest'
                     disabled={isRunning}
                     statusType={isLoadingRepositories ? 'loading' : 'finished'}
                     loadingText='Loading repositories (might take few seconds)...'
@@ -251,6 +252,7 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
                     controlId='rag-repository-autosuggest'
                 />
                 <Autosuggest
+                    data-testid='rag-collection-autosuggest'
                     disabled={!selectedRepositoryOption || isRunning}
                     statusType={isLoadingCollections ? 'loading' : 'finished'}
                     loadingText='Loading collections...'

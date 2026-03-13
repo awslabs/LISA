@@ -1160,6 +1160,7 @@ export default function Chat ({ sessionId, initialStack }) {
                                     label={isImageGenerationMode || isVideoGenerationMode ? <StatusIndicator type='info'>{isImageGenerationMode ? 'Image Generation Mode' : 'Video Generation Mode'}</StatusIndicator> : undefined}
                                 >
                                     <Autosuggest
+                                        data-testid='model-selection-autosuggest'
                                         disabled={isRunning || session.history.length > 0}
                                         statusType={isFetchingModels ? 'loading' : 'finished'}
                                         loadingText='Loading models (might take few seconds)...'

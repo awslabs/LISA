@@ -110,6 +110,9 @@ export function deleteModelIfExists (modelId: string) {
                 .find('input[type="radio"]')
                 .click({ force: true });
 
+            // Set up intercept before triggering delete
+            cy.intercept('DELETE', '**/models/*').as('deleteModel');
+
             // Click the Actions dropdown
             cy.get('[data-testid="model-actions-dropdown"]').click();
 
@@ -121,7 +124,9 @@ export function deleteModelIfExists (modelId: string) {
                 .should('be.visible')
                 .click();
 
-            cy.wait(2000);
+            // Wait for delete API to complete and modal to close
+            cy.wait('@deleteModel', { timeout: 10000 });
+            cy.get('[data-testid="confirmation-modal-delete-btn"]').should('not.exist');
         }
     });
 }
@@ -181,6 +186,9 @@ export function verifyChatResponse (userMessage: string) {
  * Delete all chat sessions for the current user
  */
 export function deleteAllSessions () {
+    // Set up intercept before triggering delete
+    cy.intercept('DELETE', '**/session*').as('deleteSessions');
+
     // Click the Delete All Sessions button
     cy.get('button[aria-label="Delete All Sessions"]')
         .should('be.visible')
@@ -191,6 +199,7 @@ export function deleteAllSessions () {
         .should('be.visible')
         .click();
 
-    // Wait for deletion to complete
-    cy.wait(2000);
+    // Wait for delete API to complete and modal to close
+    cy.wait('@deleteSessions', { timeout: 10000 });
+    cy.get('[data-testid="confirmation-modal-delete-btn"]').should('not.exist');
 }

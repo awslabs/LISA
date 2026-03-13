@@ -89,8 +89,8 @@ export function switchToProjectsView () {
         .should('be.visible')
         .click();
 
-    // Wait for view to load
-    cy.wait(500);
+    // Wait for view toggle to update
+    cy.get(PROJECT_SELECTORS.PROJECTS_VIEW_BUTTON).should('have.attr', 'aria-pressed', 'true');
 }
 
 /**
@@ -101,8 +101,8 @@ export function switchToHistoryView () {
         .should('be.visible')
         .click();
 
-    // Wait for view to load
-    cy.wait(500);
+    // Wait for view toggle to update
+    cy.get(PROJECT_SELECTORS.HISTORY_VIEW_BUTTON).should('have.attr', 'aria-pressed', 'true');
 }
 
 /**

@@ -69,8 +69,11 @@ export function waitForInitialDataLoad () {
     cy.get('[data-testid="loading"], .awsui-spinner, .loading', { timeout: 5000 })
         .should('not.exist');
 
-    // Give the page more time to stabilize after auth and initial API calls
-    cy.wait(3000);
+    // Wait for the model selection input to be ready (indicates models API has loaded)
+    cy.get(CHAT_SELECTORS.MODEL_INPUT, { timeout: 15000 })
+        .first()
+        .should('be.visible')
+        .and('not.be.disabled');
 }
 
 /**

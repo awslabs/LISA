@@ -213,8 +213,9 @@ export function uploadDocument (filePath: string) {
                 .find('input[type="file"]')
                 .selectFile(`src/e2e/fixtures/${filePath}`, { force: true });
 
-            // Wait a moment for file to be attached
-            cy.wait(1000);
+            // Wait for file to be attached (file token appears in UI)
+            cy.get('[data-testid="rag-upload-file-input"]')
+                .should('contain.text', filePath.split('/').pop());
 
             // Click the Upload button to submit
             cy.contains('button', 'Upload')
@@ -427,7 +428,8 @@ export function deleteCollectionIfExists (collectionName: string) {
                 .should('be.visible')
                 .click();
 
-            cy.wait(2000);
+            // Wait for modal to close after deletion
+            cy.get('[data-testid="confirmation-modal-delete-btn"]', { timeout: 10000 }).should('not.exist');
         }
     });
 }

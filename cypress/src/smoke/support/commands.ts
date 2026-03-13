@@ -272,7 +272,7 @@ Cypress.Commands.add('loginAs', (role = 'user') => {
         cy.visit('/');
 
         // Click sign in to trigger OIDC flow
-        cy.contains('Sign in').click();
+        cy.contains('Sign in').click({ force: true });
 
         // Wait for the redirect and login to complete
         cy.contains('Sign in', { timeout: 10000 }).should('not.exist');

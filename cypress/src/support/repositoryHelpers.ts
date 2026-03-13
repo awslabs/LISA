@@ -250,7 +250,8 @@ export function deleteRepositoryIfExists (repositoryId: string) {
                 .should('be.visible')
                 .click();
 
-            cy.wait(2000);
+            // Wait for modal to close after deletion
+            cy.get('[data-testid="confirmation-modal-delete-btn"]', { timeout: 30000 }).should('not.exist');
         }
     });
 }

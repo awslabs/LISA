@@ -242,7 +242,8 @@ export function selectPromptTemplateInChat (templateTitle: string, templateType:
         .and('not.be.disabled')
         .click();
 
-    // Wait for modal to close and UI to stabilize
+    // Wait for modal to close and verify template content was applied
     cy.get(modalSelector).should('not.be.visible');
-    cy.wait(500);
+    cy.get('[data-testid="chat-prompt-textarea"] textarea, textarea[placeholder*="message" i]')
+        .should('not.have.value', '');
 }

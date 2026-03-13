@@ -19,6 +19,8 @@
  * Reusable helpers for RAG collection management and document operations.
  */
 
+import { navigateToAdminPage } from './adminHelpers';
+
 export type CollectionConfig = {
     collectionId: string;
     collectionName: string;
@@ -29,19 +31,17 @@ export type CollectionConfig = {
  * Navigate to the RAG Management page
  */
 export function navigateToRagManagement () {
-    cy.visit('/#/repository-management');
-    cy.url().should('include', '/repository-management');
-    cy.wait(1000);
+    navigateToAdminPage('RAG Management');
+    cy.url({ timeout: 30000 }).should('include', '/repository-management');
 }
 
 /**
  * Get the API base URL from the application's environment
  */
 function getApiBaseUrl (): Cypress.Chainable<string> {
-    return cy.window().then((win: any) => {
-        const apiBaseUrl = win.env?.API_BASE_URL || '';
-        return apiBaseUrl.replace(/\/+$/, ''); // Remove trailing slashes
-    });
+    // Get base URL from Cypress config and ensure it doesn't have trailing slash
+    const baseUrl = Cypress.config('baseUrl') as string;
+    return cy.wrap(baseUrl.replace(/\/+$/, ''));
 }
 
 /**
@@ -280,7 +280,8 @@ export function selectRagRepositoryInChat (repositoryId: string) {
         .click({ force: true });
 
     // Wait for dropdown to appear and select the repository
-    cy.get('[role="option"]')
+    cy.get('[role="option"]', { timeout: 10000 })
+        .should('be.visible')
         .contains(repositoryId)
         .should('be.visible')
         .click();

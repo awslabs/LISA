@@ -185,8 +185,8 @@ export class IngestionJobConstruct extends Construct {
         logGroup.grantWrite(executionRole);
 
         // AWS Batch job definition specifying container configuration
-        const jobDefinition = new batch.EcsJobDefinition(this, 'IngestionJobDefinition', {
-            jobDefinitionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job`,
+        const jobDefinition = new batch.EcsJobDefinition(this, 'IngestionJobDef', {
+            jobDefinitionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job-def`,
             container: new batch.EcsFargateContainerDefinition(this, 'IngestionJobContainer', {
                 environment: baseEnvironment,
                 image,

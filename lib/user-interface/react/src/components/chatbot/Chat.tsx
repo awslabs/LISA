@@ -1057,7 +1057,8 @@ export default function Chat ({ sessionId, initialStack }) {
                                     content: isModelStopped ? (
                                         <>
                                             This session uses the model <strong>{selectedModel?.modelId}</strong> which is stopped.
-                                            Start it from Model management or choose another model. You can view the conversation history but cannot send new messages until then.
+                                            Start it from Model management or start a new session with a different model.
+                                            You can view the conversation history but cannot send new messages until the model is started.
                                         </>
                                     ) : (
                                         <>

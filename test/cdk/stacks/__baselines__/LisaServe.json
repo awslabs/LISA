@@ -359,6 +359,7 @@
           }
         ],
         "MinSize": "1",
+        "NewInstancesProtectedFromScaleIn": true,
         "Tags": [
           {
             "Key": "Environment",
@@ -406,476 +407,6 @@
         }
       }
     },
-    "RestApiECSClustertestlisadevASGDrainECSHookFunctionServiceRole63B8BEE5": {
-      "Type": "AWS::IAM::Role",
-      "Properties": {
-        "AssumeRolePolicyDocument": {
-          "Statement": [
-            {
-              "Action": "sts:AssumeRole",
-              "Effect": "Allow",
-              "Principal": {
-                "Service": "lambda.amazonaws.com"
-              }
-            }
-          ],
-          "Version": "2012-10-17"
-        },
-        "ManagedPolicyArns": [
-          {
-            "Fn::Join": [
-              "",
-              [
-                "arn:",
-                {
-                  "Ref": "AWS::Partition"
-                },
-                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-              ]
-            ]
-          }
-        ],
-        "Tags": [
-          {
-            "Key": "Environment",
-            "Value": "dev"
-          },
-          {
-            "Key": "LISACluster",
-            "Value": "REST"
-          },
-          {
-            "Key": "Name",
-            "Value": "LisaServe/RestApi-ECSCluster/test-lisa-dev-ASG"
-          },
-          {
-            "Key": "ScheduleManaged",
-            "Value": "true"
-          }
-        ]
-      }
-    },
-    "RestApiECSClustertestlisadevASGDrainECSHookFunctionServiceRoleDefaultPolicy95F8B781": {
-      "Type": "AWS::IAM::Policy",
-      "Properties": {
-        "PolicyDocument": {
-          "Statement": [
-            {
-              "Action": [
-                "ec2:DescribeInstances",
-                "ec2:DescribeInstanceAttribute",
-                "ec2:DescribeInstanceStatus",
-                "ec2:DescribeHosts"
-              ],
-              "Effect": "Allow",
-              "Resource": "*"
-            },
-            {
-              "Action": "autoscaling:CompleteLifecycleAction",
-              "Effect": "Allow",
-              "Resource": {
-                "Fn::Join": [
-                  "",
-                  [
-                    "arn:",
-                    {
-                      "Ref": "AWS::Partition"
-                    },
-                    ":autoscaling:us-iso-east-1:012345678901:autoScalingGroup:*:autoScalingGroupName/",
-                    {
-                      "Ref": "RestApiECSClustertestlisadevASGCAE610D7"
-                    }
-                  ]
-                ]
-              }
-            },
-            {
-              "Action": [
-                "ecs:DescribeContainerInstances",
-                "ecs:DescribeTasks"
-              ],
-              "Condition": {
-                "ArnEquals": {
-                  "ecs:cluster": {
-                    "Fn::GetAtt": [
-                      "RestApiECSClustertestlisadevClC04148B6",
-                      "Arn"
-                    ]
-                  }
-                }
-              },
-              "Effect": "Allow",
-              "Resource": "*"
-            },
-            {
-              "Action": [
-                "ecs:ListContainerInstances",
-                "ecs:SubmitContainerStateChange",
-                "ecs:SubmitTaskStateChange"
-              ],
-              "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "RestApiECSClustertestlisadevClC04148B6",
-                  "Arn"
-                ]
-              }
-            },
-            {
-              "Action": [
-                "ecs:UpdateContainerInstancesState",
-                "ecs:ListTasks"
-              ],
-              "Condition": {
-                "ArnEquals": {
-                  "ecs:cluster": {
-                    "Fn::GetAtt": [
-                      "RestApiECSClustertestlisadevClC04148B6",
-                      "Arn"
-                    ]
-                  }
-                }
-              },
-              "Effect": "Allow",
-              "Resource": "*"
-            }
-          ],
-          "Version": "2012-10-17"
-        },
-        "PolicyName": "RestApiECSClustertestlisadevASGDrainECSHookFunctionServiceRoleDefaultPolicy95F8B781",
-        "Roles": [
-          {
-            "Ref": "RestApiECSClustertestlisadevASGDrainECSHookFunctionServiceRole63B8BEE5"
-          }
-        ]
-      }
-    },
-    "RestApiECSClustertestlisadevASGDrainECSHookFunctionB9703624": {
-      "Type": "AWS::Lambda::Function",
-      "Properties": {
-        "Code": {
-          "ZipFile": "import boto3, json, os, time\n\necs = boto3.client('ecs')\nautoscaling = boto3.client('autoscaling')\n\n\ndef lambda_handler(event, context):\n  print(json.dumps(dict(event, ResponseURL='...')))\n  cluster = os.environ['CLUSTER']\n  snsTopicArn = event['Records'][0]['Sns']['TopicArn']\n  lifecycle_event = json.loads(event['Records'][0]['Sns']['Message'])\n  instance_id = lifecycle_event.get('EC2InstanceId')\n  if not instance_id:\n    print(f\"Got event without EC2InstanceId: { json.dumps(dict(event, ResponseURL='...')) }\")\n    return\n\n  instance_arn = container_instance_arn(cluster, instance_id)\n  print('Instance %s has container instance ARN %s' % (lifecycle_event['EC2InstanceId'], instance_arn))\n\n  if not instance_arn:\n    return\n\n  task_arns = container_instance_task_arns(cluster, instance_arn)\n\n  if task_arns:\n    print('Instance ARN %s has task ARNs %s' % (instance_arn, ', '.join(task_arns)))\n\n  while has_tasks(cluster, instance_arn, task_arns):\n    time.sleep(10)\n\n  try:\n    print('Terminating instance %s' % instance_id)\n    autoscaling.complete_lifecycle_action(\n        LifecycleActionResult='CONTINUE',\n        **pick(lifecycle_event, 'LifecycleHookName', 'LifecycleActionToken', 'AutoScalingGroupName'))\n  except Exception as e:\n    # Lifecycle action may have already completed.\n    print(str(e))\n\n\ndef container_instance_arn(cluster, instance_id):\n  \"\"\"Turn an instance ID into a container instance ARN.\"\"\"\n  arns = ecs.list_container_instances(cluster=cluster, filter='ec2InstanceId==' + instance_id)['containerInstanceArns']\n  if not arns:\n    return None\n  return arns[0]\n\ndef container_instance_task_arns(cluster, instance_arn):\n  \"\"\"Fetch tasks for a container instance ARN.\"\"\"\n  arns = ecs.list_tasks(cluster=cluster, containerInstance=instance_arn)['taskArns']\n  return arns\n\ndef has_tasks(cluster, instance_arn, task_arns):\n  \"\"\"Return True if the instance is running tasks for the given cluster.\"\"\"\n  instances = ecs.describe_container_instances(cluster=cluster, containerInstances=[instance_arn])['containerInstances']\n  if not instances:\n    return False\n  instance = instances[0]\n\n  if instance['status'] == 'ACTIVE':\n    # Start draining, then try again later\n    set_container_instance_to_draining(cluster, instance_arn)\n    return True\n\n  task_count = None\n\n  if task_arns:\n    # Fetch details for tasks running on the container instance\n    tasks = ecs.describe_tasks(cluster=cluster, tasks=task_arns)['tasks']\n    if tasks:\n      # Consider any non-stopped tasks as running\n      task_count = sum(task['lastStatus'] != 'STOPPED' for task in tasks) + instance['pendingTasksCount']\n\n  if not task_count:\n    # Fallback to instance task counts if detailed task information is unavailable\n    task_count = instance['runningTasksCount'] + instance['pendingTasksCount']\n\n  print('Instance %s has %s tasks' % (instance_arn, task_count))\n\n  return task_count > 0\n\ndef set_container_instance_to_draining(cluster, instance_arn):\n  ecs.update_container_instances_state(\n      cluster=cluster,\n      containerInstances=[instance_arn], status='DRAINING')\n\n\ndef pick(dct, *keys):\n  \"\"\"Pick a subset of a dict.\"\"\"\n  return {k: v for k, v in dct.items() if k in keys}\n"
-        },
-        "Environment": {
-          "Variables": {
-            "CLUSTER": {
-              "Ref": "RestApiECSClustertestlisadevClC04148B6"
-            }
-          }
-        },
-        "Handler": "index.lambda_handler",
-        "Role": {
-          "Fn::GetAtt": [
-            "RestApiECSClustertestlisadevASGDrainECSHookFunctionServiceRole63B8BEE5",
-            "Arn"
-          ]
-        },
-        "Runtime": "python3.13",
-        "Tags": [
-          {
-            "Key": "Environment",
-            "Value": "dev"
-          },
-          {
-            "Key": "LISACluster",
-            "Value": "REST"
-          },
-          {
-            "Key": "Name",
-            "Value": "LisaServe/RestApi-ECSCluster/test-lisa-dev-ASG"
-          },
-          {
-            "Key": "ScheduleManaged",
-            "Value": "true"
-          }
-        ],
-        "Timeout": 310
-      },
-      "DependsOn": [
-        "RestApiECSClustertestlisadevASGDrainECSHookFunctionServiceRoleDefaultPolicy95F8B781",
-        "RestApiECSClustertestlisadevASGDrainECSHookFunctionServiceRole63B8BEE5"
-      ]
-    },
-    "RestApiECSClustertestlisadevASGDrainECSHookFunctionAllowInvokeLisaServeRestApiECSClustertestlisadevASGLifecycleHookDrainHookTopic7E3AEC6718E71340": {
-      "Type": "AWS::Lambda::Permission",
-      "Properties": {
-        "Action": "lambda:InvokeFunction",
-        "FunctionName": {
-          "Fn::GetAtt": [
-            "RestApiECSClustertestlisadevASGDrainECSHookFunctionB9703624",
-            "Arn"
-          ]
-        },
-        "Principal": "sns.amazonaws.com",
-        "SourceArn": {
-          "Ref": "RestApiECSClustertestlisadevASGLifecycleHookDrainHookTopic4A233E5E"
-        }
-      }
-    },
-    "RestApiECSClustertestlisadevASGDrainECSHookFunctionTopicBAEEB019": {
-      "Type": "AWS::SNS::Subscription",
-      "Properties": {
-        "Endpoint": {
-          "Fn::GetAtt": [
-            "RestApiECSClustertestlisadevASGDrainECSHookFunctionB9703624",
-            "Arn"
-          ]
-        },
-        "Protocol": "lambda",
-        "TopicArn": {
-          "Ref": "RestApiECSClustertestlisadevASGLifecycleHookDrainHookTopic4A233E5E"
-        }
-      }
-    },
-    "RestApiECSClustertestlisadevASGLifecycleHookDrainHookTopic4A233E5E": {
-      "Type": "AWS::SNS::Topic",
-      "Properties": {
-        "Tags": [
-          {
-            "Key": "Environment",
-            "Value": "dev"
-          },
-          {
-            "Key": "LISACluster",
-            "Value": "REST"
-          },
-          {
-            "Key": "Name",
-            "Value": "LisaServe/RestApi-ECSCluster/test-lisa-dev-ASG"
-          },
-          {
-            "Key": "ScheduleManaged",
-            "Value": "true"
-          }
-        ]
-      }
-    },
-    "RestApiECSClustertestlisadevASGLifecycleHookDrainHookRoleEA0CB372": {
-      "Type": "AWS::IAM::Role",
-      "Properties": {
-        "AssumeRolePolicyDocument": {
-          "Statement": [
-            {
-              "Action": "sts:AssumeRole",
-              "Effect": "Allow",
-              "Principal": {
-                "Service": "autoscaling.amazonaws.com"
-              }
-            }
-          ],
-          "Version": "2012-10-17"
-        },
-        "Tags": [
-          {
-            "Key": "Environment",
-            "Value": "dev"
-          },
-          {
-            "Key": "LISACluster",
-            "Value": "REST"
-          },
-          {
-            "Key": "Name",
-            "Value": "LisaServe/RestApi-ECSCluster/test-lisa-dev-ASG"
-          },
-          {
-            "Key": "ScheduleManaged",
-            "Value": "true"
-          }
-        ]
-      }
-    },
-    "RestApiECSClustertestlisadevASGLifecycleHookDrainHookRoleDefaultPolicyEC0162A6": {
-      "Type": "AWS::IAM::Policy",
-      "Properties": {
-        "PolicyDocument": {
-          "Statement": [
-            {
-              "Action": "sns:Publish",
-              "Effect": "Allow",
-              "Resource": {
-                "Ref": "RestApiECSClustertestlisadevASGLifecycleHookDrainHookTopic4A233E5E"
-              }
-            }
-          ],
-          "Version": "2012-10-17"
-        },
-        "PolicyName": "RestApiECSClustertestlisadevASGLifecycleHookDrainHookRoleDefaultPolicyEC0162A6",
-        "Roles": [
-          {
-            "Ref": "RestApiECSClustertestlisadevASGLifecycleHookDrainHookRoleEA0CB372"
-          }
-        ]
-      }
-    },
-    "RestApiECSClustertestlisadevASGLifecycleHookDrainHookAC6818CC": {
-      "Type": "AWS::AutoScaling::LifecycleHook",
-      "Properties": {
-        "AutoScalingGroupName": {
-          "Ref": "RestApiECSClustertestlisadevASGCAE610D7"
-        },
-        "DefaultResult": "CONTINUE",
-        "HeartbeatTimeout": 300,
-        "LifecycleTransition": "autoscaling:EC2_INSTANCE_TERMINATING",
-        "NotificationTargetARN": {
-          "Ref": "RestApiECSClustertestlisadevASGLifecycleHookDrainHookTopic4A233E5E"
-        },
-        "RoleARN": {
-          "Fn::GetAtt": [
-            "RestApiECSClustertestlisadevASGLifecycleHookDrainHookRoleEA0CB372",
-            "Arn"
-          ]
-        }
-      },
-      "DependsOn": [
-        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookRoleDefaultPolicyEC0162A6",
-        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookRoleEA0CB372"
-      ]
-    },
-    "RestApiECSClustertestlisadevASGASGRESTScaleInUpperPolicy4621F1CA": {
-      "Type": "AWS::AutoScaling::ScalingPolicy",
-      "Properties": {
-        "AdjustmentType": "ChangeInCapacity",
-        "AutoScalingGroupName": {
-          "Ref": "RestApiECSClustertestlisadevASGCAE610D7"
-        },
-        "MetricAggregationType": "Average",
-        "PolicyType": "StepScaling",
-        "StepAdjustments": [
-          {
-            "MetricIntervalLowerBound": 0,
-            "MetricIntervalUpperBound": 20,
-            "ScalingAdjustment": 2
-          },
-          {
-            "MetricIntervalLowerBound": 20,
-            "ScalingAdjustment": 1
-          }
-        ]
-      }
-    },
-    "RestApiECSClustertestlisadevASGASGRESTScaleInUpperAlarmCA336253": {
-      "Type": "AWS::CloudWatch::Alarm",
-      "Properties": {
-        "AlarmActions": [
-          {
-            "Ref": "RestApiECSClustertestlisadevASGASGRESTScaleInUpperPolicy4621F1CA"
-          }
-        ],
-        "AlarmDescription": "Upper threshold scaling alarm",
-        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
-        "Dimensions": [
-          {
-            "Name": "CapacityProviderName",
-            "Value": {
-              "Ref": "RestApiECSClustertestlisadevAsgCapacityProviderF18999A7"
-            }
-          },
-          {
-            "Name": "ClusterName",
-            "Value": {
-              "Ref": "RestApiECSClustertestlisadevClC04148B6"
-            }
-          }
-        ],
-        "EvaluationPeriods": 5,
-        "MetricName": "CapacityProviderReservation",
-        "Namespace": "AWS/ECS/CapacityProvider",
-        "Period": 60,
-        "Statistic": "Average",
-        "Tags": [
-          {
-            "Key": "Environment",
-            "Value": "dev"
-          },
-          {
-            "Key": "LISACluster",
-            "Value": "REST"
-          },
-          {
-            "Key": "Name",
-            "Value": "LisaServe/RestApi-ECSCluster/test-lisa-dev-ASG"
-          },
-          {
-            "Key": "ScheduleManaged",
-            "Value": "true"
-          }
-        ],
-        "Threshold": 40
-      }
-    },
-    "RestApiECSClustertestlisadevASGASGRESTScaleOutLowerPolicy2BDAE944": {
-      "Type": "AWS::AutoScaling::ScalingPolicy",
-      "Properties": {
-        "AdjustmentType": "ChangeInCapacity",
-        "AutoScalingGroupName": {
-          "Ref": "RestApiECSClustertestlisadevASGCAE610D7"
-        },
-        "MetricAggregationType": "Average",
-        "PolicyType": "StepScaling",
-        "StepAdjustments": [
-          {
-            "MetricIntervalLowerBound": -10,
-            "MetricIntervalUpperBound": 0,
-            "ScalingAdjustment": 2
-          },
-          {
-            "MetricIntervalUpperBound": -10,
-            "ScalingAdjustment": 1
-          }
-        ]
-      }
-    },
-    "RestApiECSClustertestlisadevASGASGRESTScaleOutLowerAlarm17D7099D": {
-      "Type": "AWS::CloudWatch::Alarm",
-      "Properties": {
-        "AlarmActions": [
-          {
-            "Ref": "RestApiECSClustertestlisadevASGASGRESTScaleOutLowerPolicy2BDAE944"
-          }
-        ],
-        "AlarmDescription": "Lower threshold scaling alarm",
-        "ComparisonOperator": "LessThanOrEqualToThreshold",
-        "Dimensions": [
-          {
-            "Name": "CapacityProviderName",
-            "Value": {
-              "Ref": "RestApiECSClustertestlisadevAsgCapacityProviderF18999A7"
-            }
-          },
-          {
-            "Name": "ClusterName",
-            "Value": {
-              "Ref": "RestApiECSClustertestlisadevClC04148B6"
-            }
-          }
-        ],
-        "EvaluationPeriods": 2,
-        "MetricName": "CapacityProviderReservation",
-        "Namespace": "AWS/ECS/CapacityProvider",
-        "Period": 60,
-        "Statistic": "Average",
-        "Tags": [
-          {
-            "Key": "Environment",
-            "Value": "dev"
-          },
-          {
-            "Key": "LISACluster",
-            "Value": "REST"
-          },
-          {
-            "Key": "Name",
-            "Value": "LisaServe/RestApi-ECSCluster/test-lisa-dev-ASG"
-          },
-          {
-            "Key": "ScheduleManaged",
-            "Value": "true"
-          }
-        ],
-        "Threshold": 90
-      }
-    },
     "RestApiECSClustertestlisadevAsgCapacityProviderF18999A7": {
       "Type": "AWS::ECS::CapacityProvider",
       "Properties": {
@@ -883,7 +414,11 @@
           "AutoScalingGroupArn": {
             "Ref": "RestApiECSClustertestlisadevASGCAE610D7"
           },
-          "ManagedTerminationProtection": "DISABLED"
+          "ManagedScaling": {
+            "Status": "ENABLED",
+            "TargetCapacity": 100
+          },
+          "ManagedTerminationProtection": "ENABLED"
         }
       }
     },
@@ -1594,7 +1129,7 @@
               "Timeout": 5
             },
             "Image": {
-              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:5bc2b6ae262b9766f68ce8f85e5d700ec853742b7a176698baa6f44e571b1aa5"
+              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:c260d335ffe21fb5a7d06c8657a2cbb7d17bce9c121f34207ef0acd9b8950740"
             },
             "LogConfiguration": {
               "LogDriver": "awslogs",
@@ -1606,8 +1141,8 @@
                 "awslogs-region": "us-iso-east-1"
               }
             },
-            "Memory": 11904,
-            "MemoryReservation": 2048,
+            "Memory": 4096,
+            "MemoryReservation": 4096,
             "MountPoints": [
               {
                 "ContainerPath": "/etc/pki",
@@ -1665,6 +1200,7 @@
           "MaximumPercent": 200,
           "MinimumHealthyPercent": 50
         },
+        "DesiredCount": 1,
         "EnableECSManagedTags": false,
         "HealthCheckGracePeriodSeconds": 60,
         "LoadBalancers": [
@@ -1685,27 +1221,142 @@
       "DependsOn": [
         "RestApiECSClusterRESTTRPolicy68D7DDA5",
         "RestApiECSClustertestlisadevASGCAE610D7",
-        "RestApiECSClustertestlisadevASGASGRESTScaleInUpperAlarmCA336253",
-        "RestApiECSClustertestlisadevASGASGRESTScaleInUpperPolicy4621F1CA",
-        "RestApiECSClustertestlisadevASGASGRESTScaleOutLowerAlarm17D7099D",
-        "RestApiECSClustertestlisadevASGASGRESTScaleOutLowerPolicy2BDAE944",
-        "RestApiECSClustertestlisadevASGDrainECSHookFunctionAllowInvokeLisaServeRestApiECSClustertestlisadevASGLifecycleHookDrainHookTopic7E3AEC6718E71340",
-        "RestApiECSClustertestlisadevASGDrainECSHookFunctionB9703624",
-        "RestApiECSClustertestlisadevASGDrainECSHookFunctionServiceRoleDefaultPolicy95F8B781",
-        "RestApiECSClustertestlisadevASGDrainECSHookFunctionServiceRole63B8BEE5",
-        "RestApiECSClustertestlisadevASGDrainECSHookFunctionTopicBAEEB019",
         "RestApiECSClustertestlisadevASGInstanceProfile5F0036EC",
         "RestApiECSClustertestlisadevASGInstanceRoleDefaultPolicy763E7201",
         "RestApiECSClustertestlisadevASGInstanceRole4F18B1DE",
         "RestApiECSClustertestlisadevASGLaunchConfigD5B6F73C",
-        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookAC6818CC",
-        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookRoleDefaultPolicyEC0162A6",
-        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookRoleEA0CB372",
-        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookTopic4A233E5E",
         "RestApiECSClustertestlisadevRESTALBRESTApplicationListener1A5BC4B4",
         "RestApiECSClustertestlisadevRESTALBRESTApplicationListenerRESTMCPWORKBENCHTgtGrpGroupD99D2C75",
         "RestApiECSClustertestlisadevRESTALBRESTApplicationListenerRESTMCPWORKBENCHTgtGrpRuleBDFA4026",
         "RestApiECSClustertestlisadevRESTALBRESTApplicationListenerRESTRESTTgtGrpGroup18249DCC"
+      ]
+    },
+    "RestApiECSClustertestlisaRESTEc2SvcTaskCountTarget661FF93C": {
+      "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+      "Properties": {
+        "MaxCapacity": 5,
+        "MinCapacity": 1,
+        "ResourceId": {
+          "Fn::Join": [
+            "",
+            [
+              "service/",
+              {
+                "Ref": "RestApiECSClustertestlisadevClC04148B6"
+              },
+              "/",
+              {
+                "Fn::GetAtt": [
+                  "RestApiECSClustertestlisaRESTEc2SvcServiceFD91C0F8",
+                  "Name"
+                ]
+              }
+            ]
+          ]
+        },
+        "RoleARN": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":iam::012345678901:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService"
+            ]
+          ]
+        },
+        "ScalableDimension": "ecs:service:DesiredCount",
+        "ServiceNamespace": "ecs"
+      },
+      "DependsOn": [
+        "RestApiECSClusterRESTTRPolicy68D7DDA5",
+        "RestApiECSClustertestlisadevASGCAE610D7",
+        "RestApiECSClustertestlisadevASGInstanceProfile5F0036EC",
+        "RestApiECSClustertestlisadevASGInstanceRoleDefaultPolicy763E7201",
+        "RestApiECSClustertestlisadevASGInstanceRole4F18B1DE",
+        "RestApiECSClustertestlisadevASGLaunchConfigD5B6F73C"
+      ]
+    },
+    "RestApiECSClustertestlisaRESTEc2SvcTaskCountTargetRESTReqScaling21469430": {
+      "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+      "Properties": {
+        "PolicyName": "LisaServeRestApiECSClustertestlisaRESTEc2SvcTaskCountTargetRESTReqScalingFA9B5208",
+        "PolicyType": "TargetTrackingScaling",
+        "ScalingTargetId": {
+          "Ref": "RestApiECSClustertestlisaRESTEc2SvcTaskCountTarget661FF93C"
+        },
+        "TargetTrackingScalingPolicyConfiguration": {
+          "PredefinedMetricSpecification": {
+            "PredefinedMetricType": "ALBRequestCountPerTarget",
+            "ResourceLabel": {
+              "Fn::Join": [
+                "",
+                [
+                  {
+                    "Fn::Select": [
+                      1,
+                      {
+                        "Fn::Split": [
+                          "/",
+                          {
+                            "Ref": "RestApiECSClustertestlisadevRESTALBRESTApplicationListener1A5BC4B4"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "/",
+                  {
+                    "Fn::Select": [
+                      2,
+                      {
+                        "Fn::Split": [
+                          "/",
+                          {
+                            "Ref": "RestApiECSClustertestlisadevRESTALBRESTApplicationListener1A5BC4B4"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "/",
+                  {
+                    "Fn::Select": [
+                      3,
+                      {
+                        "Fn::Split": [
+                          "/",
+                          {
+                            "Ref": "RestApiECSClustertestlisadevRESTALBRESTApplicationListener1A5BC4B4"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "/",
+                  {
+                    "Fn::GetAtt": [
+                      "RestApiECSClustertestlisadevRESTALBRESTApplicationListenerRESTRESTTgtGrpGroup18249DCC",
+                      "TargetGroupFullName"
+                    ]
+                  }
+                ]
+              ]
+            }
+          },
+          "ScaleInCooldown": 60,
+          "ScaleOutCooldown": 30,
+          "TargetValue": 1000
+        }
+      },
+      "DependsOn": [
+        "RestApiECSClusterRESTTRPolicy68D7DDA5",
+        "RestApiECSClustertestlisadevASGCAE610D7",
+        "RestApiECSClustertestlisadevASGInstanceProfile5F0036EC",
+        "RestApiECSClustertestlisadevASGInstanceRoleDefaultPolicy763E7201",
+        "RestApiECSClustertestlisadevASGInstanceRole4F18B1DE",
+        "RestApiECSClustertestlisadevASGLaunchConfigD5B6F73C"
       ]
     },
     "RestApiECSClusterMCPWORKBENCHTRPolicy0E033E1A": {
@@ -1948,7 +1599,7 @@
               "Timeout": 5
             },
             "Image": {
-              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:45348594e5091933701585dd93f2ec9d85971f42e97380b3d3ff2ba05d05870c"
+              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:459479ccc75028b8b6359caa7b52e292a781901f08a156b8dc10334074e567fa"
             },
             "LogConfiguration": {
               "LogDriver": "awslogs",
@@ -1960,8 +1611,8 @@
                 "awslogs-region": "us-iso-east-1"
               }
             },
-            "Memory": 11904,
-            "MemoryReservation": 1024,
+            "Memory": 8192,
+            "MemoryReservation": 8192,
             "MountPoints": [
               {
                 "ContainerPath": "/etc/pki",
@@ -2019,6 +1670,7 @@
           "MaximumPercent": 200,
           "MinimumHealthyPercent": 50
         },
+        "DesiredCount": 1,
         "EnableECSManagedTags": false,
         "HealthCheckGracePeriodSeconds": 60,
         "LoadBalancers": [
@@ -2039,24 +1691,139 @@
       "DependsOn": [
         "RestApiECSClusterMCPWORKBENCHTRPolicy0E033E1A",
         "RestApiECSClustertestlisadevASGCAE610D7",
-        "RestApiECSClustertestlisadevASGASGRESTScaleInUpperAlarmCA336253",
-        "RestApiECSClustertestlisadevASGASGRESTScaleInUpperPolicy4621F1CA",
-        "RestApiECSClustertestlisadevASGASGRESTScaleOutLowerAlarm17D7099D",
-        "RestApiECSClustertestlisadevASGASGRESTScaleOutLowerPolicy2BDAE944",
-        "RestApiECSClustertestlisadevASGDrainECSHookFunctionAllowInvokeLisaServeRestApiECSClustertestlisadevASGLifecycleHookDrainHookTopic7E3AEC6718E71340",
-        "RestApiECSClustertestlisadevASGDrainECSHookFunctionB9703624",
-        "RestApiECSClustertestlisadevASGDrainECSHookFunctionServiceRoleDefaultPolicy95F8B781",
-        "RestApiECSClustertestlisadevASGDrainECSHookFunctionServiceRole63B8BEE5",
-        "RestApiECSClustertestlisadevASGDrainECSHookFunctionTopicBAEEB019",
         "RestApiECSClustertestlisadevASGInstanceProfile5F0036EC",
         "RestApiECSClustertestlisadevASGInstanceRoleDefaultPolicy763E7201",
         "RestApiECSClustertestlisadevASGInstanceRole4F18B1DE",
         "RestApiECSClustertestlisadevASGLaunchConfigD5B6F73C",
-        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookAC6818CC",
-        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookRoleDefaultPolicyEC0162A6",
-        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookRoleEA0CB372",
-        "RestApiECSClustertestlisadevASGLifecycleHookDrainHookTopic4A233E5E",
         "RestApiECSClustertestlisadevRESTALBRESTApplicationListenerRESTMCPWORKBENCHTgtGrpRuleBDFA4026"
+      ]
+    },
+    "RestApiECSClustertestlisaMCPWORKBENCHEc2SvcTaskCountTarget7F3A2827": {
+      "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+      "Properties": {
+        "MaxCapacity": 5,
+        "MinCapacity": 1,
+        "ResourceId": {
+          "Fn::Join": [
+            "",
+            [
+              "service/",
+              {
+                "Ref": "RestApiECSClustertestlisadevClC04148B6"
+              },
+              "/",
+              {
+                "Fn::GetAtt": [
+                  "RestApiECSClustertestlisaMCPWORKBENCHEc2SvcService1642D1D0",
+                  "Name"
+                ]
+              }
+            ]
+          ]
+        },
+        "RoleARN": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":iam::012345678901:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService"
+            ]
+          ]
+        },
+        "ScalableDimension": "ecs:service:DesiredCount",
+        "ServiceNamespace": "ecs"
+      },
+      "DependsOn": [
+        "RestApiECSClusterMCPWORKBENCHTRPolicy0E033E1A",
+        "RestApiECSClustertestlisadevASGCAE610D7",
+        "RestApiECSClustertestlisadevASGInstanceProfile5F0036EC",
+        "RestApiECSClustertestlisadevASGInstanceRoleDefaultPolicy763E7201",
+        "RestApiECSClustertestlisadevASGInstanceRole4F18B1DE",
+        "RestApiECSClustertestlisadevASGLaunchConfigD5B6F73C"
+      ]
+    },
+    "RestApiECSClustertestlisaMCPWORKBENCHEc2SvcTaskCountTargetMCPWORKBENCHReqScaling3C96E135": {
+      "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+      "Properties": {
+        "PolicyName": "LisaServeRestApiECSClustertestlisaMCPWORKBENCHEc2SvcTaskCountTargetMCPWORKBENCHReqScalingA3821484",
+        "PolicyType": "TargetTrackingScaling",
+        "ScalingTargetId": {
+          "Ref": "RestApiECSClustertestlisaMCPWORKBENCHEc2SvcTaskCountTarget7F3A2827"
+        },
+        "TargetTrackingScalingPolicyConfiguration": {
+          "PredefinedMetricSpecification": {
+            "PredefinedMetricType": "ALBRequestCountPerTarget",
+            "ResourceLabel": {
+              "Fn::Join": [
+                "",
+                [
+                  {
+                    "Fn::Select": [
+                      1,
+                      {
+                        "Fn::Split": [
+                          "/",
+                          {
+                            "Ref": "RestApiECSClustertestlisadevRESTALBRESTApplicationListener1A5BC4B4"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "/",
+                  {
+                    "Fn::Select": [
+                      2,
+                      {
+                        "Fn::Split": [
+                          "/",
+                          {
+                            "Ref": "RestApiECSClustertestlisadevRESTALBRESTApplicationListener1A5BC4B4"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "/",
+                  {
+                    "Fn::Select": [
+                      3,
+                      {
+                        "Fn::Split": [
+                          "/",
+                          {
+                            "Ref": "RestApiECSClustertestlisadevRESTALBRESTApplicationListener1A5BC4B4"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "/",
+                  {
+                    "Fn::GetAtt": [
+                      "RestApiECSClustertestlisadevRESTALBRESTApplicationListenerRESTMCPWORKBENCHTgtGrpGroupD99D2C75",
+                      "TargetGroupFullName"
+                    ]
+                  }
+                ]
+              ]
+            }
+          },
+          "ScaleInCooldown": 60,
+          "ScaleOutCooldown": 30,
+          "TargetValue": 1000
+        }
+      },
+      "DependsOn": [
+        "RestApiECSClusterMCPWORKBENCHTRPolicy0E033E1A",
+        "RestApiECSClustertestlisadevASGCAE610D7",
+        "RestApiECSClustertestlisadevASGInstanceProfile5F0036EC",
+        "RestApiECSClustertestlisadevASGInstanceRoleDefaultPolicy763E7201",
+        "RestApiECSClustertestlisadevASGInstanceRole4F18B1DE",
+        "RestApiECSClustertestlisadevASGLaunchConfigD5B6F73C"
       ]
     },
     "FastApiEndpointF31771C0": {
@@ -2393,7 +2160,7 @@
                   }
                 ]
               },
-              "\\\",\\\"timestamp\\\":\\\"2026-02-27T15:34:05.868Z\\\"}\"}}"
+              "\\\",\\\"timestamp\\\":\\\"2026-03-13T17:21:20.059Z\\\"}\"}}"
             ]
           ]
         },
@@ -2440,7 +2207,7 @@
                   }
                 ]
               },
-              "\\\",\\\"timestamp\\\":\\\"2026-02-27T15:34:05.868Z\\\"}\"}}"
+              "\\\",\\\"timestamp\\\":\\\"2026-03-13T17:21:20.059Z\\\"}\"}}"
             ]
           ]
         },
@@ -2523,7 +2290,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f1ef0b7df9fbd6678b581ed85579e856c8f7832ce4e06e642f2c2421ef37c427.zip"
+          "S3Key": "56f7467bbde8a5efebcf57ae9e460027607099bab9f844669dcf5d800172ee5a.zip"
         },
         "Handler": "index.handler",
         "Role": {

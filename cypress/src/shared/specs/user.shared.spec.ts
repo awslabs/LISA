@@ -25,7 +25,10 @@
 
 import { checkNoAdminButton } from '../../support/adminHelpers';
 
-export function runUserTests () {
+export function runUserTests (options: {
+    verifyFixtureData?: boolean;
+} = {}) {
+    const { verifyFixtureData = false } = options;
     it('Non-admin does not see the Administration button', () => {
         // Wait for configuration to load before checking UI
         // cy.wait('@getConfiguration', { timeout: 30000 });

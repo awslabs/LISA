@@ -1,6 +1,6 @@
 {
   "name": "awslabs-lisa",
-  "version": "6.3.0",
+  "version": "6.4.0",
   "description": "A scalable infrastructure-as-code solution for self-hosting and orchestrating LLM inference with RAG capabilities, providing low-latency access to generative AI and embedding models across multiple providers.",
   "keywords": [
     "aws",
@@ -62,7 +62,7 @@
     "test:update-baselines": "jest --testPathPatterns=snapshot.test.ts -- --updateBaselines",
     "cdk": "cdk",
     "prepare": "husky || true",
-    "postinstall": "patch-package",
+    "postinstall": "patch-package && (cd lib/user-interface/react && npx patch-package)",
     "dev": "cd lib/user-interface/react/ && npm run dev",
     "prepublishOnly": "BUILD_ASSETS=true npm run build && npm run copy-dist -ws",
     "migrate-properties": "node ./scripts/migrate-properties.mjs",
@@ -74,24 +74,24 @@
     "@aws-sdk/client-iam": "^3.893.0",
     "@aws-sdk/client-ssm": "^3.893.0",
     "@cdklabs/cdk-enterprise-iac": "^0.1.0",
-    "@eslint/js": "^9.39.1",
+    "@eslint/js": "10.0.1",
     "@stylistic/eslint-plugin": "^5.6.1",
     "@types/jest": "^30.0.0",
     "@types/js-yaml": "^4.0.9",
     "@types/linkify-it": "^5.0.0",
     "@types/lodash": "^4.17.21",
-    "@types/node": "^24.10.2",
+    "@types/node": "^25.3.3",
     "@types/readline-sync": "^1.4.8",
     "@typescript-eslint/eslint-plugin": "^8.49.0",
     "@typescript-eslint/parser": "^8.49.0",
     "aws-cdk": "^2.1106.0",
     "depcheck": "^1.4.7",
     "esbuild": "^0.27.1",
-    "eslint": "^9.39.1",
+    "eslint": "^10.0.2",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.4.24",
-    "globals": "^16.5.0",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.4.0",
     "husky": "^9.1.7",
     "jest": "^30.2.0",
     "lightningcss": "^1.30.2",
@@ -102,7 +102,7 @@
     "tsx": "^4.21.0",
     "typescript": "~5.9.3",
     "wait-on": "^9.0.3",
-    "zod2md": "^0.2.4"
+    "zod2md": "^0.3.2"
   },
   "dependencies": {
     "@aws-sdk/util-dynamodb": "^3.893.0",
@@ -117,6 +117,10 @@
     "util": "^0.12.5",
     "zod": "^4.1.13"
   },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "4.59.0",
+    "@tailwindcss/oxide-linux-x64-gnu": "4.1.18"
+  },
   "peerDependencies": {
     "@cfworker/json-schema": "^4.1.0",
     "@types/lodash": "^4.17.14",
@@ -125,7 +129,9 @@
   },
   "overrides": {
     "@modelcontextprotocol/sdk": "^1.24.0",
-    "esbuild": "^0.27.1"
+    "esbuild": "^0.27.1",
+    "eslint": "^10.0.2",
+    "@eslint/js": "10.0.1"
   },
   "lint-staged": {
     "*.ts": [

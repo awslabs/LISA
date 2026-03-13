@@ -35,8 +35,7 @@ import path from 'path';
 import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import * as fs from 'fs';
-import * as crypto from 'crypto';
-import { BATCH_INGESTION_PATH, CodeFactory } from '../../util';
+import { BATCH_INGESTION_PATH, CodeFactory, LAMBDA_PATH } from '../../util';
 
 // Props interface for the IngestionJobConstruct
 export type IngestionJobConstructProps = StackProps & BaseProps & {
@@ -64,7 +63,7 @@ export class IngestionJobConstruct extends Construct {
         super(scope, id);
 
         const { config, vpc, layers, lambdaRole, baseEnvironment } = props;
-        const hash = crypto.randomBytes(6).toString('hex');
+        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
 
         // DynamoDB table for tracking ingestion jobs
         // Uses id as partition key with additional GSIs for querying by created date, s3 path and document id
@@ -108,7 +107,6 @@ export class IngestionJobConstruct extends Construct {
         // AWS Batch Fargate compute environment for running ingestion jobs
         const maxvCpus = this.getMaxCpus(vpc);
         const computeEnv = new batch.FargateComputeEnvironment(this, 'IngestionJobFargateEnv', {
-            computeEnvironmentName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job-${hash}`,
             vpc: vpc.vpc,
             vpcSubnets: vpc.subnetSelection,
             maxvCpus: maxvCpus,
@@ -116,7 +114,6 @@ export class IngestionJobConstruct extends Construct {
 
         // AWS Batch job queue that uses the Fargate compute environment
         const jobQueue = new batch.JobQueue(this, 'IngestionJobQueue', {
-            jobQueueName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job-${hash}`,
             computeEnvironments: [
                 {
                     computeEnvironment: computeEnv,
@@ -172,7 +169,7 @@ export class IngestionJobConstruct extends Construct {
 
         // Create execution role for ECS tasks to pull images from ECR and write logs
         const executionRole = new iam.Role(this, 'BatchJobExecutionRole', {
-            roleName: `${config.deploymentName}-${config.deploymentStage}-batch-exec-role-${hash}`,
+            roleName: `${config.deploymentName}-${config.deploymentStage}-batch-exec-role`,
             assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
             description: 'Execution role for ECS Batch ingestion tasks',
         });
@@ -186,8 +183,9 @@ export class IngestionJobConstruct extends Construct {
         logGroup.grantWrite(executionRole);
 
         // AWS Batch job definition specifying container configuration
-        const jobDefinition = new batch.EcsJobDefinition(this, 'IngestionJobDefinition', {
-            jobDefinitionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job-${hash}`,
+        const jobDefinition = new batch.EcsJobDefinition(this, 'IngestionJobDef', {
+            // Keep the name static so pipeline-ingest events reference latest
+            jobDefinitionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job-def`,
             container: new batch.EcsFargateContainerDefinition(this, 'IngestionJobContainer', {
                 environment: baseEnvironment,
                 image,
@@ -219,7 +217,7 @@ export class IngestionJobConstruct extends Construct {
             functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-ingest-schedule`,
             runtime: getPythonRuntime(),
             handler: 'repository.pipeline_ingest_handlers.handle_pipline_ingest_schedule',
-            code: lambda.Code.fromAsset('./lambda'),
+            code: lambda.Code.fromAsset(lambdaPath),
             timeout: Duration.seconds(60),
             memorySize: 256,
             vpc: vpc!.vpc,
@@ -247,7 +245,7 @@ export class IngestionJobConstruct extends Construct {
             functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-ingest-event`,
             runtime: getPythonRuntime(),
             handler: 'repository.pipeline_ingest_handlers.handle_pipeline_ingest_event',
-            code: lambda.Code.fromAsset('./lambda'),
+            code: lambda.Code.fromAsset(lambdaPath),
             timeout: Duration.seconds(60),
             memorySize: 256,
             vpc: vpc!.vpc,
@@ -275,7 +273,7 @@ export class IngestionJobConstruct extends Construct {
             functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-delete-event`,
             runtime: getPythonRuntime(),
             handler: 'repository.pipeline_ingest_handlers.handle_pipeline_delete_event',
-            code: lambda.Code.fromAsset('./lambda'),
+            code: lambda.Code.fromAsset(lambdaPath),
             timeout: Duration.seconds(60),
             memorySize: 256,
             vpc: vpc!.vpc,

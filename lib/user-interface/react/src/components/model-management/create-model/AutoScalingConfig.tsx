@@ -196,7 +196,7 @@ export function AutoScalingConfig (props: AutoScalingConfigProps) : ReactElement
                 <SpaceBetween size={'s'}>
                     <FormField
                         label='ALB Metric Name'
-                        description='CloudWatch metric name for Application Load Balancer scaling decisions (e.g., RequestCountPerTarget).'
+                        description='Use "RequestCountPerTarget" for request volume scaling (embedding models) or "TargetResponseTime" for latency-based scaling (text generation LLMs).'
                         errorText={props.formErrors?.autoScalingConfig?.metricConfig?.albMetricName}
                     >
                         <Input value={props.item.metricConfig.albMetricName} inputMode='text' onBlur={() => props.touchFields(['autoScalingConfig.metricConfig.albMetricName'])} disabled={props.isEdit} onChange={({ detail }) => {
@@ -205,7 +205,7 @@ export function AutoScalingConfig (props: AutoScalingConfigProps) : ReactElement
                     </FormField>
                     <FormField
                         label='Target Value'
-                        description='Target value for the scaling metric. Auto scaling adjusts capacity to maintain this target.'
+                        description='For RequestCountPerTarget: requests per target before scaling. For TargetResponseTime: target p90 latency in seconds (e.g., 10).'
                         errorText={props.formErrors?.autoScalingConfig?.metricConfig?.targetValue}
                     >
                         <Input value={props.item.metricConfig.targetValue.toString()} type='number' inputMode='numeric' onBlur={() => props.touchFields(['autoScalingConfig.metricConfig.targetValue'])} disabled={props.isEdit} onChange={({ detail }) => {

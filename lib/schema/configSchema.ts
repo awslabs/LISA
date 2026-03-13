@@ -490,10 +490,14 @@ export const LoadBalancerConfigSchema = z.object({
     .describe('Configuration for load balancer settings.');
 
 export const MetricConfigSchema = z.object({
-    albMetricName: z.string().default('RequestCountPerTarget').describe('Name of the ALB metric.'),
-    targetValue: z.number().default(30).describe('Target value for the metric.'),
+    albMetricName: z.string().default('RequestCountPerTarget')
+        .describe('ALB metric for scaling. Use "RequestCountPerTarget" for request volume scaling (good for embedding models) ' +
+            'or "TargetResponseTime" for latency-based scaling (recommended for text generation LLMs). ' +
+            'When using TargetResponseTime, set targetValue to the max acceptable p90 latency in seconds (e.g., 10).'),
+    targetValue: z.number().default(30).describe('Target value for the metric. For RequestCountPerTarget this is requests per target. ' +
+        'For TargetResponseTime this is the target p90 latency in seconds.'),
     duration: z.number().default(60).describe('Duration in seconds for metric evaluation.'),
-    estimatedInstanceWarmup: z.number().min(0).default(180).describe('Estimated warm-up time in seconds until a newly launched instance can send metrics to CloudWatch.'),
+    estimatedInstanceWarmup: z.number().min(0).max(3600).default(180).describe('Estimated warm-up time in seconds until a newly launched instance can send metrics to CloudWatch. Max 3600 (1 hour).'),
 })
     .describe('Metric configuration for ECS auto scaling.');
 
@@ -501,7 +505,7 @@ export const AutoScalingConfigSchema = z.object({
     blockDeviceVolumeSize: z.number().min(30).default(50),
     minCapacity: z.number().min(1).default(1).describe('Minimum capacity for auto scaling. Must be at least 1.'),
     maxCapacity: z.number().min(1).default(2).describe('Maximum capacity for auto scaling. Must be at least 1.'),
-    defaultInstanceWarmup: z.number().default(180).describe('Default warm-up time in seconds until a newly launched instance can'),
+    defaultInstanceWarmup: z.number().min(0).max(3600).default(180).describe('Default warm-up time in seconds until a newly launched instance can contribute to CloudWatch metrics. Max 3600 (1 hour). Larger models (e.g. gpt-oss-120b) may require values closer to the maximum.'),
     cooldown: z.number().min(1).default(420).describe('Cool down period in seconds between scaling activities.'),
     metricConfig: MetricConfigSchema,
 })
@@ -851,6 +855,7 @@ export const RawConfigObject = z.object({
     removalPolicy: z.enum([RemovalPolicy.DESTROY, RemovalPolicy.RETAIN])
         .default(RemovalPolicy.DESTROY)
         .describe('Removal policy for resources (destroy or retain).'),
+    maxAzs: z.int().optional().default(2).describe('Number of AZs that LISA will deploy to. This must be set before deploying the network stack.'),
     runCdkNag: z.boolean().default(false).describe('Whether to run CDK Nag checks.'),
     privateEndpoints: z.boolean().default(false).describe('Whether to use privateEndpoints for REST API.'),
     s3BucketModels: z.string().describe('S3 bucket for models.'),

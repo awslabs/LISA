@@ -126,8 +126,11 @@ export class ConfigurationApi extends Construct {
                                         'mcpConnections': { 'BOOL': config.deployMcp ? 'True' : 'False' },
                                         'modelLibrary': { 'BOOL': 'True' },
                                         'encryptSession': { 'BOOL': 'False' },
+                                        'chatAssistantStacks': { 'BOOL': 'False' },
+                                        'projectOrganization': { 'BOOL': 'False' },
                                     }
                                 },
+                                'maxProjectsPerUser': { 'N': '50' },
                                 'systemBanner': {
                                     'M': {
                                         'isEnabled': { 'BOOL': 'False' },

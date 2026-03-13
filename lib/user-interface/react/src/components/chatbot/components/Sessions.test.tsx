@@ -31,6 +31,14 @@ vi.mock('@/shared/reducers/configuration.reducer', () => ({
     ]),
 }));
 
+vi.mock('@/shared/reducers/project.reducer', () => ({
+    useListProjectsQuery: vi.fn(() => ({ data: [] })),
+}));
+
+vi.mock('@/shared/reducers/chat-assistant-stacks.reducer', () => ({
+    useListStacksQuery: vi.fn(() => ({ data: [] })),
+}));
+
 vi.mock('@/shared/reducers/session.reducer', () => ({
     sessionApi: {
         util: {
@@ -48,6 +56,10 @@ vi.mock('@/shared/reducers/session.reducer', () => ({
     useLazyGetSessionByIdQuery: vi.fn(() => [vi.fn()]),
     useListSessionsQuery: vi.fn(),
     useUpdateSessionNameMutation: vi.fn(() => [
+        vi.fn(),
+        { isSuccess: false, isError: false, error: null, isLoading: false },
+    ]),
+    useAssignSessionProjectMutation: vi.fn(() => [
         vi.fn(),
         { isSuccess: false, isError: false, error: null, isLoading: false },
     ]),
@@ -228,6 +240,9 @@ describe('Sessions', () => {
 
         const newSessionButton = screen.getByRole('button', { name: /new/i });
         await user.click(newSessionButton);
+
+        const newChatItem = await screen.findByText('New Chat');
+        await user.click(newChatItem);
 
         expect(mockNewSession).toHaveBeenCalledOnce();
     });

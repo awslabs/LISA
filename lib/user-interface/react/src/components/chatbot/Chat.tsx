@@ -81,6 +81,8 @@ import {
     useGetUserPreferencesQuery, UserPreferences, useUpdateUserPreferencesMutation
 } from '@/shared/reducers/user-preferences.reducer';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
+import { useLazyGetPromptTemplateQuery } from '@/shared/reducers/prompt-templates.reducer';
+import { useGetStackQuery } from '@/shared/reducers/chat-assistant-stacks.reducer';
 import ConfirmationModal from '@/shared/modal/confirmation-modal';
 import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
 import { conditionalDeps } from '../utils';
@@ -88,7 +90,7 @@ import { formatDate } from '@/shared/util/formats';
 import DocumentSidePanel from './components/DocumentSidePanel';
 import { useDocumentSidePanel } from '@/shared/hooks/useDocumentSidePanel';
 
-export default function Chat ({ sessionId }) {
+export default function Chat ({ sessionId, initialStack }) {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
     const config: IConfiguration = useContext(ConfigurationContext);
@@ -116,6 +118,43 @@ export default function Chat ({ sessionId }) {
         ),
     [allModelsRaw]
     );
+
+    // Same types as allModels but include Stopped for dropdown (shown disabled)
+    const allModelsWithStopped = useMemo(() =>
+        (allModelsRaw || []).filter((model) =>
+            (model.modelType === ModelType.textgen || model.modelType === ModelType.imagegen || model.modelType === ModelType.videogen) &&
+            (model.status === ModelStatus.InService || model.status === ModelStatus.Stopped)
+        ),
+    [allModelsRaw]
+    );
+
+    // Session and effective assistant stack (from nav or loaded when resuming)
+    const {
+        session,
+        setSession,
+        setInternalSessionId,
+        loadingSession,
+        chatConfiguration,
+        setChatConfiguration,
+        selectedModel,
+        setSelectedModel,
+        ragConfig,
+        setRagConfig,
+        chatAssistantId,
+        setChatAssistantId,
+        internalSessionId,
+    } = useSession(sessionId, getSessionById);
+    const { data: resumedStack } = useGetStackQuery(chatAssistantId ?? '', {
+        skip: !chatAssistantId || !!initialStack,
+    });
+    const effectiveStack = initialStack ?? (chatAssistantId && resumedStack ? resumedStack : undefined);
+
+    // When using an assistant stack, restrict model dropdown to stack's modelIds; empty/null => no options
+    const modelsForDropdown = useMemo(() => {
+        if (!effectiveStack) return allModelsWithStopped;
+        const ids = effectiveStack.modelIds ?? [];
+        return ids.length ? allModelsWithStopped.filter((m) => ids.includes(m.modelId)) : [];
+    }, [allModelsWithStopped, effectiveStack]);
     const { data: userPreferences } = useGetUserPreferencesQuery();
     const { data: mcpServers } = useListMcpServersQuery(undefined, {
         refetchOnMountOrArgChange: true,
@@ -185,14 +224,19 @@ export default function Chat ({ sessionId }) {
     const lastProcessedMessageIndex = useRef(-1);
     const startToolChainRef = useRef<((session: LisaChatSession) => Promise<void>) | undefined>(undefined);
 
-    // Memoize enabled servers to prevent infinite re-renders
+    // Memoize enabled servers. When using an assistant stack with mcpServerIds, use those servers
+    // directly (turned on for this session) regardless of user preferences; otherwise use preferences.
     const enabledServers = useMemo(() => {
-        if (mcpServers && userPreferences?.preferences?.mcp?.enabledServers) {
-            const enabledServerIds = userPreferences.preferences.mcp.enabledServers.map((server) => server.id);
-            return mcpServers.filter((server) => enabledServerIds.includes(server.id));
+        if (!mcpServers) return undefined;
+        if (effectiveStack) {
+            const ids = effectiveStack.mcpServerIds ?? [];
+            return ids.length ? mcpServers.filter((server) => ids.includes(server.id)) : [];
         }
-        return undefined;
-    }, [mcpServers, userPreferences?.preferences?.mcp?.enabledServers]);
+        const base = userPreferences?.preferences?.mcp?.enabledServers
+            ? mcpServers.filter((server) => userPreferences.preferences.mcp.enabledServers.map((s) => s.id).includes(server.id))
+            : [];
+        return base.length ? base : undefined;
+    }, [mcpServers, userPreferences?.preferences?.mcp?.enabledServers, effectiveStack]);
 
     // Tool call loop prevention
     const consecutiveToolCallCount = useRef(0);
@@ -251,28 +295,16 @@ export default function Chat ({ sessionId }) {
 
     // Custom hooks
     const { dynamicMaxRows } = useDynamicMaxRows();
-    const {
-        session,
-        setSession,
-        setInternalSessionId,
-        loadingSession,
-        chatConfiguration,
-        setChatConfiguration,
-        selectedModel,
-        setSelectedModel,
-        ragConfig,
-        setRagConfig
-    } = useSession(sessionId, getSessionById);
 
     // Get sessions list lastUpdated timestamp
-    const { data: sessions } = useListSessionsQuery(null, { refetchOnMountOrArgChange: 5 });
+    const { data: sessions } = useListSessionsQuery(undefined, { refetchOnMountOrArgChange: 5 });
     const currentSessionSummary = useMemo(() =>
         sessions?.find((s) => s.sessionId === session.sessionId),
     [sessions, session.sessionId]
     );
 
     const { modelsOptions, handleModelChange } = useModels(
-        allModels,
+        modelsForDropdown,
         chatConfiguration,
         setChatConfiguration
     );
@@ -283,13 +315,77 @@ export default function Chat ({ sessionId }) {
         return !allModels?.some((model) => model.modelId === selectedModel.modelId);
     }, [selectedModel, allModels]);
 
-    // Set default model if none is selected, default model is configured, and user hasn't interacted
+    // Selected model is in dropdown but stopped (session resumed with a model that is now stopped)
+    const isModelStopped = useMemo(() => {
+        if (!selectedModel) return false;
+        const inList = modelsForDropdown?.find((m) => m.modelId === selectedModel.modelId);
+        return inList?.status === ModelStatus.Stopped;
+    }, [selectedModel, modelsForDropdown]);
+
+    const hasStoppedModelsInDropdown = useMemo(() =>
+        (modelsForDropdown || []).some((m) => m.status === ModelStatus.Stopped),
+    [modelsForDropdown]
+    );
+
+    // Set default model if none is selected, default model is configured, and user hasn't interacted (only InService models)
+    const availableModelsForDefault = useMemo(() =>
+        (modelsForDropdown || []).filter((m) => m.status === ModelStatus.InService),
+    [modelsForDropdown]
+    );
     useEffect(() => {
-        if (!selectedModel && !hasUserInteractedWithModel && config?.configuration?.global?.defaultModel && allModels) {
+        if (!selectedModel && !hasUserInteractedWithModel && config?.configuration?.global?.defaultModel && availableModelsForDefault?.length) {
             const defaultModelId = config.configuration.global.defaultModel;
-            handleModelChange(defaultModelId, selectedModel, setSelectedModel);
+            if (availableModelsForDefault.some((m) => m.modelId === defaultModelId)) {
+                handleModelChange(defaultModelId, selectedModel, setSelectedModel);
+            }
         }
-    }, [selectedModel, hasUserInteractedWithModel, config?.configuration?.global?.defaultModel, allModels, handleModelChange, setSelectedModel]);
+    }, [selectedModel, hasUserInteractedWithModel, config?.configuration?.global?.defaultModel, availableModelsForDefault, handleModelChange, setSelectedModel]);
+
+    // Apply stack config when starting a new session from a Chat Assistant (after session exists so RAG isn't overwritten by createNewSession)
+    const initialStackApplied = useRef(false);
+    const [getPromptTemplate] = useLazyGetPromptTemplateQuery();
+    useEffect(() => {
+        const sessionReady = sessionId != null || internalSessionId != null;
+        if (!initialStack || session.history.length > 0 || initialStackApplied.current || !allModels?.length || !sessionReady) return;
+        const firstModelId = initialStack.modelIds?.[0];
+        const model = firstModelId ? allModels.find((m) => m.modelId === firstModelId) : undefined;
+        if (model) {
+            handleModelChange(model.modelId, selectedModel, setSelectedModel);
+            setModelFilterValue(model.modelId);
+        }
+        setSession((prev) => ({ ...prev, name: initialStack.name }));
+        setChatAssistantId(initialStack.stackId);
+        setChatConfiguration((prev) => ({ ...prev, chatAssistantId: initialStack.stackId }));
+
+        // Set system prompt from persona prompt if configured
+        if (initialStack.personaPromptId) {
+            getPromptTemplate(initialStack.personaPromptId).then((result) => {
+                if (result.data?.body) {
+                    setChatConfiguration((prev) => ({
+                        ...prev,
+                        promptConfiguration: {
+                            ...prev.promptConfiguration,
+                            promptTemplate: result.data.body,
+                        },
+                    }));
+                }
+            });
+        }
+
+        // Set initial RAG from stack when present; clear RAG when stack has no repos
+        const repoIds = initialStack.repositoryIds ?? [];
+        if (repoIds.length) {
+            setRagConfig((prev) => ({
+                ...prev,
+                repositoryId: repoIds[0],
+            }));
+        } else {
+            setRagConfig({} as import('./components/RagOptions').RagConfig);
+        }
+
+        initialStackApplied.current = true;
+    }, [initialStack, session.history.length, sessionId, internalSessionId, allModels, setSession, handleModelChange, setSelectedModel, selectedModel, getPromptTemplate, setChatConfiguration, setRagConfig, setChatAssistantId]);
+
 
     // Wrapper for handleModelChange that tracks user interaction
     const handleUserModelChange = (value: string) => {
@@ -486,7 +582,7 @@ export default function Chat ({ sessionId }) {
                         if (session.history.at(-1).metadata.imageGeneration && Array.isArray(session.history.at(-1).content)) {
                             // Session was updated and response contained images that need to be attached to the session
                             await Promise.all(
-                                (Array.isArray(message.content) ? message.content : []).map(async (content) => {
+                                (Array.isArray(message.content) ? message.content : []).map(async (content: { type?: string; image_url?: { url?: string; s3_key?: string } }) => {
                                     if (content.type === 'image_url') {
                                         const resp = await attachImageToSession({
                                             sessionId: session.sessionId,
@@ -507,10 +603,16 @@ export default function Chat ({ sessionId }) {
                         }
                         const updatedHistory = [...session.history.slice(0, -1), message];
 
+                        const assistantId = chatAssistantId || effectiveStack?.stackId;
                         updateSession({
                             ...session,
                             history: updatedHistory,
-                            configuration: { ...chatConfiguration, selectedModel: selectedModel, ragConfig: ragConfig }
+                            configuration: {
+                                ...chatConfiguration,
+                                selectedModel: selectedModel,
+                                ragConfig: ragConfig,
+                                ...(assistantId ? { chatAssistantId: assistantId } : {}),
+                            },
                         });
                     }
                 }
@@ -568,7 +670,7 @@ export default function Chat ({ sessionId }) {
 
         handleToolCalls();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isRunning, session.history.length, dirtySession]);
+    }, [isRunning, session.history.length, dirtySession, chatConfiguration, chatAssistantId, effectiveStack?.stackId]);
 
     // Connection health check
     useEffect(() => {
@@ -675,8 +777,11 @@ export default function Chat ({ sessionId }) {
         // Re-enable auto-scroll when user sends a new message
         setShouldAutoScroll(true);
 
+        // When using an assistant, set session name to "{assistant name} - {first user prompt}" on first message
+        const isFirstMessage = session.history.length === 0;
         setSession((prev) => ({
             ...prev,
+            ...(effectiveStack && isFirstMessage ? { name: `${effectiveStack.name} - ${userPrompt}` } : {}),
             history: prev.history.concat(new LisaChatMessage({
                 type: 'human',
                 content: userPrompt,
@@ -786,6 +891,11 @@ export default function Chat ({ sessionId }) {
         }
     }, [shouldShowStopButton, userPrompt.length, isRunning, callingToolName, loadingSession, handleSendGenerateRequest]);
 
+    const getButtonItemsWithAssistantMode = useCallback((...args: Parameters<typeof getButtonItems>) => {
+        const [config, useRag, isImageGen, isVideoGen, isConnected, isModelDel, showMd] = args;
+        return getButtonItems(config, useRag, isImageGen, isVideoGen, isConnected, isModelDel, showMd, !!effectiveStack, !!selectedModel, loadingSession);
+    }, [config, effectiveStack, selectedModel, loadingSession]);
+
     const promptInputProps = useMemo(() => ({
         userPrompt,
         shouldShowStopButton,
@@ -809,7 +919,7 @@ export default function Chat ({ sessionId }) {
         handleAction,
         handleKeyPress,
         handleButtonClick,
-        getButtonItems,
+        getButtonItems: getButtonItemsWithAssistantMode,
     }), [
         userPrompt,
         shouldShowStopButton,
@@ -829,6 +939,7 @@ export default function Chat ({ sessionId }) {
         handleAction,
         handleKeyPress,
         handleButtonClick,
+        getButtonItemsWithAssistantMode,
     ]);
 
     return (
@@ -894,8 +1005,9 @@ export default function Chat ({ sessionId }) {
                 key={promptTemplateKey}
                 config={config}
                 type={filterPromptTemplateType}
+                allowedDirectivePromptIds={effectiveStack ? (effectiveStack.directivePromptIds ?? []) : undefined}
                 // eslint-disable-next-line react-hooks/exhaustive-deps
-            />), conditionalDeps([modals.promptTemplate], [modals.promptTemplate], [modals.promptTemplate, session, openModal, closeModal, chatConfiguration, setChatConfiguration, promptTemplateKey, config, filterPromptTemplateType]))}
+            />), conditionalDeps([modals.promptTemplate], [modals.promptTemplate], [modals.promptTemplate, session, openModal, closeModal, chatConfiguration, setChatConfiguration, promptTemplateKey, config, filterPromptTemplateType, effectiveStack?.directivePromptIds]))}
 
             {/* Tool Approval Modal */}
             {toolApprovalModal && (
@@ -933,7 +1045,7 @@ export default function Chat ({ sessionId }) {
                 />
             )}
 
-            {/* Sticky warning banner for deleted model */}
+            {/* Sticky warning banner for deleted or stopped model */}
             {isModelDeleted && (
                 <div className='sticky top-0 z-50'>
                     <Box padding={{ horizontal: 'l', top: 's' }}>
@@ -942,7 +1054,13 @@ export default function Chat ({ sessionId }) {
                                 {
                                     type: 'warning',
                                     dismissible: false,
-                                    content: (
+                                    content: isModelStopped ? (
+                                        <>
+                                            This session uses the model <strong>{selectedModel?.modelId}</strong> which is stopped.
+                                            Start it from Model management or start a new session with a different model.
+                                            You can view the conversation history but cannot send new messages until the model is started.
+                                        </>
+                                    ) : (
                                         <>
                                             This session uses the model <strong>{selectedModel?.modelId}</strong> which is no longer available.
                                             You can view the conversation history but cannot send new messages.
@@ -955,6 +1073,23 @@ export default function Chat ({ sessionId }) {
                         />
                     </Box>
                 </div>
+            )}
+
+            {effectiveStack && (
+                <Box padding={{ horizontal: 'l', vertical: 's' }} variant='div'>
+                    <SpaceBetween direction='horizontal' size='s' alignItems='center'>
+                        <StatusIndicator type='info'>Chat Assistant</StatusIndicator>
+                        <Box variant='strong'>{effectiveStack.name}</Box>
+                        {effectiveStack.description && (
+                            <Box
+                                variant='p'
+                                color='text-body-secondary'
+                            >
+                                - {effectiveStack.description}
+                            </Box>
+                        )}
+                    </SpaceBetween>
+                </Box>
             )}
 
             {/* Split layout container */}
@@ -1018,7 +1153,7 @@ export default function Chat ({ sessionId }) {
                             onImageLoadComplete={handleImageLoadComplete}
                             onOpenDocument={handleOpenDocument}
                         />}
-                        {!loadingSession && session.history.length === 0 && sessionId === undefined && (
+                        {!loadingSession && session.history.length === 0 && sessionId === undefined && !effectiveStack && (
                             <WelcomeScreen
                                 navigate={navigate}
                                 modelSelectRef={modelSelectRef}
@@ -1055,20 +1190,27 @@ export default function Chat ({ sessionId }) {
                                 <FormField
                                     label={isImageGenerationMode || isVideoGenerationMode ? <StatusIndicator type='info'>{isImageGenerationMode ? 'Image Generation Mode' : 'Video Generation Mode'}</StatusIndicator> : undefined}
                                 >
-                                    <Autosuggest
-                                        disabled={isRunning || session.history.length > 0}
-                                        statusType={isFetchingModels ? 'loading' : 'finished'}
-                                        loadingText='Loading models (might take few seconds)...'
-                                        placeholder='Select a model'
-                                        empty={<div className='text-zinc-500'>No models available.</div>}
-                                        filteringType='auto'
-                                        value={modelFilterValue}
-                                        enteredTextLabel={(text) => `Use: "${text}"`}
-                                        onChange={({ detail: { value } }) => handleUserModelChange(value)}
-                                        options={modelsOptions}
-                                        ref={modelSelectRef}
-                                        controlId='model-selection-autosuggest'
-                                    />
+                                    <SpaceBetween size='xs' direction='vertical'>
+                                        <Autosuggest
+                                            disabled={isRunning || session.history.length > 0}
+                                            statusType={isFetchingModels ? 'loading' : 'finished'}
+                                            loadingText='Loading models (might take few seconds)...'
+                                            placeholder='Select a model'
+                                            empty={<div className='text-zinc-500'>No models available.</div>}
+                                            filteringType='auto'
+                                            value={modelFilterValue}
+                                            enteredTextLabel={(text) => `Use: "${text}"`}
+                                            onChange={({ detail: { value } }) => handleUserModelChange(value)}
+                                            options={modelsOptions}
+                                            ref={modelSelectRef}
+                                            controlId='model-selection-autosuggest'
+                                        />
+                                        {hasStoppedModelsInDropdown && (
+                                            <Box variant='small' color='text-body-secondary'>
+                                                Some models in the list are stopped and cannot be selected.
+                                            </Box>
+                                        )}
+                                    </SpaceBetween>
                                 </FormField>
                                 {window.env.RAG_ENABLED && !isImageGenerationMode && !isVideoGenerationMode && (
                                     <RagControls
@@ -1076,6 +1218,8 @@ export default function Chat ({ sessionId }) {
                                         setUseRag={setUseRag}
                                         setRagConfig={setRagConfig}
                                         ragConfig={ragConfig}
+                                        allowedRepositoryIds={effectiveStack ? (effectiveStack.repositoryIds ?? []) : undefined}
+                                        allowedCollectionIds={effectiveStack ? (effectiveStack.collectionIds ?? []) : undefined}
                                     />
                                 )}
                             </Grid>

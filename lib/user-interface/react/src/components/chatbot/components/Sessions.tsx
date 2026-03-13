@@ -18,8 +18,7 @@ import SpaceBetween from '@cloudscape-design/components/space-between';
 import Link from '@cloudscape-design/components/link';
 import Header from '@cloudscape-design/components/header';
 import ExpandableSection from '@cloudscape-design/components/expandable-section';
-import { ButtonDropdown, Input, Modal, FormField, Grid } from '@cloudscape-design/components';
-import Button from '@cloudscape-design/components/button';
+import { ButtonDropdown, Input, Modal, FormField, Grid, Button, Box, Badge, SegmentedControl } from '@cloudscape-design/components';
 
 import { useLazyGetConfigurationQuery } from '@/shared/reducers/configuration.reducer';
 import {
@@ -28,21 +27,25 @@ import {
     useLazyGetSessionByIdQuery,
     useListSessionsQuery,
     useUpdateSessionNameMutation,
+    useAssignSessionProjectMutation,
 } from '@/shared/reducers/session.reducer';
+import { useListStacksQuery } from '@/shared/reducers/chat-assistant-stacks.reducer';
+import { useProjects } from '../hooks/useProjects.hooks';
+import { IChatAssistantStack } from '@/shared/model/chat-assistant-stack.model';
 import { useAppDispatch } from '@/config/store';
 import { useNotificationService } from '@/shared/util/hooks';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAuth } from '../../../auth/useAuth';
 import { IConfiguration } from '@/shared/model/configuration.model';
 import { useNavigate } from 'react-router-dom';
 import { getDisplayableMessage, getSessionDisplay, messageContainsImage, messageContainsVideo } from '@/components/utils';
 import { LisaChatSession } from '@/components/types';
-import Box from '@cloudscape-design/components/box';
 import JSZip from 'jszip';
 import { downloadFile } from '@/shared/util/downloader';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 import { formatDate } from '@/shared/util/formats';
 import styles from './Sessions.module.css';
+import { ProjectsSection } from './ProjectsSection';
 
 
 
@@ -67,15 +70,34 @@ export function Sessions ({ newSession }) {
         error: updateSessionNameError,
         isLoading: isUpdateSessionNameLoading,
     }] = useUpdateSessionNameMutation();
+    const [assignSessionProject] = useAssignSessionProjectMutation();
     const [getConfiguration] = useLazyGetConfigurationQuery();
     const [config, setConfig] = useState<IConfiguration>();
     const [searchQuery, setSearchQuery] = useState<string>('');
+    const [historyView, setHistoryView] = useState<string>(() => {
+        try {
+            return localStorage.getItem('lisa-history-view') || 'history';
+        } catch {
+            return 'history';
+        }
+    });
+
+    const { projects, projectsEnabled, maxProjects } = useProjects(config);
+    const projectsById = useMemo(() => new Map(projects.map((p) => [p.projectId, p])), [projects]);
+
+    // If projects feature is disabled, force history view
+    const effectiveHistoryView = !projectsEnabled && historyView === 'projects' ? 'history' : historyView;
 
     const [renameModalVisible, setRenameModalVisible] = useState<boolean>(false);
     const [sessionToRename, setSessionToRename] = useState<LisaChatSession | null>(null);
     const [newSessionName, setNewSessionName] = useState<string>('');
     const [sessionBeingDeleted, setSessionBeingDeleted] = useState<string | null>(null);
-    const { data: sessions, isLoading: isSessionsLoading } = useListSessionsQuery(null, { refetchOnMountOrArgChange: 5 });
+    const [assistantCarouselIndex, setAssistantCarouselIndex] = useState(0);
+    const { data: sessions, isLoading: isSessionsLoading } = useListSessionsQuery(undefined, { refetchOnMountOrArgChange: 5 });
+    const { data: availableStacks = [] } = useListStacksQuery(undefined, {
+        skip: !config?.configuration?.enabledComponents?.chatAssistantStacks,
+        refetchOnMountOrArgChange: true,
+    });
 
     // Filter sessions based on search query
     const filteredSessions = useMemo(() => {
@@ -193,12 +215,83 @@ export function Sessions ({ newSession }) {
         setNewSessionName('');
     };
 
+    const handleStartFromStack = (stack: IChatAssistantStack) => {
+        navigate('/ai-assistant', { state: { stack }, replace: true });
+    };
+
+    const safeIndex = Math.min(assistantCarouselIndex, Math.max(0, availableStacks.length - 1));
+    const currentAssistant = availableStacks[safeIndex];
+    const canGoPrev = availableStacks.length > 1 && safeIndex > 0;
+    const canGoNext = availableStacks.length > 1 && safeIndex < availableStacks.length - 1;
+    const goPrev = useCallback(() => setAssistantCarouselIndex((i) => Math.max(0, i - 1)), []);
+    const goNext = useCallback(() => setAssistantCarouselIndex((i) => Math.min(availableStacks.length - 1, i + 1)), [availableStacks.length]);
+    useEffect(() => {
+        setAssistantCarouselIndex((i) => Math.min(i, Math.max(0, availableStacks.length - 1)));
+    }, [availableStacks.length]);
+
     return (
         <div className='p-5'>
             <SpaceBetween size='l' direction='vertical'>
-                <Header>
-                    History
-                </Header>
+                {config?.configuration?.enabledComponents?.chatAssistantStacks && (
+                    <ExpandableSection headerText='Chat Assistants' defaultExpanded={true}>
+                        {availableStacks.length === 0 ? (
+                            <Box variant='small' color='text-status-inactive'>
+                                No assistants available
+                            </Box>
+                        ) : (
+                            <div className={styles.assistantCarousel}>
+                                <Button
+                                    iconName='angle-left'
+                                    variant='icon'
+                                    disabled={!canGoPrev}
+                                    onClick={goPrev}
+                                    ariaLabel='Previous assistant'
+                                />
+                                <div
+                                    className={styles.assistantCard}
+                                    onClick={() => currentAssistant && handleStartFromStack(currentAssistant)}
+                                    role='button'
+                                    tabIndex={0}
+                                    onKeyDown={(e) => e.key === 'Enter' && currentAssistant && handleStartFromStack(currentAssistant)}
+                                >
+                                    <Box fontWeight='bold' color='text-body-default'>
+                                        {currentAssistant?.name}
+                                    </Box>
+                                    {currentAssistant?.description && (
+                                        <Box variant='small' color='text-body-secondary' margin={{ top: 'xxs' }}>
+                                            {currentAssistant.description}
+                                        </Box>
+                                    )}
+                                </div>
+                                <Button
+                                    iconName='angle-right'
+                                    variant='icon'
+                                    disabled={!canGoNext}
+                                    onClick={goNext}
+                                    ariaLabel='Next assistant'
+                                />
+                            </div>
+                        )}
+                    </ExpandableSection>
+                )}
+
+                {projectsEnabled ? (
+                    <SegmentedControl
+                        selectedId={historyView}
+                        onChange={({ detail }) => {
+                            setHistoryView(detail.selectedId);
+                            try {
+                                localStorage.setItem('lisa-history-view', detail.selectedId);
+                            } catch { /* noop */ }
+                        }}
+                        options={[
+                            { id: 'history', text: 'History' },
+                            { id: 'projects', text: 'Projects' },
+                        ]}
+                    />
+                ) : (
+                    <Header>History</Header>
+                )}
                 <Input
                     value={searchQuery}
                     onChange={({ detail }) => setSearchQuery(detail.value)}
@@ -221,13 +314,22 @@ export function Sessions ({ newSession }) {
                     </Box>
                 )}
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <Button
-                        iconName='add-plus'
+                    <ButtonDropdown
                         variant='primary'
-                        onClick={newSession}
+                        items={[
+                            { id: 'new-chat', text: 'New Chat', iconName: 'add-plus' },
+                            ...(projectsEnabled && effectiveHistoryView === 'projects' ? [{ id: 'new-project', text: 'New Project', iconName: 'folder' as const }] : []),
+                        ]}
+                        onItemClick={(e) => {
+                            if (e.detail.id === 'new-chat') {
+                                newSession();
+                            } else if (e.detail.id === 'new-project') {
+                                window.dispatchEvent(new CustomEvent('lisa:create-project'));
+                            }
+                        }}
                     >
                         New
-                    </Button>
+                    </ButtonDropdown>
                     <Button
                         iconAlt='Refresh list'
                         iconName='refresh'
@@ -239,7 +341,17 @@ export function Sessions ({ newSession }) {
                 </div>
             </SpaceBetween>
 
-            {isSessionsLoading && (
+            {effectiveHistoryView === 'projects' && projectsEnabled && (
+                <ProjectsSection
+                    projects={projects}
+                    sessions={filteredSessions}
+                    maxProjects={maxProjects}
+                    currentSessionId={currentSessionId}
+                    onNavigate={(id) => navigate(`/ai-assistant/${id}`)}
+                />
+            )}
+
+            {effectiveHistoryView !== 'projects' && isSessionsLoading && (
                 <Box textAlign='center' padding='l'>
                     <SpaceBetween size='s' direction='vertical'>
                         <Box color='text-status-info'>Loading sessions...</Box>
@@ -248,7 +360,7 @@ export function Sessions ({ newSession }) {
                 </Box>
             )}
 
-            {!isSessionsLoading && (
+            {effectiveHistoryView !== 'projects' && !isSessionsLoading && (
                 <div className='pt-2'>
                     {filteredSessions.length === 0 ? (
                         <Box textAlign='center' padding='l'>
@@ -298,9 +410,15 @@ export function Sessions ({ newSession }) {
                                                                             {getSessionDisplay(item, 40)}
                                                                         </Box>
                                                                     </Link>
-                                                                    <Box variant='small' color='text-status-inactive' fontSize='body-s' fontWeight='light'>
-                                                                        {formatDate(item.lastUpdated || item.startTime)}
-                                                                    </Box>
+                                                                    <SpaceBetween direction='horizontal' size='xxs'>
+                                                                        <Box variant='small' color='text-status-inactive' fontSize='body-s' fontWeight='light'>
+                                                                            {formatDate(item.lastUpdated || item.startTime)}
+                                                                        </Box>
+                                                                        {projectsEnabled && item.projectId && (() => {
+                                                                            const proj = projectsById.get(item.projectId);
+                                                                            return proj ? <Badge color='blue'>{proj.name.length > 15 ? `${proj.name.slice(0, 15)}...` : proj.name}</Badge> : null;
+                                                                        })()}
+                                                                    </SpaceBetween>
                                                                 </SpaceBetween>
                                                             </Box>
                                                             <Box>
@@ -309,6 +427,13 @@ export function Sessions ({ newSession }) {
                                                                         { id: 'rename-session', text: 'Rename Session', iconName: 'edit' },
                                                                         { id: 'download-session', text: 'Download Session', iconName: 'download' },
                                                                         { id: 'export-media', text: 'Export AI Media', iconName: 'folder' },
+                                                                        ...(projectsEnabled && !item.projectId && projects.length > 0 ? [{
+                                                                            id: 'add-to-project',
+                                                                            text: 'Add to Project',
+                                                                            // Trim the project title down. Spread list of projects into the drop down puts it as text, and has no hover tooltip functionality.
+                                                                            items: projects.map((p) => ({ id: `assign:${p.projectId}`, text: p.name.length > 20 ? `${p.name.slice(0, 20)}...` : p.name })),
+                                                                        }] : []),
+                                                                        ...(projectsEnabled && item.projectId ? [{ id: 'remove-from-project', text: 'Remove from Project', iconName: 'undo' as const }] : []),
                                                                         ...(config?.configuration.enabledComponents.deleteSessionHistory ? [{ id: 'delete-session', text: 'Delete Session', iconName: 'delete-marker' as const }] : [])
                                                                     ]}
                                                                     ariaLabel='Control instance'
@@ -379,6 +504,17 @@ export function Sessions ({ newSession }) {
                                                                             });
                                                                         } else if (e.detail.id === 'rename-session') {
                                                                             handleRenameSession(item);
+                                                                        } else if (e.detail.id.startsWith('assign:')) {
+                                                                            const projectId = e.detail.id.replace('assign:', '');
+                                                                            assignSessionProject({ projectId, sessionId: item.sessionId }).unwrap().catch(() => {
+                                                                                notificationService.generateNotification('Failed to assign session to project', 'error');
+                                                                            });
+                                                                        } else if (e.detail.id === 'remove-from-project') {
+                                                                            if (item.projectId) {
+                                                                                assignSessionProject({ projectId: item.projectId, sessionId: item.sessionId, unassign: true }).unwrap().catch(() => {
+                                                                                    notificationService.generateNotification('Failed to remove session from project', 'error');
+                                                                                });
+                                                                            }
                                                                         }
                                                                     }}
                                                                 />

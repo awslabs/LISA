@@ -32,27 +32,37 @@ import { useListCollectionsQuery } from '@/shared/reducers/rag.reducer';
 import { ChunkingConfigForm } from '@/shared/form/ChunkingConfigForm';
 import { MetadataForm } from '@/shared/form/MetadataForm';
 
+/**
+ * UI-only marker to distinguish newly added pipelines from previously deployed ones.
+ * Stripped before submission — only used to control field editability during edit.
+ */
+export type PipelineWithMeta = (PipelineConfig | Partial<PipelineConfig>) & { _isNew?: boolean };
+
 export type PipelineConfigProps = {
     isEdit: boolean;
     repositoryId?: string;
     repositoryType?: RagRepositoryType;
 };
 
-export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & PipelineConfigProps): ReactElement {
+export function PipelineConfigForm (props: FormProps<PipelineWithMeta[]> & PipelineConfigProps): ReactElement {
     const { item, touchFields, setFields, formErrors, isEdit, repositoryId, repositoryType } = props;
+
+    // A pipeline is "existing" (previously deployed) if we're in edit mode and it
+    // was NOT added during this edit session. New pipelines are tagged with _isNew.
+    const isExistingPipeline = (pipeline: PipelineWithMeta): boolean => isEdit && !pipeline._isNew;
 
     // Only query collections if we have a repositoryId (editing existing repository)
     const { data: collections, isFetching: isFetchingCollections } = useListCollectionsQuery(
         { repositoryId: repositoryId || '' },
         {
-            skip: !repositoryId || !isEdit,
+            skip: !repositoryId,
             refetchOnMountOrArgChange: 5,
         }
     );
 
     const collectionOptions = useMemo(() => {
-        // For new repositories, show a default option
-        if (!isEdit || !repositoryId) {
+        // For new repositories (no repositoryId), show a default option
+        if (!repositoryId) {
             return [
                 {
                     value: 'default',
@@ -63,21 +73,37 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
         }
 
         // For existing repositories, show actual collections
-        return collections?.map((collection) => ({
+        const options = collections?.map((collection) => ({
             value: collection.collectionId,
             label: collection.name || collection.collectionId,
             description: collection.description,
         })) || [];
-    }, [collections, isEdit, repositoryId]);
+
+        // If no collections loaded yet, provide a default fallback
+        if (options.length === 0) {
+            return [
+                {
+                    value: 'default',
+                    label: 'Default collection',
+                    description: 'Documents will be ingested into the default collection',
+                }
+            ];
+        }
+
+        return options;
+    }, [collections, repositoryId]);
 
     const onChange = (index: number, field: keyof PipelineConfig, value: any) => {
         setFields({ [`pipelines[${index}].${field}`]: value });
     };
 
     const addConfig = () => {
-        const newPipeline = RagRepositoryPipeline.partial().parse({
-            chunkingStrategy: FixedSizeChunkingStrategySchema.parse({})
-        });
+        const newPipeline: PipelineWithMeta = {
+            ...RagRepositoryPipeline.partial().parse({
+                chunkingStrategy: FixedSizeChunkingStrategySchema.parse({})
+            }),
+            _isNew: true,
+        };
         setFields({ pipelines: [...(item || []), newPipeline] });
     };
 
@@ -171,7 +197,10 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                         >
                             <Select
                                 options={collectionOptions}
-                                selectedOption={collectionOptions.find((opt) => opt.value === pipeline.collectionId) || null}
+                                selectedOption={
+                                    collectionOptions.find((opt) => opt.value === pipeline.collectionId)
+                                    || (pipeline.collectionId ? { value: pipeline.collectionId, label: pipeline.collectionId } : null)
+                                }
                                 loadingText='Loading collections'
                                 placeholder='Select a collection'
                                 onBlur={() => touchFields([`pipelines[${index}].collectionId`])}
@@ -180,7 +209,7 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                                     onChange(index, 'collectionId', detail.selectedOption.value)}
                                 statusType={isFetchingCollections ? 'loading' : 'finished'}
                                 virtualScroll
-                                disabled={isEdit}
+                                disabled={isExistingPipeline(pipeline)}
                             />
                         </FormField>
 
@@ -188,7 +217,7 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                             label='S3 Bucket'
                             constraintText='Required'
                             errorText={formErrors.pipelines?.[index]?.s3Bucket}
-                            description={isEdit ? 'S3 bucket cannot be changed for existing pipelines (requires infrastructure redeployment)' : RagRepositoryPipeline.shape.s3Bucket.description}
+                            description={isExistingPipeline(pipeline) ? 'S3 bucket cannot be changed for existing pipelines (requires infrastructure redeployment)' : RagRepositoryPipeline.shape.s3Bucket.description}
                         >
                             <Input
                                 value={pipeline.s3Bucket}
@@ -197,14 +226,14 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                                 }
                                 onBlur={() => touchFields([`pipelines[${index}].s3Bucket`])}
                                 placeholder='my-documents-bucket'
-                                disabled={isEdit}
+                                disabled={isExistingPipeline(pipeline)}
                             />
                         </FormField>
 
                         <FormField
                             label='S3 Prefix (optional)'
                             errorText={formErrors.pipelines?.[index]?.s3Prefix}
-                            description={isEdit ? 'S3 prefix cannot be changed for existing pipelines (requires infrastructure redeployment)' : RagRepositoryPipeline.shape.s3Prefix.description}>
+                            description={isExistingPipeline(pipeline) ? 'S3 prefix cannot be changed for existing pipelines (requires infrastructure redeployment)' : RagRepositoryPipeline.shape.s3Prefix.description}>
                             <Input
                                 value={pipeline.s3Prefix}
                                 onChange={({ detail }) =>
@@ -212,14 +241,14 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                                 }
                                 onBlur={() => touchFields([`pipelines[${index}].s3Prefix`])}
                                 placeholder='documents/engineering/'
-                                disabled={isEdit}
+                                disabled={isExistingPipeline(pipeline)}
                             />
                         </FormField>
 
                         <FormField
                             label='Trigger'
                             errorText={formErrors.pipelines?.[index]?.trigger}
-                            description={isEdit ? 'Trigger type cannot be changed for existing pipelines (requires infrastructure redeployment)' : RagRepositoryPipeline.shape.trigger.description}>
+                            description={isExistingPipeline(pipeline) ? 'Trigger type cannot be changed for existing pipelines (requires infrastructure redeployment)' : RagRepositoryPipeline.shape.trigger.description}>
                             <Select
                                 selectedOption={{ label: pipeline.trigger, value: pipeline.trigger }}
                                 onChange={({ detail }) =>
@@ -230,21 +259,21 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
                                     { label: 'Event', value: 'event', description: 'This ingestion pipeline runs whenever changes are detected.' },
                                 ]}
                                 onBlur={() => touchFields([`pipelines[${index}].trigger`])}
-                                disabled={isEdit}
+                                disabled={isExistingPipeline(pipeline)}
                             />
                         </FormField>
 
                         <FormField
                             label='Auto Remove'
                             errorText={formErrors.pipelines?.[index]?.autoRemove}
-                            description={isEdit ? 'Auto remove setting cannot be changed for existing pipelines (requires infrastructure redeployment)' : RagRepositoryPipeline.shape.autoRemove.description}
+                            description={isExistingPipeline(pipeline) ? 'Auto remove setting cannot be changed for existing pipelines (requires infrastructure redeployment)' : RagRepositoryPipeline.shape.autoRemove.description}
                         >
                             <Toggle
                                 checked={pipeline.autoRemove}
                                 onChange={({ detail }) =>
                                     onChange(index, 'autoRemove', detail.checked)
                                 }
-                                disabled={isEdit}
+                                disabled={isExistingPipeline(pipeline)}
                             />
                         </FormField>
                     </SpaceBetween>
@@ -260,7 +289,8 @@ export function PipelineConfigForm (props: FormProps<PipelineConfig[]> & Pipelin
             {isEdit && (
                 <div style={{ fontSize: '14px', color: '#5f6b7a', marginTop: '8px' }}>
                     <strong>Note:</strong> Adding or removing pipelines requires infrastructure redeployment.
-                    Existing pipeline configurations cannot be modified.
+                    Existing pipeline configurations (collection, S3 bucket, S3 prefix, trigger, auto remove) cannot be modified.
+                    New pipelines can be fully configured before deployment.
                 </div>
             )}
         </SpaceBetween>

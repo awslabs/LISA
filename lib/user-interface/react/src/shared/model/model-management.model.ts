@@ -360,7 +360,7 @@ export const autoScalingConfigSchema = z.object({
     maxCapacity: z.number().min(1).default(1),
     desiredCapacity: z.number().optional(),
     cooldown: z.number().min(1).default(420),
-    defaultInstanceWarmup: z.number().default(180),
+    defaultInstanceWarmup: z.number().min(0).max(3600).default(180),
     metricConfig: MetricConfigSchema.default(MetricConfigSchema.parse({})),
     scheduling: scheduleConfigSchema.optional(),
 }).superRefine((value, context) => {

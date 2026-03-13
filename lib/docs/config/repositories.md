@@ -43,7 +43,7 @@ Files loaded via the chat assistant UI are limited by size, and are processed th
 
 ### Automated Document Repository Ingestion Pipeline
 
-LISA's automated document ingestion pipeline supports larger files and broader file types. Supported file types include: PDF, docx, and plain text. The individual file size limit is 50 MB. LISA's pipelines offer chunking support for fixed size chunking or no chunking. For customers using Amazon Bedrock Knowledge Bases, LISA supports all chunking strategies offered by the service. LISA's automated ingestion pipelines provide customers with a flexible, scalable solution for loading documents into configured repositories and collections.
+LISA's automated document ingestion pipeline supports larger files and broader file types. Supported file types include: PDF, docx, and plain text files (.txt, .json, .yaml, xml, etc). The individual file size limit is 50 MB. LISA's pipelines offer chunking support for fixed size chunking or no chunking. For customers using Amazon Bedrock Knowledge Bases, LISA supports all chunking strategies offered by the service. LISA's automated ingestion pipelines provide customers with a flexible, scalable solution for loading documents into configured repositories and collections.
 
 Customers can set up multiple ingestion pipelines for a repository. For each pipeline they define:
 - The target repository and collection

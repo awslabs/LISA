@@ -17,7 +17,9 @@
 // LisaChat Stack.
 import { Stack, StackProps } from 'aws-cdk-lib';
 import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
+import { RemovalPolicy } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
 import { SessionApi } from './api/session';
@@ -27,6 +29,8 @@ import { ConfigurationApi } from './api/configuration';
 import { PromptTemplateApi } from './api/prompt-template-api';
 import { McpApi } from './api/mcp';
 import { UserPreferencesApi } from './api/user-preferences';
+import { ChatAssistantStacksApi } from './api/chat-assistant-stacks-api';
+import { ProjectsApi } from './api/projects';
 
 export type LisaChatProps = {
     authorizer: IAuthorizer;
@@ -71,8 +75,18 @@ export class LisaChatApplicationConstruct extends Construct {
             ...(config.deployMcpWorkbench ? { mcpApi } : {})
         });
 
+        // Create ProjectsTable early so its name can be passed to SessionApi for BatchGetItem
+        const projectsTable = new dynamodb.Table(scope, 'ProjectsTable', {
+            partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
+            sortKey: { name: 'projectId', type: dynamodb.AttributeType.STRING },
+            billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+            encryption: dynamodb.TableEncryption.AWS_MANAGED,
+            removalPolicy: config.removalPolicy,
+            deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
+        });
+
         // Add REST API Lambdas to APIGW
-        new SessionApi(scope, 'SessionApi', {
+        const sessionApi = new SessionApi(scope, 'SessionApi', {
             authorizer,
             config,
             restApiId,
@@ -80,6 +94,20 @@ export class LisaChatApplicationConstruct extends Construct {
             securityGroups,
             vpc,
             configTable: configurationApi.configTable,
+            projectsTableName: projectsTable.tableName,
+        });
+
+        // ProjectsApi receives the pre-created table so it doesn't create a duplicate
+        new ProjectsApi(scope, 'ProjectsApi', {
+            authorizer,
+            config,
+            restApiId,
+            rootResourceId,
+            securityGroups,
+            vpc,
+            sessionTable: sessionApi.sessionTable,
+            configTable: configurationApi.configTable,
+            projectsTable,
         });
 
         new PromptTemplateApi(scope, 'PromptTemplateApi', {
@@ -92,6 +120,15 @@ export class LisaChatApplicationConstruct extends Construct {
         });
 
         new UserPreferencesApi(scope, 'UserPreferencesApi', {
+            authorizer,
+            config,
+            restApiId,
+            rootResourceId,
+            securityGroups,
+            vpc,
+        });
+
+        new ChatAssistantStacksApi(scope, 'ChatAssistantStacksApi', {
             authorizer,
             config,
             restApiId,

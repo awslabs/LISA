@@ -1062,7 +1062,7 @@
           "cdk-hnb659fds-assets-012345678901-us-iso-east-1"
         ],
         "SourceObjectKeys": [
-          "a91964e472595b593ca70f493e5466c77f079ed6d7723e9cd55de25ecbcd6a7a.zip"
+          "b3afcc4ca240b341fc36c5ad6ea5e46ddeba20df712f44db2c407ebc5f06e510.zip"
         ],
         "DestinationBucketName": {
           "Ref": "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderec2bucketA3074A95"
@@ -1261,7 +1261,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Environment": {
           "Variables": {
@@ -1534,6 +1534,11 @@
                   }
                 },
                 {
+                  "Action": "s3:GetObject",
+                  "Effect": "Allow",
+                  "Resource": "arn:aws:s3:::hf-models-gaiic/*"
+                },
+                {
                   "Action": [
                     "autoscaling:DescribeAutoScalingGroups",
                     "autoscaling:UpdateAutoScalingGroup",
@@ -1613,7 +1618,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Description": "Manages Auto Scaling scheduled actions for LISA model scheduling",
         "Environment": {
@@ -1665,7 +1670,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Description": "Processes Auto Scaling Group CloudWatch events to update model status",
         "Environment": {
@@ -1795,7 +1800,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Environment": {
           "Variables": {
@@ -1834,7 +1839,8 @@
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}",
             "AWS_ACCOUNT_ID": "012345678901",
-            "AWS_PARTITION": "aws"
+            "AWS_PARTITION": "aws",
+            "MODELS_BUCKET_NAME": "hf-models-gaiic"
           }
         },
         "Handler": "models.state_machine.create_model.handle_set_model_to_creating",
@@ -1880,7 +1886,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Environment": {
           "Variables": {
@@ -1919,7 +1925,8 @@
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}",
             "AWS_ACCOUNT_ID": "012345678901",
-            "AWS_PARTITION": "aws"
+            "AWS_PARTITION": "aws",
+            "MODELS_BUCKET_NAME": "hf-models-gaiic"
           }
         },
         "Handler": "models.state_machine.create_model.handle_start_copy_docker_image",
@@ -1965,7 +1972,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Environment": {
           "Variables": {
@@ -2004,7 +2011,8 @@
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}",
             "AWS_ACCOUNT_ID": "012345678901",
-            "AWS_PARTITION": "aws"
+            "AWS_PARTITION": "aws",
+            "MODELS_BUCKET_NAME": "hf-models-gaiic"
           }
         },
         "Handler": "models.state_machine.create_model.handle_poll_docker_image_available",
@@ -2050,7 +2058,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Environment": {
           "Variables": {
@@ -2089,7 +2097,8 @@
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}",
             "AWS_ACCOUNT_ID": "012345678901",
-            "AWS_PARTITION": "aws"
+            "AWS_PARTITION": "aws",
+            "MODELS_BUCKET_NAME": "hf-models-gaiic"
           }
         },
         "Handler": "models.state_machine.create_model.handle_failure",
@@ -2135,7 +2144,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Environment": {
           "Variables": {
@@ -2174,7 +2183,8 @@
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}",
             "AWS_ACCOUNT_ID": "012345678901",
-            "AWS_PARTITION": "aws"
+            "AWS_PARTITION": "aws",
+            "MODELS_BUCKET_NAME": "hf-models-gaiic"
           }
         },
         "Handler": "models.state_machine.create_model.handle_start_create_stack",
@@ -2220,7 +2230,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Environment": {
           "Variables": {
@@ -2259,7 +2269,8 @@
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}",
             "AWS_ACCOUNT_ID": "012345678901",
-            "AWS_PARTITION": "aws"
+            "AWS_PARTITION": "aws",
+            "MODELS_BUCKET_NAME": "hf-models-gaiic"
           }
         },
         "Handler": "models.state_machine.create_model.handle_poll_create_stack",
@@ -2305,7 +2316,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Environment": {
           "Variables": {
@@ -2344,7 +2355,8 @@
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}",
             "AWS_ACCOUNT_ID": "012345678901",
-            "AWS_PARTITION": "aws"
+            "AWS_PARTITION": "aws",
+            "MODELS_BUCKET_NAME": "hf-models-gaiic"
           }
         },
         "Handler": "models.state_machine.create_model.handle_poll_model_ready",
@@ -2390,7 +2402,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Environment": {
           "Variables": {
@@ -2430,6 +2442,7 @@
             "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}",
             "AWS_ACCOUNT_ID": "012345678901",
             "AWS_PARTITION": "aws",
+            "MODELS_BUCKET_NAME": "hf-models-gaiic",
             "SCHEDULE_MANAGEMENT_FUNCTION_NAME": {
               "Ref": "ModelsApiScheduleManagementD0F63E98"
             }
@@ -2478,7 +2491,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Environment": {
           "Variables": {
@@ -2517,10 +2530,97 @@
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}",
             "AWS_ACCOUNT_ID": "012345678901",
-            "AWS_PARTITION": "aws"
+            "AWS_PARTITION": "aws",
+            "MODELS_BUCKET_NAME": "hf-models-gaiic"
           }
         },
         "Handler": "models.state_machine.create_model.handle_add_model_to_litellm",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiCreateModelWorkflowEnrichContextWindowFunc118E1479": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "DOCKER_IMAGE_BUILDER_FN_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApidockerimagebuilderLisaModelsdockerimagebuilder35917FEB",
+                "Arn"
+              ]
+            },
+            "ECR_REPOSITORY_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApiecsmodelbuildrepo74B1906D",
+                "Arn"
+              ]
+            },
+            "ECR_REPOSITORY_NAME": {
+              "Ref": "ModelsApiecsmodelbuildrepo74B1906D"
+            },
+            "ECS_MODEL_DEPLOYER_FN_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApiecsmodeldeployerLisaModelsecsmodeldeployerFunc775C7BAD",
+                "Arn"
+              ]
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+            },
+            "REST_API_VERSION": "v2",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
+            "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}",
+            "AWS_ACCOUNT_ID": "012345678901",
+            "AWS_PARTITION": "aws",
+            "MODELS_BUCKET_NAME": "hf-models-gaiic"
+          }
+        },
+        "Handler": "models.state_machine.create_model.handle_enrich_context_window",
         "Layers": [
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -2563,7 +2663,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Environment": {
           "Variables": {
@@ -2602,7 +2702,8 @@
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}",
             "AWS_ACCOUNT_ID": "012345678901",
-            "AWS_PARTITION": "aws"
+            "AWS_PARTITION": "aws",
+            "MODELS_BUCKET_NAME": "hf-models-gaiic"
           }
         },
         "Handler": "models.state_machine.create_model.handle_add_guardrails_to_litellm",
@@ -2734,6 +2835,32 @@
                       {
                         "Fn::GetAtt": [
                           "ModelsApiCreateModelWorkflowCreateScheduleFuncBB684C18",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiCreateModelWorkflowEnrichContextWindowFunc118E1479",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiCreateModelWorkflowEnrichContextWindowFunc118E1479",
                           "Arn"
                         ]
                       },
@@ -2954,7 +3081,7 @@
                   "Arn"
                 ]
               },
-              "\",\"Payload.$\":\"$\"}},\"CreateModelInfraChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.create_infra\",\"BooleanEquals\":true,\"Next\":\"StartCopyDockerImage\"}],\"Default\":\"AddModelToLitellm\"},\"AddModelToLitellm\":{\"Next\":\"CheckGuardrailsChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              "\",\"Payload.$\":\"$\"}},\"CreateModelInfraChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.create_infra\",\"BooleanEquals\":true,\"Next\":\"StartCopyDockerImage\"}],\"Default\":\"AddModelToLitellm\"},\"AddModelToLitellm\":{\"Next\":\"EnrichContextWindow\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
               {
                 "Ref": "AWS::Partition"
               },
@@ -2973,6 +3100,17 @@
               {
                 "Fn::GetAtt": [
                   "ModelsApiCreateModelWorkflowCreateScheduleFuncBB684C18",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"EnrichContextWindow\":{\"Next\":\"CheckGuardrailsChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiCreateModelWorkflowEnrichContextWindowFunc118E1479",
                   "Arn"
                 ]
               },
@@ -3076,7 +3214,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Environment": {
           "Variables": {
@@ -3137,7 +3275,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Environment": {
           "Variables": {
@@ -3198,7 +3336,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Environment": {
           "Variables": {
@@ -3259,7 +3397,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Environment": {
           "Variables": {
@@ -3320,7 +3458,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Environment": {
           "Variables": {
@@ -3381,7 +3519,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Environment": {
           "Variables": {
@@ -3722,7 +3860,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Environment": {
           "Variables": {
@@ -3784,7 +3922,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Environment": {
           "Variables": {
@@ -3846,7 +3984,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Environment": {
           "Variables": {
@@ -3908,7 +4046,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Environment": {
           "Variables": {
@@ -3970,7 +4108,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Environment": {
           "Variables": {
@@ -4032,7 +4170,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Environment": {
           "Variables": {
@@ -4493,7 +4631,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Description": "Manage model",
         "Environment": {
@@ -4520,6 +4658,10 @@
               "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
             },
             "ADMIN_GROUP": "",
+            "MODELS_BUCKET_NAME": "hf-models-gaiic",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
             "LISA_RAG_VECTOR_STORE_TABLE_PS_NAME": "/dev/test-lisa/lisa/ragVectorStoreTableName",
             "LISA_RAG_COLLECTIONS_TABLE_PS_NAME": "/dev/test-lisa/lisa/ragCollectionsTableName"
           }
@@ -4611,7 +4753,7 @@
         ]
       }
     },
-    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandlerf5b30DC2DCF5": {
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandlerf03aF6539147": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",
@@ -4650,7 +4792,7 @@
         }
       }
     },
-    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandlerc860123AF1AC": {
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler65809D677E70": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",
@@ -4694,7 +4836,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Description": "Manage model",
         "Environment": {
@@ -4721,6 +4863,10 @@
               "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
             },
             "ADMIN_GROUP": "",
+            "MODELS_BUCKET_NAME": "hf-models-gaiic",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
             "LISA_RAG_VECTOR_STORE_TABLE_PS_NAME": "/dev/test-lisa/lisa/ragVectorStoreTableName",
             "LISA_RAG_COLLECTIONS_TABLE_PS_NAME": "/dev/test-lisa/lisa/ragCollectionsTableName"
           }
@@ -4788,7 +4934,7 @@
         "RetentionInDays": 30
       }
     },
-    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler70cd0DD6AA47": {
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandlerae5d7BABF7C0": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",
@@ -4943,6 +5089,31 @@
               }
             },
             {
+              "Action": "s3:GetObject",
+              "Effect": "Allow",
+              "Resource": "arn:aws:s3:::hf-models-gaiic/*"
+            },
+            {
+              "Action": "secretsmanager:GetSecretValue",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":secretsmanager:us-iso-east-1:012345678901:secret:",
+                    {
+                      "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+                    },
+                    "-??????"
+                  ]
+                ]
+              }
+            },
+            {
               "Action": "ssm:GetParameter",
               "Effect": "Allow",
               "Resource": [
@@ -4979,7 +5150,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Description": "Remove api_key from existing Bedrock models to fix Invalid API Key format errors",
         "Environment": {
@@ -5159,6 +5330,198 @@
           ]
         },
         "CleanupVersion": "1"
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete"
+    },
+    "ModelsApiContextWindowBackfill811387A8": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+        },
+        "Description": "One-time backfill of context_window for existing model DynamoDB records",
+        "Environment": {
+          "Variables": {
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "MODELS_BUCKET_NAME": "hf-models-gaiic",
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "REST_API_VERSION": "v2",
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev"
+          }
+        },
+        "Handler": "models.model_context_window_backfill.lambda_handler",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 900,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiContextWindowBackfillProviderframeworkonEventServiceRoleB2A99861": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    "ModelsApiContextWindowBackfillProviderframeworkonEventServiceRoleDefaultPolicyDC2A485D": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiContextWindowBackfill811387A8",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiContextWindowBackfill811387A8",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:GetFunction",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "ModelsApiContextWindowBackfill811387A8",
+                  "Arn"
+                ]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "ModelsApiContextWindowBackfillProviderframeworkonEventServiceRoleDefaultPolicyDC2A485D",
+        "Roles": [
+          {
+            "Ref": "ModelsApiContextWindowBackfillProviderframeworkonEventServiceRoleB2A99861"
+          }
+        ]
+      }
+    },
+    "ModelsApiContextWindowBackfillProviderframeworkonEventE664A7A0": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "07a90cc3efdfc34da22208dcd9d211f06f5b0e01b21e778edc7c3966b1f61d57.zip"
+        },
+        "Description": "AWS CDK resource provider framework - onEvent (LisaModels/ModelsApi/ContextWindowBackfillProvider)",
+        "Environment": {
+          "Variables": {
+            "USER_ON_EVENT_FUNCTION_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApiContextWindowBackfill811387A8",
+                "Arn"
+              ]
+            }
+          }
+        },
+        "Handler": "framework.onEvent",
+        "LoggingConfig": {
+          "ApplicationLogLevel": "FATAL",
+          "LogFormat": "JSON"
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiContextWindowBackfillProviderframeworkonEventServiceRoleB2A99861",
+            "Arn"
+          ]
+        },
+        "Runtime": "nodejs22.x",
+        "Timeout": 900
+      },
+      "DependsOn": [
+        "ModelsApiContextWindowBackfillProviderframeworkonEventServiceRoleDefaultPolicyDC2A485D",
+        "ModelsApiContextWindowBackfillProviderframeworkonEventServiceRoleB2A99861"
+      ]
+    },
+    "ModelsApiContextWindowBackfillResourceE15C0D52": {
+      "Type": "AWS::CloudFormation::CustomResource",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "ModelsApiContextWindowBackfillProviderframeworkonEventE664A7A0",
+            "Arn"
+          ]
+        }
       },
       "UpdateReplacePolicy": "Delete",
       "DeletionPolicy": "Delete"

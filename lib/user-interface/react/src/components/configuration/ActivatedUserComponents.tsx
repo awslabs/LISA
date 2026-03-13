@@ -42,6 +42,8 @@ const advancedOptions = {
     editChatHistoryBuffer: 'Edit chat history buffer',
     enableModelComparisonUtility: 'Model Comparison Utility',
     encryptSession: 'Session Encryption',
+    chatAssistantStacks: 'Chat Assistant Stacks',
+    projectOrganization: 'Project Organization',
 };
 
 const mcpOptions = {

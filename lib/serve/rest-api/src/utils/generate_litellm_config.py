@@ -29,16 +29,36 @@ def _is_embedding_model(model: dict) -> bool:
     return "embed" in model_name or "embed" in model_id
 
 
+def _get_inference_container(model: dict) -> str:
+    """Extract inference container type from model provider field.
+
+    Provider format is: modelHosting.modelType.inferenceContainer
+    Example: "ecs.textgen.tgi" or "ecs.embedding.tei"
+    """
+    provider: str = model.get("provider", "")
+    parts: list[str] = provider.split(".")
+    if len(parts) == 3:
+        return parts[2]  # Return the inferenceContainer part
+    return ""
+
+
 def _build_model_config(model: dict) -> dict:
     """Build LiteLLM model configuration for a registered model."""
     model_name = model["modelName"]
+    inference_container = _get_inference_container(model)
     is_embedding = _is_embedding_model(model)
 
-    # Use hosted_vllm provider for embedding models to avoid encoding_format issues
-    # LiteLLM 1.80+ has issues with openai/ provider sending invalid encoding_format to vLLM
-    if is_embedding:
+    # Determine the correct LiteLLM provider based on the actual container type:
+    # - vLLM containers: Use hosted_vllm/ provider (passes through full model name to vLLM)
+    # - TGI/TEI containers: Use openai/ provider (OpenAI-compatible API, LiteLLM strips prefix)
+    #
+    # Important: For vLLM, the model name includes the HF org (e.g., "openai/gpt-oss-20b")
+    # and vLLM's --served-model-name expects the full name. Using hosted_vllm/ ensures
+    # LiteLLM passes through the complete model name without stripping the org prefix.
+    if inference_container == "vllm" or is_embedding:
         provider_prefix = "hosted_vllm"
     else:
+        # TGI and TEI containers use OpenAI-compatible APIs
         provider_prefix = "openai"
 
     litellm_params = {
@@ -67,17 +87,8 @@ def generate_config(filepath: str) -> None:
     # Get and load registered models from ParameterStore
     param_response = ssm_client.get_parameter(Name=os.environ["REGISTERED_MODELS_PS_NAME"])
     registered_models = json.loads(param_response["Parameter"]["Value"])
-    # Generate model definitions for each of the LISA-deployed models
-    litellm_model_params = [
-        {
-            "model_name": model["modelId"],  # Use user-provided name if one given, otherwise it is the model name.
-            "litellm_params": {
-                "model": f"openai/{model['modelName']}",
-                "api_base": model["endpointUrl"] + "/v1",  # Local containers require the /v1 for OpenAI API routing.
-            },
-        }
-        for model in registered_models
-    ]
+    # Generate model definitions for each of the LISA-deployed models using the _build_model_config helper
+    litellm_model_params = [_build_model_config(model) for model in registered_models]
     config_models = []  # ensure config_models is a list and not None
     config_models.extend(litellm_model_params)
     config_contents["model_list"] = config_models

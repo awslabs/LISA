@@ -60,6 +60,7 @@ from utilities.bedrock_kb_validation import validate_bedrock_kb_exists
 from utilities.common_functions import api_wrapper, retry_config
 from utilities.exceptions import ForbiddenException, NotFoundException
 from utilities.repository_types import RepositoryType
+from utilities.response_builder import DecimalEncoder
 from utilities.validation import ValidationError
 
 logger = logging.getLogger(__name__)
@@ -416,6 +417,51 @@ def create_bedrock_collection(event: dict, context: dict) -> dict[str, Any]:
         raise
 
 
+def create_default_collection(event: dict, context: dict) -> dict[str, Any]:
+    """Persist the default collection for a non-Bedrock repository after stack creation.
+    Called by the state machine for OpenSearch/PGVector repositories.
+    """
+    try:
+        rag_config = event.get("ragConfig", {})
+        repository_id = rag_config.get("repositoryId")
+        if not repository_id:
+            raise ValidationError("repositoryId is required in ragConfig")
+
+        repository = vs_repo.find_repository_by_id(repository_id)
+        service = RepositoryServiceFactory.create_service(repository)
+
+        if not service.should_create_default_collection():
+            return {"skipped": True, "reason": "repository type does not support default collections"}
+
+        default_collection = service.create_default_collection()
+        if not default_collection:
+            return {"skipped": True, "reason": "no embeddingModelId configured"}
+
+        try:
+            collection_service.create_collection(collection=default_collection, username="system")
+            logger.info(f"Persisted default collection {default_collection.collectionId} for {repository_id}")
+        except Exception as e:
+            if "already exists" in str(e).lower():
+                logger.info(f"Default collection already exists for {repository_id}, skipping")
+            else:
+                raise
+
+        pipelines = repository.get("pipelines") or []
+        updated_pipelines = [
+            {**p, "collectionId": default_collection.collectionId} if p.get("collectionId") == "default" else p
+            for p in pipelines
+        ]
+        if updated_pipelines != pipelines:
+            vs_repo.update(repository_id, {"pipelines": updated_pipelines})
+            logger.info(f"Updated pipeline collectionId to {default_collection.collectionId} for {repository_id}")
+
+        return {"collectionId": default_collection.collectionId, "repositoryId": repository_id}
+
+    except Exception as e:
+        logger.error(f"Error creating default collection: {str(e)}")
+        raise
+
+
 @api_wrapper
 @admin_only
 def create_collection(event: dict, context: dict) -> dict[str, Any]:
@@ -520,7 +566,14 @@ def get_collection(event: dict, context: dict) -> dict[str, Any]:
     repo = get_repository(event, repository_id=repository_id)
 
     if repo.get("embeddingModelId") == collection_id:
-        # Not a real collection - create virtual default collection
+        active_statuses = [
+            VectorStoreStatus.CREATE_COMPLETE,
+            VectorStoreStatus.UPDATE_COMPLETE,
+            VectorStoreStatus.UPDATE_COMPLETE_CLEANUP_IN_PROGRESS,
+            VectorStoreStatus.UPDATE_IN_PROGRESS,
+        ]
+        if repo.get("status") not in active_statuses:
+            raise NotFoundException(f"Repository '{repository_id}' is not active")
         service = RepositoryServiceFactory.create_service(repo)
         collection = service.create_default_collection()
     else:
@@ -1651,7 +1704,8 @@ def update_repository(event: dict, context: dict) -> dict[str, Any]:
                 {
                     "body": input_data,
                     "config": {key: serializer.serialize(value) for key, value in rag_config.items()},
-                }
+                },
+                cls=DecimalEncoder,
             ),
         )
 

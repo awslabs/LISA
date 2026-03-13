@@ -36,6 +36,7 @@ import UserApiToken from './pages/UserApiToken';
 import NotificationBanner from './shared/notification/notification';
 import ConfirmationModal, { ConfirmationModalProps } from './shared/modal/confirmation-modal';
 import Configuration from './pages/Configuration';
+import ChatAssistantStacks from './pages/ChatAssistantStacks';
 import { useGetConfigurationQuery } from './shared/reducers/configuration.reducer';
 import { IConfiguration } from './shared/model/configuration.model';
 import DocumentLibrary from './pages/DocumentLibrary';
@@ -49,6 +50,7 @@ import ModelComparisonPage from './pages/ModelComparison';
 import McpWorkbench from './pages/McpWorkbench';
 import ColorSchemeContext from './shared/color-scheme.provider';
 import { applyMode, Mode } from '@cloudscape-design/global-styles';
+import { useAnnouncementNotifier } from './shared/hooks/useAnnouncementNotifier';
 
 
 export type RouteProps = {
@@ -112,6 +114,8 @@ function App () {
         skip: !auth.isAuthenticated || auth.isLoading || !auth.user
     });
     const config = fullConfig?.[0];
+
+    useAnnouncementNotifier(config);
 
     const [colorScheme, setColorScheme] = useState(() => {
         // Check to see if Media-Queries are supported
@@ -266,6 +270,14 @@ function App () {
                                     </AdminRoute>
                                 }
                             />
+                            {config?.configuration?.enabledComponents?.chatAssistantStacks && <Route
+                                path='chat-assistant-stacks'
+                                element={
+                                    <AdminRoute>
+                                        <ChatAssistantStacks setNav={setNav} />
+                                    </AdminRoute>
+                                }
+                            />}
                             {config?.configuration?.enabledComponents?.mcpConnections && <Route
                                 path='mcp-connections/*'
                                 element={

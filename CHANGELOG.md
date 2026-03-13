@@ -2,63 +2,56 @@
 
 ## Key Features
 
+### Stopped Model Handling Improvements
+Improved the handling of stopped models in the LISA software. This includes:
+- **Model Dropdown**: Stopped models are now included in the model dropdown for chat inferences, but are properly disabled to indicate they are unavailable.
+- **Prompt Buttons**: The prompt area buttons are now properly disabled when the prompt is disabled, such as when a model is stopped.
+
 ### Project Organization for Chat Sessions
+Added the ability to organize chat sessions into projects, allowing users to better manage and navigate their conversation history.
 
-Customers can organize chat sessions into Projects, providing a structured way to manage and navigate conversation history. Projects allow users to group related sessions together, making it easier to find and revisit past conversations across different topics.
+### Batch Job Definition Improvements
+The batch ingestion job definition now uses a static resource ID, which helps prevent failures due to definition drift during subsequent deployments.
 
-### Chat Assistant Stacks
+### Secret Rotation for PGVector
+Added support for secret rotation of the PGVector database credentials, improving the overall security and maintainability of the LISA platform.
 
-Chat Assistant Stacks allow administrators to define preconfigured assistants that bundle models, RAG repositories and collections, MCP servers and tools, and prompt templates into a single package. Users can browse available assistants and start chat sessions with everything preconfigured, eliminating the need for manual setup. Access to each stack is controlled through enterprise user groups, allowing administrators to tailor assistant availability to specific teams or roles.
+### Configuration UI Documentation
+New documentation was added to cover the Configuration UI, including details on the new Announcement feature and guidance on scaling models.
 
-### Other Features
+### Context Window Inference
+A new step was added to the model creation state machine to infer the context window of LISA-hosted and third-party models, improving the overall capabilities of the platform.
 
-- Added context window inference step to model creation state machine for LISA-hosted and third-party models
-- Added announcements banner feature to Configuration UI for administrators to set global messages for all users
-- Added support for editing pipelines after repository creation
-- Added secret rotation support for PGVector database credentials
+### Container Scaling Enhancements
+The scaling behavior for the REST and MCP containers was improved, with the REST containers now scaling based on ECS metrics instead of ASG metrics. This helps provide more reliable and responsive scaling for the platform.
 
-## UI Updates
+### Announcements Banner
+A new Announcement feature was added to the Configuration UI, allowing administrators to set a global message that is displayed to all users.
 
-- Stopped models now appear in model dropdown but are properly disabled to indicate unavailability
-- Prompt area buttons are now properly disabled when prompt is disabled (e.g., when model is stopped)
+### Additional RAG File Support
+The platform now supports additional text-based file types for RAG (Reference, Annotation, Guidance) uploads, expanding the flexibility of the content ingestion process.
 
-## Other Key Changes
+### Pipeline Editing
+Users can now edit pipelines after a repository has been created, providing more flexibility in managing data ingestion workflows.
 
-- Batch ingestion job definition now uses static resource ID to prevent failures from definition drift during deployments
-- REST containers now scale based on ECS metrics instead of ASG metrics for more reliable scaling
-- Added support for additional text-based file types for RAG uploads including:
-  - Javascript
-  - HTML
-  - Markdown
-  - JSON
-  - CSS
-  - XML
+### Chat Assistant UI Cleanup
+The user interface for the Chat Assistants feature was cleaned up, including updates to the call-out at the top of the chat, pre-filling of RAG/collection sections, and better filtering and management of RAG/Collection options.
 
-## Bug Fixes
-
-- Fixed a liteLLM configuration issue that double prefixed openAI models, this resolves an issue with LISA hosted models integrating with Claude Code
-- Fixed pipeline event handling issues
-- Fixed RAG collection ID resolution
-
-## Documentation
-
-- Added new API Reference documentation section to make it easier for developers to know where the various entity API documentation exists within our doc site.
-- Added suggestions on self-hosted model performance scaling settings.
-
-## Dependency Updates
-
-- Updated `actions/setup-node` and `actions/upload-artifact` GitHub Actions to latest versions
-- Upgraded various dependencies across the platform for security and compatibility
+## Key Changes
+- **Bug Fixes**: Addressed various bug fixes, including issues with double OpenAI prefixing, pipeline event handling, and RAG collection ID resolution.
+- **Dependency Updates**: Updated several GitHub Actions dependencies to their latest versions, including  and .
+- **Dependency Upgrades**: Upgraded various dependencies across the LISA platform to address security and compatibility concerns.
 
 ## Acknowledgements
+* @121983012+jmharold
+* @32586639+gingerknight
+* @49699333+dependabot[bot]
+* @99225408+Ernest-Gray
 * @bedanley
-* @Ernest-Gray
 * @estohlmann
-* @gingerknight
-* @jmharold
+* @evmann
 
 **Full Changelog**: https://github.com/awslabs/LISA/compare/v6.3.0..v6.4.0
-
 
 # v6.3.0
 

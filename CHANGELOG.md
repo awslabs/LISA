@@ -1,3 +1,58 @@
+# v6.4.0
+
+## Key Features
+
+### Stopped Model Handling Improvements
+Improved the handling of stopped models in the LISA software. This includes:
+- **Model Dropdown**: Stopped models are now included in the model dropdown for chat inferences, but are properly disabled to indicate they are unavailable.
+- **Prompt Buttons**: The prompt area buttons are now properly disabled when the prompt is disabled, such as when a model is stopped.
+
+### Project Organization for Chat Sessions
+Added the ability to organize chat sessions into projects, allowing users to better manage and navigate their conversation history.
+
+### Batch Job Definition Improvements
+The batch ingestion job definition now uses a static resource ID, which helps prevent failures due to definition drift during subsequent deployments.
+
+### Secret Rotation for PGVector
+Added support for secret rotation of the PGVector database credentials, improving the overall security and maintainability of the LISA platform.
+
+### Configuration UI Documentation
+New documentation was added to cover the Configuration UI, including details on the new Announcement feature and guidance on scaling models.
+
+### Context Window Inference
+A new step was added to the model creation state machine to infer the context window of LISA-hosted and third-party models, improving the overall capabilities of the platform.
+
+### Container Scaling Enhancements
+The scaling behavior for the REST and MCP containers was improved, with the REST containers now scaling based on ECS metrics instead of ASG metrics. This helps provide more reliable and responsive scaling for the platform.
+
+### Announcements Banner
+A new Announcement feature was added to the Configuration UI, allowing administrators to set a global message that is displayed to all users.
+
+### Additional RAG File Support
+The platform now supports additional text-based file types for RAG (Reference, Annotation, Guidance) uploads, expanding the flexibility of the content ingestion process.
+
+### Pipeline Editing
+Users can now edit pipelines after a repository has been created, providing more flexibility in managing data ingestion workflows.
+
+### Chat Assistant UI Cleanup
+The user interface for the Chat Assistants feature was cleaned up, including updates to the call-out at the top of the chat, pre-filling of RAG/collection sections, and better filtering and management of RAG/Collection options.
+
+## Key Changes
+- **Bug Fixes**: Addressed various bug fixes, including issues with double OpenAI prefixing, pipeline event handling, and RAG collection ID resolution.
+- **Dependency Updates**: Updated several GitHub Actions dependencies to their latest versions, including  and .
+- **Dependency Upgrades**: Upgraded various dependencies across the LISA platform to address security and compatibility concerns.
+
+## Acknowledgements
+* @121983012+jmharold
+* @32586639+gingerknight
+* @49699333+dependabot[bot]
+* @99225408+Ernest-Gray
+* @bedanley
+* @estohlmann
+* @evmann
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v6.3.0..v6.4.0
+
 # v6.3.0
 
 ## UI Updates

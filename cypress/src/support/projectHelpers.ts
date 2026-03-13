@@ -22,7 +22,7 @@
 // Project feature selectors
 export const PROJECT_SELECTORS = {
     // Segmented control for view toggle
-    VIEW_TOGGLE: '[data-cy="project-history-toggle"]',
+    VIEW_TOGGLE: '[data-testid="project-history-toggle"]',
     HISTORY_VIEW_BUTTON: '[data-testid="history"]',
     PROJECTS_VIEW_BUTTON: '[data-testid="projects"]',
 
@@ -46,8 +46,8 @@ export const PROJECT_SELECTORS = {
 
     // Lists and items
     PROJECT_LIST_ITEM: (projectName: string) => `[data-testid="project-${projectName}"]`,
-    SESSION_ITEM: '[data-cy="session-item"]',
-    SESSION_ITEM_ACTIVE: '[data-cy="session-item"]',
+    SESSION_ITEM: '[data-testid="session-item"]',
+    SESSION_ITEM_ACTIVE: '[data-testid="session-item"]',
     PROJECT_BADGE: '[class*="awsui_badge"]',
     SESSION_ACTIONS_BUTTON: '[aria-label="Session actions"]',
 
@@ -177,7 +177,7 @@ export function renameProject (currentName: string, newName: string) {
     cy.contains('h2', 'Rename Project', { timeout: 5000 }).should('be.visible');
 
     // Verify current name is pre-filled and enter new name
-    cy.get('[data-cy="rename-project-input"] input')
+    cy.get('[data-testid="rename-project-input"] input')
         .should('have.value', currentName)
         .clear()
         .type(newName);

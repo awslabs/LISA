@@ -79,7 +79,7 @@ export function runProjectsTests (options: {
             cy.wait('@getProjects', { timeout: 30000 });
 
             // Verify both view options are visible
-            cy.get('[data-cy="project-history-toggle"]').should('be.visible');
+            cy.get('[data-testid="project-history-toggle"]').should('be.visible');
             cy.get('[data-testid="history"]', { timeout: 5000 }).should('be.visible');
             cy.get('[data-testid="projects"]').should('be.visible');
         });
@@ -148,7 +148,7 @@ export function runProjectsTests (options: {
             cy.contains('h2', 'New Project', { timeout: 5000 }).should('be.visible');
 
             // Cancel to close modal
-            cy.get('[data-cy="create-project-cancel"]').click();
+            cy.get('[data-testid="create-project-cancel"]').click();
         });
 
         it('should create a new project successfully', () => {
@@ -169,11 +169,11 @@ export function runProjectsTests (options: {
             cy.contains('h2', 'New Project', { timeout: 5000 }).should('be.visible');
 
             // Try to confirm with empty name - Create button should be disabled
-            cy.get('[data-cy="input-placeholder"]').should('be.visible').clear();
+            cy.get('[data-testid="input-placeholder"]').should('be.visible').clear();
             cy.get('button').filter(':visible').contains('Create').closest('button').should('be.disabled');
 
             // Cancel to close modal
-            cy.get('[data-cy="create-project-cancel"]').click();
+            cy.get('[data-testid="create-project-cancel"]').click();
         });
 
         if (verifyFixtureData) {
@@ -212,10 +212,10 @@ export function runProjectsTests (options: {
 
                 // Verify modal with current name
                 cy.contains('h2', 'Rename Project', { timeout: 5000 }).should('be.visible');
-                cy.get('[data-cy="rename-project-input"] input').should('have.value', projectName);
+                cy.get('[data-testid="rename-project-input"] input').should('have.value', projectName);
 
                 // Cancel
-                cy.get('[data-cy="rename-project-cancel"]').click();
+                cy.get('[data-testid="rename-project-cancel"]').click();
             });
         });
 
@@ -262,7 +262,7 @@ export function runProjectsTests (options: {
             cy.contains('button', 'Delete project and sessions').should('be.visible');
 
             // Cancel
-            cy.get('[data-cy="delete-project-cancel"]').click();
+            cy.get('[data-testid="delete-project-cancel"]').click();
         });
 
         it('should delete project only (keep sessions)', () => {
@@ -276,7 +276,7 @@ export function runProjectsTests (options: {
             switchToHistoryView();
             cy.contains('Last 3 Months').click(); // Expand section
             // Find session row and click its actions button (3 dots)
-            cy.contains('[data-cy="session-item"]', sessionName, { timeout: 5000 })
+            cy.contains('[data-testid="session-item"]', sessionName, { timeout: 5000 })
                 .first()
                 .should('be.visible')
                 .find('[aria-label="Control instance"]')
@@ -296,7 +296,7 @@ export function runProjectsTests (options: {
             // Verify session still exists in History view (no longer has project badge)
             switchToHistoryView();
             cy.contains('Last 3 Months').click(); // Expand section again
-            cy.contains('[data-cy="session-item"]', sessionName, { timeout: 5000 }).first().should('be.visible');
+            cy.contains('[data-testid="session-item"]', sessionName, { timeout: 5000 }).first().should('be.visible');
         });
 
         it('should delete project with all sessions', () => {
@@ -345,7 +345,7 @@ export function runProjectsTests (options: {
             const sessionName = 'How do I get started';
 
             // Find session and click its actions button
-            cy.contains('[data-cy="session-item"]', sessionName, { timeout: 5000 })
+            cy.contains('[data-testid="session-item"]', sessionName, { timeout: 5000 })
                 .first()
                 .should('be.visible')
                 .find('[aria-label="Control instance"]')
@@ -369,7 +369,7 @@ export function runProjectsTests (options: {
                 const projectName = 'Research';
 
                 // Find session and click its actions button
-                cy.contains('[data-cy="session-item"]', sessionName, { timeout: 5000 })
+                cy.contains('[data-testid="session-item"]', sessionName, { timeout: 5000 })
                     .first()
                     .should('be.visible')
                     .find('[aria-label="Control instance"]')
@@ -398,7 +398,7 @@ export function runProjectsTests (options: {
             // Verify in History view
             switchToHistoryView();
             cy.contains('Last 3 Months').click(); // Expand section
-            cy.contains('[data-cy="session-item"]', sessionName, { timeout: 5000 }).should('be.visible');
+            cy.contains('[data-testid="session-item"]', sessionName, { timeout: 5000 }).should('be.visible');
 
             // Verify in Projects view
             switchToProjectsView();
@@ -422,13 +422,13 @@ export function runProjectsTests (options: {
                 const sessionName = 'Technical Discussion';
 
                 // Verify session has project badge before removal
-                cy.contains('[data-cy="session-item"]', sessionName, { timeout: 5000 })
+                cy.contains('[data-testid="session-item"]', sessionName, { timeout: 5000 })
                     .first()
                     .should('be.visible')
                     .should('contain', 'Research');
 
                 // Find session and click its actions button
-                cy.contains('[data-cy="session-item"]', sessionName, { timeout: 5000 })
+                cy.contains('[data-testid="session-item"]', sessionName, { timeout: 5000 })
                     .first()
                     .find('[aria-label="Control instance"]')
                     .first()

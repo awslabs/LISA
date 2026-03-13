@@ -242,8 +242,13 @@ export function selectPromptTemplateInChat (templateTitle: string, templateType:
         .and('not.be.disabled')
         .click();
 
-    // Wait for modal to close and verify template content was applied
+    // Wait for modal to close
     cy.get(modalSelector).should('not.be.visible');
-    cy.get('[data-testid="chat-prompt-textarea"] textarea, textarea[placeholder*="message" i]')
-        .should('not.have.value', '');
+
+    // Verify template was applied based on type
+    if (!isPersona) {
+        // Directive content goes to the textarea
+        cy.get('[data-testid="chat-prompt-textarea"] textarea, textarea[placeholder*="message" i]')
+            .should('not.have.value', '');
+    }
 }

@@ -135,10 +135,20 @@ export function deleteModelIfExists (modelId: string) {
  * Select a model in the chat interface
  */
 export function selectModelInChat (modelId: string) {
+    // Click to open the dropdown and wait for options to load
     cy.get('[data-testid="model-selection-autosuggest"] input, input[placeholder*="model" i], input[aria-label*="model" i]', { timeout: 45000 })
         .first()
         .should('not.be.disabled')
-        .click({ force: true })
+        .click({ force: true });
+
+    // Wait for dropdown options to appear
+    cy.get('[role="option"], [role="menuitem"]', { timeout: 15000 })
+        .should('be.visible');
+
+    // Type to filter, then select the matching option
+    cy.get('[data-testid="model-selection-autosuggest"] input, input[placeholder*="model" i], input[aria-label*="model" i]')
+        .first()
+        .clear()
         .type(modelId);
 
     cy.get('[role="option"], [role="menuitem"]')

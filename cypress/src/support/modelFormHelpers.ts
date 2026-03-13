@@ -48,8 +48,8 @@ export function openCreateModelWizard () {
  * Fill in the base model configuration for a third-party (Bedrock) model
  */
 export function fillBedrockModelConfig (config: BedrockModelConfig) {
-    cy.get('input[placeholder="mistral-vllm"]').clear().type(config.modelId);
-    cy.get('input[placeholder*="mistralai/Mistral"]').clear().type(config.modelName);
+    cy.get('[data-testid="model-id-input"] input, input[placeholder="mistral-vllm"]').clear().type(config.modelId);
+    cy.get('[data-testid="model-name-input"] input, input[placeholder*="mistralai/Mistral"]').clear().type(config.modelName);
 
     if (config.modelDescription) {
         cy.get('input[placeholder*="Brief description"]').clear().type(config.modelDescription);
@@ -130,7 +130,7 @@ export function deleteModelIfExists (modelId: string) {
  * Select a model in the chat interface
  */
 export function selectModelInChat (modelId: string) {
-    cy.get('input[placeholder*="model" i], input[aria-label*="model" i]', { timeout: 45000 })
+    cy.get('[data-testid="model-selection-autosuggest"] input, input[placeholder*="model" i], input[aria-label*="model" i]', { timeout: 45000 })
         .first()
         .should('not.be.disabled')
         .click({ force: true })
@@ -150,7 +150,7 @@ export function sendChatMessage (message: string) {
     // Intercept the chat completions API call
     cy.intercept('POST', '**/v2/serve/chat/completions').as('chatInference');
 
-    cy.get('textarea[placeholder*="message" i]')
+    cy.get('[data-testid="chat-prompt-textarea"] textarea, textarea[placeholder*="message" i]')
         .should('not.be.disabled')
         .type(message);
 

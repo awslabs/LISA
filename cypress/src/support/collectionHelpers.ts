@@ -275,7 +275,7 @@ export function selectRagRepositoryInChat (repositoryId: string) {
     cy.log(`Selecting RAG repository: ${repositoryId}`);
 
     // Click the RAG repository input
-    cy.get('input#rag-repository-autosuggest, input[placeholder*="RAG Repository" i]')
+    cy.get('[data-testid="rag-repository-autosuggest"] input, input#rag-repository-autosuggest, input[placeholder*="RAG Repository" i]')
         .should('be.visible')
         .click({ force: true });
 
@@ -295,7 +295,7 @@ export function selectCollectionInChat (collectionName: string) {
     cy.log(`Selecting collection: ${collectionName}`);
 
     // Click the collection input
-    cy.get('input#collection-autosuggest, input[placeholder*="collection" i]')
+    cy.get('[data-testid="rag-collection-autosuggest"] input, input#collection-autosuggest, input[placeholder*="collection" i]')
         .should('be.visible')
         .click({ force: true });
 
@@ -331,7 +331,7 @@ export function sendMessageAndVerifyRagResponse (message: string) {
     cy.intercept('POST', '**/chat/completions').as('chatCompletion');
 
     // Type the message
-    cy.get('textarea[placeholder*="message" i]')
+    cy.get('[data-testid="chat-prompt-textarea"] textarea, textarea[placeholder*="message" i]')
         .should('be.visible')
         .clear()
         .type(message);

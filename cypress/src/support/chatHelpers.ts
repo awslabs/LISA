@@ -21,10 +21,10 @@
 
 // Chat page selectors
 export const CHAT_SELECTORS = {
-    MODEL_INPUT: 'input[placeholder*="model" i], input[aria-label*="model" i]',
-    RAG_REPO_INPUT: 'input#rag-repository-autosuggest, input[placeholder*="RAG Repository" i]',
-    COLLECTION_INPUT: 'input#collection-autosuggest, input[placeholder*="collection" i]',
-    MESSAGE_INPUT: 'textarea[placeholder*="message" i]',
+    MODEL_INPUT: '[data-testid="model-selection-autosuggest"] input, input[placeholder*="model" i], input[aria-label*="model" i]',
+    RAG_REPO_INPUT: '[data-testid="rag-repository-autosuggest"] input, input#rag-repository-autosuggest, input[placeholder*="RAG Repository" i]',
+    COLLECTION_INPUT: '[data-testid="rag-collection-autosuggest"] input, input#collection-autosuggest, input[placeholder*="collection" i]',
+    MESSAGE_INPUT: '[data-testid="chat-prompt-textarea"] textarea, textarea[placeholder*="message" i]',
     DROPDOWN_OPTION: '[role="option"], [role="menuitem"]',
 };
 
@@ -54,7 +54,7 @@ export function verifyChatPageLoaded () {
 
     // Wait for the prompt input textarea to be visible
     // Use attribute selectors that are stable across builds
-    cy.get('textarea[placeholder*="message" i]')
+    cy.get(CHAT_SELECTORS.MESSAGE_INPUT)
         .first()
         .should('exist')
         .and('be.visible');

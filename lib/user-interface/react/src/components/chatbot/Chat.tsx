@@ -119,6 +119,15 @@ export default function Chat ({ sessionId, initialStack }) {
     [allModelsRaw]
     );
 
+    // Same types as allModels but include Stopped for dropdown (shown disabled)
+    const allModelsWithStopped = useMemo(() =>
+        (allModelsRaw || []).filter((model) =>
+            (model.modelType === ModelType.textgen || model.modelType === ModelType.imagegen || model.modelType === ModelType.videogen) &&
+            (model.status === ModelStatus.InService || model.status === ModelStatus.Stopped)
+        ),
+    [allModelsRaw]
+    );
+
     // Session and effective assistant stack (from nav or loaded when resuming)
     const {
         session,
@@ -142,10 +151,10 @@ export default function Chat ({ sessionId, initialStack }) {
 
     // When using an assistant stack, restrict model dropdown to stack's modelIds; empty/null => no options
     const modelsForDropdown = useMemo(() => {
-        if (!effectiveStack) return allModels;
+        if (!effectiveStack) return allModelsWithStopped;
         const ids = effectiveStack.modelIds ?? [];
-        return ids.length ? allModels.filter((m) => ids.includes(m.modelId)) : [];
-    }, [allModels, effectiveStack]);
+        return ids.length ? allModelsWithStopped.filter((m) => ids.includes(m.modelId)) : [];
+    }, [allModelsWithStopped, effectiveStack]);
     const { data: userPreferences } = useGetUserPreferencesQuery();
     const { data: mcpServers } = useListMcpServersQuery(undefined, {
         refetchOnMountOrArgChange: true,
@@ -306,15 +315,31 @@ export default function Chat ({ sessionId, initialStack }) {
         return !allModels?.some((model) => model.modelId === selectedModel.modelId);
     }, [selectedModel, allModels]);
 
-    // Set default model if none is selected, default model is configured, and user hasn't interacted
+    // Selected model is in dropdown but stopped (session resumed with a model that is now stopped)
+    const isModelStopped = useMemo(() => {
+        if (!selectedModel) return false;
+        const inList = modelsForDropdown?.find((m) => m.modelId === selectedModel.modelId);
+        return inList?.status === ModelStatus.Stopped;
+    }, [selectedModel, modelsForDropdown]);
+
+    const hasStoppedModelsInDropdown = useMemo(() =>
+        (modelsForDropdown || []).some((m) => m.status === ModelStatus.Stopped),
+    [modelsForDropdown]
+    );
+
+    // Set default model if none is selected, default model is configured, and user hasn't interacted (only InService models)
+    const availableModelsForDefault = useMemo(() =>
+        (modelsForDropdown || []).filter((m) => m.status === ModelStatus.InService),
+    [modelsForDropdown]
+    );
     useEffect(() => {
-        if (!selectedModel && !hasUserInteractedWithModel && config?.configuration?.global?.defaultModel && modelsForDropdown?.length) {
+        if (!selectedModel && !hasUserInteractedWithModel && config?.configuration?.global?.defaultModel && availableModelsForDefault?.length) {
             const defaultModelId = config.configuration.global.defaultModel;
-            if (modelsForDropdown.some((m) => m.modelId === defaultModelId)) {
+            if (availableModelsForDefault.some((m) => m.modelId === defaultModelId)) {
                 handleModelChange(defaultModelId, selectedModel, setSelectedModel);
             }
         }
-    }, [selectedModel, hasUserInteractedWithModel, config?.configuration?.global?.defaultModel, modelsForDropdown, handleModelChange, setSelectedModel]);
+    }, [selectedModel, hasUserInteractedWithModel, config?.configuration?.global?.defaultModel, availableModelsForDefault, handleModelChange, setSelectedModel]);
 
     // Apply stack config when starting a new session from a Chat Assistant (after session exists so RAG isn't overwritten by createNewSession)
     const initialStackApplied = useRef(false);
@@ -868,8 +893,8 @@ export default function Chat ({ sessionId, initialStack }) {
 
     const getButtonItemsWithAssistantMode = useCallback((...args: Parameters<typeof getButtonItems>) => {
         const [config, useRag, isImageGen, isVideoGen, isConnected, isModelDel, showMd] = args;
-        return getButtonItems(config, useRag, isImageGen, isVideoGen, isConnected, isModelDel, showMd, !!effectiveStack);
-    }, [effectiveStack]);
+        return getButtonItems(config, useRag, isImageGen, isVideoGen, isConnected, isModelDel, showMd, !!effectiveStack, !!selectedModel, loadingSession);
+    }, [config, effectiveStack, selectedModel, loadingSession]);
 
     const promptInputProps = useMemo(() => ({
         userPrompt,
@@ -1020,7 +1045,7 @@ export default function Chat ({ sessionId, initialStack }) {
                 />
             )}
 
-            {/* Sticky warning banner for deleted model */}
+            {/* Sticky warning banner for deleted or stopped model */}
             {isModelDeleted && (
                 <div className='sticky top-0 z-50'>
                     <Box padding={{ horizontal: 'l', top: 's' }}>
@@ -1029,7 +1054,13 @@ export default function Chat ({ sessionId, initialStack }) {
                                 {
                                     type: 'warning',
                                     dismissible: false,
-                                    content: (
+                                    content: isModelStopped ? (
+                                        <>
+                                            This session uses the model <strong>{selectedModel?.modelId}</strong> which is stopped.
+                                            Start it from Model management or start a new session with a different model.
+                                            You can view the conversation history but cannot send new messages until the model is started.
+                                        </>
+                                    ) : (
                                         <>
                                             This session uses the model <strong>{selectedModel?.modelId}</strong> which is no longer available.
                                             You can view the conversation history but cannot send new messages.
@@ -1159,20 +1190,27 @@ export default function Chat ({ sessionId, initialStack }) {
                                 <FormField
                                     label={isImageGenerationMode || isVideoGenerationMode ? <StatusIndicator type='info'>{isImageGenerationMode ? 'Image Generation Mode' : 'Video Generation Mode'}</StatusIndicator> : undefined}
                                 >
-                                    <Autosuggest
-                                        disabled={isRunning || session.history.length > 0}
-                                        statusType={isFetchingModels ? 'loading' : 'finished'}
-                                        loadingText='Loading models (might take few seconds)...'
-                                        placeholder='Select a model'
-                                        empty={<div className='text-zinc-500'>No models available.</div>}
-                                        filteringType='auto'
-                                        value={modelFilterValue}
-                                        enteredTextLabel={(text) => `Use: "${text}"`}
-                                        onChange={({ detail: { value } }) => handleUserModelChange(value)}
-                                        options={modelsOptions}
-                                        ref={modelSelectRef}
-                                        controlId='model-selection-autosuggest'
-                                    />
+                                    <SpaceBetween size='xs' direction='vertical'>
+                                        <Autosuggest
+                                            disabled={isRunning || session.history.length > 0}
+                                            statusType={isFetchingModels ? 'loading' : 'finished'}
+                                            loadingText='Loading models (might take few seconds)...'
+                                            placeholder='Select a model'
+                                            empty={<div className='text-zinc-500'>No models available.</div>}
+                                            filteringType='auto'
+                                            value={modelFilterValue}
+                                            enteredTextLabel={(text) => `Use: "${text}"`}
+                                            onChange={({ detail: { value } }) => handleUserModelChange(value)}
+                                            options={modelsOptions}
+                                            ref={modelSelectRef}
+                                            controlId='model-selection-autosuggest'
+                                        />
+                                        {hasStoppedModelsInDropdown && (
+                                            <Box variant='small' color='text-body-secondary'>
+                                                Some models in the list are stopped and cannot be selected.
+                                            </Box>
+                                        )}
+                                    </SpaceBetween>
                                 </FormField>
                                 {window.env.RAG_ENABLED && !isImageGenerationMode && !isVideoGenerationMode && (
                                     <RagControls

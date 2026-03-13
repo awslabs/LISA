@@ -23,10 +23,14 @@ import { RagConfig } from '../components/RagOptions';
 import { IModel } from '@/shared/model/model-management.model';
 import { useAppDispatch } from '@/config/store';
 import { setBreadcrumbs } from '@/shared/reducers/breadcrumbs.reducer';
+import { useAssignSessionProjectMutation } from '@/shared/reducers/session.reducer';
+import { useNotificationService } from '@/shared/util/hooks';
 
 export const useSession = (sessionId: string, getSessionById: any) => {
     const dispatch = useAppDispatch();
+    const notificationService = useNotificationService(dispatch);
     const auth = useAuth();
+    const [assignSessionProject] = useAssignSessionProjectMutation();
 
     const [session, setSession] = useState<LisaChatSession>(() => ({
         history: [],
@@ -40,6 +44,7 @@ export const useSession = (sessionId: string, getSessionById: any) => {
     const [selectedModel, setSelectedModel] = useState<IModel>();
     const [ragConfig, setRagConfig] = useState<RagConfig>({} as RagConfig);
     const [chatAssistantId, setChatAssistantId] = useState<string | null>(null);
+    const [pendingProjectId, setPendingProjectId] = useState<string | null>(null);
     const hasCreatedNewSessionRef = useRef(false);
     /** SessionId from URL on first run; used so we only clear assistant on refresh (not when opening a session from sidebar). */
     const initialUrlSessionIdRef = useRef<string | undefined | null>(null);
@@ -84,6 +89,7 @@ export const useSession = (sessionId: string, getSessionById: any) => {
         setRagConfig({} as RagConfig);
         setChatAssistantId(null);
         setInternalSessionId(newSessionId);
+        setPendingProjectId(null);
 
         const newSession = {
             history: [],
@@ -139,5 +145,9 @@ export const useSession = (sessionId: string, getSessionById: any) => {
         setRagConfig,
         chatAssistantId,
         setChatAssistantId,
+        pendingProjectId,
+        assignSessionProject,
+        notificationService,
+        setPendingProjectId,
     };
 };

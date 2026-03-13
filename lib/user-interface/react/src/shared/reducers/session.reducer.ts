@@ -164,6 +164,30 @@ export const sessionApi = createApi({
             // Invalidate everything when deleting all sessions
             invalidatesTags: ['sessions', 'session'],
         }),
+        assignSessionProject: builder.mutation<void, { projectId: string; sessionId: string; unassign?: boolean }>({
+            query: ({ projectId, sessionId, unassign = false }) => ({
+                url: `/project/${projectId}/session/${sessionId}`,
+                method: 'PUT',
+                data: { unassign },
+            }),
+            // Optimistic update: patch the listSessions cache immediately
+            async onQueryStarted ({ sessionId, projectId, unassign = false }, { dispatch, queryFulfilled }) {
+                const patchResult = dispatch(
+                    sessionApi.util.updateQueryData('listSessions', undefined, (draft) => {
+                        const session = draft.find((s) => s.sessionId === sessionId);
+                        if (session) {
+                            session.projectId = unassign ? undefined : projectId;
+                        }
+                    })
+                );
+                try {
+                    await queryFulfilled;
+                    dispatch(sessionApi.util.invalidateTags(['sessions', { type: 'session', id: sessionId }]));
+                } catch {
+                    patchResult.undo();
+                }
+            },
+        }),
     }),
 });
 
@@ -175,5 +199,6 @@ export const {
     useUpdateSessionNameMutation,
     useLazyGetSessionByIdQuery,
     useGetSessionHealthQuery,
-    useAttachImageToSessionMutation
+    useAttachImageToSessionMutation,
+    useAssignSessionProjectMutation,
 } = sessionApi;

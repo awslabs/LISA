@@ -196,6 +196,7 @@ class SessionData(BaseModel):
     startTime: str
     createTime: str
     lastUpdated: str
+    projectId: str | None = None
 
 
 class EncryptedSessionData(BaseModel):
@@ -222,6 +223,7 @@ class Session(BaseModel):
     startTime: str | None = None
     createTime: str | None = None
     lastUpdated: str | None = None
+    projectId: str | None = None
 
     @classmethod
     def from_dynamodb_item(cls, item: dict[str, Any]) -> "Session":
@@ -235,6 +237,7 @@ class Session(BaseModel):
             startTime=item.get("startTime"),
             createTime=item.get("createTime"),
             lastUpdated=item.get("lastUpdated"),
+            projectId=item.get("projectId"),
         )
 
 
@@ -248,6 +251,7 @@ class SessionSummary(BaseModel):
     createTime: str | None = None
     lastUpdated: str | None = None
     isEncrypted: bool = False
+    projectId: str | None = None
 
 
 class PutSessionRequest(BaseModel):

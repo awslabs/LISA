@@ -62,6 +62,7 @@ const navLinks = [
       { text: 'Model Management API', link: '/config/model-management-api' },
       { text: 'Model Management UI', link: '/config/model-management-ui' },
       { text: 'Chat Assistant Stacks', link: '/config/chat-assistant-stacks' },
+      { text: 'Project Organization', link: '/config/projects' },
       { text: 'Bedrock Guardrails', link: '/config/guardrails' },
       { text: 'Configuration UI', link: '/config/configuration-ui' },
       { text: 'Usage & Features', link: '/config/usage' },
@@ -105,6 +106,7 @@ const navLinks = [
       { text: 'Hosted MCP Servers (/mcp)', link: '/config/hosted-mcp#api-operations' },
       { text: 'Metrics', link: '/admin/api-overview#metrics-api-gateway-endpoints' },
       { text: 'Model Management (/models)', link: '/config/model-management-api#listing-models-admin-api' },
+      { text: 'Project Organization (/project)', link: '/config/projects#api-reference' },
       { text: 'RAG Repository', link: '/config/repositories#configuration-examples' },
       // TODO: Add API documentation for the following APIs
       // { text: 'MCP Workbench', link: '/config/mcp-workbench#programmatic-api-access' },

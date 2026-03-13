@@ -70,10 +70,20 @@ VLLM_HISTOGRAM_METRICS = {
 TGI_METRICS = {
     "tgi_queue_size": "QueueSize",
     "tgi_batch_current_size": "BatchCurrentSize",
+    "tgi_batch_current_max_tokens": "BatchCurrentMaxTokens",
+    "tgi_request_count": "RequestCount",
+    "tgi_request_success": "RequestSuccess",
+    "tgi_request_failure": "RequestFailure",
 }
 
 TGI_HISTOGRAM_METRICS = {
     "tgi_request_duration": "RequestDurationSeconds",
+    "tgi_request_queue_duration": "QueueDurationSeconds",
+    "tgi_request_inference_duration": "InferenceDurationSeconds",
+    "tgi_request_mean_time_per_token_duration": "MeanTimePerTokenSeconds",
+    "tgi_request_generated_tokens": "GeneratedTokensPerRequest",
+    "tgi_request_input_length": "InputLengthPerRequest",
+    "tgi_batch_inference_duration": "BatchInferenceDurationSeconds",
 }
 
 TEI_METRICS = {
@@ -83,6 +93,9 @@ TEI_METRICS = {
 
 TEI_HISTOGRAM_METRICS = {
     "te_request_duration": "RequestDurationSeconds",
+    "te_request_tokenization_duration": "TokenizationDurationSeconds",
+    "te_request_queue_duration": "QueueDurationSeconds",
+    "te_request_inference_duration": "InferenceDurationSeconds",
 }
 
 # ---------------------------------------------------------------------------
@@ -171,11 +184,13 @@ def build_metric_data(
         total = metrics.get(f"{prom_name}_sum")
         count = metrics.get(f"{prom_name}_count")
         if total is not None and count is not None and count > 0:
+            # Determine unit: token/length metrics are counts, everything else is seconds
+            unit = "None" if cw_name.endswith("PerRequest") else "Seconds"
             data.append({
                 "MetricName": cw_name,
                 "Dimensions": dimensions,
                 "Value": total / count,
-                "Unit": "Seconds",
+                "Unit": unit,
             })
 
     # Always publish engine type as a tag via a simple metric
@@ -203,7 +218,8 @@ def publish_loop():
         log.warning("No dimensions configured (CLUSTER_NAME, SERVICE_NAME, MODEL_NAME). Metrics will be dimensionless.")
 
     boto_config = BotoConfig(retries={"max_attempts": 2, "mode": "standard"})
-    cw = boto3.client("cloudwatch", config=boto_config)
+    region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")
+    cw = boto3.client("cloudwatch", config=boto_config, region_name=region)
 
     engine_detected = None
     consecutive_failures = 0

@@ -28,6 +28,8 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as batch from 'aws-cdk-lib/aws-batch';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { getPythonRuntime } from '../../api-base/utils';
 import { Vpc } from '../../networking/vpc';
@@ -295,6 +297,69 @@ export class IngestionJobConstruct extends Construct {
         deleteAlias.addPermission('AllowEventBridgeInvoke', {
             principal: new iam.ServicePrincipal('events.amazonaws.com'),
             action: 'lambda:InvokeFunction'
+        });
+
+        // EventBridge rule to catch Batch job failures and publish custom CloudWatch metric.
+        // AWS Batch does not publish job-level metrics (JobsFailedCount, etc.) to CloudWatch
+        // natively, so we use EventBridge job state change events as the source of truth.
+        const batchFailureMetricLambda = new lambda.Function(this, 'BatchFailureMetricPublisher', {
+            functionName: `${config.deploymentName}-${config.deploymentStage}-batch-failure-metric`,
+            runtime: lambda.Runtime.PYTHON_3_13,
+            handler: 'index.handler',
+            code: lambda.Code.fromInline(`
+import boto3, os, json
+
+cloudwatch = boto3.client("cloudwatch")
+NAMESPACE = os.environ["METRICS_NAMESPACE"]
+DEPLOYMENT = os.environ["DEPLOYMENT_NAME"]
+STAGE = os.environ["DEPLOYMENT_STAGE"]
+
+def handler(event, context):
+    job_queue = event.get("detail", {}).get("jobQueue", "unknown")
+    job_name = event.get("detail", {}).get("jobName", "unknown")
+    status = event.get("detail", {}).get("status", "FAILED")
+    cloudwatch.put_metric_data(
+        Namespace=NAMESPACE,
+        MetricData=[
+            {
+                "MetricName": "JobsFailed",
+                "Dimensions": [
+                    {"Name": "DeploymentName", "Value": DEPLOYMENT},
+                    {"Name": "DeploymentStage", "Value": STAGE},
+                    {"Name": "JobQueue", "Value": job_queue.split("/")[-1]},
+                ],
+                "Value": 1,
+                "Unit": "Count",
+            },
+        ],
+    )
+    print(json.dumps({"status": status, "jobName": job_name, "jobQueue": job_queue}))
+`),
+            environment: {
+                METRICS_NAMESPACE: 'LISA/BatchIngestion',
+                DEPLOYMENT_NAME: config.deploymentName,
+                DEPLOYMENT_STAGE: config.deploymentStage,
+            },
+            timeout: Duration.seconds(30),
+        });
+
+        batchFailureMetricLambda.addToRolePolicy(new iam.PolicyStatement({
+            actions: ['cloudwatch:PutMetricData'],
+            resources: ['*'],
+        }));
+
+        new events.Rule(this, 'BatchJobFailedRule', {
+            ruleName: `${config.deploymentName}-${config.deploymentStage}-batch-job-failed`,
+            description: 'Captures AWS Batch job failures for ingestion pipeline and publishes CloudWatch metric',
+            eventPattern: {
+                source: ['aws.batch'],
+                detailType: ['Batch Job State Change'],
+                detail: {
+                    status: ['FAILED'],
+                    jobQueue: [{ suffix: jobQueue.jobQueueName }],
+                },
+            },
+            targets: [new targets.LambdaFunction(batchFailureMetricLambda)],
         });
     }
 }

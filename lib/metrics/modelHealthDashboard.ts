@@ -130,11 +130,11 @@ export class ModelHealthDashboard extends Construct {
         // =====================================================================
         // ALB Target Health
         // =====================================================================
-        // ALB metrics are published with varying dimension combos (e.g.
-        // TargetGroup+AZ+LoadBalancer, AZ+LoadBalancer, etc.). Using just
-        // {AWS/ApplicationELB} with no dimension names in the schema matches
-        // all combos. The deployment name token (e.g. "bear") scopes results
-        // to this deployment's ALBs and target groups.
+        // ALB metrics are published with specific dimension combos. Target-level
+        // metrics (HealthyHostCount, HTTP codes, etc.) use {TargetGroup, LoadBalancer}.
+        // Connection-level metrics (ActiveConnectionCount, etc.) use {LoadBalancer} only.
+        // The deployment name token (e.g. "bear") scopes results to this deployment's
+        // ALBs and target groups.
         dashboard.addWidgets(
             new cloudwatch.TextWidget({
                 markdown: '## **ALB Target Health**',
@@ -148,7 +148,7 @@ export class ModelHealthDashboard extends Construct {
                 title: 'Healthy Host Count (by Target Group)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/ApplicationELB} MetricName="HealthyHostCount" ${dp}', 'Average', 300)`,
+                        expression: `SEARCH('{AWS/ApplicationELB,TargetGroup,LoadBalancer} MetricName="HealthyHostCount" ${dp}', 'Average', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -162,7 +162,7 @@ export class ModelHealthDashboard extends Construct {
                 title: 'Unhealthy Host Count (by Target Group)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/ApplicationELB} MetricName="UnHealthyHostCount" ${dp}', 'Average', 300)`,
+                        expression: `SEARCH('{AWS/ApplicationELB,TargetGroup,LoadBalancer} MetricName="UnHealthyHostCount" ${dp}', 'Average', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -188,7 +188,7 @@ export class ModelHealthDashboard extends Construct {
                 title: 'Target 5xx Errors (Failed Invocations)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/ApplicationELB} MetricName="HTTPCode_Target_5XX_Count" ${dp}', 'Sum', 300)`,
+                        expression: `SEARCH('{AWS/ApplicationELB,TargetGroup,LoadBalancer} MetricName="HTTPCode_Target_5XX_Count" ${dp}', 'Sum', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -202,7 +202,7 @@ export class ModelHealthDashboard extends Construct {
                 title: 'Target 4xx Errors (by Model)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/ApplicationELB} MetricName="HTTPCode_Target_4XX_Count" ${dp}', 'Sum', 300)`,
+                        expression: `SEARCH('{AWS/ApplicationELB,TargetGroup,LoadBalancer} MetricName="HTTPCode_Target_4XX_Count" ${dp}', 'Sum', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -216,7 +216,7 @@ export class ModelHealthDashboard extends Construct {
                 title: 'ELB 5xx Errors (by Load Balancer)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/ApplicationELB} MetricName="HTTPCode_ELB_5XX_Count" ${dp}', 'Sum', 300)`,
+                        expression: `SEARCH('{AWS/ApplicationELB,LoadBalancer} MetricName="HTTPCode_ELB_5XX_Count" ${dp}', 'Sum', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -230,7 +230,7 @@ export class ModelHealthDashboard extends Construct {
                 title: 'Target Connection Errors',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/ApplicationELB} MetricName="TargetConnectionErrorCount" ${dp}', 'Sum', 300)`,
+                        expression: `SEARCH('{AWS/ApplicationELB,TargetGroup,LoadBalancer} MetricName="TargetConnectionErrorCount" ${dp}', 'Sum', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -244,7 +244,7 @@ export class ModelHealthDashboard extends Construct {
                 title: 'Rejected Connections (by Load Balancer)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/ApplicationELB} MetricName="RejectedConnectionCount" ${dp}', 'Sum', 300)`,
+                        expression: `SEARCH('{AWS/ApplicationELB,LoadBalancer} MetricName="RejectedConnectionCount" ${dp}', 'Sum', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -258,7 +258,7 @@ export class ModelHealthDashboard extends Construct {
                 title: 'Target TLS Errors',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/ApplicationELB} MetricName="TargetTLSNegotiationErrorCount" ${dp}', 'Sum', 300)`,
+                        expression: `SEARCH('{AWS/ApplicationELB,TargetGroup,LoadBalancer} MetricName="TargetTLSNegotiationErrorCount" ${dp}', 'Sum', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -284,14 +284,14 @@ export class ModelHealthDashboard extends Construct {
                 title: 'Target Response Time p50 / p99 (by Model)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/ApplicationELB} MetricName="TargetResponseTime" ${dp}', 'p50', 300)`,
+                        expression: `SEARCH('{AWS/ApplicationELB,TargetGroup,LoadBalancer} MetricName="TargetResponseTime" ${dp}', 'p50', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
                 ],
                 right: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/ApplicationELB} MetricName="TargetResponseTime" ${dp}', 'p99', 300)`,
+                        expression: `SEARCH('{AWS/ApplicationELB,TargetGroup,LoadBalancer} MetricName="TargetResponseTime" ${dp}', 'p99', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -305,7 +305,7 @@ export class ModelHealthDashboard extends Construct {
                 title: 'Request Count (by Model)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/ApplicationELB} MetricName="RequestCount" ${dp}', 'Sum', 300)`,
+                        expression: `SEARCH('{AWS/ApplicationELB,TargetGroup,LoadBalancer} MetricName="RequestCount" ${dp}', 'Sum', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -319,7 +319,7 @@ export class ModelHealthDashboard extends Construct {
                 title: 'Active Connections (by Load Balancer)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/ApplicationELB} MetricName="ActiveConnectionCount" ${dp}', 'Sum', 300)`,
+                        expression: `SEARCH('{AWS/ApplicationELB,LoadBalancer} MetricName="ActiveConnectionCount" ${dp}', 'Sum', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -333,7 +333,7 @@ export class ModelHealthDashboard extends Construct {
                 title: 'New Connections (by Load Balancer)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/ApplicationELB} MetricName="NewConnectionCount" ${dp}', 'Sum', 300)`,
+                        expression: `SEARCH('{AWS/ApplicationELB,LoadBalancer} MetricName="NewConnectionCount" ${dp}', 'Sum', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -387,7 +387,7 @@ export class ModelHealthDashboard extends Construct {
                 title: 'GPU Cache Usage % (vLLM)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{LISA/InferenceMetrics,ClusterName,ServiceName,ModelName} MetricName="GpuCacheUsagePercent"', 'Average', 300)`,
+                        expression: `SEARCH('{LISA/InferenceMetrics,ModelName} MetricName="GpuCacheUsagePercent"', 'Average', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -429,14 +429,14 @@ export class ModelHealthDashboard extends Construct {
                 title: 'Requests Running / Waiting (vLLM)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{LISA/InferenceMetrics,ClusterName,ServiceName,ModelName} MetricName="RequestsRunning"', 'Average', 300)`,
+                        expression: `SEARCH('{LISA/InferenceMetrics,ModelName} MetricName="RequestsRunning"', 'Average', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
                 ],
                 right: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{LISA/InferenceMetrics,ClusterName,ServiceName,ModelName} MetricName="RequestsWaiting"', 'Average', 300)`,
+                        expression: `SEARCH('{LISA/InferenceMetrics,ModelName} MetricName="RequestsWaiting"', 'Average', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -478,12 +478,19 @@ export class ModelHealthDashboard extends Construct {
                 height: 6,
             }),
 
-            // Ephemeral storage utilization
+            // Storage I/O — read and write bytes
             new cloudwatch.GraphWidget({
-                title: 'Ephemeral Storage Utilized (by Cluster)',
+                title: 'Storage Read / Write Bytes (by Cluster)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{ECS/ContainerInsights,ClusterName,ServiceName} MetricName="EphemeralStorageUtilized" ClusterName=${dp}', 'Average', 300)`,
+                        expression: `SEARCH('{ECS/ContainerInsights,ClusterName,ServiceName} MetricName="StorageReadBytes" ClusterName=${dp}', 'Average', 300)`,
+                        label: '',
+                        period: Duration.minutes(5),
+                    }),
+                ],
+                right: [
+                    new cloudwatch.MathExpression({
+                        expression: `SEARCH('{ECS/ContainerInsights,ClusterName,ServiceName} MetricName="StorageWriteBytes" ClusterName=${dp}', 'Average', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -513,14 +520,14 @@ export class ModelHealthDashboard extends Construct {
                 title: 'Token Throughput (vLLM)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{${metricsNs},ClusterName,ServiceName,ModelName} MetricName="AvgPromptThroughputToksPerSec"', 'Average', 300)`,
+                        expression: `SEARCH('{${metricsNs},ModelName} MetricName="AvgPromptThroughputToksPerSec"', 'Average', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
                 ],
                 right: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{${metricsNs},ClusterName,ServiceName,ModelName} MetricName="AvgGenerationThroughputToksPerSec"', 'Average', 300)`,
+                        expression: `SEARCH('{${metricsNs},ModelName} MetricName="AvgGenerationThroughputToksPerSec"', 'Average', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -529,19 +536,103 @@ export class ModelHealthDashboard extends Construct {
                 height: 6,
             }),
 
-            // vLLM: E2E request latency
+            // vLLM: E2E request latency and TTFT
             new cloudwatch.GraphWidget({
-                title: 'E2E Request Latency (vLLM)',
+                title: 'E2E Request Latency / TTFT (vLLM)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{${metricsNs},ClusterName,ServiceName,ModelName} MetricName="E2ERequestLatencySeconds"', 'Average', 300)`,
+                        expression: `SEARCH('{${metricsNs},ModelName} MetricName="E2ERequestLatencySeconds"', 'Average', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
                 ],
                 right: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{${metricsNs},ClusterName,ServiceName,ModelName} MetricName="TimeToFirstTokenSeconds"', 'Average', 300)`,
+                        expression: `SEARCH('{${metricsNs},ModelName} MetricName="TimeToFirstTokenSeconds"', 'Average', 300)`,
+                        label: '',
+                        period: Duration.minutes(5),
+                    }),
+                ],
+                width: 12,
+                height: 6,
+            }),
+
+            // vLLM: Inter-token latency (TPOT) — key SLO metric for streaming
+            new cloudwatch.GraphWidget({
+                title: 'Inter-Token Latency / TPOT (vLLM)',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: `SEARCH('{${metricsNs},ModelName} MetricName="InterTokenLatencySeconds"', 'Average', 300)`,
+                        label: '',
+                        period: Duration.minutes(5),
+                    }),
+                ],
+                width: 12,
+                height: 6,
+            }),
+
+            // vLLM: Queue time — how long requests wait before processing
+            new cloudwatch.GraphWidget({
+                title: 'Request Queue Time (vLLM)',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: `SEARCH('{${metricsNs},ModelName} MetricName="RequestQueueTimeSeconds"', 'Average', 300)`,
+                        label: '',
+                        period: Duration.minutes(5),
+                    }),
+                ],
+                width: 12,
+                height: 6,
+            }),
+
+            // vLLM: Prefill and decode time breakdown
+            new cloudwatch.GraphWidget({
+                title: 'Prefill / Decode Time (vLLM)',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: `SEARCH('{${metricsNs},ModelName} MetricName="RequestPrefillTimeSeconds"', 'Average', 300)`,
+                        label: '',
+                        period: Duration.minutes(5),
+                    }),
+                ],
+                right: [
+                    new cloudwatch.MathExpression({
+                        expression: `SEARCH('{${metricsNs},ModelName} MetricName="RequestDecodeTimeSeconds"', 'Average', 300)`,
+                        label: '',
+                        period: Duration.minutes(5),
+                    }),
+                ],
+                width: 12,
+                height: 6,
+            }),
+
+            // vLLM: Completed requests and prefix cache effectiveness
+            new cloudwatch.GraphWidget({
+                title: 'Completed Requests (vLLM)',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: `SEARCH('{${metricsNs},ModelName} MetricName="RequestSuccessTotal"', 'Sum', 300)`,
+                        label: '',
+                        period: Duration.minutes(5),
+                    }),
+                ],
+                width: 12,
+                height: 6,
+            }),
+
+            // vLLM: Prefix cache queries and hits
+            new cloudwatch.GraphWidget({
+                title: 'Prefix Cache Queries / Hits (vLLM)',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: `SEARCH('{${metricsNs},ModelName} MetricName="PrefixCacheQueries"', 'Sum', 300)`,
+                        label: '',
+                        period: Duration.minutes(5),
+                    }),
+                ],
+                right: [
+                    new cloudwatch.MathExpression({
+                        expression: `SEARCH('{${metricsNs},ModelName} MetricName="PrefixCacheHits"', 'Sum', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -555,7 +646,7 @@ export class ModelHealthDashboard extends Construct {
                 title: 'Queue Size (TGI / TEI)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{${metricsNs},ClusterName,ServiceName,ModelName} MetricName="QueueSize"', 'Average', 300)`,
+                        expression: `SEARCH('{${metricsNs},ModelName} MetricName="QueueSize"', 'Average', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -569,7 +660,113 @@ export class ModelHealthDashboard extends Construct {
                 title: 'Batch Current Size (TGI / TEI)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{${metricsNs},ClusterName,ServiceName,ModelName} MetricName="BatchCurrentSize"', 'Average', 300)`,
+                        expression: `SEARCH('{${metricsNs},ModelName} MetricName="BatchCurrentSize"', 'Average', 300)`,
+                        label: '',
+                        period: Duration.minutes(5),
+                    }),
+                ],
+                width: 12,
+                height: 6,
+            }),
+
+            // TGI: Request success / failure counts
+            new cloudwatch.GraphWidget({
+                title: 'TGI Request Success / Failure',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: `SEARCH('{${metricsNs},ModelName} MetricName="RequestSuccess"', 'Sum', 300)`,
+                        label: '',
+                        period: Duration.minutes(5),
+                    }),
+                ],
+                right: [
+                    new cloudwatch.MathExpression({
+                        expression: `SEARCH('{${metricsNs},ModelName} MetricName="RequestFailure"', 'Sum', 300)`,
+                        label: '',
+                        period: Duration.minutes(5),
+                    }),
+                ],
+                width: 12,
+                height: 6,
+            }),
+
+            // TGI: Latency breakdown — queue, inference, per-token
+            new cloudwatch.GraphWidget({
+                title: 'TGI Latency Breakdown (Queue / Inference / Per-Token)',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: `SEARCH('{${metricsNs},ModelName} MetricName="QueueDurationSeconds"', 'Average', 300)`,
+                        label: '',
+                        period: Duration.minutes(5),
+                    }),
+                    new cloudwatch.MathExpression({
+                        expression: `SEARCH('{${metricsNs},ModelName} MetricName="InferenceDurationSeconds"', 'Average', 300)`,
+                        label: '',
+                        period: Duration.minutes(5),
+                    }),
+                ],
+                right: [
+                    new cloudwatch.MathExpression({
+                        expression: `SEARCH('{${metricsNs},ModelName} MetricName="MeanTimePerTokenSeconds"', 'Average', 300)`,
+                        label: '',
+                        period: Duration.minutes(5),
+                    }),
+                ],
+                width: 12,
+                height: 6,
+            }),
+
+            // TGI: Input / output token sizes per request
+            new cloudwatch.GraphWidget({
+                title: 'TGI Avg Input / Generated Tokens per Request',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: `SEARCH('{${metricsNs},ModelName} MetricName="InputLengthPerRequest"', 'Average', 300)`,
+                        label: '',
+                        period: Duration.minutes(5),
+                    }),
+                ],
+                right: [
+                    new cloudwatch.MathExpression({
+                        expression: `SEARCH('{${metricsNs},ModelName} MetricName="GeneratedTokensPerRequest"', 'Average', 300)`,
+                        label: '',
+                        period: Duration.minutes(5),
+                    }),
+                ],
+                width: 12,
+                height: 6,
+            }),
+
+            // TEI: Request duration breakdown — tokenization, queue, inference
+            new cloudwatch.GraphWidget({
+                title: 'TEI Request Duration Breakdown',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: `SEARCH('{${metricsNs},ModelName} MetricName="RequestDurationSeconds"', 'Average', 300)`,
+                        label: '',
+                        period: Duration.minutes(5),
+                    }),
+                ],
+                width: 12,
+                height: 6,
+            }),
+
+            // TEI: Tokenization / Queue / Inference time breakdown
+            new cloudwatch.GraphWidget({
+                title: 'TEI Tokenization / Queue / Inference Time',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: `SEARCH('{${metricsNs},ModelName} MetricName="TokenizationDurationSeconds"', 'Average', 300)`,
+                        label: '',
+                        period: Duration.minutes(5),
+                    }),
+                    new cloudwatch.MathExpression({
+                        expression: `SEARCH('{${metricsNs},ModelName} MetricName="QueueDurationSeconds"', 'Average', 300)`,
+                        label: '',
+                        period: Duration.minutes(5),
+                    }),
+                    new cloudwatch.MathExpression({
+                        expression: `SEARCH('{${metricsNs},ModelName} MetricName="InferenceDurationSeconds"', 'Average', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -583,7 +780,7 @@ export class ModelHealthDashboard extends Construct {
                 title: 'Metrics Publisher Heartbeat (by Model)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{${metricsNs},ClusterName,ServiceName,ModelName} MetricName="MetricsPublisherHeartbeat"', 'Average', 300)`,
+                        expression: `SEARCH('{${metricsNs},ModelName} MetricName="MetricsPublisherHeartbeat"', 'Average', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -596,33 +793,25 @@ export class ModelHealthDashboard extends Construct {
         // =====================================================================
         // Batch Ingestion Metrics
         // =====================================================================
-        // AWS Batch metrics for the document ingestion pipeline.
-        // Job queue name follows: {deploymentName}-{deploymentStage}-ingestion-job-{hash}
-        const batchPrefix = `${dp}-${config.deploymentStage}-ingestion`;
+        // AWS Batch does not publish job-level metrics to CloudWatch natively.
+        // Job failures are captured via EventBridge → Lambda → custom CloudWatch
+        // metric (LISA/BatchIngestion namespace). Lambda invocation metrics track
+        // job submissions. Function names follow:
+        //   {deploymentName}-{deploymentStage}-ingestion-{ingest-schedule|ingest-event|delete-event}
         dashboard.addWidgets(
             new cloudwatch.TextWidget({
-                markdown: '## **Batch Ingestion**\nAWS Batch document ingestion pipeline metrics',
+                markdown: '## **Batch Ingestion**\nDocument ingestion pipeline metrics (Lambda submissions + custom failure metric)',
                 width: 24,
                 height: 1,
                 background: cloudwatch.TextWidgetBackground.TRANSPARENT,
             }),
 
-            // Jobs submitted, pending, running — pipeline throughput
+            // Ingestion Lambda invocations — tracks job submissions
             new cloudwatch.GraphWidget({
-                title: 'Ingestion Jobs: Submitted / Pending / Runnable',
+                title: 'Ingestion Lambda Invocations (Job Submissions)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/Batch,JobQueue} MetricName="JobsSubmittedCount" JobQueue="${batchPrefix}"', 'Sum', 300)`,
-                        label: '',
-                        period: Duration.minutes(5),
-                    }),
-                    new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/Batch,JobQueue} MetricName="PendingJobsCount" JobQueue="${batchPrefix}"', 'Average', 300)`,
-                        label: '',
-                        period: Duration.minutes(5),
-                    }),
-                    new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/Batch,JobQueue} MetricName="RunnableJobsCount" JobQueue="${batchPrefix}"', 'Average', 300)`,
+                        expression: `SEARCH('{AWS/Lambda,FunctionName} MetricName="Invocations" ${dp}-${config.deploymentStage}-ingestion', 'Sum', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -631,17 +820,12 @@ export class ModelHealthDashboard extends Construct {
                 height: 6,
             }),
 
-            // Jobs running and succeeded — active processing
+            // Ingestion Lambda errors — failures in the submission Lambdas themselves
             new cloudwatch.GraphWidget({
-                title: 'Ingestion Jobs: Running / Succeeded',
+                title: 'Ingestion Lambda Errors',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/Batch,JobQueue} MetricName="RunningJobsCount" JobQueue="${batchPrefix}"', 'Average', 300)`,
-                        label: '',
-                        period: Duration.minutes(5),
-                    }),
-                    new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/Batch,JobQueue} MetricName="JobsSucceededCount" JobQueue="${batchPrefix}"', 'Sum', 300)`,
+                        expression: `SEARCH('{AWS/Lambda,FunctionName} MetricName="Errors" ${dp}-${config.deploymentStage}-ingestion', 'Sum', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -650,12 +834,12 @@ export class ModelHealthDashboard extends Construct {
                 height: 6,
             }),
 
-            // Job failures — critical for alerting on broken ingestion
+            // Batch job failures — from custom metric published by EventBridge → Lambda
             new cloudwatch.GraphWidget({
-                title: 'Ingestion Job Failures',
+                title: 'Batch Job Failures',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/Batch,JobQueue} MetricName="JobsFailedCount" JobQueue="${batchPrefix}"', 'Sum', 300)`,
+                        expression: `SEARCH('{LISA/BatchIngestion,DeploymentName,DeploymentStage,JobQueue} MetricName="JobsFailed" DeploymentName="${dp}"', 'Sum', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -664,19 +848,12 @@ export class ModelHealthDashboard extends Construct {
                 height: 6,
             }),
 
-            // Ingestion Lambda invocations and errors
+            // Ingestion Lambda duration — how long submissions take
             new cloudwatch.GraphWidget({
-                title: 'Ingestion Lambda Invocations',
+                title: 'Ingestion Lambda Duration (ms)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/Lambda,FunctionName} MetricName="Invocations" FunctionName="${dp}-${config.deploymentStage}-ingestion"', 'Sum', 300)`,
-                        label: '',
-                        period: Duration.minutes(5),
-                    }),
-                ],
-                right: [
-                    new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/Lambda,FunctionName} MetricName="Errors" FunctionName="${dp}-${config.deploymentStage}-ingestion"', 'Sum', 300)`,
+                        expression: `SEARCH('{AWS/Lambda,FunctionName} MetricName="Duration" ${dp}-${config.deploymentStage}-ingestion', 'Average', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -832,15 +1009,18 @@ export class ModelHealthDashboard extends Construct {
             treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
         });
 
-        // 7. Batch ingestion job failures — broken document ingestion pipeline
-        //    Uses account-level metric (no JobQueue dimension) to aggregate across
-        //    all Batch job queues since the ingestion queue name includes a random hash.
+        // 7. Batch ingestion job failures — from custom metric published by
+        //    EventBridge → Lambda when Batch jobs enter FAILED state.
         const batchJobFailuresAlarm = new cloudwatch.Alarm(this, 'BatchJobFailuresAlarm', {
             alarmName: `${alarmPrefix}-BatchJobFailures`,
             alarmDescription: 'One or more batch ingestion jobs have failed. Check AWS Batch console and CloudWatch Logs for the failed job details.',
             metric: new cloudwatch.Metric({
-                namespace: 'AWS/Batch',
-                metricName: 'JobsFailedCount',
+                namespace: 'LISA/BatchIngestion',
+                metricName: 'JobsFailed',
+                dimensionsMap: {
+                    DeploymentName: dp,
+                    DeploymentStage: config.deploymentStage,
+                },
                 statistic: 'Sum',
                 period: Duration.minutes(5),
             }),

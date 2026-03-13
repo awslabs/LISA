@@ -277,6 +277,7 @@ export function Sessions ({ newSession }) {
 
                 {projectsEnabled ? (
                     <SegmentedControl
+                        data-cy='project-history-toggle'
                         selectedId={historyView}
                         onChange={({ detail }) => {
                             setHistoryView(detail.selectedId);
@@ -398,6 +399,7 @@ export function Sessions ({ newSession }) {
                                                         key={item.sessionId}
                                                         padding='xxs'
                                                         className={item.sessionId === currentSessionId ? styles.sessionItemActive : styles.sessionItem}
+                                                        data-cy='session-item'
                                                     >
                                                         <Grid gridDefinition={[{ colspan: 10 }, { colspan: 2 }]}>
                                                             <Box>

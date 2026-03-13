@@ -43,6 +43,7 @@ const advancedOptions = {
     enableModelComparisonUtility: 'Model Comparison Utility',
     encryptSession: 'Session Encryption',
     chatAssistantStacks: 'Chat Assistant Stacks',
+    projectOrganization: 'Project Organization',
 };
 
 const mcpOptions = {

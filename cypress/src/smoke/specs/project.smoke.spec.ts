@@ -34,7 +34,5 @@ describe('Projects Organization (Smoke)', () => {
 
     runProjectsTests({
         verifyFixtureData: true,
-        skipConfigTests: true,
     });
 });
-

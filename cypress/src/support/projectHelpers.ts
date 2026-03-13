@@ -27,7 +27,6 @@ export const PROJECT_SELECTORS = {
     PROJECTS_VIEW_BUTTON: '[data-testid="projects"]',
 
     // Buttons and dropdowns
-    NEW_BUTTON: 'button:contains("New")',
     NEW_PROJECT_MENU_ITEM: '[data-testid="new-project"]',
     PROJECT_ACTIONS_BUTTON: (projectName: string) => `[aria-label="Project actions for ${projectName}"]`,
     RENAME_MENU_ITEM: '[data-testid="rename"]',
@@ -39,8 +38,6 @@ export const PROJECT_SELECTORS = {
     MODAL_DIALOG: '[role="dialog"]',
     MODAL_HEADER: '[class*="awsui_header"] h2',
     PROJECT_NAME_INPUT: 'input[placeholder*="Enter project name"]',
-    MODAL_CREATE_BUTTON: 'button:contains("Create")',
-    MODAL_CANCEL_BUTTON: 'button:contains("Cancel")',
     DELETE_PROJECT_ONLY_RADIO: 'input[value="project-only"]',
     DELETE_PROJECT_WITH_SESSIONS_RADIO: 'input[value="with-sessions"]',
 
@@ -327,4 +324,3 @@ export function disableProjectsFeature () {
     cy.contains('Configuration saved successfully', { timeout: 10000 })
         .should('be.visible');
 }
-

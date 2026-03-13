@@ -37,9 +37,8 @@ import {
 
 export function runProjectsTests (options: {
     verifyFixtureData?: boolean;
-    skipConfigTests?: boolean;
 } = {}) {
-    const { verifyFixtureData = false, skipConfigTests = false } = options;
+    const { verifyFixtureData = false } = options;
 
     describe('View Toggle & Navigation', () => {
         it('should have configuration loaded with projectOrganization enabled', () => {
@@ -52,28 +51,6 @@ export function runProjectsTests (options: {
 
         it('should display segmented control with History and Projects options', () => {
             navigateToChatPage();
-
-            // Debug: Check if configuration is in Redux and if projectsEnabled is being computed
-            cy.window().then((win) => {
-                if (win.store) {
-                    const state = win.store.getState();
-
-                    // Log configuration state
-                    cy.log('Redux state keys:', Object.keys(state).join(', '));
-
-                    // Try to find configuration data
-                    if (state.configuration) {
-                        cy.log('Configuration state exists');
-                        const queries = state.configuration.queries || {};
-                        const configQuery = Object.values(queries).find((q: any) =>
-                            q?.endpointName === 'getConfiguration'
-                        );
-                        if (configQuery) {
-                            cy.log('Config query found:', JSON.stringify(configQuery.data?.[0]?.configuration?.enabledComponents?.projectOrganization));
-                        }
-                    }
-                }
-            });
 
             // Wait for projects to load
             cy.wait('@getProjects', { timeout: 30000 });

@@ -160,13 +160,13 @@ Cypress.Commands.add('loginAs', (role = 'user') => {
                     // Wait for redirect back to app and OIDC token to be stored
                     // The app needs time to process the auth callback and store tokens
                     cy.url({ timeout: 30000 }).should('not.include', 'amazoncognito.com');
-                    
+
                     // Wait for OIDC token to appear in sessionStorage
                     cy.window({ timeout: 15000 }).should((win) => {
                         const hasOidcToken = Object.keys(win.sessionStorage).some((key) =>
                             key.startsWith('oidc.user:')
                         );
-                        expect(hasOidcToken, 'OIDC token should be stored after login').to.be.true;
+                        expect(hasOidcToken, 'OIDC token should be stored after login').to.equal(true);
                     });
                 });
             });
@@ -179,7 +179,7 @@ Cypress.Commands.add('loginAs', (role = 'user') => {
                 cy.window().then((win) => {
                     const sessionKeys = Object.keys(win.sessionStorage);
                     const oidcKey = sessionKeys.find((key) => key.startsWith('oidc.user:'));
-                    expect(oidcKey, 'OIDC token should exist in sessionStorage').to.exist;
+                    expect(oidcKey, 'OIDC token should exist in sessionStorage').to.not.equal(undefined);
                 });
             },
             cacheAcrossSpecs: false,

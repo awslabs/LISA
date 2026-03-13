@@ -57,7 +57,6 @@ import {
     verifyPromptTemplateInList,
     deletePromptTemplateIfExists,
     selectPromptTemplateInChat,
-    promptTemplateExists,
     PromptTemplateType,
 } from '../../support/promptTemplateHelpers';
 import {
@@ -215,7 +214,7 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
             } else {
                 openCreateRepositoryWizard();
                 fillRepositoryConfig(testRepository);
-                
+
                 // selectKnowledgeBase returns boolean - if false, no KBs available
                 selectKnowledgeBase(testRepository.knowledgeBaseName).then((kbSelected) => {
                     if (!kbSelected) {
@@ -224,7 +223,7 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
                         cy.get('body').type('{esc}');
                         return;
                     }
-                    
+
                     selectDataSource(testRepository.dataSourceIndex);
                     skipToCreateRepository();
                     completeRepositoryWizard();

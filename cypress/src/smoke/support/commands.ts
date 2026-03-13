@@ -160,7 +160,6 @@ function setupApiStubs (env: Record<string, unknown>) {
     API_STUBS.forEach(({ endpoint, alias }) => {
         cy.intercept('GET', `**${apiBase}/${endpoint}*`, { fixture: `${endpoint}.json` }).as(alias);
     });
-    // Stub all static API endpoints - use generic patterns to catch any base URL
 
     // Setup stateful project stubs
     setupProjectStubs(apiBase);

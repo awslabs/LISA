@@ -97,10 +97,10 @@ export function selectKnowledgeBase (knowledgeBaseName: string): Cypress.Chainab
         const selectText = $select.text();
 
         // Check for empty state indicators
-        if (button.is(':disabled') || 
+        if (button.is(':disabled') ||
             selectText.includes('No available Knowledge Bases') ||
             selectText.includes('Choose a Knowledge Base')) {
-            
+
             // Try clicking to see if dropdown has options
             cy.get('[data-testid="knowledge-base-select"]')
                 .find('button')
@@ -109,7 +109,7 @@ export function selectKnowledgeBase (knowledgeBaseName: string): Cypress.Chainab
             // Check if any options exist
             return cy.get('body').then(($body) => {
                 const hasOptions = $body.find('[role="listbox"] [role="option"]').length > 0;
-                
+
                 if (!hasOptions) {
                     cy.log('No Knowledge Bases available - skipping KB selection');
                     // Close dropdown if open by clicking elsewhere

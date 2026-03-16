@@ -78,7 +78,7 @@ class TestGenerateHtmlResponse:
         response = generate_html_response(200, {})
 
         headers = response["headers"]
-        assert headers["Strict-Transport-Security"] == "max-age:47304000; includeSubDomains"
+        assert headers["Strict-Transport-Security"] == "max-age=47304000; includeSubDomains"
         assert headers["X-Content-Type-Options"] == "nosniff"
         assert headers["X-Frame-Options"] == "DENY"
         assert headers["Cache-Control"] == "no-store, no-cache"

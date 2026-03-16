@@ -131,6 +131,11 @@ export default defineConfig({
   markdown: {
     config(md) {
       md.use(tabsMarkdownPlugin)
+      const defaultRender = md.render.bind(md);
+      md.render = (src, env) => {
+        src = src.replace(/Array<([^>]+)>/g, 'Array&lt;$1&gt;');
+        return defaultRender(src, env);
+      };
     },
   },
   // https://vitepress.dev/reference/default-theme-config

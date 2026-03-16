@@ -1,44 +1,76 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+set -euo pipefail
 
 LOCAL_MODEL_DIR=""
 S3_BUCKET=""
 MODEL_ID=""
-TRANSFER_TYPE="upload"
+DOWNLOAD=0
 
-usage(){
-  cat << EOF >&2
-Usage: $0
-    [ -l | --local-model-dir  - path to the local model directory, e.g. /path/to/models/]
-    [ -s | --s3-bucket - s3-bucket name, e.g. my-models-s3-bucket]
-    [ -m | --model-id - the model id, e.g. my-model, model files will be/should be at /path/to/models/my-model and s3://my-models-s3-bucket/my-model/]
-    [ -d | --download - flag to download instead of upload ]
-    [ -h | --help]
+usage() {
+  cat <<EOF >&2
+Usage: $0 [options]
+
+Options:
+  -l, --local-model-dir DIR   Local model directory path
+  -s, --s3-bucket BUCKET      S3 bucket name
+  -m, --model-id ID           S3 key prefix / model id
+  -d, --download              Download instead of upload
+  -h, --help                  Show this help message
 EOF
 }
 
-while true; do
+die() {
+  echo "Error: $*" >&2
+  usage
+  exit 1
+}
+
+while [[ $# -gt 0 ]]; do
   case "$1" in
-    -l | --local-model-dir )
-      LOCAL_MODEL_DIR="$2"; shift 2 ;;
-    -s | --s3-bucket )
-      S3_BUCKET="$2"; shift 2 ;;
-    -m | --model-id )
-      MODEL_ID="$2"; shift 2 ;;
-    -d | --download )
-      DOWNLOAD=1; shift ;;
-    -h | --help )
-      usage
-      exit 1
+    -l|--local-model-dir)
+      [[ $# -ge 2 ]] || die "Missing value for $1"
+      LOCAL_MODEL_DIR="$2"
+      shift 2
       ;;
-    -- ) shift; break ;;
-    * ) break ;;
+    -s|--s3-bucket)
+      [[ $# -ge 2 ]] || die "Missing value for $1"
+      S3_BUCKET="$2"
+      shift 2
+      ;;
+    -m|--model-id)
+      [[ $# -ge 2 ]] || die "Missing value for $1"
+      MODEL_ID="$2"
+      shift 2
+      ;;
+    -d|--download)
+      DOWNLOAD=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      die "Unknown argument: $1"
+      ;;
   esac
 done
 
-if [[ "$DOWNLOAD" == 1 ]];then
-  echo "Downloading from: s3://$S3_BUCKET/$MODEL_ID to $LOCAL_MODEL_DIR/$MODEL_ID"
-  aws s3 ls s3://$S3_BUCKET/$MODEL_ID/ | awk '{print $4}' | xargs -P10 -I% s5cmd sync s3://$S3_BUCKET/$MODEL_ID/% $LOCAL_MODEL_DIR/$MODEL_ID/
+[[ -n "$LOCAL_MODEL_DIR" ]] || die "--local-model-dir is required"
+[[ -n "$S3_BUCKET" ]] || die "--s3-bucket is required"
+[[ -n "$MODEL_ID" ]] || die "--model-id is required"
+
+if [[ "$DOWNLOAD" == 1 ]]; then
+  mkdir -p "$LOCAL_MODEL_DIR"
+  echo "Downloading from s3://$S3_BUCKET/$MODEL_ID to $LOCAL_MODEL_DIR"
+  s5cmd sync "s3://$S3_BUCKET/$MODEL_ID/*" "$LOCAL_MODEL_DIR/"
 else
-  echo "Uploading from $LOCAL_MODEL_DIR/$MODEL_ID to s3://$S3_BUCKET/$MODEL_ID"
-  ls $LOCAL_MODEL_DIR/$MODEL_ID | xargs -P10 -I% s5cmd sync $LOCAL_MODEL_DIR/$MODEL_ID/% s3://$S3_BUCKET/$MODEL_ID/
+  [[ -d "$LOCAL_MODEL_DIR" ]] || die "Local model directory does not exist: $LOCAL_MODEL_DIR"
+  echo "Uploading from $LOCAL_MODEL_DIR to s3://$S3_BUCKET/$MODEL_ID"
+  s5cmd sync "$LOCAL_MODEL_DIR/" "s3://$S3_BUCKET/$MODEL_ID/"
 fi

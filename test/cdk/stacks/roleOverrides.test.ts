@@ -25,13 +25,13 @@ const stackRolesOverrides: Record<string, number> = {
     'LisaServe': 2,
     'LisaUI': 1,
     'LisaDocs': 2,
-    'LisaRAG': 6,
-    'LisaChat': 1,
+    'LisaRAG': 5,
+    'LisaChat': 0,
     'LisaCore': 1,
-    'LisaModels': 4,
-    'LisaMcpWorkbench': 5,
-    'LisaMcpApi': 6,
-    'LisaMetrics': 1
+    'LisaModels': 3,
+    'LisaMcpWorkbench': 4,
+    'LisaMcpApi': 5,
+    'LisaMetrics': 0
 };
 
 const stackRoles: Record<string, number> = {
@@ -39,16 +39,16 @@ const stackRoles: Record<string, number> = {
     'LisaServe': 2,
     'LisaUI': 3,
     'LisaNetworking': 0,
-    'LisaChat': 8,
+    'LisaChat': 7,
     'LisaCore': 1,
     'LisaApiDeployment': 0,
     'LisaIAM': 5,
     'LisaDocs': 4,
-    'LisaModels': 13,
-    'LisaRAG': 6,
-    'LisaMetrics': 2,
-    'LisaMcpWorkbench': 5,
-    'LisaMcpApi': 8,
+    'LisaModels': 12,
+    'LisaRAG': 5,
+    'LisaMetrics': 1,
+    'LisaMcpWorkbench': 4,
+    'LisaMcpApi': 7,
 };
 
 describe('Verify role overrides', () => {

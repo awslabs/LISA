@@ -244,7 +244,7 @@ export default function Chat ({ sessionId, initialStack }) {
     const pendingToolChainExecution = useRef<(() => Promise<void>) | null>(null);
 
     // Use the custom hook to manage multiple MCP connections
-    const { tools: mcpTools, callTool, McpConnections, toolToServerMap } = useMultipleMcp(enabledServers, userPreferences?.preferences?.mcp);
+    const { tools: mcpTools, callTool, McpConnections, toolToServerMap } = useMultipleMcp(enabledServers, userPreferences?.preferences?.mcp, session?.sessionId);
     const [updatePreferences, {isSuccess: isUpdatingPreferencesSuccess, isError: isUpdatingPreferencesError, isLoading: isUpdatingPreferences}] = useUpdateUserPreferencesMutation();
 
     // Load markdown preview preference from user preferences
@@ -894,7 +894,7 @@ export default function Chat ({ sessionId, initialStack }) {
     const getButtonItemsWithAssistantMode = useCallback((...args: Parameters<typeof getButtonItems>) => {
         const [config, useRag, isImageGen, isVideoGen, isConnected, isModelDel, showMd] = args;
         return getButtonItems(config, useRag, isImageGen, isVideoGen, isConnected, isModelDel, showMd, !!effectiveStack, !!selectedModel, loadingSession);
-    }, [config, effectiveStack, selectedModel, loadingSession]);
+    }, [effectiveStack, selectedModel, loadingSession]);
 
     const promptInputProps = useMemo(() => ({
         userPrompt,

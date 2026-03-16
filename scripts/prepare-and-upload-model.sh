@@ -92,19 +92,6 @@ ABS_MODEL_DIR="$(realpath "$MODEL_DIR")"
 MODEL_BASENAME="${MODEL_ID##*/}"
 LOCAL_MODEL_PATH="${ABS_MODEL_DIR}/${MODEL_BASENAME}"
 
-have_cmd() {
-  command -v "$1" >/dev/null 2>&1
-}
-
-need_python_dep() {
-  local mod="$1"
-  python3 - <<PY >/dev/null 2>&1
-import importlib
-import sys
-sys.exit(0 if importlib.util.find_spec("${mod}") else 1)
-PY
-}
-
 download_hf_model() {
   local model_id="$1"
   local output_dir="$2"
@@ -232,10 +219,7 @@ upload_to_s3() {
   fi
 
   echo "Uploading model to s3://${bucket}/${s3_key}"
-  bash "${SCRIPT_DIR}/fast-s3-transfer.sh" \
-    -l "$local_dir" \
-    -s "$bucket" \
-    -m "$s3_key"
+  s5cmd sync "$local_dir/" "s3://${bucket}/${s3_key}/"
 }
 
 echo "Preparing model: ${MODEL_ID}"

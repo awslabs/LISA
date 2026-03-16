@@ -154,7 +154,8 @@ Cypress.Commands.add('loginAs', (role = 'user') => {
         cy.visit('/');
 
         // Click sign in to trigger OIDC flow
-        cy.contains('Sign in').click();
+        // Allow extra time for lazy-loaded Home route to render
+        cy.contains('Sign in', { timeout: 15000 }).click();
 
         // Wait for the redirect and login to complete
         cy.contains('Sign in', { timeout: 10000 }).should('not.exist');

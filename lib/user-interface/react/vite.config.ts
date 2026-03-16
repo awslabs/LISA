@@ -39,6 +39,9 @@ export default defineConfig({
     build: {
         chunkSizeWarningLimit: 2300,
     },
+    define: {
+        global: 'globalThis',
+    },
     resolve: {
         alias: {
             '@': resolve(__dirname, 'src'),

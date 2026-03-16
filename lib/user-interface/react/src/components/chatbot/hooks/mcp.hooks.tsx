@@ -20,11 +20,21 @@ import { McpServer } from '@/shared/reducers/mcp-server.reducer';
 import { McpPreferences } from '@/shared/reducers/user-preferences.reducer';
 
 // Individual MCP Connection Component
-export const McpConnection = ({ server, onToolsChange, onConnectionChange }: {
+export const McpConnection = ({ server, onToolsChange, onConnectionChange, sessionId }: {
     server: McpServer,
     onToolsChange: (tools: any[], clientName: string) => void,
-    onConnectionChange: (connection: any, clientName: string) => void
+    onConnectionChange: (connection: any, clientName: string) => void,
+    sessionId?: string,
 }) => {
+    const customHeaders = server.customHeaders;
+    const mergedHeaders = useMemo(() => {
+        const base: Record<string, string> = { ...(customHeaders ?? {}) };
+        if (sessionId) {
+            base['X-Session-Id'] = sessionId;
+        }
+        return Object.keys(base).length > 0 ? base : undefined;
+    }, [customHeaders, sessionId]);
+
     const connection = useMcp({
         url: server?.url ?? ' ',
         clientName: server?.name,
@@ -32,7 +42,7 @@ export const McpConnection = ({ server, onToolsChange, onConnectionChange }: {
         autoRetry: true,
         debug: false,
         clientConfig: server?.clientConfig ?? undefined,
-        customHeaders: server?.customHeaders ?? undefined,
+        customHeaders: mergedHeaders,
         callbackUrl: `${window.location.origin}${window.env.API_BASE_URL.includes('.') ? '/' : window.env.API_BASE_URL}oauth/callback`,
     });
 
@@ -61,7 +71,7 @@ export const McpConnection = ({ server, onToolsChange, onConnectionChange }: {
 };
 
 // Custom hook to manage multiple MCP connections dynamically
-export const useMultipleMcp = (servers: McpServer[], mcpPreferences: McpPreferences) => {
+export const useMultipleMcp = (servers: McpServer[], mcpPreferences: McpPreferences, sessionId?: string) => {
     const [allTools, setAllTools] = useState([]);
     const [serverToolsMap, setServerToolsMap] = useState<Map<string, any[]>>(new Map());
     const [connectionsMap, setConnectionsMap] = useState<Map<string, any>>(new Map());
@@ -131,10 +141,11 @@ export const useMultipleMcp = (servers: McpServer[], mcpPreferences: McpPreferen
         callTool,
         McpConnections: servers?.map((server) => (
             <McpConnection
-                key={server.name}
+                key={`${server.name}::${sessionId ?? ''}`}
                 server={server}
                 onToolsChange={handleToolsChange}
                 onConnectionChange={handleConnectionChange}
+                sessionId={sessionId}
             />
         )),
         toolToServerMap

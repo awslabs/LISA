@@ -118,7 +118,7 @@ brew install git jq yq s5cmd
 
 # 2) Install and activate mise for zsh
 curl https://mise.run | sh
-echo 'eval "$(/Users/drduhe/.local/bin/mise activate zsh)"' >> ~/.zshrc
+echo 'eval "$(~.local/bin/mise activate zsh)"' >> ~/.zshrc
 source ~/.zshrc
 
 # 3) Install runtimes

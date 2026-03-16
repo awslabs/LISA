@@ -313,8 +313,9 @@ export function Sessions ({ newSession }) {
                         Found {filteredSessions.length} session{filteredSessions.length !== 1 ? 's' : ''}
                     </Box>
                 )}
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <div data-testid='sessions-actions' style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <ButtonDropdown
+                        ariaLabel='New session'
                         variant='primary'
                         items={[
                             { id: 'new-chat', text: 'New Chat', iconName: 'add-plus' },

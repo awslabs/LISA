@@ -64,7 +64,12 @@ const loadRuntimeScript = async (scriptName: string): Promise<void> => {
 };
 
 await loadRuntimeScript('env.js');
-await loadRuntimeScript('git-info.js');
+try {
+    await loadRuntimeScript('git-info.js');
+} catch {
+    // git-info.js is generated at build time; not present in dev/CI
+    // App runs fine without it — window.gitInfo remains undefined
+}
 
 const favicon = document.getElementById('favicon') as HTMLLinkElement | null;
 if (favicon) {

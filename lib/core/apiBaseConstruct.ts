@@ -41,11 +41,12 @@ import { LAMBDA_PATH } from '../util';
 import { getPythonRuntime } from '../api-base/utils';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { EventBus } from 'aws-cdk-lib/aws-events';
-import { BlockPublicAccess, Bucket, BucketEncryption, HttpMethods } from 'aws-cdk-lib/aws-s3';
+import { BlockPublicAccess, Bucket, BucketEncryption, HttpMethods, IBucket } from 'aws-cdk-lib/aws-s3';
 
 export type LisaApiBaseProps = {
     vpc: Vpc;
     securityGroups: ISecurityGroup[];
+    bucketAccessLogsBucket: IBucket;
 } & BaseProps &
     StackProps;
 
@@ -66,12 +67,7 @@ export class LisaApiBaseConstruct extends Construct {
     constructor (scope: Stack, id: string, props: LisaApiBaseProps) {
         super(scope, id);
 
-        const { config, vpc, securityGroups } = props;
-
-        // Get bucket access logs bucket
-        const bucketAccessLogsBucket = Bucket.fromBucketArn(scope, 'BucketAccessLogsBucket',
-            StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/bucket/bucket-access-logs`)
-        );
+        const { bucketAccessLogsBucket, config, vpc, securityGroups } = props;
 
         // Create Images S3 bucket for generated images and videos
         // This is created in API Base stack so it's available to both Chat and Serve stacks

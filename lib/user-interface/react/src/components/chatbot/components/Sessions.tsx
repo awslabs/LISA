@@ -327,14 +327,13 @@ export function Sessions ({ newSession }) {
                                 window.dispatchEvent(new CustomEvent('lisa:create-project'));
                             }
                         }}
-                    >
-                        New
-                    </ButtonDropdown>
+                    />
                     <Button
                         iconAlt='Refresh list'
                         iconName='refresh'
                         onClick={() => dispatch(sessionApi.util.invalidateTags(['sessions']))}
                         ariaLabel='Refresh Sessions'
+                        fullWidth
                     >
                         Refresh
                     </Button>

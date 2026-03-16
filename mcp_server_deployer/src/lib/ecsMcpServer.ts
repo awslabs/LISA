@@ -546,8 +546,12 @@ export class EcsMcpServer extends Construct {
             return ContainerImage.fromRegistry(baseImage);
         }
 
-        // Default: use a common base image
-        // This should be replaced with a proper base image for MCP servers
+        // Default base image when neither image nor s3Path is provided.
+        // STDIO servers need Python so mcp-proxy can be pip-installed at
+        // runtime; HTTP/SSE servers default to Node.
+        if (mcpServerConfig.serverType === 'stdio') {
+            return ContainerImage.fromRegistry('public.ecr.aws/docker/library/python:3.13-slim-bookworm');
+        }
         return ContainerImage.fromRegistry('public.ecr.aws/docker/library/node:24-slim');
     }
 
@@ -628,6 +632,20 @@ export class EcsMcpServer extends Construct {
             const bashScript = fs.readFileSync(path.join(__dirname, 'scripts', 'stdio-prebuilt-s3-entrypoint.sh'), 'utf-8');
             entryPoint = ['/bin/bash', '-c'];
             command = [bashScript];
+        } else if (!isPrebuiltImage) {
+            // Default case: no custom image and no S3 artifacts.
+            // The default base image is used, so we must override the
+            // entrypoint to honour START_COMMAND.
+            if (mcpServerConfig.serverType === 'stdio') {
+                const bashScript = fs.readFileSync(path.join(__dirname, 'scripts', 'stdio-default-entrypoint.sh'), 'utf-8');
+                entryPoint = ['/bin/bash', '-c'];
+                command = [bashScript];
+            } else {
+                // HTTP/SSE — just execute the start command directly
+                const bashScript = fs.readFileSync(path.join(__dirname, 'scripts', 'http-s3-entrypoint.sh'), 'utf-8');
+                entryPoint = ['/bin/bash', '-c'];
+                command = [bashScript];
+            }
         }
 
         return {

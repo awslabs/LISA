@@ -107,7 +107,6 @@ export class IngestionJobConstruct extends Construct {
         // AWS Batch Fargate compute environment for running ingestion jobs
         const maxvCpus = this.getMaxCpus(vpc);
         const computeEnv = new batch.FargateComputeEnvironment(this, 'IngestionJobFargateEnv', {
-            computeEnvironmentName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job`,
             vpc: vpc.vpc,
             vpcSubnets: vpc.subnetSelection,
             maxvCpus: maxvCpus,
@@ -115,7 +114,6 @@ export class IngestionJobConstruct extends Construct {
 
         // AWS Batch job queue that uses the Fargate compute environment
         const jobQueue = new batch.JobQueue(this, 'IngestionJobQueue', {
-            jobQueueName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job`,
             computeEnvironments: [
                 {
                     computeEnvironment: computeEnv,
@@ -185,8 +183,9 @@ export class IngestionJobConstruct extends Construct {
         logGroup.grantWrite(executionRole);
 
         // AWS Batch job definition specifying container configuration
-        const jobDefinition = new batch.EcsJobDefinition(this, 'IngestionJobDefinition', {
-            jobDefinitionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job`,
+        const jobDefinition = new batch.EcsJobDefinition(this, 'IngestionJobDef', {
+            // Keep the name static so pipeline-ingest events reference latest
+            jobDefinitionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job-def`,
             container: new batch.EcsFargateContainerDefinition(this, 'IngestionJobContainer', {
                 environment: baseEnvironment,
                 image,

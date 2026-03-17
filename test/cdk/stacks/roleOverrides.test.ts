@@ -77,7 +77,6 @@ describe('Verify created roles', () => {
 
             it(`${stack} should contain ${expectedRoles} roles`, () => {
                 const template = Template.fromStack(stack);
-                console.log(stack.stackName);
                 template.resourceCountIs('AWS::IAM::Role', expectedRoles);
             });
         }

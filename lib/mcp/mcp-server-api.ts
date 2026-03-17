@@ -31,11 +31,12 @@ import { McpServerDeployer } from './mcp-server-deployer';
 import { CreateMcpServerStateMachine } from './state-machine/create-mcp-server';
 import { DeleteMcpServerStateMachine } from './state-machine/delete-mcp-server';
 import { UpdateMcpServerStateMachine } from './state-machine/update-mcp-server';
-import { BlockPublicAccess, Bucket, BucketEncryption, HttpMethods } from 'aws-cdk-lib/aws-s3';
+import { BlockPublicAccess, Bucket, BucketEncryption, HttpMethods, IBucket } from 'aws-cdk-lib/aws-s3';
 import { RemovalPolicy } from 'aws-cdk-lib';
 
 type McpServerApiProps = {
     authorizer: IAuthorizer;
+    bucketAccessLogsBucket: IBucket;
     restApiId: string;
     rootResourceId: string;
     securityGroups: ISecurityGroup[];
@@ -54,7 +55,7 @@ export class McpServerApi extends Construct {
     constructor (scope: Construct, id: string, props: McpServerApiProps) {
         super(scope, id);
 
-        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const { authorizer, bucketAccessLogsBucket, config, restApiId, rootResourceId, securityGroups, vpc } = props;
 
         // Get common layer based on arn from SSM due to issues with cross stack references
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
@@ -84,10 +85,6 @@ export class McpServerApi extends Construct {
             removalPolicy: config.removalPolicy,
             deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
         });
-
-        const bucketAccessLogsBucket = Bucket.fromBucketArn(scope, 'BucketAccessLogsBucket',
-            StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/bucket/bucket-access-logs`)
-        );
 
         const bucket = new Bucket(scope, createCdkId(['LISA', 'MCP-Hosting', config.deploymentName, config.deploymentStage]), {
             removalPolicy: config.removalPolicy,

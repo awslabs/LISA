@@ -47,6 +47,7 @@ import { DeleteModelStateMachine } from './state-machine/delete-model';
 import { AttributeType, BillingMode, ITable, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { CreateModelStateMachine } from './state-machine/create-model';
 import { UpdateModelStateMachine } from './state-machine/update-model';
+import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { createCdkId, createLambdaRole } from '../core/utils';
 import { Roles } from '../core/iam/roles';
@@ -62,6 +63,7 @@ import { LAMBDA_PATH } from '../util';
  */
 type ModelsApiProps = BaseProps & {
     authorizer?: IAuthorizer;
+    bucketAccessLogsBucket: IBucket;
     guardrailsTable?: ITable;
     lisaServeEndpointUrlPs?: StringParameter;
     restApiId: string;
@@ -77,7 +79,7 @@ export class ModelsApi extends Construct {
     constructor (scope: Construct, id: string, props: ModelsApiProps) {
         super(scope, id);
 
-        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const { authorizer, bucketAccessLogsBucket, config, restApiId, rootResourceId, securityGroups, vpc } = props;
 
         // Use guardrailsTable passed from serve stack, or fall back to SSM parameter lookup for backward compatibility
         const guardrailsTable = props.guardrailsTable ?? (() => {
@@ -150,6 +152,7 @@ export class ModelsApi extends Construct {
         });
 
         const dockerImageBuilder = new DockerImageBuilder(this, 'docker-image-builder', {
+            bucketAccessLogsBucket,
             ecrUri: ecsModelBuildRepo.repositoryUri,
             mountS3DebUrl: config.mountS3DebUrl!,
             config: config,

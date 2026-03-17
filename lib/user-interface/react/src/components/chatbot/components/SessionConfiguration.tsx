@@ -32,6 +32,7 @@ import { IModel, ModelType } from '@/shared/model/model-management.model';
 import { IConfiguration } from '@/shared/model/configuration.model';
 import { LisaChatSession } from '@/components/types';
 import { ModelFeatures } from '@/components/types';
+import AwsCredentialsPanel from '@/components/settings/AwsCredentialsPanel';
 
 export type SessionConfigurationProps = {
     title?: string;
@@ -114,76 +115,91 @@ export const SessionConfiguration = ({
             size='large'
         >
             <SpaceBetween direction='vertical' size='l'>
-                <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }, { colspan: 6 }, { colspan: 6 }, { colspan: 6 }, { colspan: 6 }]}>
-                    <Toggle
-                        onChange={({ detail }) => updateSessionConfiguration('streaming', detail.checked)}
-                        checked={chatConfiguration.sessionConfiguration.streaming}
-                        disabled={!selectedModel?.streaming || isRunning}
-                    >
-                        Stream Responses
-                    </Toggle>
-                    <Toggle
-                        onChange={({ detail }) => updateSessionConfiguration('markdownDisplay', detail.checked)}
-                        checked={chatConfiguration.sessionConfiguration.markdownDisplay}
-                    >
-                        Display Responses as Markdown
-                    </Toggle>
-                    {systemConfig && systemConfig.configuration.enabledComponents.viewMetaData &&
+                {(() => {
+                    const items = [
                         <Toggle
-                            onChange={({ detail }) => updateSessionConfiguration('showMetadata', detail.checked)}
-                            checked={chatConfiguration.sessionConfiguration.showMetadata}
-                            disabled={isRunning}
+                            key='streaming'
+                            onChange={({ detail }) => updateSessionConfiguration('streaming', detail.checked)}
+                            checked={chatConfiguration.sessionConfiguration.streaming}
+                            disabled={!selectedModel?.streaming || isRunning}
                         >
-                            Show Message Metadata
-                        </Toggle>}
-                    {systemConfig && systemConfig.configuration.enabledComponents.editChatHistoryBuffer && !isImageModel && !isVideoModel && !modelOnly &&
-                        <FormField label='Chat History Buffer Size'>
-                            <Select
-                                disabled={isRunning}
-                                filteringType='auto'
-                                selectedOption={{
-                                    value: chatConfiguration.sessionConfiguration.chatHistoryBufferSize.toString(),
-                                    label: chatConfiguration.sessionConfiguration.chatHistoryBufferSize.toString(),
-                                }}
-                                onChange={({ detail }) => updateSessionConfiguration('chatHistoryBufferSize', parseInt(detail.selectedOption.value))}
-                                options={oneThroughTenOptions}
-                            />
-                        </FormField>}
-                    {systemConfig && systemConfig.configuration.enabledComponents.editNumOfRagDocument && !isImageModel && !isVideoModel && !modelOnly &&
-                        <FormField label='Matching RAG Excerpts'>
-                            <Select
-                                disabled={isRunning}
-                                filteringType='auto'
-                                selectedOption={{
-                                    value: chatConfiguration.sessionConfiguration.ragTopK.toString(),
-                                    label: chatConfiguration.sessionConfiguration.ragTopK.toString(),
-                                }}
-                                onChange={({ detail }) => updateSessionConfiguration('ragTopK', parseInt(detail.selectedOption.value))}
-                                options={oneThroughTenOptions}
-                            />
-                        </FormField>}
-                    {selectedModel?.features?.find((feature) => feature.name === ModelFeatures.REASONING) &&
-                        <FormField label='Reasoning Effort'>
-                            <Select
-                                disabled={isRunning}
-                                filteringType='auto'
-                                selectedOption={{
-                                    value: chatConfiguration.sessionConfiguration.modelArgs.reasoning_effort,
-                                    label: chatConfiguration.sessionConfiguration.modelArgs.reasoning_effort,
-                                }}
-                                onChange={({ detail }) => updateSessionConfiguration('modelArgs', {...chatConfiguration.sessionConfiguration.modelArgs, reasoning_effort: detail.selectedOption.value })}
-                                options={reasoningEffortOptions}
-                            />
-                        </FormField>}
-                    {selectedModel?.features?.find((feature) => feature.name === ModelFeatures.REASONING) &&
+                            Stream Responses
+                        </Toggle>,
                         <Toggle
-                            onChange={({ detail }) => updateSessionConfiguration('showReasoningContent', detail.checked)}
-                            checked={chatConfiguration.sessionConfiguration.showReasoningContent}
-                            disabled={isRunning}
+                            key='markdown'
+                            onChange={({ detail }) => updateSessionConfiguration('markdownDisplay', detail.checked)}
+                            checked={chatConfiguration.sessionConfiguration.markdownDisplay}
                         >
-                            Show Reasoning Content
-                        </Toggle>}
-                </Grid>
+                            Display Responses as Markdown
+                        </Toggle>,
+                        ...(systemConfig && systemConfig.configuration.enabledComponents.viewMetaData ? [
+                            <Toggle
+                                key='metadata'
+                                onChange={({ detail }) => updateSessionConfiguration('showMetadata', detail.checked)}
+                                checked={chatConfiguration.sessionConfiguration.showMetadata}
+                                disabled={isRunning}
+                            >
+                                Show Message Metadata
+                            </Toggle>
+                        ] : []),
+                        ...(systemConfig && systemConfig.configuration.enabledComponents.editChatHistoryBuffer && !isImageModel && !isVideoModel && !modelOnly ? [
+                            <FormField key='chatHistoryBuffer' label='Chat History Buffer Size'>
+                                <Select
+                                    disabled={isRunning}
+                                    filteringType='auto'
+                                    selectedOption={{
+                                        value: chatConfiguration.sessionConfiguration.chatHistoryBufferSize.toString(),
+                                        label: chatConfiguration.sessionConfiguration.chatHistoryBufferSize.toString(),
+                                    }}
+                                    onChange={({ detail }) => updateSessionConfiguration('chatHistoryBufferSize', parseInt(detail.selectedOption.value))}
+                                    options={oneThroughTenOptions}
+                                />
+                            </FormField>
+                        ] : []),
+                        ...(systemConfig && systemConfig.configuration.enabledComponents.editNumOfRagDocument && !isImageModel && !isVideoModel && !modelOnly ? [
+                            <FormField key='ragTopK' label='Matching RAG Excerpts'>
+                                <Select
+                                    disabled={isRunning}
+                                    filteringType='auto'
+                                    selectedOption={{
+                                        value: chatConfiguration.sessionConfiguration.ragTopK.toString(),
+                                        label: chatConfiguration.sessionConfiguration.ragTopK.toString(),
+                                    }}
+                                    onChange={({ detail }) => updateSessionConfiguration('ragTopK', parseInt(detail.selectedOption.value))}
+                                    options={oneThroughTenOptions}
+                                />
+                            </FormField>
+                        ] : []),
+                        ...(selectedModel?.features?.find((feature) => feature.name === ModelFeatures.REASONING) ? [
+                            <FormField key='reasoningEffort' label='Reasoning Effort'>
+                                <Select
+                                    disabled={isRunning}
+                                    filteringType='auto'
+                                    selectedOption={{
+                                        value: chatConfiguration.sessionConfiguration.modelArgs.reasoning_effort,
+                                        label: chatConfiguration.sessionConfiguration.modelArgs.reasoning_effort,
+                                    }}
+                                    onChange={({ detail }) => updateSessionConfiguration('modelArgs', {...chatConfiguration.sessionConfiguration.modelArgs, reasoning_effort: detail.selectedOption.value })}
+                                    options={reasoningEffortOptions}
+                                />
+                            </FormField>,
+                            <Toggle
+                                key='showReasoning'
+                                onChange={({ detail }) => updateSessionConfiguration('showReasoningContent', detail.checked)}
+                                checked={chatConfiguration.sessionConfiguration.showReasoningContent}
+                                disabled={isRunning}
+                            >
+                                Show Reasoning Content
+                            </Toggle>
+                        ] : []),
+                    ];
+
+                    return (
+                        <Grid gridDefinition={items.map(() => ({ colspan: 6 }))}>
+                            {items}
+                        </Grid>
+                    );
+                })()}
                 {systemConfig && systemConfig.configuration.enabledComponents.editKwargs && !isImageModel && !isVideoModel &&
                     <Container
                         header={
@@ -449,6 +465,9 @@ export const SessionConfiguration = ({
                         </FormField>
                         }
                     </Container>}
+                {visible && session && systemConfig?.configuration?.enabledComponents?.mcpConnections && (
+                    <AwsCredentialsPanel sessionId={session.sessionId} title='AWS Credentials' />
+                )}
                 {isImageModel && (
                     <Container
                         header={

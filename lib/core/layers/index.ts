@@ -175,7 +175,7 @@ export class NodeLayer extends Construct {
 
             // Install dependencies
             console.log(`Building Node.js layer: ${id} at ${layerPath}`);
-            execSync('npm install --omit=dev --production', {
+            execSync('npm install --omit=dev', {
                 cwd: nodejsDir,
                 stdio: 'inherit',
             });

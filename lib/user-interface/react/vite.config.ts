@@ -19,11 +19,28 @@ import { defineConfig } from 'vite';
 import { resolve } from 'node:path';
 import tailwindcss from '@tailwindcss/vite';
 
+const normalizedBaseUrl = (() => {
+    const configuredBase = process.env.BASE_URL?.trim();
+
+    if (!configuredBase) {
+        return '/';
+    }
+
+    const withLeadingSlash = configuredBase.startsWith('/') ? configuredBase : `/${configuredBase}`;
+    return withLeadingSlash.endsWith('/') ? withLeadingSlash : `${withLeadingSlash}/`;
+})();
+
 // https://vitejs.dev/config/
 export default defineConfig({
     plugins: [react(), tailwindcss()] as any,
     server: {
         port: 3000,
+    },
+    build: {
+        chunkSizeWarningLimit: 2300,
+    },
+    define: {
+        global: 'globalThis',
     },
     resolve: {
         alias: {
@@ -33,7 +50,14 @@ export default defineConfig({
         dedupe: ['react', 'react-dom'],
     },
     optimizeDeps: {
-        include: ['react', 'react-dom'],
+        include: [
+            'react',
+            'react-dom',
+            '@cloudscape-design/components',
+            '@cloudscape-design/collection-hooks',
+            '@cloudscape-design/chat-components',
+            '@cloudscape-design/global-styles',
+        ],
     },
-    base: process.env.BASE_URL || '/',
+    base: normalizedBaseUrl,
 });

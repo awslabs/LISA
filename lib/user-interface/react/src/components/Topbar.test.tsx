@@ -120,9 +120,10 @@ describe('Topbar', () => {
         // Click the sign in option
         await user.click(screen.getByText('Sign in'));
 
-        // Verify that signinRedirect was called with correct redirect_uri
+        // Verify that signinRedirect was called with correct redirect_uri (no hash, per OAuth spec)
+        const { getRedirectUri } = await import('@/config/oidc.config');
         expect(mockAuth.signinRedirect).toHaveBeenCalledWith({
-            redirect_uri: window.location.toString(),
+            redirect_uri: getRedirectUri(),
         });
     });
 

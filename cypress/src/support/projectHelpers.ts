@@ -59,7 +59,8 @@ export const PROJECT_SELECTORS = {
 export function navigateToChatPage () {
     cy.url().then((url) => {
         if (!url.includes('/ai-assistant')) {
-            cy.get('a[aria-label="AI Assistant"][href*="/ai-assistant"]')
+            cy.get('a[aria-label="AI Assistant"]')
+                .eq(2)
                 .should('exist')
                 .and('be.visible')
                 .click();

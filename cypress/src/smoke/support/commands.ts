@@ -275,6 +275,14 @@ Cypress.Commands.add('loginAs', (role = 'user') => {
         // Wait for the redirect and login to complete
         cy.contains('Sign in', { timeout: 10000 }).should('not.exist');
 
+        // Wait for OIDC token to be stored in sessionStorage before proceeding
+        cy.window({ timeout: 15000 }).should((win) => {
+            const hasOidcToken = Object.keys(win.sessionStorage).some((key) =>
+                key.startsWith('oidc.user:')
+            );
+            expect(hasOidcToken, 'OIDC token should be stored').to.equal(true);
+        });
+
         // Wait for app to be ready
         waitForAppReady();
     });

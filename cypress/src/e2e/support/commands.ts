@@ -59,7 +59,7 @@ function waitForCriticalApis () {
  */
 function waitForAppReady () {
     // Wait for "Loading configuration..." to disappear
-    cy.contains('Loading configuration...', { timeout: 15000 }).should('not.exist');
+    cy.contains('Loading configuration...', { timeout: 30000 }).should('not.exist');
 
     // Wait for any loading spinners to complete
     cy.get('body').then(($body) => {
@@ -81,7 +81,7 @@ function waitForAppReady () {
 Cypress.Commands.add('loginAs', (role = 'user') => {
     const log = Cypress.log({
         displayName: 'Cognito Login',
-        message: [`🔐 Authenticating | ${role}`],
+        message: [`Authenticating | ${role}`],
         autoEnd: false,
     });
 

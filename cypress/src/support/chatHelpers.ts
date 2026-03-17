@@ -24,7 +24,7 @@ export const CHAT_SELECTORS = {
     MODEL_INPUT: '[data-testid="model-selection-autosuggest"] input, input[placeholder*="model" i], input[aria-label*="model" i]',
     RAG_REPO_INPUT: '[data-testid="rag-repository-autosuggest"] input, input#rag-repository-autosuggest, input[placeholder*="RAG Repository" i]',
     COLLECTION_INPUT: '[data-testid="rag-collection-autosuggest"] input, input#collection-autosuggest, input[placeholder*="collection" i]',
-    MESSAGE_INPUT: '[data-testid="chat-prompt-textarea"] textarea, textarea[placeholder*="message" i]',
+    MESSAGE_INPUT: '[data-testid="chat-prompt-textarea"] textarea',
     DROPDOWN_OPTION: '[role="option"], [role="menuitem"]',
 };
 
@@ -37,7 +37,8 @@ export function navigateToChatPage () {
     // Check if we're already on the chat page
     cy.url().then((url) => {
         if (!url.includes('/ai-assistant')) {
-            cy.get('a[aria-label="AI Assistant"][href*="/ai-assistant"]')
+            cy.get('a[aria-label="AI Assistant"]')
+                .eq(2)
                 .should('exist')
                 .and('be.visible')
                 .click();
@@ -53,8 +54,8 @@ export function verifyChatPageLoaded () {
 
     // Wait for the prompt input textarea to be visible
     // Use attribute selectors that are stable across builds
-    cy.get(CHAT_SELECTORS.MESSAGE_INPUT)
-        .first()
+    // Allow extra time for lazy-loaded Chat route to render
+    cy.get(CHAT_SELECTORS.MESSAGE_INPUT, { timeout: 15000 })
         .should('exist')
         .and('be.visible');
 }

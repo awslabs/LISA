@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Provider } from 'react-redux';
@@ -238,10 +238,11 @@ describe('Sessions', () => {
 
         renderWithProviders(<Sessions newSession={mockNewSession} />);
 
-        const newSessionButton = screen.getByRole('button', { name: /new/i });
-        await user.click(newSessionButton);
+        const actionsContainer = screen.getByTestId('sessions-actions');
+        const [dropdownTrigger] = within(actionsContainer).getAllByRole('button');
+        await user.click(dropdownTrigger);
 
-        const newChatItem = await screen.findByText('New Chat');
+        const newChatItem = await screen.findByRole('menuitem', { name: /new chat/i });
         await user.click(newChatItem);
 
         expect(mockNewSession).toHaveBeenCalledOnce();

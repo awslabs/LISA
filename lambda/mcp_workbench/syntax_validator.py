@@ -14,6 +14,9 @@
 
 """Python syntax validation module for MCP Workbench."""
 import ast
+import importlib
+import importlib.abc
+import importlib.machinery
 import importlib.util
 import logging
 import os
@@ -37,6 +40,51 @@ class ValidationResult:
         """Initialize list fields if None."""
         if self.missing_required_imports is None:
             self.missing_required_imports = []
+
+
+class _StubLoader(importlib.abc.Loader):
+    """Loader that creates empty stub modules for ``mcpworkbench.*``."""
+
+    def create_module(self, spec: importlib.machinery.ModuleSpec) -> ModuleType:
+        mod = ModuleType(spec.name)
+        mod.__path__ = []
+        mod.__package__ = spec.name
+        mod.__spec__ = spec
+        return mod
+
+    def exec_module(self, module: ModuleType) -> None:
+        pass
+
+
+class _McpWorkbenchStubFinder(importlib.abc.MetaPathFinder):
+    """Auto-stub any ``mcpworkbench.*`` import that hasn't already been mocked.
+
+    During Lambda-based validation we only have explicit mocks for
+    ``mcpworkbench.core.*``.  Tools may import from other subpackages
+    (e.g. ``mcpworkbench.aws.*``) that don't exist in the Lambda
+    environment.  This finder intercepts those imports and returns
+    lightweight stub modules so validation can proceed without
+    ImportErrors.
+    """
+
+    _PREFIX = "mcpworkbench."
+    _loader = _StubLoader()
+
+    def find_spec(
+        self,
+        fullname: str,
+        path: Any = None,
+        target: Any = None,
+    ) -> importlib.machinery.ModuleSpec | None:
+        if fullname == "mcpworkbench" or fullname.startswith(self._PREFIX):
+            if fullname not in sys.modules:
+                spec = importlib.machinery.ModuleSpec(
+                    fullname,
+                    self._loader,
+                    is_package=True,
+                )
+                return spec
+        return None
 
 
 class PythonSyntaxValidator:
@@ -197,11 +245,17 @@ class PythonSyntaxValidator:
 
             # Create mock module hierarchy in sys.modules
             # This allows user code to do: from mcpworkbench.core.base_tool import BaseTool
+            # __path__ must be set so Python treats these as packages that can have submodules.
             if "mcpworkbench" not in sys.modules:
-                sys.modules["mcpworkbench"] = ModuleType("mcpworkbench")
+                mcpworkbench_mod = ModuleType("mcpworkbench")
+                mcpworkbench_mod.__path__ = []
+                mcpworkbench_mod.__package__ = "mcpworkbench"
+                sys.modules["mcpworkbench"] = mcpworkbench_mod
 
             if "mcpworkbench.core" not in sys.modules:
                 core_module = ModuleType("mcpworkbench.core")
+                core_module.__path__ = []
+                core_module.__package__ = "mcpworkbench.core"
                 sys.modules["mcpworkbench.core"] = core_module
                 sys.modules["mcpworkbench"].core = core_module  # type: ignore[attr-defined]
 
@@ -219,6 +273,13 @@ class PythonSyntaxValidator:
 
             logger.info("MCP mock modules successfully injected into sys.modules")
             logger.info(f"Modules now in sys.modules: {[k for k in sys.modules.keys() if 'mcpworkbench' in k]}")
+
+            # Install a catch-all finder so that imports of other mcpworkbench
+            # subpackages (e.g. mcpworkbench.aws.*) return stubs instead of
+            # raising ImportError during validation.
+            if not any(isinstance(f, _McpWorkbenchStubFinder) for f in sys.meta_path):
+                sys.meta_path.append(_McpWorkbenchStubFinder())
+                logger.info("Installed _McpWorkbenchStubFinder for remaining mcpworkbench.* imports")
         else:
             logger.info("Real MCP Workbench package is already available in sys.modules")
 

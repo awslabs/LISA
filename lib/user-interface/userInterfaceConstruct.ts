@@ -21,7 +21,7 @@ import { RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { AwsIntegration, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { IRole, ManagedPolicy, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { Architecture } from 'aws-cdk-lib/aws-lambda';
-import { BlockPublicAccess, Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
+import { BlockPublicAccess, Bucket, BucketEncryption, IBucket } from 'aws-cdk-lib/aws-s3';
 import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
@@ -39,6 +39,7 @@ import { getNodeRuntime } from '../api-base/utils';
  */
 export type UserInterfaceProps = {
     architecture: Architecture;
+    bucketAccessLogsBucket: IBucket;
     restApiId: string;
     rootResourceId: string;
 } & BaseProps & StackProps;
@@ -58,11 +59,7 @@ export class UserInterfaceConstruct extends Construct {
         super(scope, id);
         this.scope = scope;
 
-        const { architecture, config, restApiId, rootResourceId } = props;
-
-        const bucketAccessLogsBucket = Bucket.fromBucketArn(scope, 'BucketAccessLogsBucket',
-            StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/bucket/bucket-access-logs`)
-        );
+        const { architecture, bucketAccessLogsBucket, config, restApiId, rootResourceId } = props;
 
         // Create website S3 bucket
         const websiteBucket = new Bucket(scope, 'Bucket', {
@@ -210,7 +207,7 @@ export class UserInterfaceConstruct extends Construct {
         };
 
         const appEnvSource = Source.data('env.js', `window.env = ${JSON.stringify(appEnvConfig)}`);
-        const uriPrefix = config.apiGatewayConfig?.domainName ? '' : `${config.deploymentStage}/`;
+        const uriPrefix = config.apiGatewayConfig?.domainName ? '/' : `/${config.deploymentStage}/`;
         console.log(`assets: deploymentStage=${config.deploymentStage}`);
         console.log(`uriSuffix=${uriPrefix}`);
         let webappAssets;

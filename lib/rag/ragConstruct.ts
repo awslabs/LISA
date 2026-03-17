@@ -17,7 +17,7 @@ import { CfnOutput, Duration, RemovalPolicy, Stack, StackProps } from 'aws-cdk-l
 import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup, Port } from 'aws-cdk-lib/aws-ec2';
 import { ILayerVersion, LayerVersion } from 'aws-cdk-lib/aws-lambda';
-import { BlockPublicAccess, Bucket, BucketEncryption, HttpMethods } from 'aws-cdk-lib/aws-s3';
+import { BlockPublicAccess, Bucket, BucketEncryption, HttpMethods, IBucket } from 'aws-cdk-lib/aws-s3';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { AttributeType, BillingMode, StreamViewType, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -48,6 +48,7 @@ import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resour
 
 export type LisaRagProps = {
     authorizer: IAuthorizer;
+    bucketAccessLogsBucket: IBucket;
     endpointUrl?: StringParameter;
     modelsPs?: StringParameter;
     restApiId: string;
@@ -70,7 +71,7 @@ export class LisaRagConstruct extends Construct {
     constructor (scope: Stack, id: string, props: LisaRagProps) {
         super(scope, id);
         this.scope = scope;
-        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const { authorizer, bucketAccessLogsBucket, config, restApiId, rootResourceId, securityGroups, vpc } = props;
 
         const endpointUrl = props.endpointUrl ?? StringParameter.fromStringParameterName(
             scope,
@@ -82,10 +83,6 @@ export class LisaRagConstruct extends Construct {
             scope,
             createCdkId(['RegisteredModels', 'StringParameter']),
             `${config.deploymentPrefix}/registeredModels`,
-        );
-
-        const bucketAccessLogsBucket = Bucket.fromBucketArn(scope, 'BucketAccessLogsBucket',
-            StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/bucket/bucket-access-logs`)
         );
 
         const bucket = new Bucket(scope, createCdkId(['LISA', 'RAG', config.deploymentName, config.deploymentStage]), {

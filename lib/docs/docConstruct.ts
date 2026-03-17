@@ -23,12 +23,12 @@ import { BaseProps } from '../schema';
 import { Roles } from '../core/iam/roles';
 
 import { DOCS_DIST_PATH } from '../util';
-import { StringParameter } from 'aws-cdk-lib/aws-ssm';
-
 /**
  * Properties for DocsStack Construct.
  */
-export type LisaDocsProps = BaseProps & StackProps;
+export type LisaDocsProps = BaseProps & StackProps & {
+    bucketAccessLogsBucket: IBucket;
+};
 
 /**
  * User Interface Construct.
@@ -44,11 +44,7 @@ export class LisaDocsConstruct extends Construct {
         super(scope, id);
         this.scope = scope;
 
-        const { config } = props;
-
-        const bucketAccessLogsBucket = Bucket.fromBucketArn(scope, 'BucketAccessLogsBucket',
-            StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/bucket/bucket-access-logs`)
-        );
+        const { bucketAccessLogsBucket, config } = props;
 
         // Create Docs S3 bucket
         const docsBucket = new Bucket(scope, 'DocsBucket', {

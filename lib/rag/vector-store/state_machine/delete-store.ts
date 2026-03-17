@@ -263,7 +263,7 @@ export class DeleteStoreStateMachine extends Construct {
 
         // Create a new state machine using the definition and roles specified
         this.stateMachine = new sfn.StateMachine(this, 'DeleteStoreStateMachine', {
-            definition,
+            definitionBody: sfn.DefinitionBody.fromChainable(definition),
             role,
             stateMachineType: sfn.StateMachineType.STANDARD,
             removalPolicy: config.removalPolicy

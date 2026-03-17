@@ -22,11 +22,7 @@
 > To minimize version conflicts and ensure a consistent deployment environment, we recommend executing the following steps on a dedicated EC2 instance. However, LISA can be deployed from any machine that meets the prerequisites listed above.
 
 ## Deployment Steps
-<<<<<<< Updated upstream
 
-=======
-<<<<<<< Updated upstream
-=======
 
 LISA uses npm scripts for build and deployment. Key commands:
 
@@ -41,8 +37,7 @@ LISA uses npm scripts for build and deployment. Key commands:
 
 The `npm run deploy` script runs the full pipeline: install dependencies, Docker checks, ECR login, model verification, build, and CDK deploy. Use `STACK=<stack-name> npm run deploy` to deploy specific stacks.
 
->>>>>>> Stashed changes
->>>>>>> Stashed changes
+
 ### Step 1: Clone the Repository
 
 Ensure you're working with the latest stable release of LISA:
@@ -75,19 +70,11 @@ export CDK_DOCKER=finch # Optional, only required if not using docker as contain
 
 ### Step 3: Set Up Python and TypeScript Environments
 
-<<<<<<< Updated upstream
-Install system dependencies and set up both Python and TypeScript environments:
-<<<<<<< Updated upstream
 
-* ***NOTE** The code block below has two tabs for Debian & EL/AL2*
-=======
 - ***NOTE** The code block below has two tabs for Debian & EL/AL2*
-=======
 Install system dependencies and set up both Python and TypeScript environments using the project's npm scripts:
 
 * ***NOTE** The code block below has two tabs for Debian & EL/AL2*
->>>>>>> Stashed changes
->>>>>>> Stashed changes
 
 :::tabs
 == Debian
@@ -130,11 +117,7 @@ npm run install:python
 npm install
 ```
 
-<<<<<<< Updated upstream
-=======
-<<<<<<< Updated upstream
-=======
->>>>>>> Stashed changes
+
 == MacOS
 
 ```bash
@@ -159,28 +142,7 @@ which node
 python --version
 node --version
 
-<<<<<<< Updated upstream
-# 6) Create project Python environment
-make createPythonEnvironment
 
-# 7) Activate venv
-source .venv/bin/activate
-
-# 8) Upgrade pip inside venv
-python -m pip install --upgrade pip
-
-# 9) Install any extra Python packages inside venv if needed
-python -m pip install huggingface_hub yq
-
-# 10) Install repo requirements
-make installPythonRequirements
-
-# 11) Set up TypeScript side
-make createTypeScriptEnvironment
-make installTypeScriptRequirements
-```
-
-=======
 # 5) Create and activate Python virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
@@ -194,8 +156,7 @@ npm run install:python
 npm install
 ```
 
->>>>>>> Stashed changes
->>>>>>> Stashed changes
+
 :::
 
 ### Step 4: Configure LISA
@@ -350,15 +311,10 @@ This command verifies if the model's weights are already present in your S3 buck
 > section of the [Chatbot](/user/chat), this parameter also
 > dictated which models were deployed.
 > **NOTE**
-<<<<<<< Updated upstream
-> For air-gapped systems, before running `make modelCheck` you should manually download model artifacts and place them in a `models` directory at the project root, using the structure: `models/<model-id>`.
-<<<<<<< Updated upstream
-=======
 
-=======
+
 > For air-gapped systems, before running `npm run model:check` you should manually download model artifacts and place them in a `models` directory at the project root, using the structure: `models/<model-id>`.
->>>>>>> Stashed changes
->>>>>>> Stashed changes
+
 > **NOTE**
 > This process is primarily designed and tested for HuggingFace models. For other model formats, you will need to manually create and upload safetensors.
 > **NOTE**
@@ -396,18 +352,10 @@ This approach builds all necessary components in a commercial region with full i
    ```
 
    This generates:
-<<<<<<< Updated upstream
-   * Lambda function zip files in `./dist/layers/*.zip`
-   * Docker images exported as `./dist/images/*.tar` files
-=======
-<<<<<<< Updated upstream
-   - Lambda function zip files in `./dist/layers/*.zip`
-   - Docker images exported as `./dist/images/*.tar` files
-=======
-   * Lambda function zip files in `./dist/layers/*.zip` (from `build:archive`)
+
+
+* Lambda function zip files in `./dist/layers/*.zip` (from `build:archive`)
    * Docker images exported as `./dist/images/*.tar` files (from `build-assets --include-images`)
->>>>>>> Stashed changes
->>>>>>> Stashed changes
 
 #### Step 2: Transfer to ADC Region
 

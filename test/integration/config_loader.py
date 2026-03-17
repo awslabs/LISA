@@ -114,5 +114,5 @@ def fetch_url_from_aws(kind: str) -> str:
             url = result.stdout.strip()
             return url if url and url != "None" else ""
     except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
-        pass
-    return ""
+        # Intentionally ignore errors; function returns empty string on failure.
+        return ""

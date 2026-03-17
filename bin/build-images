@@ -97,7 +97,8 @@ ecr_login() {
 # Function to check if a config parameter is enabled (defaults to true if not present)
 should_build_image() {
     local param="$1"
-    local value=$(yq ".${param}" "$ROOT/custom-config.yaml" 2>/dev/null)
+    local value
+    value=$(cd "$ROOT" && node scripts/config.mjs --get ".${param}" 2>/dev/null || true)
     [[ "$value" != "false" ]]
 }
 

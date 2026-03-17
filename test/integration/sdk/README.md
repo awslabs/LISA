@@ -7,7 +7,7 @@ This directory contains integration tests for the LISA SDK that require a deploy
 - `test_api.py` - Tests basic API operations (list models, repositories, configs, sessions)
 - `test_models.py` - Tests LisaLlm model listing
 - `test_llm_proxy.py` - Tests LLM proxy operations (mostly skipped, require specific models)
-- `test_rag.py` - Tests RAG operations (mostly skipped, require deployed environment)
+- `test_integration_sdk_rag.py` - Tests RAG operations (mostly skipped, require deployed environment)
 - `conftest.py` - Fixtures and configuration for integration tests
 
 ## Prerequisites

@@ -1,5 +1,5 @@
 {
-  "app": "npm run deploy",
+  "app": "tsx ./bin/lisa.ts",
   "requireApproval": "never",
   "watch": {
     "include": [

@@ -70,9 +70,14 @@ def mock_api_wrapper(func):
     return wrapper
 
 
-@pytest.fixture(scope="module")
-def chat_stacks_handlers():
-    """Patch retry_config and api_wrapper only for this module, then import handlers. No global mocks."""
+@pytest.fixture(scope="function")
+def chat_stacks_handlers(patch_is_admin_for_chat_stacks):
+    """Patch retry_config and api_wrapper only for this module, then import handlers. No global mocks.
+    Depends on patch_is_admin_for_chat_stacks so handlers are imported after admin_only is restored
+    (test_repository_lambda patches it at module load). Clear cache to force fresh import with current admin_only."""
+    for mod in list(sys.modules.keys()):
+        if mod == "chat_assistant_stacks" or mod.startswith("chat_assistant_stacks."):
+            del sys.modules[mod]
     with patch("utilities.common_functions.retry_config", retry_config), patch(
         "utilities.common_functions.api_wrapper", mock_api_wrapper
     ):
@@ -95,13 +100,32 @@ def chat_stacks_handlers():
         )
 
 
+def _get_groups_from_event(event: dict) -> list:
+    """Parse groups from event (used when mocking get_groups for chat stacks tests)."""
+    import json as _json
+
+    return _json.loads(event.get("requestContext", {}).get("authorizer", {}).get("groups", "[]"))
+
+
+# Import real admin_only at load time (before test_repository_lambda patches it)
+from utilities.auth import admin_only as _real_admin_only
+
+
 @pytest.fixture(autouse=True)
 def patch_is_admin_for_chat_stacks():
-    """Patch is_admin in lambda_functions and utilities.auth. True by default; 403 tests set False."""
+    """Patch is_admin and get_groups in lambda_functions and utilities.auth.
+
+    is_admin: True by default; 403 tests set False.
+    get_groups: Reads from event so list_stacks filtering works correctly.
+    Restores real admin_only (test_repository_lambda patches it globally and never restores).
+    """
     mock_is_admin = MagicMock(return_value=True)
     with (
         patch("chat_assistant_stacks.lambda_functions.is_admin", mock_is_admin),
+        patch("chat_assistant_stacks.lambda_functions.get_groups", _get_groups_from_event),
         patch("utilities.auth.is_admin", mock_is_admin),
+        patch("utilities.auth.get_groups", _get_groups_from_event),
+        patch("utilities.auth.admin_only", _real_admin_only),
     ):
         yield mock_is_admin
 
@@ -154,7 +178,10 @@ def stacks_table(dynamodb):
 @pytest.fixture
 def admin_event():
     """Event with admin user (is_admin patched True by patch_is_admin_for_chat_stacks)."""
-    return {"requestContext": {"authorizer": {"username": "admin-user"}}}
+    return {
+        "httpMethod": "POST",
+        "requestContext": {"authorizer": {"username": "admin-user", "groups": '["admin-group"]'}},
+    }
 
 
 def _non_admin_event(groups=None):
@@ -467,7 +494,8 @@ def test_create_forbidden_when_not_admin(
     h = chat_stacks_handlers
     patch_is_admin_for_chat_stacks.return_value = False
     event = {
-        "requestContext": {"authorizer": {"username": "user"}},
+        "httpMethod": "POST",
+        "requestContext": {"authorizer": {"username": "user", "groups": "[]"}},
         "body": json.dumps(sample_stack_body),
     }
     response = h.create(event, lambda_context)
@@ -485,7 +513,8 @@ def test_get_stack_forbidden_when_not_admin(
     stack_id = json.loads(create_resp["body"])["stackId"]
     patch_is_admin_for_chat_stacks.return_value = False
     get_event = {
-        "requestContext": {"authorizer": {"username": "user"}},
+        "httpMethod": "GET",
+        "requestContext": {"authorizer": {"username": "user", "groups": "[]"}},
         "pathParameters": {"stackId": stack_id},
     }
     response = h.get_stack(get_event, lambda_context)

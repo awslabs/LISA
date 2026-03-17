@@ -260,7 +260,8 @@ patch("utilities.common_functions.retry_config", retry_config).start()
 patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()
 patch("utilities.common_functions.get_id_token", mock_common.get_id_token).start()
 patch("utilities.common_functions.get_cert_path", mock_common.get_cert_path).start()
-patch("utilities.auth.admin_only", mock_admin_only).start()
+_admin_only_patch = patch("utilities.auth.admin_only", mock_admin_only)
+_admin_only_patch.start()
 
 # Note: boto3.client will be patched per-test to avoid global conflicts
 # Global boto3.client patch removed to prevent interference with other test modules

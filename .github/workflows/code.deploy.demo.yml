@@ -40,12 +40,18 @@ jobs:
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v4
         with:
           node-version: 24.x
-      - name: Install CDK dependencies
+      - name: Install dependencies
         run: |
           npm ci
+          pip install -r requirements-dev.txt
+          pip install -e ./lisa-sdk
+          pip install -e lib/serve/mcp-workbench
       - name: Deploy LISA
         run: |
-          make deploy HEADLESS=true
+          npm run deploy
+        env:
+          HEADLESS: "true"
+          SKIP_INSTALL: "true"
   SendSlackNotification:
     name: Send Slack Notification
     needs: [ DeployLISA ]

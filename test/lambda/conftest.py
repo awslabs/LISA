@@ -102,9 +102,9 @@ def mock_auth():
 
 @pytest.fixture(autouse=True)
 def setup_auth_patches(request, mock_auth, aws_credentials):
-    """Automatically patch auth functions for all tests except test_auth.py."""
-    # Skip patching for test_auth.py since it tests the auth module itself
-    if "test_auth" in request.node.nodeid:
+    """Automatically patch auth functions for all tests except test_lambda_auth.py."""
+    # Skip patching for test_lambda_auth.py since it tests the auth module itself
+    if "test_lambda_auth" in request.node.nodeid:
         yield mock_auth
         return
 
@@ -118,16 +118,15 @@ def setup_auth_patches(request, mock_auth, aws_credentials):
 
     patches = [
         patch("utilities.auth.get_username", mock_auth.get_username),
-        patch("utilities.auth.get_groups", mock_auth.get_groups),
         patch("utilities.auth.get_user_context", mock_auth.get_user_context),
         patch("utilities.fastapi_middleware.auth_decorators.is_admin", mock_auth.is_admin),
     ]
-    # Chat assistant stacks tests use their own is_admin patch (patch_is_admin_for_chat_stacks).
+    # Chat assistant stacks tests use own is_admin patch; get_groups must read from event.
     if "test_chat_assistant_stacks" not in request.node.nodeid:
+        patches.append(patch("utilities.auth.get_groups", mock_auth.get_groups))
         patches.append(patch("utilities.auth.is_admin", mock_auth.is_admin))
-    # Avoid importing models.lambda_functions for tests that don't need it (that module requires MODEL_TABLE_NAME).
-    _skip_models = ("test_chat_assistant_stacks", "test_projects_lambda")
-    if not any(s in request.node.nodeid for s in _skip_models):
+    # Avoid importing models.lambda_functions (requires MODEL_TABLE_NAME) for tests that don't need it.
+    if "test_chat_assistant_stacks" not in request.node.nodeid and "test_api_tokens" not in request.node.nodeid:
         patches.extend(
             [
                 patch("models.lambda_functions.is_admin", mock_auth.is_admin),
@@ -182,7 +181,7 @@ def aws_credentials():
 @pytest.fixture
 def setup_env():
     """Setup environment for auth tests."""
-    # This is a no-op fixture for test_auth.py compatibility
+    # This is a no-op fixture for test_lambda_auth.py compatibility
     yield
 
 

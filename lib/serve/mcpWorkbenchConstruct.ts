@@ -35,6 +35,7 @@ import { Ec2Service } from 'aws-cdk-lib/aws-ecs';
 import { BlockPublicAccess, BucketEncryption } from 'aws-cdk-lib/aws-s3';
 
 export type McpWorkbenchConstructProps = {
+    bucketAccessLogsBucket: s3.IBucket;
     restApiId: string;
     rootResourceId: string;
     securityGroups: ISecurityGroup[];
@@ -49,7 +50,7 @@ export class McpWorkbenchConstruct extends Construct {
     constructor (scope: Construct, id: string, props: McpWorkbenchConstructProps) {
         super(scope, id);
 
-        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc, apiCluster } = props;
+        const { authorizer, bucketAccessLogsBucket, config, restApiId, rootResourceId, securityGroups, vpc, apiCluster } = props;
 
         // Get common layer based on arn from SSM due to issues with cross stack references
         const commonLambdaLayer = lambda.LayerVersion.fromLayerVersionArn(
@@ -71,7 +72,7 @@ export class McpWorkbenchConstruct extends Construct {
 
         const lambdaLayers = [commonLambdaLayer, fastapiLambdaLayer];
 
-        const workbenchBucket = this.createWorkbenchBucket(scope, config);
+        const workbenchBucket = this.createWorkbenchBucket(scope, config, bucketAccessLogsBucket);
         this.createWorkbenchApi(restApi, config, vpc, securityGroups, workbenchBucket, lambdaLayers, authorizer);
 
         if (config.deployMcpWorkbench) {
@@ -181,11 +182,7 @@ export class McpWorkbenchConstruct extends Construct {
         });
     }
 
-    private createWorkbenchBucket (scope: Construct, config: Config): s3.Bucket {
-        const bucketAccessLogsBucket = s3.Bucket.fromBucketArn(scope, 'BucketAccessLogsBucket',
-            ssm.StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/bucket/bucket-access-logs`),
-        );
-
+    private createWorkbenchBucket (scope: Construct, config: Config, bucketAccessLogsBucket: s3.IBucket): s3.Bucket {
         return new s3.Bucket(scope, createCdkId(['LISA', 'MCPWorkbench', config.deploymentName, config.deploymentStage]), {
             bucketName: [config.deploymentName, config.deploymentStage, 'MCPWorkbench', config.accountNumber].join('-').toLowerCase(),
             removalPolicy: config.removalPolicy,
@@ -232,7 +229,7 @@ export class McpWorkbenchConstruct extends Construct {
                 priority: 80,
                 conditions: [{
                     type: 'pathPatterns' as const,
-                    values: ['/v2/mcp/*']
+                    values: ['/v2/mcp/*', '/api/aws/*']
                 }]
             }
         };

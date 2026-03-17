@@ -17,6 +17,7 @@
 import { Construct } from 'constructs';
 
 import { Stack } from 'aws-cdk-lib';
+import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { CoreConstruct, CoreStackProps } from './coreConstruct';
 
 export * from './coreConstruct';
@@ -27,6 +28,7 @@ export * from './apiDeploymentConstruct';
  * Creates Lambda layers
  */
 export class CoreStack extends Stack {
+    public readonly loggingBucket: IBucket;
     /**
    * @param {Construct} scope - The parent or owner of the construct.
    * @param {string} id - The unique identifier for the construct within its scope.
@@ -34,6 +36,8 @@ export class CoreStack extends Stack {
     constructor (scope: Construct, id: string, props: CoreStackProps) {
         super(scope, id, props);
 
-        (new CoreConstruct(this, id + 'Resources', props)).node.addMetadata('aws:cdk:path', this.node.path);
+        const core = new CoreConstruct(this, id + 'Resources', props);
+        core.node.addMetadata('aws:cdk:path', this.node.path);
+        this.loggingBucket = core.loggingBucket;
     }
 }

@@ -24,7 +24,7 @@ import { selectCurrentUserIsAdmin, selectCurrentUserIsApiUser, selectCurrentUser
 import { IConfiguration } from '@/shared/model/configuration.model';
 import { ButtonDropdownProps } from '@cloudscape-design/components';
 import ColorSchemeContext from '@/shared/color-scheme.provider';
-import { OidcConfig } from '@/config/oidc.config';
+import { OidcConfig, getRedirectUri } from '@/config/oidc.config';
 import { getBrandingAssetPath } from '../shared/util/branding';
 import { getDisplayName } from '@/shared/util/branding';
 import { useDeleteAllSessionsForUserMutation } from '@/shared/reducers/session.reducer';
@@ -229,14 +229,14 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                 );
                                 break;
                             case 'signin':
-                                auth.signinRedirect({ redirect_uri: window.location.toString() });
+                                auth.signinRedirect({ redirect_uri: getRedirectUri() });
                                 break;
                             case 'signout':
                                 await auth.removeUser();
                                 await auth.signoutRedirect({
                                     extraQueryParams: {
                                         client_id: OidcConfig.client_id,
-                                        redirect_uri: window.location.origin,
+                                        redirect_uri: getRedirectUri(),
                                         response_type: OidcConfig.response_type
                                     }
                                 });

@@ -25,7 +25,7 @@ export default defineConfig({
         environment: 'jsdom',
         setupFiles: './src/test/setup.ts',
         coverage: {
-            provider: 'istanbul',
+            provider: 'v8',
             reporter: ['text', 'json', 'html', 'lcov', 'text-summary'],
             reportsDirectory: './coverage',
             exclude: [

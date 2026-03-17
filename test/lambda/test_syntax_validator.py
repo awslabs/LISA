@@ -58,12 +58,14 @@ class TestPythonSyntaxValidator:
 
     @pytest.fixture
     def cleanup_sys_modules(self):
-        """Cleanup sys.modules after tests to avoid interference."""
+        """Cleanup sys.modules and meta_path after tests to avoid interference."""
         yield
-        # Remove any mock modules added during testing
         modules_to_remove = [k for k in sys.modules.keys() if "mcpworkbench" in k or "temp_validation" in k]
         for module in modules_to_remove:
             del sys.modules[module]
+        from mcp_workbench.syntax_validator import _McpWorkbenchStubFinder
+
+        sys.meta_path[:] = [f for f in sys.meta_path if not isinstance(f, _McpWorkbenchStubFinder)]
 
     # ============================================================================
     # Test validate_code method

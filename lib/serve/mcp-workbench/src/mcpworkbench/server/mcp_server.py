@@ -29,6 +29,7 @@ from starlette.responses import JSONResponse
 from starlette.routing import Mount, Route
 from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
+from ..aws.aws_routes import router as aws_router
 from ..config.models import ServerConfig
 from ..core.base_tool import BaseTool
 from ..core.tool_discovery import ToolDiscovery, ToolInfo, ToolType
@@ -152,7 +153,6 @@ class MCPWorkbenchServer:
             allow_methods=self.config.cors_settings.allow_methods,
             allow_headers=self.config.cors_settings.allow_headers,
         )
-
         mcp_app.add_middleware(OIDCHTTPBearer)
 
         # Add MCP mount
@@ -160,6 +160,20 @@ class MCPWorkbenchServer:
             Route("/health", health_check),
             Mount("/v2/mcp", mcp_app),
         ]
+
+        # Mount AWS session management routes under /api/aws
+        from fastapi import FastAPI  # noqa: PLC0415
+
+        aws_app = FastAPI()
+        aws_app.add_middleware(
+            CORSMiddleware,
+            allow_origins=self.config.cors_settings.allow_origins,
+            allow_methods=self.config.cors_settings.allow_methods,
+            allow_headers=self.config.cors_settings.allow_headers,
+        )
+        aws_app.add_middleware(OIDCHTTPBearer)
+        aws_app.include_router(aws_router)
+        routes.append(Mount("/api/aws", aws_app))
 
         self._add_management_routes(mcp_app)
 

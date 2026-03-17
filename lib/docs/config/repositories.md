@@ -46,6 +46,7 @@ Files loaded via the chat assistant UI are limited by size, and are processed th
 LISA's automated document ingestion pipeline supports larger files and broader file types. Supported file types include: PDF, docx, and plain text files (.txt, .json, .yaml, xml, etc). The individual file size limit is 50 MB. LISA's pipelines offer chunking support for fixed size chunking or no chunking. For customers using Amazon Bedrock Knowledge Bases, LISA supports all chunking strategies offered by the service. LISA's automated ingestion pipelines provide customers with a flexible, scalable solution for loading documents into configured repositories and collections.
 
 Customers can set up multiple ingestion pipelines for a repository. For each pipeline they define:
+
 - The target repository and collection
 - Embedding model (inherited from repository if not defined)
 - Chunking strategy (can be customized per pipeline)
@@ -137,7 +138,7 @@ RAG repositories and collections are configurable through the chat assistant web
 
 Repositories are created by administrators and define the underlying vector store implementation, embedding model, and default access controls.
 
-#### Request Example:
+#### Request Example
 
 ```bash
 curl -s -H 'Authorization: Bearer <your_token>' -XPOST -d @repository.json https://<apigw_endpoint>/repository
@@ -174,7 +175,7 @@ curl -s -H 'Authorization: Bearer <your_token>' -XPOST -d @repository.json https
 }
 ```
 
-#### Response Fields:
+#### Response Fields
 
 - `status`: "success" if the state machine was started successfully
 - `executionArn`: The state machine ARN used to deploy the repository
@@ -183,7 +184,7 @@ curl -s -H 'Authorization: Bearer <your_token>' -XPOST -d @repository.json https
 
 Collections can be created by users with appropriate permissions within an existing repository.
 
-#### Request Example:
+#### Collection Request Example
 
 ```bash
 curl -s -H 'Authorization: Bearer <your_token>' -XPOST -d @collection.json https://<apigw_endpoint>/repository/my-rag-repository/collection
@@ -216,7 +217,7 @@ curl -s -H 'Authorization: Bearer <your_token>' -XPOST -d @collection.json https
 }
 ```
 
-#### Response Fields:
+#### Collection Response Fields
 
 - `collectionId`: Unique identifier for the created collection (UUID)
 - `repositoryId`: Parent repository identifier
@@ -230,14 +231,14 @@ curl -s -H 'Authorization: Bearer <your_token>' -XPOST -d @collection.json https
 
 Retrieve all collections accessible to the current user within a repository.
 
-#### Request Example:
+#### Listing Request Example
 
 ```bash
 curl -s -H 'Authorization: Bearer <your_token>' \
   'https://<apigw_endpoint>/repository/my-rag-repository/collections?page=1&pageSize=20&sortBy=name&sortOrder=asc'
 ```
 
-#### Query Parameters:
+#### Query Parameters
 
 - `page`: Page number (default: 1)
 - `pageSize`: Items per page (default: 20, max: 100)

@@ -24,7 +24,6 @@ const API_STUBS = [
     { endpoint: 'repository', alias: 'getRepositories' },
     { endpoint: 'configuration', alias: 'getConfiguration' },
     { endpoint: 'health', alias: 'getHealth' },
-    { endpoint: 'session', alias: 'getSessions' },
     { endpoint: 'api-tokens', alias: 'getApiTokens' },
     { endpoint: 'mcp', alias: 'getMcp' },
     { endpoint: 'mcp-server', alias: 'getMcpServers' },

@@ -399,7 +399,7 @@ export function Sessions ({ newSession }) {
                                                         key={item.sessionId}
                                                         padding='xxs'
                                                         className={item.sessionId === currentSessionId ? styles.sessionItemActive : styles.sessionItem}
-                                                        data-testid='session-item'
+                                                        data-testid={item.sessionId === currentSessionId ? 'session-item-active' : 'session-item'}
                                                     >
                                                         <Grid gridDefinition={[{ colspan: 10 }, { colspan: 2 }]}>
                                                             <Box>

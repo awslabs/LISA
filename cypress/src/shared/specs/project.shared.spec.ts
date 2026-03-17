@@ -146,7 +146,7 @@ export function runProjectsTests (options: {
             cy.contains('h2', 'New Project', { timeout: 5000 }).should('be.visible');
 
             // Try to confirm with empty name - Create button should be disabled
-            cy.get('[data-testid="input-placeholder"]').should('be.visible').clear();
+            cy.get('[data-testid="create-project-input"]').should('be.visible').clear();
             cy.get('button').filter(':visible').contains('Create').closest('button').should('be.disabled');
 
             // Cancel to close modal

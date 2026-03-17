@@ -37,8 +37,7 @@ export function navigateToChatPage () {
     // Check if we're already on the chat page
     cy.url().then((url) => {
         if (!url.includes('/ai-assistant')) {
-            cy.get('a[aria-label="AI Assistant"]')
-                .eq(2)
+            cy.get('a[aria-label="AI Assistant"][href*="/ai-assistant"]')
                 .should('exist')
                 .and('be.visible')
                 .click();

@@ -44,7 +44,7 @@ export const PROJECT_SELECTORS = {
     // Lists and items
     PROJECT_LIST_ITEM: (projectName: string) => `[data-testid="project-${projectName}"]`,
     SESSION_ITEM: '[data-testid="session-item"]',
-    SESSION_ITEM_ACTIVE: '[data-testid="session-item"]',
+    SESSION_ITEM_ACTIVE: '[data-testid="session-item-active"]',
     PROJECT_BADGE: '[class*="awsui_badge"]',
     SESSION_ACTIONS_BUTTON: '[aria-label="Session actions"]',
 
@@ -59,8 +59,7 @@ export const PROJECT_SELECTORS = {
 export function navigateToChatPage () {
     cy.url().then((url) => {
         if (!url.includes('/ai-assistant')) {
-            cy.get('a[aria-label="AI Assistant"]')
-                .eq(2)
+            cy.get('a[aria-label="AI Assistant"][href*="/ai-assistant"]')
                 .should('exist')
                 .and('be.visible')
                 .click();

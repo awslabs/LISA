@@ -262,7 +262,7 @@ export function ProjectsSection ({ projects, sessions, maxProjects, currentSessi
             >
                 <FormField label='Project Name'>
                     <Input
-                        data-testid='input-placeholder'
+                        data-testid='create-project-input'
                         value={newProjectName}
                         onChange={({ detail }) => setNewProjectName(detail.value)}
                         placeholder='Enter project name...'

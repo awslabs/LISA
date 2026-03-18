@@ -37,7 +37,8 @@ psycopg2-binary==2.9.11
 cachetools==7.0.2
 
 # MCP Workbench testing
-fastmcp>=2.0.0
+fastmcp>=2.10.0,<3.0.0
+mcp>=1.26.0,<2.0.0
 
 # Development
 black==26.1.0

@@ -34,6 +34,7 @@ export type CoreStackProps = BaseProps & StackProps;
  * Creates Lambda layers
  */
 export class CoreConstruct extends Construct {
+    public readonly loggingBucket: Bucket;
     /**
    * @param {Construct} scope - The parent or owner of the construct.
    * @param {string} id - The unique identifier for the construct within its scope.
@@ -42,7 +43,7 @@ export class CoreConstruct extends Construct {
         super(scope, id);
         const { config } = props;
 
-        const loggingBucket = new Bucket(scope, 'BucketAccessLogsBucket', {
+        this.loggingBucket = new Bucket(scope, 'BucketAccessLogsBucket', {
             removalPolicy: config.removalPolicy,
             autoDeleteObjects: config.removalPolicy === RemovalPolicy.DESTROY,
             bucketName: ([config.deploymentName, config.accountNumber, config.deploymentStage, 'bucket', 'access', 'logs'].join('-')).toLowerCase(),
@@ -54,7 +55,7 @@ export class CoreConstruct extends Construct {
 
         new StringParameter(scope, 'LISABucketAccessLogsBucket', {
             parameterName: `${config.deploymentPrefix}/bucket/bucket-access-logs`,
-            stringValue: loggingBucket.bucketArn,
+            stringValue: this.loggingBucket.bucketArn,
             description: 'A bucket for access logs from other buckets to be written to.',
         });
 

@@ -1082,7 +1082,7 @@
         ],
         "Content": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "0a078e8feb43806c10745c0d285785593e188ed9ee6d801acdb1ce938daed2c4.zip"
+          "S3Key": "73a5cffbd3baddd54341aa134a6a53e9d05c78c646cf56ad23af3d9919b5cd9a.zip"
         },
         "Description": "Lambda dependencies for RAG API"
       },
@@ -1450,7 +1450,7 @@
     "IngestionStackConstructIngestionJobFargateEnvD92342F8": {
       "Type": "AWS::Batch::ComputeEnvironment",
       "Properties": {
-        "ComputeEnvironmentName": "test-lisa-dev-ingestion-job-83b7e959a03d",
+        "ComputeEnvironmentName": "test-lisa-dev-ingestion-job",
         "ComputeResources": {
           "MaxvCpus": 128,
           "SecurityGroupIds": [
@@ -1491,7 +1491,7 @@
             "Order": 1
           }
         ],
-        "JobQueueName": "test-lisa-dev-ingestion-job-83b7e959a03d",
+        "JobQueueName": "test-lisa-dev-ingestion-job",
         "Priority": 1,
         "State": "ENABLED"
       }
@@ -1526,7 +1526,7 @@
             ]
           }
         ],
-        "RoleName": "test-lisa-dev-batch-exec-role-83b7e959a03d"
+        "RoleName": "test-lisa-dev-batch-exec-role"
       }
     },
     "IngestionStackConstructBatchJobExecutionRoleDefaultPolicy79A0C775": {
@@ -1730,7 +1730,7 @@
           },
           "FargatePlatformConfiguration": {},
           "Image": {
-            "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:8635a82525e2cc56da5f16e37bc20b88b6779f80823925e70e1dd0887a4cbfea"
+            "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:b43d023f5e65932bca05f45d09aa8058f3370cd30ec1d90c686726e046c2fa43"
           },
           "JobRoleArn": {
             "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -1761,7 +1761,7 @@
           ],
           "RuntimePlatform": {}
         },
-        "JobDefinitionName": "test-lisa-dev-ingestion-job-83b7e959a03d",
+        "JobDefinitionName": "test-lisa-dev-ingestion-job",
         "PlatformCapabilities": [
           "FARGATE"
         ],
@@ -1795,7 +1795,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Environment": {
           "Variables": {
@@ -1924,7 +1924,7 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E569b4099ef0d87a10f875205c774a4240": {
+    "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E5507f6904bc282231aa2c3ea4dab72d19": {
       "Type": "AWS::Lambda::Version",
       "Properties": {
         "FunctionName": {
@@ -1943,7 +1943,7 @@
         },
         "FunctionVersion": {
           "Fn::GetAtt": [
-            "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E569b4099ef0d87a10f875205c774a4240",
+            "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E5507f6904bc282231aa2c3ea4dab72d19",
             "Version"
           ]
         },
@@ -1991,7 +1991,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Environment": {
           "Variables": {
@@ -2120,7 +2120,7 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBC48b37e15493d2a7106f4430271fa5838": {
+    "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBC4c488c07522bf183b32cd3901dd48311": {
       "Type": "AWS::Lambda::Version",
       "Properties": {
         "FunctionName": {
@@ -2139,7 +2139,7 @@
         },
         "FunctionVersion": {
           "Fn::GetAtt": [
-            "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBC48b37e15493d2a7106f4430271fa5838",
+            "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBC4c488c07522bf183b32cd3901dd48311",
             "Version"
           ]
         },
@@ -2187,7 +2187,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Environment": {
           "Variables": {
@@ -2316,7 +2316,7 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E9532508fd7f3abace8471b669629baf314": {
+    "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E95c48ffa9494af81166053685d5ec0d5f3": {
       "Type": "AWS::Lambda::Version",
       "Properties": {
         "FunctionName": {
@@ -2335,7 +2335,7 @@
         },
         "FunctionVersion": {
           "Fn::GetAtt": [
-            "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E9532508fd7f3abace8471b669629baf314",
+            "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E95c48ffa9494af81166053685d5ec0d5f3",
             "Version"
           ]
         },
@@ -2361,6 +2361,97 @@
           "Ref": "IngestionStackConstructDeleteLambdaAliasD335E46A"
         }
       }
+    },
+    "OpenSearchServiceLinkedRole14D27231": {
+      "Type": "Custom::AWS",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "AWS679f53fac002430cb0da5b7982bd22872D164C4C",
+            "Arn"
+          ]
+        },
+        "Create": "{\"service\":\"IAM\",\"action\":\"createServiceLinkedRole\",\"parameters\":{\"AWSServiceName\":\"opensearchservice.amazonaws.com\"},\"physicalResourceId\":{\"id\":\"OpenSearchSLR\"},\"ignoreErrorCodesMatching\":\"InvalidInput|AlreadyExists\"}",
+        "InstallLatestAwsSdk": true
+      },
+      "DependsOn": [
+        "OpenSearchServiceLinkedRoleCustomResourcePolicy78F63CA7"
+      ],
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete"
+    },
+    "OpenSearchServiceLinkedRoleCustomResourcePolicy78F63CA7": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "iam:CreateServiceLinkedRole",
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "OpenSearchServiceLinkedRoleCustomResourcePolicy78F63CA7",
+        "Roles": [
+          {
+            "Ref": "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2"
+          }
+        ]
+      }
+    },
+    "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    "AWS679f53fac002430cb0da5b7982bd22872D164C4C": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "56f7467bbde8a5efebcf57ae9e460027607099bab9f844669dcf5d800172ee5a.zip"
+        },
+        "Handler": "index.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2",
+            "Arn"
+          ]
+        },
+        "Runtime": "nodejs22.x",
+        "Timeout": 120
+      },
+      "DependsOn": [
+        "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2"
+      ]
     },
     "RepositoryApiRestApirepository40CDFF92": {
       "Type": "AWS::ApiGateway::Resource",
@@ -5333,7 +5424,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Description": "List all repositories",
         "Environment": {
@@ -5488,7 +5579,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Description": "List status for all repositories",
         "Environment": {
@@ -5643,7 +5734,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Description": "Generates a presigned url for uploading files to RAG",
         "Environment": {
@@ -5798,7 +5889,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Description": "Create a new repository",
         "Environment": {
@@ -5953,7 +6044,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Description": "Get a repository by ID",
         "Environment": {
@@ -6108,7 +6199,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Description": "Update a repository",
         "Environment": {
@@ -6263,7 +6354,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Description": "Delete a repository",
         "Environment": {
@@ -6418,7 +6509,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Description": "Run a similarity search against the specified repository using the specified query",
         "Environment": {
@@ -6573,7 +6664,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Description": "Ingest a set of documents based on specified S3 path",
         "Environment": {
@@ -6728,7 +6819,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Description": "List all docs for a repository",
         "Environment": {
@@ -6883,7 +6974,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Description": "Get a document by ID",
         "Environment": {
@@ -7038,7 +7129,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Description": "Creates presigned url to download document within repository",
         "Environment": {
@@ -7193,7 +7284,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Description": "Deletes all records associated with documents from the repository",
         "Environment": {
@@ -7348,7 +7439,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Description": "List all ingestion jobs for a repository",
         "Environment": {
@@ -7503,7 +7594,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Description": "List all collections within a repository",
         "Environment": {
@@ -7658,7 +7749,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Description": "List all collections user has access to across all repositories",
         "Environment": {
@@ -7813,7 +7904,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Description": "Create a new collection within a repository",
         "Environment": {
@@ -7968,7 +8059,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Description": "Get a collection by ID within a repository",
         "Environment": {
@@ -8123,7 +8214,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Description": "Update a collection within a repository",
         "Environment": {
@@ -8278,7 +8369,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Description": "Delete a collection within a repository",
         "Environment": {
@@ -8433,7 +8524,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Description": "List all ACTIVE Bedrock Knowledge Bases",
         "Environment": {
@@ -8588,7 +8679,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Description": "List data sources for a Bedrock Knowledge Base",
         "Environment": {
@@ -9148,6 +9239,32 @@
               "Resource": [
                 {
                   "Fn::GetAtt": [
+                    "VectorStoreCreatorStackCreateDefaultCollectionFnC3F7F5D0",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "VectorStoreCreatorStackCreateDefaultCollectionFnC3F7F5D0",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
                     "VectorStoreCreatorStacktestlisadevvectorstoredeployerFuncF7D277BE",
                     "Arn"
                   ]
@@ -9155,6 +9272,12 @@
                 {
                   "Fn::GetAtt": [
                     "VectorStoreCreatorStackCreateBedrockCollectionFnC7E21454",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::GetAtt": [
+                    "VectorStoreCreatorStackCreateDefaultCollectionFnC3F7F5D0",
                     "Arn"
                   ]
                 }
@@ -9518,7 +9641,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Environment": {
           "Variables": {
@@ -9644,6 +9767,137 @@
         "VectorStoreCreatorStackLisaRagLambdaExecutionRoleVectorStorePolicy9486B49D"
       ]
     },
+    "VectorStoreCreatorStackCreateDefaultCollectionFnC3F7F5D0": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "ADMIN_GROUP": "",
+            "BUCKET_NAME": {
+              "Ref": "LISARAGtestlisadevFF387D45"
+            },
+            "CHUNK_OVERLAP": "51",
+            "CHUNK_SIZE": "512",
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "LISA_RAG_COLLECTIONS_TABLE": {
+              "Ref": "testlisaRagCollectionsTableBAFE8068"
+            },
+            "LOG_LEVEL": "DEBUG",
+            "MANAGEMENT_KEY_SECRET_NAME_PS": "/dev/test-lisa/lisa/appManagementKeySecretName",
+            "MODEL_TABLE_NAME": {
+              "Ref": "LisaRAGResourcesModelTableNameStringParameterParameter9C4F30B2"
+            },
+            "RAG_DOCUMENT_TABLE": {
+              "Ref": "testlisaRagDocumentTable5A134785"
+            },
+            "RAG_SUB_DOCUMENT_TABLE": {
+              "Ref": "testlisaRagSubDocumentTable76E4AE52"
+            },
+            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
+            "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
+            "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
+            "REST_API_VERSION": "v2",
+            "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
+            "LISA_RAG_VECTOR_STORE_TABLE": {
+              "Ref": "RagRepositoryConfigTable6FA366CB"
+            },
+            "LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER": "/dev/test-lisa/lisa/vectorstorecreator/statemachine/create",
+            "LISA_RAG_DELETE_STATE_MACHINE_ARN_PARAMETER": "/dev/test-lisa/lisa/vectorstorecreator/statemachine/delete",
+            "LISA_INGESTION_JOB_TABLE_NAME": {
+              "Ref": "IngestionStackConstructIngestionJobTable8103D8C1"
+            },
+            "LISA_INGESTION_JOB_QUEUE_NAME": {
+              "Fn::Select": [
+                1,
+                {
+                  "Fn::Split": [
+                    "/",
+                    {
+                      "Fn::Select": [
+                        5,
+                        {
+                          "Fn::Split": [
+                            ":",
+                            {
+                              "Fn::GetAtt": [
+                                "IngestionStackConstructIngestionJobQueueCECF0CDA",
+                                "JobQueueArn"
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "LISA_INGESTION_JOB_DEFINITION_NAME": {
+              "Fn::Select": [
+                1,
+                {
+                  "Fn::Split": [
+                    "/",
+                    {
+                      "Fn::Select": [
+                        5,
+                        {
+                          "Fn::Split": [
+                            ":",
+                            {
+                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "FunctionName": "test-lisa-dev-create_default_collection",
+        "Handler": "repository.lambda_functions.create_default_collection",
+        "Layers": [
+          {
+            "Ref": "RagLayerF72F34A6"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
+        },
+        "Runtime": "python3.13",
+        "Timeout": 300,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "VectorStoreCreatorStackLisaRagLambdaExecutionRoleVectorStorePolicy9486B49D"
+      ]
+    },
     "VectorStoreCreatorStackCreateVectorStoreStateMachineCreateStoreStateMachine6CB371E8": {
       "Type": "AWS::StepFunctions::StateMachine",
       "Properties": {
@@ -9728,7 +9982,18 @@
                   }
                 ]
               },
-              "\",\"ExpressionAttributeNames\":{\"#status\":\"status\"},\"ExpressionAttributeValues\":{\":status\":{\"S\":\"CREATE_FAILED\"}},\"UpdateExpression\":\"SET #status = :status\"}},\"FailExecution\":{\"Type\":\"Fail\",\"Error\":\"DeploymentFailed\",\"Cause\":\"Vector store deployment failed\"},\"IsBedrockKB?\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.body.ragConfig.type\",\"StringEquals\":\"bedrock_knowledge_base\",\"Next\":\"CreateDefaultCollection\"}],\"Default\":\"SkipCollectionCreation\"},\"SkipCollectionCreation\":{\"Type\":\"Pass\",\"Next\":\"UpdateSuccessStatus\"},\"UpdateSuccessStatus\":{\"End\":true,\"Type\":\"Task\",\"Resource\":\"arn:",
+              "\",\"ExpressionAttributeNames\":{\"#status\":\"status\"},\"ExpressionAttributeValues\":{\":status\":{\"S\":\"CREATE_FAILED\"}},\"UpdateExpression\":\"SET #status = :status\"}},\"FailExecution\":{\"Type\":\"Fail\",\"Error\":\"DeploymentFailed\",\"Cause\":\"Vector store deployment failed\"},\"IsBedrockKB?\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.body.ragConfig.type\",\"StringEquals\":\"bedrock_knowledge_base\",\"Next\":\"CreateBedrockCollection\"}],\"Default\":\"CreateDefaultCollection\"},\"CreateDefaultCollection\":{\"Next\":\"UpdateSuccessStatus\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"ResultPath\":\"$.collectionResult\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "VectorStoreCreatorStackCreateDefaultCollectionFnC3F7F5D0",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload\":{\"ragConfig.$\":\"$.body.ragConfig\"}}},\"UpdateSuccessStatus\":{\"End\":true,\"Type\":\"Task\",\"Resource\":\"arn:",
               {
                 "Ref": "AWS::Partition"
               },
@@ -9759,7 +10024,7 @@
                   }
                 ]
               },
-              "\",\"ExpressionAttributeNames\":{\"#status\":\"status\",\"#stackName\":\"stackName\"},\"ExpressionAttributeValues\":{\":status\":{\"S\":\"CREATE_COMPLETE\"},\":stackName\":{\"S.$\":\"$.deployResult.stackName\"}},\"UpdateExpression\":\"SET #status = :status, #stackName = :stackName\"}},\"CreateDefaultCollection\":{\"Next\":\"UpdateSuccessStatus\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"ResultPath\":\"$.collectionResult\",\"Resource\":\"arn:",
+              "\",\"ExpressionAttributeNames\":{\"#status\":\"status\",\"#stackName\":\"stackName\"},\"ExpressionAttributeValues\":{\":status\":{\"S\":\"CREATE_COMPLETE\"},\":stackName\":{\"S.$\":\"$.deployResult.stackName\"}},\"UpdateExpression\":\"SET #status = :status, #stackName = :stackName\"}},\"CreateBedrockCollection\":{\"Next\":\"UpdateSuccessStatus\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"ResultPath\":\"$.collectionResult\",\"Resource\":\"arn:",
               {
                 "Ref": "AWS::Partition"
               },
@@ -9863,7 +10128,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Environment": {
           "Variables": {
@@ -10012,7 +10277,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e27965a44d77f42e3bee4878e6722f565c09c2aeaaf801468c85121709c2d3fb.zip"
+          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
         },
         "Environment": {
           "Variables": {

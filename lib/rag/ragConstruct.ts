@@ -13,11 +13,11 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 */
-import { CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
+import { CfnOutput, Duration, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
-import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
+import { ISecurityGroup, Port } from 'aws-cdk-lib/aws-ec2';
 import { ILayerVersion, LayerVersion } from 'aws-cdk-lib/aws-lambda';
-import { BlockPublicAccess, Bucket, BucketEncryption, HttpMethods } from 'aws-cdk-lib/aws-s3';
+import { BlockPublicAccess, Bucket, BucketEncryption, HttpMethods, IBucket } from 'aws-cdk-lib/aws-s3';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { AttributeType, BillingMode, StreamViewType, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -36,7 +36,7 @@ import { VectorStoreCreatorStack as VectorStoreCreator } from './vector-store/ve
 import { AnyPrincipal, Effect, IRole, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
 import { RagRepositoryConfig, RagRepositoryType } from '../schema';
 import { Domain, EngineVersion, IDomain } from 'aws-cdk-lib/aws-opensearchservice';
-import { ISecret, Secret } from 'aws-cdk-lib/aws-secretsmanager';
+import { HostedRotation, ISecret, Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
 import { LegacyIngestPipelineStateMachine } from './state_machine/legacy-ingest-pipeline';
 import * as customResources from 'aws-cdk-lib/custom-resources';
@@ -48,6 +48,7 @@ import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resour
 
 export type LisaRagProps = {
     authorizer: IAuthorizer;
+    bucketAccessLogsBucket: IBucket;
     endpointUrl?: StringParameter;
     modelsPs?: StringParameter;
     restApiId: string;
@@ -70,7 +71,7 @@ export class LisaRagConstruct extends Construct {
     constructor (scope: Stack, id: string, props: LisaRagProps) {
         super(scope, id);
         this.scope = scope;
-        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const { authorizer, bucketAccessLogsBucket, config, restApiId, rootResourceId, securityGroups, vpc } = props;
 
         const endpointUrl = props.endpointUrl ?? StringParameter.fromStringParameterName(
             scope,
@@ -82,10 +83,6 @@ export class LisaRagConstruct extends Construct {
             scope,
             createCdkId(['RegisteredModels', 'StringParameter']),
             `${config.deploymentPrefix}/registeredModels`,
-        );
-
-        const bucketAccessLogsBucket = Bucket.fromBucketArn(scope, 'BucketAccessLogsBucket',
-            StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/bucket/bucket-access-logs`)
         );
 
         const bucket = new Bucket(scope, createCdkId(['LISA', 'RAG', config.deploymentName, config.deploymentStage]), {
@@ -584,7 +581,23 @@ export class LisaRagConstruct extends Construct {
                     });
 
                     if (!useIamAuth) {
-                        // Password auth: secret read access granted below (grantConnect requires IAM auth)
+                        // Password auth: add rotation for the database password secret
+                        // Allow the rotation Lambda to connect to the database
+                        securityGroups.pgvector.connections.allowFrom(
+                            securityGroups.pgvector,
+                            Port.tcp(ragConfig.rdsConfig.dbPort),
+                            'Allow rotation Lambda to connect to PGVector database'
+                        );
+
+                        rdsSecret.addRotationSchedule(createCdkId([ragConfig.repositoryId, 'PGVectorPasswordRotation']), {
+                            automaticallyAfter: Duration.days(30),
+                            hostedRotation: HostedRotation.postgreSqlSingleUser({
+                                functionName: `${config.deploymentName}-PGVector-${ragConfig.repositoryId}-Rotation`,
+                                vpc: vpc.vpc,
+                                vpcSubnets: vpc.subnetSelection,
+                                securityGroups: [securityGroups.pgvector]
+                            })
+                        });
                     } else {
                         // IAM auth: manually grant rds-db:connect permission
                         // Note: We do NOT use pgvector_db.grantConnect() due to CDK bug #11851

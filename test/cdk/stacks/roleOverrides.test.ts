@@ -39,7 +39,7 @@ const stackRoles: Record<string, number> = {
     'LisaServe': 2,
     'LisaUI': 3,
     'LisaNetworking': 0,
-    'LisaChat': 7,
+    'LisaChat': 8,
     'LisaCore': 1,
     'LisaApiDeployment': 0,
     'LisaIAM': 5,
@@ -77,7 +77,6 @@ describe('Verify created roles', () => {
 
             it(`${stack} should contain ${expectedRoles} roles`, () => {
                 const template = Template.fromStack(stack);
-                console.log(stack.stackName);
                 template.resourceCountIs('AWS::IAM::Role', expectedRoles);
             });
         }

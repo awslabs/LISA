@@ -18,6 +18,7 @@ __pycache__/
 *.key
 *.pem
 TIKTOKEN_CACHE
+docs/
 
 # CDK asset staging directory
 .cdk.staging

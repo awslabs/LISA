@@ -54,7 +54,8 @@ export function verifyChatPageLoaded () {
 
     // Wait for the prompt input textarea to be visible
     // Use attribute selectors that are stable across builds
-    cy.get('textarea[placeholder*="message" i]')
+    // Allow extra time for lazy-loaded Chat route to render
+    cy.get('textarea[placeholder*="message" i]', { timeout: 15000 })
         .first()
         .should('exist')
         .and('be.visible');

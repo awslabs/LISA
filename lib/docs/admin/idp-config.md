@@ -66,6 +66,7 @@ After creating the User Pool and App Client:
    - **Note**: The callback URLs should point to your LISA API Gateway endpoint, not the REST API ALB
 
 ### Image Example
+
 - **Note** you should replace <YOUR_ALIAS_HERE>
 ![LISA Cognito Setup Example](../assets/LISA_Cognito_Example.png)
 
@@ -95,6 +96,7 @@ authConfig:
 **Cause**: Incorrect OpenID Connect scopes configuration.
 
 **Solution**:
+
 - Verify that your App Client has the correct OpenID Connect scopes enabled:
   - `email`
   - `openid`
@@ -109,25 +111,43 @@ authConfig:
 **Cause**: Using "Traditional Web App" instead of "Single Page Application" (SPA) when creating the App Client.
 
 **Solution**:
+
 - Recreate your App Client and select **"Single Page Application" (SPA)** as the app type
 - SPA clients do not require a client secret for token exchange, which is correct for browser-based applications
 
 **Testing Tip**: Use Chrome or Firefox Developer Tools:
+
 - Open Developer Tools (F12)
 - Navigate to the "Application" tab (Chrome) or "Storage" tab (Firefox)
 - Find and clear Cookies related to your Cognito domain
 - This allows you to retry the login process with a fresh authentication flow
+
+#### "Something went wrong" / "An error was encountered with the requested page" (After Login)
+
+**Symptom**: After entering credentials on the Cognito login page, you are shown a generic error: "Something went wrong" or "An error was encountered with the requested page."
+
+**Cause**: The `redirect_uri` sent to Cognito does not exactly match the allowed callback URLs. LISA uses `origin + pathname` (no hash fragment) per the OAuth 2.0 spec. If your Cognito App Client's allowed URLs omit the path or use a different format, Cognito rejects the redirect.
+
+**Solution**:
+
+- In your App Client's "Allowed callback URLs", add both:
+  - `https://<api-gateway-url>/<stage>` (e.g. `https://xxx.execute-api.us-east-1.amazonaws.com/dev`)
+  - `https://<api-gateway-url>/<stage>/` (with trailing slash)
+- For custom domains, add `https://<your-domain>/` and `https://<your-domain>`
+- Ensure no typos, correct protocol (https), and exact path (including trailing slash variants)
 
 #### "Contact Your Administrator" Error on Login Page
 
 **Symptom**: The Cognito hosted UI displays an error message asking you to contact your administrator.
 
 **Possible Causes**:
+
 - Incorrect callback URLs in the App Client configuration
 - Mismatch between the URL that Cognito is redirecting to and the allowed callback URLs
 - The callback URL must exactly match (including trailing slashes)
 
 **Solution**:
+
 - Verify that your App Client's "Allowed callback URLs" include:
   - Your API Gateway dev stage URL: `https://<api-gateway-url>/dev`
   - The same URL with trailing slash: `https://<api-gateway-url>/dev/`
@@ -140,7 +160,6 @@ If using Keycloak, the `authority` will be the URL to your Keycloak server. The 
 like in the Cognito clients. Instead, it will be a string configured by your Keycloak Administrator. Your Administrator
 will be able to provide you with a client name or create a client for you to use for this application. Once you have this
 string, use that as the `clientId` within the `authConfig` block.
-
 
 ```
 authConfig:

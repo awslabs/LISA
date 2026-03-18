@@ -41,6 +41,7 @@ export type IEnabledComponents = {
     encryptSession: boolean;
     enableUserApiTokens: boolean;
     chatAssistantStacks: boolean;
+    projectOrganization: boolean;
 };
 
 export type ISystemBannerConfiguration = {
@@ -68,7 +69,7 @@ export type BaseConfiguration = {
 };
 
 export type IConfiguration = BaseConfiguration & {
-    configuration: SystemConfiguration;
+    configuration: SystemConfiguration & { maxProjectsPerUser: number };
 };
 
 export const systemBannerConfigSchema = z.object({
@@ -99,6 +100,7 @@ export const enabledComponentsSchema = z.object({
     encryptSession: z.boolean().default(false),
     enableUserApiTokens: z.boolean().default(false),
     chatAssistantStacks: z.boolean().default(false),
+    projectOrganization: z.boolean().default(false),
 });
 
 export const globalConfigSchema = z.object({
@@ -108,8 +110,8 @@ export const globalConfigSchema = z.object({
 export const announcementConfigSchema = z.object({
     isEnabled: z.boolean().default(false),
     message: z.string().default(''),
-}).refine((data) => !data.isEnabled || (data.isEnabled && data.message.length >= 1), {
-    message: 'Message is required when announcement is activated.',
+}).refine((data) => !data.isEnabled || data.message.length >= 1, {
+    message: 'Message is required when announcement is enabled.',
     path: ['message'],
 });
 
@@ -117,5 +119,6 @@ export const SystemConfigurationSchema = z.object({
     systemBanner: systemBannerConfigSchema.default(systemBannerConfigSchema.parse({})),
     enabledComponents: enabledComponentsSchema.default(enabledComponentsSchema.parse({})),
     global: globalConfigSchema.default(globalConfigSchema.parse({})),
+    maxProjectsPerUser: z.number().default(50),
     announcement: announcementConfigSchema.default(announcementConfigSchema.parse({})),
 });

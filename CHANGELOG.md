@@ -1,3 +1,65 @@
+# v6.4.0
+
+## Key Features
+
+### Project Organization for Chat Sessions
+
+Customers can organize chat sessions into Projects, providing a structured way to manage and navigate conversation history. Projects allow users to group related sessions together, making it easier to find and revisit past conversations across different topics.
+
+### Chat Assistant Stacks
+
+Chat Assistant Stacks allow administrators to define preconfigured assistants that bundle models, RAG repositories and collections, MCP servers and tools, and prompt templates into a single package. Users can browse available assistants and start chat sessions with everything preconfigured, eliminating the need for manual setup. Access to each stack is controlled through enterprise user groups, allowing administrators to tailor assistant availability to specific teams or roles.
+
+### Other Features
+
+- Added context window inference step to model creation state machine for LISA-hosted and third-party models
+- Added announcements banner feature to Configuration UI for administrators to set global messages for all users
+- Added support for editing pipelines after repository creation
+- Added secret rotation support for PGVector database credentials
+
+## UI Updates
+
+- Stopped models now appear in model dropdown but are properly disabled to indicate unavailability
+- Prompt area buttons are now properly disabled when prompt is disabled (e.g., when model is stopped)
+
+## Other Key Changes
+
+- Batch ingestion job definition now uses static resource ID to prevent failures from definition drift during deployments
+- REST containers now scale based on ECS metrics instead of ASG metrics for more reliable scaling
+- Added support for additional text-based file types for RAG uploads including:
+  - Javascript
+  - HTML
+  - Markdown
+  - JSON
+  - CSS
+  - XML
+
+## Bug Fixes
+
+- Fixed a liteLLM configuration issue that double prefixed openAI models, this resolves an issue with LISA hosted models integrating with Claude Code
+- Fixed pipeline event handling issues
+- Fixed RAG collection ID resolution
+
+## Documentation
+
+- Added new API Reference documentation section to make it easier for developers to know where the various entity API documentation exists within our doc site.
+- Added suggestions on self-hosted model performance scaling settings.
+
+## Dependency Updates
+
+- Updated `actions/setup-node` and `actions/upload-artifact` GitHub Actions to latest versions
+- Upgraded various dependencies across the platform for security and compatibility
+
+## Acknowledgements
+* @bedanley
+* @Ernest-Gray
+* @estohlmann
+* @gingerknight
+* @jmharold
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v6.3.0..v6.4.0
+
+
 # v6.3.0
 
 ## UI Updates

@@ -15,7 +15,7 @@
 */
 
 import { useMemo } from 'react';
-import { IModel, ModelType } from '@/shared/model/model-management.model';
+import { IModel, ModelStatus, ModelType } from '@/shared/model/model-management.model';
 import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { ModelFeatures } from '@/components/types';
 
@@ -26,8 +26,14 @@ export const useModels = (
 ) => {
     const modelsOptions = useMemo(() =>
         (allModels || []).map((model) => ({
-            label: model.modelId,
-            value: model.modelId
+            label: model.status === ModelStatus.Stopped ? `${model.modelId} - Not Running` : model.modelId,
+            value: model.modelId,
+            ...(model.status === ModelStatus.Stopped
+                ? {
+                    disabled: true,
+                    disabledReason: 'Stopped',
+                }
+                : {}),
         })),
     [allModels]
     );
@@ -37,7 +43,7 @@ export const useModels = (
             setSelectedModel(undefined);
         } else {
             const model = allModels?.find((model) => model.modelId === value);
-            if (model) {
+            if (model && model.status !== ModelStatus.Stopped) {
                 // Determine what configuration changes are needed
                 const modelSupportsStreaming = model.streaming ?? false;
                 const modelSupportsReasoning = !!model.features?.find((feature) => feature.name === ModelFeatures.REASONING);

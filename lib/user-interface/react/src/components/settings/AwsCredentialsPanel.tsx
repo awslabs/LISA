@@ -175,6 +175,19 @@ const AwsCredentialsPanel: React.FC<AwsCredentialsPanelProps> = ({ onStatusChang
             }
         >
             <SpaceBetween size='m' direction='vertical'>
+                <TextContent>
+                    <p>
+                        Connect your AWS credentials to this chat session. Your keys are validated and converted to
+                        short-lived session credentials stored securely in memory. To use them, your MCP server must
+                        expose tools that leverage these credentials (for example, S3 list buckets or other AWS operations).
+                        Without such tools, connecting credentials has no effect.
+                    </p>
+                    <p>
+                        <strong>Caution:</strong> Credentials with broad permissions can create, modify, or delete resources
+                        in your AWS account. Use IAM credentials with the minimum permissions required for the tools you
+                        intend to use.
+                    </p>
+                </TextContent>
                 <Container header={<Header>Connection status</Header>}>
                     <SpaceBetween size='s' direction='vertical'>
                         <StatusIndicator
@@ -198,7 +211,7 @@ const AwsCredentialsPanel: React.FC<AwsCredentialsPanelProps> = ({ onStatusChang
                         )}
                         <TextContent>
                             <small>
-                                Keys are converted to short-lived session credentials and discarded after your session.
+                                Credentials are discarded when your session ends.
                             </small>
                         </TextContent>
                         {error && (

@@ -75,6 +75,7 @@ function buildConfig (overrides: {
                 showPromptTemplateLibrary: true,
                 enableModelComparisonUtility: false,
                 mcpConnections: true,
+                awsSessions: true,
                 showMcpWorkbench: false,
                 modelLibrary: true,
                 encryptSession: false,

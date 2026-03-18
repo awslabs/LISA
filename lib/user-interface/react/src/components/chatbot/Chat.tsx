@@ -1192,6 +1192,7 @@ export default function Chat ({ sessionId, initialStack }) {
                                 >
                                     <SpaceBetween size='xs' direction='vertical'>
                                         <Autosuggest
+                                            data-testid='model-selection-autosuggest'
                                             disabled={isRunning || session.history.length > 0}
                                             statusType={isFetchingModels ? 'loading' : 'finished'}
                                             loadingText='Loading models (might take few seconds)...'

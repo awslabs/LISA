@@ -22,8 +22,10 @@
         "showRagLibrary": true,
         "showPromptTemplateLibrary": true,
         "mcpConnections": true,
-        "showMcpWorkbench": true
-      }
+        "showMcpWorkbench": true,
+        "projectOrganization": true
+      },
+      "maxProjectsPerUser": 50
     },
     "changedBy": "System",
     "configScope": "global",

@@ -277,6 +277,7 @@ export function Sessions ({ newSession }) {
 
                 {projectsEnabled ? (
                     <SegmentedControl
+                        data-testid='project-history-toggle'
                         selectedId={historyView}
                         onChange={({ detail }) => {
                             setHistoryView(detail.selectedId);
@@ -315,6 +316,7 @@ export function Sessions ({ newSession }) {
                 )}
                 <div data-testid='sessions-actions' style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <ButtonDropdown
+                        data-testid='new-session-dropdown'
                         ariaLabel='New session'
                         variant='primary'
                         items={[
@@ -398,6 +400,7 @@ export function Sessions ({ newSession }) {
                                                         key={item.sessionId}
                                                         padding='xxs'
                                                         className={item.sessionId === currentSessionId ? styles.sessionItemActive : styles.sessionItem}
+                                                        data-testid={item.sessionId === currentSessionId ? 'session-item-active' : 'session-item'}
                                                     >
                                                         <Grid gridDefinition={[{ colspan: 10 }, { colspan: 2 }]}>
                                                             <Box>

@@ -77,13 +77,13 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                 />
             </FormField>
             <FormField label='Model ID' errorText={props.formErrors?.modelId} description='The unique model IDs are displayed to users in the "Select a model" drop down. We recommend using a descriptive name like "claude-3-7" or "nova-imagegen"'>
-                <Input value={props.item.modelId} inputMode='text' onBlur={() => props.touchFields(['modelId'])} onChange={({ detail }) => {
+                <Input data-testid='model-id-input' value={props.item.modelId} inputMode='text' onBlur={() => props.touchFields(['modelId'])} onChange={({ detail }) => {
                     props.setFields({ 'modelId': detail.value });
                 }} disabled={props.isEdit} placeholder='mistral-vllm'/>
             </FormField>
             <FormField label='Model Name' errorText={props.formErrors?.modelName}
                 description='The full model name is the repository path, or the third party model provider path. The path format typically will be: {ProviderPath}/{ProviderModelName}. Users do not see this value in the chat assistant user interface.'>
-                <Input value={props.item.modelName} inputMode='text' onBlur={() => props.touchFields(['modelName'])} onChange={({ detail }) => {
+                <Input data-testid='model-name-input' value={props.item.modelName} inputMode='text' onBlur={() => props.touchFields(['modelName'])} onChange={({ detail }) => {
                     props.setFields({ 'modelName': detail.value });
                 }} disabled={props.isEdit} placeholder='mistralai/Mistral-7B-Instruct-v0.2'/>
             </FormField>

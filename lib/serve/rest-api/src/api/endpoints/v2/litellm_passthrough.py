@@ -37,6 +37,7 @@ from utils.guardrails import (
     is_guardrail_violation,
 )
 from utils.metrics import publish_metrics_event
+from utils.request_utils import get_lisa_end_user_id
 from utils.route_utils import is_anthropic_route, is_chat_route, is_lisa_public_route, is_openai_route
 
 # Local LiteLLM installation URL. By default, LiteLLM runs on port 4000. Change the port here if the
@@ -420,10 +421,12 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     is_image_endpoint = "image" in api_path.lower()
 
     # LiteLLM uses a well-known header to attribute requests to an end-user.
-    # We set it from the human-readable value LISA stores on request.state.username
-    # (populated by auth middleware from the JWT/session).
-    lisa_username = getattr(request.state, "username", None)
-    if isinstance(lisa_username, str) and lisa_username:
+    # We set it from the human-readable username derived from JWT/session.
+    lisa_username = get_lisa_end_user_id(
+        jwt_data=jwt_data,
+        state_username=getattr(request.state, "username", None),
+    )
+    if lisa_username:
         headers["x-litellm-end-user-id"] = lisa_username
 
     # Handle multipart/form-data requests (video generation with image references, image edits)

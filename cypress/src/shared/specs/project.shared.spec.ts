@@ -116,7 +116,7 @@ export function runProjectsTests (options: {
 
         it('should open New Project modal from New dropdown', () => {
             // Click New button
-            cy.contains('button', 'New').click();
+            cy.get('[data-testid="new-session-dropdown"]').click();
 
             // Click New Project menu item
             cy.get('[data-testid="new-project"]').should('be.visible').click();
@@ -138,8 +138,8 @@ export function runProjectsTests (options: {
         });
 
         it('should validate empty project name', () => {
-            // Open New Project modal
-            cy.contains('button', 'New').click();
+            // Open New Project
+            cy.get('[data-testid="new-session-dropdown"]').click();
             cy.get('[data-testid="new-project"]').click();
 
             // Wait for modal

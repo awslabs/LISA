@@ -316,6 +316,7 @@ export function Sessions ({ newSession }) {
                 )}
                 <div data-testid='sessions-actions' style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <ButtonDropdown
+                        data-testid='new-session-dropdown'
                         ariaLabel='New session'
                         variant='primary'
                         items={[

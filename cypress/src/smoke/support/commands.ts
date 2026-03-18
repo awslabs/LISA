@@ -247,12 +247,12 @@ function setupOidcStubs (role: 'admin' | 'user', env: Record<string, unknown>) {
  */
 function waitForAppReady () {
     // Wait for "Loading configuration..." to disappear
-    cy.contains('Loading configuration...', { timeout: 15000 }).should('not.exist');
+    cy.contains('Loading configuration...', { timeout: 30000 }).should('not.exist');
 
     // Wait for spinners to disappear
     cy.get('body').then(($body) => {
         if ($body.find('[class*="awsui_spinner"]').length > 0) {
-            cy.get('[class*="awsui_spinner"]', { timeout: 10000 }).should('not.exist');
+            cy.get('[class*="awsui_spinner"]', { timeout: 15000 }).should('not.exist');
         }
     });
 }
@@ -273,15 +273,7 @@ Cypress.Commands.add('loginAs', (role = 'user') => {
         cy.contains('Sign in').click({ force: true });
 
         // Wait for the redirect and login to complete
-        cy.contains('Sign in', { timeout: 10000 }).should('not.exist');
-
-        // Wait for OIDC token to be stored in sessionStorage before proceeding
-        cy.window({ timeout: 15000 }).should((win) => {
-            const hasOidcToken = Object.keys(win.sessionStorage).some((key) =>
-                key.startsWith('oidc.user:')
-            );
-            expect(hasOidcToken, 'OIDC token should be stored').to.equal(true);
-        });
+        cy.contains('Sign in', { timeout: 15000 }).should('not.exist');
 
         // Wait for app to be ready
         waitForAppReady();

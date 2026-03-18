@@ -27,6 +27,7 @@ export const PROJECT_SELECTORS = {
     PROJECTS_VIEW_BUTTON: '[data-testid="projects"]',
 
     // Buttons and dropdowns
+    NEW_SESSION_DROPDOWN: '[data-testid="new-session-dropdown"]',
     NEW_PROJECT_MENU_ITEM: '[data-testid="new-project"]',
     PROJECT_ACTIONS_BUTTON: (projectName: string) => `[aria-label="Project actions for ${projectName}"]`,
     RENAME_MENU_ITEM: '[data-testid="rename"]',
@@ -82,24 +83,32 @@ export function navigateToChatPage () {
  * Switch to the Projects view using the segmented control
  */
 export function switchToProjectsView () {
-    cy.get(PROJECT_SELECTORS.PROJECTS_VIEW_BUTTON)
-        .should('be.visible')
+    // Use parent SegmentedControl's data-testid and find button by text
+    // (Individual option buttons don't support data-testid in Cloudscape)
+    cy.get('[data-testid="project-history-toggle"]')
+        .contains('button', 'Projects')
         .click();
 
     // Wait for view toggle to update
-    cy.get(PROJECT_SELECTORS.PROJECTS_VIEW_BUTTON).should('have.attr', 'aria-pressed', 'true');
+    cy.get('[data-testid="project-history-toggle"]')
+        .contains('button', 'Projects')
+        .should('have.attr', 'aria-pressed', 'true');
 }
 
 /**
  * Switch to the History view using the segmented control
  */
 export function switchToHistoryView () {
-    cy.get(PROJECT_SELECTORS.HISTORY_VIEW_BUTTON)
-        .should('be.visible')
+    // Use parent SegmentedControl's data-testid and find button by text
+    // (Individual option buttons don't support data-testid in Cloudscape)
+    cy.get('[data-testid="project-history-toggle"]')
+        .contains('button', 'History')
         .click();
 
     // Wait for view toggle to update
-    cy.get(PROJECT_SELECTORS.HISTORY_VIEW_BUTTON).should('have.attr', 'aria-pressed', 'true');
+    cy.get('[data-testid="project-history-toggle"]')
+        .contains('button', 'History')
+        .should('have.attr', 'aria-pressed', 'true');
 }
 
 /**
@@ -130,8 +139,8 @@ export function verifyViewPersistence (view: 'history' | 'projects') {
  * @param projectName - Name of the project to create
  */
 export function createProject (projectName: string) {
-    // Open New dropdown
-    cy.contains('button', 'New').click();
+    // Open New dropdown using data-testid
+    cy.get(PROJECT_SELECTORS.NEW_SESSION_DROPDOWN).click();
 
     // Click New Project menu item
     cy.get(PROJECT_SELECTORS.NEW_PROJECT_MENU_ITEM).click();

@@ -29,19 +29,16 @@ export const CHAT_SELECTORS = {
 };
 
 /**
- * Navigate to the AI Assistant (chat) page by clicking the menu item
+ * Navigate to the AI Assistant (chat) page
  */
 export function navigateToChatPage () {
-    // For e2e tests, login should already direct to chat page
-    // For smoke tests, we may need to click the menu item
     // Check if we're already on the chat page
     cy.url().then((url) => {
-        if (!url.includes('/ai-assistant')) {
-            cy.get('a[aria-label="AI Assistant"]')
-                .eq(2)
-                .should('exist')
-                .and('be.visible')
-                .click();
+        if (!url.includes('ai-assistant')) {
+            // Use client-side navigation to preserve auth state
+            cy.window().then((win) => {
+                win.location.hash = '#/ai-assistant';
+            });
         }
     });
 }
@@ -50,7 +47,7 @@ export function navigateToChatPage () {
  * Verify that the chat page has loaded correctly
  */
 export function verifyChatPageLoaded () {
-    cy.url().should('include', '/ai-assistant');
+    cy.url({ timeout: 10000 }).should('include', 'ai-assistant');
 
     // Wait for the prompt input textarea to be visible
     // Use attribute selectors that are stable across builds

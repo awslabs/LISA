@@ -419,6 +419,13 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     is_video_endpoint = "video" in api_path.lower()
     is_image_endpoint = "image" in api_path.lower()
 
+    # LiteLLM uses a well-known header to attribute requests to an end-user.
+    # We set it from the human-readable value LISA stores on request.state.username
+    # (populated by auth middleware from the JWT/session).
+    lisa_username = getattr(request.state, "username", None)
+    if isinstance(lisa_username, str) and lisa_username:
+        headers["x-litellm-end-user-id"] = lisa_username
+
     # Handle multipart/form-data requests (video generation with image references, image edits)
     if is_multipart and (is_video_endpoint or is_image_endpoint):
         try:
@@ -468,6 +475,11 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     except json.JSONDecodeError as e:
         logger.error(f"Invalid JSON in request body: {e}")
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid JSON in request body")
+
+    # If the caller didn't already set OpenAI's "user" identifier, populate it
+    # with the human-readable LISA username so LiteLLM can surface it in logs.
+    if isinstance(params, dict) and lisa_username and (not params.get("user")):
+        params["user"] = lisa_username
 
     # Get model info from LiteLLM to determine the actual model provider path
     model_id = params.get("model")

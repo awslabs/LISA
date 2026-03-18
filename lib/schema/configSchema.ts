@@ -786,6 +786,9 @@ const LiteLLMConfig = z.object({
     litellm_settings: z.any().optional(),
     router_settings: z.any().optional(),
     environment_variables: z.any().optional(),
+    // LiteLLM callback-specific settings (e.g., OpenTelemetry message logging toggles).
+    // This must be allowed here so Zod doesn't strip it at deploy time.
+    callback_settings: z.any().optional(),
 })
     .describe('Core LiteLLM configuration - see https://litellm.vercel.app/docs/proxy/configs#all-settings for more details about each field.');
 

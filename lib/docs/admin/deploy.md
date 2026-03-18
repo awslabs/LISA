@@ -187,6 +187,26 @@ litellmConfig:
   db_key: sk-00000000-0000-0000-0000-000000000000  # needed for db operations, create your own key # pragma: allowlist-secret
 ```
 
+> [!IMPORTANT]
+> To include prompt/response content in LiteLLM logs (published by the `LISA Serve` ECS task to CloudWatch via `litellm.log`), enable LiteLLM logging callbacks and message logging in `config-custom.yaml`.
+>
+> 1. Add the following to `litellmConfig`:
+> ```yaml
+> litellmConfig:
+>   litellm_settings:
+>     callbacks: ["otel"]
+>     turn_off_message_logging: false
+>   environment_variables:
+>     OTEL_EXPORTER: console
+>   callback_settings:
+>     otel:
+>       message_logging: true
+> ```
+>
+> 2. Ensure you are aware of the privacy/compliance implications: this causes request/response content to be logged.
+>
+> LiteLLM Proxy logging reference: https://docs.litellm.ai/docs/proxy/logging
+
 ### Step 7: Set Up SSL Certificates (Development Only)
 
 LISA requires SSL certificates for secure communication. Choose the appropriate method based on your deployment environment.

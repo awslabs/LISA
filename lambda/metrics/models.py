@@ -34,7 +34,7 @@ class MetricsEvent(BaseModel):
     messages: list[dict[str, Any]]
     userGroups: list[str]
     timestamp: str
-    eventType: str
+    eventType: str = "full"
     modelId: str | None = None
     promptTokens: int | None = None
     completionTokens: int | None = None

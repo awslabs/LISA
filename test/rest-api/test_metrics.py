@@ -168,7 +168,7 @@ class TestPublishMetricsEvent:
 
         with patch.dict("os.environ", mock_env_vars), patch("utils.metrics.sqs_client", mock_sqs), patch(
             "utils.metrics.get_user_context", return_value=("test-user", ["users"])
-        ):
+        ), patch("utils.metrics.is_api_user", return_value=True):
 
             publish_metrics_event(mock_request, params, 200)
 
@@ -235,7 +235,7 @@ class TestPublishMetricsEvent:
 
         with patch.dict("os.environ", mock_env_vars), patch("utils.metrics.sqs_client", mock_sqs), patch(
             "utils.metrics.get_user_context", return_value=("api-user", [])
-        ):
+        ), patch("utils.metrics.is_api_user", return_value=True):
 
             publish_metrics_event(mock_request, params, 200)
 
@@ -260,7 +260,7 @@ class TestPublishMetricsEvent:
 
         with patch.dict("os.environ", mock_env_vars), patch("utils.metrics.sqs_client", mock_sqs), patch(
             "utils.metrics.get_user_context", return_value=("user", ["users"])
-        ):
+        ), patch("utils.metrics.is_api_user", return_value=True):
 
             publish_metrics_event(mock_request, params, 200)
 

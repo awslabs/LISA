@@ -465,7 +465,7 @@ class TestSQSEventProcessing:
 
         Expected: Should process multiple SQS records and call update_user_metrics_by_session for each.
         """
-        # Create test SQS event
+        # Create test SQS event — messages must include all required MetricsEvent fields
         sqs_event = {
             "Records": [
                 {
@@ -474,6 +474,7 @@ class TestSQSEventProcessing:
                             "userId": "test-user-1",
                             "sessionId": "session-1",
                             "userGroups": ["group1", "group2"],
+                            "timestamp": "2024-01-01T00:00:00",
                             "messages": [
                                 {"type": "human", "content": "Hello", "metadata": {"ragContext": "Some context"}},
                                 {"type": "assistant", "content": "Hi there!"},
@@ -487,6 +488,7 @@ class TestSQSEventProcessing:
                             "userId": "test-user-2",
                             "sessionId": "session-2",
                             "userGroups": ["group1"],
+                            "timestamp": "2024-01-01T00:00:00",
                             "messages": [
                                 {"type": "human", "content": "Help me", "metadata": {}},
                                 {"type": "assistant", "content": "How can I help?"},
@@ -527,19 +529,23 @@ class TestSQSEventProcessing:
     def test_process_metrics_sqs_event_missing_userid(self, lambda_context):
         """Test handling of SQS messages missing userId.
 
-        Expected: Should log error and continue processing when SQS record is missing userId.
+        Expected: Should log a validation error and skip the record when userId is absent.
+        MetricsEvent validation now catches missing required fields before any manual checks.
         """
         # Create test SQS event with missing userId
         sqs_event = {"Records": [{"body": json.dumps({"userGroups": ["group1"], "messages": []})}]}
 
         with patch("metrics.lambda_functions.logger.error") as mock_logger:
             process_metrics_sqs_event(sqs_event, lambda_context)
-            mock_logger.assert_called_with("SQS message missing required 'userId' field")
+            mock_logger.assert_called()
+            logged_msg = str(mock_logger.call_args)
+            assert "MetricsEvent validation" in logged_msg
 
     def test_process_metrics_sqs_event_missing_sessionid(self, lambda_context):
         """Test handling of SQS messages missing sessionId.
 
-        Expected: Should log error and continue processing when SQS record is missing sessionId.
+        Expected: Should log a validation error and skip the record when sessionId is absent.
+        MetricsEvent validation now catches missing required fields before any manual checks.
         """
         # Create test SQS event with missing sessionId
         sqs_event = {
@@ -548,7 +554,9 @@ class TestSQSEventProcessing:
 
         with patch("metrics.lambda_functions.logger.error") as mock_logger:
             process_metrics_sqs_event(sqs_event, lambda_context)
-            mock_logger.assert_called_with("SQS message missing required 'sessionId' field")
+            mock_logger.assert_called()
+            logged_msg = str(mock_logger.call_args)
+            assert "MetricsEvent validation" in logged_msg
 
 
 class TestCountRagUsage:

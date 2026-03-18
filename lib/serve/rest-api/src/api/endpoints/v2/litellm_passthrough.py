@@ -453,6 +453,9 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
 
             # Create new headers without Content-Type (requests library will set it with correct boundary)
             forward_headers = {"Authorization": f"Bearer {LITELLM_KEY}"}
+            # Preserve end-user attribution header for multipart requests if it was set above.
+            if "x-litellm-end-user-id" in headers:
+                forward_headers["x-litellm-end-user-id"] = headers["x-litellm-end-user-id"]
 
             # Forward multipart request to LiteLLM
             response = requests_request(

@@ -210,6 +210,43 @@ export class MetricsConstruct extends Construct {
                 width: 8,
                 height: 6,
             }),
+            // Total Prompts by Model Widget
+            new cloudwatch.GraphWidget({
+                title: 'Total Prompts by Model',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: 'SEARCH(\'{LISA/UsageMetrics,ModelId} MetricName="ModelPromptCount"\', \'Sum\', 3600)',
+                        label: '',
+                        period: Duration.hours(1),
+                    }),
+                ],
+                view: cloudwatch.GraphWidgetView.BAR,
+                width: 8,
+                height: 6,
+            }),
+            // Total Prompt Tokens + Total Completion Tokens (aggregate, stacked)
+            new cloudwatch.GraphWidget({
+                title: 'Total Tokens Over Time (Aggregate)',
+                left: [
+                    new cloudwatch.Metric({
+                        namespace: 'LISA/UsageMetrics',
+                        metricName: 'TotalPromptTokens',
+                        label: 'Input Tokens',
+                        statistic: 'Sum',
+                        period: Duration.hours(1),
+                    }),
+                    new cloudwatch.Metric({
+                        namespace: 'LISA/UsageMetrics',
+                        metricName: 'TotalCompletionTokens',
+                        label: 'Output Tokens',
+                        statistic: 'Sum',
+                        period: Duration.hours(1),
+                    }),
+                ],
+                stacked: true,
+                width: 8,
+                height: 6,
+            }),
 
             // User Metrics section
             new cloudwatch.TextWidget({
@@ -297,6 +334,98 @@ export class MetricsConstruct extends Construct {
                 left: [
                     new cloudwatch.MathExpression({
                         expression: 'SEARCH(\'{LISA/UsageMetrics,GroupName} MetricName="GroupMCPToolCalls"\', \'Sum\', 3600)',
+                        label: '',
+                        period: Duration.hours(1),
+                    }),
+                ],
+                width: 8,
+                height: 6,
+            }),
+
+            // ── Token Usage Metrics section ──────────────────────────────────
+            new cloudwatch.TextWidget({
+                markdown: '## **Token Usage Metrics**',
+                width: 24,
+                height: 1,
+                background: cloudwatch.TextWidgetBackground.TRANSPARENT,
+            }),
+
+            // Input tokens by model
+            new cloudwatch.GraphWidget({
+                title: 'Input Tokens by Model',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: 'SEARCH(\'{LISA/UsageMetrics,ModelId} MetricName="ModelPromptTokens"\', \'Sum\', 3600)',
+                        label: '',
+                        period: Duration.hours(1),
+                    }),
+                ],
+                width: 8,
+                height: 6,
+            }),
+
+            // Output tokens by model
+            new cloudwatch.GraphWidget({
+                title: 'Output Tokens by Model',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: 'SEARCH(\'{LISA/UsageMetrics,ModelId} MetricName="ModelCompletionTokens"\', \'Sum\', 3600)',
+                        label: '',
+                        period: Duration.hours(1),
+                    }),
+                ],
+                width: 8,
+                height: 6,
+            }),
+
+            // Input tokens by user
+            new cloudwatch.GraphWidget({
+                title: 'Input Tokens by User',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: 'SEARCH(\'{LISA/UsageMetrics,UserId} MetricName="UserPromptTokens"\', \'Sum\', 3600)',
+                        label: '',
+                        period: Duration.hours(1),
+                    }),
+                ],
+                width: 8,
+                height: 6,
+            }),
+
+            // Output tokens by user
+            new cloudwatch.GraphWidget({
+                title: 'Output Tokens by User',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: 'SEARCH(\'{LISA/UsageMetrics,UserId} MetricName="UserCompletionTokens"\', \'Sum\', 3600)',
+                        label: '',
+                        period: Duration.hours(1),
+                    }),
+                ],
+                width: 8,
+                height: 6,
+            }),
+
+            // Input tokens by group
+            new cloudwatch.GraphWidget({
+                title: 'Input Tokens by Group',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: 'SEARCH(\'{LISA/UsageMetrics,GroupName} MetricName="GroupPromptTokens"\', \'Sum\', 3600)',
+                        label: '',
+                        period: Duration.hours(1),
+                    }),
+                ],
+                width: 8,
+                height: 6,
+            }),
+
+            // Output tokens by group
+            new cloudwatch.GraphWidget({
+                title: 'Output Tokens by Group',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: 'SEARCH(\'{LISA/UsageMetrics,GroupName} MetricName="GroupCompletionTokens"\', \'Sum\', 3600)',
                         label: '',
                         period: Duration.hours(1),
                     }),

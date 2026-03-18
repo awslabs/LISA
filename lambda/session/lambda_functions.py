@@ -677,12 +677,19 @@ def put_session(event: dict, context: dict) -> SuccessResponse | dict:
 
             # Only publish metrics for non-API-token users (JWT/UI users)
             if auth_type != "api_token" and "USAGE_METRICS_QUEUE_NAME" in os.environ:
+                # Extract modelId from the session configuration if available
+                model_id = None
+                if configuration and configuration.selectedModel:
+                    model_id = configuration.selectedModel.modelId
+
                 metrics_event = MetricsEvent(
                     userId=user_id,
                     sessionId=session_id,
                     messages=session_data.history,
                     userGroups=groups,
                     timestamp=session_data.lastUpdated,
+                    eventType="full",
+                    modelId=model_id,
                 )
                 sqs_client.send_message(
                     QueueUrl=os.environ["USAGE_METRICS_QUEUE_NAME"],

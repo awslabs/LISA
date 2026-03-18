@@ -410,19 +410,20 @@ def handle_finish_update(event: dict[str, Any], context: Any) -> dict[str, Any]:
     # - vLLM: Use hosted_vllm/ to pass through full model name (e.g., "openai/gpt-oss-20b")
     # - TGI/TEI: Use openai/ prefix (LiteLLM strips it before sending to backend)
     model_name = ddb_item["model_config"]["modelName"]
-    inference_container = ddb_item["model_config"].get("inferenceContainer", "").lower()
+    inference_container = ddb_item["model_config"].get("inferenceContainer", "")
 
-    if inference_container == "vllm":
-        # vLLM serves models with full HF repo name (e.g., "openai/gpt-oss-20b")
-        # hosted_vllm/ prefix ensures LiteLLM passes through the complete name
-        provider_prefix = "hosted_vllm"
-    else:
+    if not inference_container:
         # TGI and TEI use OpenAI-compatible APIs with model name stripping
         provider_prefix = "openai"
 
         # Prefixing is added later, remove duplicate openai prefixing if present
         if model_name.startswith("openai/"):
             model_name = model_name[len("openai/") :]
+
+    elif inference_container.lower() == "vllm":
+        # vLLM serves models with full HF repo name (e.g., "openai/gpt-oss-20b")
+        # hosted_vllm/ prefix ensures LiteLLM passes through the complete name
+        provider_prefix = "hosted_vllm"
 
     litellm_params["model"] = f"{provider_prefix}/{model_name}"
     litellm_params["api_base"] = model_url

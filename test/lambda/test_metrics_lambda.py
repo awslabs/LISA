@@ -1057,3 +1057,175 @@ class TestPublishMetricDeltas:
             publish_metric_deltas("test-user", 1, 0, 0, {}, [])
 
             mock_logger.assert_called_with("Failed to publish metric deltas: CloudWatch error")
+
+
+class TestTokenMetrics:
+    """Tests covering token delta publishing and the token_only event_type branch."""
+
+    def test_publish_metric_deltas_token_changes_only(self):
+        """publish_metric_deltas emits TotalPromptTokens and TotalCompletionTokens CloudWatch metrics.
+
+        Expected: Token metric names present, no prompt/RAG/MCP metrics emitted.
+        """
+        with patch("metrics.lambda_functions.cloudwatch.put_metric_data") as mock_put_metric:
+            publish_metric_deltas(
+                "test-user",
+                delta_prompts=0,
+                delta_rag=0,
+                delta_mcp_calls=0,
+                delta_mcp_usage={},
+                user_groups=["group1"],
+                delta_prompt_tokens=100,
+                delta_completion_tokens=40,
+                model_id="my-model",
+            )
+
+            mock_put_metric.assert_called_once()
+            metric_names = [m["MetricName"] for m in mock_put_metric.call_args[1]["MetricData"]]
+
+            assert "TotalPromptTokens" in metric_names
+            assert "UserPromptTokens" in metric_names
+            assert "ModelPromptTokens" in metric_names
+            assert "TotalCompletionTokens" in metric_names
+            assert "UserCompletionTokens" in metric_names
+            assert "ModelCompletionTokens" in metric_names
+            assert "GroupPromptTokens" in metric_names
+            assert "GroupCompletionTokens" in metric_names
+            # No prompt/RAG/MCP counters should be emitted
+            assert "TotalPromptCount" not in metric_names
+            assert "RAGUsageCount" not in metric_names
+            assert "TotalMCPToolCalls" not in metric_names
+
+    def test_update_user_metrics_token_only_new_user(self, dynamodb_table):
+        """token_only event for a brand-new user creates a DynamoDB record with token totals
+        but no sessionMetrics entry.
+
+        Expected: record exists with totalPromptTokens/totalCompletionTokens set and
+                  sessionMetrics is empty dict.
+        """
+        session_metrics = {
+            "totalPrompts": 0,
+            "ragUsage": 0,
+            "mcpToolCallsCount": 0,
+            "mcpToolUsage": {},
+            "promptTokens": 150,
+            "completionTokens": 60,
+        }
+
+        with patch("metrics.lambda_functions.publish_metric_deltas"):
+            update_user_metrics_by_session(
+                "token-user", "ui-tokens-abc", session_metrics, ["group1"], event_type="token_only"
+            )
+
+        response = dynamodb_table.get_item(Key={"userId": "token-user"})
+        assert "Item" in response
+        item = response["Item"]
+
+        # Token totals stored
+        assert item["totalPromptTokens"] == 150
+        assert item["totalCompletionTokens"] == 60
+        # Prompt/RAG/MCP counters are zero
+        assert item["totalPrompts"] == 0
+        # sessionMetrics must NOT contain the synthetic session id
+        assert item["sessionMetrics"] == {}
+
+    def test_update_user_metrics_token_only_existing_user(self, dynamodb_table):
+        """token_only event for an existing user accumulates token totals without
+        creating sessionMetrics entries.
+
+        Expected: totalPromptTokens increases by delta on each call.
+        """
+        # Seed an existing user
+        dynamodb_table.put_item(
+            Item={
+                "userId": "existing-user",
+                "totalPrompts": 5,
+                "ragUsageCount": 0,
+                "mcpToolCallsCount": 0,
+                "mcpToolUsage": {},
+                "totalPromptTokens": 200,
+                "totalCompletionTokens": 80,
+                "sessionMetrics": {
+                    "real-session": {"totalPrompts": 5, "ragUsage": 0, "mcpToolCallsCount": 0, "mcpToolUsage": {}}
+                },
+                "firstSeen": "2024-01-01",
+                "lastSeen": "2024-01-01",
+            }
+        )
+
+        session_metrics = {
+            "totalPrompts": 0,
+            "ragUsage": 0,
+            "mcpToolCallsCount": 0,
+            "mcpToolUsage": {},
+            "promptTokens": 50,
+            "completionTokens": 20,
+        }
+
+        with patch("metrics.lambda_functions.publish_metric_deltas"):
+            update_user_metrics_by_session(
+                "existing-user", "ui-tokens-xyz", session_metrics, [], event_type="token_only"
+            )
+
+        item = dynamodb_table.get_item(Key={"userId": "existing-user"})["Item"]
+
+        # Tokens accumulated correctly
+        assert item["totalPromptTokens"] == 250  # 200 + 50
+        assert item["totalCompletionTokens"] == 100  # 80 + 20
+        # sessionMetrics must still only contain the original real session, not the token-only id
+        assert "ui-tokens-xyz" not in item["sessionMetrics"]
+        assert "real-session" in item["sessionMetrics"]
+
+    def test_update_user_metrics_token_only_publishes_cloudwatch_deltas(self, dynamodb_table):
+        """token_only events must still publish CloudWatch token metric deltas.
+
+        Expected: publish_metric_deltas called with the token delta values.
+        """
+        session_metrics = {
+            "totalPrompts": 0,
+            "ragUsage": 0,
+            "mcpToolCallsCount": 0,
+            "mcpToolUsage": {},
+            "promptTokens": 75,
+            "completionTokens": 30,
+        }
+
+        with patch("metrics.lambda_functions.publish_metric_deltas") as mock_publish:
+            update_user_metrics_by_session("cw-user", "ui-tokens-cw", session_metrics, ["grp"], event_type="token_only")
+
+            mock_publish.assert_called_once()
+            kwargs = mock_publish.call_args[1]
+            assert kwargs["delta_prompt_tokens"] == 75
+            assert kwargs["delta_completion_tokens"] == 30
+
+    def test_update_user_metrics_repeated_token_only_event_accumulates(self, dynamodb_table):
+        """Two consecutive token_only events for the same user add up their token counts.
+
+        Expected: totalPromptTokens = sum of both event token counts.
+        """
+        session_metrics_1 = {
+            "totalPrompts": 0,
+            "ragUsage": 0,
+            "mcpToolCallsCount": 0,
+            "mcpToolUsage": {},
+            "promptTokens": 100,
+            "completionTokens": 40,
+        }
+        session_metrics_2 = {
+            "totalPrompts": 0,
+            "ragUsage": 0,
+            "mcpToolCallsCount": 0,
+            "mcpToolUsage": {},
+            "promptTokens": 80,
+            "completionTokens": 35,
+        }
+
+        with patch("metrics.lambda_functions.publish_metric_deltas"):
+            update_user_metrics_by_session("accum-user", "sid-1", session_metrics_1, [], event_type="token_only")
+            update_user_metrics_by_session("accum-user", "sid-2", session_metrics_2, [], event_type="token_only")
+
+        item = dynamodb_table.get_item(Key={"userId": "accum-user"})["Item"]
+
+        assert item["totalPromptTokens"] == 180  # 100 + 80
+        assert item["totalCompletionTokens"] == 75  # 40 + 35
+        assert item["sessionMetrics"] == {}

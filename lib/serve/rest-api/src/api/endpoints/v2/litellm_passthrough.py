@@ -338,10 +338,12 @@ def generate_response_with_guardrail_handling(
         # (normal exhaustion, guardrail early-return, or unexpected exception).
         # When a guardrail fires, the model never completes its output so there are no token
         # counts — pass None explicitly to skip token metrics for that case.
+        status_code = getattr(request.state, "upstream_status_code", HTTP_200_OK)
+
         publish_metrics_event(
             request,
             params,
-            HTTP_200_OK,
+            status_code,
             prompt_tokens=None if guardrail_triggered else captured_prompt_tokens,
             completion_tokens=None if guardrail_triggered else captured_completion_tokens,
         )
@@ -542,7 +544,7 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
         # Use token-capturing, guardrail-aware generator for chat/completions.
         # The generator publishes the unified metrics event (including token counts)
         # after the stream ends, so no separate publish_metrics_event call is needed here.
-        if is_chat_completion:
+        if is_chat_completion and response.status_code == HTTP_200_OK:
             model_id = params.get("model", "")
             return StreamingResponse(
                 generate_response_with_guardrail_handling(response.iter_lines(), model_id, request, params),

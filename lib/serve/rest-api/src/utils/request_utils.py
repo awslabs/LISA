@@ -104,9 +104,9 @@ def get_lisa_end_user_id(
     We prefer the same claims used by the authorizer/session to make the
     logs match what admins see in the UI/session DB.
 
-    Precedence:
-    1. jwt_data["username"] (if present)
-    2. jwt_data["cognito:username"] overrides when present
+    Precedence (highest to lowest):
+    1. jwt_data["cognito:username"] (if present)
+    2. jwt_data["username"] (if present and no cognito:username)
     3. jwt_data["sub"]
     4. fallback to state_username (request.state.username)
     """

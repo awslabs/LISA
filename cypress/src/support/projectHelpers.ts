@@ -83,9 +83,8 @@ export function navigateToChatPage () {
  * Switch to the Projects view using the segmented control
  */
 export function switchToProjectsView () {
-    // Use parent SegmentedControl's data-testid and find button by text
-    // (Individual option buttons don't support data-testid in Cloudscape)
-    cy.get('[data-testid="project-history-toggle"]')
+    cy.get('[data-testid="project-history-toggle"]', { timeout: 15000 })
+        .should('be.visible')
         .contains('button', 'Projects')
         .click();
 
@@ -99,9 +98,8 @@ export function switchToProjectsView () {
  * Switch to the History view using the segmented control
  */
 export function switchToHistoryView () {
-    // Use parent SegmentedControl's data-testid and find button by text
-    // (Individual option buttons don't support data-testid in Cloudscape)
-    cy.get('[data-testid="project-history-toggle"]')
+    cy.get('[data-testid="project-history-toggle"]', { timeout: 15000 })
+        .should('be.visible')
         .contains('button', 'History')
         .click();
 

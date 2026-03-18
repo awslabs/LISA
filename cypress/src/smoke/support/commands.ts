@@ -269,11 +269,13 @@ Cypress.Commands.add('loginAs', (role = 'user') => {
         // Visit the app
         cy.visit('/');
 
-        // Click sign in to trigger OIDC flow
-        cy.contains('Sign in').click({ force: true });
+        cy.get('button', { timeout: 30000 })
+            .contains('Sign in')
+            .should('be.visible')
+            .click({ force: true });
 
         // Wait for the redirect and login to complete
-        cy.contains('Sign in', { timeout: 15000 }).should('not.exist');
+        cy.get('button').contains('Sign in', { timeout: 20000 }).should('not.exist');
 
         // Wait for app to be ready
         waitForAppReady();

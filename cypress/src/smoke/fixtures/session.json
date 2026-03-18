@@ -6,6 +6,7 @@
     "startTime": "2026-01-02T08:30:00.000000+00:00",
     "createTime": "2026-01-02T08:30:00.000000+00:00",
     "lastUpdated": "2026-01-02T09:15:00.000000+00:00",
+    "projectId": "proj-001",
     "isEncrypted": false
   },
   {
@@ -15,6 +16,7 @@
     "startTime": "2026-01-01T14:20:00.000000+00:00",
     "createTime": "2026-01-01T14:20:00.000000+00:00",
     "lastUpdated": "2026-01-01T15:45:00.000000+00:00",
+    "projectId": "proj-001",
     "isEncrypted": false
   },
   {

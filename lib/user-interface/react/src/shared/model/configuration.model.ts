@@ -36,6 +36,7 @@ export type IEnabledComponents = {
     showPromptTemplateLibrary: boolean;
     enableModelComparisonUtility: boolean;
     mcpConnections: boolean;
+    awsSessions: boolean;
     showMcpWorkbench: boolean;
     modelLibrary: boolean;
     encryptSession: boolean;
@@ -95,6 +96,7 @@ export const enabledComponentsSchema = z.object({
     showRagLibrary: z.boolean().default(true),
     showPromptTemplateLibrary: z.boolean().default(true),
     mcpConnections: z.boolean().default(true),
+    awsSessions: z.boolean().default(false),
     modelLibrary: z.boolean().default(true),
     enableModelComparisonUtility: z.boolean().default(false),
     encryptSession: z.boolean().default(false),

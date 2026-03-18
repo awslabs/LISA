@@ -22,6 +22,7 @@
         "showRagLibrary": true,
         "showPromptTemplateLibrary": true,
         "mcpConnections": true,
+        "awsSessions": false,
         "showMcpWorkbench": true,
         "projectOrganization": true
       },

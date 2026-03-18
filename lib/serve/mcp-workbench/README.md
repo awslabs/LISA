@@ -260,6 +260,16 @@ This project is designed to work with the existing LISA MCP infrastructure:
 4. MCP Workbench reads tools from the mounted location
 5. External processes can trigger rescans via HTTP GET requests
 
+### AWS Session Management
+
+MCP Workbench supports **AWS Sessions**, allowing users to connect their AWS credentials per chat session. When enabled by an Administrator, users can connect credentials in the chat UI; those credentials are validated, converted to short-lived session credentials, and stored in memory per (user, session). MCP tools can retrieve them via `get_caller_identity()` and `get_aws_session_for_user()` to perform AWS operations on behalf of the user.
+
+- **REST API**: `POST /api/aws/connect`, `GET /api/aws/status`, `DELETE /api/aws/connect`
+- **Identity**: Extracted from `Authorization` (JWT) and `X-Session-Id` headers
+- **Tool integration**: See `src/examples/sample_tools/aws_s3_tools.py` for an example tool that lists S3 buckets using connected credentials
+
+The feature requires the **AWS Sessions** toggle to be enabled in Administration → Configuration → MCP. Without MCP tools that leverage the credentials, connecting them has no effect.
+
 ## Development
 
 ### Project Structure

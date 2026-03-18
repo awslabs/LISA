@@ -465,7 +465,7 @@ export const SessionConfiguration = ({
                         </FormField>
                         }
                     </Container>}
-                {visible && session && systemConfig?.configuration?.enabledComponents?.mcpConnections && (
+                {visible && session && systemConfig?.configuration?.enabledComponents?.mcpConnections && (systemConfig?.configuration?.enabledComponents?.awsSessions ?? false) && (
                     <AwsCredentialsPanel sessionId={session.sessionId} title='AWS Credentials' />
                 )}
                 {isImageModel && (

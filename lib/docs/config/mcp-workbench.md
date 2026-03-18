@@ -149,6 +149,19 @@ Both approaches will make your tool available in the chat interface once deploye
 
 ## Advanced Usage
 
+### AWS Sessions
+
+When the [AWS Sessions](/config/mcp#aws-sessions) feature is enabled, MCP Workbench tools can leverage per-session AWS credentials that users connect in the chat UI. Tools receive the caller's identity (user and session) from the request context and use it to look up stored credentials.
+
+To create a tool that uses AWS credentials:
+
+1. Import `get_caller_identity` from `mcpworkbench.aws.identity` and `get_aws_session_for_user` from the shared session service.
+2. Call `get_caller_identity()` to obtain the current user and session IDs from the request headers.
+3. Call `get_aws_session_for_user(user_id, session_id)` to retrieve the `AwsSessionRecord` (or handle `AwsSessionMissingError` if the user has not connected credentials).
+4. Use the record's `aws_access_key_id`, `aws_secret_access_key`, `aws_session_token`, and `aws_region` to construct boto3 clients.
+
+See `lib/serve/mcp-workbench/src/examples/sample_tools/aws_s3_tools.py` for a complete example. Without tools that leverage these credentials, the AWS Sessions feature has no effect.
+
 ### Adding Python Dependencies
 
 Operators can modify `lib/serve/mcp-workbench/requirements.txt` to add additional Python libraries that will be available in the MCP Workbench environment. After modifying the requirements file, you'll need to perform a CDK deployment for those additional libraries to become available to your custom tools.

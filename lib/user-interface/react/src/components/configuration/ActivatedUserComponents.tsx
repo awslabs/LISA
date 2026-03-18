@@ -176,7 +176,7 @@ export function ActivatedUserComponents (props: ActivatedComponentConfigurationP
                                                 }}
                                                 checked={isChecked}
                                                 disabled={isDisabled}
-                                                data-cy={`Toggle-${item}`}
+                                                data-testid={`Toggle-${item}`}
                                             >
                                                 {operation.items[item]}
                                             </Toggle>

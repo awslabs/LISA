@@ -243,7 +243,7 @@ export function ProjectsSection ({ projects, sessions, maxProjects, currentSessi
                 footer={
                     <Box float='right'>
                         <SpaceBetween direction='horizontal' size='xs'>
-                            <Button variant='link' onClick={() => {
+                            <Button data-testid='create-project-cancel' variant='link' onClick={() => {
                                 setCreateModalVisible(false); setNewProjectName('');
                             }}>
                                 Cancel
@@ -262,6 +262,7 @@ export function ProjectsSection ({ projects, sessions, maxProjects, currentSessi
             >
                 <FormField label='Project Name'>
                     <Input
+                        data-testid='create-project-input'
                         value={newProjectName}
                         onChange={({ detail }) => setNewProjectName(detail.value)}
                         placeholder='Enter project name...'
@@ -282,7 +283,7 @@ export function ProjectsSection ({ projects, sessions, maxProjects, currentSessi
                 footer={
                     <Box float='right'>
                         <SpaceBetween direction='horizontal' size='xs'>
-                            <Button variant='link' onClick={() => {
+                            <Button data-testid='rename-project-cancel' variant='link' onClick={() => {
                                 setRenameModalVisible(false); setProjectToRename(null);
                             }}>
                                 Cancel
@@ -301,6 +302,7 @@ export function ProjectsSection ({ projects, sessions, maxProjects, currentSessi
             >
                 <FormField label='Project Name'>
                     <Input
+                        data-testid='rename-project-input'
                         value={renameValue}
                         onChange={({ detail }) => setRenameValue(detail.value)}
                         onKeyDown={(e) => {
@@ -320,7 +322,7 @@ export function ProjectsSection ({ projects, sessions, maxProjects, currentSessi
                 footer={
                     <Box float='right'>
                         <SpaceBetween direction='horizontal' size='xs'>
-                            <Button variant='link' onClick={() => {
+                            <Button data-testid='delete-project-cancel' variant='link' onClick={() => {
                                 setDeleteModalVisible(false); setProjectToDelete(null);
                             }}>
                                 Cancel

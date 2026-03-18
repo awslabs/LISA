@@ -48,8 +48,8 @@ export function openCreateModelWizard () {
  * Fill in the base model configuration for a third-party (Bedrock) model
  */
 export function fillBedrockModelConfig (config: BedrockModelConfig) {
-    cy.get('input[placeholder="mistral-vllm"]').clear().type(config.modelId);
-    cy.get('input[placeholder*="mistralai/Mistral"]').clear().type(config.modelName);
+    cy.get('[data-testid="model-id-input"] input, input[placeholder="mistral-vllm"]').clear().type(config.modelId);
+    cy.get('[data-testid="model-name-input"] input, input[placeholder*="mistralai/Mistral"]').clear().type(config.modelName);
 
     if (config.modelDescription) {
         cy.get('input[placeholder*="Brief description"]').clear().type(config.modelDescription);
@@ -110,6 +110,9 @@ export function deleteModelIfExists (modelId: string) {
                 .find('input[type="radio"]')
                 .click({ force: true });
 
+            // Set up intercept before triggering delete
+            cy.intercept('DELETE', '**/models/*').as('deleteModel');
+
             // Click the Actions dropdown
             cy.get('[data-testid="model-actions-dropdown"]').click();
 
@@ -121,7 +124,9 @@ export function deleteModelIfExists (modelId: string) {
                 .should('be.visible')
                 .click();
 
-            cy.wait(2000);
+            // Wait for delete API to complete and modal to close
+            cy.wait('@deleteModel', { timeout: 10000 });
+            cy.get('[data-testid="confirmation-modal-delete-btn"]').should('not.exist');
         }
     });
 }
@@ -130,10 +135,20 @@ export function deleteModelIfExists (modelId: string) {
  * Select a model in the chat interface
  */
 export function selectModelInChat (modelId: string) {
-    cy.get('input[placeholder*="model" i], input[aria-label*="model" i]', { timeout: 45000 })
+    // Click to open the dropdown and wait for options to load
+    cy.get('[data-testid="model-selection-autosuggest"] input, input[placeholder*="model" i], input[aria-label*="model" i]', { timeout: 45000 })
         .first()
         .should('not.be.disabled')
-        .click({ force: true })
+        .click({ force: true });
+
+    // Wait for dropdown options to appear
+    cy.get('[role="option"], [role="menuitem"]', { timeout: 15000 })
+        .should('be.visible');
+
+    // Type to filter, then select the matching option
+    cy.get('[data-testid="model-selection-autosuggest"] input, input[placeholder*="model" i], input[aria-label*="model" i]')
+        .first()
+        .clear()
         .type(modelId);
 
     cy.get('[role="option"], [role="menuitem"]')
@@ -150,7 +165,7 @@ export function sendChatMessage (message: string) {
     // Intercept the chat completions API call
     cy.intercept('POST', '**/v2/serve/chat/completions').as('chatInference');
 
-    cy.get('textarea[placeholder*="message" i]')
+    cy.get('[data-testid="chat-prompt-textarea"] textarea, textarea[placeholder*="message" i]')
         .should('not.be.disabled')
         .type(message);
 
@@ -181,6 +196,9 @@ export function verifyChatResponse (userMessage: string) {
  * Delete all chat sessions for the current user
  */
 export function deleteAllSessions () {
+    // Set up intercept before triggering delete
+    cy.intercept('DELETE', '**/session*').as('deleteSessions');
+
     // Click the Delete All Sessions button
     cy.get('button[aria-label="Delete All Sessions"]')
         .should('be.visible')
@@ -191,6 +209,7 @@ export function deleteAllSessions () {
         .should('be.visible')
         .click();
 
-    // Wait for deletion to complete
-    cy.wait(2000);
+    // Wait for delete API to complete and modal to close
+    cy.wait('@deleteSessions', { timeout: 10000 });
+    cy.get('[data-testid="confirmation-modal-delete-btn"]').should('not.exist');
 }

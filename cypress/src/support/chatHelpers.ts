@@ -21,27 +21,24 @@
 
 // Chat page selectors
 export const CHAT_SELECTORS = {
-    MODEL_INPUT: 'input[placeholder*="model" i], input[aria-label*="model" i]',
-    RAG_REPO_INPUT: 'input#rag-repository-autosuggest, input[placeholder*="RAG Repository" i]',
-    COLLECTION_INPUT: 'input#collection-autosuggest, input[placeholder*="collection" i]',
-    MESSAGE_INPUT: 'textarea[placeholder*="message" i]',
+    MODEL_INPUT: '[data-testid="model-selection-autosuggest"] input, input[placeholder*="model" i], input[aria-label*="model" i]',
+    RAG_REPO_INPUT: '[data-testid="rag-repository-autosuggest"] input, input#rag-repository-autosuggest, input[placeholder*="RAG Repository" i]',
+    COLLECTION_INPUT: '[data-testid="rag-collection-autosuggest"] input, input#collection-autosuggest, input[placeholder*="collection" i]',
+    MESSAGE_INPUT: '[data-testid="chat-prompt-textarea"] textarea',
     DROPDOWN_OPTION: '[role="option"], [role="menuitem"]',
 };
 
 /**
- * Navigate to the AI Assistant (chat) page by clicking the menu item
+ * Navigate to the AI Assistant (chat) page
  */
 export function navigateToChatPage () {
-    // For e2e tests, login should already direct to chat page
-    // For smoke tests, we may need to click the menu item
     // Check if we're already on the chat page
     cy.url().then((url) => {
-        if (!url.includes('/ai-assistant')) {
-            cy.get('a[aria-label="AI Assistant"]')
-                .eq(2)
-                .should('exist')
-                .and('be.visible')
-                .click();
+        if (!url.includes('ai-assistant')) {
+            // Use client-side navigation to preserve auth state
+            cy.window().then((win) => {
+                win.location.hash = '#/ai-assistant';
+            });
         }
     });
 }
@@ -50,13 +47,12 @@ export function navigateToChatPage () {
  * Verify that the chat page has loaded correctly
  */
 export function verifyChatPageLoaded () {
-    cy.url().should('include', '/ai-assistant');
+    cy.url({ timeout: 10000 }).should('include', 'ai-assistant');
 
     // Wait for the prompt input textarea to be visible
     // Use attribute selectors that are stable across builds
     // Allow extra time for lazy-loaded Chat route to render
-    cy.get('textarea[placeholder*="message" i]', { timeout: 15000 })
-        .first()
+    cy.get(CHAT_SELECTORS.MESSAGE_INPUT, { timeout: 15000 })
         .should('exist')
         .and('be.visible');
 }
@@ -70,8 +66,11 @@ export function waitForInitialDataLoad () {
     cy.get('[data-testid="loading"], .awsui-spinner, .loading', { timeout: 5000 })
         .should('not.exist');
 
-    // Give the page more time to stabilize after auth and initial API calls
-    cy.wait(3000);
+    // Wait for the model selection input to be ready (indicates models API has loaded)
+    cy.get(CHAT_SELECTORS.MODEL_INPUT, { timeout: 15000 })
+        .first()
+        .should('be.visible')
+        .and('not.be.disabled');
 }
 
 /**

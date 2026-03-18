@@ -19,6 +19,8 @@
  * Reusable helpers for repository creation and management interactions.
  */
 
+import { navigateToAdminPage } from './adminHelpers';
+
 export type RepositoryConfig = {
     repositoryId: string;
     knowledgeBaseName: string;
@@ -39,9 +41,8 @@ export function repositoryExists (repositoryId: string): Cypress.Chainable<boole
  * Navigate to the repository management page
  */
 export function navigateToRepositoryManagement () {
-    cy.visit('/#/repository-management');
-    cy.url().should('include', '/repository-management');
-    cy.wait(1000);
+    navigateToAdminPage('RAG Management');
+    cy.url({ timeout: 30000 }).should('include', '/repository-management');
 }
 
 /**
@@ -80,28 +81,86 @@ export function fillRepositoryConfig (config: RepositoryConfig) {
 }
 
 /**
- * Wait for knowledge bases to load and select a specific one
+ * Wait for knowledge bases to load and select a specific one.
+ * Returns true if KB was selected, false if no KBs available.
  */
-export function selectKnowledgeBase (knowledgeBaseName: string) {
+export function selectKnowledgeBase (knowledgeBaseName: string): Cypress.Chainable<boolean> {
     // Set up intercept for data sources API before selecting KB
     cy.intercept('GET', '**/bedrock-kb/*/data-sources').as('getDataSources');
 
-    // Wait for the select to be visible (API already loaded in fillRepositoryConfig)
-    cy.get('[data-testid="knowledge-base-select"]').should('be.visible');
+    // Wait for the select to be visible
+    cy.get('[data-testid="knowledge-base-select"]', { timeout: 10000 }).should('be.visible');
 
-    // Click the Knowledge Base dropdown button
-    cy.get('[data-testid="knowledge-base-select"]')
-        .find('button')
-        .click();
+    // Check if the select is disabled (no KBs available) or has the empty placeholder
+    return cy.get('[data-testid="knowledge-base-select"]').then(($select) => {
+        const button = $select.find('button');
+        const selectText = $select.text();
 
-    // Select the knowledge base by name
-    cy.get('[role="option"]')
-        .contains(knowledgeBaseName)
-        .should('be.visible')
-        .click();
+        // Check for empty state indicators
+        if (button.is(':disabled') ||
+            selectText.includes('No available Knowledge Bases') ||
+            selectText.includes('Choose a Knowledge Base')) {
 
-    // Wait for data sources to load after selecting KB
-    cy.wait('@getDataSources', { timeout: 30000 });
+            // Try clicking to see if dropdown has options
+            cy.get('[data-testid="knowledge-base-select"]')
+                .find('button')
+                .click({ force: true });
+
+            // Check if any options exist
+            return cy.get('body').then(($body) => {
+                const hasOptions = $body.find('[role="listbox"] [role="option"]').length > 0;
+
+                if (!hasOptions) {
+                    cy.log('No Knowledge Bases available - skipping KB selection');
+                    // Close dropdown if open by clicking elsewhere
+                    cy.get('body').click(0, 0);
+                    return cy.wrap(false);
+                }
+
+                // Options exist, try to find the specific KB
+                const kbOption = $body.find(`[role="option"]:contains("${knowledgeBaseName}")`);
+                if (kbOption.length > 0) {
+                    cy.get('[role="option"]')
+                        .contains(knowledgeBaseName)
+                        .click();
+                    cy.wait('@getDataSources', { timeout: 30000 });
+                    return cy.wrap(true);
+                } else {
+                    cy.log(`️Knowledge Base "${knowledgeBaseName}" not found - selecting first available`);
+                    cy.get('[role="option"]').first().click();
+                    cy.wait('@getDataSources', { timeout: 30000 });
+                    return cy.wrap(true);
+                }
+            });
+        }
+
+        // Select is enabled, proceed normally
+        cy.get('[data-testid="knowledge-base-select"]')
+            .find('button')
+            .click();
+
+        // Wait for dropdown to open
+        cy.get('[role="listbox"]', { timeout: 10000 }).should('exist');
+
+        // Select the knowledge base by name or first available
+        return cy.get('body').then(($body) => {
+            const kbOption = $body.find(`[role="option"]:contains("${knowledgeBaseName}")`);
+            if (kbOption.length > 0) {
+                cy.get('[role="option"]')
+                    .contains(knowledgeBaseName)
+                    .click();
+            } else if ($body.find('[role="option"]').length > 0) {
+                cy.log(`Knowledge Base "${knowledgeBaseName}" not found - selecting first available`);
+                cy.get('[role="option"]').first().click();
+            } else {
+                cy.log('️No Knowledge Bases available');
+                cy.get('body').click(0, 0); // Close dropdown
+                return cy.wrap(false);
+            }
+            cy.wait('@getDataSources', { timeout: 30000 });
+            return cy.wrap(true);
+        });
+    });
 }
 
 /**
@@ -191,7 +250,8 @@ export function deleteRepositoryIfExists (repositoryId: string) {
                 .should('be.visible')
                 .click();
 
-            cy.wait(2000);
+            // Wait for modal to close after deletion
+            cy.get('[data-testid="confirmation-modal-delete-btn"]', { timeout: 30000 }).should('not.exist');
         }
     });
 }

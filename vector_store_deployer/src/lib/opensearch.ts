@@ -172,10 +172,8 @@ def handler(event, context):
 
             openSearchDomain = new Domain(this, createCdkId([deploymentName!, deploymentStage!, 'RagRepository', repositoryId]), {
                 domainName: ['lisa-rag', repositoryId].join('-'),
-
-                // us-isof-south-1 requires the FIPS TLS policy which isn't in the CDK enum
-                // tlsSecurityPolicy: 'Policy-Min-TLS-1-2-RFC9151-FIPS-2024-08' as TLSSecurityPolicy,
-                tlsSecurityPolicy: region!.includes('isof') ? 'Policy-Min-TLS-1-2-PFS-2023-10' as TLSSecurityPolicy : TLSSecurityPolicy.TLS_1_2_PFS,
+                // us-isof requires a different FIPS TLS policy
+                tlsSecurityPolicy: region!.includes('isof') ? 'Policy-Min-TLS-1-2-RFC9151-FIPS-2024-08' as TLSSecurityPolicy : TLSSecurityPolicy.TLS_1_2_PFS,
                 // latest available in ADC regions as of 3/20/26
                 version: EngineVersion.OPENSEARCH_2_19,
                 enableVersionUpgrade: true,

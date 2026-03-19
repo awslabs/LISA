@@ -12,7 +12,12 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""Pydantic models for metrics events."""
+"""Pydantic models for metrics events published to SQS.
+
+This module is intentionally kept in sync with lambda/metrics/models.py.
+The two files live in separate deployment contexts (FastAPI container vs Lambda)
+and cannot share code directly, so any schema changes must be applied to both.
+"""
 
 from typing import Any
 

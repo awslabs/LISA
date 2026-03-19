@@ -36,7 +36,7 @@ from utils.guardrails import (
     get_model_guardrails,
     is_guardrail_violation,
 )
-from utils.metrics import publish_metrics_event
+from utils.metrics import extract_token_usage, publish_metrics_event
 from utils.request_utils import get_lisa_end_user_id
 from utils.route_utils import is_anthropic_route, is_chat_route, is_lisa_public_route, is_openai_route
 

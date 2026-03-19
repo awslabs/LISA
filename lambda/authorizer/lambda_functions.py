@@ -50,7 +50,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
     # Compute request path/action for conditional audit logs.
     http_method, request_path = get_method_and_path_from_method_arn(event.get("methodArn", ""))
-    audit_area = get_matched_audit_prefix(request_path) if should_audit_path(request_path) else None
+    audit_area = get_matched_audit_prefix(request_path)
 
     id_token = get_id_token(event)
 

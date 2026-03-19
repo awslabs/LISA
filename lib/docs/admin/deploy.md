@@ -207,6 +207,33 @@ litellmConfig:
 >
 > LiteLLM Proxy logging reference: https://docs.litellm.ai/docs/proxy/logging
 
+> [!IMPORTANT]
+> API Gateway audit logging (strict opt-in):
+> LISA can emit audit logs for API Gateway requests (who initiated the request, what action was taken, and a sanitized JSON body) only when enabled via `auditLoggingConfig` in `config-custom.yaml`.
+>
+> Example (opt-in to specific API prefixes):
+> ```yaml
+> auditLoggingConfig:
+>   enabled: true
+>   auditAll: false
+>   enabledPaths: ["/api-tokens", "/models", "/repository", "/session", "/configuration", "/prompt-templates", "/project", "/user-preferences", "/mcp", "/mcp-server", "/mcp-workbench", "/metrics", "/chat-assistant-stacks", "/bedrock-kb"]
+> ```
+>
+> Example (`auditAll`):
+> ```yaml
+> auditLoggingConfig:
+>   enabled: true
+>   auditAll: true
+> ```
+>
+> Optional JSON body audit (default **off**): set `includeJsonBody: true` to emit `AUDIT_API_GATEWAY_REQUEST_BODY` for opted-in paths. When `includeJsonBody` is false or omitted, request bodies are never logged, even when path auditing is enabled.
+>
+> When audit logging is enabled for a given API prefix, the following events may be emitted to Lambda CloudWatch logs:
+> - `AUDIT_API_GATEWAY_REQUEST` (authorizer decision: Allow/Deny + user identity)
+> - `AUDIT_API_GATEWAY_REQUEST_BODY` (sanitized JSON request body) — only if `includeJsonBody: true`
+>
+> Privacy note: enabling JSON body audit logging may include sensitive user data; ensure your organization’s compliance requirements are met.
+
 ### Step 7: Set Up SSL Certificates (Development Only)
 
 LISA requires SSL certificates for secure communication. Choose the appropriate method based on your deployment environment.

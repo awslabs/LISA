@@ -776,6 +776,29 @@ const ApiGatewayConfigSchema = z
     .optional()
     .describe('Configuration schema for API Gateway Endpoint');
 
+const AuditLoggingConfigSchema = z
+    .object({
+        enabled: z.boolean().default(false).describe('Whether to enable audit logging for opted-in API Gateway paths.'),
+        auditAll: z.boolean().default(false).describe('If true, enable audit logging for all API Gateway paths.'),
+        enabledPaths: z
+            .array(z.string().min(1))
+            .default([])
+            .describe('API Gateway path prefixes (e.g. "/session") to include in audit logging. Prefix match is used.'),
+        maxRequestBodyBytes: z
+            .number()
+            .int()
+            .min(1)
+            .default(20000)
+            .describe('Maximum request body bytes to include in audit logs (oversized bodies are replaced with a placeholder).'),
+        includeJsonBody: z
+            .boolean()
+            .default(false)
+            .describe(
+                'When true, emit AUDIT_API_GATEWAY_REQUEST_BODY for opted-in paths. When false (default), request bodies are never included in audit logs.'
+            ),
+    })
+    .describe('Audit logging configuration for API Gateway request auditing.');
+
 const LiteLLMConfig = z.object({
     db_key: z.string().refine(
         (key) => key.startsWith('sk-'), // key needed for model management actions
@@ -928,6 +951,7 @@ export const RawConfigObject = z.object({
         })
         .optional()
         .describe('Configuration for local Lambda layer code'),
+    auditLoggingConfig: AuditLoggingConfigSchema.optional(),
     permissionsBoundaryAspect: z
         .object({
             permissionsBoundaryPolicyName: z.string(),

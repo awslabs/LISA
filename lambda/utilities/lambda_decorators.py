@@ -20,6 +20,11 @@ from collections.abc import Callable
 from contextvars import ContextVar
 from typing import Any, overload
 
+from utilities.audit_logging_utils import (
+    audit_include_json_body,
+    get_matched_audit_prefix,
+    sanitize_json_body_for_audit,
+)
 from utilities.event_parser import sanitize_event_for_logging
 from utilities.input_validation import DEFAULT_MAX_REQUEST_SIZE, validate_input
 from utilities.response_builder import generate_exception_response, generate_html_response
@@ -105,6 +110,35 @@ def api_wrapper(
             # Log request with sanitized event data
             sanitized_event = sanitize_event_for_logging(event)
             logger.info(f"Lambda {lambda_func_name}({code_func_name}) invoked with {sanitized_event}")
+
+            # Optional audit payload logging (strict opt-in by path prefix + includeJsonBody).
+            audit_prefix = get_matched_audit_prefix(event.get("path", "") or "")
+            if audit_prefix and audit_include_json_body():
+                body = event.get("body")
+                if not body:
+                    # No payload to audit.
+                    body = None
+                if body is not None:
+                    http_method = event.get("httpMethod", "unknown")
+                    path = event.get("path", "") or "/"
+
+                    # API Gateway can pass non-JSON bodies; sanitize_json_body_for_audit handles placeholders.
+                    sanitized_body = sanitize_json_body_for_audit(body)
+                    authorizer = event.get("requestContext", {}).get("authorizer", {}) or {}
+
+                    logger.info(
+                        "AUDIT_API_GATEWAY_REQUEST_BODY",
+                        extra={
+                            "event_type": "AUDIT_API_GATEWAY_REQUEST_BODY",
+                            "area": audit_prefix,
+                            "action": f"{http_method} {path}",
+                            "user": {
+                                "username": authorizer.get("username", "unknown"),
+                                "auth_type": authorizer.get("authType", "unknown"),
+                            },
+                            "body": sanitized_body,
+                        },
+                    )
 
             try:
                 result = f(event, context)

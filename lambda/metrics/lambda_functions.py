@@ -21,6 +21,7 @@ from typing import Any
 import boto3
 import create_env_variables  # noqa: F401
 from botocore.exceptions import ClientError
+from metrics.models import MetricsEvent
 from utilities.common_functions import api_wrapper, retry_config
 from utilities.time import iso_string, utc_now
 
@@ -204,31 +205,32 @@ def process_metrics_sqs_event(event: dict, context: dict) -> None:
 
     for record in event.get("Records", []):
         try:
-            # Parse the message body
-            message = json.loads(record["body"])
-
-            user_id = message.get("userId")
-            session_id = message.get("sessionId")
-            user_groups = message.get("userGroups", [])
-            messages = message.get("messages", [])
-
-            logger.info(f"Processing metrics for user: {user_id}, session: {session_id}.")
-
-            if not user_id:
-                logger.error("SQS message missing required 'userId' field")
+            # Parse and validate the message body through the MetricsEvent model.
+            # This catches malformed messages early and gives clear field access.
+            raw = json.loads(record["body"])
+            try:
+                msg = MetricsEvent.model_validate(raw)
+            except Exception as validation_err:
+                logger.error(f"SQS message failed MetricsEvent validation: {validation_err}")
                 continue
 
-            if not session_id:
-                logger.error("SQS message missing required 'sessionId' field")
-                continue
+            logger.info(f"Processing metrics for user: {msg.userId}, session: {msg.sessionId}, model: {msg.modelId}.")
 
-            # Calculate metrics for a given session
-            session_metrics = calculate_session_metrics(messages)
+            # Calculate prompt/RAG/MCP metrics for a given session
+            session_metrics = calculate_session_metrics(msg.messages)
+
+            # Attach token data to session_metrics when present
+            if msg.promptTokens is not None:
+                session_metrics["promptTokens"] = msg.promptTokens
+            if msg.completionTokens is not None:
+                session_metrics["completionTokens"] = msg.completionTokens
+            if msg.modelId is not None:
+                session_metrics["modelId"] = msg.modelId
 
             logger.info(f"Calculated session metrics: {session_metrics}")
 
             # Update usage metrics for given session
-            update_user_metrics_by_session(user_id, session_id, session_metrics, user_groups)
+            update_user_metrics_by_session(msg.userId, msg.sessionId, session_metrics, msg.userGroups, msg.eventType)
 
         except Exception as e:
             logger.error(f"Error processing SQS message: {str(e)}")
@@ -358,6 +360,9 @@ def publish_metric_deltas(
     delta_mcp_calls: int,
     delta_mcp_usage: dict[str, int],
     user_groups: list[str],
+    delta_prompt_tokens: int = 0,
+    delta_completion_tokens: int = 0,
+    model_id: str | None = None,
 ) -> None:
     """Publish only metric deltas to CloudWatch to prevent double counting.
 
@@ -373,8 +378,14 @@ def publish_metric_deltas(
         Change in MCP tool calls
     delta_mcp_usage : Dict[str, int]
         Changes in individual MCP tool usage
-    user_groups : List[str], optional
+    user_groups : List[str]
         The groups that the user belongs to
+    delta_prompt_tokens : int
+        Change in prompt (input) token count
+    delta_completion_tokens : int
+        Change in completion (output) token count
+    model_id : str | None
+        Model ID used for the request (used as a dimension for token metrics)
     """
     try:
         timestamp = utc_now()
@@ -394,6 +405,16 @@ def publish_metric_deltas(
                     },
                 ]
             )
+            if model_id:
+                metric_data.append(
+                    {
+                        "MetricName": "ModelPromptCount",
+                        "Dimensions": [{"Name": "ModelId", "Value": model_id}],
+                        "Value": delta_prompts,
+                        "Unit": "Count",
+                        "Timestamp": timestamp,
+                    }
+                )
 
         if delta_rag != 0:
             metric_data.extend(
@@ -441,6 +462,69 @@ def publish_metric_deltas(
                     }
                 )
 
+        # Token metrics — aggregate, per-user, per-model
+        if delta_prompt_tokens != 0:
+            metric_data.extend(
+                [
+                    # Aggregate totals (no dimension)
+                    {
+                        "MetricName": "TotalPromptTokens",
+                        "Value": delta_prompt_tokens,
+                        "Unit": "Count",
+                        "Timestamp": timestamp,
+                    },
+                    # Per-user
+                    {
+                        "MetricName": "UserPromptTokens",
+                        "Dimensions": [{"Name": "UserId", "Value": user_id}],
+                        "Value": delta_prompt_tokens,
+                        "Unit": "Count",
+                        "Timestamp": timestamp,
+                    },
+                ]
+            )
+            if model_id:
+                metric_data.append(
+                    {
+                        "MetricName": "ModelPromptTokens",
+                        "Dimensions": [{"Name": "ModelId", "Value": model_id}],
+                        "Value": delta_prompt_tokens,
+                        "Unit": "Count",
+                        "Timestamp": timestamp,
+                    }
+                )
+
+        if delta_completion_tokens != 0:
+            metric_data.extend(
+                [
+                    # Aggregate totals (no dimension)
+                    {
+                        "MetricName": "TotalCompletionTokens",
+                        "Value": delta_completion_tokens,
+                        "Unit": "Count",
+                        "Timestamp": timestamp,
+                    },
+                    # Per-user
+                    {
+                        "MetricName": "UserCompletionTokens",
+                        "Dimensions": [{"Name": "UserId", "Value": user_id}],
+                        "Value": delta_completion_tokens,
+                        "Unit": "Count",
+                        "Timestamp": timestamp,
+                    },
+                ]
+            )
+            if model_id:
+                metric_data.append(
+                    {
+                        "MetricName": "ModelCompletionTokens",
+                        "Dimensions": [{"Name": "ModelId", "Value": model_id}],
+                        "Value": delta_completion_tokens,
+                        "Unit": "Count",
+                        "Timestamp": timestamp,
+                    }
+                )
+
         # Group-level metrics
         if user_groups:
             for group in user_groups:
@@ -477,8 +561,33 @@ def publish_metric_deltas(
                         }
                     )
 
+                if delta_prompt_tokens != 0:
+                    metric_data.append(
+                        {
+                            "MetricName": "GroupPromptTokens",
+                            "Dimensions": [{"Name": "GroupName", "Value": group}],
+                            "Value": delta_prompt_tokens,
+                            "Unit": "Count",
+                            "Timestamp": timestamp,
+                        }
+                    )
+
+                if delta_completion_tokens != 0:
+                    metric_data.append(
+                        {
+                            "MetricName": "GroupCompletionTokens",
+                            "Dimensions": [{"Name": "GroupName", "Value": group}],
+                            "Value": delta_completion_tokens,
+                            "Unit": "Count",
+                            "Timestamp": timestamp,
+                        }
+                    )
+
         if metric_data:
-            cloudwatch.put_metric_data(Namespace="LISA/UsageMetrics", MetricData=metric_data)
+            # CloudWatch PutMetricData accepts max 1000 metrics per call; batch if needed
+            batch_size = 1000
+            for i in range(0, len(metric_data), batch_size):
+                cloudwatch.put_metric_data(Namespace="LISA/UsageMetrics", MetricData=metric_data[i : i + batch_size])
             logger.info(f"Published {len(metric_data)} metric deltas for user {user_id}")
 
     except Exception as e:
@@ -486,7 +595,11 @@ def publish_metric_deltas(
 
 
 def update_user_metrics_by_session(
-    user_id: str, session_id: str, session_metrics: dict[str, Any], user_groups: list[str]
+    user_id: str,
+    session_id: str,
+    session_metrics: dict[str, Any],
+    user_groups: list[str],
+    event_type: str = "full",
 ) -> None:
     """Update usage metrics for a given user based on session-level metrics.
 
@@ -500,6 +613,11 @@ def update_user_metrics_by_session(
         Calculated metrics for this session
     user_groups : List[str]
         The groups that the user is apart of
+    event_type : str
+        "full"       — API token user or session-lambda event; owns all metrics.
+        "token_only" — JWT/UI passthrough event; only carries token counts, session
+                       lambda already counted the prompts. Do not write a sessionMetrics
+                       entry — that would create synthetic sessions and pollute aggregation.
     """
     table_name = os.environ.get("USAGE_METRICS_TABLE_NAME")
 
@@ -532,11 +650,79 @@ def update_user_metrics_by_session(
             if delta != 0:
                 delta_mcp_usage[tool_name] = delta
 
-        # Publish only deltas to CloudWatch (prevents double counting)
-        if delta_prompts != 0 or delta_rag != 0 or delta_mcp_calls != 0 or delta_mcp_usage:
-            publish_metric_deltas(user_id, delta_prompts, delta_rag, delta_mcp_calls, delta_mcp_usage, user_groups)
+        # Calculate token counts for this event
+        new_prompt_tokens = session_metrics.get("promptTokens", 0) or 0
+        new_completion_tokens = session_metrics.get("completionTokens", 0) or 0
+        old_prompt_tokens = existing_session_metrics.get("promptTokens", 0) or 0
+        old_completion_tokens = existing_session_metrics.get("completionTokens", 0) or 0
+        delta_prompt_tokens = new_prompt_tokens - old_prompt_tokens
+        delta_completion_tokens = new_completion_tokens - old_completion_tokens
+        model_id = session_metrics.get("modelId")
 
-        # Update DynamoDB with session-based metrics
+        # event_type=="token_only": JWT/UI passthrough events that carry only token counts.
+        # The session lambda already counted the prompts for these requests, so we publish
+        # CloudWatch token metrics but must NOT write a sessionMetrics entry — that would
+        # create synthetic sessions and pollute prompt aggregation.
+        is_token_only_event = event_type == "token_only"
+
+        # Publish only deltas to CloudWatch (prevents double counting)
+        has_changes = (
+            delta_prompts != 0
+            or delta_rag != 0
+            or delta_mcp_calls != 0
+            or delta_mcp_usage
+            or delta_prompt_tokens != 0
+            or delta_completion_tokens != 0
+        )
+        if has_changes:
+            publish_metric_deltas(
+                user_id,
+                delta_prompts,
+                delta_rag,
+                delta_mcp_calls,
+                delta_mcp_usage,
+                user_groups,
+                delta_prompt_tokens=delta_prompt_tokens,
+                delta_completion_tokens=delta_completion_tokens,
+                model_id=model_id,
+            )
+
+        if is_token_only_event:
+            # Only update the aggregate token totals in DynamoDB — no sessionMetrics entry.
+            if not user_exists:
+                item: dict[str, Any] = {
+                    "userId": user_id,
+                    "totalPrompts": 0,
+                    "ragUsageCount": 0,
+                    "mcpToolCallsCount": 0,
+                    "mcpToolUsage": {},
+                    "totalPromptTokens": new_prompt_tokens,
+                    "totalCompletionTokens": new_completion_tokens,
+                    "sessionMetrics": {},
+                    "firstSeen": iso_string(),
+                    "lastSeen": iso_string(),
+                    "userGroups": set(user_groups) if user_groups else None,
+                }
+                usage_metrics_table.put_item(Item=item)
+            else:
+                existing_prompt_tokens = int(existing_item.get("totalPromptTokens", 0) or 0)
+                existing_completion_tokens = int(existing_item.get("totalCompletionTokens", 0) or 0)
+                usage_metrics_table.update_item(
+                    Key={"userId": user_id},
+                    UpdateExpression=(
+                        "SET lastSeen = :now, "
+                        "totalPromptTokens = :total_prompt_tokens, "
+                        "totalCompletionTokens = :total_completion_tokens"
+                    ),
+                    ExpressionAttributeValues={
+                        ":now": iso_string(),
+                        ":total_prompt_tokens": existing_prompt_tokens + delta_prompt_tokens,
+                        ":total_completion_tokens": existing_completion_tokens + delta_completion_tokens,
+                    },
+                )
+            return
+
+        # Full event (API user or session-lambda event with prompts) — update everything.
         if not user_exists:
             # Create new user with session metrics
             item = {
@@ -545,6 +731,8 @@ def update_user_metrics_by_session(
                 "ragUsageCount": session_metrics["ragUsage"],
                 "mcpToolCallsCount": session_metrics["mcpToolCallsCount"],
                 "mcpToolUsage": session_metrics["mcpToolUsage"],
+                "totalPromptTokens": new_prompt_tokens,
+                "totalCompletionTokens": new_completion_tokens,
                 "sessionMetrics": {session_id: session_metrics},
                 "firstSeen": iso_string(),
                 "lastSeen": iso_string(),
@@ -567,18 +755,31 @@ def update_user_metrics_by_session(
                 for tool_name, count in sm.get("mcpToolUsage", {}).items():
                     aggregate_mcp_usage[tool_name] = aggregate_mcp_usage.get(tool_name, 0) + count
 
+            # Also add current event tokens to the aggregated session total
+            # (session lambda events don't carry tokens; API events do)
+            existing_prompt_tokens = int(existing_item.get("totalPromptTokens", 0) or 0)
+            existing_completion_tokens = int(existing_item.get("totalCompletionTokens", 0) or 0)
+            updated_prompt_tokens = existing_prompt_tokens + delta_prompt_tokens
+            updated_completion_tokens = existing_completion_tokens + delta_completion_tokens
+
             # Update the user record
             usage_metrics_table.update_item(
                 Key={"userId": user_id},
-                UpdateExpression="SET lastSeen = :now, totalPrompts = :total_prompts, ragUsageCount = :total_rag, "
-                "mcpToolCallsCount = :total_mcp, mcpToolUsage = :mcp_usage, "
-                "sessionMetrics = :session_metrics, userGroups = :groups",
+                UpdateExpression=(
+                    "SET lastSeen = :now, totalPrompts = :total_prompts, ragUsageCount = :total_rag, "
+                    "mcpToolCallsCount = :total_mcp, mcpToolUsage = :mcp_usage, "
+                    "totalPromptTokens = :total_prompt_tokens, "
+                    "totalCompletionTokens = :total_completion_tokens, "
+                    "sessionMetrics = :session_metrics, userGroups = :groups"
+                ),
                 ExpressionAttributeValues={
                     ":now": iso_string(),
                     ":total_prompts": total_prompts,
                     ":total_rag": total_rag,
                     ":total_mcp": total_mcp_calls,
                     ":mcp_usage": aggregate_mcp_usage,
+                    ":total_prompt_tokens": updated_prompt_tokens,
+                    ":total_completion_tokens": updated_completion_tokens,
                     ":session_metrics": all_session_metrics,
                     ":groups": set(user_groups) if user_groups else (existing_item.get("userGroups") or set()),
                 },

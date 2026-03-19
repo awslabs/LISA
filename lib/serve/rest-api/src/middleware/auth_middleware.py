@@ -100,7 +100,10 @@ async def auth_middleware(request: Request, call_next: Callable[[Request], Respo
             request.state.is_admin = authorizer.auth_provider.check_admin_access_jwt(
                 jwt_data, authorizer.jwt_groups_property
             )
-            request.state.username = jwt_data.get("sub", jwt_data.get("username", "unknown"))
+            # Resolve username: prefer cognito:username / username over the opaque UUID sub
+            request.state.username = (
+                jwt_data.get("cognito:username") or jwt_data.get("username") or jwt_data.get("sub", "unknown")
+            )
             request.state.groups = _extract_groups_from_jwt(jwt_data, authorizer.jwt_groups_property)
         elif hasattr(request.state, "api_token_info"):
             # API token auth

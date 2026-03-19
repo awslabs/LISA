@@ -28,6 +28,7 @@ import { Vpc } from '../networking/vpc';
 import { createLambdaRole } from '../core/utils';
 import { LAMBDA_PATH } from '../util';
 import { Table } from 'aws-cdk-lib/aws-dynamodb';
+import { getAuditLoggingEnv, LISA_AUDIT_API_GATEWAY_BASE_PATH } from '../api-base/auditEnv';
 
 /**
  * Properties for ApiTokensApi Construct.
@@ -95,6 +96,8 @@ export class ApiTokensApi extends Construct {
             TOKEN_TABLE_NAME: tokenTable.tableName,
             ADMIN_GROUP: config.authConfig?.adminGroup || '',
             API_GROUP: config.authConfig?.apiGroup || '',
+            ...getAuditLoggingEnv(config),
+            [LISA_AUDIT_API_GATEWAY_BASE_PATH]: '/api-tokens',
         };
 
         // Create Lambda role with DynamoDB permissions

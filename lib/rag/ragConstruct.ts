@@ -29,6 +29,7 @@ import { Layer } from '../core/layers';
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
 import { APP_MANAGEMENT_KEY, BaseProps, Config } from '../schema';
+import { getAuditLoggingEnv } from '../api-base/auditEnv';
 import { SecurityGroupEnum } from '../core/iam/SecurityGroups';
 import { SecurityGroupFactory } from '../networking/vpc/security-group-factory';
 import { Roles } from '../core/iam/roles';
@@ -223,6 +224,7 @@ export class LisaRagConstruct extends Construct {
             REGISTERED_REPOSITORIES_PS: `${config.deploymentPrefix}/registeredRepositories`,
             REST_API_VERSION: 'v2',
             TIKTOKEN_CACHE_DIR: '/tmp',
+            ...getAuditLoggingEnv(config),
         };
 
         // Add REST API SSL Cert ARN if it exists to be used to verify SSL calls to REST API

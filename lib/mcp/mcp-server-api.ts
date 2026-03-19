@@ -25,6 +25,7 @@ import { Construct } from 'constructs';
 import { getPythonRuntime, registerAPIEndpoint } from '../api-base/utils';
 import { APP_MANAGEMENT_KEY, BaseProps } from '../schema';
 import { createCdkId, createLambdaRole } from '../core/utils';
+import { getAuditLoggingEnv } from '../api-base/auditEnv';
 import { Vpc } from '../networking/vpc';
 import { LAMBDA_PATH } from '../util';
 import { McpServerDeployer } from './mcp-server-deployer';
@@ -194,6 +195,7 @@ export class McpServerApi extends Construct {
             DELETE_MCP_SERVER_SFN_ARN: deleteMcpServerStateMachine.stateMachineArn,
             UPDATE_MCP_SERVER_SFN_ARN: updateMcpServerStateMachine.stateMachineArn,
             ADMIN_GROUP: config.authConfig?.adminGroup || '',
+            ...getAuditLoggingEnv(config),
         };
 
         const lambdaRole = createLambdaRole(this, config.deploymentName, 'McpServerDynamicApi', mcpServersTable.tableArn, config.roles?.LambdaExecutionRole);

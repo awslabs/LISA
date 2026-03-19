@@ -1,3 +1,17 @@
+#   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License").
+#   You may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
 """
 Shared helpers for API Gateway audit logging.
 
@@ -13,8 +27,7 @@ from __future__ import annotations
 import json
 import os
 from functools import lru_cache
-from typing import Any, Optional
-
+from typing import Any
 
 _DEFAULT_MAX_BODY_BYTES = 20_000
 
@@ -33,6 +46,7 @@ _SENSITIVE_KEYS = {
 }
 
 _SENSITIVE_KEYS_LOWER = {k.lower() for k in _SENSITIVE_KEYS}
+
 
 def _env_bool(name: str) -> bool:
     value = os.getenv(name, "").strip().lower()
@@ -118,7 +132,7 @@ def _path_starts_with_prefix(path: str, prefix: str) -> bool:
     return path[len(prefix)] == "/"
 
 
-def get_matched_audit_prefix(path: str) -> Optional[str]:
+def get_matched_audit_prefix(path: str) -> str | None:
     """
     Return the matched prefix (e.g. "/session") when auditing should apply.
 
@@ -228,4 +242,3 @@ def sanitize_json_body_for_audit(body: Any) -> str:
     except TypeError:
         # Extremely defensive fallback: ensure logs never explode.
         return json.dumps(str(sanitized))
-

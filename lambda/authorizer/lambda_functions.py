@@ -29,7 +29,6 @@ from cachetools import cached, TTLCache
 from utilities.audit_logging_utils import (
     get_matched_audit_prefix,
     get_method_and_path_from_method_arn,
-    should_audit_path,
 )
 from utilities.auth_provider import get_authorization_provider
 from utilities.common_functions import authorization_wrapper, get_id_token, get_property_path, retry_config

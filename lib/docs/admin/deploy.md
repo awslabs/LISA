@@ -228,9 +228,14 @@ litellmConfig:
 >
 > Optional JSON body audit (default **off**): set `includeJsonBody: true` to emit `AUDIT_API_GATEWAY_REQUEST_BODY` for opted-in paths. When `includeJsonBody` is false or omitted, request bodies are never logged, even when path auditing is enabled.
 >
-> When audit logging is enabled for a given API prefix, the following events may be emitted to Lambda CloudWatch logs:
-> - `AUDIT_API_GATEWAY_REQUEST` (authorizer decision: Allow/Deny + user identity)
-> - `AUDIT_API_GATEWAY_REQUEST_BODY` (sanitized JSON request body) — only if `includeJsonBody: true`
+> When audit logging is enabled for a given API prefix, two kinds of events may appear. **They are not in the same CloudWatch log group:**
+>
+> | Event | What it contains | Where it is logged |
+> | ----- | ---------------- | ------------------ |
+> | `AUDIT_API_GATEWAY_REQUEST` | Allow/Deny, user identity, HTTP method + path (from the authorizer) | **API Gateway Lambda authorizer** log group (e.g. `…-lambda-authorizer`) |
+> | `AUDIT_API_GATEWAY_REQUEST_BODY` | Sanitized JSON body (and user context from the proxy event) | **The Lambda (or service) that handles the route** — e.g. `put_session` for `PUT /session/{id}`, or the FastAPI/Mangum app log stream for APIs served that way — only if `includeJsonBody: true` |
+>
+> API Gateway does **not** send the HTTP body to the REST authorizer, so body audit must run in the integration that receives `event["body"]`.
 >
 > Each audit line is logged as **`EVENT_TYPE` followed by a compact JSON object** (same fields as before), so the full payload appears in the log message and can be parsed in CloudWatch Logs Insights (e.g. split on the first space and `parse` the JSON).
 >

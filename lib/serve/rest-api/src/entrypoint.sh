@@ -41,6 +41,26 @@ echo "--------------------------------"
 head -20 litellm_config.yaml
 echo "--------------------------------"
 
+# If LiteLLM OTEL message_logging is enabled, OTEL console output may still omit
+# request/response payloads unless LiteLLM is run in a more verbose mode.
+# LiteLLM uses --detailed_debug for this.
+LITELLM_DETAILED_DEBUG_ARGS=""
+ENABLE_LITELLM_MESSAGE_LOGGING=$(python -c 'import yaml
+d=yaml.safe_load(open("litellm_config.yaml")) or {}
+cs=d.get("callback_settings") or {}
+otel=(cs.get("otel") if isinstance(cs, dict) else {}) or {}
+print("true" if otel.get("message_logging") else "false")
+')
+if [ "$ENABLE_LITELLM_MESSAGE_LOGGING" = "true" ]; then
+    echo "   - LiteLLM OTEL message_logging enabled; adding --detailed_debug"
+    LITELLM_DETAILED_DEBUG_ARGS="--detailed_debug"
+    # Ensure LiteLLM logs at least INFO so message/response payloads can appear in OTEL console output.
+    # (Default is WARNING when DEBUG is not set.)
+    if [ -z "${LITELLM_LOG_LEVEL:-}" ]; then
+        export LITELLM_LOG_LEVEL="INFO"
+    fi
+fi
+
 # Configure logging behavior based on DEBUG environment variable
 # Set DEBUG=true in ECS task definition to enable debug logging for all services
 if [ "${DEBUG}" = "true" ]; then
@@ -109,7 +129,7 @@ fi
 # Use --num_workers to increase parallelism for embedding requests
 LITELLM_WORKERS=${LITELLM_WORKERS:-4}
 echo "   - LiteLLM workers: $LITELLM_WORKERS"
-litellm -c litellm_config.yaml --use_prisma_db_push --num_workers "$LITELLM_WORKERS" > litellm.log 2>&1 &
+litellm -c litellm_config.yaml --use_prisma_db_push --num_workers "$LITELLM_WORKERS" $LITELLM_DETAILED_DEBUG_ARGS > litellm.log 2>&1 &
 LITELLM_PID=$!
 
 echo "   - LiteLLM PID: $LITELLM_PID"

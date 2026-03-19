@@ -30,6 +30,7 @@ export type IEnabledComponents = {
     editNumOfRagDocument: boolean;
     editChatHistoryBuffer: boolean;
     uploadRagDocs: boolean;
+    ragSelectionAvailable: boolean;
     uploadContextDocs: boolean;
     documentSummarization: boolean;
     showRagLibrary: boolean;
@@ -91,6 +92,7 @@ export const enabledComponentsSchema = z.object({
     editChatHistoryBuffer: z.boolean().default(true),
     editNumOfRagDocument: z.boolean().default(true),
     uploadRagDocs: z.boolean().default(true),
+    ragSelectionAvailable: z.boolean().default(true),
     uploadContextDocs: z.boolean().default(true),
     documentSummarization: z.boolean().default(true),
     showRagLibrary: z.boolean().default(true),

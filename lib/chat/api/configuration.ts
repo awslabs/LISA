@@ -119,6 +119,7 @@ export class ConfigurationApi extends Construct {
                                         'editChatHistoryBuffer': { 'BOOL': 'True' },
                                         'editNumOfRagDocument': { 'BOOL': 'True' },
                                         'uploadRagDocs': { 'BOOL': config.deployRag ? 'True' : 'False' },
+                                        'ragSelectionAvailable': { 'BOOL': config.deployRag ? 'True' : 'False' },
                                         'uploadContextDocs': { 'BOOL': 'True' },
                                         'documentSummarization': { 'BOOL': 'True' },
                                         'showRagLibrary': { 'BOOL': config.deployRag ? 'True' : 'False' },

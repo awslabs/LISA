@@ -65,6 +65,17 @@ def get_user_context(event: dict[str, Any]) -> tuple[str, bool, list[str]]:
     return get_username(event), is_admin(event), get_groups(event)
 
 
+def get_authorizer(event: Any) -> dict[str, Any]:
+    """Return the API Gateway Lambda authorizer context dict.
+
+    This is a small shared helper so other parts of the codebase don't need to
+    re-implement the same defensive extraction logic.
+    """
+    if not isinstance(event, dict):
+        return {}
+    return event.get("requestContext", {}).get("authorizer", {}) or {}
+
+
 def user_has_group_access(user_groups: list[str], allowed_groups: list[str]) -> bool:
     """
     Check if user has access based on group membership.

@@ -52,22 +52,28 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     http_method, request_path = get_method_and_path_from_method_arn(event.get("methodArn", ""))
     audit_area = get_matched_audit_prefix(request_path)
 
+    def _log_audit(decision: str, username: str, auth_type: str) -> None:
+        """Emit AUDIT_API_GATEWAY_REQUEST when `audit_area` is enabled."""
+        if not audit_area:
+            return
+        log_audit_event(
+            logger,
+            "AUDIT_API_GATEWAY_REQUEST",
+            {
+                "area": audit_area,
+                "action": f"{http_method} {request_path}",
+                "decision": decision,
+                "user": {"username": username, "auth_type": auth_type},
+            },
+        )
+
     id_token = get_id_token(event)
 
     if not id_token:
         logger.warning("Missing id_token in request. Denying access.")
         logger.info(f"REST API authorization handler completed with 'Deny' for resource {event['methodArn']}")
         if audit_area:
-            log_audit_event(
-                logger,
-                "AUDIT_API_GATEWAY_REQUEST",
-                {
-                    "area": audit_area,
-                    "action": f"{http_method} {request_path}",
-                    "decision": "Deny",
-                    "user": {"username": "unknown", "auth_type": "unknown"},
-                },
-            )
+            _log_audit(decision="Deny", username="unknown", auth_type="unknown")
         return generate_policy(effect="Deny", resource=event["methodArn"])
 
     client_id = os.environ.get("CLIENT_ID", "")
@@ -85,16 +91,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         allow_policy["context"] = {"username": username, "groups": groups, "authType": "management"}
         logger.debug(f"Generated policy: {allow_policy}")
         if audit_area:
-            log_audit_event(
-                logger,
-                "AUDIT_API_GATEWAY_REQUEST",
-                {
-                    "area": audit_area,
-                    "action": f"{http_method} {request_path}",
-                    "decision": "Allow",
-                    "user": {"username": username, "auth_type": "management"},
-                },
-            )
+            _log_audit(decision="Allow", username=username, auth_type="management")
         return allow_policy
 
     if os.environ.get("TOKEN_TABLE_NAME", None):
@@ -106,16 +103,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             allow_policy["context"] = {"username": username, "groups": groups, "authType": "api_token"}
             logger.debug(f"Generated policy: {allow_policy}")
             if audit_area:
-                log_audit_event(
-                    logger,
-                    "AUDIT_API_GATEWAY_REQUEST",
-                    {
-                        "area": audit_area,
-                        "action": f"{http_method} {request_path}",
-                        "decision": "Allow",
-                        "user": {"username": username, "auth_type": "api_token"},
-                    },
-                )
+                _log_audit(decision="Allow", username=username, auth_type="api_token")
             return allow_policy
 
     if jwt_data := id_token_is_valid(id_token=id_token, client_id=client_id, authority=authority):
@@ -130,16 +118,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         if not is_admin_user and not has_app_access:
             logger.info(f"User {username} denied access - no valid authorization found")
             if audit_area:
-                log_audit_event(
-                    logger,
-                    "AUDIT_API_GATEWAY_REQUEST",
-                    {
-                        "area": audit_area,
-                        "action": f"{http_method} {request_path}",
-                        "decision": "Deny",
-                        "user": {"username": username, "auth_type": "jwt"},
-                    },
-                )
+                _log_audit(decision="Deny", username=username, auth_type="jwt")
             return deny_policy
 
         groups = json.dumps(user_groups)
@@ -149,30 +128,12 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         logger.debug(f"Generated policy: {allow_policy}")
         logger.info(f"REST API authorization handler completed with 'Allow' for resource {event['methodArn']}")
         if audit_area:
-            log_audit_event(
-                logger,
-                "AUDIT_API_GATEWAY_REQUEST",
-                {
-                    "area": audit_area,
-                    "action": f"{http_method} {request_path}",
-                    "decision": "Allow",
-                    "user": {"username": username, "auth_type": "jwt"},
-                },
-            )
+            _log_audit(decision="Allow", username=username, auth_type="jwt")
         return allow_policy
 
     logger.info(f"REST API authorization handler completed with 'Deny' for resource {event['methodArn']}")
     if audit_area:
-        log_audit_event(
-            logger,
-            "AUDIT_API_GATEWAY_REQUEST",
-            {
-                "area": audit_area,
-                "action": f"{http_method} {request_path}",
-                "decision": "Deny",
-                "user": {"username": "unknown", "auth_type": "unknown"},
-            },
-        )
+        _log_audit(decision="Deny", username="unknown", auth_type="unknown")
     return deny_policy
 
 

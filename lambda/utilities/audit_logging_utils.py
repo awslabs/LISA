@@ -39,14 +39,12 @@ _SENSITIVE_KEYS = {
     "secret",
     "apikey",
     "api_key",
-    "apiKey",
     "accesskey",
-    "accessKey",
     "privatekey",
-    "privateKey",
 }
 
-_SENSITIVE_KEYS_LOWER = {k.lower() for k in _SENSITIVE_KEYS}
+# Since `_SENSITIVE_KEYS` is already stored in lowercase, no additional `.lower()` pass is needed.
+_SENSITIVE_KEYS_LOWER = _SENSITIVE_KEYS
 
 
 def _env_bool(name: str) -> bool:

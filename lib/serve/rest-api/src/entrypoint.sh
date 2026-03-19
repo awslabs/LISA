@@ -46,7 +46,6 @@ echo "--------------------------------"
 # LiteLLM uses --detailed_debug for this.
 LITELLM_DETAILED_DEBUG_ARGS=""
 ENABLE_LITELLM_MESSAGE_LOGGING=$(python -c 'import yaml
-import sys
 d=yaml.safe_load(open("litellm_config.yaml")) or {}
 cs=d.get("callback_settings") or {}
 otel=(cs.get("otel") if isinstance(cs, dict) else {}) or {}

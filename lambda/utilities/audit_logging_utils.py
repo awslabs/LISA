@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import os
+from functools import lru_cache
 from typing import Any, Optional
 
 
@@ -65,8 +66,8 @@ def audit_include_json_body() -> bool:
     return _env_bool("LISA_AUDIT_INCLUDE_JSON_BODY")
 
 
-def enabled_path_prefixes() -> list[str]:
-    raw = os.getenv("LISA_AUDIT_ENABLED_PATH_PREFIXES", "")
+@lru_cache(maxsize=None)
+def _parse_enabled_path_prefixes(raw: str) -> list[str]:
     if not raw:
         return []
     prefixes = [p.strip() for p in raw.split(",") if p.strip()]
@@ -78,6 +79,11 @@ def enabled_path_prefixes() -> list[str]:
         if p:
             normalized.append(p)
     return normalized
+
+
+def enabled_path_prefixes() -> list[str]:
+    raw = os.getenv("LISA_AUDIT_ENABLED_PATH_PREFIXES", "")
+    return _parse_enabled_path_prefixes(raw)
 
 
 def normalize_request_path(path: str) -> str:

@@ -13,11 +13,14 @@
 #   limitations under the License.
 
 import json
+import logging
 import os
+from io import StringIO
 
 from utilities.audit_logging_utils import (
     audit_include_json_body,
     get_matched_audit_prefix,
+    log_audit_event,
     sanitize_json_body_for_audit,
 )
 
@@ -39,6 +42,36 @@ def test_audit_opt_in_prefix_matching(monkeypatch):
 
     # Prefix boundary check: should not match "/sessionfoo"
     assert get_matched_audit_prefix("/sessionfoo") is None
+
+
+def test_log_audit_event_puts_json_in_message():
+    """CloudWatch only shows the log message; payload must be serialized there."""
+    stream = StringIO()
+    handler = logging.StreamHandler(stream)
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    lg = logging.getLogger("audit_log_audit_event_test")
+    lg.handlers.clear()
+    lg.addHandler(handler)
+    lg.setLevel(logging.INFO)
+    lg.propagate = False
+
+    log_audit_event(
+        lg,
+        "AUDIT_API_GATEWAY_REQUEST",
+        {
+            "area": "/session",
+            "action": "PUT /session/x",
+            "decision": "Allow",
+            "user": {"username": "alice", "auth_type": "jwt"},
+        },
+    )
+    line = stream.getvalue().strip()
+    assert line.startswith("AUDIT_API_GATEWAY_REQUEST ")
+    payload = json.loads(line.removeprefix("AUDIT_API_GATEWAY_REQUEST ").strip())
+    assert payload["event_type"] == "AUDIT_API_GATEWAY_REQUEST"
+    assert payload["area"] == "/session"
+    assert payload["decision"] == "Allow"
+    assert payload["user"]["username"] == "alice"
 
 
 def test_audit_include_json_body_default_false(monkeypatch):

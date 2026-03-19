@@ -25,6 +25,7 @@ Strict opt-in behavior:
 from __future__ import annotations
 
 import json
+import logging
 import os
 from functools import lru_cache
 from typing import Any
@@ -78,6 +79,28 @@ def audit_include_json_body() -> bool:
     CDK sets this only when audit logging is enabled and includeJsonBody is true.
     """
     return _env_bool("LISA_AUDIT_INCLUDE_JSON_BODY")
+
+
+def log_audit_event(logger: logging.Logger, event_type: str, payload: dict[str, Any]) -> None:
+    """
+    Emit audit data so it appears in CloudWatch log streams.
+
+    Lambda's configured formatter (see ``setup_root_logging``) only prints the log
+    ``message`` string, not ``logging`` ``extra`` fields. This helper appends a
+    compact JSON object after the event type for search and Logs Insights (e.g.
+    parse the substring after the first space as JSON).
+    """
+    record: dict[str, Any] = {"event_type": event_type, **payload}
+    try:
+        serialized = json.dumps(record, default=str, separators=(",", ":"), ensure_ascii=False)
+    except (TypeError, ValueError):
+        serialized = json.dumps(
+            {"event_type": event_type, "serialization_error": True},
+            default=str,
+            separators=(",", ":"),
+        )
+    # Use %-style args so JSON or event_type cannot break formatting if they contain "%".
+    logger.info("%s %s", event_type, serialized)
 
 
 @lru_cache(maxsize=None)

@@ -29,6 +29,7 @@ from cachetools import cached, TTLCache
 from utilities.audit_logging_utils import (
     get_matched_audit_prefix,
     get_method_and_path_from_method_arn,
+    log_audit_event,
 )
 from utilities.auth_provider import get_authorization_provider
 from utilities.common_functions import authorization_wrapper, get_id_token, get_property_path, retry_config
@@ -57,10 +58,10 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         logger.warning("Missing id_token in request. Denying access.")
         logger.info(f"REST API authorization handler completed with 'Deny' for resource {event['methodArn']}")
         if audit_area:
-            logger.info(
+            log_audit_event(
+                logger,
                 "AUDIT_API_GATEWAY_REQUEST",
-                extra={
-                    "event_type": "AUDIT_API_GATEWAY_REQUEST",
+                {
                     "area": audit_area,
                     "action": f"{http_method} {request_path}",
                     "decision": "Deny",
@@ -84,10 +85,10 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         allow_policy["context"] = {"username": username, "groups": groups, "authType": "management"}
         logger.debug(f"Generated policy: {allow_policy}")
         if audit_area:
-            logger.info(
+            log_audit_event(
+                logger,
                 "AUDIT_API_GATEWAY_REQUEST",
-                extra={
-                    "event_type": "AUDIT_API_GATEWAY_REQUEST",
+                {
                     "area": audit_area,
                     "action": f"{http_method} {request_path}",
                     "decision": "Allow",
@@ -105,10 +106,10 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             allow_policy["context"] = {"username": username, "groups": groups, "authType": "api_token"}
             logger.debug(f"Generated policy: {allow_policy}")
             if audit_area:
-                logger.info(
+                log_audit_event(
+                    logger,
                     "AUDIT_API_GATEWAY_REQUEST",
-                    extra={
-                        "event_type": "AUDIT_API_GATEWAY_REQUEST",
+                    {
                         "area": audit_area,
                         "action": f"{http_method} {request_path}",
                         "decision": "Allow",
@@ -129,10 +130,10 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         if not is_admin_user and not has_app_access:
             logger.info(f"User {username} denied access - no valid authorization found")
             if audit_area:
-                logger.info(
+                log_audit_event(
+                    logger,
                     "AUDIT_API_GATEWAY_REQUEST",
-                    extra={
-                        "event_type": "AUDIT_API_GATEWAY_REQUEST",
+                    {
                         "area": audit_area,
                         "action": f"{http_method} {request_path}",
                         "decision": "Deny",
@@ -148,10 +149,10 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         logger.debug(f"Generated policy: {allow_policy}")
         logger.info(f"REST API authorization handler completed with 'Allow' for resource {event['methodArn']}")
         if audit_area:
-            logger.info(
+            log_audit_event(
+                logger,
                 "AUDIT_API_GATEWAY_REQUEST",
-                extra={
-                    "event_type": "AUDIT_API_GATEWAY_REQUEST",
+                {
                     "area": audit_area,
                     "action": f"{http_method} {request_path}",
                     "decision": "Allow",
@@ -162,10 +163,10 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
     logger.info(f"REST API authorization handler completed with 'Deny' for resource {event['methodArn']}")
     if audit_area:
-        logger.info(
+        log_audit_event(
+            logger,
             "AUDIT_API_GATEWAY_REQUEST",
-            extra={
-                "event_type": "AUDIT_API_GATEWAY_REQUEST",
+            {
                 "area": audit_area,
                 "action": f"{http_method} {request_path}",
                 "decision": "Deny",

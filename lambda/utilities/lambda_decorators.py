@@ -23,6 +23,7 @@ from typing import Any, overload
 from utilities.audit_logging_utils import (
     audit_include_json_body,
     get_matched_audit_prefix,
+    log_audit_event,
     sanitize_json_body_for_audit,
 )
 from utilities.event_parser import sanitize_event_for_logging
@@ -126,10 +127,10 @@ def api_wrapper(
                     sanitized_body = sanitize_json_body_for_audit(body)
                     authorizer = event.get("requestContext", {}).get("authorizer", {}) or {}
 
-                    logger.info(
+                    log_audit_event(
+                        logger,
                         "AUDIT_API_GATEWAY_REQUEST_BODY",
-                        extra={
-                            "event_type": "AUDIT_API_GATEWAY_REQUEST_BODY",
+                        {
                             "area": audit_prefix,
                             "action": f"{http_method} {path}",
                             "user": {

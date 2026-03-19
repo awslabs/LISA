@@ -232,6 +232,8 @@ litellmConfig:
 > - `AUDIT_API_GATEWAY_REQUEST` (authorizer decision: Allow/Deny + user identity)
 > - `AUDIT_API_GATEWAY_REQUEST_BODY` (sanitized JSON request body) — only if `includeJsonBody: true`
 >
+> Each audit line is logged as **`EVENT_TYPE` followed by a compact JSON object** (same fields as before), so the full payload appears in the log message and can be parsed in CloudWatch Logs Insights (e.g. split on the first space and `parse` the JSON).
+>
 > Privacy note: enabling JSON body audit logging may include sensitive user data; ensure your organization’s compliance requirements are met.
 
 ### Step 7: Set Up SSL Certificates (Development Only)

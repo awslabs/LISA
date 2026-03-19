@@ -24,6 +24,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, Request, RequestRespon
 from utilities.audit_logging_utils import (
     audit_include_json_body,
     get_matched_audit_prefix,
+    log_audit_event,
     sanitize_json_body_for_audit,
 )
 from utilities.header_sanitizer import sanitize_headers
@@ -87,10 +88,10 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 body_bytes = b""
             sanitized_body = sanitize_json_body_for_audit(body_bytes)
             if sanitized_body:
-                logger.info(
+                log_audit_event(
+                    logger,
                     "AUDIT_API_GATEWAY_REQUEST_BODY",
-                    extra={
-                        "event_type": "AUDIT_API_GATEWAY_REQUEST_BODY",
+                    {
                         "area": audit_prefix,
                         "action": f"{request.method} {full_path}",
                         "user": {

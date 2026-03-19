@@ -14,7 +14,7 @@
   limitations under the License.
 */
 import { CustomResource, Duration, StackProps } from 'aws-cdk-lib';
-import { Domain, EngineVersion, IDomain } from 'aws-cdk-lib/aws-opensearchservice';
+import { Domain, EngineVersion, IDomain, TLSSecurityPolicy } from 'aws-cdk-lib/aws-opensearchservice';
 import { Construct } from 'constructs';
 import { RagRepositoryDeploymentConfig, RagRepositoryType,PartialConfig } from '../../../lib/schema';
 import { SecurityGroup, Subnet, SubnetSelection, Vpc } from 'aws-cdk-lib/aws-ec2';
@@ -26,7 +26,6 @@ import { PipelineStack } from './pipeline-stack';
 import { Code, Function } from 'aws-cdk-lib/aws-lambda';
 import { Provider } from 'aws-cdk-lib/custom-resources';
 import { getPythonRuntime } from '../../../lib/api-base/utils';
-
 type OpenSearchVectorStoreStackProps = StackProps & {
     config: PartialConfig
     ragConfig: RagRepositoryDeploymentConfig,
@@ -37,7 +36,7 @@ export class OpenSearchVectorStoreStack extends PipelineStack {
         super(scope, id, props);
 
         const { config, ragConfig } = props;
-        const { vpcId, deploymentName, deploymentPrefix, deploymentStage, subnets} = config;
+        const { vpcId, deploymentName, deploymentPrefix, deploymentStage, subnets, region} = config;
         const { repositoryId, opensearchConfig } = ragConfig;
 
         // Create service-linked role conditionally - only if it doesn't already exist
@@ -173,8 +172,10 @@ def handler(event, context):
 
             openSearchDomain = new Domain(this, createCdkId([deploymentName!, deploymentStage!, 'RagRepository', repositoryId]), {
                 domainName: ['lisa-rag', repositoryId].join('-'),
-                // 2.9 is the latest available in ADC regions as of 1/11/24
-                version: EngineVersion.OPENSEARCH_2_9,
+                // us-isof requires a different FIPS TLS policy
+                tlsSecurityPolicy: region!.includes('isof') ? 'Policy-Min-TLS-1-2-RFC9151-FIPS-2024-08' as TLSSecurityPolicy : TLSSecurityPolicy.TLS_1_2_PFS,
+                // latest available in ADC regions as of 3/20/26
+                version: EngineVersion.OPENSEARCH_2_19,
                 enableVersionUpgrade: true,
                 vpc: vpc,
                 ...(subnetSelection && {vpcSubnets: [subnetSelection]}),

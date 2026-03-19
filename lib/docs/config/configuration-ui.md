@@ -7,12 +7,14 @@ The Configuration UI is an Administrator-only page accessible via `Administratio
 The Chat Features section contains toggles that control which capabilities are available to users in the Chat UI. Features are organized into the following groups:
 
 ### RAG
+
 | Toggle | Description |
 |--------|-------------|
 | Document upload from Chat | Allows users to upload documents directly from the chat interface for RAG queries. See [RAG Repository](/config/repositories) for collection setup. |
 | Edit number of referenced documents | Lets users adjust how many RAG documents are referenced during inference. |
 
 ### Library
+
 | Toggle | Description |
 |--------|-------------|
 | Model Library | Exposes the [Model Library](/user/model-library) page where users can browse available models. |
@@ -20,12 +22,14 @@ The Chat Features section contains toggles that control which capabilities are a
 | Prompt Template Library | Exposes the Prompt Template Library for creating and managing reusable prompt templates. |
 
 ### In-Context
+
 | Toggle | Description |
 |--------|-------------|
 | Document upload to context | Allows users to upload documents directly into the conversation context. |
 | Document Summarization | Enables document summarization capabilities within chat sessions. |
 
 ### Advanced
+
 | Toggle | Description |
 |--------|-------------|
 | Edit model arguments | Allows users to modify model inference parameters (temperature, top_p, etc.). |
@@ -38,18 +42,21 @@ The Chat Features section contains toggles that control which capabilities are a
 | Chat Assistant Stacks | Enables the [Chat Assistant Stacks](/config/chat-assistant-stacks) feature for pre-configured assistant workflows. |
 
 ### MCP
+
 | Toggle | Description |
 |--------|-------------|
 | MCP Server Connections | Enables users to configure [MCP server connections](/config/mcp). See also [LISA MCP: Self-host servers](/config/hosted-mcp). |
 | MCP Workbench | Provides an experimentation workbench for MCP tools. See [MCP Workbench](/config/mcp-workbench). Requires MCP Server Connections to be enabled first. |
+| MCP AWS Sessions | Enables the [AWS Sessions](/config/mcp#aws-sessions) feature, allowing users to connect AWS credentials per chat session for use by MCP tools. Requires MCP Server Connections to be enabled first. |
 
 ### API Tokens
+
 | Toggle | Description |
 |--------|-------------|
 | User managed API tokens | Allows users to create and manage their own API tokens for programmatic access to LISA Serve. See [API Token Management](/config/api-tokens). |
 
 > [!NOTE]
-> Some toggles have dependencies. For example, MCP Workbench requires MCP Server Connections to be enabled. Disabling a prerequisite toggle will automatically disable its dependents.
+> Some toggles have dependencies. For example, MCP Workbench and AWS Sessions require MCP Server Connections to be enabled. Disabling a prerequisite toggle will automatically disable its dependents.
 
 ## System Banner
 

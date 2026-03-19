@@ -48,7 +48,8 @@ const advancedOptions = {
 
 const mcpOptions = {
     mcpConnections: 'MCP Server Connections',
-    showMcpWorkbench: 'MCP Workbench'
+    showMcpWorkbench: 'MCP Workbench',
+    awsSessions: 'MCP AWS Sessions'
 };
 
 const apiTokenOptions = {
@@ -75,7 +76,8 @@ const dependencies: DependencyMap<{
     apiTokenOptions: typeof apiTokenOptions;
 }> = {
     showMcpWorkbench: { prerequisites: ['mcpConnections'] },
-    mcpConnections: { dependents: ['showMcpWorkbench'] }
+    awsSessions: { prerequisites: ['mcpConnections'] },
+    mcpConnections: { dependents: ['showMcpWorkbench', 'awsSessions'] }
 };
 
 const configurableOperations = [{

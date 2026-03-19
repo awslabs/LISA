@@ -127,34 +127,18 @@ export abstract class PipelineStack extends Stack {
         };
 
         // Add prefix filter if specified and not root
-        // Add object key prefix filter if specified in the configuration
-        // Add prefix filter if not root
+        // Note: EventBridge array filters use OR logic, so we only filter by prefix here.
+        // Metadata file filtering (.metadata.json) is handled by the Lambda function
+        // to avoid the OR logic issue where 'anything-but' suffix would match everything.
         if (pipelineConfig.s3Prefix !== '') {
             detail.object = {
-                key: [
-                    {
-                        prefix: pipelineConfig.s3Prefix
-                    },
-                    {
-                        // Exclude metadata files from triggering events
-                        'anything-but': {
-                            suffix: '.metadata.json'
-                        }
-                    }
-                ]
-            };
-        } else {
-            // No prefix, but still exclude metadata files
-            detail.object = {
-                key: [
-                    {
-                        'anything-but': {
-                            suffix: '.metadata.json'
-                        }
-                    }
-                ]
+                key: [{
+                    prefix: pipelineConfig.s3Prefix
+                }]
             };
         }
+        // If no prefix (root bucket), don't add any key filter - all objects in bucket will match
+        // The Lambda handler filters out metadata files appropriately
 
         // Define event pattern for S3 Object Created and Modified events
         const eventPattern: EventPattern = {

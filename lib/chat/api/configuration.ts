@@ -124,6 +124,7 @@ export class ConfigurationApi extends Construct {
                                         'showMcpWorkbench': { 'BOOL': config.deployMcpWorkbench ? 'True' : 'False' },
                                         'showPromptTemplateLibrary': { 'BOOL': 'True' },
                                         'mcpConnections': { 'BOOL': config.deployMcp ? 'True' : 'False' },
+                                        'awsSessions': { 'BOOL': 'False' },
                                         'modelLibrary': { 'BOOL': 'True' },
                                         'encryptSession': { 'BOOL': 'False' },
                                         'chatAssistantStacks': { 'BOOL': 'False' },

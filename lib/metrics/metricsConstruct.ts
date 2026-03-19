@@ -33,6 +33,7 @@ import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../
 import { BaseProps } from '../schema';
 import { createLambdaRole } from '../core/utils';
 import { Vpc } from '../networking/vpc';
+import { getAuditLoggingEnv } from '../api-base/auditEnv';
 import { LAMBDA_PATH } from '../util';
 import { Duration, RemovalPolicy } from 'aws-cdk-lib';
 
@@ -309,7 +310,8 @@ export class MetricsConstruct extends Construct {
         // ECS Model Health is in a separate dashboard — see modelHealthDashboard.ts
 
         const env = {
-            USAGE_METRICS_TABLE_NAME: usageMetricsTable.tableName
+            USAGE_METRICS_TABLE_NAME: usageMetricsTable.tableName,
+            ...getAuditLoggingEnv(config),
         };
 
         // Create metrics API endpoints

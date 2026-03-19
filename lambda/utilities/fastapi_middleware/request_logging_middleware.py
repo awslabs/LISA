@@ -16,10 +16,18 @@
 
 import json
 import logging
+import os
 import time
 from typing import Any
 
 from starlette.middleware.base import BaseHTTPMiddleware, Request, RequestResponseEndpoint, Response
+from utilities.audit_logging_utils import (
+    audit_include_json_body,
+    get_matched_audit_prefix,
+    log_audit_event,
+    sanitize_json_body_for_audit,
+)
+from utilities.auth import get_authorizer
 from utilities.header_sanitizer import sanitize_headers
 
 logger = logging.getLogger(__name__)
@@ -62,6 +70,37 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         # Build sanitized request data for logging
         log_data = self._build_log_data(request, event)
 
+        # Optional audit payload logging (strict opt-in by API Gateway path prefix).
+        # For Mangum apps, the FastAPI route path may not include the API Gateway base path,
+        # so we allow the deployer to provide it via LISA_AUDIT_API_GATEWAY_BASE_PATH.
+        base_path = os.getenv("LISA_AUDIT_API_GATEWAY_BASE_PATH", "")
+        full_path = request.url.path
+        if base_path:
+            full_path = f"{base_path.rstrip('/')}{request.url.path}"
+
+        audit_prefix = get_matched_audit_prefix(full_path)
+        if audit_prefix and audit_include_json_body():
+            authorizer = get_authorizer(event)
+            body_bytes = await request.body()
+            if not body_bytes:
+                # No payload to audit.
+                body_bytes = b""
+            sanitized_body = sanitize_json_body_for_audit(body_bytes)
+            if sanitized_body:
+                log_audit_event(
+                    logger,
+                    "AUDIT_API_GATEWAY_REQUEST_BODY",
+                    {
+                        "area": audit_prefix,
+                        "action": f"{request.method} {full_path}",
+                        "user": {
+                            "username": authorizer.get("username", "unknown"),
+                            "auth_type": authorizer.get("authType", "unknown"),
+                        },
+                        "body": sanitized_body,
+                    },
+                )
+
         # Log the incoming request
         logger.info(
             f"Request: {request.method} {request.url.path}",
@@ -100,8 +139,8 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             Dictionary with sanitized request data for logging
         """
         # Extract request context
-        request_context = event.get("requestContext", {})
-        authorizer = request_context.get("authorizer", {})
+        request_context = event.get("requestContext", {}) if isinstance(event, dict) else {}
+        authorizer = get_authorizer(event)
         identity = request_context.get("identity", {})
 
         # Sanitize headers (redact auth, replace user-controlled headers)

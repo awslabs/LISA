@@ -21,6 +21,7 @@ import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
 import { createLambdaRole } from '../../core/utils';
+import { getAuditLoggingEnv } from '../../api-base/auditEnv';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { Vpc } from '../../networking/vpc';
@@ -75,6 +76,7 @@ export class ChatAssistantStacksApi extends Construct {
         const environment = {
             CHAT_ASSISTANT_STACKS_TABLE_NAME: this.stacksTable.tableName,
             ADMIN_GROUP: config.authConfig?.adminGroup || '',
+            ...getAuditLoggingEnv(config),
         };
 
         const apis: PythonLambdaFunction[] = [

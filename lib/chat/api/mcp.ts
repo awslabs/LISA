@@ -25,6 +25,7 @@ import { Construct } from 'constructs';
 import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
 import { BaseProps } from '../../schema';
 import { createLambdaRole } from '../../core/utils';
+import { getAuditLoggingEnv } from '../../api-base/auditEnv';
 import { Vpc } from '../../networking/vpc';
 import { LAMBDA_PATH } from '../../util';
 import { RemovalPolicy } from 'aws-cdk-lib';
@@ -116,6 +117,7 @@ export class McpApi extends Construct {
             ADMIN_GROUP: config.authConfig?.adminGroup || '',
             MCP_SERVERS_TABLE_NAME: mcpServersTable.tableName,
             MCP_SERVERS_BY_OWNER_INDEX_NAME: byOwnerIndex,
+            ...getAuditLoggingEnv(config),
         };
 
         // Create API Lambda functions

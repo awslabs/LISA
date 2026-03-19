@@ -37,6 +37,7 @@ from utils.guardrails import (
     is_guardrail_violation,
 )
 from utils.metrics import publish_metrics_event
+from utils.request_utils import get_lisa_end_user_id
 from utils.route_utils import is_anthropic_route, is_chat_route, is_lisa_public_route, is_openai_route
 
 # Local LiteLLM installation URL. By default, LiteLLM runs on port 4000. Change the port here if the
@@ -419,6 +420,15 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     is_video_endpoint = "video" in api_path.lower()
     is_image_endpoint = "image" in api_path.lower()
 
+    # LiteLLM uses a well-known header to attribute requests to an end-user.
+    # We set it from the human-readable username derived from JWT/session.
+    lisa_username = get_lisa_end_user_id(
+        jwt_data=jwt_data,
+        state_username=getattr(request.state, "username", None),
+    )
+    if lisa_username:
+        headers["x-litellm-end-user-id"] = lisa_username
+
     # Handle multipart/form-data requests (video generation with image references, image edits)
     if is_multipart and (is_video_endpoint or is_image_endpoint):
         try:
@@ -443,6 +453,9 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
 
             # Create new headers without Content-Type (requests library will set it with correct boundary)
             forward_headers = {"Authorization": f"Bearer {LITELLM_KEY}"}
+            # Preserve end-user attribution header for multipart requests if it was set above.
+            if "x-litellm-end-user-id" in headers:
+                forward_headers["x-litellm-end-user-id"] = headers["x-litellm-end-user-id"]
 
             # Forward multipart request to LiteLLM
             response = requests_request(
@@ -468,6 +481,11 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     except json.JSONDecodeError as e:
         logger.error(f"Invalid JSON in request body: {e}")
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid JSON in request body")
+
+    # If the caller didn't already set OpenAI's "user" identifier, populate it
+    # with the human-readable LISA username so LiteLLM can surface it in logs.
+    if isinstance(params, dict) and lisa_username and (not params.get("user")):
+        params["user"] = lisa_username
 
     # Get model info from LiteLLM to determine the actual model provider path
     model_id = params.get("model")

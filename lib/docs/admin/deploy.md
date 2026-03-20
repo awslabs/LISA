@@ -23,6 +23,21 @@
 
 ## Deployment Steps
 
+
+LISA uses npm scripts for build and deployment. Key commands:
+
+| Task | Command |
+|------|---------|
+| Install Python & TypeScript deps | `npm run install:python` then `npm install` |
+| Stage model weights | `npm run model:check` |
+| Bootstrap CDK | `npm run bootstrap` |
+| Deploy (full pipeline) | `npm run deploy` |
+| Build archive (ADC pre-build) | `npm run build:archive` |
+| List CDK stacks | `npm run cdk:list` |
+
+The `npm run deploy` script runs the full pipeline: install dependencies, Docker checks, ECR login, model verification, build, and CDK deploy. Use `STACK=<stack-name> npm run deploy` to deploy specific stacks.
+
+
 ### Step 1: Clone the Repository
 
 Ensure you're working with the latest stable release of LISA:
@@ -55,7 +70,9 @@ export CDK_DOCKER=finch # Optional, only required if not using docker as contain
 
 ### Step 3: Set Up Python and TypeScript Environments
 
-Install system dependencies and set up both Python and TypeScript environments:
+
+- ***NOTE** The code block below has two tabs for Debian & EL/AL2*
+Install system dependencies and set up both Python and TypeScript environments using the project's npm scripts:
 
 * ***NOTE** The code block below has two tabs for Debian & EL/AL2*
 
@@ -67,19 +84,16 @@ Install system dependencies and set up both Python and TypeScript environments:
 sudo apt-get update
 sudo apt-get install -y jq
 
-# Install Python packages
+# Install Python packages (for model staging)
 pip3 install --user --upgrade pip
 pip3 install yq huggingface_hub s5cmd
 
-# Set up Python environment
-make createPythonEnvironment && source .venv/bin/activate
+# Create and activate Python virtual environment
+python3 -m venv .venv && source .venv/bin/activate
 
-# Install Python Requirements
-make installPythonRequirements
-
-# Set up TypeScript environment
-make createTypeScriptEnvironment
-make installTypeScriptRequirements
+# Install Python and TypeScript dependencies via npm scripts
+npm run install:python
+npm install
 ```
 
 == EL / AL2
@@ -91,20 +105,18 @@ sudo yum update -y && yum install -y git jq yq
 # Install runtimes (use mise for installation - https://mise.jdx.dev/installing-mise.html)
 mise use --global python@3.13 node@24
 
-# Install Python packages
+# Install Python packages (for model staging)
 pip3 install --user --upgrade pip
 pip3 install yq huggingface_hub s5cmd
 
-# Set up Python environment
-make createPythonEnvironment && source .venv/bin/activate
+# Create and activate Python virtual environment
+python3 -m venv .venv && source .venv/bin/activate
 
-# Install Python Requirements
-make installPythonRequirements
-
-# Set up TypeScript environment
-make createTypeScriptEnvironment
-make installTypeScriptRequirements
+# Install Python and TypeScript dependencies via npm scripts
+npm run install:python
+npm install
 ```
+
 
 == MacOS
 
@@ -130,25 +142,20 @@ which node
 python --version
 node --version
 
-# 6) Create project Python environment
-make createPythonEnvironment
 
-# 7) Activate venv
+# 5) Create and activate Python virtual environment
+python3 -m venv .venv
 source .venv/bin/activate
 
-# 8) Upgrade pip inside venv
+# 6) Upgrade pip and install model-staging tools
 python -m pip install --upgrade pip
-
-# 9) Install any extra Python packages inside venv if needed
 python -m pip install huggingface_hub yq
 
-# 10) Install repo requirements
-make installPythonRequirements
-
-# 11) Set up TypeScript side
-make createTypeScriptEnvironment
-make installTypeScriptRequirements
+# 7) Install Python and TypeScript dependencies via npm scripts
+npm run install:python
+npm install
 ```
+
 
 :::
 
@@ -347,7 +354,7 @@ s3://<bucket-name>/mistralai/Mistral-7B-Instruct-v0.2/<file-2>
 To automatically download and stage the model weights defined by the `ecsModels` parameter in your `config-custom.yaml`, use the following command:
 
 ```bash
-make modelCheck
+npm run model:check
 ```
 
 This command verifies if the model's weights are already present in your S3 bucket. If not, it downloads the weights, converts them to the required format, and uploads them to your S3 bucket. Ensure adequate disk space is available for this process.
@@ -358,7 +365,10 @@ This command verifies if the model's weights are already present in your S3 buck
 > section of the [Chatbot](/user/chat), this parameter also
 > dictated which models were deployed.
 > **NOTE**
-> For air-gapped systems, before running `make modelCheck` you should manually download model artifacts and place them in a `models` directory at the project root, using the structure: `models/<model-id>`.
+
+
+> For air-gapped systems, before running `npm run model:check` you should manually download model artifacts and place them in a `models` directory at the project root, using the structure: `models/<model-id>`.
+
 > **NOTE**
 > This process is primarily designed and tested for HuggingFace models. For other model formats, you will need to manually create and upload safetensors.
 > **NOTE**
@@ -369,7 +379,7 @@ This command verifies if the model's weights are already present in your S3 buck
 If you haven't bootstrapped your AWS account for CDK:
 
 ```bash
-make bootstrap
+npm run bootstrap
 ```
 
 ## ADC Region Deployment Tips
@@ -391,12 +401,15 @@ This approach builds all necessary components in a commercial region with full i
 2. Build all components:
 
    ```bash
-   make buildArchive
+   npm run build:archive
+   ./bin/build-assets --include-images
    ```
 
    This generates:
-   * Lambda function zip files in `./dist/layers/*.zip`
-   * Docker images exported as `./dist/images/*.tar` files
+
+
+* Lambda function zip files in `./dist/layers/*.zip` (from `build:archive`)
+   * Docker images exported as `./dist/images/*.tar` files (from `build-assets --include-images`)
 
 #### Step 2: Transfer to ADC Region
 
@@ -550,25 +563,25 @@ Once your configuration is complete:
 1. Bootstrap CDK (if not already done):
 
    ```bash
-   make bootstrap
+   npm run bootstrap
    ```
 
 2. Deploy LISA:
 
    ```bash
-   make deploy
+   npm run deploy
    ```
 
 3. Deploy specific stacks if needed:
 
    ```bash
-   make deploy STACK=LisaServe
+   STACK=LisaServe npm run deploy
    ```
 
 4. List available stacks:
 
    ```bash
-   make listStacks
+   npm run cdk:list
    ```
 
 ### Testing Your Deployment

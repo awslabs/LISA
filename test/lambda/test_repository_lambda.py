@@ -260,7 +260,21 @@ patch("utilities.common_functions.retry_config", retry_config).start()
 patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()
 patch("utilities.common_functions.get_id_token", mock_common.get_id_token).start()
 patch("utilities.common_functions.get_cert_path", mock_common.get_cert_path).start()
-patch("utilities.auth.admin_only", mock_admin_only).start()
+_admin_only_patch = patch("utilities.auth.admin_only", mock_admin_only)
+_admin_only_patch.start()
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _admin_only_patch_fixture():
+    """Ensure admin_only patch is stopped when this module's tests complete.
+
+    The patch must be started at import time so repository.lambda_functions
+    imports with the mocked decorator. This fixture cleans it up to avoid
+    leaking into other test modules and order-dependent failures.
+    """
+    yield
+    _admin_only_patch.stop()
+
 
 # Note: boto3.client will be patched per-test to avoid global conflicts
 # Global boto3.client patch removed to prevent interference with other test modules

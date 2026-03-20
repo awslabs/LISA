@@ -135,6 +135,7 @@ class TestRepositoryUpdateMetadataPreservation:
         request_body = {"bedrockKnowledgeBaseConfig": kb_config.model_dump(mode="json")}
 
         event = {
+            "httpMethod": "PUT",
             "pathParameters": {"repositoryId": repository_id},
             "body": json.dumps(request_body),
             "requestContext": {"authorizer": {"username": "admin", "groups": ["admin"]}},
@@ -207,6 +208,7 @@ class TestRepositoryUpdateMetadataPreservation:
         }
 
         event = {
+            "httpMethod": "PUT",
             "pathParameters": {"repositoryId": repository_id},
             "body": json.dumps(request_body),
             "requestContext": {"authorizer": {"username": "admin", "groups": ["admin"]}},
@@ -264,6 +266,7 @@ class TestRepositoryUpdateMetadataPreservation:
         }
 
         event = {
+            "httpMethod": "PUT",
             "pathParameters": {"repositoryId": repository_id},
             "body": json.dumps(request_body),
             "requestContext": {"authorizer": {"username": "admin", "groups": ["admin"]}},
@@ -316,6 +319,7 @@ class TestRepositoryUpdateMetadataPreservation:
         }
 
         event = {
+            "httpMethod": "PUT",
             "pathParameters": {"repositoryId": repository_id},
             "body": json.dumps(request_body),
             "requestContext": {"authorizer": {"username": "admin", "groups": ["admin"]}},
@@ -365,6 +369,7 @@ class TestRepositoryUpdateMetadataPreservation:
         request_body = {"bedrockKnowledgeBaseConfig": kb_config.model_dump(mode="json")}
 
         event = {
+            "httpMethod": "PUT",
             "pathParameters": {"repositoryId": repository_id},
             "body": json.dumps(request_body),
             "requestContext": {"authorizer": {"username": "admin", "groups": ["admin"]}},

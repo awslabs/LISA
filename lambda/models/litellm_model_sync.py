@@ -151,24 +151,18 @@ def sync_model_to_litellm(
         return {"model_id": model_id, "status": "failed", "error": str(e)}
 
 
-def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """Lambda handler to sync all models from DynamoDB to LiteLLM.
+PHYSICAL_RESOURCE_ID = "LiteLLMModelSync"
 
-    This function:
-    1. Scans the Models DynamoDB table for all models
-    2. Filters for models that are IN_SERVICE
-    3. Gets the list of existing models in LiteLLM
-    4. Adds any missing models to LiteLLM
+
+def _run_sync(force: bool = False) -> dict[str, Any]:
+    """Run the model sync logic.
 
     Args:
-        event: Lambda event (can contain 'force' to re-sync all models)
-        context: Lambda context
+        force: If True, re-sync all IN_SERVICE models regardless of existing litellm_id.
 
     Returns:
-        Dictionary with sync results
+        Dictionary with sync summary.
     """
-    logger.info(f"Starting LiteLLM model sync. Event: {json.dumps(event)}")
-
     model_table_name = os.environ.get("MODEL_TABLE_NAME")
     if not model_table_name:
         raise ValueError("MODEL_TABLE_NAME environment variable is not set")
@@ -190,13 +184,13 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
     logger.info(f"Found {len(models)} models in DynamoDB")
 
-    # Filter for models that should be synced (IN_SERVICE status and no litellm_id)
-    # Only sync models that don't already have a litellm_id to avoid duplicates
+    # Filter for models that should be synced (IN_SERVICE status)
+    # In force mode, re-sync all IN_SERVICE models regardless of existing litellm_id
     eligible_models = []
     already_synced = 0
     for m in models:
         if m.get("model_status") == ModelStatus.IN_SERVICE:
-            if not m.get("litellm_id"):
+            if force or not m.get("litellm_id"):
                 eligible_models.append(m)
             else:
                 already_synced += 1
@@ -207,18 +201,13 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     if not eligible_models:
         logger.info("No eligible models to sync")
         return {
-            "statusCode": 200,
-            "body": json.dumps(
-                {
-                    "message": "No eligible models to sync",
-                    "total_models": len(models),
-                    "eligible_models": 0,
-                    "already_synced": already_synced,
-                    "synced": 0,
-                    "skipped": 0,
-                    "failed": 0,
-                }
-            ),
+            "message": "No eligible models to sync",
+            "total_models": len(models),
+            "eligible_models": 0,
+            "already_synced": already_synced,
+            "synced": 0,
+            "skipped": 0,
+            "failed": 0,
         }
 
     # Get existing models from LiteLLM to double-check against duplicates
@@ -246,17 +235,59 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     logger.info(f"Sync complete. Synced: {synced}, Skipped: {skipped}, Failed: {failed}")
 
     return {
-        "statusCode": 200,
-        "body": json.dumps(
-            {
-                "message": "Model sync completed",
-                "total_models": len(models),
-                "eligible_models": len(eligible_models),
-                "already_synced": already_synced,
-                "synced": synced,
-                "skipped": skipped,
-                "failed": failed,
-                "details": results,
-            }
-        ),
+        "message": "Model sync completed",
+        "total_models": len(models),
+        "eligible_models": len(eligible_models),
+        "already_synced": already_synced,
+        "synced": synced,
+        "skipped": skipped,
+        "failed": failed,
+        "details": results,
     }
+
+
+def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
+    """CloudFormation CustomResource handler to sync models from DynamoDB to LiteLLM.
+
+    On Create/Update: Scans the Models DynamoDB table for IN_SERVICE models and
+                      registers any missing ones in LiteLLM.
+    On Delete:        No-op (returns SUCCESS — nothing to clean up).
+
+    Supports a 'force' flag via ResourceProperties to re-sync all models
+    regardless of existing litellm_id.
+
+    Args:
+        event: CloudFormation CustomResource event
+        context: Lambda context
+
+    Returns:
+        CustomResource response dict with PhysicalResourceId, Status, and Data.
+    """
+    request_type = event.get("RequestType", "")
+    logger.info(f"LiteLLM model sync invoked: RequestType={request_type}")
+
+    # Delete is a no-op — nothing to clean up
+    if request_type == "Delete":
+        logger.info("RequestType=Delete: no-op, returning SUCCESS")
+        return {"Status": "SUCCESS", "PhysicalResourceId": PHYSICAL_RESOURCE_ID}
+
+    # Create and Update both run the sync
+    try:
+        # Check for force flag in ResourceProperties
+        resource_props = event.get("ResourceProperties", {}) or {}
+        force = bool(resource_props.get("force", False))
+        logger.info(f"Starting LiteLLM model sync. Event: {json.dumps(event)}, force={force}")
+
+        data = _run_sync(force=force)
+        return {
+            "Status": "SUCCESS",
+            "PhysicalResourceId": PHYSICAL_RESOURCE_ID,
+            "Data": data,
+        }
+    except Exception as e:
+        logger.error(f"LiteLLM model sync failed: {e}", exc_info=True)
+        return {
+            "Status": "FAILED",
+            "PhysicalResourceId": PHYSICAL_RESOURCE_ID,
+            "Reason": str(e),
+        }

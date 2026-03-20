@@ -205,3 +205,88 @@ class TestSyncModelToLitellm:
 
         assert result["status"] == "failed"
         assert "connection refused" in result["error"]
+
+
+# --- handler tests ---
+
+
+class TestHandler:
+    """Tests for the CloudFormation Custom Resource handler entrypoint."""
+
+    def _import_handler(self):
+        from models.litellm_model_sync import handler
+
+        return handler
+
+    def _build_event(self, request_type: str, resource_properties: dict | None = None) -> dict:
+        """Build a minimal CloudFormation Custom Resource event."""
+        return {
+            "RequestType": request_type,
+            "RequestId": "test-request-id",
+            "StackId": "arn:aws:cloudformation:us-east-1:123456789012:stack/test/1234",
+            "ResponseURL": "https://pre-signed-S3-url-for-response",
+            "ResourceType": "Custom::LiteLLMModelSync",
+            "LogicalResourceId": "TestLiteLLMModelSync",
+            "ResourceProperties": resource_properties or {},
+        }
+
+    def test_delete_request_returns_success_without_running_sync(self):
+        """Delete requests should return SUCCESS immediately without syncing."""
+        handler = self._import_handler()
+        event = self._build_event("Delete")
+
+        result = handler(event, None)
+
+        assert result["Status"] == "SUCCESS"
+        assert result["PhysicalResourceId"] == "LiteLLMModelSync"
+
+    @patch("models.litellm_model_sync._run_sync")
+    def test_create_request_runs_sync(self, mock_run_sync):
+        """Create requests should run the sync and return SUCCESS."""
+        mock_run_sync.return_value = {"message": "Model sync completed", "synced": 1}
+        handler = self._import_handler()
+        event = self._build_event("Create")
+
+        result = handler(event, None)
+
+        assert result["Status"] == "SUCCESS"
+        assert result["PhysicalResourceId"] == "LiteLLMModelSync"
+        assert result["Data"]["synced"] == 1
+        mock_run_sync.assert_called_once_with(force=False)
+
+    @patch("models.litellm_model_sync._run_sync")
+    def test_update_request_runs_sync(self, mock_run_sync):
+        """Update requests should also run the sync."""
+        mock_run_sync.return_value = {"message": "Model sync completed", "synced": 0}
+        handler = self._import_handler()
+        event = self._build_event("Update")
+
+        result = handler(event, None)
+
+        assert result["Status"] == "SUCCESS"
+        mock_run_sync.assert_called_once_with(force=False)
+
+    @patch("models.litellm_model_sync._run_sync")
+    def test_create_with_force_flag(self, mock_run_sync):
+        """Force flag in ResourceProperties should be passed through."""
+        mock_run_sync.return_value = {"message": "Model sync completed", "synced": 2}
+        handler = self._import_handler()
+        event = self._build_event("Create", resource_properties={"force": "true"})
+
+        result = handler(event, None)
+
+        assert result["Status"] == "SUCCESS"
+        mock_run_sync.assert_called_once_with(force=True)
+
+    @patch("models.litellm_model_sync._run_sync")
+    def test_sync_failure_returns_failed_status(self, mock_run_sync):
+        """If sync raises an exception, handler should return FAILED status."""
+        mock_run_sync.side_effect = RuntimeError("DynamoDB unavailable")
+        handler = self._import_handler()
+        event = self._build_event("Create")
+
+        result = handler(event, None)
+
+        assert result["Status"] == "FAILED"
+        assert result["PhysicalResourceId"] == "LiteLLMModelSync"
+        assert "DynamoDB unavailable" in result["Reason"]

@@ -487,11 +487,11 @@ export class LisaServeApplicationConstruct extends Construct {
             ],
         });
 
-        // Grant permissions to read from the model table
+        // Grant permissions to read/update the specific model table
         litellmSyncRole.addToPrincipalPolicy(new PolicyStatement({
             effect: Effect.ALLOW,
-            actions: ['dynamodb:Scan', 'dynamodb:GetItem'],
-            resources: [`arn:${config.partition}:dynamodb:${config.region}:${config.accountNumber}:table/*`],
+            actions: ['dynamodb:Scan', 'dynamodb:GetItem', 'dynamodb:UpdateItem'],
+            resources: [`arn:${config.partition}:dynamodb:${config.region}:${config.accountNumber}:table/${modelTableName}`],
         }));
 
         // Grant access to SSM parameters
@@ -501,11 +501,11 @@ export class LisaServeApplicationConstruct extends Construct {
             resources: [`arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/*`],
         }));
 
-        // Grant access to management key secret
+        // Grant access to management key secret (scoped to the specific secret name)
         litellmSyncRole.addToPrincipalPolicy(new PolicyStatement({
             effect: Effect.ALLOW,
             actions: ['secretsmanager:GetSecretValue'],
-            resources: [`arn:${config.partition}:secretsmanager:${config.region}:${config.accountNumber}:secret:*`],
+            resources: [`arn:${config.partition}:secretsmanager:${config.region}:${config.accountNumber}:secret:${managementKeyName}*`],
         }));
 
         // Grant IAM access for SSL cert validation

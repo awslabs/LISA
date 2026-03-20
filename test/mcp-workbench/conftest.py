@@ -21,7 +21,8 @@ from collections.abc import Generator
 from pathlib import Path
 
 # Ensure mcp-workbench src is first so patches target the correct module when full suite runs
-_mcp_src = Path(__file__).resolve().parent.parent / "lib" / "serve" / "mcp-workbench" / "src"
+# parent.parent.parent = repo root (conftest lives at test/mcp-workbench/conftest.py)
+_mcp_src = Path(__file__).resolve().parent.parent.parent / "lib" / "serve" / "mcp-workbench" / "src"
 if str(_mcp_src) not in sys.path:
     sys.path.insert(0, str(_mcp_src))
 

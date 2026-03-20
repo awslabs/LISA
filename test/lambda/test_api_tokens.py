@@ -1167,9 +1167,9 @@ def test_dynamodb_initialization():
 
     assert dynamodb is not None
     assert token_table is not None
-    # Table name can vary based on environment (test-token-table or token-table)
+    # Table name can vary based on environment (test-token-table, test-tokens, token-table)
     assert "token" in token_table.name.lower()
-    assert "table" in token_table.name.lower()
+    assert len(token_table.name) > 0
 
 
 # =====================

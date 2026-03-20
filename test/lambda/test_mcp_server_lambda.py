@@ -154,8 +154,8 @@ def setup_mcp_patches(request, mock_auth):
     This fixture runs after conftest's setup_auth_patches and ensures
     api_wrapper is properly mocked and adds additional patches needed.
     """
-    # Skip patching for test_auth.py since it tests the auth module itself
-    if "test_auth" in request.node.nodeid:
+    # Skip patching for test_lambda_auth.py since it tests the auth module itself
+    if "test_lambda_auth" in request.node.nodeid:
         yield
         return
 

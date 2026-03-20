@@ -61,7 +61,7 @@ upgrade:
    internally, rendering the ecsModels list obsolete. We recommend backing up your model settings to facilitate their
    redeployment through the new Model Management API with minimal downtime.
 1. Networking Changes and Full Teardown: Core networking changes require a complete teardown of the existing LISA
-   installation using the make destroy command before upgrading. Cross-stack dependencies have been modified,
+   installation using the `npm run destroy` command before upgrading. Cross-stack dependencies have been modified,
    necessitating this full teardown to ensure proper application of the v3 infrastructure changes. Additionally, users
    may need to manually delete some resources, such as ECR repositories or S3 buckets, if they were populated before
    CloudFormation began deleting the stack. This operation is destructive and irreversible, so it is crucial to back up

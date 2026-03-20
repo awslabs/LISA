@@ -7,9 +7,9 @@ repos:
     - id: verify-config
       name: Verify config file
       description: Verify config file to check if certain parameters are empty
-      entry: scripts/verify-config.sh
+      entry: node scripts/verify-config.mjs
       verbose: true
-      language: script
+      language: system
       files: config-base.yaml
 
 - repo: https://github.com/PyCQA/bandit

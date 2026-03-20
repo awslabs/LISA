@@ -94,6 +94,7 @@ export default function Chat ({ sessionId, initialStack }) {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
     const config: IConfiguration = useContext(ConfigurationContext);
+    const ragSelectionAvailable = config?.configuration?.enabledComponents?.ragSelectionAvailable ?? true;
     const notificationService = useNotificationService(dispatch);
     const modelSelectRef = useRef<HTMLInputElement>(null);
     const bottomRef = useRef(null);
@@ -1219,6 +1220,7 @@ export default function Chat ({ sessionId, initialStack }) {
                                         setUseRag={setUseRag}
                                         setRagConfig={setRagConfig}
                                         ragConfig={ragConfig}
+                                        selectionAvailable={ragSelectionAvailable}
                                         allowedRepositoryIds={effectiveStack ? (effectiveStack.repositoryIds ?? []) : undefined}
                                         allowedCollectionIds={effectiveStack ? (effectiveStack.collectionIds ?? []) : undefined}
                                     />

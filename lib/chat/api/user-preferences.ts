@@ -25,6 +25,7 @@ import { Construct } from 'constructs';
 import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
 import { BaseProps } from '../../schema';
 import { createLambdaRole } from '../../core/utils';
+import { getAuditLoggingEnv } from '../../api-base/auditEnv';
 import { Vpc } from '../../networking/vpc';
 import { LAMBDA_PATH } from '../../util';
 import { RemovalPolicy } from 'aws-cdk-lib';
@@ -88,7 +89,8 @@ export class UserPreferencesApi extends Construct {
         });
 
         const env = {
-            USER_PREFERENCES_TABLE_NAME: userPreferencesTable.tableName
+            USER_PREFERENCES_TABLE_NAME: userPreferencesTable.tableName,
+            ...getAuditLoggingEnv(config),
         };
 
         // Create API Lambda functions

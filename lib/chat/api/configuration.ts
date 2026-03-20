@@ -24,6 +24,7 @@ import { Construct } from 'constructs';
 import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
 import { BaseProps } from '../../schema';
 import { createLambdaRole } from '../../core/utils';
+import { getAuditLoggingEnv } from '../../api-base/auditEnv';
 import { Vpc } from '../../networking/vpc';
 import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
 import { IRole } from 'aws-cdk-lib/aws-iam';
@@ -118,6 +119,7 @@ export class ConfigurationApi extends Construct {
                                         'editChatHistoryBuffer': { 'BOOL': 'True' },
                                         'editNumOfRagDocument': { 'BOOL': 'True' },
                                         'uploadRagDocs': { 'BOOL': config.deployRag ? 'True' : 'False' },
+                                        'ragSelectionAvailable': { 'BOOL': config.deployRag ? 'True' : 'False' },
                                         'uploadContextDocs': { 'BOOL': 'True' },
                                         'documentSummarization': { 'BOOL': 'True' },
                                         'showRagLibrary': { 'BOOL': config.deployRag ? 'True' : 'False' },
@@ -159,6 +161,7 @@ export class ConfigurationApi extends Construct {
             CONFIG_TABLE_NAME: this.configTable.tableName,
             FASTAPI_ENDPOINT: fastApiEndpoint,
             ADMIN_GROUP: config.authConfig?.adminGroup || '',
+            ...getAuditLoggingEnv(config),
         };
 
         if (mcpApi) {

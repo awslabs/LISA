@@ -28,6 +28,7 @@ from middleware import (
     security_middleware,
     validate_input_middleware,
 )
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 logger.remove()
 logger_level = os.environ.get("LOG_LEVEL", "INFO")
@@ -114,3 +115,38 @@ async def security_check(request, call_next):  # type: ignore
     - Request size is within limits (model proxy endpoints are exempt)
     """
     return await security_middleware(request, call_next)
+
+
+def _parse_asgi_spec_version(spec_version: str) -> tuple[int, ...]:
+    """Parse ASGI spec_version like '2.4' into a tuple for comparison."""
+    try:
+        return tuple(int(p) for p in spec_version.split(".") if p != "")
+    except ValueError:
+        return (2, 0)
+
+
+class EnsureAsgiHttpSpec24Middleware:
+    """Normalize HTTP scope's ASGI spec_version to >= 2.4.
+
+    Starlette 0.49+ ``StreamingResponse`` runs ``listen_for_disconnect`` in parallel with
+    the body iterator only when ``scope['asgi']['spec_version']`` is below 2.4.
+    In some deployments this can race with ``BaseHTTPMiddleware`` and raise:
+
+        RuntimeError: Unexpected message received: http.request
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope.get("type") == "http":
+            asgi = scope.setdefault("asgi", {})
+            raw = str(asgi.get("spec_version", "2.0"))
+            if _parse_asgi_spec_version(raw) < (2, 4):
+                asgi["spec_version"] = "2.4"
+        await self.app(scope, receive, send)
+
+
+# Wrap the fully-built FastAPI app (Gunicorn imports ``app`` from this module).
+_built_asgi_app: ASGIApp = app
+app = EnsureAsgiHttpSpec24Middleware(_built_asgi_app)

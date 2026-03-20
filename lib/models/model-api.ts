@@ -38,6 +38,7 @@ import { Provider } from 'aws-cdk-lib/custom-resources';
 import { Construct } from 'constructs';
 
 import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
+import { getAuditLoggingEnv, LISA_AUDIT_API_GATEWAY_BASE_PATH } from '../api-base/auditEnv';
 import { APP_MANAGEMENT_KEY, BaseProps } from '../schema';
 import { Vpc } from '../networking/vpc';
 
@@ -291,6 +292,8 @@ export class ModelsApi extends Construct {
             ADMIN_GROUP: config.authConfig?.adminGroup || '',
             MODELS_BUCKET_NAME: config.s3BucketModels,
             MANAGEMENT_KEY_NAME: managementKeyName,
+            ...getAuditLoggingEnv(config),
+            [LISA_AUDIT_API_GATEWAY_BASE_PATH]: '/models',
             // SSM parameter names for RAG tables (optional - only exist if RAG is deployed)
             ...(config.deployRag && {
                 LISA_RAG_VECTOR_STORE_TABLE_PS_NAME: `${config.deploymentPrefix}/ragVectorStoreTableName`,

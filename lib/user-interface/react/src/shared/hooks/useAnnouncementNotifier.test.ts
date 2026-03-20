@@ -69,6 +69,7 @@ function buildConfig (overrides: {
                 editNumOfRagDocument: true,
                 editChatHistoryBuffer: true,
                 uploadRagDocs: true,
+                ragSelectionAvailable: true,
                 uploadContextDocs: true,
                 documentSummarization: true,
                 showRagLibrary: true,

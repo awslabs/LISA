@@ -29,6 +29,7 @@ import { Vpc } from '../networking/vpc';
 import { getPythonRuntime } from './utils';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { LAMBDA_PATH } from '../util';
+import { getAuditLoggingEnv } from './auditEnv';
 
 /**
  * Properties for RestApiGateway Construct.
@@ -94,7 +95,8 @@ export class CustomAuthorizer extends Construct {
                 USER_GROUP: config.authConfig!.userGroup,
                 JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
                 MANAGEMENT_KEY_NAME: managementKeySecretName,
-                ...(tokenTable ? { TOKEN_TABLE_NAME: tokenTable?.tableName } : {})
+                ...(tokenTable ? { TOKEN_TABLE_NAME: tokenTable?.tableName } : {}),
+                ...getAuditLoggingEnv(config),
             },
             role: role,
             vpc: vpc.vpc,

@@ -21,6 +21,7 @@ import { AttributeType, BillingMode, ProjectionType, Table } from 'aws-cdk-lib/a
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
 import { createLambdaRole } from '../../core/utils';
+import { getAuditLoggingEnv } from '../../api-base/auditEnv';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { Vpc } from '../../networking/vpc';
@@ -107,6 +108,7 @@ export class PromptTemplateApi extends Construct {
             ADMIN_GROUP: config.authConfig?.adminGroup || '',
             PROMPT_TEMPLATES_TABLE_NAME: promptTemplatesTable.tableName,
             PROMPT_TEMPLATES_BY_LATEST_INDEX_NAME: byOwnerIndexName,
+            ...getAuditLoggingEnv(config),
         };
 
         const apis: PythonLambdaFunction[] = [

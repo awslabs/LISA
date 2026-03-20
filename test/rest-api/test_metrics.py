@@ -28,7 +28,7 @@ import os
 
 os.environ.setdefault("AWS_REGION", "us-east-1")
 
-from utils.metrics import extract_messages_for_metrics, publish_metrics_event
+from utils.metrics import extract_messages_for_metrics, extract_token_usage, publish_metrics_event
 
 
 class TestExtractMessagesForMetrics:
@@ -168,7 +168,7 @@ class TestPublishMetricsEvent:
 
         with patch.dict("os.environ", mock_env_vars), patch("utils.metrics.sqs_client", mock_sqs), patch(
             "utils.metrics.get_user_context", return_value=("test-user", ["users"])
-        ):
+        ), patch("utils.metrics.is_api_user", return_value=True):
 
             publish_metrics_event(mock_request, params, 200)
 
@@ -235,7 +235,7 @@ class TestPublishMetricsEvent:
 
         with patch.dict("os.environ", mock_env_vars), patch("utils.metrics.sqs_client", mock_sqs), patch(
             "utils.metrics.get_user_context", return_value=("api-user", [])
-        ):
+        ), patch("utils.metrics.is_api_user", return_value=True):
 
             publish_metrics_event(mock_request, params, 200)
 
@@ -260,7 +260,7 @@ class TestPublishMetricsEvent:
 
         with patch.dict("os.environ", mock_env_vars), patch("utils.metrics.sqs_client", mock_sqs), patch(
             "utils.metrics.get_user_context", return_value=("user", ["users"])
-        ):
+        ), patch("utils.metrics.is_api_user", return_value=True):
 
             publish_metrics_event(mock_request, params, 200)
 
@@ -269,3 +269,163 @@ class TestPublishMetricsEvent:
 
             assert len(message_body["messages"]) == 2
             assert "toolCalls" in message_body["messages"][1]
+
+
+class TestExtractTokenUsage:
+    """Test suite for extract_token_usage function (covers both non-streaming and SSE chunk paths)."""
+
+    def test_extract_from_non_streaming_response(self):
+        """Verify token extraction from a representative LiteLLM non-streaming response body.
+
+        Expected: Returns (prompt_tokens, completion_tokens) from the 'usage' field.
+        """
+        response_body = {
+            "id": "chatcmpl-abc",
+            "object": "chat.completion",
+            "choices": [{"message": {"role": "assistant", "content": "Hi"}}],
+            "usage": {"prompt_tokens": 15, "completion_tokens": 7, "total_tokens": 22},
+        }
+
+        pt, ct = extract_token_usage(response_body)
+
+        assert pt == 15
+        assert ct == 7
+
+    def test_extract_from_sse_usage_chunk(self):
+        """Verify token extraction from the SSE usage chunk emitted at end of streaming response.
+
+        LiteLLM emits a final chunk: {"usage": {"prompt_tokens": N, "completion_tokens": N, ...}}
+        The same extract_token_usage function handles both cases.
+        """
+        chunk_data = {
+            "id": "chatcmpl-xyz",
+            "usage": {"prompt_tokens": 42, "completion_tokens": 18, "total_tokens": 60},
+        }
+
+        pt, ct = extract_token_usage(chunk_data)
+
+        assert pt == 42
+        assert ct == 18
+
+    def test_extract_missing_usage_field(self):
+        """Returns (None, None) when 'usage' key is absent."""
+        response_body = {"choices": [{"message": {"content": "Hi"}}]}
+
+        pt, ct = extract_token_usage(response_body)
+
+        assert pt is None
+        assert ct is None
+
+    def test_extract_none_input(self):
+        """Returns (None, None) for None input."""
+        pt, ct = extract_token_usage(None)
+
+        assert pt is None
+        assert ct is None
+
+    def test_extract_empty_usage_dict(self):
+        """Returns (None, None) when usage dict is empty."""
+        response_body = {"usage": {}}
+
+        pt, ct = extract_token_usage(response_body)
+
+        assert pt is None
+        assert ct is None
+
+    def test_total_tokens_not_returned(self):
+        """Confirms total_tokens is intentionally not returned (it is derivable)."""
+        response_body = {"usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}}
+
+        result = extract_token_usage(response_body)
+
+        # Result is a 2-tuple; total_tokens must not be present
+        assert len(result) == 2
+
+
+class TestPublishMetricsEventTokenPaths:
+    """Tests covering JWT token-only publish path and token extraction from response_body."""
+
+    def test_jwt_user_with_tokens_publishes_token_only_event(self, mock_env_vars, mock_request):
+        """JWT/UI user with token counts publishes eventType='token_only' with empty messages.
+
+        Expected: SQS message has eventType='token_only', messages=[], and token fields set.
+        """
+        mock_env_vars["USAGE_METRICS_QUEUE_URL"] = "https://sqs.us-east-1.amazonaws.com/123456789/metrics"
+        params = {"messages": [{"role": "user", "content": "Hello"}], "model": "my-model"}
+        mock_sqs = MagicMock()
+
+        with patch.dict("os.environ", mock_env_vars), patch("utils.metrics.sqs_client", mock_sqs), patch(
+            "utils.metrics.get_user_context", return_value=("jwt-user", ["users"])
+        ), patch("utils.metrics.is_api_user", return_value=False):
+
+            publish_metrics_event(mock_request, params, 200, prompt_tokens=50, completion_tokens=20)
+
+            mock_sqs.send_message.assert_called_once()
+            body = json.loads(mock_sqs.send_message.call_args[1]["MessageBody"])
+
+            assert body["eventType"] == "token_only"
+            assert body["messages"] == []
+            assert body["sessionId"].startswith("ui-tokens-")
+            assert body["promptTokens"] == 50
+            assert body["completionTokens"] == 20
+
+    def test_jwt_user_without_tokens_skips_publish(self, mock_env_vars, mock_request):
+        """JWT/UI user with no token counts must not publish anything (no point — session lambda owns prompts).
+
+        Expected: SQS send_message is never called.
+        """
+        mock_env_vars["USAGE_METRICS_QUEUE_URL"] = "https://sqs.us-east-1.amazonaws.com/123456789/metrics"
+        params = {"messages": [{"role": "user", "content": "Hello"}]}
+        mock_sqs = MagicMock()
+
+        with patch.dict("os.environ", mock_env_vars), patch("utils.metrics.sqs_client", mock_sqs), patch(
+            "utils.metrics.get_user_context", return_value=("jwt-user", ["users"])
+        ), patch("utils.metrics.is_api_user", return_value=False):
+
+            publish_metrics_event(mock_request, params, 200)  # no tokens passed
+
+            mock_sqs.send_message.assert_not_called()
+
+    def test_tokens_extracted_from_response_body_for_non_streaming(self, mock_env_vars, mock_request):
+        """When response_body is provided and prompt_tokens is not passed directly,
+        tokens should be extracted from the response body before publishing.
+
+        Expected: Published message contains promptTokens/completionTokens from the response body.
+        """
+        mock_env_vars["USAGE_METRICS_QUEUE_URL"] = "https://sqs.us-east-1.amazonaws.com/123456789/metrics"
+        params = {"messages": [{"role": "user", "content": "Hello"}]}
+        response_body = {
+            "choices": [],
+            "usage": {"prompt_tokens": 30, "completion_tokens": 10, "total_tokens": 40},
+        }
+        mock_sqs = MagicMock()
+
+        with patch.dict("os.environ", mock_env_vars), patch("utils.metrics.sqs_client", mock_sqs), patch(
+            "utils.metrics.get_user_context", return_value=("api-user", [])
+        ), patch("utils.metrics.is_api_user", return_value=True):
+
+            publish_metrics_event(mock_request, params, 200, response_body=response_body)
+
+            body = json.loads(mock_sqs.send_message.call_args[1]["MessageBody"])
+            assert body["promptTokens"] == 30
+            assert body["completionTokens"] == 10
+
+    def test_api_user_publishes_full_event_type(self, mock_env_vars, mock_request):
+        """API token users should publish eventType='full' with message list populated.
+
+        Expected: eventType='full', messages list non-empty, sessionId starts with 'api-'.
+        """
+        mock_env_vars["USAGE_METRICS_QUEUE_URL"] = "https://sqs.us-east-1.amazonaws.com/123456789/metrics"
+        params = {"messages": [{"role": "user", "content": "Hello"}]}
+        mock_sqs = MagicMock()
+
+        with patch.dict("os.environ", mock_env_vars), patch("utils.metrics.sqs_client", mock_sqs), patch(
+            "utils.metrics.get_user_context", return_value=("api-user", [])
+        ), patch("utils.metrics.is_api_user", return_value=True):
+
+            publish_metrics_event(mock_request, params, 200)
+
+            body = json.loads(mock_sqs.send_message.call_args[1]["MessageBody"])
+            assert body["eventType"] == "full"
+            assert len(body["messages"]) == 1
+            assert body["sessionId"].startswith("api-")

@@ -117,6 +117,12 @@ export class EcsModel extends Construct {
             environment.SAGEMAKER_BASE_DIR = config.nvmeContainerMountPath ?? '/nvme';
         }
 
+        // Set SERVED_MODEL_NAME for TEI so it accepts the model name sent by LiteLLM
+        // in OpenAI-compatible requests, avoiding "model not found" warnings.
+        if (modelConfig.inferenceContainer === 'tei') {
+            environment.SERVED_MODEL_NAME = modelConfig.modelName;
+        }
+
         if (config.mountS3DebUrl) {
             environment.S3_MOUNT_POINT = 's3-models-mount';
             // More threads than files during S3 mount point copy to NVMe is fine; by default use half threads

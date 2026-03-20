@@ -50,7 +50,7 @@ export class ModelHealthDashboard extends Construct {
         // =====================================================================
         dashboard.addWidgets(
             new cloudwatch.TextWidget({
-                markdown: '# **LISA Model Health Dashboard**',
+                markdown: '# **LISA Self-Hosted Model Health Dashboard**',
                 width: 24,
                 height: 1,
                 background: cloudwatch.TextWidgetBackground.TRANSPARENT,
@@ -64,18 +64,19 @@ export class ModelHealthDashboard extends Construct {
             }),
 
             // Running vs Desired Task Count per cluster/service
+            // Use Maximum so counts display as whole numbers instead of fractional averages.
             new cloudwatch.GraphWidget({
                 title: 'Running vs Desired Tasks (by Cluster)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{ECS/ContainerInsights,ClusterName,ServiceName} MetricName="RunningTaskCount" ClusterName=${dp}', 'Average', 300)`,
+                        expression: `SEARCH('{ECS/ContainerInsights,ClusterName,ServiceName} MetricName="RunningTaskCount" ClusterName=${dp}', 'Maximum', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
                 ],
                 right: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{ECS/ContainerInsights,ClusterName,ServiceName} MetricName="DesiredTaskCount" ClusterName=${dp}', 'Average', 300)`,
+                        expression: `SEARCH('{ECS/ContainerInsights,ClusterName,ServiceName} MetricName="DesiredTaskCount" ClusterName=${dp}', 'Maximum', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -85,11 +86,13 @@ export class ModelHealthDashboard extends Construct {
             }),
 
             // Pending tasks — waiting for placement (capacity issues)
+            // Use Maximum instead of Average so the count shows as whole numbers
+            // (Average over 5 min produces tiny fractions like 0.03).
             new cloudwatch.GraphWidget({
                 title: 'Pending Tasks (by Cluster)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{ECS/ContainerInsights,ClusterName,ServiceName} MetricName="PendingTaskCount" ClusterName=${dp}', 'Average', 300)`,
+                        expression: `SEARCH('{ECS/ContainerInsights,ClusterName,ServiceName} MetricName="PendingTaskCount" ClusterName=${dp}', 'Maximum', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -103,7 +106,7 @@ export class ModelHealthDashboard extends Construct {
                 title: 'Task Sets (Deployment Rollouts)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{ECS/ContainerInsights,ClusterName,ServiceName} MetricName="TaskSetCount" ClusterName=${dp}', 'Average', 300)`,
+                        expression: `SEARCH('{ECS/ContainerInsights,ClusterName,ServiceName} MetricName="TaskSetCount" ClusterName=${dp}', 'Maximum', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -117,7 +120,7 @@ export class ModelHealthDashboard extends Construct {
                 title: 'Deployment Count (by Service)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{ECS/ContainerInsights,ClusterName,ServiceName} MetricName="DeploymentCount" ClusterName=${dp}', 'Average', 300)`,
+                        expression: `SEARCH('{ECS/ContainerInsights,ClusterName,ServiceName} MetricName="DeploymentCount" ClusterName=${dp}', 'Maximum', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -280,32 +283,46 @@ export class ModelHealthDashboard extends Construct {
             }),
 
             // Target response time p50/p99 per model
+            // ALB publishes TargetResponseTime in seconds; multiply by 1000 for milliseconds.
+            // Exclude the REST API target group (contains "RestA") — it's the API router, not a model.
+            // SEARCH auto-labels include the full ALB/TG ARN path which is hard to read;
+            // unfortunately CloudWatch SEARCH doesn't support label customization.
+            // For clean per-model latency, see the Inference Engine Metrics section below
+            // (E2E Request Latency, TTFT, Inter-Token Latency) which use the ModelName dimension.
             new cloudwatch.GraphWidget({
-                title: 'Target Response Time p50 / p99 (by Model)',
+                title: 'Target Response Time p50 (by Model)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/ApplicationELB,TargetGroup,LoadBalancer} MetricName="TargetResponseTime" ${dp}', 'p50', 300)`,
+                        expression: `SEARCH('{AWS/ApplicationELB,TargetGroup,LoadBalancer} MetricName="TargetResponseTime" ${dp} NOT RestA NOT rest NOT MCP', 'p50', 300) * 1000`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
                 ],
-                right: [
-                    new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/ApplicationELB,TargetGroup,LoadBalancer} MetricName="TargetResponseTime" ${dp}', 'p99', 300)`,
-                        label: '',
-                        period: Duration.minutes(5),
-                    }),
-                ],
+                leftYAxis: { label: 'ms' },
                 width: 12,
                 height: 6,
             }),
 
-            // Request count per model (throughput / load)
+            new cloudwatch.GraphWidget({
+                title: 'Target Response Time p99 (by Model)',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: `SEARCH('{AWS/ApplicationELB,TargetGroup,LoadBalancer} MetricName="TargetResponseTime" ${dp} NOT RestA NOT rest NOT MCP', 'p99', 300) * 1000`,
+                        label: '',
+                        period: Duration.minutes(5),
+                    }),
+                ],
+                leftYAxis: { label: 'ms' },
+                width: 12,
+                height: 6,
+            }),
+
+            // Request count per model (throughput / load) — excludes REST API target group
             new cloudwatch.GraphWidget({
                 title: 'Request Count (by Model)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/ApplicationELB,TargetGroup,LoadBalancer} MetricName="RequestCount" ${dp}', 'Sum', 300)`,
+                        expression: `SEARCH('{AWS/ApplicationELB,TargetGroup,LoadBalancer} MetricName="RequestCount" ${dp} NOT RestA NOT rest NOT MCP', 'Sum', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -383,15 +400,17 @@ export class ModelHealthDashboard extends Construct {
             }),
 
             // GPU Cache Usage (vLLM) — from custom metrics publisher
+            // The raw metric is a 0–1 decimal; multiply by 100 for display as a percentage.
             new cloudwatch.GraphWidget({
                 title: 'GPU Cache Usage % (vLLM)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{LISA/InferenceMetrics,ModelName} MetricName="GpuCacheUsagePercent"', 'Average', 300)`,
+                        expression: `SEARCH('{LISA/InferenceMetrics,ModelName} MetricName="GpuCacheUsagePercent"', 'Average', 300) * 100`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
                 ],
+                leftYAxis: { min: 0, max: 100, label: '%' },
                 width: 8,
                 height: 6,
             }),
@@ -515,23 +534,27 @@ export class ModelHealthDashboard extends Construct {
                 background: cloudwatch.TextWidgetBackground.TRANSPARENT,
             }),
 
-            // vLLM: Token throughput
+            // vLLM: Token throughput — derived from cumulative token counters.
+            // AvgPrompt/GenerationThroughputToksPerSec gauges were removed in newer vLLM versions,
+            // so we use DIFF on the cumulative totals divided by the period (300s) to get toks/sec.
             new cloudwatch.GraphWidget({
                 title: 'Token Throughput (vLLM)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{${metricsNs},ModelName} MetricName="AvgPromptThroughputToksPerSec"', 'Average', 300)`,
-                        label: '',
+                        expression: `DIFF(SEARCH('{${metricsNs},ModelName} MetricName="PromptTokensTotal"', 'Maximum', 300)) / 300`,
+                        label: 'Prompt toks/s',
                         period: Duration.minutes(5),
                     }),
                 ],
                 right: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{${metricsNs},ModelName} MetricName="AvgGenerationThroughputToksPerSec"', 'Average', 300)`,
-                        label: '',
+                        expression: `DIFF(SEARCH('{${metricsNs},ModelName} MetricName="GenerationTokensTotal"', 'Maximum', 300)) / 300`,
+                        label: 'Generation toks/s',
                         period: Duration.minutes(5),
                     }),
                 ],
+                leftYAxis: { label: 'toks/s' },
+                rightYAxis: { label: 'toks/s' },
                 width: 12,
                 height: 6,
             }),
@@ -612,27 +635,6 @@ export class ModelHealthDashboard extends Construct {
                 left: [
                     new cloudwatch.MathExpression({
                         expression: `SEARCH('{${metricsNs},ModelName} MetricName="RequestSuccessTotal"', 'Sum', 300)`,
-                        label: '',
-                        period: Duration.minutes(5),
-                    }),
-                ],
-                width: 12,
-                height: 6,
-            }),
-
-            // vLLM: Prefix cache queries and hits
-            new cloudwatch.GraphWidget({
-                title: 'Prefix Cache Queries / Hits (vLLM)',
-                left: [
-                    new cloudwatch.MathExpression({
-                        expression: `SEARCH('{${metricsNs},ModelName} MetricName="PrefixCacheQueries"', 'Sum', 300)`,
-                        label: '',
-                        period: Duration.minutes(5),
-                    }),
-                ],
-                right: [
-                    new cloudwatch.MathExpression({
-                        expression: `SEARCH('{${metricsNs},ModelName} MetricName="PrefixCacheHits"', 'Sum', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),

@@ -341,6 +341,9 @@ def handler(event, context):
                 DEPLOYMENT_STAGE: config.deploymentStage,
             },
             timeout: Duration.seconds(30),
+            vpc: vpc.vpc,
+            vpcSubnets: vpc.subnetSelection,
+            securityGroups: [vpc.securityGroups.lambdaSg],
         });
 
         batchFailureMetricLambda.addToRolePolicy(new iam.PolicyStatement({

@@ -37,7 +37,7 @@ import {
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
-import { CfnPermission, Code, Function, IFunction, ILayerVersion, Runtime, SnapStartConf } from 'aws-cdk-lib/aws-lambda';
+import { CfnPermission, Code, Function, IFunction, ILayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import { Vpc } from '../networking/vpc';
 
@@ -125,8 +125,7 @@ export function registerAPIEndpoint (
             vpc: vpc.vpc,
             securityGroups,
             vpcSubnets: vpc.subnetSelection,
-            logRetention: RetentionDays.ONE_MONTH,
-            snapStart: SnapStartConf.ON_PUBLISHED_VERSIONS
+            logRetention: RetentionDays.ONE_MONTH
         });
     }
 

@@ -63,7 +63,7 @@ systemctl start docker
 # Setup build environment
 mkdir /home/ec2-user/docker_resources
 aws --region ${AWS_REGION} s3 sync s3://{{BUCKET_NAME}} /home/ec2-user/docker_resources
-cd /home/ec2-user/docker_resources/{{LAYER_TO_ADD}}
+cd /home/ec2-user/docker_resources
 
 while [ 1 ]; do
     shutdown -c;
@@ -72,9 +72,9 @@ done &
 
 function buildTagPush() {
     echo "Starting Docker build for {{IMAGE_ID}}" | tee -a /var/log/docker-build.log
-    sed -iE 's/^FROM.*/FROM {{BASE_IMAGE}}/' Dockerfile
+    sed -iE 's/^FROM.*/FROM {{BASE_IMAGE}}/' {{LAYER_TO_ADD}}/Dockerfile
     docker build -t {{IMAGE_ID}} --build-arg BASE_IMAGE={{BASE_IMAGE}} \\
-        --build-arg MOUNTS3_DEB_URL={{MOUNTS3_DEB_URL}} . 2>&1 | tee -a /var/log/docker-build.log && \\
+        --build-arg MOUNTS3_DEB_URL={{MOUNTS3_DEB_URL}} -f {{LAYER_TO_ADD}}/Dockerfile . 2>&1 | tee -a /var/log/docker-build.log && \\
     docker tag {{IMAGE_ID}} {{ECR_URI}}:{{IMAGE_ID}} 2>&1 | tee -a /var/log/docker-build.log && \\
     aws --region ${AWS_REGION} ecr get-login-password | \\
         docker login --username AWS --password-stdin {{ECR_URI}} 2>&1 | tee -a /var/log/docker-build.log && \\

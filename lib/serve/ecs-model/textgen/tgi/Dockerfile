@@ -33,7 +33,7 @@ RUN apt-get update -y && apt-get upgrade -y && \
 # Metrics publisher for CloudWatch (scrapes Prometheus /metrics endpoint)
 COPY metrics_publisher.py /opt/metrics_publisher.py
 
-COPY src/entrypoint.sh ./entrypoint.sh
+COPY textgen/tgi/src/entrypoint.sh ./entrypoint.sh
 RUN chmod +x entrypoint.sh
 
 ENTRYPOINT ["./entrypoint.sh"]

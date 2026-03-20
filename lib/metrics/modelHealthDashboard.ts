@@ -405,7 +405,7 @@ export class ModelHealthDashboard extends Construct {
                 title: 'GPU Cache Usage % (vLLM)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{LISA/InferenceMetrics,ModelName} MetricName="GpuCacheUsagePercent"', 'Average', 300) * 100`,
+                        expression: 'SEARCH(\'{LISA/InferenceMetrics,ModelName} MetricName="GpuCacheUsagePercent"\', \'Average\', 300) * 100',
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -448,14 +448,14 @@ export class ModelHealthDashboard extends Construct {
                 title: 'Requests Running / Waiting (vLLM)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{LISA/InferenceMetrics,ModelName} MetricName="RequestsRunning"', 'Average', 300)`,
+                        expression: 'SEARCH(\'{LISA/InferenceMetrics,ModelName} MetricName="RequestsRunning"\', \'Average\', 300)',
                         label: '',
                         period: Duration.minutes(5),
                     }),
                 ],
                 right: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{LISA/InferenceMetrics,ModelName} MetricName="RequestsWaiting"', 'Average', 300)`,
+                        expression: 'SEARCH(\'{LISA/InferenceMetrics,ModelName} MetricName="RequestsWaiting"\', \'Average\', 300)',
                         label: '',
                         period: Duration.minutes(5),
                     }),

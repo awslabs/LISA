@@ -1,4 +1,18 @@
 #!/usr/bin/env python3
+#   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License").
+#   You may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
 """
 LISA Inference Metrics Publisher
 
@@ -21,8 +35,8 @@ import os
 import re
 import sys
 import time
-from urllib.request import urlopen
 from urllib.error import URLError
+from urllib.request import urlopen
 
 logging.basicConfig(
     level=logging.INFO,
@@ -109,11 +123,7 @@ TEI_HISTOGRAM_METRICS = {
 # ---------------------------------------------------------------------------
 # Prometheus text format parser (minimal, no external deps)
 # ---------------------------------------------------------------------------
-PROM_LINE_RE = re.compile(
-    r'^(?P<name>[a-zA-Z_:][a-zA-Z0-9_:]*)'
-    r'(?:\{[^}]*\})?\s+'
-    r'(?P<value>[^\s]+)'
-)
+PROM_LINE_RE = re.compile(r"^(?P<name>[a-zA-Z_:][a-zA-Z0-9_:]*)" r"(?:\{[^}]*\})?\s+" r"(?P<value>[^\s]+)")
 
 
 def parse_prometheus(text: str) -> dict[str, float]:
@@ -180,12 +190,14 @@ def build_metric_data(
     for prom_name, cw_name in gauge_map.items():
         val = metrics.get(prom_name)
         if val is not None:
-            data.append({
-                "MetricName": cw_name,
-                "Dimensions": dimensions,
-                "Value": val,
-                "Unit": "None",
-            })
+            data.append(
+                {
+                    "MetricName": cw_name,
+                    "Dimensions": dimensions,
+                    "Value": val,
+                    "Unit": "None",
+                }
+            )
 
     # Histogram metrics — publish average from _sum/_count
     for prom_name, cw_name in hist_map.items():
@@ -194,20 +206,24 @@ def build_metric_data(
         if total is not None and count is not None and count > 0:
             # Determine unit: token/length metrics are counts, everything else is seconds
             unit = "None" if cw_name.endswith("PerRequest") else "Seconds"
-            data.append({
-                "MetricName": cw_name,
-                "Dimensions": dimensions,
-                "Value": total / count,
-                "Unit": unit,
-            })
+            data.append(
+                {
+                    "MetricName": cw_name,
+                    "Dimensions": dimensions,
+                    "Value": total / count,
+                    "Unit": unit,
+                }
+            )
 
     # Always publish engine type as a tag via a simple metric
-    data.append({
-        "MetricName": "MetricsPublisherHeartbeat",
-        "Dimensions": dimensions,
-        "Value": 1.0,
-        "Unit": "None",
-    })
+    data.append(
+        {
+            "MetricName": "MetricsPublisherHeartbeat",
+            "Dimensions": dimensions,
+            "Value": 1.0,
+            "Unit": "None",
+        }
+    )
 
     return data
 
@@ -235,14 +251,17 @@ def publish_loop():
 
     log.info(
         "Starting metrics publisher: endpoint=%s interval=%ds namespace=%s dimensions=%s",
-        METRICS_ENDPOINT, PUBLISH_INTERVAL, NAMESPACE, json.dumps(dimensions),
+        METRICS_ENDPOINT,
+        PUBLISH_INTERVAL,
+        NAMESPACE,
+        json.dumps(dimensions),
     )
 
     # Wait for the inference server to start
     log.info("Waiting for inference server at %s ...", METRICS_ENDPOINT)
     while True:
         try:
-            urlopen(METRICS_ENDPOINT, timeout=5)
+            urlopen(METRICS_ENDPOINT, timeout=5)  # nosec B310
             log.info("Inference server is up.")
             break
         except (URLError, OSError):
@@ -250,7 +269,7 @@ def publish_loop():
 
     while True:
         try:
-            resp = urlopen(METRICS_ENDPOINT, timeout=10)
+            resp = urlopen(METRICS_ENDPOINT, timeout=10)  # nosec B310
             text = resp.read().decode("utf-8", errors="replace")
             metrics = parse_prometheus(text)
 
@@ -268,7 +287,7 @@ def publish_loop():
             if metric_data:
                 # CloudWatch accepts max 1000 metrics per call; batch in chunks of 25
                 for i in range(0, len(metric_data), 25):
-                    cw.put_metric_data(Namespace=NAMESPACE, MetricData=metric_data[i:i + 25])
+                    cw.put_metric_data(Namespace=NAMESPACE, MetricData=metric_data[i : i + 25])
                 log.info("Published %d metrics to %s", len(metric_data), NAMESPACE)
 
             consecutive_failures = 0

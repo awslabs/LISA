@@ -188,10 +188,10 @@ env | grep -E "^(MAX_CONCURRENT_REQUESTS|MAX_BATCH_TOKENS|MAX_BATCH_REQUESTS|MAX
 
 # Start metrics publisher in background (publishes Prometheus metrics to CloudWatch)
 # TEI serves Prometheus metrics on the main HTTP server at /metrics (port 8080).
-# The dedicated --prometheus-port (default 9000) is not available in all TEI builds.
+# The --prometheus-port flag controls a separate dedicated endpoint (default 9000)
+# which may not be available in all TEI builds, so always scrape from the main port.
 if [ -f /opt/metrics_publisher.py ]; then
-    PROM_PORT="${PROMETHEUS_PORT:-8080}"
-    export METRICS_ENDPOINT="http://localhost:${PROM_PORT}/metrics"
+    export METRICS_ENDPOINT="http://localhost:8080/metrics"
     echo "Starting metrics publisher daemon (endpoint: ${METRICS_ENDPOINT})..."
     python3 /opt/metrics_publisher.py &
     METRICS_PID=$!

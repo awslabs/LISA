@@ -55,26 +55,22 @@ def get_litellm_client() -> LiteLLMClient:
 
 
 def build_litellm_params(model_item: dict[str, Any]) -> dict[str, Any]:
-    """Build LiteLLM params from a DynamoDB model item.
-    """
+    """Build LiteLLM params from a DynamoDB model item."""
     model_config = model_item.get("model_config", {})
     model_name = model_config.get("modelName", "")
     model_url = model_item.get("model_url", "")
     model_type = model_config.get("modelType", "").upper()
     inference_container = model_config.get("inferenceContainer", "").lower()
-    
+
     # Check if this is a video generation model
     is_video_model = model_type == ModelType.VIDEOGEN.upper()
-    
+
     # For video generation models, use empty litellm_settings to avoid drop_params error
-    if is_video_model:
-        litellm_params = {}
-    else:
-        litellm_params = {"drop_params": True}
+    litellm_params: dict[str, Any] = {} if is_video_model else {"drop_params": True}
 
     # Determine if this is a LISA-managed model (has infrastructure)
     is_lisa_managed = bool(model_url and model_config.get("autoScalingConfig"))
-    
+
     if is_lisa_managed:
         # Determine the correct LiteLLM provider prefix based on the inference container type
         if inference_container == "vllm":
@@ -83,7 +79,7 @@ def build_litellm_params(model_item: dict[str, Any]) -> dict[str, Any]:
             provider_prefix = "openai"
             # Remove duplicate openai prefixing if present
             if model_name.startswith("openai/"):
-                model_name = model_name[len("openai/"):]
+                model_name = model_name[len("openai/") :]
 
         litellm_params["model"] = f"{provider_prefix}/{model_name}"
         litellm_params["api_base"] = model_url if model_url.endswith("/v1") else f"{model_url}/v1"
@@ -94,44 +90,37 @@ def build_litellm_params(model_item: dict[str, Any]) -> dict[str, Any]:
 
 
 def sync_model_to_litellm(
-    litellm_client: LiteLLMClient, 
-    model_table: Any,
-    model_item: dict[str, Any],
-    existing_model_names: set[str]
+    litellm_client: LiteLLMClient, model_table: Any, model_item: dict[str, Any], existing_model_names: set[str]
 ) -> dict[str, Any]:
     """Sync a single model to LiteLLM.
-    
+
     Args:
         litellm_client: The LiteLLM client
         model_table: The DynamoDB model table
         model_item: The model item from DynamoDB
         existing_model_names: Set of model names that already exist in LiteLLM
-        
+
     Returns:
         Result dictionary with model_id and status
     """
     model_id = model_item.get("model_id", "")
-    
+
     try:
         # Check if model already exists in LiteLLM by name
         if model_id in existing_model_names:
             logger.info(f"Model {model_id} already exists in LiteLLM, skipping")
-            return {
-                "model_id": model_id,
-                "status": "skipped",
-                "reason": "already_exists_in_litellm"
-            }
+            return {"model_id": model_id, "status": "skipped", "reason": "already_exists_in_litellm"}
 
         # Build litellm_params for this model
         litellm_params = build_litellm_params(model_item)
-        
+
         # Add the model to LiteLLM
         logger.info(f"Adding model {model_id} to LiteLLM with params: {litellm_params}")
         litellm_response = litellm_client.add_model(
             model_name=model_id,
             litellm_params=litellm_params,
         )
-        
+
         # Extract the LiteLLM ID from response
         if "model_info" in litellm_response and "id" in litellm_response["model_info"]:
             litellm_id = litellm_response["model_info"]["id"]
@@ -142,7 +131,7 @@ def sync_model_to_litellm(
         else:
             logger.warning(f"Could not extract LiteLLM ID from response for model {model_id}: {litellm_response}")
             litellm_id = None
-        
+
         # Update DynamoDB with the litellm_id
         if litellm_id:
             model_table.update_item(
@@ -153,62 +142,54 @@ def sync_model_to_litellm(
                     ":lm": now(),
                 },
             )
-            
+
         logger.info(f"Successfully added model {model_id} to LiteLLM with ID {litellm_id}")
-        return {
-            "model_id": model_id,
-            "status": "synced",
-            "litellm_id": litellm_id
-        }
-        
+        return {"model_id": model_id, "status": "synced", "litellm_id": litellm_id}
+
     except Exception as e:
         logger.error(f"Failed to sync model {model_id} to LiteLLM: {e}", exc_info=True)
-        return {
-            "model_id": model_id,
-            "status": "failed",
-            "error": str(e)
-        }
+        return {"model_id": model_id, "status": "failed", "error": str(e)}
 
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Lambda handler to sync all models from DynamoDB to LiteLLM.
-    
+
     This function:
     1. Scans the Models DynamoDB table for all models
     2. Filters for models that are IN_SERVICE
     3. Gets the list of existing models in LiteLLM
     4. Adds any missing models to LiteLLM
-    
+
     Args:
         event: Lambda event (can contain 'force' to re-sync all models)
         context: Lambda context
-        
+
     Returns:
         Dictionary with sync results
     """
     logger.info(f"Starting LiteLLM model sync. Event: {json.dumps(event)}")
-    
+
     model_table_name = os.environ.get("MODEL_TABLE_NAME")
     if not model_table_name:
         raise ValueError("MODEL_TABLE_NAME environment variable is not set")
-    
+
     model_table = ddb_resource.Table(model_table_name)
-    
+
     # Scan for all models in DynamoDB
     logger.info(f"Scanning Models table: {model_table_name}")
     models = []
     scan_kwargs: dict[str, Any] = {}
-    
+
     while True:
         response = model_table.scan(**scan_kwargs)
         models.extend(response.get("Items", []))
-        
+
         if "LastEvaluatedKey" not in response:
             break
         scan_kwargs["ExclusiveStartKey"] = response["LastEvaluatedKey"]
-    
+
     logger.info(f"Found {len(models)} models in DynamoDB")
-    
+
     # Filter for models that should be synced (IN_SERVICE status and no litellm_id)
     # Only sync models that don't already have a litellm_id to avoid duplicates
     eligible_models = []
@@ -220,58 +201,62 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             else:
                 already_synced += 1
                 logger.info(f"Model {m.get('model_id')} already has litellm_id, skipping")
-    
+
     logger.info(f"Found {len(eligible_models)} models needing sync, {already_synced} already synced")
-    
+
     if not eligible_models:
         logger.info("No eligible models to sync")
         return {
             "statusCode": 200,
-            "body": json.dumps({
-                "message": "No eligible models to sync",
-                "total_models": len(models),
-                "eligible_models": 0,
-                "already_synced": already_synced,
-                "synced": 0,
-                "skipped": 0,
-                "failed": 0
-            })
+            "body": json.dumps(
+                {
+                    "message": "No eligible models to sync",
+                    "total_models": len(models),
+                    "eligible_models": 0,
+                    "already_synced": already_synced,
+                    "synced": 0,
+                    "skipped": 0,
+                    "failed": 0,
+                }
+            ),
         }
-    
+
     # Get existing models from LiteLLM to double-check against duplicates
     try:
         litellm_client = get_litellm_client()
         existing_litellm_models = litellm_client.list_models()
-        existing_model_names = {m.get("model_name") for m in existing_litellm_models}
+        existing_model_names: set[str] = {m.get("model_name", "") for m in existing_litellm_models}
         logger.info(f"Found {len(existing_model_names)} existing models in LiteLLM")
     except Exception as e:
         logger.warning(f"Could not list existing LiteLLM models, proceeding anyway: {e}")
         litellm_client = get_litellm_client()  # Create client anyway for syncing
         existing_model_names = set()
-    
+
     # Sync each model
     results = []
     for model_item in eligible_models:
         result = sync_model_to_litellm(litellm_client, model_table, model_item, existing_model_names)
         results.append(result)
-    
+
     # Summarize results
     synced = sum(1 for r in results if r["status"] == "synced")
     skipped = sum(1 for r in results if r["status"] == "skipped")
     failed = sum(1 for r in results if r["status"] == "failed")
-    
+
     logger.info(f"Sync complete. Synced: {synced}, Skipped: {skipped}, Failed: {failed}")
-    
+
     return {
         "statusCode": 200,
-        "body": json.dumps({
-            "message": "Model sync completed",
-            "total_models": len(models),
-            "eligible_models": len(eligible_models),
-            "already_synced": already_synced,
-            "synced": synced,
-            "skipped": skipped,
-            "failed": failed,
-            "details": results
-        })
+        "body": json.dumps(
+            {
+                "message": "Model sync completed",
+                "total_models": len(models),
+                "eligible_models": len(eligible_models),
+                "already_synced": already_synced,
+                "synced": synced,
+                "skipped": skipped,
+                "failed": failed,
+                "details": results,
+            }
+        ),
     }

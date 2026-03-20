@@ -12,10 +12,6 @@
       "Type": "AWS::SSM::Parameter::Value<String>",
       "Default": "/dev/test-lisa/lisa/registeredModels"
     },
-    "SsmParameterValuedevtestlisalisabucketbucketaccesslogsC96584B6F00A464EAD1953AFF4B05118Parameter": {
-      "Type": "AWS::SSM::Parameter::Value<String>",
-      "Default": "/dev/test-lisa/lisa/bucket/bucket-access-logs"
-    },
     "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter": {
       "Type": "AWS::SSM::Parameter::Value<String>",
       "Default": "/dev/test-lisa/lisa/roles/test-lisa-LisaRagLambdaExecutionRole"
@@ -127,12 +123,14 @@
                 "dynamodb:DescribeTable"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "RagRepositoryConfigTable6FA366CB",
-                  "Arn"
-                ]
-              }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "RagRepositoryConfigTable6FA366CB",
+                    "Arn"
+                  ]
+                }
+              ]
             },
             {
               "Action": [
@@ -140,12 +138,14 @@
                 "dynamodb:GetShardIterator"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "RagRepositoryConfigTable6FA366CB",
-                  "Arn"
-                ]
-              }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "RagRepositoryConfigTable6FA366CB",
+                    "Arn"
+                  ]
+                }
+              ]
             },
             {
               "Action": [
@@ -218,7 +218,7 @@
               "Effect": "Allow",
               "Resource": [
                 {
-                  "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                  "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                 },
                 {
                   "Fn::GetAtt": [
@@ -355,12 +355,14 @@
                 "dynamodb:DescribeTable"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "testlisaRagSubDocumentTable76E4AE52",
-                  "Arn"
-                ]
-              }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "testlisaRagSubDocumentTable76E4AE52",
+                    "Arn"
+                  ]
+                }
+              ]
             },
             {
               "Action": [
@@ -368,12 +370,14 @@
                 "dynamodb:GetShardIterator"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "testlisaRagSubDocumentTable76E4AE52",
-                  "Arn"
-                ]
-              }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "testlisaRagSubDocumentTable76E4AE52",
+                    "Arn"
+                  ]
+                }
+              ]
             },
             {
               "Action": [
@@ -505,27 +509,7 @@
         },
         "LoggingConfiguration": {
           "DestinationBucketName": {
-            "Fn::Select": [
-              0,
-              {
-                "Fn::Split": [
-                  "/",
-                  {
-                    "Fn::Select": [
-                      5,
-                      {
-                        "Fn::Split": [
-                          ":",
-                          {
-                            "Ref": "SsmParameterValuedevtestlisalisabucketbucketaccesslogsC96584B6F00A464EAD1953AFF4B05118Parameter"
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
+            "Fn::ImportValue": "LisaCore:ExportsOutputRefBucketAccessLogsBucket91990836CA73FE19"
           },
           "LogFilePrefix": "logs/rag-bucket/"
         },
@@ -1450,7 +1434,6 @@
     "IngestionStackConstructIngestionJobFargateEnvD92342F8": {
       "Type": "AWS::Batch::ComputeEnvironment",
       "Properties": {
-        "ComputeEnvironmentName": "test-lisa-dev-ingestion-job",
         "ComputeResources": {
           "MaxvCpus": 128,
           "SecurityGroupIds": [
@@ -1491,7 +1474,6 @@
             "Order": 1
           }
         ],
-        "JobQueueName": "test-lisa-dev-ingestion-job",
         "Priority": 1,
         "State": "ENABLED"
       }
@@ -1583,7 +1565,7 @@
         ]
       }
     },
-    "IngestionStackConstructIngestionJobDefinition529FE179": {
+    "IngestionStackConstructIngestionJobDef7C6DDE5A": {
       "Type": "AWS::Batch::JobDefinition",
       "Properties": {
         "ContainerProperties": {
@@ -1667,6 +1649,26 @@
             {
               "Name": "TIKTOKEN_CACHE_DIR",
               "Value": "/opt/python/TIKTOKEN_CACHE"
+            },
+            {
+              "Name": "LISA_AUDIT_ENABLED",
+              "Value": "false"
+            },
+            {
+              "Name": "LISA_AUDIT_AUDIT_ALL",
+              "Value": "false"
+            },
+            {
+              "Name": "LISA_AUDIT_ENABLED_PATH_PREFIXES",
+              "Value": ""
+            },
+            {
+              "Name": "LISA_AUDIT_MAX_BODY_BYTES",
+              "Value": "20000"
+            },
+            {
+              "Name": "LISA_AUDIT_INCLUDE_JSON_BODY",
+              "Value": "false"
             },
             {
               "Name": "RESTAPI_SSL_CERT_ARN",
@@ -1761,7 +1763,7 @@
           ],
           "RuntimePlatform": {}
         },
-        "JobDefinitionName": "test-lisa-dev-ingestion-job",
+        "JobDefinitionName": "test-lisa-dev-ingestion-job-def",
         "PlatformCapabilities": [
           "FARGATE"
         ],
@@ -1795,7 +1797,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
         },
         "Environment": {
           "Variables": {
@@ -1806,6 +1808,11 @@
             "CHUNK_OVERLAP": "51",
             "CHUNK_SIZE": "512",
             "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
             "LISA_INGESTION_JOB_DEFINITION_NAME": {
               "Fn::Select": [
                 1,
@@ -1819,7 +1826,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -1924,7 +1931,7 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E5507f6904bc282231aa2c3ea4dab72d19": {
+    "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E52e313c69ed9fcffbb8ccf3066a438e78": {
       "Type": "AWS::Lambda::Version",
       "Properties": {
         "FunctionName": {
@@ -1943,7 +1950,7 @@
         },
         "FunctionVersion": {
           "Fn::GetAtt": [
-            "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E5507f6904bc282231aa2c3ea4dab72d19",
+            "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E52e313c69ed9fcffbb8ccf3066a438e78",
             "Version"
           ]
         },
@@ -1991,7 +1998,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
         },
         "Environment": {
           "Variables": {
@@ -2002,6 +2009,11 @@
             "CHUNK_OVERLAP": "51",
             "CHUNK_SIZE": "512",
             "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
             "LISA_INGESTION_JOB_DEFINITION_NAME": {
               "Fn::Select": [
                 1,
@@ -2015,7 +2027,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -2120,7 +2132,7 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBC4c488c07522bf183b32cd3901dd48311": {
+    "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBCb0dba7d370b058f91c6bc210988b88a4": {
       "Type": "AWS::Lambda::Version",
       "Properties": {
         "FunctionName": {
@@ -2139,7 +2151,7 @@
         },
         "FunctionVersion": {
           "Fn::GetAtt": [
-            "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBC4c488c07522bf183b32cd3901dd48311",
+            "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBCb0dba7d370b058f91c6bc210988b88a4",
             "Version"
           ]
         },
@@ -2187,7 +2199,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
         },
         "Environment": {
           "Variables": {
@@ -2198,6 +2210,11 @@
             "CHUNK_OVERLAP": "51",
             "CHUNK_SIZE": "512",
             "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
             "LISA_INGESTION_JOB_DEFINITION_NAME": {
               "Fn::Select": [
                 1,
@@ -2211,7 +2228,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -2316,7 +2333,7 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E95c48ffa9494af81166053685d5ec0d5f3": {
+    "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E95cabb3a355b4d4e812ae2b9e46da2e7a3": {
       "Type": "AWS::Lambda::Version",
       "Properties": {
         "FunctionName": {
@@ -2335,7 +2352,7 @@
         },
         "FunctionVersion": {
           "Fn::GetAtt": [
-            "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E95c48ffa9494af81166053685d5ec0d5f3",
+            "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E95cabb3a355b4d4e812ae2b9e46da2e7a3",
             "Version"
           ]
         },
@@ -5424,7 +5441,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
         },
         "Description": "List all repositories",
         "Environment": {
@@ -5455,6 +5472,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -5503,7 +5525,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -5579,7 +5601,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
         },
         "Description": "List status for all repositories",
         "Environment": {
@@ -5610,6 +5632,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -5658,7 +5685,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -5734,7 +5761,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
         },
         "Description": "Generates a presigned url for uploading files to RAG",
         "Environment": {
@@ -5765,6 +5792,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -5813,7 +5845,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -5889,7 +5921,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
         },
         "Description": "Create a new repository",
         "Environment": {
@@ -5920,6 +5952,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -5968,7 +6005,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -6044,7 +6081,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
         },
         "Description": "Get a repository by ID",
         "Environment": {
@@ -6075,6 +6112,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -6123,7 +6165,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -6199,7 +6241,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
         },
         "Description": "Update a repository",
         "Environment": {
@@ -6230,6 +6272,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -6278,7 +6325,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -6354,7 +6401,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
         },
         "Description": "Delete a repository",
         "Environment": {
@@ -6385,6 +6432,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -6433,7 +6485,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -6509,7 +6561,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
         },
         "Description": "Run a similarity search against the specified repository using the specified query",
         "Environment": {
@@ -6540,6 +6592,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -6588,7 +6645,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -6664,7 +6721,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
         },
         "Description": "Ingest a set of documents based on specified S3 path",
         "Environment": {
@@ -6695,6 +6752,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -6743,7 +6805,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -6819,7 +6881,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
         },
         "Description": "List all docs for a repository",
         "Environment": {
@@ -6850,6 +6912,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -6898,7 +6965,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -6974,7 +7041,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
         },
         "Description": "Get a document by ID",
         "Environment": {
@@ -7005,6 +7072,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -7053,7 +7125,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -7129,7 +7201,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
         },
         "Description": "Creates presigned url to download document within repository",
         "Environment": {
@@ -7160,6 +7232,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -7208,7 +7285,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -7284,7 +7361,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
         },
         "Description": "Deletes all records associated with documents from the repository",
         "Environment": {
@@ -7315,6 +7392,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -7363,7 +7445,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -7439,7 +7521,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
         },
         "Description": "List all ingestion jobs for a repository",
         "Environment": {
@@ -7470,6 +7552,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -7518,7 +7605,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -7594,7 +7681,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
         },
         "Description": "List all collections within a repository",
         "Environment": {
@@ -7625,6 +7712,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -7673,7 +7765,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -7749,7 +7841,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
         },
         "Description": "List all collections user has access to across all repositories",
         "Environment": {
@@ -7780,6 +7872,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -7828,7 +7925,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -7904,7 +8001,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
         },
         "Description": "Create a new collection within a repository",
         "Environment": {
@@ -7935,6 +8032,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -7983,7 +8085,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -8059,7 +8161,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
         },
         "Description": "Get a collection by ID within a repository",
         "Environment": {
@@ -8090,6 +8192,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -8138,7 +8245,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -8214,7 +8321,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
         },
         "Description": "Update a collection within a repository",
         "Environment": {
@@ -8245,6 +8352,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -8293,7 +8405,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -8369,7 +8481,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
         },
         "Description": "Delete a collection within a repository",
         "Environment": {
@@ -8400,6 +8512,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -8448,7 +8565,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -8524,7 +8641,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
         },
         "Description": "List all ACTIVE Bedrock Knowledge Bases",
         "Environment": {
@@ -8555,6 +8672,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -8603,7 +8725,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -8679,7 +8801,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
         },
         "Description": "List data sources for a Bedrock Knowledge Base",
         "Environment": {
@@ -8710,6 +8832,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -8758,7 +8885,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -9074,12 +9201,14 @@
                 "dynamodb:DescribeTable"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "RagRepositoryConfigTable6FA366CB",
-                  "Arn"
-                ]
-              }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "RagRepositoryConfigTable6FA366CB",
+                    "Arn"
+                  ]
+                }
+              ]
             },
             {
               "Action": [
@@ -9087,12 +9216,14 @@
                 "dynamodb:GetShardIterator"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "RagRepositoryConfigTable6FA366CB",
-                  "Arn"
-                ]
-              }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "RagRepositoryConfigTable6FA366CB",
+                    "Arn"
+                  ]
+                }
+              ]
             }
           ],
           "Version": "2012-10-17"
@@ -9161,12 +9292,14 @@
                 "dynamodb:DescribeTable"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "RagRepositoryConfigTable6FA366CB",
-                  "Arn"
-                ]
-              }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "RagRepositoryConfigTable6FA366CB",
+                    "Arn"
+                  ]
+                }
+              ]
             },
             {
               "Action": [
@@ -9174,12 +9307,14 @@
                 "dynamodb:GetShardIterator"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "RagRepositoryConfigTable6FA366CB",
-                  "Arn"
-                ]
-              }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "RagRepositoryConfigTable6FA366CB",
+                    "Arn"
+                  ]
+                }
+              ]
             },
             {
               "Action": "lambda:InvokeFunction",
@@ -9552,7 +9687,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1ebc9d3ac2033816c4abb63e4afd69d350b4aba8704cc9236b82ea520b74f4b0.zip"
+          "S3Key": "6323dd10f5089f5204ae0961cef4dd30a4dc2b47cc67460901eaf0bf4b2dfa88.zip"
         },
         "Environment": {
           "Variables": {
@@ -9641,7 +9776,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
         },
         "Environment": {
           "Variables": {
@@ -9671,6 +9806,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -9719,7 +9859,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -9772,7 +9912,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
         },
         "Environment": {
           "Variables": {
@@ -9802,6 +9942,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -9850,7 +9995,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -10128,7 +10273,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
         },
         "Environment": {
           "Variables": {
@@ -10158,6 +10303,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -10206,7 +10356,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -10277,7 +10427,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
         },
         "Environment": {
           "Variables": {
@@ -10307,6 +10457,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -10355,7 +10510,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }

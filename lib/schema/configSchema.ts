@@ -717,6 +717,7 @@ const AuthConfigSchema = z.object({
     adminGroup: z.string().default('').describe('Name of the admin group.'),
     userGroup: z.string().default('').describe('Name of the user group.'),
     apiGroup: z.string().default('').describe('Name of the API group for API token access.'),
+    ragAdminGroup: z.string().default('').describe('Name of the RAG admin group for RAG management access.'),
     jwtGroupsProperty: z.string().default('').describe('Name of the JWT groups property.'),
     additionalScopes: z.array(z.string()).default([]).describe('Additional JWT scopes to request.'),
 }).describe('Configuration schema for authorization.');

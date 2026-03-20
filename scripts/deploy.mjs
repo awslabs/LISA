@@ -96,26 +96,23 @@ async function main() {
   console.log('Logging into ECR...');
   const maxRetries = 3;
   const baseDelayMs = 2000;
-
-  for (const account of ecrAccounts) {
-    const ecrLoginCmd = `aws ecr get-login-password --region ${region} ${profile ? `--profile ${profile}` : ''} | ${dockerCmd} login --username AWS --password-stdin ${account}.dkr.ecr.${region}.${domain}`;
-    let lastErr;
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        execSync(ecrLoginCmd, { cwd: ROOT, stdio: 'inherit', shell: true });
-        lastErr = null;
-        break;
-      } catch (err) {
-        lastErr = err;
-        if (attempt < maxRetries) {
-          const delayMs = baseDelayMs * Math.pow(2, attempt - 1);
-          console.warn(`ECR login attempt ${attempt}/${maxRetries} failed. Retrying in ${delayMs / 1000}s...`);
-          await new Promise((r) => setTimeout(r, delayMs));
-        }
+  const ecrLoginCmd = 'node scripts/docker-login.mjs';
+  let lastErr;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      execSync(ecrLoginCmd, { cwd: ROOT, stdio: 'inherit', shell: true });
+      lastErr = null;
+      break;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < maxRetries) {
+        const delayMs = baseDelayMs * Math.pow(2, attempt - 1);
+        console.warn(`ECR login attempt ${attempt}/${maxRetries} failed. Retrying in ${delayMs / 1000}s...`);
+        await new Promise((r) => setTimeout(r, delayMs));
       }
     }
-    if (lastErr) throw lastErr;
   }
+  if (lastErr) throw lastErr;
 
   console.log('Cleaning misc...');
   execSync('rm -f .hf_token_cache', { cwd: ROOT, stdio: 'inherit' });

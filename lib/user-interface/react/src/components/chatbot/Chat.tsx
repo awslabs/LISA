@@ -323,11 +323,6 @@ export default function Chat ({ sessionId, initialStack }) {
         return inList?.status === ModelStatus.Stopped;
     }, [selectedModel, modelsForDropdown]);
 
-    const hasStoppedModelsInDropdown = useMemo(() =>
-        (modelsForDropdown || []).some((m) => m.status === ModelStatus.Stopped),
-    [modelsForDropdown]
-    );
-
     // Set default model if none is selected, default model is configured, and user hasn't interacted (only InService models)
     const availableModelsForDefault = useMemo(() =>
         (modelsForDropdown || []).filter((m) => m.status === ModelStatus.InService),
@@ -1207,11 +1202,6 @@ export default function Chat ({ sessionId, initialStack }) {
                                             ref={modelSelectRef}
                                             controlId='model-selection-autosuggest'
                                         />
-                                        {hasStoppedModelsInDropdown && (
-                                            <Box variant='small' color='text-body-secondary'>
-                                                Some models in the list are stopped and cannot be selected.
-                                            </Box>
-                                        )}
                                     </SpaceBetween>
                                 </FormField>
                                 {window.env.RAG_ENABLED && !isImageGenerationMode && !isVideoGenerationMode && (

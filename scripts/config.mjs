@@ -64,9 +64,57 @@ function getArrayValues(obj, pathStr) {
   const arr = _.get(obj, arrayPath);
   if (!Array.isArray(arr)) return [];
   if (subPath) {
-    return arr.map((item) => (item != null && typeof item === 'object' ? _.get(item, subPath) : item)).filter((v) => v != null && v !== '');
+    return arr
+      .map((item) => (item != null && typeof item === 'object' ? _.get(item, subPath) : item))
+      .filter((v) => v != null && v !== '');
   }
   return arr.filter((v) => v != null && v !== '');
+}
+
+/**
+ * Determine which config object should be used for a given lookup path.
+ *
+ * If config.env is set to an environment name (e.g. "dev") and the lookup path is
+ * not explicitly env-qualified, lookups are resolved against a view where the
+ * selected env block (config[env]) is merged over the root config.
+ *
+ * Explicit env-qualified paths like ".dev.profile" or ".env" bypass this logic
+ * and use the raw merged config object.
+ */
+function resolveLookupConfig(config, pathStr) {
+  if (!config || typeof config !== 'object') {
+    return config;
+  }
+
+  const env = config.env;
+  if (!env || typeof env !== 'string') {
+    return config;
+  }
+
+  if (!pathStr || typeof pathStr !== 'string' || !pathStr.startsWith('.')) {
+    return config;
+  }
+
+  const cleanPath = pathStr.replace(/^\./, '');
+
+  // Always resolve ".env" and ".env.*" against the root config
+  if (cleanPath === 'env' || cleanPath.startsWith('env.')) {
+    return config;
+  }
+
+  // If the path is explicitly qualified with the active env (e.g. ".dev.*"),
+  // treat it as an explicit reference and bypass env overlay.
+  if (cleanPath === env || cleanPath.startsWith(env + '.')) {
+    return config;
+  }
+
+  const envBlock = config[env];
+  if (!envBlock || typeof envBlock !== 'object') {
+    return config;
+  }
+
+  // Merge root config with the selected env block for lookups.
+  return _.merge({}, config, envBlock);
 }
 
 function main() {
@@ -80,11 +128,12 @@ function main() {
 
   if (args[0] === '--get' && args[1]) {
     const pathStr = args[1];
+    const lookupConfig = resolveLookupConfig(config, pathStr);
     if (/\[\]/.test(pathStr)) {
-      const values = getArrayValues(config, pathStr);
+      const values = getArrayValues(lookupConfig, pathStr);
       values.forEach((v) => console.log(String(v)));
     } else {
-      const val = getAtPath(config, pathStr);
+      const val = getAtPath(lookupConfig, pathStr);
       if (val != null && val !== '') {
         console.log(String(val));
       }

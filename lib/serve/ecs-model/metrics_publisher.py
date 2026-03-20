@@ -172,7 +172,7 @@ def build_metric_data(
     dimensions: list[dict],
 ) -> list[dict]:
     """Build CloudWatch MetricData entries from scraped Prometheus metrics."""
-    data = []
+    data: list[dict] = []
 
     if engine == "vllm":
         gauge_map = VLLM_METRICS
@@ -228,7 +228,7 @@ def build_metric_data(
     return data
 
 
-def publish_loop():
+def publish_loop() -> None:
     """Main loop: scrape → parse → publish, repeat."""
     dimensions = []
     if CLUSTER_NAME:

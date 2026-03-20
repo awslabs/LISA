@@ -800,7 +800,9 @@ def test_fetch_context_window_from_litellm_no_max_input_tokens():
         "model_info": {"id": "test-litellm-id"},
     }
 
-    with patch("models.state_machine.create_model.litellm_client", mock_litellm_client):
+    with patch("models.state_machine.create_model.litellm_client", mock_litellm_client), patch(
+        "models.state_machine.create_model.time.sleep"
+    ):
         result = _fetch_context_window_from_litellm("test-litellm-id")
         assert result is None
 
@@ -809,7 +811,9 @@ def test_fetch_context_window_from_litellm_exception():
     """Test fetching context window from LiteLLM when get_model raises an exception."""
     mock_litellm_client.get_model.side_effect = Exception("Connection error")
 
-    with patch("models.state_machine.create_model.litellm_client", mock_litellm_client):
+    with patch("models.state_machine.create_model.litellm_client", mock_litellm_client), patch(
+        "models.state_machine.create_model.time.sleep"
+    ):
         result = _fetch_context_window_from_litellm("test-litellm-id")
         assert result is None
 
@@ -990,7 +994,7 @@ def test_handle_enrich_context_window_non_blocking_on_failure(model_table, lambd
 
     with patch("models.state_machine.create_model.model_table", model_table), patch(
         "models.state_machine.create_model.litellm_client", mock_litellm_client
-    ):
+    ), patch("models.state_machine.create_model.time.sleep"):
         # Should NOT raise
         result = handle_enrich_context_window(event, lambda_context)
         assert result["modelId"] == "fail-model"

@@ -88,7 +88,9 @@ class OIDCAuthorizationProvider(AuthorizationProvider):
     Uses JWT group claims to determine admin and app access.
     """
 
-    def __init__(self, admin_group: str | None = None, user_group: str | None = None, rag_admin_group: str | None = None):
+    def __init__(
+        self, admin_group: str | None = None, user_group: str | None = None, rag_admin_group: str | None = None
+    ):
         """Initialize the OIDC authorization provider.
 
         Parameters

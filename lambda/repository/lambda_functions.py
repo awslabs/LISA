@@ -49,7 +49,14 @@ from repository.rag_document_repo import RagDocumentRepository
 from repository.s3_metadata_manager import S3MetadataManager
 from repository.services import RepositoryServiceFactory
 from repository.vector_store_repo import VectorStoreRepository
-from utilities.auth import admin_only, get_groups, get_user_context, get_username, is_admin, user_has_group_access
+from utilities.auth import (
+    admin_only,
+    get_groups,
+    get_user_context,
+    get_username,
+    is_admin,
+    user_has_group_access,
+)
 from utilities.bedrock_kb import create_s3_scan_job
 from utilities.bedrock_kb_discovery import (
     build_pipeline_configs_from_kb_config,

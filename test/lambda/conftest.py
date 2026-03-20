@@ -72,18 +72,21 @@ class MockAuth:
         self.username = "test-user"
         self.groups = ["test-group"]
         self.is_admin_value = False
+        self.is_rag_admin_value = False
 
         # Create mock functions with side_effect that references self attributes
         self.get_username = MagicMock(side_effect=lambda event: self.username)
         self.get_groups = MagicMock(side_effect=lambda event: self.groups)
         self.is_admin = MagicMock(side_effect=lambda event: self.is_admin_value)
+        self.is_rag_admin = MagicMock(side_effect=lambda event: self.is_rag_admin_value)
         self.get_user_context = MagicMock(side_effect=lambda event: (self.username, self.is_admin_value, self.groups))
 
-    def set_user(self, username="test-user", groups=None, is_admin=False):
+    def set_user(self, username="test-user", groups=None, is_admin=False, is_rag_admin=False):
         """Set the current user context."""
         self.username = username
         self.groups = groups if groups is not None else ["test-group"]
         self.is_admin_value = is_admin
+        self.is_rag_admin_value = is_rag_admin
         # side_effect lambdas will automatically use updated self attributes
 
     def reset(self):
@@ -125,6 +128,7 @@ def setup_auth_patches(request, mock_auth, aws_credentials):
     if "test_chat_assistant_stacks" not in request.node.nodeid:
         patches.append(patch("utilities.auth.get_groups", mock_auth.get_groups))
         patches.append(patch("utilities.auth.is_admin", mock_auth.is_admin))
+        patches.append(patch("utilities.auth.is_rag_admin", mock_auth.is_rag_admin))
     # Avoid importing models.lambda_functions (requires MODEL_TABLE_NAME) for tests that don't need it.
     if "test_chat_assistant_stacks" not in request.node.nodeid and "test_api_tokens" not in request.node.nodeid:
         patches.extend(

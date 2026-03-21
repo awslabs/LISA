@@ -83,6 +83,7 @@ env | grep -E "^(MAX_CONCURRENT_REQUESTS|MAX_INPUT_LENGTH|MAX_TOTAL_TOKENS|MAX_B
 if [ -f /opt/metrics_publisher.py ]; then
     PROM_PORT="${PROMETHEUS_PORT:-8080}"
     export METRICS_ENDPOINT="http://localhost:${PROM_PORT}/metrics"
+    export INFERENCE_ENGINE="tgi"
     echo "Starting metrics publisher daemon (endpoint: ${METRICS_ENDPOINT})..."
     python3 /opt/metrics_publisher.py &
     METRICS_PID=$!

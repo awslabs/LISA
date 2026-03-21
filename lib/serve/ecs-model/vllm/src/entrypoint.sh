@@ -286,6 +286,7 @@ echo "==================================="
 
 # Start metrics publisher in background (publishes Prometheus metrics to CloudWatch)
 if [ -f /opt/metrics_publisher.py ]; then
+    export INFERENCE_ENGINE="vllm"
     echo "Starting metrics publisher daemon..."
     python3 /opt/metrics_publisher.py &
     METRICS_PID=$!

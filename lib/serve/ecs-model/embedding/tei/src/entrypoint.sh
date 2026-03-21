@@ -192,6 +192,7 @@ env | grep -E "^(MAX_CONCURRENT_REQUESTS|MAX_BATCH_TOKENS|MAX_BATCH_REQUESTS|MAX
 # which may not be available in all TEI builds, so always scrape from the main port.
 if [ -f /opt/metrics_publisher.py ]; then
     export METRICS_ENDPOINT="http://localhost:8080/metrics"
+    export INFERENCE_ENGINE="tei"
     echo "Starting metrics publisher daemon (endpoint: ${METRICS_ENDPOINT})..."
     python3 /opt/metrics_publisher.py &
     METRICS_PID=$!

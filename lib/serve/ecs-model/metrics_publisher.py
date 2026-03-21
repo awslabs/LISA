@@ -22,6 +22,7 @@ endpoints (vLLM, TGI, TEI) and publishes them to CloudWatch.
 Environment variables:
     METRICS_PUBLISH_INTERVAL  - Seconds between scrape/publish cycles (default: 60)
     METRICS_ENDPOINT          - Prometheus metrics URL (default: http://localhost:8080/metrics)
+    INFERENCE_ENGINE          - Explicit engine type override: vllm, tgi, or tei (default: auto-detect)
     CLUSTER_NAME              - ECS cluster name (CloudWatch dimension)
     SERVICE_NAME              - ECS service name (CloudWatch dimension)
     MODEL_NAME                - Model identifier (CloudWatch dimension)
@@ -61,6 +62,15 @@ CLUSTER_NAME = os.environ.get("CLUSTER_NAME", "")
 SERVICE_NAME = os.environ.get("SERVICE_NAME", "")
 MODEL_NAME = os.environ.get("MODEL_NAME", "")
 NAMESPACE = os.environ.get("METRICS_NAMESPACE", "LISA/InferenceMetrics")
+
+# Engine type is required — set by each container's entrypoint.sh
+INFERENCE_ENGINE = os.environ.get("INFERENCE_ENGINE", "").lower().strip()
+if INFERENCE_ENGINE not in ("vllm", "tgi", "tei"):
+    log.error(
+        "INFERENCE_ENGINE environment variable must be set to one of: vllm, tgi, tei (got: %r)",
+        INFERENCE_ENGINE or "<unset>",
+    )
+    sys.exit(1)
 
 # Metrics we care about, keyed by engine type.
 # Each entry maps a Prometheus metric name to a CloudWatch metric name.
@@ -151,21 +161,6 @@ def parse_prometheus(text: str) -> dict[str, float]:
     return metrics
 
 
-def detect_engine(metrics: dict[str, float]) -> str | None:
-    """Detect inference engine from metric prefixes."""
-    for name in metrics:
-        if name.startswith("vllm:") or name.startswith("vllm_"):
-            return "vllm"
-        if name.startswith("tgi_"):
-            return "tgi"
-        if name.startswith("te_"):
-            return "tei"
-    return None
-
-
-# ---------------------------------------------------------------------------
-# CloudWatch publishing
-# ---------------------------------------------------------------------------
 def build_metric_data(
     metrics: dict[str, float],
     engine: str,
@@ -250,10 +245,11 @@ def publish_loop() -> None:
     max_failures_before_backoff = 5
 
     log.info(
-        "Starting metrics publisher: endpoint=%s interval=%ds namespace=%s dimensions=%s",
+        "Starting metrics publisher: endpoint=%s interval=%ds namespace=%s engine=%s dimensions=%s",
         METRICS_ENDPOINT,
         PUBLISH_INTERVAL,
         NAMESPACE,
+        INFERENCE_ENGINE,
         json.dumps(dimensions),
     )
 
@@ -273,16 +269,7 @@ def publish_loop() -> None:
             text = resp.read().decode("utf-8", errors="replace")
             metrics = parse_prometheus(text)
 
-            if engine_detected is None:
-                engine_detected = detect_engine(metrics)
-                if engine_detected:
-                    log.info("Detected inference engine: %s", engine_detected)
-                else:
-                    log.warning("Could not detect engine type from metrics. Will retry.")
-                    time.sleep(PUBLISH_INTERVAL)
-                    continue
-
-            metric_data = build_metric_data(metrics, engine_detected, dimensions)
+            metric_data = build_metric_data(metrics, INFERENCE_ENGINE, dimensions)
 
             if metric_data:
                 # CloudWatch accepts max 1000 metrics per call; batch in chunks of 25

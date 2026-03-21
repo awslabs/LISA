@@ -129,7 +129,7 @@ export function selectKnowledgeBase (knowledgeBaseName: string): Cypress.Chainab
                     cy.wait('@getDataSources', { timeout: 30000 });
                     return cy.wrap(true);
                 } else {
-                    cy.log(`️Knowledge Base "${knowledgeBaseName}" not found - selecting first available`);
+                    cy.log(`Knowledge Base "${knowledgeBaseName}" not found - selecting first available`);
                     cy.get('[role="option"]').first().click();
                     cy.wait('@getDataSources', { timeout: 30000 });
                     return cy.wrap(true);
@@ -156,7 +156,7 @@ export function selectKnowledgeBase (knowledgeBaseName: string): Cypress.Chainab
                 cy.log(`Knowledge Base "${knowledgeBaseName}" not found - selecting first available`);
                 cy.get('[role="option"]').first().click();
             } else {
-                cy.log('️No Knowledge Bases available');
+                cy.log('No Knowledge Bases available');
                 cy.get('body').click(0, 0); // Close dropdown
                 return cy.wrap(false);
             }

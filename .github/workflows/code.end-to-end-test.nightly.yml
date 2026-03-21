@@ -44,7 +44,7 @@ jobs:
           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
           USER_NAME: ${{ secrets.USER_NAME }}
           USER_PASSWORD: ${{ secrets.USER_PASSWORD }}
-        # Quick specs only — excludes long-running infra tests (bedrock-model-workflow).
+        # Quick specs only — excludes 000-cleanup and bedrock-model-workflow (long-running infra tests).
         # Update this list when adding new quick E2E specs.
         run: >-
           npx cypress run

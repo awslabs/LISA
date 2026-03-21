@@ -21,7 +21,7 @@
  * environment by deleting all e2e-* prefixed resources and polling until
  * async deletions (models, repositories) are fully complete.
  *
- * Run this spec first via --spec ordering in CI workflows.
+ * Runs first via alphabetical filename ordering (000- prefix).
  */
 
 import { makeAuthenticatedRequest } from '../../support/collectionHelpers';

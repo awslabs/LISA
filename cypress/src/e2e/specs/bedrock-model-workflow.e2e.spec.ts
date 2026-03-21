@@ -22,7 +22,7 @@
  * Used by the weekly and release CI workflows.
  *
  * Cleanup strategy:
- * - cleanup.e2e.spec.ts runs first (via --spec ordering) to sweep orphaned resources
+ * - 000-cleanup.e2e.spec.ts runs first (alphabetical ordering) to sweep orphaned resources
  *   and poll until async deletions complete
  * - skipCleanup: false: inline UI-based cleanup runs after tests
  * - after(): best-effort API sweep catches anything inline cleanup missed

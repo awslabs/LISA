@@ -54,19 +54,15 @@ export function openCreateRepositoryWizard () {
 }
 
 /**
- * Fill in the repository configuration with Bedrock Knowledge Base type
+ * Fill in the repository configuration with Bedrock Knowledge Base type.
+ * Selects the repository type first — the ID field may be disabled until
+ * a type is selected.
  */
 export function fillRepositoryConfig (config: RepositoryConfig) {
     // Set up intercept for knowledge bases API before selecting repository type
     cy.intercept('GET', '**/bedrock-kb').as('getKnowledgeBases');
 
-    // Fill repository ID
-    cy.get('[data-testid="repository-id-input"]')
-        .should('be.visible')
-        .clear()
-        .type(config.repositoryId);
-
-    // Select repository type: BEDROCK_KNOWLEDGE_BASE
+    // Select repository type first — some fields are disabled until type is chosen
     cy.get('[data-testid="repository-type-select"]')
         .find('button')
         .click();
@@ -78,6 +74,13 @@ export function fillRepositoryConfig (config: RepositoryConfig) {
 
     // Wait for knowledge bases to load after selecting repository type
     cy.wait('@getKnowledgeBases', { timeout: 30000 });
+
+    // Fill repository ID — now enabled after type selection
+    cy.get('[data-testid="repository-id-input"]')
+        .should('be.visible')
+        .and('not.be.disabled')
+        .clear()
+        .type(config.repositoryId);
 }
 
 /**

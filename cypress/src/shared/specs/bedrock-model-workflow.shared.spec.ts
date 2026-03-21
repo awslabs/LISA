@@ -59,11 +59,8 @@ import {
     PromptTemplateType,
 } from '../../support/promptTemplateHelpers';
 import {
-    CollectionConfig,
-    navigateToRagManagement,
     waitForRepositoryReady,
     getAutoCreatedCollectionInfo,
-    renameCollection,
     uploadDocument,
     waitForDocumentIngested,
     selectRagRepositoryInChat,
@@ -91,7 +88,6 @@ const DEFAULT_TEST_MODEL: BedrockModelConfig = {
 export type BedrockWorkflowTestOptions = {
     modelConfig?: BedrockModelConfig;
     repositoryConfig?: RepositoryConfig;
-    collectionConfig?: CollectionConfig;
     promptTemplateConfig?: PromptTemplateConfig;
     skipChat?: boolean;
     skipCleanup?: boolean;
@@ -271,18 +267,14 @@ export function runBedrockInfraTests (options: BedrockWorkflowTestOptions = {}) 
         knowledgeBaseName: 'test-bedrock-kb',
         dataSourceIndex: 0,
     };
-    const testCollection: CollectionConfig = options.collectionConfig || {
-        collectionId: `e2e-collection-${dateString}`,
-        collectionName: `E2E Test Collection ${dateString}`,
-        repositoryId: testRepository.repositoryId,
-    };
     const testDocumentPath = options.testDocumentPath || 'test-document.txt';
 
     const testState = {
         repositoryCreated: false,
         repositoryReady: false,
-        collectionRenamed: false,
+        collectionReady: false,
         collectionId: '',
+        collectionName: '',
         documentUploaded: false,
         documentIngested: false,
     };
@@ -302,14 +294,8 @@ export function runBedrockInfraTests (options: BedrockWorkflowTestOptions = {}) 
                 openCreateRepositoryWizard();
                 fillRepositoryConfig(testRepository);
 
-                // selectKnowledgeBase returns boolean - if false, no KBs available
                 selectKnowledgeBase(testRepository.knowledgeBaseName).then((kbSelected) => {
-                    if (!kbSelected) {
-                        cy.log('No Knowledge Bases available - cannot create repository');
-                        // Close the modal and skip
-                        cy.get('body').type('{esc}');
-                        return;
-                    }
+                    expect(kbSelected, `Knowledge Base "${testRepository.knowledgeBaseName}" should be available`).to.equal(true);
 
                     selectDataSource(testRepository.dataSourceIndex);
                     skipToCreateRepository();
@@ -340,34 +326,32 @@ export function runBedrockInfraTests (options: BedrockWorkflowTestOptions = {}) 
         testState.repositoryReady = true;
     });
 
-    it('Rename auto-created collection to known name', function () {
+    it('Get auto-created default collection info', function () {
         if (!testState.repositoryReady) {
             this.skip();
         }
 
-        navigateToRagManagement();
-
-        // Get the auto-created collection info (name and ID) and rename it
+        // Fetch the default collection's name and ID via API
         getAutoCreatedCollectionInfo(testRepository.repositoryId).then((collectionInfo) => {
-            cy.log(`Auto-created collection: ${collectionInfo.name} (ID: ${collectionInfo.id})`);
-            testState.collectionId = collectionInfo.id; // Store the collection ID
-            renameCollection(collectionInfo.name, testCollection.collectionName);
-            testState.collectionRenamed = true;
+            cy.log(`Default collection: ${collectionInfo.name} (ID: ${collectionInfo.id})`);
+            testState.collectionId = collectionInfo.id;
+            testState.collectionName = collectionInfo.name;
+            testState.collectionReady = true;
         });
     });
 
     it('Upload test document to collection via chat page', function () {
-        if (!testState.collectionRenamed) {
+        if (!testState.collectionReady) {
             this.skip();
         }
 
         // Navigate to chat page
         navigateAndVerifyChatPage();
 
-        // Select model, repository, and collection
+        // Select model, repository, and collection (use actual default collection name)
         selectModelInChat(testModel.modelId);
         selectRagRepositoryInChat(testRepository.repositoryId);
-        selectCollectionInChat(testCollection.collectionName);
+        selectCollectionInChat(testState.collectionName);
 
         // Upload the document
         uploadDocument(testDocumentPath);
@@ -390,7 +374,7 @@ export function runBedrockInfraTests (options: BedrockWorkflowTestOptions = {}) 
         navigateAndVerifyChatPage();
         selectModelInChat(testModel.modelId);
         selectRagRepositoryInChat(testRepository.repositoryId);
-        selectCollectionInChat(testCollection.collectionName);
+        selectCollectionInChat(testState.collectionName);
         insertChatPrompt('Who is Whiskers?');
         sendMessageWithButton();
         verifyChatResponseReceived();

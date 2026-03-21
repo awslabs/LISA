@@ -22,9 +22,10 @@
  * Used by the weekly and release CI workflows.
  *
  * Cleanup strategy:
- * - before(): API sweep deletes all e2e-* resources from previous runs (clean slate)
+ * - cleanup.e2e.spec.ts runs first (via --spec ordering) to sweep orphaned resources
+ *   and poll until async deletions complete
  * - skipCleanup: false: inline UI-based cleanup runs after tests
- * - after(): API sweep catches anything the inline cleanup missed
+ * - after(): best-effort API sweep catches anything inline cleanup missed
  */
 
 import { runBedrockModelWorkflowTests } from '../../shared/specs/bedrock-model-workflow.shared.spec';
@@ -32,14 +33,7 @@ import { sweepAllE2eResources } from '../../support/cleanupHelpers';
 
 describe('Bedrock Model Workflow (E2E)', () => {
     before(() => {
-        // Clear Cypress session cache to allow fresh login
         Cypress.session.clearAllSavedSessions();
-
-        // Login as admin so we have auth tokens for API cleanup
-        cy.loginAs('admin');
-
-        // Sweep orphaned resources from previous runs
-        sweepAllE2eResources();
     });
 
     beforeEach(() => {
@@ -47,7 +41,7 @@ describe('Bedrock Model Workflow (E2E)', () => {
     });
 
     after(() => {
-        // Final sweep to catch anything inline cleanup missed or if tests failed
+        // Best-effort sweep to catch anything inline cleanup missed or if tests failed
         cy.loginAs('admin');
         sweepAllE2eResources();
     });

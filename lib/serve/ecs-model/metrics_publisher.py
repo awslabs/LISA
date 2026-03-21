@@ -241,7 +241,6 @@ def publish_loop() -> None:
     region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")
     cw = boto3.client("cloudwatch", config=boto_config, region_name=region)
 
-    engine_detected = None
     consecutive_failures = 0
     max_failures_before_backoff = 5
 

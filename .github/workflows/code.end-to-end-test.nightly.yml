@@ -1,4 +1,4 @@
-name: Nightly E2E Tests
+name: Nightly E2E Health Check
 
 on:
   schedule:
@@ -19,9 +19,9 @@ jobs:
       - name: Send “E2E Tests Starting” to Slack
         uses: rtCamp/action-slack-notify@e31e87e03dd19038e411e38ae27cbad084a90661 # v2
         env:
-          SLACK_TITLE: 'E2E Tests Starting'
+          SLACK_TITLE: 'Nightly E2E Health Check Starting'
           MSG_MINIMAL: true
-          SLACK_MESSAGE: 'E2E tests have started…'
+          SLACK_MESSAGE: 'Nightly E2E health check (quick specs) has started...'
 
   e2e:
     name: 🏃‍♀️ Run E2E Tests
@@ -44,7 +44,12 @@ jobs:
           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
           USER_NAME: ${{ secrets.USER_NAME }}
           USER_PASSWORD: ${{ secrets.USER_PASSWORD }}
-        run: npx cypress run --config-file cypress/cypress.e2e.config.ts
+        # Quick specs only — excludes long-running infra tests (bedrock-model-workflow).
+        # Update this list when adding new quick E2E specs.
+        run: >-
+          npx cypress run
+          --config-file cypress/cypress.e2e.config.ts
+          --spec "cypress/src/e2e/specs/admin.e2e.spec.ts,cypress/src/e2e/specs/user.e2e.spec.ts,cypress/src/e2e/specs/chat.e2e.spec.ts,cypress/src/e2e/specs/bedrock-quick.e2e.spec.ts"
       - name: Archive Cypress videos & screenshots
         if: failure() || always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v4
@@ -64,8 +69,8 @@ jobs:
         uses: rtCamp/action-slack-notify@e31e87e03dd19038e411e38ae27cbad084a90661 # v2
         env:
           SLACK_COLOR: ${{ needs.e2e.result == 'success' && 'good' || 'danger' }}
-          SLACK_TITLE: 'E2E Tests Finished'
+          SLACK_TITLE: 'Nightly E2E Health Check Finished'
           MSG_MINIMAL: false
-          SLACK_MESSAGE_ON_SUCCESS: '✅ E2E tests passed on branch `${{ github.ref_name }}`.'
-          SLACK_MESSAGE_ON_FAILURE: '<!here> ❌ E2E tests failed on branch `${{ github.ref_name }}`.'
-          SLACK_MESSAGE: 'E2E tests completed with status `${{ job.status }}`.'
+          SLACK_MESSAGE_ON_SUCCESS: 'Nightly E2E health check passed on branch `${{ github.ref_name }}`.'
+          SLACK_MESSAGE_ON_FAILURE: '<!here> Nightly E2E health check failed on branch `${{ github.ref_name }}`.'
+          SLACK_MESSAGE: 'Nightly E2E health check completed with status `${{ job.status }}`.'

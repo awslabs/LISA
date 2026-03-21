@@ -96,3 +96,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ secrets.LEAD_ACCESS_TOKEN }}
+
+  run_full_e2e:
+    name: Run Full E2E on Release Branch
+    needs: MakeNewReleaseBranch
+    uses: ./.github/workflows/code.e2e-full-test.weekly.yml
+    with:
+      ref: release/${{ github.event.inputs.release_tag }}
+    secrets: inherit

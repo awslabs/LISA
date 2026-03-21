@@ -55,7 +55,6 @@ import {
     completePromptTemplateWizard,
     waitForPromptTemplateCreationSuccess,
     verifyPromptTemplateInList,
-    deletePromptTemplateIfExists,
     selectPromptTemplateInChat,
     PromptTemplateType,
 } from '../../support/promptTemplateHelpers';

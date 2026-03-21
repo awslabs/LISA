@@ -103,4 +103,4 @@ jobs:
     uses: ./.github/workflows/code.e2e-full-test.weekly.yml
     with:
       ref: release/${{ github.event.inputs.release_tag }}
-    secrets: inherit
+    secrets: inherit # pragma: allowlist secret

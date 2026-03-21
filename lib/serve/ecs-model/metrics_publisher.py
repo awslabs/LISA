@@ -39,8 +39,9 @@ import time
 from urllib.error import URLError
 from urllib.request import urlopen
 
+log_level = logging.DEBUG if os.environ.get("DEBUG", "").lower() in ("true", "1", "yes") else logging.INFO
 logging.basicConfig(
-    level=logging.INFO,
+    level=log_level,
     format="[metrics_publisher] %(asctime)s %(levelname)s %(message)s",
     stream=sys.stdout,
 )
@@ -275,7 +276,7 @@ def publish_loop() -> None:
                 # CloudWatch accepts max 1000 metrics per call; batch in chunks of 25
                 for i in range(0, len(metric_data), 25):
                     cw.put_metric_data(Namespace=NAMESPACE, MetricData=metric_data[i : i + 25])
-                log.info("Published %d metrics to %s", len(metric_data), NAMESPACE)
+                log.debug("Published %d metrics to %s", len(metric_data), NAMESPACE)
 
             consecutive_failures = 0
 

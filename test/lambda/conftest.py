@@ -107,7 +107,7 @@ def mock_auth():
 def setup_auth_patches(request, mock_auth, aws_credentials):
     """Automatically patch auth functions for all tests except test_lambda_auth.py."""
     # Skip patching for test_lambda_auth.py since it tests the auth module itself
-    if "test_lambda_auth" in request.node.nodeid:
+    if "test_lambda_auth" in request.node.nodeid or "test_rag_admin_auth" in request.node.nodeid:
         yield mock_auth
         return
 

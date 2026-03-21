@@ -277,7 +277,13 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
 
 
 def get_repository(event: dict[str, Any], repository_id: str) -> dict[str, Any]:
-    """Ensures a user has access to the repository or else raises an HTTPException."""
+    """Ensures a user has access to the repository or else raises an HTTPException.
+
+    Note: RAG admins are intentionally NOT given blanket repository access here.
+    They must have group membership via allowedGroups. This is the security boundary
+    that scopes RAG admin operations to their group-accessible repositories.
+    The @rag_admin_or_admin decorator gates role access; this function gates repo access.
+    """
     repo: dict[str, Any] = vs_repo.find_repository_by_id(repository_id)
 
     # Admins have access to all repositories
@@ -867,8 +873,11 @@ def list_user_collections(event: dict, context: dict) -> dict[str, Any]:
         HTTPException: If authentication fails
     """
     # Get user context
+    # Note: RAG admins do NOT get effective_admin here because this is a cross-repository
+    # query. RAG admins should only see collections from repos they have group access to,
+    # same as regular users. effective_admin is only used within single-repo operations
+    # where group access has already been verified via get_repository().
     username, is_admin, groups = get_user_context(event)
-    effective_admin = is_admin or is_rag_admin(event)
     logger.info(f"list_user_collections called by user={username}, is_admin={is_admin}")
 
     # Parse query parameters
@@ -897,7 +906,7 @@ def list_user_collections(event: dict, context: dict) -> dict[str, Any]:
     collections, next_token = collection_service.list_all_user_collections(
         username=username,
         user_groups=groups,
-        is_admin=effective_admin,
+        is_admin=is_admin,
         page_size=page_size,
         pagination_token=pagination_token,
         filter_text=filter_text,
@@ -1580,9 +1589,7 @@ def update_repository(event: dict, context: dict) -> dict[str, Any]:
         allowed_fields = {"pipelines", "bedrockKnowledgeBaseConfig"}
         disallowed = set(body.keys()) - allowed_fields
         if disallowed:
-            raise ForbiddenException(
-                f"RAG admins cannot update the following fields: {', '.join(sorted(disallowed))}"
-            )
+            raise ForbiddenException(f"RAG admins cannot update the following fields: {', '.join(sorted(disallowed))}")
 
     # Parse request body
     try:
@@ -1600,6 +1607,12 @@ def update_repository(event: dict, context: dict) -> dict[str, Any]:
 
     # Build updates dictionary (only include fields that were provided)
     updates = request.model_dump(exclude_none=True, mode="json")
+
+    # Defense-in-depth: RAG admins can only update pipeline-related fields.
+    # This filters the serialized model output in case defaults were populated.
+    if not is_admin(event) and is_rag_admin(event):
+        allowed_fields = {"pipelines", "bedrockKnowledgeBaseConfig"}
+        updates = {k: v for k, v in updates.items() if k in allowed_fields}
 
     # Convert bedrockKnowledgeBaseConfig to pipelines for Bedrock KB repositories
     repository_type = current_config.get("type")

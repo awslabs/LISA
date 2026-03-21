@@ -87,10 +87,10 @@ export function makeAuthenticatedRequest (
 }
 
 /**
- * Wait for repository to be fully created (up to 5 minutes)
+ * Wait for repository to be fully created (up to 20 minutes)
  * Checks repository status until it's CREATE_COMPLETE or UPDATE_COMPLETE
  */
-export function waitForRepositoryReady (repositoryId: string, timeoutMs: number = 300000) {
+export function waitForRepositoryReady (repositoryId: string, timeoutMs: number = 1200000) {
     cy.log(`Waiting for repository ${repositoryId} to be ready...`);
 
     const startTime = Date.now();

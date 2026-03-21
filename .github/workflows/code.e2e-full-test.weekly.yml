@@ -39,7 +39,7 @@ jobs:
   full-e2e:
     name: Run Full E2E Tests
     runs-on: ubuntu-latest
-    needs: notify_full_e2e_start
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
         with:
@@ -59,7 +59,7 @@ jobs:
           USER_PASSWORD: ${{ secrets.USER_PASSWORD }}
         run: npx cypress run --config-file cypress/cypress.e2e.config.ts
       - name: Archive Cypress videos & screenshots
-        if: failure() || always()
+        if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v4
         with:
           name: cypress-full-e2e-artifacts

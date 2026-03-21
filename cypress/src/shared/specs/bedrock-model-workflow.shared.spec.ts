@@ -336,7 +336,7 @@ export function runBedrockInfraTests (options: BedrockWorkflowTestOptions = {}) 
         }
 
         navigateToRepositoryManagement();
-        waitForRepositoryReady(testRepository.repositoryId, 300000);
+        waitForRepositoryReady(testRepository.repositoryId, 1200000);
         testState.repositoryReady = true;
     });
 

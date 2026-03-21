@@ -26,11 +26,11 @@ jobs:
   e2e:
     name: 🏃‍♀️ Run E2E Tests
     runs-on: ubuntu-latest
-    needs: notify_e2e_start
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
         with:
-            ref: develop
+          ref: develop
       - name: Setup Node.js
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v4
         with:
@@ -51,7 +51,7 @@ jobs:
           --config-file cypress/cypress.e2e.config.ts
           --spec "cypress/src/e2e/specs/admin.e2e.spec.ts,cypress/src/e2e/specs/user.e2e.spec.ts,cypress/src/e2e/specs/chat.e2e.spec.ts,cypress/src/e2e/specs/bedrock-quick.e2e.spec.ts"
       - name: Archive Cypress videos & screenshots
-        if: failure() || always()
+        if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v4
         with:
           name: cypress-e2e-artifacts

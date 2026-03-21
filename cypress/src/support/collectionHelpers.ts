@@ -38,7 +38,7 @@ export function navigateToRagManagement () {
 /**
  * Get the API base URL from the application's environment
  */
-function getApiBaseUrl (): Cypress.Chainable<string> {
+export function getApiBaseUrl (): Cypress.Chainable<string> {
     // Get base URL from Cypress config and ensure it doesn't have trailing slash
     const baseUrl = Cypress.config('baseUrl') as string;
     return cy.wrap(baseUrl.replace(/\/+$/, ''));
@@ -47,7 +47,7 @@ function getApiBaseUrl (): Cypress.Chainable<string> {
 /**
  * Get the authentication token from session storage
  */
-function getAuthToken (): Cypress.Chainable<string | null> {
+export function getAuthToken (): Cypress.Chainable<string | null> {
     return cy.window().then((win) => {
         // Find the OIDC token in sessionStorage
         const oidcKey = Object.keys(win.sessionStorage).find((key) => key.startsWith('oidc.user:'));
@@ -65,7 +65,7 @@ function getAuthToken (): Cypress.Chainable<string | null> {
  * @param path - API path (e.g., '/repository', '/collections')
  * @param options - Additional request options (body, headers, etc.)
  */
-function makeAuthenticatedRequest (
+export function makeAuthenticatedRequest (
     method: string,
     path: string,
     options: Partial<Cypress.RequestOptions> = {}

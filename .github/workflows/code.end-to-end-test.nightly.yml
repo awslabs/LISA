@@ -71,6 +71,4 @@ jobs:
           SLACK_COLOR: ${{ needs.e2e.result == 'success' && 'good' || 'danger' }}
           SLACK_TITLE: 'Nightly E2E Health Check Finished'
           MSG_MINIMAL: false
-          SLACK_MESSAGE_ON_SUCCESS: 'Nightly E2E health check passed on branch `${{ github.ref_name }}`.'
-          SLACK_MESSAGE_ON_FAILURE: '<!here> Nightly E2E health check failed on branch `${{ github.ref_name }}`.'
-          SLACK_MESSAGE: 'Nightly E2E health check completed with status `${{ job.status }}`.'
+          SLACK_MESSAGE: ${{ needs.e2e.result == 'success' && format('Nightly E2E health check passed on branch `{0}`.', github.ref_name) || format('<!here> Nightly E2E health check {0} on branch `{1}`.', needs.e2e.result, github.ref_name) }}

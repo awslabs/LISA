@@ -860,7 +860,22 @@ def handle_enrich_context_window(event: dict[str, Any], context: Any) -> dict[st
     context_window = None
     try:
         if is_lisa_managed:
-            context_window = _fetch_context_window_from_s3(model_name, model_type)
+            # If the user explicitly set VLLM_MAX_MODEL_LEN (or its legacy alias MAX_TOTAL_TOKENS)
+            # in the container environment, use that value directly and skip S3 enrichment.
+            container_env = (event.get("containerConfig") or {}).get("environment") or {}
+            vllm_max = container_env.get("VLLM_MAX_MODEL_LEN") or container_env.get("MAX_TOTAL_TOKENS")
+            if vllm_max:
+                try:
+                    context_window = int(vllm_max)
+                    logger.info(
+                        f"Using VLLM_MAX_MODEL_LEN={context_window} as context_window for model {model_id}"
+                    )
+                except (ValueError, TypeError) as parse_err:
+                    logger.warning(
+                        f"Could not parse VLLM_MAX_MODEL_LEN value '{vllm_max}' for model {model_id}: {parse_err}"
+                    )
+            else:
+                context_window = _fetch_context_window_from_s3(model_name, model_type)
         else:
             litellm_id = event.get("litellm_id")
             if litellm_id:

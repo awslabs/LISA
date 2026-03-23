@@ -89,6 +89,27 @@ def _update_container_config(
             logger.info(f"Deleted environment variables for model '{model_id}': {env_vars_to_delete}")
         logger.info(f"Updated environment variables for model '{model_id}': {env_vars}")
 
+        # Derive context_window from VLLM_MAX_MODEL_LEN / MAX_TOTAL_TOKENS (prefer the former).
+        # We resolve against the *final* env vars (after deletions) so a deletion of the key
+        # is correctly represented as None (unknown / cleared).
+        vllm_max = env_vars.get("VLLM_MAX_MODEL_LEN") or env_vars.get("MAX_TOTAL_TOKENS")
+        if vllm_max is not None:
+            try:
+                container_metadata["context_window"] = int(vllm_max)
+                logger.info(
+                    f"Derived context_window={container_metadata['context_window']} "
+                    f"from VLLM_MAX_MODEL_LEN for model '{model_id}'"
+                )
+            except (ValueError, TypeError) as parse_err:
+                logger.warning(
+                    f"Could not parse VLLM_MAX_MODEL_LEN value '{vllm_max}' "
+                    f"for model '{model_id}': {parse_err}"
+                )
+        elif any(k in env_vars_to_delete for k in ("VLLM_MAX_MODEL_LEN", "MAX_TOTAL_TOKENS")):
+            # The user removed the env var — mark context_window as cleared
+            container_metadata["context_window"] = None
+            logger.info(f"VLLM_MAX_MODEL_LEN removed; clearing context_window for model '{model_id}'")
+
     # Update sharedMemorySize
     if container_config.get("sharedMemorySize") is not None:
         model_config["containerConfig"]["sharedMemorySize"] = container_config["sharedMemorySize"]
@@ -308,6 +329,21 @@ def handle_job_intake(event: dict[str, Any], context: Any) -> dict[str, Any]:
     # Pass through container metadata for ECS updates
     if update_metadata.get("container"):
         output_dict["container_metadata"] = update_metadata["container"]
+
+        # If the container env var update included a VLLM_MAX_MODEL_LEN change, persist the
+        # new context_window value.  The key is always present in container_metadata when the
+        # env block was processed (value may be None when the env var was deleted).
+        container_meta = update_metadata["container"]
+        if "context_window" in container_meta:
+            new_cw = container_meta["context_window"]
+            if new_cw is not None:
+                ddb_update_expression += ", context_window = :cw"
+                ddb_update_values[":cw"] = new_cw
+                logger.info(f"Updating context_window to {new_cw} for model '{model_id}'")
+            else:
+                # Env var was removed — clear the stored context window
+                ddb_update_expression += " REMOVE context_window"
+                logger.info(f"Removing context_window for model '{model_id}' (env var deleted)")
 
     logger.info(f"Model '{model_id}' update expression: {ddb_update_expression}")
     logger.info(f"Model '{model_id}' update values: {ddb_update_values}")

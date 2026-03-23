@@ -98,14 +98,30 @@ export function waitForModelCreationSuccess (modelId: string) {
  */
 export function verifyModelInList (modelId: string, maxRetries: number = 3) {
     function checkWithRetry (attempt: number): void {
+        // Ensure we're on the Model Management page before waiting for API
+        cy.url().then((url) => {
+            if (!url.includes('model-management')) {
+                cy.window().then((win) => {
+                    win.location.hash = '#/model-management';
+                });
+                cy.url({ timeout: 10000 }).should('include', 'model-management');
+            }
+        });
+
+        // Now wait for the models API to load on the Model Management page
         cy.wait('@getModels', { timeout: 30000 });
+
         cy.get('body').then(($body) => {
             if ($body.text().includes(modelId)) {
                 cy.contains(modelId).should('be.visible');
             } else if (attempt < maxRetries) {
                 cy.log(`Model ${modelId} not found (attempt ${attempt}/${maxRetries}), refreshing...`);
                 cy.wait(5000);
-                cy.reload();
+                // Navigate back to Model Management and retry
+                cy.window().then((win) => {
+                    win.location.hash = '#/model-management';
+                });
+                cy.url({ timeout: 10000 }).should('include', 'model-management');
                 checkWithRetry(attempt + 1);
             } else {
                 // Final attempt - let it fail with a clear assertion

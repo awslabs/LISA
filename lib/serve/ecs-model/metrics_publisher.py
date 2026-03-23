@@ -77,7 +77,7 @@ if INFERENCE_ENGINE not in ("vllm", "tgi", "tei"):
 # Each entry maps a Prometheus metric name to a CloudWatch metric name.
 VLLM_METRICS = {
     "vllm:gpu_cache_usage_perc": "GpuCacheUsagePercent",
-    "vllm:kv_cache_usage_perc": "GpuCacheUsagePercent",  # v1 renamed metric
+    "vllm:kv_cache_usage_perc": "KvCacheUsagePercent",  # distinct metric for KV cache usage
     "vllm:num_requests_running": "RequestsRunning",
     "vllm:num_requests_waiting": "RequestsWaiting",
     "vllm:num_requests_swapped": "RequestsSwapped",

@@ -55,21 +55,20 @@ export const PROJECT_SELECTORS = {
 };
 
 /**
- * Navigate to the chat page to access session history and projects
+ * Navigate to the chat page to access session history and projects.
+ * Uses client-side hash navigation to preserve auth state and avoid
+ * React re-render race conditions that occur with link clicks.
  */
 export function navigateToChatPage () {
     cy.url().then((url) => {
         if (!url.includes('/ai-assistant')) {
-            cy.get('a[aria-label="AI Assistant"]')
-                .eq(2)
-                .should('exist')
-                .and('be.visible')
-                .click();
-
-            // Wait for navigation to complete
-            cy.url({ timeout: 10000 }).should('include', '/ai-assistant');
+            cy.window().then((win) => {
+                win.location.hash = '#/ai-assistant';
+            });
         }
     });
+
+    cy.url({ timeout: 10000 }).should('include', '/ai-assistant');
 
     // Wait for any loading spinners to disappear
     cy.get('body').then(($body) => {

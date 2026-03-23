@@ -17,15 +17,22 @@
 /// <reference types="cypress" />
 
 /**
- * E2E test for Bedrock model creation and chat workflow.
- * Creates a Bedrock model, then uses it in chat.
+ * Full E2E test for Bedrock model creation and chat workflow.
+ * Creates a Bedrock model, repository, collections, documents, and prompt templates.
+ * Used by the weekly and release CI workflows.
+ *
+ * Cleanup strategy:
+ * - 000-cleanup.e2e.spec.ts runs first (alphabetical ordering) to sweep orphaned resources
+ *   and poll until async deletions complete
+ * - skipCleanup: false: inline UI-based cleanup runs after tests
+ * - after(): best-effort API sweep catches anything inline cleanup missed
  */
 
 import { runBedrockModelWorkflowTests } from '../../shared/specs/bedrock-model-workflow.shared.spec';
+import { sweepAllE2eResources } from '../../support/cleanupHelpers';
 
 describe('Bedrock Model Workflow (E2E)', () => {
     before(() => {
-        // Clear Cypress session cache to allow fresh login
         Cypress.session.clearAllSavedSessions();
     });
 
@@ -33,5 +40,11 @@ describe('Bedrock Model Workflow (E2E)', () => {
         cy.loginAs('admin');
     });
 
-    runBedrockModelWorkflowTests({skipCleanup: true});
+    after(() => {
+        // Best-effort sweep to catch anything inline cleanup missed or if tests failed
+        cy.loginAs('admin');
+        sweepAllE2eResources();
+    });
+
+    runBedrockModelWorkflowTests({skipCleanup: false});
 });

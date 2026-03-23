@@ -227,48 +227,6 @@ export class ModelHealthDashboard extends Construct {
                 width: 8,
                 height: 6,
             }),
-
-            // Target connection errors — ALB couldn't connect to container (crash/OOM)
-            new cloudwatch.GraphWidget({
-                title: 'Target Connection Errors',
-                left: [
-                    new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/ApplicationELB,TargetGroup,LoadBalancer} MetricName="TargetConnectionErrorCount" ${dp}', 'Sum', 300)`,
-                        label: '',
-                        period: Duration.minutes(5),
-                    }),
-                ],
-                width: 8,
-                height: 6,
-            }),
-
-            // Rejected connection count — model hit max concurrent connections
-            new cloudwatch.GraphWidget({
-                title: 'Rejected Connections (by Load Balancer)',
-                left: [
-                    new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/ApplicationELB,LoadBalancer} MetricName="RejectedConnectionCount" ${dp}', 'Sum', 300)`,
-                        label: '',
-                        period: Duration.minutes(5),
-                    }),
-                ],
-                width: 8,
-                height: 6,
-            }),
-
-            // Target TLS negotiation errors
-            new cloudwatch.GraphWidget({
-                title: 'Target TLS Errors',
-                left: [
-                    new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/ApplicationELB,TargetGroup,LoadBalancer} MetricName="TargetTLSNegotiationErrorCount" ${dp}', 'Sum', 300)`,
-                        label: '',
-                        period: Duration.minutes(5),
-                    }),
-                ],
-                width: 8,
-                height: 6,
-            }),
         );
 
         // =====================================================================
@@ -908,111 +866,16 @@ export class ModelHealthDashboard extends Construct {
         // =====================================================================
         // Alarms
         // =====================================================================
-        // These use account-level ALB metrics (no dimensions) to aggregate
-        // across all load balancers in the account. This catches issues with
-        // any model without needing to know model names at deploy time.
+        // NOTE: ALB alarms (unhealthy hosts, 5xx errors, connection errors,
+        // latency, rejected connections) were removed because:
+        //   1. Model ALB dimensions (TargetGroup/LoadBalancer) are dynamic and
+        //      unknown at deploy time — dimensionless metrics return no data.
+        //   2. CloudWatch does not support SEARCH expressions in Metric Alarms.
+        // ALB health is monitored via the SEARCH-based dashboard widgets above.
         const alarmPrefix = `${dp}-${config.deploymentStage}-LISA`;
 
-        // 1. Unhealthy hosts — any model container failing health checks
-        //    Uses account-level metric (no TargetGroup/LoadBalancer dimensions)
-        //    to aggregate across all ALBs.
-        const unhealthyHostsAlarm = new cloudwatch.Alarm(this, 'UnhealthyHostsAlarm', {
-            alarmName: `${alarmPrefix}-UnhealthyHosts`,
-            alarmDescription: 'One or more ECS model containers are failing ALB health checks. Check the Model Health dashboard for details on which target group is affected.',
-            metric: new cloudwatch.Metric({
-                namespace: 'AWS/ApplicationELB',
-                metricName: 'UnHealthyHostCount',
-                statistic: 'Maximum',
-                period: Duration.minutes(5),
-            }),
-            threshold: 0,
-            comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
-            evaluationPeriods: 2,
-            treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
-        });
-
-        // 2. Target 5xx errors sustained — model invocations are failing
-        const target5xxAlarm = new cloudwatch.Alarm(this, 'Target5xxAlarm', {
-            alarmName: `${alarmPrefix}-Target5xxErrors`,
-            alarmDescription: 'Sustained HTTP 5xx errors from model containers indicating failed inference requests. Investigate container logs for the affected model.',
-            metric: new cloudwatch.Metric({
-                namespace: 'AWS/ApplicationELB',
-                metricName: 'HTTPCode_Target_5XX_Count',
-                statistic: 'Sum',
-                period: Duration.minutes(5),
-            }),
-            threshold: 10,
-            comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
-            evaluationPeriods: 2,
-            treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
-        });
-
-        // 3. Target connection errors — ALB can't reach container (crash/OOM)
-        const connectionErrorAlarm = new cloudwatch.Alarm(this, 'TargetConnectionErrorAlarm', {
-            alarmName: `${alarmPrefix}-TargetConnectionErrors`,
-            alarmDescription: 'ALB cannot establish connections to model containers. This typically indicates container crashes, OOM kills, or process failures.',
-            metric: new cloudwatch.Metric({
-                namespace: 'AWS/ApplicationELB',
-                metricName: 'TargetConnectionErrorCount',
-                statistic: 'Sum',
-                period: Duration.minutes(5),
-            }),
-            threshold: 5,
-            comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
-            evaluationPeriods: 2,
-            treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
-        });
-
-        // 4. ELB 5xx errors — load balancer has no healthy targets
-        const elb5xxAlarm = new cloudwatch.Alarm(this, 'ELB5xxAlarm', {
-            alarmName: `${alarmPrefix}-ELB5xxErrors`,
-            alarmDescription: 'ALB is returning 5xx errors, typically meaning no healthy targets are available for one or more models. This is a critical availability issue.',
-            metric: new cloudwatch.Metric({
-                namespace: 'AWS/ApplicationELB',
-                metricName: 'HTTPCode_ELB_5XX_Count',
-                statistic: 'Sum',
-                period: Duration.minutes(5),
-            }),
-            threshold: 5,
-            comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
-            evaluationPeriods: 2,
-            treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
-        });
-
-        // 5. High p99 latency — model response times degrading
-        const highLatencyAlarm = new cloudwatch.Alarm(this, 'HighLatencyAlarm', {
-            alarmName: `${alarmPrefix}-HighP99Latency`,
-            alarmDescription: 'P99 response time across model endpoints exceeds 120 seconds. Models may be overloaded or experiencing resource contention.',
-            metric: new cloudwatch.Metric({
-                namespace: 'AWS/ApplicationELB',
-                metricName: 'TargetResponseTime',
-                statistic: 'p99',
-                period: Duration.minutes(5),
-            }),
-            threshold: 120,
-            comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
-            evaluationPeriods: 3,
-            treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
-        });
-
-        // 6. Rejected connections — models at capacity
-        const rejectedConnectionsAlarm = new cloudwatch.Alarm(this, 'RejectedConnectionsAlarm', {
-            alarmName: `${alarmPrefix}-RejectedConnections`,
-            alarmDescription: 'ALB is rejecting connections, indicating model endpoints are at maximum capacity. Consider scaling up or adding more instances.',
-            metric: new cloudwatch.Metric({
-                namespace: 'AWS/ApplicationELB',
-                metricName: 'RejectedConnectionCount',
-                statistic: 'Sum',
-                period: Duration.minutes(5),
-            }),
-            threshold: 0,
-            comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
-            evaluationPeriods: 2,
-            treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
-        });
-
-        // 7. Batch ingestion job failures — from custom metric published by
-        //    EventBridge → Lambda when Batch jobs enter FAILED state.
+        // Batch ingestion job failures — from custom metric published by
+        // EventBridge → Lambda when Batch jobs enter FAILED state.
         const batchJobFailuresAlarm = new cloudwatch.Alarm(this, 'BatchJobFailuresAlarm', {
             alarmName: `${alarmPrefix}-BatchJobFailures`,
             alarmDescription: 'One or more batch ingestion jobs have failed. Check AWS Batch console and CloudWatch Logs for the failed job details.',
@@ -1043,12 +906,6 @@ export class ModelHealthDashboard extends Construct {
             new cloudwatch.AlarmStatusWidget({
                 title: 'Model Health Alarms',
                 alarms: [
-                    unhealthyHostsAlarm,
-                    target5xxAlarm,
-                    connectionErrorAlarm,
-                    elb5xxAlarm,
-                    highLatencyAlarm,
-                    rejectedConnectionsAlarm,
                     batchJobFailuresAlarm,
                 ],
                 width: 24,

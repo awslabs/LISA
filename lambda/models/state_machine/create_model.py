@@ -867,9 +867,7 @@ def handle_enrich_context_window(event: dict[str, Any], context: Any) -> dict[st
             if vllm_max:
                 try:
                     context_window = int(vllm_max)
-                    logger.info(
-                        f"Using VLLM_MAX_MODEL_LEN={context_window} as context_window for model {model_id}"
-                    )
+                    logger.info(f"Using VLLM_MAX_MODEL_LEN={context_window} as context_window for model {model_id}")
                 except (ValueError, TypeError) as parse_err:
                     logger.warning(
                         f"Could not parse VLLM_MAX_MODEL_LEN value '{vllm_max}' for model {model_id}: {parse_err}"

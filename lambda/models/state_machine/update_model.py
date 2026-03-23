@@ -95,19 +95,18 @@ def _update_container_config(
         vllm_max = env_vars.get("VLLM_MAX_MODEL_LEN") or env_vars.get("MAX_TOTAL_TOKENS")
         if vllm_max is not None:
             try:
-                container_metadata["context_window"] = int(vllm_max)
+                container_metadata["context_window"] = int(vllm_max)  # type: ignore[assignment]
                 logger.info(
                     f"Derived context_window={container_metadata['context_window']} "
                     f"from VLLM_MAX_MODEL_LEN for model '{model_id}'"
                 )
             except (ValueError, TypeError) as parse_err:
                 logger.warning(
-                    f"Could not parse VLLM_MAX_MODEL_LEN value '{vllm_max}' "
-                    f"for model '{model_id}': {parse_err}"
+                    f"Could not parse VLLM_MAX_MODEL_LEN value '{vllm_max}' " f"for model '{model_id}': {parse_err}"
                 )
         elif any(k in env_vars_to_delete for k in ("VLLM_MAX_MODEL_LEN", "MAX_TOTAL_TOKENS")):
             # The user removed the env var — mark context_window as cleared
-            container_metadata["context_window"] = None
+            container_metadata["context_window"] = None  # type: ignore[assignment]
             logger.info(f"VLLM_MAX_MODEL_LEN removed; clearing context_window for model '{model_id}'")
 
     # Update sharedMemorySize

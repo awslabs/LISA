@@ -272,9 +272,9 @@ def publish_loop() -> None:
             metric_data = build_metric_data(metrics, INFERENCE_ENGINE, dimensions)
 
             if metric_data:
-                # CloudWatch accepts max 1000 metrics per call; batch in chunks of 25
-                for i in range(0, len(metric_data), 25):
-                    cw.put_metric_data(Namespace=NAMESPACE, MetricData=metric_data[i : i + 25])
+                # CloudWatch accepts max 20 metrics per call; batch in chunks of 20
+                for i in range(0, len(metric_data), 20):
+                    cw.put_metric_data(Namespace=NAMESPACE, MetricData=metric_data[i : i + 20])
                 log.debug("Published %d metrics to %s", len(metric_data), NAMESPACE)
 
             consecutive_failures = 0

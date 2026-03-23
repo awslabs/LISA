@@ -79,6 +79,4 @@ jobs:
           SLACK_COLOR: ${{ needs.full-e2e.result == 'success' && 'good' || 'danger' }}
           SLACK_TITLE: 'Full E2E Tests Finished'
           MSG_MINIMAL: false
-          SLACK_MESSAGE_ON_SUCCESS: 'Full E2E test suite passed on ref `${{ inputs.ref || github.ref_name }}`.'
-          SLACK_MESSAGE_ON_FAILURE: '<!here> Full E2E test suite failed on ref `${{ inputs.ref || github.ref_name }}`.'
-          SLACK_MESSAGE: 'Full E2E tests completed with status `${{ job.status }}`.'
+          SLACK_MESSAGE: ${{ needs.full-e2e.result == 'success' && format('Full E2E test suite passed on ref `{0}`.', inputs.ref || github.ref_name) || format('<!here> Full E2E test suite {0} on ref `{1}`.', needs.full-e2e.result, inputs.ref || github.ref_name) }}

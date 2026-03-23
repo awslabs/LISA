@@ -7,6 +7,7 @@ This directory contains integration tests that require a deployed LISA environme
 ### RAG Integration Tests (`rag/`)
 
 End-to-end tests for RAG (Retrieval-Augmented Generation) collections functionality:
+
 - Collection creation and management
 - Document ingestion to collections
 - Similarity search within collections
@@ -24,6 +25,7 @@ Tests for preserving pipeline metadata during repository updates. Some tests are
 ### SDK Integration Tests (`sdk/`)
 
 Integration tests for the LISA SDK that test end-to-end functionality against a deployed LISA environment:
+
 - API operations (models, repositories, configs, sessions)
 - LLM proxy operations
 - RAG operations
@@ -44,6 +46,7 @@ All integration tests require:
 ### RAG Integration Tests
 
 **Prerequisites:**
+
 - `LISA_API_URL` - URL of the deployed LISA API
 - `LISA_DEPLOYMENT_NAME` - Name of the LISA deployment
 - `AWS_DEFAULT_REGION` - AWS region where LISA is deployed
@@ -53,11 +56,13 @@ All integration tests require:
 - `TEST_EMBEDDING_MODEL` - (Optional) Embedding model to use (default: "titan-embed")
 
 **Run with Make:**
+
 ```bash
-make test-rag-integ
+npm run test:rag-integ
 ```
 
 **Run with pytest:**
+
 ```bash
 # Set environment variables
 export LISA_API_URL="https://your-api-url.com"
@@ -69,12 +74,14 @@ pytest test/integration/rag/test_rag_collections_integration.py -v
 ```
 
 **Run with the provided script:**
+
 ```bash
 cd test/integration/rag
 ./run-integration-tests.sh --api-url https://your-api-url.com
 ```
 
 **What gets tested:**
+
 - ✅ Collection creation and retrieval
 - ✅ Document ingestion and listing
 - ✅ Similarity search on collections
@@ -85,6 +92,7 @@ cd test/integration/rag
 ### SDK Integration Tests
 
 **Prerequisites:**
+
 - `--api` or `--url` - API Gateway URL or REST URL
 - `--region` - AWS region (default: us-west-2)
 - `--deployment` - Deployment name (default: app)
@@ -93,11 +101,13 @@ cd test/integration/rag
 - `--stage` - Deployment stage (default: dev)
 
 **Run with Make:**
+
 ```bash
-make test-sdk-integ
+npm run test:sdk-integ
 ```
 
 **Run with pytest:**
+
 ```bash
 pytest test/integration/sdk/ \
   --api https://your-api-gateway-url.execute-api.us-west-2.amazonaws.com/prod \
@@ -108,6 +118,7 @@ pytest test/integration/sdk/ \
 ```
 
 **What gets tested:**
+
 - ✅ List models and embedding models
 - ✅ List repositories
 - ✅ Get configurations
@@ -119,20 +130,24 @@ pytest test/integration/sdk/ \
 ### Repository Metadata Preservation Tests
 
 **Prerequisites:**
+
 - Standard pytest environment (no special configuration needed)
 - Tests use mocked AWS services
 
 **Run with Make:**
+
 ```bash
-make test-metadata-integ
+npm run test:metadata-integ
 ```
 
 **Run with pytest:**
+
 ```bash
 pytest test/integration/test_repository_update_metadata_preservation.py -v
 ```
 
 **What gets tested:**
+
 - ✅ Bedrock KB updates preserve existing metadata
 - ✅ Complete metadata replacement when tags provided
 - ⏭️ Direct pipeline updates (skipped - pending refactoring)
@@ -163,9 +178,10 @@ norecursedirs = test/integration
 ```
 
 This ensures that:
+
 - `make test` runs only unit tests (fast, no external dependencies)
-- `make test-rag-integ` runs RAG integration tests (requires deployed environment)
-- `make test-sdk-integ` runs SDK integration tests (requires deployed environment)
+- `npm run test:rag-integ` runs RAG integration tests (requires deployed environment)
+- `npm run test:sdk-integ` runs SDK integration tests (requires deployed environment)
 - CI/CD pipelines can run unit tests quickly without requiring a deployed environment
 
 ## Troubleshooting
@@ -173,11 +189,13 @@ This ensures that:
 ### Authentication Errors
 
 **RAG Tests:**
+
 - Verify environment variables are set correctly
 - Check that the API URL is accessible
 - Ensure AWS credentials have access to the LISA deployment
 
 **SDK Tests:**
+
 - Verify AWS credentials are configured correctly
 - Check that the deployment name matches your LISA deployment
 - Ensure the management key exists in Secrets Manager
@@ -192,6 +210,7 @@ This ensures that:
 ### Skipped Tests
 
 Many tests are skipped by default because they require:
+
 - Specific models to be deployed (TGI, instructor embeddings, etc.)
 - Specific configurations (API Gateway vs REST URL)
 - Management tokens (not all deployments support this)
@@ -202,6 +221,7 @@ This is expected behavior and not an error.
 ### Timeout Errors
 
 If tests timeout:
+
 - Increase the timeout values in the test code
 - Check that the LISA deployment is healthy and responsive
 - Verify that batch jobs are processing correctly
@@ -221,6 +241,7 @@ When adding new integration tests:
    - SDK tests: Use CLI arguments via `conftest.py` fixtures
 
 3. **Add skip decorators:**
+
    ```python
    @pytest.mark.skip(reason="Requires specific model deployment")
    def test_something():
@@ -238,7 +259,7 @@ When adding new integration tests:
    - Document what gets tested
 
 6. **Update Make targets:**
-   - Add new make targets if needed
+   - Add new npm scripts if needed
    - Update existing targets to include new tests
 
 ## CI/CD Considerations
@@ -283,19 +304,21 @@ Integration tests require:
 ### Run All Integration Tests
 
 ```bash
-make test-rag-integ
+npm run test:rag-integ
 ```
 
 ### Run Specific Test Suites
 
 **RAG Collections Integration Tests:**
+
 ```bash
 pytest test/integration/rag/test_rag_collections_integration.py -v
 ```
 
 **Repository Metadata Preservation Tests:**
+
 ```bash
-make test-metadata-integ
+npm run test:metadata-integ
 # or
 pytest test/integration/test_repository_update_metadata_preservation.py -v
 ```
@@ -324,8 +347,9 @@ norecursedirs = test/integration
 ```
 
 This ensures that:
+
 - `make test` runs only unit tests (fast, no external dependencies)
-- `make test-rag-integ` runs integration tests (slower, requires deployed environment)
+- `npm run test:rag-integ` runs integration tests (slower, requires deployed environment)
 - CI/CD pipelines can run unit tests quickly without requiring a deployed environment
 
 ## Adding New Integration Tests
@@ -336,4 +360,4 @@ When adding new integration tests:
 2. Use `pytest.skip()` to skip tests when required environment variables are missing
 3. Include cleanup fixtures to remove test resources
 4. Document required environment variables in this README
-5. Add a new make target in the Makefile if needed
+5. Add a new npm script in package.json if needed

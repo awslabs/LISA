@@ -12,52 +12,69 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""Sets the input parameters for lisa-sdk tests."""
+"""Sets the input parameters for lisa-sdk tests.
+
+Note: pytest_addoption for --api, --url, etc. is in the root conftest.py because
+pytest parses command-line options before loading subdirectory conftests.
+
+When --api/--url are not provided, values are loaded from config-custom.yaml or
+fetched from AWS via scripts/integration-env.mjs (same as run-integration-tests.sh).
+"""
 
 import logging
+import os
 import time
 from collections.abc import Generator
+from test.integration.config_loader import fetch_url_from_aws, get_config_values
+from test.utils.integration_test_utils import get_management_key
 from typing import Any
 
 import boto3
 import pytest
 from lisapy import LisaApi, LisaLlm
-from pytest import Parser
 
 
-def pytest_addoption(parser: Parser) -> None:
-    """Set the options for the cli parser."""
-    parser.addoption(
-        "--url",
-        action="store",
-        help="REST url used for testing. This can be found as the output to lisa-serve CFN stack, e.g. "
-        "https://app-rest-${account}.${region}.elb.amazonaws.com/${app_name}/",
-    )
-    parser.addoption(
-        "--api",
-        action="store",
-        help="API Gateway url used for testing. This can be found as the output to lisa-serve CFN stack, e.g. "
-        "https://${gateway-id}.execute-api.${region}.amazonaws.com/{stage}",
-    )
-    parser.addoption("--verify", action="store", default="false", help="Verify https request")
-    parser.addoption("--region", action="store", default="us-west-2", help="Region for aws account")
-    parser.addoption("--stage", action="store", default="dev", help="Deployment app name for LISA")
-    parser.addoption("--deployment", action="store", default="app", help="Deployment app name for LISA")
-    parser.addoption("--profile", action="store", default="default", help="AWS profile for account")
+def _resolve_option(pytestconfig: pytest.Config, opt: str, config_key: str) -> str:
+    """Resolve option: CLI > config-custom.yaml > default."""
+    val = pytestconfig.getoption(opt)
+    if val:
+        return val
+    cfg = get_config_values()
+    return cfg.get(config_key, "")
+
+
+def _resolve_url_option(pytestconfig: pytest.Config, kind: str) -> str:
+    """Resolve url/api: CLI > fetch from AWS via integration-env.mjs."""
+    val = pytestconfig.getoption(kind)
+    if val:
+        return val
+    # url=ALB/REST, api=API Gateway
+    aws_kind = "alb" if kind == "url" else "api"
+    return fetch_url_from_aws(aws_kind)
 
 
 @pytest.fixture(scope="session")
 def url(pytestconfig: pytest.Config) -> str:
-    """Get the url argument."""
-    url: str = pytestconfig.getoption("url")
-    return url
+    """Get the REST url (ALB). From --url, or config-custom.yaml + AWS."""
+    val = _resolve_url_option(pytestconfig, "url")
+    if not val:
+        pytest.skip(
+            "REST URL required. Provide --url, or ensure config-custom.yaml exists and "
+            "LISA is deployed (scripts/integration-env.mjs alb-url fetches from AWS)."
+        )
+    return val
 
 
 @pytest.fixture(scope="session")
 def api(pytestconfig: pytest.Config) -> str:
-    """Get the api url argument."""
-    api: str = pytestconfig.getoption("api")
-    return api
+    """Get the API Gateway url. From --api, or config-custom.yaml + AWS."""
+    val = _resolve_url_option(pytestconfig, "api")
+    if not val:
+        pytest.skip(
+            "API URL required. Provide --api, or ensure config-custom.yaml exists and "
+            "LISA is deployed (scripts/integration-env.mjs api-url fetches from AWS)."
+        )
+    return val
 
 
 @pytest.fixture(scope="session")
@@ -78,17 +95,20 @@ def verify(pytestconfig: pytest.Config) -> bool | Any:
 
 @pytest.fixture(scope="session")
 def api_key(pytestconfig: pytest.Config) -> str:
+    """Get management key from Secrets Manager. Uses same multi-pattern lookup as RAG tests."""
+    profile = _resolve_option(pytestconfig, "profile", "profile") or "default"
+    deployment_name = _resolve_option(pytestconfig, "deployment", "deployment") or "app"
+    stage = _resolve_option(pytestconfig, "stage", "stage") or "prod"
+    region = _resolve_option(pytestconfig, "region", "region") or "us-west-2"
+    # Use same session/profile as RAG tests (AWS_PROFILE may be set by integration conftest)
+    if profile and profile != "default":
+        os.environ.setdefault("AWS_PROFILE", profile)
     try:
-        profile = pytestconfig.getoption("profile")
-        deployment_name = pytestconfig.getoption("deployment")
-        secret_name = f"{deployment_name}-lisa-management-key"
-
-        # Create a Secrets Manager client
-        session = boto3.Session(profile_name=profile)
-        client = session.client("secretsmanager")
-        response = client.get_secret_value(SecretId=secret_name)
-        key: str = response["SecretString"]
-        return key
+        return get_management_key(
+            deployment_name=deployment_name,
+            region=region,
+            deployment_stage=stage,
+        )
     except Exception as e:
         print(f"Error retrieving secret: {str(e)}")
         raise
@@ -102,8 +122,8 @@ def api_token(pytestconfig: pytest.Config, api_key: str) -> Generator:
     auth_token = pytestconfig.getoption("auth_token")
     if auth_token is not None:
         return
-    profile = pytestconfig.getoption("profile")
-    deployment_name = pytestconfig.getoption("deployment")
+    profile = _resolve_option(pytestconfig, "profile", "profile") or "default"
+    deployment_name = _resolve_option(pytestconfig, "deployment", "deployment") or "app"
     table_name = f"{deployment_name}-LISAApiTokenTable"
     try:
         dynamodb = boto3.Session(profile_name=profile).resource("dynamodb")

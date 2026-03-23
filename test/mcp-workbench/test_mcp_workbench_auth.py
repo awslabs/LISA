@@ -108,13 +108,24 @@ def test_get_oidc_metadata(mock_get):
     mock_get.assert_called_once()
 
 
-@patch("mcpworkbench.server.auth.get_oidc_metadata")
+@patch("mcpworkbench.server.auth.ssl.create_default_context")
+@patch("mcpworkbench.server.auth.requests.get")
 @patch("mcpworkbench.server.auth.jwt.PyJWKClient")
-def test_get_jwks_client(mock_jwk_client, mock_get_metadata):
+def test_get_jwks_client(mock_jwk_client, mock_requests_get, mock_ssl_context):
     """Test getting JWKS client."""
-    mock_get_metadata.return_value = {"jwks_uri": "https://test-authority.com/.well-known/jwks.json"}
+    # Mock OIDC metadata fetch (get_jwks_client calls get_oidc_metadata which uses requests.get)
+    mock_resp = Mock()
+    mock_resp.json.return_value = {"jwks_uri": "https://test-authority.com/.well-known/jwks.json"}
+    mock_requests_get.return_value = mock_resp
+    mock_ssl_context.return_value = Mock()
 
-    client = get_jwks_client()
+    # Unset SSL_CERT_FILE so we use default certs (avoids FileNotFoundError when file is missing)
+    saved = os.environ.pop("SSL_CERT_FILE", None)
+    try:
+        client = get_jwks_client()
+    finally:
+        if saved is not None:
+            os.environ["SSL_CERT_FILE"] = saved
 
     mock_jwk_client.assert_called_once()
     assert client is not None

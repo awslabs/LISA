@@ -64,22 +64,14 @@ jobs:
       uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v5
       with:
         python-version: "3.13"
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        # Try hash-verified install first, fall back to regular
-        if [ -f "requirements-dev-hashes.txt" ]; then
-          pip install --require-hashes -r requirements-dev-hashes.txt
-        else
-          pip install -r requirements-dev.txt
-        fi
-        pip install -e ./lisa-sdk
+    - name: Install Python dependencies
+      run: npm run install:python
     - name: Run tests
       env:
         ACCOUNT_NUMBER: '012345678901'
         REGION: us-east-1
       run: |
-        make test-coverage
+        npm run test:python:coverage
   pre-commit:
       name: Run All Pre-Commit
       needs: [send_starting_slack_notification]

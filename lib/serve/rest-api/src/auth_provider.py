@@ -82,6 +82,42 @@ class AuthorizationProvider(ABC):
         pass
 
     @abstractmethod
+    def check_rag_admin_access(self, username: str, groups: list[str] | None = None) -> bool:
+        """Check if a user has RAG admin access.
+
+        Parameters
+        ----------
+        username : str
+            The username to check RAG admin access for
+        groups : list[str] | None
+            Optional list of groups the user belongs to
+
+        Returns
+        -------
+        bool
+            True if user has RAG admin access, False otherwise
+        """
+        pass
+
+    @abstractmethod
+    def check_rag_admin_access_jwt(self, jwt_data: dict[str, Any], jwt_groups_property: str) -> bool:
+        """Check if a user has RAG admin access using JWT data.
+
+        Parameters
+        ----------
+        jwt_data : dict[str, Any]
+            The decoded JWT data
+        jwt_groups_property : str
+            The property path to extract groups from JWT
+
+        Returns
+        -------
+        bool
+            True if user has RAG admin access, False otherwise
+        """
+        pass
+
+    @abstractmethod
     def check_app_access_jwt(self, jwt_data: dict[str, Any], jwt_groups_property: str) -> bool:
         """Check if a user has app access using JWT data.
 
@@ -122,7 +158,12 @@ class OIDCAuthorizationProvider(AuthorizationProvider):
     Uses JWT group claims to determine admin and app access.
     """
 
-    def __init__(self, admin_group: str | None = None, user_group: str | None = None):
+    def __init__(
+        self,
+        admin_group: str | None = None,
+        user_group: str | None = None,
+        rag_admin_group: str | None = None,
+    ):
         """Initialize the OIDC authorization provider.
 
         Parameters
@@ -131,9 +172,12 @@ class OIDCAuthorizationProvider(AuthorizationProvider):
             The admin group name. If not provided, uses ADMIN_GROUP env var.
         user_group : str | None
             The user group name. If not provided, uses USER_GROUP env var.
+        rag_admin_group : str | None
+            The RAG admin group name. If not provided, uses RAG_ADMIN_GROUP env var.
         """
         self.admin_group = admin_group or os.environ.get("ADMIN_GROUP", "")
         self.user_group = user_group or os.environ.get("USER_GROUP", "")
+        self.rag_admin_group = rag_admin_group or os.environ.get("RAG_ADMIN_GROUP", "")
 
     def check_admin_access(self, username: str, groups: list[str] | None = None) -> bool:
         """Check if user has admin access based on group membership."""
@@ -171,6 +215,27 @@ class OIDCAuthorizationProvider(AuthorizationProvider):
             return True
         groups = _get_property_path(jwt_data, jwt_groups_property) or []
         return self.user_group in groups
+
+    def check_rag_admin_access(self, username: str, groups: list[str] | None = None) -> bool:
+        """Check if user has RAG admin access based on group membership."""
+        if not self.rag_admin_group:
+            return False
+        if not groups:
+            logger.debug(f"No groups provided for user {username}")
+            return False
+        is_rag_admin = self.rag_admin_group in groups
+        logger.info(
+            f"User {username} RAG admin check: groups={groups}, "
+            f"rag_admin_group={self.rag_admin_group}, result={is_rag_admin}"
+        )
+        return is_rag_admin
+
+    def check_rag_admin_access_jwt(self, jwt_data: dict[str, Any], jwt_groups_property: str) -> bool:
+        """Check if user has RAG admin access using JWT data."""
+        if not self.rag_admin_group:
+            return False
+        groups = _get_property_path(jwt_data, jwt_groups_property) or []
+        return self.rag_admin_group in groups
 
 
 # Singleton instance for the authorization provider

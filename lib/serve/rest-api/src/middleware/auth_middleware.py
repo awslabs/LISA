@@ -54,6 +54,7 @@ async def auth_middleware(request: Request, call_next: Callable[[Request], Respo
         - authenticated: bool - Whether user is authenticated
         - jwt_data: dict | None - JWT claims if OIDC auth, None for API tokens
         - is_admin: bool - Whether user has admin privileges
+        - is_rag_admin: bool - Whether user has RAG admin privileges
         - username: str - Username from token
         - groups: list[str] - User groups from token
 
@@ -79,6 +80,7 @@ async def auth_middleware(request: Request, call_next: Callable[[Request], Respo
         request.state.authenticated = True
         request.state.jwt_data = None
         request.state.is_admin = True
+        request.state.is_rag_admin = True
         request.state.username = "anonymous"
         request.state.groups = []
         return await call_next(request)
@@ -100,6 +102,9 @@ async def auth_middleware(request: Request, call_next: Callable[[Request], Respo
             request.state.is_admin = authorizer.auth_provider.check_admin_access_jwt(
                 jwt_data, authorizer.jwt_groups_property
             )
+            request.state.is_rag_admin = authorizer.auth_provider.check_rag_admin_access_jwt(
+                jwt_data, authorizer.jwt_groups_property
+            )
             # Resolve username: prefer cognito:username / username over the opaque UUID sub
             request.state.username = (
                 jwt_data.get("cognito:username") or jwt_data.get("username") or jwt_data.get("sub", "unknown")
@@ -111,11 +116,15 @@ async def auth_middleware(request: Request, call_next: Callable[[Request], Respo
             request.state.is_admin = authorizer.auth_provider.check_admin_access(
                 token_info.get("username", ""), token_info.get("groups", [])
             )
+            request.state.is_rag_admin = authorizer.auth_provider.check_rag_admin_access(
+                token_info.get("username", ""), token_info.get("groups", [])
+            )
             request.state.username = token_info.get("username", "api-token")
             request.state.groups = token_info.get("groups", [])
         else:
             # Management token - full admin access
             request.state.is_admin = True
+            request.state.is_rag_admin = True
             request.state.username = "management-token"
             request.state.groups = []
 

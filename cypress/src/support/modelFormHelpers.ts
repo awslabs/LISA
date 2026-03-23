@@ -92,10 +92,28 @@ export function waitForModelCreationSuccess (modelId: string) {
 }
 
 /**
- * Verify model appears in the model management list
+ * Verify model appears in the model management list.
+ * After creation, the model may not appear in the initial GET /models response
+ * because the API is eventually consistent. Retries with page reload if needed.
  */
-export function verifyModelInList (modelId: string) {
-    cy.contains(modelId, { timeout: 10000 }).should('be.visible');
+export function verifyModelInList (modelId: string, maxRetries: number = 3) {
+    function checkWithRetry (attempt: number): void {
+        cy.wait('@getModels', { timeout: 30000 });
+        cy.get('body').then(($body) => {
+            if ($body.text().includes(modelId)) {
+                cy.contains(modelId).should('be.visible');
+            } else if (attempt < maxRetries) {
+                cy.log(`Model ${modelId} not found (attempt ${attempt}/${maxRetries}), refreshing...`);
+                cy.wait(5000);
+                cy.reload();
+                checkWithRetry(attempt + 1);
+            } else {
+                // Final attempt - let it fail with a clear assertion
+                cy.contains(modelId, { timeout: 10000 }).should('be.visible');
+            }
+        });
+    }
+    checkWithRetry(1);
 }
 
 /**
@@ -155,6 +173,10 @@ export function selectModelInChat (modelId: string) {
         .contains(modelId)
         .should('be.visible')
         .click();
+
+    // Verify the model was actually selected — send button becomes enabled
+    cy.get('button[aria-label="Send message"]', { timeout: 30000 })
+        .should('not.be.disabled');
 }
 
 /**
@@ -196,20 +218,26 @@ export function verifyChatResponse (userMessage: string) {
  * Delete all chat sessions for the current user
  */
 export function deleteAllSessions () {
-    // Set up intercept before triggering delete
-    cy.intercept('DELETE', '**/session*').as('deleteSessions');
+    cy.get('body').then(($body) => {
+        if ($body.find('button[aria-label="Delete All Sessions"]').length === 0) {
+            cy.log('No sessions to delete — Delete All Sessions button not found');
+            return;
+        }
 
-    // Click the Delete All Sessions button
-    cy.get('button[aria-label="Delete All Sessions"]')
-        .should('be.visible')
-        .click();
+        // Set up intercept before triggering delete
+        cy.intercept('DELETE', '**/session*').as('deleteSessions');
 
-    // Wait for confirmation modal and click Delete button
-    cy.get('[data-testid="confirmation-modal-delete-btn"]', { timeout: 5000 })
-        .should('be.visible')
-        .click();
+        cy.get('button[aria-label="Delete All Sessions"]')
+            .should('be.visible')
+            .click();
 
-    // Wait for delete API to complete and modal to close
-    cy.wait('@deleteSessions', { timeout: 10000 });
-    cy.get('[data-testid="confirmation-modal-delete-btn"]').should('not.exist');
+        // Wait for confirmation modal and click Delete button
+        cy.get('[data-testid="confirmation-modal-delete-btn"]', { timeout: 5000 })
+            .should('be.visible')
+            .click();
+
+        // Wait for delete API to complete and modal to close
+        cy.wait('@deleteSessions', { timeout: 10000 });
+        cy.get('[data-testid="confirmation-modal-delete-btn"]').should('not.exist');
+    });
 }

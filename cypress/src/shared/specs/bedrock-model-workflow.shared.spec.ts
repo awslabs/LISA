@@ -55,16 +55,12 @@ import {
     completePromptTemplateWizard,
     waitForPromptTemplateCreationSuccess,
     verifyPromptTemplateInList,
-    deletePromptTemplateIfExists,
     selectPromptTemplateInChat,
     PromptTemplateType,
 } from '../../support/promptTemplateHelpers';
 import {
-    CollectionConfig,
-    navigateToRagManagement,
     waitForRepositoryReady,
     getAutoCreatedCollectionInfo,
-    renameCollection,
     uploadDocument,
     waitForDocumentIngested,
     selectRagRepositoryInChat,
@@ -92,37 +88,22 @@ const DEFAULT_TEST_MODEL: BedrockModelConfig = {
 export type BedrockWorkflowTestOptions = {
     modelConfig?: BedrockModelConfig;
     repositoryConfig?: RepositoryConfig;
-    collectionConfig?: CollectionConfig;
     promptTemplateConfig?: PromptTemplateConfig;
     skipChat?: boolean;
     skipCleanup?: boolean;
     testDocumentPath?: string;
 };
 
-export function runBedrockModelWorkflowTests (options: BedrockWorkflowTestOptions = {}) {
+/**
+ * Quick tests: model wizard, prompt templates, and chat with persona/directive.
+ * No infrastructure provisioning or long waits. Suitable for nightly runs.
+ */
+export function runBedrockQuickTests (options: BedrockWorkflowTestOptions = {}) {
     const dateString = getTodayDateString();
     const testModel = options.modelConfig || DEFAULT_TEST_MODEL;
-    const testRepository: RepositoryConfig = options.repositoryConfig || {
-        repositoryId: `e2e-repo-${dateString}`,
-        knowledgeBaseName: 'test-bedrock-kb',
-        dataSourceIndex: 0,
-    };
-    const testCollection: CollectionConfig = options.collectionConfig || {
-        collectionId: `e2e-collection-${dateString}`,
-        collectionName: `E2E Test Collection ${dateString}`,
-        repositoryId: testRepository.repositoryId,
-    };
-    const testDocumentPath = options.testDocumentPath || 'test-document.txt';
 
-    // Track test state for dependencies
     const testState = {
         modelCreated: false,
-        repositoryCreated: false,
-        repositoryReady: false,
-        collectionRenamed: false,
-        collectionId: '', // Store the actual collection ID
-        documentUploaded: false,
-        documentIngested: false,
         personaTemplateCreated: false,
         directiveTemplateCreated: false,
     };
@@ -200,101 +181,6 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
         verifyModelInList(testModel.modelId);
     });
 
-    it('Admin creates a Bedrock Knowledgebase repository (or uses existing)', () => {
-        navigateToRepositoryManagement();
-
-        // Wait for repositories API to load and check if repository already exists
-        cy.wait('@getRepositories', { timeout: 30000 }).then((interception) => {
-            const repositories = interception.response?.body || [];
-            const repoExists = repositories.some((repo: any) => repo.repositoryId === testRepository.repositoryId);
-
-            if (repoExists) {
-                cy.log(`Repository ${testRepository.repositoryId} already exists, skipping creation`);
-                testState.repositoryCreated = true;
-            } else {
-                openCreateRepositoryWizard();
-                fillRepositoryConfig(testRepository);
-
-                // selectKnowledgeBase returns boolean - if false, no KBs available
-                selectKnowledgeBase(testRepository.knowledgeBaseName).then((kbSelected) => {
-                    if (!kbSelected) {
-                        cy.log('No Knowledge Bases available - cannot create repository');
-                        // Close the modal and skip
-                        cy.get('body').type('{esc}');
-                        return;
-                    }
-
-                    selectDataSource(testRepository.dataSourceIndex);
-                    skipToCreateRepository();
-                    completeRepositoryWizard();
-                    waitForRepositoryCreationSuccess(testRepository.repositoryId);
-                    testState.repositoryCreated = true;
-                });
-            }
-        });
-    });
-
-    it('New repository appears in RAG Management list', function () {
-        if (!testState.repositoryCreated) {
-            this.skip();
-        }
-
-        navigateToRepositoryManagement();
-        verifyRepositoryInList(testRepository.repositoryId);
-    });
-
-    it('Wait for repository to be fully created and ready', function () {
-        if (!testState.repositoryCreated) {
-            this.skip();
-        }
-
-        navigateToRepositoryManagement();
-        waitForRepositoryReady(testRepository.repositoryId, 300000);
-        testState.repositoryReady = true;
-    });
-
-    it('Rename auto-created collection to known name', function () {
-        if (!testState.repositoryReady) {
-            this.skip();
-        }
-
-        navigateToRagManagement();
-
-        // Get the auto-created collection info (name and ID) and rename it
-        getAutoCreatedCollectionInfo(testRepository.repositoryId).then((collectionInfo) => {
-            cy.log(`Auto-created collection: ${collectionInfo.name} (ID: ${collectionInfo.id})`);
-            testState.collectionId = collectionInfo.id; // Store the collection ID
-            renameCollection(collectionInfo.name, testCollection.collectionName);
-            testState.collectionRenamed = true;
-        });
-    });
-
-    it('Upload test document to collection via chat page', function () {
-        if (!testState.collectionRenamed) {
-            this.skip();
-        }
-
-        // Navigate to chat page
-        navigateAndVerifyChatPage();
-
-        // Select model, repository, and collection
-        selectModelInChat(testModel.modelId);
-        selectRagRepositoryInChat(testRepository.repositoryId);
-        selectCollectionInChat(testCollection.collectionName);
-
-        // Upload the document
-        uploadDocument(testDocumentPath);
-        testState.documentUploaded = true;
-    });
-
-    it('Wait for document to be ingested', function () {
-        if (!testState.documentUploaded) {
-            this.skip();
-        }
-        waitForDocumentIngested(testRepository.repositoryId, testState.collectionId, testDocumentPath, 300000);
-        testState.documentIngested = true;
-    });
-
     it('Admin creates a persona prompt template (or uses existing)', () => {
         navigateToPromptTemplates();
 
@@ -367,6 +253,118 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
         sendMessageWithButton();
         verifyChatResponseReceived();
     });
+}
+
+/**
+ * Infrastructure tests: repository creation, collection management, document ingestion, and RAG chat.
+ * These involve long waits (up to 5 min each) for provisioning. Suitable for weekly/release runs.
+ */
+export function runBedrockInfraTests (options: BedrockWorkflowTestOptions = {}) {
+    const dateString = getTodayDateString();
+    const testModel = options.modelConfig || DEFAULT_TEST_MODEL;
+    const testRepository: RepositoryConfig = options.repositoryConfig || {
+        repositoryId: `e2e-repo-${dateString}`,
+        knowledgeBaseName: 'test-bedrock-kb',
+        dataSourceIndex: 0,
+    };
+    const testDocumentPath = options.testDocumentPath || 'test-document.txt';
+
+    const testState = {
+        repositoryCreated: false,
+        repositoryReady: false,
+        collectionReady: false,
+        collectionId: '',
+        collectionName: '',
+        documentUploaded: false,
+        documentIngested: false,
+    };
+
+    it('Admin creates a Bedrock Knowledgebase repository (or uses existing)', () => {
+        navigateToRepositoryManagement();
+
+        // Wait for repositories API to load and check if repository already exists
+        cy.wait('@getRepositories', { timeout: 30000 }).then((interception) => {
+            const repositories = interception.response?.body || [];
+            const repoExists = repositories.some((repo: any) => repo.repositoryId === testRepository.repositoryId);
+
+            if (repoExists) {
+                cy.log(`Repository ${testRepository.repositoryId} already exists, skipping creation`);
+                testState.repositoryCreated = true;
+            } else {
+                openCreateRepositoryWizard();
+                fillRepositoryConfig(testRepository);
+
+                selectKnowledgeBase(testRepository.knowledgeBaseName).then((kbSelected) => {
+                    expect(kbSelected, `Knowledge Base "${testRepository.knowledgeBaseName}" should be available`).to.equal(true);
+
+                    selectDataSource(testRepository.dataSourceIndex);
+                    skipToCreateRepository();
+                    completeRepositoryWizard();
+                    waitForRepositoryCreationSuccess(testRepository.repositoryId);
+                    testState.repositoryCreated = true;
+                });
+            }
+        });
+    });
+
+    it('New repository appears in RAG Management list', function () {
+        if (!testState.repositoryCreated) {
+            this.skip();
+        }
+
+        navigateToRepositoryManagement();
+        verifyRepositoryInList(testRepository.repositoryId);
+    });
+
+    it('Wait for repository to be fully created and ready', function () {
+        if (!testState.repositoryCreated) {
+            this.skip();
+        }
+
+        navigateToRepositoryManagement();
+        waitForRepositoryReady(testRepository.repositoryId, 1200000);
+        testState.repositoryReady = true;
+    });
+
+    it('Get auto-created default collection info', function () {
+        if (!testState.repositoryReady) {
+            this.skip();
+        }
+
+        // Fetch the default collection's name and ID via API
+        getAutoCreatedCollectionInfo(testRepository.repositoryId).then((collectionInfo) => {
+            cy.log(`Default collection: ${collectionInfo.name} (ID: ${collectionInfo.id})`);
+            testState.collectionId = collectionInfo.id;
+            testState.collectionName = collectionInfo.name;
+            testState.collectionReady = true;
+        });
+    });
+
+    it('Upload test document to collection via chat page', function () {
+        if (!testState.collectionReady) {
+            this.skip();
+        }
+
+        // Navigate to chat page
+        navigateAndVerifyChatPage();
+
+        // Select model, repository, and collection (use actual default collection name)
+        selectModelInChat(testModel.modelId);
+        selectRagRepositoryInChat(testRepository.repositoryId);
+        selectCollectionInChat(testState.collectionName);
+
+        // Upload the document
+        uploadDocument(testDocumentPath);
+        testState.documentUploaded = true;
+    });
+
+    it('Wait for document to be ingested', function () {
+        if (!testState.documentUploaded) {
+            this.skip();
+        }
+        waitForDocumentIngested(testRepository.repositoryId, testState.collectionId, testDocumentPath, 300000);
+        testState.documentIngested = true;
+    });
 
     it('Send chat message with rag response', function () {
         if (!testState.documentIngested) {
@@ -376,7 +374,7 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
         navigateAndVerifyChatPage();
         selectModelInChat(testModel.modelId);
         selectRagRepositoryInChat(testRepository.repositoryId);
-        selectCollectionInChat(testCollection.collectionName);
+        selectCollectionInChat(testState.collectionName);
         insertChatPrompt('Who is Whiskers?');
         sendMessageWithButton();
         verifyChatResponseReceived();
@@ -394,22 +392,19 @@ Respond with only one phrase per message, chosen randomly. Treat every input as 
             deleteRepositoryIfExists(testRepository.repositoryId);
         });
 
-        it('Cleanup: delete persona prompt template', () => {
-            navigateToPromptTemplates();
-            cy.wait(2000);
-            deletePromptTemplateIfExists(testPromptTemplatePersona.title);
-        });
-
-        it('Cleanup: delete directive prompt template', () => {
-            navigateToPromptTemplates();
-            cy.wait(2000);
-            deletePromptTemplateIfExists(testPromptTemplateDirective.title);
-        });
-
         it('Cleanup: delete test model', () => {
             navigateToAdminPage('Model Management');
             cy.wait(2000);
             deleteModelIfExists(testModel.modelId);
         });
     }
+}
+
+/**
+ * Full workflow: runs both quick tests and infrastructure tests.
+ * Backward-compatible wrapper used by the full E2E spec (weekly/release).
+ */
+export function runBedrockModelWorkflowTests (options: BedrockWorkflowTestOptions = {}) {
+    runBedrockQuickTests(options);
+    runBedrockInfraTests(options);
 }

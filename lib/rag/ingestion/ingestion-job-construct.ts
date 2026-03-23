@@ -114,8 +114,11 @@ export class IngestionJobConstruct extends Construct {
             maxvCpus: maxvCpus,
         });
 
-        // AWS Batch job queue that uses the Fargate compute environment
+        // AWS Batch job queue that uses the Fargate compute environment.
+        // Use a static name so the EventBridge suffix filter and CloudWatch
+        // JobQueue dimension remain stable across deployments.
         const jobQueue = new batch.JobQueue(this, 'IngestionJobQueue', {
+            jobQueueName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job`,
             computeEnvironments: [
                 {
                     computeEnvironment: computeEnv,

@@ -34,8 +34,8 @@ export class ModelHealthDashboard extends Construct {
         const { config } = props;
         // Deployment prefix used in SEARCH expressions to scope to this deployment's clusters.
         // Cluster names are built via createCdkId and always start with deploymentName
-        // (e.g. "bear-gptoss20b"). CloudWatch SEARCH tokenizes on hyphens, so
-        // "bear-gptoss20b" becomes tokens ["bear", "gptoss20b"]. Using a partial match
+        // (e.g. "prod-gptoss20b"). CloudWatch SEARCH tokenizes on hyphens, so
+        // "prod-gptoss20b" becomes tokens ["prod", "gptoss20b"]. Using a partial match
         // (no double quotes) like ClusterName=${dp} matches any ClusterName containing
         // the deployment name token. Double-quoted values do exact match only — no wildcards.
         const dp = config.deploymentName;
@@ -136,7 +136,7 @@ export class ModelHealthDashboard extends Construct {
         // ALB metrics are published with specific dimension combos. Target-level
         // metrics (HealthyHostCount, HTTP codes, etc.) use {TargetGroup, LoadBalancer}.
         // Connection-level metrics (ActiveConnectionCount, etc.) use {LoadBalancer} only.
-        // The deployment name token (e.g. "bear") scopes results to this deployment's
+        // The deployment name token (e.g. "prod") scopes results to this deployment's
         // ALBs and target groups.
         dashboard.addWidgets(
             new cloudwatch.TextWidget({

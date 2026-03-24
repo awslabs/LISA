@@ -120,7 +120,11 @@ async function main() {
   if (modelIds.length > 0 && modelBucket) {
     console.log('Checking models...');
     for (const modelId of modelIds) {
-      const result = spawnSync('node', [path.join(ROOT, 'scripts', 'check-for-models.mjs'), '-m', modelId, '-s', modelBucket], {
+      const args = [path.join(ROOT, 'scripts', 'check-for-models.mjs'), '-m', modelId, '-s', modelBucket];
+      if (profile) {
+        args.push('-p', profile);
+      }
+      const result = spawnSync('node', args, {
         cwd: ROOT,
         stdio: 'inherit',
       });

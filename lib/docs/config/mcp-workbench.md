@@ -24,6 +24,18 @@ The integrated browser-based editor allows administrators to write Python code a
 
 ## Configuration
 
+### Deployment infrastructure
+
+The MCP Workbench **HTTP server** (streamable MCP and AWS session routes) always runs on **its own** ECS cluster and Application Load Balancer, separate from the LISA Serve REST API. The container still serves `/v2/mcp/*` and `/api/aws/*` on that load balancer’s default listener.
+
+The hosted MCP base URL is stored in SSM at `…/mcpWorkbench/endpoint` (and used by configuration Lambdas). It points at the **MCP Workbench** ALB DNS name, not the Serve API ALB.
+
+Optional `mcpWorkbenchEcsConfig` in your deployment configuration lets you tune instance type, ASG minimum and maximum capacity, root volume size, and scaling cooldown for the workbench cluster.
+
+**CORS:** The browser calls the workbench from the **UI origin** (custom domain, ALB URL, or local dev), which changes with deployment and app configuration. By default, `mcpWorkbenchCorsOrigins` is `*` so the workbench container allows any origin (`CORS_ORIGINS`). Set `mcpWorkbenchCorsOrigins` in your deployment config to a comma-separated list if you need to restrict origins. The workbench hostname may still differ from the Serve API hostname; verify OIDC flows for your setup.
+
+**CDK:** The workbench stack is deployed in the same account and VPC as the rest of LISA. In the current stage layout it is created when `deployMcpWorkbench` is enabled (alongside the Serve stack when `deployServe` is enabled).
+
 ### Step 1: Enable the MCP Workbench Menu
 
 1. **Access Admin Configuration**
@@ -62,15 +74,17 @@ Once the MCP Workbench connection is activated, all custom enabled tools become 
 
 ### Programmatic API Access
 
-LISA automatically hosts an MCP Server containing all MCP Workbench tools. The server is accessible through the following endpoints:
+LISA automatically hosts an MCP Server containing all MCP Workbench tools. The server is accessible on the **MCP Workbench** load balancer (see SSM `…/mcpWorkbench/endpoint`), for example:
 
-**AWS Load Balancer URL:**
-```
+**AWS Load Balancer URL (example):**
+
+```text
 https://abc-rest-<account-number>.<region>.elb.amazonaws.com/v2/mcp/
 ```
 
-**Custom Domain URL (if configured):**
-```
+**Custom Domain URL (if configured on that load balancer):**
+
+```text
 https://<your-custom-domain>/v2/mcp/
 ```
 

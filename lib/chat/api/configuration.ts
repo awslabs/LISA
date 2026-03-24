@@ -157,12 +157,19 @@ export class ConfigurationApi extends Construct {
 
         const fastApiEndpoint = StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/serve/endpoint`);
 
-        let environment = {
+        let environment: Record<string, string> = {
             CONFIG_TABLE_NAME: this.configTable.tableName,
             FASTAPI_ENDPOINT: fastApiEndpoint,
             ADMIN_GROUP: config.authConfig?.adminGroup || '',
             ...getAuditLoggingEnv(config),
         };
+
+        if (config.deployMcpWorkbench) {
+            environment.MCP_WORKBENCH_ENDPOINT = StringParameter.valueForStringParameter(
+                this,
+                `${config.deploymentPrefix}/mcpWorkbench/endpoint`,
+            );
+        }
 
         if (mcpApi) {
             this.createMcpApiTable(mcpApi, lambdaRole, environment);

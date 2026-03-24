@@ -905,6 +905,39 @@ export const RawConfigObject = z.object({
     deployMcp: z.boolean().default(true).describe('Whether to deploy LISA MCP stack.'),
     deployServe: z.boolean().default(true).describe('Whether to deploy LISA Serve stack.'),
     deployMcpWorkbench: z.boolean().default(true).describe('Whether to deploy MCP Workbench stack.'),
+    mcpWorkbenchEcsConfig: z
+        .object({
+            instanceType: z.enum(VALID_INSTANCE_KEYS).optional().describe('EC2 instance type for the MCP Workbench ECS cluster.'),
+            blockDeviceVolumeSize: z.number().min(30).optional().describe('Root volume size (GiB) for cluster instances.'),
+            minCapacity: z.number().min(1).optional().describe('Minimum ASG capacity for the MCP Workbench cluster.'),
+            maxCapacity: z.number().min(1).optional().describe('Maximum ASG capacity for the MCP Workbench cluster.'),
+            cooldown: z.number().min(1).optional().describe('Cooldown (seconds) between scaling activities.'),
+            domainName: z
+                .string()
+                .nullish()
+                .describe(
+                    'Optional hostname for the MCP Workbench ALB (HTTPS listener and the URL stored in SSM …/mcpWorkbench/endpoint). ' +
+                    'If omitted, inherits restApiConfig.domainName when set; otherwise the published endpoint uses this ALB’s DNS name. ' +
+                    'Use a dedicated value here only when the Serve API hostname does not point at this workbench ALB.',
+                ),
+            sslCertIamArn: z
+                .string()
+                .nullish()
+                .describe(
+                    'Optional ACM certificate ARN for the MCP Workbench ALB HTTPS listener. If omitted, inherits restApiConfig.sslCertIamArn when set; ' +
+                    'otherwise the workbench ALB uses HTTP on port 80 (browser MCP from an https UI will fail). Set explicitly when using a dedicated workbench hostname.',
+                ),
+        })
+        .optional()
+        .describe(
+            'Optional sizing and load-balancer settings for the MCP Workbench ECS cluster. The workbench HTTP server always runs on its own ECS cluster and ALB (separate from the Serve REST API).',
+        ),
+    mcpWorkbenchCorsOrigins: z
+        .string()
+        .default('*')
+        .describe(
+            'Comma-separated CORS allowed origins for the MCP Workbench HTTP server container (CORS_ORIGINS). Use * to allow any browser origin (typical when the UI is served from varying hosts or ports). More restrictive deployments can list explicit origins.',
+        ),
     logLevel: z.union([z.literal('DEBUG'), z.literal('INFO'), z.literal('WARNING'), z.literal('ERROR')])
         .default('DEBUG')
         .describe('Log level for application.'),

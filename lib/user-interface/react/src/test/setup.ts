@@ -50,6 +50,7 @@ Object.defineProperty(window, 'env', {
     writable: true,
     value: {
         RESTAPI_URI: 'http://localhost:8080',
+        MCP_WORKBENCH_URI: 'http://localhost:8080',
         RESTAPI_VERSION: 'v2',
         API_BASE_URL: 'http://localhost:8080/v2',
         AUTHORITY: 'http://localhost:8080',

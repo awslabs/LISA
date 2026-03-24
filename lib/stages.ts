@@ -339,6 +339,7 @@ export class LisaServeApplicationStage extends Stage {
         }
 
         if (config.deployServe) {
+            let mcpWorkbenchStackInstance: McpWorkbenchStack | undefined;
             const serveStack = new LisaServeApplicationStack(this, 'LisaServe', {
                 ...baseStackProps,
                 description: `LISA-serve: ${config.deploymentName}-${config.deploymentStage}`,
@@ -381,7 +382,7 @@ export class LisaServeApplicationStage extends Stage {
             this.stacks.push(modelsApiDeploymentStack);
 
             if (config.deployMcpWorkbench) {
-                const mcpWorkbenchStack = new McpWorkbenchStack(this, 'LisaMcpWorkbench', {
+                mcpWorkbenchStackInstance = new McpWorkbenchStack(this, 'LisaMcpWorkbench', {
                     ...baseStackProps,
                     bucketAccessLogsBucket: coreStack.loggingBucket,
                     stackName: createCdkId([config.deploymentName, config.appName, 'mcp-workbench', config.deploymentStage]),
@@ -389,14 +390,12 @@ export class LisaServeApplicationStage extends Stage {
                     vpc: networkingStack.vpc,
                     restApiId: apiBaseStack.restApiId,
                     rootResourceId: apiBaseStack.rootResourceId,
-                    apiCluster: serveStack.restApi.apiCluster,
                     authorizer: apiBaseStack.authorizer,
                 });
-                mcpWorkbenchStack.addDependency(coreStack);
-                mcpWorkbenchStack.addDependency(apiBaseStack);
-                mcpWorkbenchStack.addDependency(serveStack);
-                apiDeploymentStack.addDependency(mcpWorkbenchStack);
-                this.stacks.push(mcpWorkbenchStack);
+                mcpWorkbenchStackInstance.addDependency(coreStack);
+                mcpWorkbenchStackInstance.addDependency(apiBaseStack);
+                apiDeploymentStack.addDependency(mcpWorkbenchStackInstance);
+                this.stacks.push(mcpWorkbenchStackInstance);
             }
 
             if (config.deployRag) {
@@ -443,6 +442,10 @@ export class LisaServeApplicationStage extends Stage {
                 chatStack.addDependency(modelsApiDeploymentStack);
                 // ChatStack reads: serve/endpoint from ServeStack
                 chatStack.addDependency(serveStack);
+                // ChatStack reads: mcpWorkbench/endpoint when MCP Workbench is deployed
+                if (mcpWorkbenchStackInstance) {
+                    chatStack.addDependency(mcpWorkbenchStackInstance);
+                }
                 // ChatStack reads: queue-name/usage-metrics from MetricsStack (if deployMetrics)
                 if (metricsStack) {
                     chatStack.addDependency(metricsStack);
@@ -466,6 +469,10 @@ export class LisaServeApplicationStage extends Stage {
                     // UIStack reads: lisaServeRestApiUri from ServeStack
                     uiStack.addDependency(serveStack);
                     uiStack.addDependency(apiBaseStack);
+                    // UIStack reads: mcpWorkbench/endpoint when MCP Workbench is deployed (AWS session + MCP browser calls)
+                    if (mcpWorkbenchStackInstance) {
+                        uiStack.addDependency(mcpWorkbenchStackInstance);
+                    }
                     apiDeploymentStack.addDependency(uiStack);
                     this.stacks.push(uiStack);
                 }

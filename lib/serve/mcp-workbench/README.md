@@ -149,7 +149,7 @@ cors_origins: ["*"]
 
 # Advanced CORS settings (optional - will use defaults if not specified)
 cors_settings:
-  allow_methods: ["GET", "POST", "OPTIONS"]
+  allow_methods: ["*"]
   allow_headers: ["*"]
   allow_credentials: false
   expose_headers: []

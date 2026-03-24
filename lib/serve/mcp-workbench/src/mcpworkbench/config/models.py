@@ -22,9 +22,15 @@ class CORSConfig(BaseModel):
     """CORS configuration settings."""
 
     allow_origins: list[str] = Field(default=["*"], description="Allowed origins for CORS")
-    allow_methods: list[str] = Field(default=["GET", "POST", "OPTIONS"], description="Allowed HTTP methods")
+    allow_methods: list[str] = Field(
+        default=["*"],
+        description=(
+            "Allowed HTTP methods for CORS preflight; use * (Starlette expands to "
+            "all standard methods) for MCP streamable HTTP clients."
+        ),
+    )
     allow_headers: list[str] = Field(default=["*"], description="Allowed headers")
-    allow_credentials: bool = Field(default=True, description="Allow credentials in CORS requests")
+    allow_credentials: bool = Field(default=False, description="Allow credentials in CORS requests")
     expose_headers: list[str] = Field(default=[], description="Headers to expose to the browser")
     max_age: int = Field(default=600, description="Maximum age for CORS preflight cache")
 

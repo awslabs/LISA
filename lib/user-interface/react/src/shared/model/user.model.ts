@@ -21,5 +21,6 @@ export type IUser = {
     isAdmin: boolean;
     isUser: boolean;
     isApiUser: boolean;
+    isRagAdmin: boolean;
     groups?: string[];
 };

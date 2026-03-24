@@ -25,20 +25,20 @@ import { configureStore } from '@reduxjs/toolkit';
 import Topbar from './Topbar';
 import ColorSchemeContext from '@/shared/color-scheme.provider';
 import { Mode } from '@cloudscape-design/global-styles';
+import {
+    selectCurrentUserIsAdmin,
+    selectCurrentUserIsRagAdmin,
+    selectCurrentUserIsApiUser,
+    selectCurrentUsername,
+} from '@/shared/reducers/user.reducer';
 
 // Mock the auth abstraction
 vi.mock('../auth/useAuth');
 
-// Mock store functions
+// Mock store functions - use selector reference matching
 vi.mock('@/config/store', () => ({
     useAppDispatch: vi.fn(() => vi.fn()),
-    useAppSelector: vi.fn((selector) => {
-        const selectorStr = selector.toString();
-        if (selectorStr.includes('selectCurrentUserIsAdmin')) return false;
-        if (selectorStr.includes('selectCurrentUserIsApiUser')) return false;
-        if (selectorStr.includes('selectCurrentUsername')) return 'Test User';
-        return null;
-    }),
+    useAppSelector: vi.fn(),
 }));
 
 const mockAuth = {
@@ -79,9 +79,19 @@ const renderTopbar = (props = {}) => {
 };
 
 describe('Topbar', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.clearAllMocks();
         (useAuth as any).mockReturnValue(mockAuth);
+
+        // Set default selector mock (regular user, no admin roles)
+        const storeModule = await import('@/config/store');
+        (storeModule.useAppSelector as any).mockImplementation((selector: any) => {
+            if (selector === selectCurrentUserIsAdmin) return false;
+            if (selector === selectCurrentUserIsRagAdmin) return false;
+            if (selector === selectCurrentUserIsApiUser) return false;
+            if (selector === selectCurrentUsername) return 'Test User';
+            return null;
+        });
 
         // Mock window.env
         (window as any).env = {
@@ -100,6 +110,73 @@ describe('Topbar', () => {
         await user.click(screen.getByText('Sign out'));
 
         expect(mockAuth.signoutRedirect).toHaveBeenCalledOnce();
+    });
+
+    it('shows Administration with only RAG Management for rag-admin user', async () => {
+        const storeModule = await import('@/config/store');
+        (storeModule.useAppSelector as any).mockImplementation((selector: any) => {
+            if (selector === selectCurrentUserIsAdmin) return false;
+            if (selector === selectCurrentUserIsRagAdmin) return true;
+            if (selector === selectCurrentUserIsApiUser) return false;
+            if (selector === selectCurrentUsername) return 'RAG Admin User';
+            return null;
+        });
+        (window as any).env = {
+            ...window.env,
+            RAG_ENABLED: true,
+        };
+
+        const user = userEvent.setup();
+        renderTopbar();
+
+        // Should see Administration dropdown (Cloudscape renders duplicate text in collapsed/expanded views)
+        const adminDropdowns = screen.getAllByText('Administration');
+        expect(adminDropdowns.length).toBeGreaterThan(0);
+
+        // Click to open dropdown
+        await user.click(adminDropdowns[0]);
+
+        // Should see RAG Management
+        expect(screen.getByText('RAG Management')).toBeInTheDocument();
+
+        // Should NOT see admin-only items
+        expect(screen.queryByText('Configuration')).not.toBeInTheDocument();
+        expect(screen.queryByText('Model Management')).not.toBeInTheDocument();
+        expect(screen.queryByText('API Token Management')).not.toBeInTheDocument();
+    });
+
+    it('shows all admin items for admin user', async () => {
+        const storeModule = await import('@/config/store');
+        (storeModule.useAppSelector as any).mockImplementation((selector: any) => {
+            if (selector === selectCurrentUserIsAdmin) return true;
+            if (selector === selectCurrentUserIsRagAdmin) return false;
+            if (selector === selectCurrentUserIsApiUser) return false;
+            if (selector === selectCurrentUsername) return 'Admin User';
+            return null;
+        });
+        (window as any).env = {
+            ...window.env,
+            RAG_ENABLED: true,
+        };
+
+        const user = userEvent.setup();
+        renderTopbar();
+
+        // Cloudscape TopNavigation renders duplicate text in collapsed/expanded views
+        const adminDropdowns = screen.getAllByText('Administration');
+        expect(adminDropdowns.length).toBeGreaterThan(0);
+        await user.click(adminDropdowns[0]);
+
+        expect(screen.getByText('Configuration')).toBeInTheDocument();
+        expect(screen.getByText('Model Management')).toBeInTheDocument();
+        expect(screen.getByText('RAG Management')).toBeInTheDocument();
+        expect(screen.getByText('API Token Management')).toBeInTheDocument();
+    });
+
+    it('hides Administration for regular user', () => {
+        // Default mock already returns isAdmin=false, isRagAdmin=false
+        renderTopbar();
+        expect(screen.queryByText('Administration')).not.toBeInTheDocument();
     });
 
     it('calls signinRedirect when sign in is clicked for unauthenticated user', async () => {

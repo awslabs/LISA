@@ -28,7 +28,7 @@ The integrated browser-based editor allows administrators to write Python code a
 
 The MCP Workbench **HTTP server** (streamable MCP and AWS session routes) always runs on **its own** ECS cluster and Application Load Balancer, separate from the LISA Serve REST API. The container still serves `/v2/mcp/*` and `/api/aws/*` on that load balancer’s default listener.
 
-The hosted MCP base URL is stored in SSM at `…/mcpWorkbench/endpoint` (and used by configuration Lambdas). It points at the **MCP Workbench** ALB DNS name, not the Serve API ALB.
+The hosted MCP base URL is stored in SSM at `…/mcpWorkbench/endpoint` (and used by configuration Lambdas). It must target the **MCP Workbench** ALB, not the Serve API ALB. When you set `restApiConfig.domainName`, LISA derives a separate workbench hostname by default (for example `lisa-serve.<suffix>` becomes `lisa-mcp-workbench.<suffix>`, and `serve.<suffix>` becomes `mcp-workbench.<suffix>`) unless you override it with `mcpWorkbenchEcsConfig.domainName`. Create a DNS record for that hostname pointing at the **MCP Workbench** load balancer in EC2.
 
 Optional `mcpWorkbenchEcsConfig` in your deployment configuration lets you tune instance type, ASG minimum and maximum capacity, root volume size, and scaling cooldown for the workbench cluster.
 

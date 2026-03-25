@@ -25,7 +25,7 @@ const stripTrailingSlash = (str) => {
 export const RESTAPI_URI = stripTrailingSlash(window.env.RESTAPI_URI);
 export const RESTAPI_VERSION = window.env.RESTAPI_VERSION;
 
-/** Base URL for MCP Workbench HTTP (MCP stream + /api/aws). Matches Serve ALB only when workbench shared that ALB; otherwise SSM mcpWorkbench/endpoint. */
+/** Base URL for MCP Workbench HTTP (MCP stream + /api/aws). From SSM …/mcpWorkbench/endpoint (workbench ALB; distinct from Serve API when custom domains are used). */
 export const MCP_WORKBENCH_URI = window.env.MCP_WORKBENCH_URI
     ? stripTrailingSlash(window.env.MCP_WORKBENCH_URI)
     : RESTAPI_URI;

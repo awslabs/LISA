@@ -28,6 +28,7 @@ import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { LAMBDA_PATH, MCP_WORKBENCH_PATH } from '../util';
 import { WORKBENCH_CONTAINER_MEMORY_RESERVATION, WORKBENCH_CONTAINER_MEMORY_LIMIT } from '../api-base/fastApiContainer';
+import { defaultMcpWorkbenchHostnameFromServeApiDomain } from './mcpWorkbenchDomain';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
@@ -100,11 +101,18 @@ export class McpWorkbenchConstruct extends Construct {
     private buildWorkbenchEcsConfig (config: Config): ECSConfig {
         const o = config.mcpWorkbenchEcsConfig ?? {};
         const instanceType = o.instanceType ?? 'm5.xlarge';
-        // Dedicated workbench ALB: optional overrides in mcpWorkbenchEcsConfig. When omitted, inherit restApiConfig so
-        // existing stacks keep HTTPS (browser MCP + UI require TLS when the page is https). Set explicit domain/ssl
-        // here only when the workbench needs a different hostname than the Serve API (see config schema).
-        const workbenchDomainName = o.domainName ?? config.restApiConfig.domainName ?? null;
-        const workbenchSslCertArn = o.sslCertIamArn ?? config.restApiConfig.sslCertIamArn ?? null;
+        // Workbench uses its own ALB; never reuse restApiConfig.domainName (that name resolves to the Serve ALB).
+        // mcpWorkbenchRestApiConfig mirrors restApiConfig for YAML parity; mcpWorkbenchEcsConfig.domainName remains supported.
+        const workbenchDomainName =
+            config.mcpWorkbenchRestApiConfig?.domainName ??
+            o.domainName ??
+            defaultMcpWorkbenchHostnameFromServeApiDomain(config.restApiConfig.domainName ?? undefined) ??
+            null;
+        const workbenchSslCertArn =
+            config.mcpWorkbenchRestApiConfig?.sslCertIamArn ??
+            o.sslCertIamArn ??
+            config.restApiConfig.sslCertIamArn ??
+            null;
         return {
             amiHardwareType: AmiHardwareType.STANDARD,
             autoScalingConfig: {

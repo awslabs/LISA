@@ -27,6 +27,8 @@ export default defineConfig({
     screenshotsFolder: `${PROJECT_ROOT}/screenshots/smoke`,
     trashAssetsBeforeRuns: true,        // wipe out old videos/screenshots
 
+    defaultCommandTimeout: 10000,       // 10 seconds — CI runners need more headroom than the 4s default
+
     e2e: {
         specPattern: `${PROJECT_ROOT}/src/smoke/specs/**/*.smoke.spec.ts`,
         supportFile: `${PROJECT_ROOT}/src/smoke/support/index.ts`,

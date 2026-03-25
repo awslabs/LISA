@@ -170,9 +170,8 @@ function setupApiStubs (env: Record<string, unknown>) {
 /**
  * Build a mock OIDC user object.
  */
-function buildOidcUser (role: 'admin' | 'user', env: Record<string, unknown>) {
-    const isAdmin = role === 'admin';
-    const groups = isAdmin ? ['admin'] : ['user'];
+function buildOidcUser (role: 'admin' | 'user' | 'rag-admin', env: Record<string, unknown>) {
+    const groups = role === 'admin' ? ['admin'] : role === 'rag-admin' ? ['rag-admin'] : ['user'];
     const now = Math.floor(Date.now() / 1000);
 
     const jwtPayload = {
@@ -209,7 +208,7 @@ function buildOidcUser (role: 'admin' | 'user', env: Record<string, unknown>) {
 /**
  * Setup OIDC stubs for the login flow.
  */
-function setupOidcStubs (role: 'admin' | 'user', env: Record<string, unknown>) {
+function setupOidcStubs (role: 'admin' | 'user' | 'rag-admin', env: Record<string, unknown>) {
     const oidcUser = buildOidcUser(role, env);
 
     // Stub OIDC discovery
@@ -260,7 +259,7 @@ function waitForAppReady () {
 /**
  * Custom command to log in a user via stubbed OIDC flow.
  */
-Cypress.Commands.add('loginAs', (role = 'user') => {
+Cypress.Commands.add('loginAs', (role: 'admin' | 'user' | 'rag-admin' = 'user') => {
     cy.fixture('env.json').then((env) => {
         // Setup all stubs
         setupApiStubs(env);

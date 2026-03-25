@@ -5,7 +5,7 @@
     "type": "pgvector",
     "embeddingModelId": "titan-embed",
     "status": "UPDATE_COMPLETE",
-    "allowedGroups": ["admin"],
+    "allowedGroups": ["admin", "rag-admin"],
     "metadata": {
       "tags": []
     },
@@ -38,7 +38,7 @@
     "type": "opensearch",
     "embeddingModelId": "e5-embed",
     "status": "UPDATE_COMPLETE",
-    "allowedGroups": ["admin"],
+    "allowedGroups": ["admin", "rag-admin"],
     "metadata": {
       "tags": ["open-rag"]
     },

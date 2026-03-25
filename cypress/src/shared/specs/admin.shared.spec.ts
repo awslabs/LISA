@@ -23,6 +23,7 @@
 
 import {
     navigateAndVerifyAdminPage,
+    navigateToAdminPage,
     expandAdminMenu,
     collapseAdminMenu,
 } from '../../support/adminHelpers';
@@ -41,12 +42,11 @@ export function runAdminTests (options: {
     });
 
     it('Admin can access Configuration page', () => {
-        navigateAndVerifyAdminPage(
-            'Configuration',
-            '/configuration',
-            'Configuration',
-            'custom'
-        );
+        navigateToAdminPage('Configuration');
+        cy.url().should('include', '/configuration');
+
+        // Check for the submit button which is always visible
+        cy.get('[data-testid="configuration-submit"]').should('be.visible');
     });
 
     it('Model Management page loads and shows model cards', () => {

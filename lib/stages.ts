@@ -396,6 +396,7 @@ export class LisaServeApplicationStage extends Stage {
                 mcpWorkbenchStackInstance.addDependency(apiBaseStack);
                 apiDeploymentStack.addDependency(mcpWorkbenchStackInstance);
                 this.stacks.push(mcpWorkbenchStackInstance);
+                serveStack.addDependency(mcpWorkbenchStackInstance);
             }
 
             if (config.deployRag) {

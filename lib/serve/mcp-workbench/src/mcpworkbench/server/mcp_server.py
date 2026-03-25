@@ -23,7 +23,7 @@ from typing import Any
 
 from fastmcp import FastMCP
 from starlette.applications import Starlette
-from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware import Middleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Mount, Route
@@ -34,7 +34,8 @@ from ..config.models import ServerConfig
 from ..core.base_tool import BaseTool
 from ..core.tool_discovery import ToolDiscovery, ToolInfo, ToolType
 from ..core.tool_registry import ToolRegistry
-from .auth import OIDCHTTPBearer
+from .auth import is_idp_used, OIDCHTTPBearer
+from .middleware import CORSMiddleware, wrap_asgi_with_cors_headers
 
 logger = logging.getLogger(__name__)
 
@@ -147,13 +148,14 @@ class MCPWorkbenchServer:
             return JSONResponse({"status": "healthy", "service": "mcpworkbench"})
 
         logger.info(f"CORS Allowed Origins: {self.config.cors_settings.allow_origins}")
-        mcp_app.add_middleware(
-            CORSMiddleware,
-            allow_origins=self.config.cors_settings.allow_origins,
-            allow_methods=self.config.cors_settings.allow_methods,
-            allow_headers=self.config.cors_settings.allow_headers,
-        )
-        mcp_app.add_middleware(OIDCHTTPBearer)
+        # Auth only on mounted apps; CORS is applied at the root Starlette app so OPTIONS preflight
+        # is handled before routing (avoids FastMCP 500 on OPTIONS and missing ACAO on errors).
+        if is_idp_used():
+            mcp_app.add_middleware(OIDCHTTPBearer)
+        else:
+            logger.info(
+                "USE_AUTH is false or unset: OIDC/API-token auth middleware is disabled (same as Serve REST API)."
+            )
 
         # Add MCP mount
         routes = [
@@ -165,19 +167,18 @@ class MCPWorkbenchServer:
         from fastapi import FastAPI  # noqa: PLC0415
 
         aws_app = FastAPI()
-        aws_app.add_middleware(
-            CORSMiddleware,
-            allow_origins=self.config.cors_settings.allow_origins,
-            allow_methods=self.config.cors_settings.allow_methods,
-            allow_headers=self.config.cors_settings.allow_headers,
-        )
-        aws_app.add_middleware(OIDCHTTPBearer)
+        if is_idp_used():
+            aws_app.add_middleware(OIDCHTTPBearer)
         aws_app.include_router(aws_router)
         routes.append(Mount("/api/aws", aws_app))
 
         self._add_management_routes(mcp_app)
 
-        return Starlette(routes=routes, lifespan=mcp_app.lifespan)
+        return Starlette(
+            routes=routes,
+            middleware=[Middleware(CORSMiddleware, cors_config=self.config.cors_settings)],
+            lifespan=mcp_app.lifespan,
+        )
 
     async def _register_discovered_tools(self, tools: list[ToolInfo]) -> None:
         """Register discovered tools with FastMCP."""
@@ -263,6 +264,8 @@ class MCPWorkbenchServer:
 
         # Create Starlette app with both MCP and HTTP routes
         starlette_app = self._create_starlette_app()
+        # Outer ASGI wrapper so 500s from ServerErrorMiddleware still get CORS headers (browser can read body)
+        asgi_app = wrap_asgi_with_cors_headers(starlette_app, self.config.cors_settings)
 
         # Start server with Starlette app
         logger.info(f"Starting MCP Workbench server on {self.config.server_host}:{self.config.server_port}")
@@ -278,7 +281,7 @@ class MCPWorkbenchServer:
         import uvicorn  # noqa: PLC0415
 
         config = uvicorn.Config(
-            starlette_app,
+            asgi_app,
             host=self.config.server_host,
             port=self.config.server_port,
             log_level="info",

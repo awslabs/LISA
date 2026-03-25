@@ -22,14 +22,14 @@ import { Stack } from 'aws-cdk-lib';
 const stackGroupOverrides: Record<string, number> = {
     LisaServe: 1,
     LisaRAG: 6,
-    LisaMcpWorkbench: 1
+    LisaMcpWorkbench: 2
 };
 
 const stackGroups: Record<string, number> = {
     LisaServe: 2,
     LisaNetworking: 3,
     LisaRAG: 8,
-    LisaMcpWorkbench: 1
+    LisaMcpWorkbench: 2
 };
 const RESOURCE = 'AWS::EC2::SecurityGroup';
 

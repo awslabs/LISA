@@ -25,6 +25,11 @@ const stripTrailingSlash = (str) => {
 export const RESTAPI_URI = stripTrailingSlash(window.env.RESTAPI_URI);
 export const RESTAPI_VERSION = window.env.RESTAPI_VERSION;
 
+/** Base URL for MCP Workbench HTTP (MCP stream + /api/aws). Matches Serve ALB only when workbench shared that ALB; otherwise SSM mcpWorkbench/endpoint. */
+export const MCP_WORKBENCH_URI = window.env.MCP_WORKBENCH_URI
+    ? stripTrailingSlash(window.env.MCP_WORKBENCH_URI)
+    : RESTAPI_URI;
+
 /**
  * Gets base URI for API Gateway. This can either be the APIGW execution URL directly or a
  * custom domain.

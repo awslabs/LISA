@@ -135,7 +135,6 @@ export default class MockApp {
             vpc: networkingStack.vpc,
             restApiId: apiBaseStack.restApiId,
             rootResourceId: apiBaseStack.rootResourceId,
-            apiCluster: serveStack.restApi.apiCluster,
             authorizer: apiBaseStack.authorizer
         });
         const ragStack = new LisaRagStack(app, 'LisaRAG', {

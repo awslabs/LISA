@@ -28,7 +28,7 @@ import {
     TextContent
 } from '@cloudscape-design/components';
 import { lisaAxios } from '@/shared/reducers/reducer.utils';
-import { RESTAPI_URI } from '@/components/utils';
+import { MCP_WORKBENCH_URI } from '@/components/utils';
 
 type AwsStatusResponse = {
     connected: boolean;
@@ -82,7 +82,7 @@ const AwsCredentialsPanel: React.FC<AwsCredentialsPanelProps> = ({ onStatusChang
         try {
             setIsLoadingStatus(true);
             setError(null);
-            const { data } = await lisaAxios.get<AwsStatusResponse>(`${RESTAPI_URI}/api/aws/status`, {
+            const { data } = await lisaAxios.get<AwsStatusResponse>(`${MCP_WORKBENCH_URI}/api/aws/status`, {
                 headers: sessionId ? { 'X-Session-Id': sessionId } : undefined,
             });
             setStatus(data);
@@ -112,7 +112,7 @@ const AwsCredentialsPanel: React.FC<AwsCredentialsPanelProps> = ({ onStatusChang
                 sessionToken: sessionToken.trim() || undefined,
                 region: region.trim()
             };
-            const { data } = await lisaAxios.post<ConnectResponse>(`${RESTAPI_URI}/api/aws/connect`, body, {
+            const { data } = await lisaAxios.post<ConnectResponse>(`${MCP_WORKBENCH_URI}/api/aws/connect`, body, {
                 headers: sessionId ? { 'X-Session-Id': sessionId } : undefined,
             });
             setAccountId(data.accountId);
@@ -131,7 +131,7 @@ const AwsCredentialsPanel: React.FC<AwsCredentialsPanelProps> = ({ onStatusChang
         setError(null);
         setIsDisconnecting(true);
         try {
-            await lisaAxios.delete(`${RESTAPI_URI}/api/aws/connect`, {
+            await lisaAxios.delete(`${MCP_WORKBENCH_URI}/api/aws/connect`, {
                 headers: sessionId ? { 'X-Session-Id': sessionId } : undefined,
             });
             const newStatus: AwsStatusResponse = { connected: false };

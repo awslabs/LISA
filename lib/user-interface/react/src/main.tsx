@@ -35,6 +35,7 @@ declare global {
             JWT_GROUPS_PROP?: string;
             CUSTOM_SCOPES: string[];
             RESTAPI_URI: string;
+            MCP_WORKBENCH_URI?: string;
             RESTAPI_VERSION: string;
             RAG_ENABLED: boolean;
             HOSTED_MCP_ENABLED: boolean;

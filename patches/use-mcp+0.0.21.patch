@@ -1,0 +1,49 @@
+diff --git a/node_modules/use-mcp/dist/react/index.js b/node_modules/use-mcp/dist/react/index.js
+index 3412d02..d966e1e 100644
+--- a/node_modules/use-mcp/dist/react/index.js
++++ b/node_modules/use-mcp/dist/react/index.js
+@@ -70,13 +70,31 @@ function useMcp(options) {
+   const addLog = useCallback(
+     (level, message, ...args) => {
+       const fullMessage = args.length > 0 ? `${message} ${args.map((arg) => JSON.stringify(arg)).join(" ")}` : message;
++      if (!debug) {
++        if (level === "info" || level === "debug") {
++          return;
++        }
++        if (level === "warn" || level === "error") {
++          const benign =
++            fullMessage.includes("AbortError") ||
++            fullMessage.includes("The operation was aborted") ||
++            fullMessage.includes("SSE stream disconnected") ||
++            fullMessage.includes("Error in input stream") ||
++            /^Transport error event \((HTTP|SSE)\): \{\}\s*$/.test(fullMessage.trim()) ||
++            (fullMessage.includes("Transport error event") &&
++              (fullMessage.includes(": {}") || fullMessage.endsWith(": {}"))) ||
++            /^Transport error \((HTTP|SSE)\): (undefined)?\s*$/.test(fullMessage.trim());
++          if (benign) {
++            return;
++          }
++        }
++      }
+       console[level](`[useMcp] ${fullMessage}`);
+       if (isMountedRef.current) {
+         setLog((prevLog) => [...prevLog.slice(-100), { level, message: fullMessage, timestamp: Date.now() }]);
+       }
+     },
+-    []
+-    // Empty dependency array makes this stable
++    [debug]
+   );
+   const disconnect = useCallback(
+     async (quiet = false) => {
+@@ -341,7 +359,9 @@ function useMcp(options) {
+       }
+     };
+     let finalStatus = "failed";
+-    console.log({ transportType });
++    if (debug) {
++      console.log({ transportType });
++    }
+     if (transportType === "sse") {
+       addLog("debug", "Using SSE-only transport mode");
+       finalStatus = await tryConnectWithTransport("sse");

@@ -34,7 +34,7 @@ from ..config.models import ServerConfig
 from ..core.base_tool import BaseTool
 from ..core.tool_discovery import ToolDiscovery, ToolInfo, ToolType
 from ..core.tool_registry import ToolRegistry
-from .auth import OIDCHTTPBearer, is_idp_used
+from .auth import is_idp_used, OIDCHTTPBearer
 from .middleware import CORSMiddleware, wrap_asgi_with_cors_headers
 
 logger = logging.getLogger(__name__)
@@ -153,7 +153,9 @@ class MCPWorkbenchServer:
         if is_idp_used():
             mcp_app.add_middleware(OIDCHTTPBearer)
         else:
-            logger.info("USE_AUTH is false or unset: OIDC/API-token auth middleware is disabled (same as Serve REST API).")
+            logger.info(
+                "USE_AUTH is false or unset: OIDC/API-token auth middleware is disabled (same as Serve REST API)."
+            )
 
         # Add MCP mount
         routes = [

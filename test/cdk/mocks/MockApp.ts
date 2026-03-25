@@ -137,6 +137,7 @@ export default class MockApp {
             rootResourceId: apiBaseStack.rootResourceId,
             authorizer: apiBaseStack.authorizer
         });
+        serveStack.addDependency(mcpWorkbenchStack);
         const ragStack = new LisaRagStack(app, 'LisaRAG', {
             ...baseStackProps,
             stackName: 'LisaRAG',

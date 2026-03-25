@@ -70,8 +70,10 @@ describe('RepositoryTable', () => {
         });
     });
 
-    it('should have Create Repository button', async () => {
-        renderWithProviders(<RepositoryTable />);
+    it('should have Create Repository button for admin users', async () => {
+        renderWithProviders(<RepositoryTable />, {
+            preloadedState: { user: { info: { isAdmin: true, isRagAdmin: false, isUser: true, isApiUser: false } } }
+        });
 
         await waitFor(() => {
             expect(screen.getByText('Create Repository')).toBeInTheDocument();

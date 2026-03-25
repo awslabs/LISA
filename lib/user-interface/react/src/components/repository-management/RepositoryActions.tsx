@@ -23,7 +23,8 @@ import {
     Checkbox,
     SpaceBetween,
 } from '@cloudscape-design/components';
-import { useAppDispatch } from '@/config/store';
+import { useAppDispatch, useAppSelector } from '@/config/store';
+import { selectCurrentUserIsAdmin } from '@/shared/reducers/user.reducer';
 import { useNotificationService } from '@/shared/util/hooks';
 import { INotificationService } from '@/shared/notification/notification.service';
 import { Action, ThunkDispatch } from '@reduxjs/toolkit';
@@ -46,6 +47,7 @@ export type RepositoryActionProps = {
 
 function RepositoryActions (props: RepositoryActionProps): ReactElement {
     const dispatch = useAppDispatch();
+    const isAdmin = useAppSelector(selectCurrentUserIsAdmin);
     const notificationService = useNotificationService(dispatch);
     const { setEdit, setNewRepositoryModalVisible, setSelectedItems } = props;
     const { isFetching } = useListRagRepositoriesQuery(undefined, {
@@ -64,13 +66,15 @@ function RepositoryActions (props: RepositoryActionProps): ReactElement {
                 onClick={handleRefresh}
                 ariaLabel='Refresh repository table'
             />
-            {RepositoryActionButton(dispatch, notificationService, props)}
-            <Button variant='primary' onClick={() => {
-                setEdit(false);
-                setNewRepositoryModalVisible(true);
-            }}>
-                Create Repository
-            </Button>
+            {RepositoryActionButton(dispatch, notificationService, props, isAdmin)}
+            {isAdmin && (
+                <Button variant='primary' onClick={() => {
+                    setEdit(false);
+                    setNewRepositoryModalVisible(true);
+                }}>
+                    Create Repository
+                </Button>
+            )}
         </SpaceBetween>
     );
 }
@@ -79,7 +83,7 @@ type RagRepository = RagRepositoryConfig & {
     legacy?: boolean
 };
 
-function RepositoryActionButton (dispatch: ThunkDispatch<any, any, Action>, notificationService: INotificationService, props: RepositoryActionProps): ReactElement {
+function RepositoryActionButton (dispatch: ThunkDispatch<any, any, Action>, notificationService: INotificationService, props: RepositoryActionProps, isAdmin: boolean): ReactElement {
     const { setEdit, selectedItems, setSelectedItems, setNewRepositoryModalVisible } = props;
     const [disabledModal, setDisabledModel] = useState(false);
     const [showModal, setShowModal] = useState(false);
@@ -158,11 +162,11 @@ function RepositoryActionButton (dispatch: ThunkDispatch<any, any, Action>, noti
             disabled: selectedItems.length !== 1 || selectedRepo?.legacy,
             disabledReason: selectedItems.length !== 1 ? '' : selectedRepo?.legacy ? 'Legacy repositories created through YAML cannot be edited.' : undefined
         },
-        {
+        ...(isAdmin ? [{
             id: 'rm',
             text: 'Delete',
             disabled: selectedItems.length !== 1,
-        }];
+        }] : [])];
 
     return (
         <ButtonDropdown

@@ -209,6 +209,7 @@ export class LisaRagConstruct extends Construct {
 
         const baseEnvironment: Record<string, string> = {
             ADMIN_GROUP: config.authConfig!.adminGroup,
+            RAG_ADMIN_GROUP: config.authConfig!.ragAdminGroup,
             BUCKET_NAME: bucket.bucketName,
             CHUNK_OVERLAP: config.ragFileProcessingConfig!.chunkOverlap.toString(),
             CHUNK_SIZE: config.ragFileProcessingConfig!.chunkSize.toString(),

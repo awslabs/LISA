@@ -189,13 +189,24 @@ def test_rag_admin_can_delete_collection_on_accessible_repo(ctx):
 # --- effective_admin: RAG Admin gets is_admin=True in collection_service ---
 
 
-def test_rag_admin_passes_effective_admin_to_collection_service(ctx):
-    """Verify collection_service.update_collection receives is_admin=True for RAG admins."""
-    event = _make_event("rag-admin-user", ["rag-team", "rag-admins"])
+@pytest.mark.parametrize(
+    "is_rag_admin_val,expected",
+    [(True, True), (False, False)],
+    ids=["rag-admin-gets-effective-admin", "regular-user-gets-no-admin"],
+)
+def test_effective_admin_passed_to_collection_service(ctx, is_rag_admin_val, expected):
+    """Verify effective_admin (is_admin OR is_rag_admin) is passed to collection_service.
+
+    Call-arg inspection is necessary here because collection_service is always mocked
+    at this layer — it's an external dependency boundary.
+    """
+    username = "rag-admin-user" if is_rag_admin_val else "regular-user"
+    groups = ["rag-team", "rag-admins"] if is_rag_admin_val else ["rag-team"]
+    event = _make_event(username, groups)
     event["pathParameters"] = {"repositoryId": "repo-1", "collectionId": "coll-1"}
     event["body"] = json.dumps({"name": "Updated"})
 
-    with _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True), patch(
+    with _auth_context(username, groups, is_rag_admin_val=is_rag_admin_val), patch(
         "repository.lambda_functions.vs_repo"
     ) as mvs, patch("repository.lambda_functions.collection_service") as mcs:
         mvs.find_repository_by_id.return_value = ACCESSIBLE_REPO
@@ -208,29 +219,7 @@ def test_rag_admin_passes_effective_admin_to_collection_service(ctx):
         update_collection(event, ctx)
 
         call_kwargs = mcs.update_collection.call_args[1]
-        assert call_kwargs["is_admin"] is True
-
-
-def test_regular_user_passes_is_admin_false_to_collection_service(ctx):
-    """Verify collection_service receives is_admin=False for regular users."""
-    event = _make_event("regular-user", ["rag-team"])
-    event["pathParameters"] = {"repositoryId": "repo-1", "collectionId": "coll-1"}
-    event["body"] = json.dumps({"name": "Updated"})
-
-    with _auth_context("regular-user", ["rag-team"]), patch("repository.lambda_functions.vs_repo") as mvs, patch(
-        "repository.lambda_functions.collection_service"
-    ) as mcs:
-        mvs.find_repository_by_id.return_value = ACCESSIBLE_REPO
-        mock_coll = MagicMock()
-        mock_coll.model_dump.return_value = {"collectionId": "coll-1"}
-        mcs.update_collection.return_value = mock_coll
-
-        from repository.lambda_functions import update_collection
-
-        update_collection(event, ctx)
-
-        call_kwargs = mcs.update_collection.call_args[1]
-        assert call_kwargs["is_admin"] is False
+        assert call_kwargs["is_admin"] is expected
 
 
 # --- Pipeline update: RAG Admin scoped ---
@@ -395,6 +384,132 @@ def test_regular_user_cannot_delete_other_users_doc():
 
         with pytest.raises(ValueError, match="not owned by"):
             _ensure_document_ownership(event, [doc])
+
+
+# --- update_repository: RAG Admin on inaccessible repo ---
+
+
+def test_rag_admin_cannot_update_repository_on_inaccessible_repo(ctx):
+    """RAG Admin without group access is denied even with allowed fields."""
+    event = _make_event("rag-admin-user", ["rag-team", "rag-admins"])
+    event["pathParameters"] = {"repositoryId": "repo-2"}
+    event["body"] = json.dumps({"pipelines": []})
+
+    with _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True), patch(
+        "repository.lambda_functions.vs_repo"
+    ) as mvs:
+        mvs.find_repository_by_id.return_value = INACCESSIBLE_REPO
+
+        from repository.lambda_functions import update_repository
+
+        result = update_repository(event, ctx)
+
+    assert result["statusCode"] == 403
+
+
+# --- list_user_collections: RAG Admin does NOT get effective_admin ---
+
+
+def test_rag_admin_list_user_collections_without_effective_admin(ctx):
+    """RAG admins should NOT get effective_admin for cross-repository queries.
+
+    This codifies the intentional security decision: list_user_collections passes
+    is_admin (not effective_admin) so RAG admins only see collections from repos
+    they have group access to, same as regular users.
+    """
+    event = _make_event("rag-admin-user", ["rag-team", "rag-admins"])
+    event["queryStringParameters"] = {}
+
+    with _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True), patch(
+        "repository.lambda_functions.collection_service"
+    ) as mcs:
+        mcs.list_all_user_collections.return_value = ([], None)
+
+        from repository.lambda_functions import list_user_collections
+
+        list_user_collections(event, ctx)
+
+        call_kwargs = mcs.list_all_user_collections.call_args[1]
+        assert call_kwargs["is_admin"] is False
+
+
+# --- bedrockKnowledgeBaseConfig: allowed update field for RAG Admin ---
+
+
+def test_rag_admin_can_update_bedrock_knowledge_base_config(ctx):
+    """RAG Admin can update bedrockKnowledgeBaseConfig (in allowed_fields set)."""
+    event = _make_event("rag-admin-user", ["rag-team", "rag-admins"])
+    event["pathParameters"] = {"repositoryId": "repo-1"}
+    event["body"] = json.dumps(
+        {
+            "bedrockKnowledgeBaseConfig": {
+                "knowledgeBaseId": "kb-123",
+                "dataSources": [{"id": "ds-1", "name": "test-source", "s3Uri": "s3://bucket/prefix"}],
+            }
+        }
+    )
+
+    bedrock_repo = {
+        **ACCESSIBLE_REPO,
+        "type": "bedrock_kb",
+        "config": {**ACCESSIBLE_REPO, "type": "bedrock_kb"},
+    }
+
+    with _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True), patch(
+        "repository.lambda_functions.vs_repo"
+    ) as mvs:
+        mvs.find_repository_by_id.return_value = bedrock_repo
+        mvs.update.return_value = bedrock_repo
+
+        from repository.lambda_functions import update_repository
+
+        result = update_repository(event, ctx)
+
+    assert result["statusCode"] == 200
+
+
+# --- Defense-in-depth: serialized output filter for RAG Admin ---
+
+
+def test_rag_admin_update_filters_serialized_output(ctx):
+    """Defense-in-depth filter strips non-allowed fields from model_dump output.
+
+    Even if Pydantic populates default values during serialization, the second
+    filter (lines 1613-1615) ensures only allowed fields reach the update call.
+    """
+    event = _make_event("rag-admin-user", ["rag-team", "rag-admins"])
+    event["pathParameters"] = {"repositoryId": "repo-1"}
+    new_pipelines = [
+        {
+            "collectionId": "coll-1",
+            "s3Bucket": "bucket",
+            "s3Prefix": "prefix",
+            "trigger": "event",
+            "chunkSize": 1000,
+            "chunkOverlap": 100,
+        },
+    ]
+    event["body"] = json.dumps({"pipelines": new_pipelines})
+
+    with _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True), patch(
+        "repository.lambda_functions.vs_repo"
+    ) as mvs:
+        mvs.find_repository_by_id.return_value = {**ACCESSIBLE_REPO, "config": ACCESSIBLE_REPO}
+        mvs.update.return_value = {**ACCESSIBLE_REPO, "pipelines": new_pipelines}
+
+        from repository.lambda_functions import update_repository
+
+        update_repository(event, ctx)
+
+        # Verify the updates dict passed to vs_repo.update only contains allowed fields
+        update_call_args = mvs.update.call_args
+        updates_dict = (
+            update_call_args[0][1] if len(update_call_args[0]) > 1 else update_call_args[1].get("updates", {})
+        )
+        allowed_fields = {"pipelines", "bedrockKnowledgeBaseConfig"}
+        assert set(updates_dict.keys()).issubset(
+            allowed_fields
+        ), f"Updates contained disallowed fields: {set(updates_dict.keys()) - allowed_fields}"
 
 
 # --- Regression: Admin unchanged ---

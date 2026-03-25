@@ -65,20 +65,13 @@ def test_check_rag_admin_access_returns_true_when_in_group():
         assert provider.check_rag_admin_access("user1", ["rag-admins", "users"]) is True
 
 
-def test_check_rag_admin_access_returns_false_when_not_in_group():
+@pytest.mark.parametrize("groups", [["users"], []])
+def test_check_rag_admin_access_returns_false_when_not_in_group(groups):
     with patch.dict(os.environ, {"RAG_ADMIN_GROUP": "rag-admins"}):
         from utilities.auth_provider import OIDCAuthorizationProvider
 
         provider = OIDCAuthorizationProvider()
-        assert provider.check_rag_admin_access("user1", ["users"]) is False
-
-
-def test_check_rag_admin_access_returns_false_when_groups_empty():
-    with patch.dict(os.environ, {"RAG_ADMIN_GROUP": "rag-admins"}):
-        from utilities.auth_provider import OIDCAuthorizationProvider
-
-        provider = OIDCAuthorizationProvider()
-        assert provider.check_rag_admin_access("user1", []) is False
+        assert provider.check_rag_admin_access("user1", groups) is False
 
 
 def test_check_rag_admin_access_returns_false_when_env_var_empty():
@@ -104,67 +97,65 @@ def test_check_rag_admin_access_is_case_sensitive():
 def test_is_rag_admin_extracts_from_event_context():
     event = {"requestContext": {"authorizer": {"username": "rag-user", "groups": '["rag-admins", "users"]'}}}
     with patch.dict(os.environ, {"RAG_ADMIN_GROUP": "rag-admins"}):
-        with patch("utilities.auth.get_groups", return_value=["rag-admins", "users"]):
-            from utilities.auth import is_rag_admin
+        from utilities.auth import is_rag_admin
 
-            assert is_rag_admin(event) is True
+        assert is_rag_admin(event) is True
 
 
 # --- rag_admin_or_admin decorator tests ---
 
 
 def test_rag_admin_or_admin_allows_admin(lambda_context):
-    with patch("utilities.auth.is_admin", return_value=True):
-        with patch("utilities.auth.is_rag_admin", return_value=False):
-            from utilities.auth import rag_admin_or_admin
+    event = {"requestContext": {"authorizer": {"username": "admin-user", "groups": '["admins"]'}}}
+    with patch.dict(os.environ, {"ADMIN_GROUP": "admins", "RAG_ADMIN_GROUP": "rag-admins"}):
+        from utilities.auth import rag_admin_or_admin
 
-            @rag_admin_or_admin
-            def test_func(event, context):
-                return {"result": "success"}
+        @rag_admin_or_admin
+        def test_func(event, context):
+            return {"result": "success"}
 
-            assert test_func({}, lambda_context) == {"result": "success"}
+        assert test_func(event, lambda_context) == {"result": "success"}
 
 
 def test_rag_admin_or_admin_allows_rag_admin(lambda_context):
-    with patch("utilities.auth.is_admin", return_value=False):
-        with patch("utilities.auth.is_rag_admin", return_value=True):
-            from utilities.auth import rag_admin_or_admin
+    event = {"requestContext": {"authorizer": {"username": "rag-user", "groups": '["rag-admins"]'}}}
+    with patch.dict(os.environ, {"ADMIN_GROUP": "admins", "RAG_ADMIN_GROUP": "rag-admins"}):
+        from utilities.auth import rag_admin_or_admin
 
-            @rag_admin_or_admin
-            def test_func(event, context):
-                return {"result": "success"}
+        @rag_admin_or_admin
+        def test_func(event, context):
+            return {"result": "success"}
 
-            assert test_func({}, lambda_context) == {"result": "success"}
+        assert test_func(event, lambda_context) == {"result": "success"}
 
 
 def test_rag_admin_or_admin_blocks_regular_user(lambda_context):
-    with patch("utilities.auth.is_admin", return_value=False):
-        with patch("utilities.auth.is_rag_admin", return_value=False):
-            from utilities.auth import rag_admin_or_admin
-            from utilities.exceptions import HTTPException
+    event = {"requestContext": {"authorizer": {"username": "regular-user", "groups": '["users"]'}}}
+    with patch.dict(os.environ, {"ADMIN_GROUP": "admins", "RAG_ADMIN_GROUP": "rag-admins"}):
+        from utilities.auth import rag_admin_or_admin
+        from utilities.exceptions import ForbiddenException
 
-            @rag_admin_or_admin
-            def test_func(event, context):
-                return {"result": "success"}
+        @rag_admin_or_admin
+        def test_func(event, context):
+            return {"result": "success"}
 
-            with pytest.raises(HTTPException) as exc_info:
-                test_func({}, lambda_context)
+        with pytest.raises(ForbiddenException) as exc_info:
+            test_func(event, lambda_context)
 
-            assert exc_info.value.http_status_code == 403
+        assert exc_info.value.http_status_code == 403
 
 
 def test_rag_admin_or_admin_blocks_when_no_groups(lambda_context):
     event = {"requestContext": {"authorizer": {"username": "user1", "groups": "[]"}}}
-    with patch.dict(os.environ, {"ADMIN_GROUP": "admin", "RAG_ADMIN_GROUP": "rag-admins"}):
-        with patch("utilities.auth.get_groups", return_value=[]):
-            from utilities.auth import rag_admin_or_admin
-            from utilities.exceptions import HTTPException
+    with patch.dict(os.environ, {"ADMIN_GROUP": "admins", "RAG_ADMIN_GROUP": "rag-admins"}):
+        from utilities.auth import rag_admin_or_admin
+        from utilities.exceptions import ForbiddenException
 
-            @rag_admin_or_admin
-            def test_func(event, context):
-                return {"result": "success"}
+        @rag_admin_or_admin
+        def test_func(event, context):
+            return {"result": "success"}
 
-            with pytest.raises(HTTPException) as exc_info:
-                test_func(event, lambda_context)
+        with pytest.raises(ForbiddenException) as exc_info:
+            test_func(event, lambda_context)
 
-            assert exc_info.value.http_status_code == 403
+        assert exc_info.value.http_status_code == 403

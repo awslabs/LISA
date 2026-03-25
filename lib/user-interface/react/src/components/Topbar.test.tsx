@@ -173,6 +173,24 @@ describe('Topbar', () => {
         expect(screen.getByText('API Token Management')).toBeInTheDocument();
     });
 
+    it('hides Administration for rag-admin when RAG_ENABLED is false', async () => {
+        const storeModule = await import('@/config/store');
+        (storeModule.useAppSelector as any).mockImplementation((selector: any) => {
+            if (selector === selectCurrentUserIsAdmin) return false;
+            if (selector === selectCurrentUserIsRagAdmin) return true;
+            if (selector === selectCurrentUserIsApiUser) return false;
+            if (selector === selectCurrentUsername) return 'RAG Admin User';
+            return null;
+        });
+        (window as any).env = {
+            ...window.env,
+            RAG_ENABLED: false,
+        };
+
+        renderTopbar();
+        expect(screen.queryByText('Administration')).not.toBeInTheDocument();
+    });
+
     it('hides Administration for regular user', () => {
         // Default mock already returns isAdmin=false, isRagAdmin=false
         renderTopbar();

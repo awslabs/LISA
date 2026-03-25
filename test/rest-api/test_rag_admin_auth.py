@@ -77,13 +77,26 @@ class TestCheckRagAdminAccessJwt:
             jwt_data = {"cognito:groups": ["users", "developers"]}
             assert provider.check_rag_admin_access_jwt(jwt_data, "cognito:groups") is False
 
+    def test_returns_false_when_env_var_empty(self):
+        from auth_provider import OIDCAuthorizationProvider
+
+        with patch.dict(os.environ, {"RAG_ADMIN_GROUP": ""}):
+            provider = OIDCAuthorizationProvider(admin_group="admin", user_group="users")
+            jwt_data = {"cognito:groups": ["rag-admin", "users"]}
+            assert provider.check_rag_admin_access_jwt(jwt_data, "cognito:groups") is False
+
 
 class TestMiddlewareIsRagAdmin:
     """Tests for auth_middleware setting request.state.is_rag_admin."""
 
     @pytest.mark.asyncio
-    async def test_sets_is_rag_admin_true_for_jwt_user_in_group(self, mock_env_vars, mock_rag_admin_jwt_data):
+    @pytest.mark.parametrize("in_group,expected", [(True, True), (False, False)])
+    async def test_sets_is_rag_admin_for_jwt_user(
+        self, in_group, expected, mock_env_vars, mock_rag_admin_jwt_data, mock_jwt_data
+    ):
         from middleware.auth_middleware import auth_middleware
+
+        jwt_data = mock_rag_admin_jwt_data if in_group else mock_jwt_data
 
         mock_request = MagicMock()
         mock_request.method = "GET"
@@ -103,47 +116,18 @@ class TestMiddlewareIsRagAdmin:
             patch("middleware.auth_middleware.Authorizer") as MockAuthorizer,
         ):
             authorizer_instance = MockAuthorizer.return_value
-            authorizer_instance.authenticate_request = AsyncMock(return_value=mock_rag_admin_jwt_data)
+            authorizer_instance.authenticate_request = AsyncMock(return_value=jwt_data)
             authorizer_instance.jwt_groups_property = "cognito:groups"
             authorizer_instance.auth_provider = MagicMock()
             authorizer_instance.auth_provider.check_admin_access_jwt.return_value = False
-            authorizer_instance.auth_provider.check_rag_admin_access_jwt.return_value = True
+            authorizer_instance.auth_provider.check_rag_admin_access_jwt.return_value = in_group
 
             await auth_middleware(mock_request, mock_call_next)
 
-            assert mock_request.state.is_rag_admin is True
-
-    @pytest.mark.asyncio
-    async def test_sets_is_rag_admin_false_for_non_rag_admin(self, mock_env_vars, mock_jwt_data):
-        from middleware.auth_middleware import auth_middleware
-
-        mock_request = MagicMock()
-        mock_request.method = "GET"
-        mock_request.url.path = "/test"
-
-        class State:
-            pass
-
-        mock_request.state = State()
-        mock_response = MagicMock(status_code=200)
-
-        async def mock_call_next(request):
-            return mock_response
-
-        with (
-            patch.dict(os.environ, {"USE_AUTH": "true", "RAG_ADMIN_GROUP": "rag-admin"}),
-            patch("middleware.auth_middleware.Authorizer") as MockAuthorizer,
-        ):
-            authorizer_instance = MockAuthorizer.return_value
-            authorizer_instance.authenticate_request = AsyncMock(return_value=mock_jwt_data)
-            authorizer_instance.jwt_groups_property = "cognito:groups"
-            authorizer_instance.auth_provider = MagicMock()
-            authorizer_instance.auth_provider.check_admin_access_jwt.return_value = False
-            authorizer_instance.auth_provider.check_rag_admin_access_jwt.return_value = False
-
-            await auth_middleware(mock_request, mock_call_next)
-
-            assert mock_request.state.is_rag_admin is False
+            assert mock_request.state.is_rag_admin is expected
+            authorizer_instance.auth_provider.check_rag_admin_access_jwt.assert_called_once_with(
+                jwt_data, "cognito:groups"
+            )
 
     @pytest.mark.asyncio
     async def test_sets_is_rag_admin_true_for_management_token(self, mock_env_vars):
@@ -206,6 +190,9 @@ class TestMiddlewareIsRagAdmin:
             await auth_middleware(mock_request, mock_call_next)
 
             assert mock_request.state.is_rag_admin is True
+            authorizer_instance.auth_provider.check_rag_admin_access.assert_called_once_with(
+                "api-rag-admin", ["rag-admin", "users"]
+            )
 
     @pytest.mark.asyncio
     async def test_sets_is_rag_admin_true_when_auth_disabled(self, mock_env_vars):

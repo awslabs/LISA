@@ -37,7 +37,7 @@ import { DEFAULT_PREFERENCES, PAGE_SIZE_OPTIONS, TABLE_DEFINITION, TABLE_PREFERE
 import { useCollection } from '@cloudscape-design/collection-hooks';
 import Box from '@cloudscape-design/components/box';
 import { useAppDispatch, useAppSelector } from '../../config/store';
-import { selectCurrentUserIsAdmin, selectCurrentUsername } from '../../shared/reducers/user.reducer';
+import { selectCurrentUserIsAdmin, selectCurrentUserIsRagAdmin, selectCurrentUsername } from '../../shared/reducers/user.reducer';
 import { RagDocument } from '../types';
 import { setConfirmationModal } from '../../shared/reducers/modal.reducer';
 import { useLocalStorage } from '../../shared/hooks/use-local-storage';
@@ -55,8 +55,8 @@ export function getMatchesCountText (count) {
     return count === 1 ? '1 match' : `${count} matches`;
 }
 
-function canDeleteAll (selectedItems: ReadonlyArray<RagDocument>, username: string, isAdmin: boolean) {
-    return selectedItems.length > 0 && (isAdmin || selectedItems.every((doc) => doc.username === username));
+export function canDeleteAll (selectedItems: ReadonlyArray<RagDocument>, username: string, isAdmin: boolean, isRagAdmin: boolean) {
+    return selectedItems.length > 0 && (isAdmin || isRagAdmin || selectedItems.every((doc) => doc.username === username));
 }
 
 function disabledDeleteReason (selectedItems: ReadonlyArray<RagDocument>) {
@@ -84,6 +84,7 @@ export function DocumentLibraryComponent ({ repositoryId, collectionId }: Docume
 
     const currentUser = useAppSelector(selectCurrentUsername);
     const isAdmin = useAppSelector(selectCurrentUserIsAdmin);
+    const isRagAdmin = useAppSelector(selectCurrentUserIsRagAdmin);
     const [preferences, setPreferences] = useLocalStorage('DocumentRagPreferences', DEFAULT_PREFERENCES);
     const dispatch = useAppDispatch();
 
@@ -140,7 +141,7 @@ export function DocumentLibraryComponent ({ repositoryId, collectionId }: Docume
         {
             id: 'rm',
             text: 'Delete',
-            disabled: !canDeleteAll(collectionProps.selectedItems, currentUser, isAdmin),
+            disabled: !canDeleteAll(collectionProps.selectedItems, currentUser, isAdmin, isRagAdmin),
             disabledReason: disabledDeleteReason(collectionProps.selectedItems),
         },
         {

@@ -623,10 +623,21 @@ def handle_add_model_to_litellm(event: dict[str, Any], context: Any) -> dict[str
         litellm_params["model"] = f"{provider_prefix}/{model_name}"
         litellm_params["api_base"] = f"{event['modelUrl']}/v1"  # model's OpenAI-compliant route
     else:
-        litellm_params["model"] = event["modelName"]
+        model_name = event["modelName"]
         if str(event.get("hostingType", "")).upper() == ModelHostingType.INTERNAL_HOSTED.value.upper():
-            # For internal hosted models, route LiteLLM to the customer-provided internal endpoint.
+            # Internal hosted models are registered as OpenAI-compatible providers routed through api_base.
+            # Normalize common user-entered prefixes so LiteLLM doesn't route via hosted_vllm or external providers.
+            stripped = True
+            while stripped:
+                stripped = False
+                for prefix in ("openai/", "hosted_vllm/"):
+                    if model_name.startswith(prefix):
+                        model_name = model_name[len(prefix) :]
+                        stripped = True
+            litellm_params["model"] = f"openai/{model_name}"
             litellm_params["api_base"] = str(event["modelUrl"]).rstrip("/")
+        else:
+            litellm_params["model"] = model_name
 
     litellm_response = litellm_client.add_model(
         model_name=event["modelId"],

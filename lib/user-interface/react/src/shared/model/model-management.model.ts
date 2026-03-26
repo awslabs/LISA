@@ -49,9 +49,9 @@ export enum InferenceContainer {
 }
 
 export enum ModelHostingType {
-    THIRD_PARTY = 'THIRD_PARTY',
-    LISA_HOSTED = 'LISA_HOSTED',
-    INTERNAL_HOSTED = 'INTERNAL_HOSTED',
+    THIRD_PARTY = 'third_party',
+    LISA_HOSTED = 'lisa_hosted',
+    INTERNAL_HOSTED = 'internal_hosted',
 }
 
 export enum ScheduleType {

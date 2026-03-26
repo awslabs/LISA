@@ -546,6 +546,22 @@ def test_handle_add_model_to_litellm_internal_hosted_sets_api_base(model_table, 
             call_args[1]["litellm_params"]["api_base"]
             == "http://internal-lisa-mistral7binstruct03-665568061.us-east-1.elb.amazonaws.com/v1"
         )
+        assert call_args[1]["litellm_params"]["model"] == "openai/test-model-name"
+
+
+def test_handle_add_model_to_litellm_internal_hosted_normalizes_prefixes(model_table, sample_event, lambda_context):
+    """Internal hosted models should normalize user-entered provider prefixes."""
+    event = deepcopy(sample_event)
+    event["create_infra"] = False
+    event["hostingType"] = "internal_hosted"
+    event["modelName"] = "hosted_vllm/openai/gpt-oss-20b"
+    event["modelUrl"] = "http://internal-lisa-mistral7binstruct03-665568061.us-east-1.elb.amazonaws.com/v1"
+    mock_litellm_client.reset_mock()
+
+    with patch("models.state_machine.create_model.model_table", model_table):
+        handle_add_model_to_litellm(event, lambda_context)
+        call_args = mock_litellm_client.add_model.call_args
+        assert call_args[1]["litellm_params"]["model"] == "openai/gpt-oss-20b"
 
 
 def test_handle_failure_with_instance(model_table, sample_event, lambda_context):

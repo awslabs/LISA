@@ -185,6 +185,7 @@ from models.state_machine.update_model import (
     create_updated_task_definition,
     get_ecs_resources_from_stack,
     handle_ecs_update,
+    handle_failure,
     handle_finish_update,
     handle_job_intake,
     handle_poll_capacity,
@@ -852,3 +853,18 @@ def test_handle_update_guardrails_no_config(lambda_context):
     result = handle_update_guardrails(event, lambda_context)
 
     assert result["guardrail_update_ids"] == []
+
+
+def test_handle_failure_sets_model_failed(model_table, sample_model, lambda_context):
+    """Ensure update workflow failures set model status to FAILED."""
+    with patch("models.state_machine.update_model.model_table", model_table):
+        event = {
+            "model_id": "test-model",
+            "Cause": '{"errorMessage":"Update workflow task failed"}',
+        }
+        result = handle_failure(event, lambda_context)
+
+        assert result == event
+        item = model_table.get_item(Key={"model_id": "test-model"})["Item"]
+        assert item["model_status"] == ModelStatus.FAILED
+        assert "Update workflow task failed" in item["failure_reason"]

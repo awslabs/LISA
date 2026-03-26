@@ -74,6 +74,14 @@ class ModelType(StrEnum):
     EMBEDDING = auto()
 
 
+class ModelHostingType(StrEnum):
+    """Defines where a model is hosted."""
+
+    THIRD_PARTY = auto()
+    LISA_HOSTED = auto()
+    INTERNAL_HOSTED = auto()
+
+
 class GuardrailMode(StrEnum):
     """Defines supported guardrail execution modes."""
 
@@ -466,6 +474,7 @@ class LISAModel(BaseModel):
     allowedGroups: list[str] | None = None
     guardrailsConfig: GuardrailsConfig | None = None
     contextWindow: int | None = None
+    hostingType: ModelHostingType | None = ModelHostingType.THIRD_PARTY
 
 
 class ApiResponseBase(BaseModel):
@@ -492,6 +501,7 @@ class CreateModelRequest(BaseModel):
     allowedGroups: list[str] | None = None
     apiKey: str | None = None
     guardrailsConfig: GuardrailsConfig | None = None
+    hostingType: ModelHostingType | None = ModelHostingType.THIRD_PARTY
 
     @model_validator(mode="after")
     def validate_create_model_request(self) -> Self:
@@ -512,6 +522,13 @@ class CreateModelRequest(BaseModel):
                     "All of the following fields must be defined if creating a LISA-hosted model: "
                     "autoScalingConfig, containerConfig, inferenceContainer, instanceType, and loadBalancerConfig"
                 )
+
+        if self.hostingType == ModelHostingType.INTERNAL_HOSTED and not self.modelUrl:
+            raise ValueError("modelUrl is required for INTERNAL_HOSTED models.")
+        if self.hostingType == ModelHostingType.INTERNAL_HOSTED and self.modelUrl:
+            parsed_url = urllib.parse.urlparse(self.modelUrl)
+            if not parsed_url.hostname or not parsed_url.hostname.lower().endswith(".elb.amazonaws.com"):
+                raise ValueError("modelUrl for INTERNAL_HOSTED models must target an AWS load balancer hostname.")
 
         return self
 

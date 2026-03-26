@@ -21,6 +21,7 @@ import {
     Choice,
     Condition,
     DefinitionBody,
+    Fail,
     StateMachine,
     Succeed,
     Wait,
@@ -173,7 +174,25 @@ export class DeleteModelStateMachine extends Construct {
             outputPath: OUTPUT_PATH,
         });
 
+        const handleFailure = new LambdaInvoke(this, 'HandleFailure', {
+            lambdaFunction: new Function(this, 'HandleFailureFunc', {
+                runtime: getPythonRuntime(),
+                handler: 'models.state_machine.delete_model.handle_failure',
+                code: Code.fromAsset(lambdaPath),
+                timeout: LAMBDA_TIMEOUT,
+                memorySize: LAMBDA_MEMORY,
+                role: role,
+                vpc: vpc.vpc,
+                vpcSubnets: vpc.subnetSelection,
+                securityGroups: securityGroups,
+                layers: lambdaLayers,
+                environment: environment,
+            }),
+            outputPath: OUTPUT_PATH,
+        });
+
         const successState = new Succeed(this, 'DeleteSuccess');
+        const failState = new Fail(this, 'DeleteFailed');
 
         const deleteStackChoice = new Choice(this, 'DeleteStackChoice');
         const pollDeleteStackChoice = new Choice(this, 'PollDeleteStackChoice');
@@ -183,15 +202,20 @@ export class DeleteModelStateMachine extends Construct {
 
         // State Machine definition
         setModelToDeleting.next(deleteFromLitellm);
+        setModelToDeleting.addCatch(handleFailure, { errors: ['States.ALL'] });
         deleteFromLitellm.next(deleteGuardrails);
+        deleteFromLitellm.addCatch(handleFailure, { errors: ['States.ALL'] });
         deleteGuardrails.next(deleteStackChoice);
+        deleteGuardrails.addCatch(handleFailure, { errors: ['States.ALL'] });
 
         deleteStackChoice
             .when(Condition.isNotNull('$.cloudformation_stack_arn'), deleteStack)
             .otherwise(deleteFromDdb);
 
         deleteStack.next(monitorDeleteStack);
+        deleteStack.addCatch(handleFailure, { errors: ['States.ALL'] });
         monitorDeleteStack.next(pollDeleteStackChoice);
+        monitorDeleteStack.addCatch(handleFailure, { errors: ['States.ALL'] });
 
         waitBeforePollingStackStatus.next(monitorDeleteStack);
 
@@ -201,6 +225,8 @@ export class DeleteModelStateMachine extends Construct {
 
 
         deleteFromDdb.next(successState);
+        deleteFromDdb.addCatch(handleFailure, { errors: ['States.ALL'] });
+        handleFailure.next(failState);
 
         const stateMachine = new StateMachine(this, 'DeleteModelSM', {
             definitionBody: DefinitionBody.fromChainable(setModelToDeleting),

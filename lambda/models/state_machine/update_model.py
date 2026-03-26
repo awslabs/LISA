@@ -1086,3 +1086,34 @@ def handle_poll_ecs_deployment(event: dict[str, Any], context: Any) -> dict[str,
         output_dict["should_continue_ecs_polling"] = False
 
     return output_dict
+
+
+def handle_failure(event: dict[str, Any], context: Any) -> dict[str, Any]:
+    """Set model status to Failed for any unrecoverable update workflow error."""
+    logger.error(f"Handling update-model state machine failure: {event}")
+
+    model_id = event.get("model_id") or event.get("modelId")
+    if not model_id:
+        logger.error("Unable to determine model id from update failure event; skipping DDB status update.")
+        return event
+
+    error_reason = "Update model state machine failed."
+    if "Cause" in event:
+        try:
+            cause_data = json.loads(event["Cause"])
+            error_reason = cause_data.get("errorMessage", error_reason)
+        except Exception:
+            error_reason = str(event.get("Cause", error_reason))
+    elif "error" in event:
+        error_reason = str(event.get("error"))
+
+    model_table.update_item(
+        Key={"model_id": model_id},
+        UpdateExpression="SET model_status = :ms, last_modified_date = :lm, failure_reason = :fr",
+        ExpressionAttributeValues={
+            ":ms": ModelStatus.FAILED,
+            ":lm": now(),
+            ":fr": error_reason[:1000],
+        },
+    )
+    return event

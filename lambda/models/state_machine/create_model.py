@@ -26,7 +26,14 @@ from zoneinfo import ZoneInfo
 import boto3
 from botocore.config import Config
 from models.clients.litellm_client import LiteLLMClient
-from models.domain_objects import CreateModelRequest, GuardrailsTableEntry, InferenceContainer, ModelStatus, ModelType
+from models.domain_objects import (
+    CreateModelRequest,
+    GuardrailsTableEntry,
+    InferenceContainer,
+    ModelHostingType,
+    ModelStatus,
+    ModelType,
+)
 from models.exception import (
     MaxPollsExceededException,
     StackFailedToCreateException,
@@ -617,6 +624,9 @@ def handle_add_model_to_litellm(event: dict[str, Any], context: Any) -> dict[str
         litellm_params["api_base"] = f"{event['modelUrl']}/v1"  # model's OpenAI-compliant route
     else:
         litellm_params["model"] = event["modelName"]
+        if str(event.get("hostingType", "")).upper() == ModelHostingType.INTERNAL_HOSTED.value.upper():
+            # For internal hosted models, route LiteLLM to the customer-provided internal endpoint.
+            litellm_params["api_base"] = str(event["modelUrl"]).rstrip("/")
 
     litellm_response = litellm_client.add_model(
         model_name=event["modelId"],

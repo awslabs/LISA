@@ -14,6 +14,7 @@
 
 """Lambda handlers for DeleteModel state machine."""
 
+import json
 import logging
 import os
 from copy import deepcopy
@@ -183,4 +184,35 @@ def handle_delete_from_ddb(event: dict[str, Any], context: Any) -> dict[str, Any
     """Delete item from DDB after successful deletion workflow."""
     model_key = {"model_id": event["modelId"]}
     ddb_table.delete_item(Key=model_key)
+    return event
+
+
+def handle_failure(event: dict[str, Any], context: Any) -> dict[str, Any]:
+    """Set model status to Failed for unrecoverable delete workflow errors."""
+    logger.error(f"Handling delete-model state machine failure: {event}")
+
+    model_id = event.get("modelId") or event.get("model_id")
+    if not model_id:
+        logger.error("Unable to determine model id from delete failure event; skipping DDB status update.")
+        return event
+
+    error_reason = "Delete model state machine failed."
+    if "Cause" in event:
+        try:
+            cause_data = json.loads(event["Cause"])
+            error_reason = cause_data.get("errorMessage", error_reason)
+        except Exception:
+            error_reason = str(event.get("Cause", error_reason))
+    elif "error" in event:
+        error_reason = str(event.get("error"))
+
+    ddb_table.update_item(
+        Key={"model_id": model_id},
+        UpdateExpression="SET model_status = :ms, last_modified_date = :lmd, failure_reason = :fr",
+        ExpressionAttributeValues={
+            ":ms": ModelStatus.FAILED,
+            ":lmd": now(),
+            ":fr": error_reason[:1000],
+        },
+    )
     return event

@@ -303,6 +303,9 @@ export class CreateModelStateMachine extends Construct {
 
         // State Machine definition
         setModelToCreating.next(createModelInfraChoice);
+        setModelToCreating.addCatch(handleFailureState, {
+            errors: ['States.ALL'],
+        });
         createModelInfraChoice
             .when(Condition.booleanEquals('$.create_infra', true), startCopyDockerImage)
             .otherwise(addModelToLitellm);
@@ -310,7 +313,7 @@ export class CreateModelStateMachine extends Construct {
         // Check if we need to poll for docker image or skip directly to stack creation
         startCopyDockerImage.next(checkImageTypeChoice);
         startCopyDockerImage.addCatch(handleFailureState, {  // fail if ECR image verification fails
-            errors: ['States.TaskFailed'],
+            errors: ['States.ALL'],
         });
         checkImageTypeChoice
             .when(Condition.stringEquals('$.image_info.image_status', 'prebuilt'), startCreateStack)
@@ -319,7 +322,7 @@ export class CreateModelStateMachine extends Construct {
         // poll ECR image copy status loop
         pollDockerImageAvailable.next(pollDockerImageChoice);
         pollDockerImageAvailable.addCatch(handleFailureState, {  // fail if exception thrown from code
-            errors: ['MaxPollsExceededException'],
+            errors: ['States.ALL'],
         });
         pollDockerImageChoice
             .when(Condition.booleanEquals('$.continue_polling_docker', true), waitBeforePollingDockerImage)
@@ -329,14 +332,11 @@ export class CreateModelStateMachine extends Construct {
         // poll CloudFormation stack status loop
         startCreateStack.next(pollCreateStack);
         startCreateStack.addCatch(handleFailureState, {  // fail if CDK failed to create model stack
-            errors: ['StackFailedToCreateException']
+            errors: ['States.ALL']
         });
         pollCreateStack.next(pollCreateStackChoice);
         pollCreateStack.addCatch(handleFailureState, {  // fail if model failed or failed to create in time
-            errors: [
-                'MaxPollsExceededException',
-                'UnexpectedCloudFormationStateException',
-            ],
+            errors: ['States.ALL'],
         });
         pollCreateStackChoice
             .when(Condition.booleanEquals('$.continue_polling_stack', true), waitBeforePollingCreateStack)
@@ -345,6 +345,9 @@ export class CreateModelStateMachine extends Construct {
 
         // Poll for model instances to be healthy before proceeding
         pollModelReady.next(pollModelReadyChoice);
+        pollModelReady.addCatch(handleFailureState, {
+            errors: ['States.ALL'],
+        });
         pollModelReadyChoice
             .when(Condition.booleanEquals('$.continue_polling_capacity', true), waitBeforePollingModelReady)
             .otherwise(createSchedule);
@@ -352,10 +355,19 @@ export class CreateModelStateMachine extends Construct {
 
         // Create schedule after model is ready
         createSchedule.next(addModelToLitellm);
+        createSchedule.addCatch(handleFailureState, {
+            errors: ['States.ALL'],
+        });
 
         // Enrich context window after model is added to LiteLLM (non-blocking)
         addModelToLitellm.next(enrichContextWindow);
+        addModelToLitellm.addCatch(handleFailureState, {
+            errors: ['States.ALL'],
+        });
         enrichContextWindow.next(checkGuardrailsChoice);
+        enrichContextWindow.addCatch(handleFailureState, {
+            errors: ['States.ALL'],
+        });
 
         // Check for guardrails and add them if present
         checkGuardrailsChoice
@@ -366,7 +378,7 @@ export class CreateModelStateMachine extends Construct {
         handleFailureState.next(failState);
         addGuardrailsToLitellm.next(successState);
         addGuardrailsToLitellm.addCatch(handleFailureState, {  // fail if guardrail creation fails
-            errors: ['States.TaskFailed'],
+            errors: ['States.ALL'],
         });
 
         const stateMachine = new StateMachine(this, 'CreateModelSM', {

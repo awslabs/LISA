@@ -69,6 +69,61 @@ When a user activates Autopilot Mode, that user will not be prompted to confirm 
 
 Admins can edit and delete any MCP Server Connection. Non-admins can edit or delete MCP Server Connections that they created.
 
+## API Reference
+
+The MCP Server Connections API manages MCP endpoints that users and administrators can enable in chat sessions.
+
+Base path: `/mcp-server`
+
+### List MCP Server Connections
+
+- Method: `GET`
+- Path: `/mcp-server`
+- Description: Lists MCP server connections available to the caller.
+
+### Create MCP Server Connection
+
+- Method: `POST`
+- Path: `/mcp-server`
+- Description: Creates a new MCP server connection.
+
+### Get MCP Server Connection
+
+- Method: `GET`
+- Path: `/mcp-server/{serverId}`
+- Description: Retrieves a specific MCP server connection.
+
+Path parameters:
+
+- `serverId` (string, required): MCP server identifier
+
+### Update MCP Server Connection
+
+- Method: `PUT`
+- Path: `/mcp-server/{serverId}`
+- Description: Updates an existing MCP server connection.
+
+Path parameters:
+
+- `serverId` (string, required): MCP server identifier
+
+### Delete MCP Server Connection
+
+- Method: `DELETE`
+- Path: `/mcp-server/{serverId}`
+- Description: Deletes an MCP server connection.
+
+Path parameters:
+
+- `serverId` (string, required): MCP server identifier
+
+Example:
+
+```bash
+curl -X GET "https://<api-gateway-domain>/<stage>/mcp-server" \
+  -H "Authorization: Bearer <token>"
+```
+
 ## AWS Sessions
 
 When **AWS Sessions** is enabled (Administration → Configuration → MCP section), users can connect their AWS credentials to individual chat sessions. This allows MCP tools to perform AWS operations on behalf of the user using their own credentials.

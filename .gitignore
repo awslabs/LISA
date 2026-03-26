@@ -18,7 +18,8 @@ __pycache__/
 *.key
 *.pem
 TIKTOKEN_CACHE
-docs/
+# Ignore only top-level docs directory, not lib/docs
+/docs/
 
 # CDK asset staging directory
 .cdk.staging

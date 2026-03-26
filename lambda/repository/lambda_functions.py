@@ -1581,25 +1581,24 @@ def update_repository(event: dict, context: dict) -> dict[str, Any]:
     if not repository_id:
         raise ValidationError("repositoryId is required")
 
-    # RAG admins: verify group access and restrict to pipeline-only updates
-    if not is_admin(event) and is_rag_admin(event):
-        # Verify group access to this repo
-        _ = get_repository(event, repository_id=repository_id)
-        body = json.loads(event.get("body", {}))
-        # RAG admins can only update pipelines and bedrockKnowledgeBaseConfig
-        allowed_fields = {"pipelines", "bedrockKnowledgeBaseConfig"}
-        disallowed = set(body.keys()) - allowed_fields
-        if disallowed:
-            raise ForbiddenException(f"RAG admins cannot update the following fields: {', '.join(sorted(disallowed))}")
-
     # Parse request body
     try:
-        body = json.loads(event.get("body", {}))
+        body = json.loads(event.get("body", "{}"))
         request = UpdateVectorStoreRequest(**body)
     except json.JSONDecodeError as e:
         raise ValidationError(f"Invalid JSON in request body: {e}")
     except Exception as e:
         raise ValidationError(f"Invalid request: {e}")
+
+    # RAG admins: verify group access and restrict to pipeline-only updates
+    if not is_admin(event) and is_rag_admin(event):
+        # Verify group access to this repo
+        _ = get_repository(event, repository_id=repository_id)
+        # RAG admins can only update pipelines and bedrockKnowledgeBaseConfig
+        allowed_fields = {"pipelines", "bedrockKnowledgeBaseConfig"}
+        disallowed = set(body.keys()) - allowed_fields
+        if disallowed:
+            raise ForbiddenException(f"RAG admins cannot update the following fields: {', '.join(sorted(disallowed))}")
 
     # Get current repository configuration to check for pipeline changes
     current_repo = vs_repo.find_repository_by_id(repository_id, raw_config=True)

@@ -280,6 +280,7 @@ def _admin_only_patch_fixture():
     yield
     _admin_only_patch.stop()
     _rag_admin_or_admin_patch.stop()
+    _is_rag_admin_patch.stop()
 
 
 # Note: boto3.client will be patched per-test to avoid global conflicts
@@ -289,7 +290,8 @@ def _admin_only_patch_fixture():
 from repository.lambda_functions import _ensure_document_ownership, get_repository, presigned_url
 
 # is_rag_admin is imported by name in lambda_functions, so patch it on the module after import
-patch("repository.lambda_functions.is_rag_admin", mock_common.is_rag_admin).start()
+_is_rag_admin_patch = patch("repository.lambda_functions.is_rag_admin", mock_common.is_rag_admin)
+_is_rag_admin_patch.start()
 
 
 @pytest.fixture(autouse=True)

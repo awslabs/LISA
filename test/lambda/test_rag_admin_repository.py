@@ -389,6 +389,38 @@ def test_regular_user_cannot_delete_other_users_doc():
 # --- update_repository: RAG Admin on inaccessible repo ---
 
 
+@pytest.mark.parametrize(
+    "body_value,expected_status",
+    [
+        # Missing key: default "{}" → empty update → 200
+        ("__missing__", 200),
+        # Explicit None: json.loads(None) raises TypeError → caught as ValidationError → 400
+        (None, 400),
+    ],
+    ids=["missing_key", "null_body"],
+)
+def test_rag_admin_update_bad_body_does_not_500(ctx, body_value, expected_status):
+    """Missing or null body must not cause an unhandled TypeError (was: json.loads({}) → 500)."""
+    event = _make_event("rag-admin-user", ["rag-team", "rag-admins"])
+    event["pathParameters"] = {"repositoryId": "repo-1"}
+    if body_value == "__missing__":
+        event.pop("body", None)
+    else:
+        event["body"] = body_value
+
+    with _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True), patch(
+        "repository.lambda_functions.vs_repo"
+    ) as mvs:
+        mvs.find_repository_by_id.return_value = {**ACCESSIBLE_REPO, "config": ACCESSIBLE_REPO}
+        mvs.update.return_value = ACCESSIBLE_REPO
+
+        from repository.lambda_functions import update_repository
+
+        result = update_repository(event, ctx)
+
+    assert result["statusCode"] == expected_status
+
+
 def test_rag_admin_cannot_update_repository_on_inaccessible_repo(ctx):
     """RAG Admin without group access is denied even with allowed fields."""
     event = _make_event("rag-admin-user", ["rag-team", "rag-admins"])

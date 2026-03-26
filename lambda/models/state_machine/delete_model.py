@@ -191,18 +191,34 @@ def handle_failure(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Set model status to Failed for unrecoverable delete workflow errors."""
     logger.error(f"Handling delete-model state machine failure: {event}")
 
+    raw_error = event.get("error")
+    catch_error: dict[str, Any] = raw_error if isinstance(raw_error, dict) else {}
+    cause_payload = event.get("Cause") or catch_error.get("Cause")
+    cause_data: dict[str, Any] | None = None
+    if isinstance(cause_payload, str):
+        try:
+            parsed = json.loads(cause_payload)
+            if isinstance(parsed, dict):
+                cause_data = parsed
+        except Exception:
+            cause_data = None
+
     model_id = event.get("modelId") or event.get("model_id")
+    if not model_id and isinstance(cause_data, dict):
+        model_id = cause_data.get("modelId") or cause_data.get("model_id")
+        if not model_id:
+            cause_input = cause_data.get("input")
+            if isinstance(cause_input, dict):
+                model_id = cause_input.get("modelId") or cause_input.get("model_id")
     if not model_id:
         logger.error("Unable to determine model id from delete failure event; skipping DDB status update.")
         return event
 
     error_reason = "Delete model state machine failed."
-    if "Cause" in event:
-        try:
-            cause_data = json.loads(event["Cause"])
-            error_reason = cause_data.get("errorMessage", error_reason)
-        except Exception:
-            error_reason = str(event.get("Cause", error_reason))
+    if isinstance(cause_data, dict):
+        error_reason = str(cause_data.get("errorMessage", error_reason))
+    elif cause_payload is not None:
+        error_reason = str(cause_payload)
     elif "error" in event:
         error_reason = str(event.get("error"))
 

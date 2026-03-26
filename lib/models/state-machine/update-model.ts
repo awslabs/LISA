@@ -226,7 +226,10 @@ export class UpdateModelStateMachine extends Construct {
 
         // State Machine definition
         handleJobIntake.next(hasEcsUpdateChoice);
-        handleJobIntake.addCatch(handleFailure, { errors: ['States.ALL'] });
+        handleJobIntake.addCatch(handleFailure, {
+            errors: ['States.ALL'],
+            resultPath: '$.error',
+        });
 
         // ECS update flow
         hasEcsUpdateChoice
@@ -234,9 +237,15 @@ export class UpdateModelStateMachine extends Construct {
             .otherwise(hasGuardrailsUpdateChoice);
 
         handleEcsUpdate.next(handlePollEcsDeployment);
-        handleEcsUpdate.addCatch(handleFailure, { errors: ['States.ALL'] });
+        handleEcsUpdate.addCatch(handleFailure, {
+            errors: ['States.ALL'],
+            resultPath: '$.error',
+        });
         handlePollEcsDeployment.next(pollEcsDeploymentChoice);
-        handlePollEcsDeployment.addCatch(handleFailure, { errors: ['States.ALL'] });
+        handlePollEcsDeployment.addCatch(handleFailure, {
+            errors: ['States.ALL'],
+            resultPath: '$.error',
+        });
         pollEcsDeploymentChoice
             .when(Condition.booleanEquals('$.should_continue_ecs_polling', true), waitBeforePollEcsDeployment)
             .otherwise(hasGuardrailsUpdateChoice);
@@ -248,7 +257,10 @@ export class UpdateModelStateMachine extends Construct {
             .otherwise(hasCapacityUpdateChoice);
 
         handleUpdateGuardrails.next(hasCapacityUpdateChoice);
-        handleUpdateGuardrails.addCatch(handleFailure, { errors: ['States.ALL'] });
+        handleUpdateGuardrails.addCatch(handleFailure, {
+            errors: ['States.ALL'],
+            resultPath: '$.error',
+        });
 
         // Existing capacity update flow
         hasCapacityUpdateChoice
@@ -256,7 +268,10 @@ export class UpdateModelStateMachine extends Construct {
             .otherwise(handleFinishUpdate);
 
         handlePollCapacity.next(pollAsgChoice);
-        handlePollCapacity.addCatch(handleFailure, { errors: ['States.ALL'] });
+        handlePollCapacity.addCatch(handleFailure, {
+            errors: ['States.ALL'],
+            resultPath: '$.error',
+        });
         pollAsgChoice.when(Condition.booleanEquals('$.should_continue_capacity_polling', true), waitBeforePollAsg)
             .otherwise(waitBeforeModelAvailable);
         waitBeforePollAsg.next(handlePollCapacity);
@@ -264,7 +279,10 @@ export class UpdateModelStateMachine extends Construct {
         waitBeforeModelAvailable.next(handleFinishUpdate);
 
         handleFinishUpdate.next(successState);
-        handleFinishUpdate.addCatch(handleFailure, { errors: ['States.ALL'] });
+        handleFinishUpdate.addCatch(handleFailure, {
+            errors: ['States.ALL'],
+            resultPath: '$.error',
+        });
         handleFailure.next(failState);
 
         const stateMachine = new StateMachine(this, 'UpdateModelSM', {

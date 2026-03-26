@@ -546,3 +546,20 @@ def test_handle_failure_sets_model_failed(model_table, sample_model, lambda_cont
         item = model_table.get_item(Key={"model_id": "test-model"})["Item"]
         assert item["model_status"] == ModelStatus.FAILED
         assert "Delete workflow task failed" in item["failure_reason"]
+
+
+def test_handle_failure_sets_model_failed_from_error_cause(model_table, sample_model, lambda_context):
+    """Ensure delete failures can resolve model id from Step Functions catch payload."""
+    with patch("models.state_machine.delete_model.ddb_table", model_table):
+        event = {
+            "error": {
+                "Error": "States.TaskFailed",
+                "Cause": '{"errorMessage":"Delete workflow task failed","input":{"modelId":"test-model"}}',
+            }
+        }
+        result = handle_failure(event, lambda_context)
+
+        assert result == event
+        item = model_table.get_item(Key={"model_id": "test-model"})["Item"]
+        assert item["model_status"] == ModelStatus.FAILED
+        assert "Delete workflow task failed" in item["failure_reason"]

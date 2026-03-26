@@ -30,6 +30,11 @@ Base path: `/user-preferences`
 Example:
 
 ```bash
-curl -X GET "https://<api-gateway-domain>/<stage>/user-preferences" \
-  -H "Authorization: Bearer <token>"
+curl -X PUT "https://<api-gateway-domain>/<stage>/user-preferences" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "theme": "dark",
+    "showMcpTools": true
+  }'
 ```

@@ -202,20 +202,35 @@ export class DeleteModelStateMachine extends Construct {
 
         // State Machine definition
         setModelToDeleting.next(deleteFromLitellm);
-        setModelToDeleting.addCatch(handleFailure, { errors: ['States.ALL'] });
+        setModelToDeleting.addCatch(handleFailure, {
+            errors: ['States.ALL'],
+            resultPath: '$.error',
+        });
         deleteFromLitellm.next(deleteGuardrails);
-        deleteFromLitellm.addCatch(handleFailure, { errors: ['States.ALL'] });
+        deleteFromLitellm.addCatch(handleFailure, {
+            errors: ['States.ALL'],
+            resultPath: '$.error',
+        });
         deleteGuardrails.next(deleteStackChoice);
-        deleteGuardrails.addCatch(handleFailure, { errors: ['States.ALL'] });
+        deleteGuardrails.addCatch(handleFailure, {
+            errors: ['States.ALL'],
+            resultPath: '$.error',
+        });
 
         deleteStackChoice
             .when(Condition.isNotNull('$.cloudformation_stack_arn'), deleteStack)
             .otherwise(deleteFromDdb);
 
         deleteStack.next(monitorDeleteStack);
-        deleteStack.addCatch(handleFailure, { errors: ['States.ALL'] });
+        deleteStack.addCatch(handleFailure, {
+            errors: ['States.ALL'],
+            resultPath: '$.error',
+        });
         monitorDeleteStack.next(pollDeleteStackChoice);
-        monitorDeleteStack.addCatch(handleFailure, { errors: ['States.ALL'] });
+        monitorDeleteStack.addCatch(handleFailure, {
+            errors: ['States.ALL'],
+            resultPath: '$.error',
+        });
 
         waitBeforePollingStackStatus.next(monitorDeleteStack);
 
@@ -225,7 +240,10 @@ export class DeleteModelStateMachine extends Construct {
 
 
         deleteFromDdb.next(successState);
-        deleteFromDdb.addCatch(handleFailure, { errors: ['States.ALL'] });
+        deleteFromDdb.addCatch(handleFailure, {
+            errors: ['States.ALL'],
+            resultPath: '$.error',
+        });
         handleFailure.next(failState);
 
         const stateMachine = new StateMachine(this, 'DeleteModelSM', {

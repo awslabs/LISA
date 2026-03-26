@@ -84,6 +84,7 @@ authConfig:
   clientId: your-client-id
   adminGroup: AdminGroup
   userGroup: UserGroup
+  ragAdminGroup: RagAdminGroup  # optional: grants RAG Admin role to this Cognito group
   jwtGroupsProperty: cognito:groups
 ```
 
@@ -161,11 +162,12 @@ like in the Cognito clients. Instead, it will be a string configured by your Key
 will be able to provide you with a client name or create a client for you to use for this application. Once you have this
 string, use that as the `clientId` within the `authConfig` block.
 
-```
+```yaml
 authConfig:
   authority: https://your-keycloak-server.com
   clientId: your-client-name
   adminGroup: AdminGroup
   userGroup: UserGroup
+  ragAdminGroup: RagAdminGroup  # optional: grants RAG Admin role to this Keycloak role
   jwtGroupsProperty: realm_access.roles
 ```

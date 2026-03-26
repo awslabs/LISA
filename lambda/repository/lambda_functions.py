@@ -873,10 +873,10 @@ def list_user_collections(event: dict, context: dict) -> dict[str, Any]:
         HTTPException: If authentication fails
     """
     # Get user context
-    # Note: RAG admins do NOT get effective_admin here because this is a cross-repository
-    # query. RAG admins should only see collections from repos they have group access to,
-    # same as regular users. effective_admin is only used within single-repo operations
-    # where group access has already been verified via get_repository().
+    # RAG admins pass is_rag_admin=True so they get scoped-admin collection access
+    # within repos they have group access to (bypasses collection-level allowedGroups).
+    # is_admin remains the real flag so _get_accessible_repositories still filters
+    # repos by group membership — RAG admins do NOT see all repos.
     username, is_admin, groups = get_user_context(event)
     logger.info(f"list_user_collections called by user={username}, is_admin={is_admin}")
 
@@ -907,6 +907,7 @@ def list_user_collections(event: dict, context: dict) -> dict[str, Any]:
         username=username,
         user_groups=groups,
         is_admin=is_admin,
+        is_rag_admin=is_rag_admin(event),
         page_size=page_size,
         pagination_token=pagination_token,
         filter_text=filter_text,

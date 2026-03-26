@@ -407,15 +407,16 @@ def test_rag_admin_cannot_update_repository_on_inaccessible_repo(ctx):
     assert result["statusCode"] == 403
 
 
-# --- list_user_collections: RAG Admin does NOT get effective_admin ---
+# --- list_user_collections: RAG Admin passes is_rag_admin, not is_admin ---
 
 
-def test_rag_admin_list_user_collections_without_effective_admin(ctx):
-    """RAG admins should NOT get effective_admin for cross-repository queries.
+def test_rag_admin_list_user_collections_passes_is_rag_admin(ctx):
+    """list_user_collections passes is_rag_admin=True for RAG admin callers.
 
-    This codifies the intentional security decision: list_user_collections passes
-    is_admin (not effective_admin) so RAG admins only see collections from repos
-    they have group access to, same as regular users.
+    RAG admins get scoped-admin collection access (bypass collection-level
+    allowedGroups) within repos they have group access to. Repo-level filtering
+    uses is_admin (real flag), so RAG admins do NOT see all repos — only their
+    group-accessible ones. is_rag_admin is threaded through to collection filtering.
     """
     event = _make_event("rag-admin-user", ["rag-team", "rag-admins"])
     event["queryStringParameters"] = {}
@@ -430,7 +431,8 @@ def test_rag_admin_list_user_collections_without_effective_admin(ctx):
         list_user_collections(event, ctx)
 
         call_kwargs = mcs.list_all_user_collections.call_args[1]
-        assert call_kwargs["is_admin"] is False
+        assert call_kwargs["is_admin"] is False, "is_admin must remain the real flag (not effective_admin)"
+        assert call_kwargs["is_rag_admin"] is True, "is_rag_admin must be passed for scoped collection access"
 
 
 # --- bedrockKnowledgeBaseConfig: allowed update field for RAG Admin ---

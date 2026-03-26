@@ -395,6 +395,210 @@ def test_paginate_collections_workflow(
     assert collections[0]["name"] == "Collection 1"
 
 
+def test_rag_admin_sees_admin_restricted_collection_in_accessible_repo(
+    collection_service, mock_vector_store_repo, mock_collection_repo
+):
+    """
+    RAG admin sees all collections in repos they have group access to,
+    including collections restricted to AdminGroup.
+
+    Workflow:
+    1. RAG admin (in rag-team, NOT in AdminGroup) requests collections
+    2. Repo-1 is accessible (allowedGroups=["rag-team"])
+    3. Repo-1 has an AdminGroup-only collection and a rag-team collection
+    4. As scoped admin within accessible repo, RAG admin sees both collections
+    """
+    now = datetime.now(timezone.utc)
+    rag_repo = {
+        "repositoryId": "repo-rag",
+        "repositoryName": "RAG Repo",
+        "type": "pgvector",
+        "allowedGroups": ["rag-team"],
+    }
+    admin_only_collection = RagCollectionConfig(
+        collectionId="coll-admin",
+        repositoryId="repo-rag",
+        name="Admin Only Collection",
+        embeddingModel="model-1",
+        allowedGroups=["AdminGroup"],
+        createdBy="admin-user",
+        createdAt=now,
+        updatedAt=now,
+        status=CollectionStatus.ACTIVE,
+    )
+    rag_collection = RagCollectionConfig(
+        collectionId="coll-rag",
+        repositoryId="repo-rag",
+        name="RAG Team Collection",
+        embeddingModel="model-1",
+        allowedGroups=["rag-team"],
+        createdBy="admin-user",
+        createdAt=now,
+        updatedAt=now,
+        status=CollectionStatus.ACTIVE,
+    )
+
+    mock_vector_store_repo.get_registered_repositories.return_value = [rag_repo]
+    mock_collection_repo.list_by_repository.return_value = ([admin_only_collection, rag_collection], None)
+    mock_collection_repo.count_by_repository.return_value = 2
+
+    collections, _ = collection_service.list_all_user_collections(
+        username="rag-admin-user",
+        user_groups=["rag-team"],
+        is_admin=False,
+        is_rag_admin=True,
+        page_size=20,
+        pagination_token=None,
+        filter_text=None,
+        sort_params=SortParams(sort_by=CollectionSortBy.CREATED_AT, sort_order=SortOrder.DESC),
+    )
+
+    collection_ids = [c["collectionId"] for c in collections]
+    assert "coll-admin" in collection_ids, "RAG admin should see AdminGroup-restricted collection in accessible repo"
+    assert "coll-rag" in collection_ids, "RAG admin should see rag-team collection in accessible repo"
+
+
+def test_rag_admin_cannot_see_collections_in_admin_restricted_repo(
+    collection_service, mock_vector_store_repo, mock_collection_repo
+):
+    """
+    RAG admin is blocked from repos where they don't have group access,
+    even with is_rag_admin=True. Repo-level filtering is unchanged.
+
+    Workflow:
+    1. RAG admin (in rag-team) requests collections
+    2. admin-repo has allowedGroups=["AdminGroup"] — RAG admin is NOT in AdminGroup
+    3. _get_accessible_repositories filters it out before collection-level access
+    4. RAG admin sees zero collections
+    """
+    now = datetime.now(timezone.utc)
+    admin_repo = {
+        "repositoryId": "repo-admin",
+        "repositoryName": "Admin Repo",
+        "type": "pgvector",
+        "allowedGroups": ["AdminGroup"],
+    }
+    secret_collection = RagCollectionConfig(
+        collectionId="coll-secret",
+        repositoryId="repo-admin",
+        name="Secret Collection",
+        embeddingModel="model-1",
+        allowedGroups=[],
+        createdBy="admin-user",
+        createdAt=now,
+        updatedAt=now,
+        status=CollectionStatus.ACTIVE,
+    )
+
+    mock_vector_store_repo.get_registered_repositories.return_value = [admin_repo]
+    mock_collection_repo.list_by_repository.return_value = ([secret_collection], None)
+    mock_collection_repo.count_by_repository.return_value = 1
+
+    collections, _ = collection_service.list_all_user_collections(
+        username="rag-admin-user",
+        user_groups=["rag-team"],
+        is_admin=False,
+        is_rag_admin=True,
+        page_size=20,
+        pagination_token=None,
+        filter_text=None,
+        sort_params=SortParams(sort_by=CollectionSortBy.CREATED_AT, sort_order=SortOrder.DESC),
+    )
+
+    assert len(collections) == 0, "RAG admin must not see collections from repos they don't have group access to"
+
+
+def test_regular_user_still_filtered_by_collection_allowed_groups(
+    collection_service, mock_vector_store_repo, mock_collection_repo
+):
+    """
+    Regular users (is_rag_admin=False) are still filtered by collection allowedGroups.
+    Adding is_rag_admin parameter must not affect existing user behavior.
+    """
+    now = datetime.now(timezone.utc)
+    repo = {"repositoryId": "repo-1", "repositoryName": "Repo 1", "type": "pgvector", "allowedGroups": []}
+    admin_collection = RagCollectionConfig(
+        collectionId="coll-admin",
+        repositoryId="repo-1",
+        name="Admin Collection",
+        embeddingModel="model-1",
+        allowedGroups=["AdminGroup"],
+        createdBy="admin-user",
+        createdAt=now,
+        updatedAt=now,
+        status=CollectionStatus.ACTIVE,
+    )
+    user_collection = RagCollectionConfig(
+        collectionId="coll-user",
+        repositoryId="repo-1",
+        name="User Collection",
+        embeddingModel="model-1",
+        allowedGroups=["UserGroup"],
+        createdBy="admin-user",
+        createdAt=now,
+        updatedAt=now,
+        status=CollectionStatus.ACTIVE,
+    )
+
+    mock_vector_store_repo.get_registered_repositories.return_value = [repo]
+    mock_collection_repo.list_by_repository.return_value = ([admin_collection, user_collection], None)
+    mock_collection_repo.count_by_repository.return_value = 2
+
+    collections, _ = collection_service.list_all_user_collections(
+        username="regular-user",
+        user_groups=["UserGroup"],
+        is_admin=False,
+        is_rag_admin=False,
+        page_size=20,
+        pagination_token=None,
+        filter_text=None,
+        sort_params=SortParams(sort_by=CollectionSortBy.CREATED_AT, sort_order=SortOrder.DESC),
+    )
+
+    collection_ids = [c["collectionId"] for c in collections]
+    assert "coll-user" in collection_ids, "Regular user should see UserGroup collection"
+    assert "coll-admin" not in collection_ids, "Regular user must not see AdminGroup collection"
+
+
+def test_full_admin_sees_all_collections_regardless_of_allowed_groups(
+    collection_service, mock_vector_store_repo, mock_collection_repo
+):
+    """
+    Full admin (is_admin=True) still bypasses all collection-level filtering.
+    Regression: is_rag_admin parameter must not affect admin behavior.
+    """
+    now = datetime.now(timezone.utc)
+    repo = {"repositoryId": "repo-1", "repositoryName": "Repo 1", "type": "pgvector", "allowedGroups": []}
+    restricted_collection = RagCollectionConfig(
+        collectionId="coll-restricted",
+        repositoryId="repo-1",
+        name="Restricted Collection",
+        embeddingModel="model-1",
+        allowedGroups=["SomeSpecialGroup"],
+        createdBy="other-user",
+        createdAt=now,
+        updatedAt=now,
+        status=CollectionStatus.ACTIVE,
+    )
+
+    mock_vector_store_repo.get_registered_repositories.return_value = [repo]
+    mock_collection_repo.list_by_repository.return_value = ([restricted_collection], None)
+    mock_collection_repo.count_by_repository.return_value = 1
+
+    collections, _ = collection_service.list_all_user_collections(
+        username="admin-user",
+        user_groups=[],
+        is_admin=True,
+        page_size=20,
+        pagination_token=None,
+        filter_text=None,
+        sort_params=SortParams(sort_by=CollectionSortBy.CREATED_AT, sort_order=SortOrder.DESC),
+    )
+
+    assert len(collections) == 1
+    assert collections[0]["collectionId"] == "coll-restricted"
+
+
 def test_repository_metadata_enrichment_workflow(
     collection_service, mock_vector_store_repo, mock_collection_repo, sample_repositories, sample_collections
 ):

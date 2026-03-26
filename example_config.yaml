@@ -28,6 +28,11 @@ ragRepositories: []
 #  domainName:
 # restApiConfig:
 #  sslCertIamArn: ARN of the self-signed cert to be used throughout the system
+#  domainName: Custom hostname for the LISA Serve ALB (optional)
+# MCP Workbench uses its own ALB; set a workbench hostname the same way (optional). If omitted while restApiConfig.domainName is set, a derived host is used (e.g. lisa-serve.example → lisa-mcp-workbench.example).
+# mcpWorkbenchRestApiConfig:
+#   domainName:
+#   sslCertIamArn: # optional; falls back to restApiConfig.sslCertIamArn, then mcpWorkbenchEcsConfig.sslCertIamArn
 # Some customers will want to download required libs prior to deployment, provide a path to the zipped resources
 # lambdaLayerAssets:
 #   authorizerLayerPath: /path/to/authorizer_layer.zip

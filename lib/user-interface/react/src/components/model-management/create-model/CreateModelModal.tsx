@@ -16,7 +16,7 @@
 
 import _ from 'lodash';
 import { Modal, Wizard } from '@cloudscape-design/components';
-import { IModel, IModelRequest, ModelRequestSchema, ModelRequestBaseSchema } from '../../../shared/model/model-management.model';
+import { IModel, IModelRequest, ModelHostingType, ModelRequestSchema, ModelRequestBaseSchema } from '../../../shared/model/model-management.model';
 import { ReactElement, useEffect, useMemo, useState } from 'react';
 import { scrollToInvalid, useValidationReducer } from '../../../shared/validation';
 import { BaseModelConfig } from './BaseModelConfig';
@@ -85,10 +85,12 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         activeStepIndex: 0,
     } as ModelCreateState);
 
+    const isLisaHosted = (state.form.hostingType === ModelHostingType.LISA_HOSTED) || state.form.lisaHostedModel;
+
     const toSubmit: IModelRequest = {
         ...state.form,
         features: state.form.features ?? [],
-        containerConfig: (state.form.lisaHostedModel ? ({
+        containerConfig: (isLisaHosted ? ({
             ...state.form.containerConfig,
             environment: (() => {
                 if (props.isEdit) {
@@ -123,8 +125,8 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                 }
             })()
         }) : null),
-        loadBalancerConfig: (state.form.lisaHostedModel ? state.form.loadBalancerConfig : null),
-        autoScalingConfig: (state.form.lisaHostedModel ? state.form.autoScalingConfig : null),
+        loadBalancerConfig: (isLisaHosted ? state.form.loadBalancerConfig : null),
+        autoScalingConfig: (isLisaHosted ? state.form.autoScalingConfig : null),
         inferenceContainer: state.form.inferenceContainer ?? null,
         instanceType: state.form.instanceType ? state.form.instanceType : null,
         modelUrl: state.form.modelUrl ? state.form.modelUrl : null
@@ -148,7 +150,13 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
     const changesDiff = useMemo(() => {
         return props.isEdit ? getJsonDifference({
             ...props.selectedItems[0],
-            lisaHostedModel: Boolean(props.selectedItems[0].containerConfig || props.selectedItems[0].autoScalingConfig || props.selectedItems[0].loadBalancerConfig)
+            lisaHostedModel: Boolean(props.selectedItems[0].containerConfig || props.selectedItems[0].autoScalingConfig || props.selectedItems[0].loadBalancerConfig),
+            hostingType: (
+                props.selectedItems[0].hostingType ||
+                (props.selectedItems[0].containerConfig || props.selectedItems[0].autoScalingConfig || props.selectedItems[0].loadBalancerConfig
+                    ? ModelHostingType.LISA_HOSTED
+                    : ModelHostingType.THIRD_PARTY)
+            )
         }, toSubmit) :
             getJsonDifference({}, toSubmit);
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -347,7 +355,13 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                         ...parsedValue.containerConfig,
                         environment: props.selectedItems[0].containerConfig?.environment ? Object.entries(props.selectedItems[0].containerConfig?.environment).map(([key, value]) => ({ key, value: String(value) })) : [],
                     },
-                    lisaHostedModel: Boolean(props.selectedItems[0].containerConfig || props.selectedItems[0].autoScalingConfig || props.selectedItems[0].loadBalancerConfig)
+                    lisaHostedModel: Boolean(props.selectedItems[0].containerConfig || props.selectedItems[0].autoScalingConfig || props.selectedItems[0].loadBalancerConfig),
+                    hostingType: (
+                        props.selectedItems[0].hostingType ||
+                        (props.selectedItems[0].containerConfig || props.selectedItems[0].autoScalingConfig || props.selectedItems[0].loadBalancerConfig
+                            ? ModelHostingType.LISA_HOSTED
+                            : ModelHostingType.THIRD_PARTY)
+                    )
                 }
             });
         } else {
@@ -356,6 +370,8 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                 ...state,
                 form: {
                     ...state.form,
+                    hostingType: state.form.hostingType || ModelHostingType.THIRD_PARTY,
+                    lisaHostedModel: false
                 }
             });
         }
@@ -427,7 +443,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                 <ContainerConfig item={state.form.containerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} isEdit={props.isEdit} />
             ),
             isOptional: true,
-            onEdit: state.form.lisaHostedModel,
+            onEdit: isLisaHosted,
             forExternalModel: false
         },
         {
@@ -435,7 +451,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
             content: (
                 <AutoScalingConfig item={state.form.autoScalingConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} isEdit={props.isEdit} />
             ),
-            onEdit: state.form.lisaHostedModel,
+            onEdit: isLisaHosted,
             forExternalModel: false
         },
         {
@@ -444,7 +460,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                 <LoadBalancerConfig item={state.form.loadBalancerConfig} setFields={setFields} touchFields={touchFields} formErrors={errors} isEdit={props.isEdit} />
             ),
             isOptional: true,
-            onEdit: state.form.lisaHostedModel,
+            onEdit: isLisaHosted,
             forExternalModel: false
         },
         {
@@ -479,7 +495,7 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
     ];
 
     const steps = allSteps.filter((step) => {
-        return state.form.lisaHostedModel || step.forExternalModel;
+        return isLisaHosted || step.forExternalModel;
     });
 
     return (

@@ -79,7 +79,15 @@ export const getSessionDisplay = (session: LisaChatSession, maxLength?: number) 
 
 export const getDisplayableMessage = (content: MessageContent, ragCitations?: string) => {
     if (Array.isArray(content)) {
-        return content.find((item) => item.type === 'text' && !item.text.startsWith('File context:'))?.text + (ragCitations ?? '') || '';
+        return (
+            content.find(
+                (item) =>
+                    item.type === 'text' &&
+                    !item.text.startsWith('File context:') &&
+                    !item.text.startsWith('Context from document search:')
+            )?.text + (ragCitations ?? '')
+            || ''
+        );
     }
     return content + (ragCitations ?? '');
 };

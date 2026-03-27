@@ -135,6 +135,44 @@ Collection access is controlled through user groups:
 
 RAG repositories and collections are configurable through the chat assistant web UI or programmatically via the API, allowing customers to tailor the ingestion process to their specific needs.
 
+## API Reference
+
+### Bedrock Knowledge Base API Reference
+
+LISA integrates with Amazon Bedrock Knowledge Bases to support repository setup and discovery workflows.
+
+Base path: `/bedrock-kb`
+
+#### List Bedrock Knowledge Bases
+
+- Method: `GET`
+- Path: `/bedrock-kb`
+- Description: Lists all active Bedrock Knowledge Bases visible to LISA.
+
+Example:
+
+```bash
+curl -X GET "https://<api-gateway-domain>/<stage>/bedrock-kb" \
+  -H "Authorization: Bearer <token>"
+```
+
+#### List Data Sources for a Knowledge Base
+
+- Method: `GET`
+- Path: `/bedrock-kb/{kbId}/data-sources`
+- Description: Lists data sources configured for the specified knowledge base.
+
+Path parameters:
+
+- `kbId` (string, required): Bedrock Knowledge Base identifier
+
+Example:
+
+```bash
+curl -X GET "https://<api-gateway-domain>/<stage>/bedrock-kb/<kbId>/data-sources" \
+  -H "Authorization: Bearer <token>"
+```
+
 ### Creating a Repository
 
 Repositories are created by administrators and define the underlying vector store implementation, embedding model, and default access controls.

@@ -2,7 +2,12 @@
 
 ## Configuring Models
 
-LISA's Model Management UI allows Administrators to configure models for use with LISA.  LISA supports third party models that are hosted externally to LISA that are compatible with LiteLLM. LISA also supports self-hosting models within Amazon ECS. LISA's Model Management wizard walks Administrators through configuration steps.
+LISA's Model Management UI allows Administrators to configure models for use with LISA. LISA supports:
+- third-party models hosted externally to LISA that are compatible with LiteLLM,
+- customer internal hosted models exposed by an internal AWS load balancer URL, and
+- self-hosted models running on LISA-managed Amazon ECS infrastructure.
+
+LISA's Model Management wizard walks Administrators through configuration steps.
 
 
 ## Scaling Models

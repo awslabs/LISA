@@ -22,6 +22,7 @@ from uuid import uuid4
 
 import boto3
 from models.clients.litellm_client import LiteLLMClient
+from models.state_machine.failure_utils import extract_model_failure_details
 from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint, retry_config
 from utilities.time import now
 
@@ -183,4 +184,28 @@ def handle_delete_from_ddb(event: dict[str, Any], context: Any) -> dict[str, Any
     """Delete item from DDB after successful deletion workflow."""
     model_key = {"model_id": event["modelId"]}
     ddb_table.delete_item(Key=model_key)
+    return event
+
+
+def handle_failure(event: dict[str, Any], context: Any) -> dict[str, Any]:
+    """Set model status to Failed for unrecoverable delete workflow errors."""
+    logger.error(f"Handling delete-model state machine failure: {event}")
+
+    model_id, error_reason = extract_model_failure_details(
+        event=event,
+        default_reason="Delete model state machine failed.",
+    )
+    if not model_id:
+        logger.error("Unable to determine model id from delete failure event; skipping DDB status update.")
+        return event
+
+    ddb_table.update_item(
+        Key={"model_id": model_id},
+        UpdateExpression="SET model_status = :ms, last_modified_date = :lmd, failure_reason = :fr",
+        ExpressionAttributeValues={
+            ":ms": ModelStatus.FAILED,
+            ":lmd": now(),
+            ":fr": error_reason[:1000],
+        },
+    )
     return event

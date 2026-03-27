@@ -90,6 +90,67 @@ https://<your-custom-domain>/v2/mcp/
 
 > **Authentication Required:** API access requires [Programmatic API Tokens](./api-tokens.md) for authentication.
 
+## API Reference
+
+The MCP Workbench includes a REST API for managing tool source files and syntax validation in addition to hosted MCP runtime access.
+
+Base path: `/mcp-workbench`
+
+### List Tools
+
+- Method: `GET`
+- Path: `/mcp-workbench`
+- Description: Lists MCP Workbench tools available to the caller.
+
+### Create Tool
+
+- Method: `POST`
+- Path: `/mcp-workbench`
+- Description: Creates a new MCP Workbench tool.
+
+### Get Tool
+
+- Method: `GET`
+- Path: `/mcp-workbench/{toolId}`
+- Description: Retrieves a single MCP Workbench tool.
+
+Path parameters:
+
+- `toolId` (string, required): Tool identifier
+
+### Update Tool
+
+- Method: `PUT`
+- Path: `/mcp-workbench/{toolId}`
+- Description: Updates an existing MCP Workbench tool.
+
+Path parameters:
+
+- `toolId` (string, required): Tool identifier
+
+### Delete Tool
+
+- Method: `DELETE`
+- Path: `/mcp-workbench/{toolId}`
+- Description: Deletes an MCP Workbench tool.
+
+Path parameters:
+
+- `toolId` (string, required): Tool identifier
+
+### Validate Python Syntax
+
+- Method: `POST`
+- Path: `/mcp-workbench/validate-syntax`
+- Description: Validates Python code syntax before creating or updating tools.
+
+Example:
+
+```bash
+curl -X GET "https://<api-gateway-domain>/<stage>/mcp-workbench" \
+  -H "Authorization: Bearer <token>"
+```
+
 ## Development Guidelines
 
 ### Creating Your First Tool

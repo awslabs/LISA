@@ -590,8 +590,8 @@ class LisaLlm(BaseModel):
             timeout=self.async_timeout,
         ) as session:
             async with session.post(f"{self.url}/serve/chat/completions", json=payload, ssl=self.verify) as response:
-                output = await response.json()
                 if response.status == 200:
+                    output = await response.json()
                     choice = output.get("choices", [{}])[0] if output.get("choices") else {}
                     usage = output.get("usage", {})
                     return Response(

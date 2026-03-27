@@ -70,7 +70,6 @@ def parse_error(status_code: int, response: Any = None) -> Exception:
             message = response
         elif hasattr(response, "status_code"):
             # requests.Response — sync, safe to call .json()
-            status_code = response.status_code
             try:
                 message = response.json()
             except Exception:

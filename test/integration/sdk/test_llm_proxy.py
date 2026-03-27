@@ -40,7 +40,8 @@ def _get_textgen_model(lisa_llm: LisaLlm) -> FoundationModel:
     """
     try:
         entries = lisa_llm.get_model_info()
-    except Exception:
+    except Exception as e:
+        logger.warning(f"get_model_info() failed, falling back to list_models(): {e}")
         entries = []
 
     for entry in entries:

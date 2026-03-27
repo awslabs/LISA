@@ -39,6 +39,10 @@ class TestLisaRag:
     def setup_class(self, lisa_api: LisaApi) -> None:
         repos = lisa_api.list_repositories()
         models = lisa_api.list_embedding_models()
+        if not repos:
+            pytest.skip("No repositories deployed — run `npm run test:integ:setup` first")
+        if not models:
+            pytest.skip("No embedding models deployed — run `npm run test:integ:setup` first")
         self.repo_id: str = repos[0].get("repositoryId", "")
         self.collection_id: str = models[0].get("modelId", "")
 
@@ -70,10 +74,7 @@ class TestLisaRag:
             assert len(jobs) > 0, "ingest_document returned no jobs"
             assert all("documentId" in job for job in jobs), "Job missing documentId"
 
-            # Store for use by subsequent tests
-            self.__class__._inserted_doc_id = jobs[0].get("documentId")
-            self.__class__._inserted_doc_name = filename
-            logger.info(f"Ingestion started: {len(jobs)} job(s), documentId={self._inserted_doc_id}")
+            logger.info(f"Ingestion started: {len(jobs)} job(s), documentId={jobs[0].get('documentId')}")
 
             # Wait for ingestion to complete (document appears in list_documents)
             start = time.time()

@@ -73,12 +73,12 @@ class LisaLlm(BaseModel):
         self.async_timeout = ClientTimeout(self.timeout * 60)
 
     def list_models(self) -> list[dict[str, Any]]:
-        """List all foundation models.
+        """List all models from the LiteLLM proxy.
 
         Returns
         -------
-        List[FoundationModel]
-            List of available text generation and embedding foundation models.
+        list[dict[str, Any]]
+            List of model dicts in OpenAI format (id, object, created, owned_by).
         """
         response = self._session.get(f"{self.url}/serve/models")
         if response.status_code == 200:
@@ -88,7 +88,26 @@ class LisaLlm(BaseModel):
             raise parse_error(response.status_code, response)
         return models
 
-    def _build_chat_payload(self, prompt: str, model: FoundationModel, stream: bool = False) -> dict:
+    # OpenAI chat completions fields that can be passed at the top level
+    _OPENAI_CHAT_FIELDS = frozenset(
+        {
+            "temperature",
+            "top_p",
+            "n",
+            "stop",
+            "max_tokens",
+            "presence_penalty",
+            "frequency_penalty",
+            "logit_bias",
+            "user",
+            "seed",
+            "tools",
+            "tool_choice",
+            "response_format",
+        }
+    )
+
+    def _build_chat_payload(self, prompt: str, model: FoundationModel, stream: bool = False) -> dict[str, Any]:
         """Build an OpenAI-compatible chat completion payload."""
         payload: dict[str, Any] = {
             "model": model.model_name,
@@ -97,9 +116,15 @@ class LisaLlm(BaseModel):
         }
         if model.model_kwargs:
             kwargs = model.model_kwargs.model_dump(exclude_none=True)
+            # Map HuggingFace-style param to OpenAI name
             if "max_new_tokens" in kwargs:
                 payload["max_tokens"] = kwargs.pop("max_new_tokens")
-            payload.update(kwargs)
+            if "stop_sequences" in kwargs:
+                payload["stop"] = kwargs.pop("stop_sequences")
+            # Only include known OpenAI fields; drop provider-specific params
+            for k, v in kwargs.items():
+                if k in self._OPENAI_CHAT_FIELDS:
+                    payload[k] = v
         return payload
 
     def generate(self, prompt: str, model: FoundationModel) -> Response:
@@ -122,10 +147,10 @@ class LisaLlm(BaseModel):
         response = self._session.post(f"{self.url}/serve/chat/completions", json=payload)
         if response.status_code == 200:
             output = response.json()
-            choice = output["choices"][0]
+            choice = output.get("choices", [{}])[0] if output.get("choices") else {}
             usage = output.get("usage", {})
             return Response(
-                generated_text=choice["message"]["content"],
+                generated_text=choice.get("message", {}).get("content", "") or "",
                 generated_tokens=usage.get("completion_tokens", 0),
                 finish_reason=choice.get("finish_reason", "stop"),
             )
@@ -157,10 +182,10 @@ class LisaLlm(BaseModel):
             async with session.post(f"{self.url}/serve/chat/completions", json=payload, ssl=self.verify) as response:
                 output = await response.json()
                 if response.status == 200:
-                    choice = output["choices"][0]
+                    choice = output.get("choices", [{}])[0] if output.get("choices") else {}
                     usage = output.get("usage", {})
                     return Response(
-                        generated_text=choice["message"]["content"],
+                        generated_text=choice.get("message", {}).get("content", "") or "",
                         generated_tokens=usage.get("completion_tokens", 0),
                         finish_reason=choice.get("finish_reason", "stop"),
                     )

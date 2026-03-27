@@ -28,6 +28,7 @@ import {
     Choice,
     Condition,
     DefinitionBody,
+    Fail,
     StateMachine,
     Succeed,
     Wait,
@@ -184,8 +185,26 @@ export class UpdateModelStateMachine extends Construct {
             outputPath: OUTPUT_PATH,
         });
 
+        const handleFailure = new LambdaInvoke(this, 'HandleFailure', {
+            lambdaFunction: new Function(this, 'HandleFailureFunc', {
+                runtime: getPythonRuntime(),
+                handler: 'models.state_machine.update_model.handle_failure',
+                code: Code.fromAsset(lambdaPath),
+                timeout: LAMBDA_TIMEOUT,
+                memorySize: LAMBDA_MEMORY,
+                role: role,
+                vpc: vpc.vpc,
+                vpcSubnets: vpc.subnetSelection,
+                securityGroups: securityGroups,
+                layers: lambdaLayers,
+                environment: environment,
+            }),
+            outputPath: OUTPUT_PATH,
+        });
+
         // terminal states
         const successState = new Succeed(this, 'UpdateSuccess');
+        const failState = new Fail(this, 'UpdateFailed');
 
         // choice states
         const hasEcsUpdateChoice = new Choice(this, 'HasEcsUpdateChoice');
@@ -207,6 +226,10 @@ export class UpdateModelStateMachine extends Construct {
 
         // State Machine definition
         handleJobIntake.next(hasEcsUpdateChoice);
+        handleJobIntake.addCatch(handleFailure, {
+            errors: ['States.ALL'],
+            resultPath: '$.error',
+        });
 
         // ECS update flow
         hasEcsUpdateChoice
@@ -214,7 +237,15 @@ export class UpdateModelStateMachine extends Construct {
             .otherwise(hasGuardrailsUpdateChoice);
 
         handleEcsUpdate.next(handlePollEcsDeployment);
+        handleEcsUpdate.addCatch(handleFailure, {
+            errors: ['States.ALL'],
+            resultPath: '$.error',
+        });
         handlePollEcsDeployment.next(pollEcsDeploymentChoice);
+        handlePollEcsDeployment.addCatch(handleFailure, {
+            errors: ['States.ALL'],
+            resultPath: '$.error',
+        });
         pollEcsDeploymentChoice
             .when(Condition.booleanEquals('$.should_continue_ecs_polling', true), waitBeforePollEcsDeployment)
             .otherwise(hasGuardrailsUpdateChoice);
@@ -226,6 +257,10 @@ export class UpdateModelStateMachine extends Construct {
             .otherwise(hasCapacityUpdateChoice);
 
         handleUpdateGuardrails.next(hasCapacityUpdateChoice);
+        handleUpdateGuardrails.addCatch(handleFailure, {
+            errors: ['States.ALL'],
+            resultPath: '$.error',
+        });
 
         // Existing capacity update flow
         hasCapacityUpdateChoice
@@ -233,6 +268,10 @@ export class UpdateModelStateMachine extends Construct {
             .otherwise(handleFinishUpdate);
 
         handlePollCapacity.next(pollAsgChoice);
+        handlePollCapacity.addCatch(handleFailure, {
+            errors: ['States.ALL'],
+            resultPath: '$.error',
+        });
         pollAsgChoice.when(Condition.booleanEquals('$.should_continue_capacity_polling', true), waitBeforePollAsg)
             .otherwise(waitBeforeModelAvailable);
         waitBeforePollAsg.next(handlePollCapacity);
@@ -240,6 +279,11 @@ export class UpdateModelStateMachine extends Construct {
         waitBeforeModelAvailable.next(handleFinishUpdate);
 
         handleFinishUpdate.next(successState);
+        handleFinishUpdate.addCatch(handleFailure, {
+            errors: ['States.ALL'],
+            resultPath: '$.error',
+        });
+        handleFailure.next(failState);
 
         const stateMachine = new StateMachine(this, 'UpdateModelSM', {
             definitionBody: DefinitionBody.fromChainable(handleJobIntake),

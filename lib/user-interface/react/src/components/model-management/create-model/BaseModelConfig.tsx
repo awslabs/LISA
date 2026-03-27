@@ -20,7 +20,7 @@ import FormField from '@cloudscape-design/components/form-field';
 import Input from '@cloudscape-design/components/input';
 import Toggle from '@cloudscape-design/components/toggle';
 import Select from '@cloudscape-design/components/select';
-import { IModelRequest, InferenceContainer, ModelType } from '../../../shared/model/model-management.model';
+import { IModelRequest, InferenceContainer, ModelHostingType, ModelType } from '../../../shared/model/model-management.model';
 import { Grid, SpaceBetween } from '@cloudscape-design/components';
 import { useGetInstancesQuery } from '../../../shared/reducers/model-management.reducer';
 import { ModelFeatures } from '@/components/types';
@@ -49,29 +49,37 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
         <SpaceBetween size={'s'}>
             <FormField
                 label='Hosting Type'
-                description={`Choose whether to host the model on ${getDisplayName()} infrastructure or use a third-party provider.`}
-                errorText={props.formErrors?.lisaHostedModel}
+                description={`Choose where this model is hosted: ${getDisplayName()} infrastructure, customer internal AWS ALB endpoint, or third-party provider.`}
+                errorText={props.formErrors?.hostingType}
             >
                 <Select
                     selectedOption={{
-                        label: props.item.lisaHostedModel ? 'LISA Hosted' : 'Third Party',
-                        value: props.item.lisaHostedModel ? 'true' : 'false'
+                        label:
+                            props.item.hostingType === ModelHostingType.LISA_HOSTED ? `${getDisplayName()} hosted` :
+                                props.item.hostingType === ModelHostingType.INTERNAL_HOSTED ? 'Customer internal hosted' :
+                                    'Third party',
+                        value: props.item.hostingType || ModelHostingType.THIRD_PARTY
                     }}
                     onChange={({ detail }) => {
-                        const isLisaHosted = detail.selectedOption.value === 'true';
-                        const fieldsToUpdate = { 'lisaHostedModel': isLisaHosted };
+                        const hostingType = (detail.selectedOption.value || ModelHostingType.THIRD_PARTY) as ModelHostingType;
+                        const isLisaHosted = hostingType === ModelHostingType.LISA_HOSTED;
+                        const fieldsToUpdate = {
+                            'hostingType': hostingType,
+                            'lisaHostedModel': isLisaHosted
+                        };
 
-                        // If switching to Third Party, clear LISA Hosted specific fields
+                        // If switching away from LISA-hosted, clear LISA-hosted-only fields
                         if (!isLisaHosted) {
                             fieldsToUpdate['instanceType'] = undefined;
                             fieldsToUpdate['inferenceContainer'] = undefined;
                         }
                         props.setFields(fieldsToUpdate);
                     }}
-                    onBlur={() => props.touchFields(['lisaHostedModel'])}
+                    onBlur={() => props.touchFields(['hostingType'])}
                     options={[
-                        { label: 'Third party', value: 'false' },
-                        { label: `${getDisplayName()} hosted`, value: 'true' }
+                        { label: 'Third party', value: ModelHostingType.THIRD_PARTY },
+                        { label: 'Customer internal hosted', value: ModelHostingType.INTERNAL_HOSTED },
+                        { label: `${getDisplayName()} hosted`, value: ModelHostingType.LISA_HOSTED }
                     ]}
                     disabled={props.isEdit}
                 />
@@ -96,7 +104,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     props.setFields({ 'modelDescription': detail.value });
                 }} placeholder='Brief description of the model and its capabilities'/>
             </FormField>
-            {!props.item.lisaHostedModel && <FormField
+            {props.item.hostingType === ModelHostingType.THIRD_PARTY && <FormField
                 label={<span>API Key <em>- Optional</em></span>}
                 description='API authentication key for accessing third-party model provider services.'
                 errorText={props.formErrors?.apiKey}
@@ -106,8 +114,12 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                 }} disabled={props.isEdit} placeholder='sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'/>
             </FormField>}
             <FormField
-                label={<span>Model URL <em>- Optional</em></span>}
-                description='Custom endpoint URL for the model API (e.g., for self-hosted or third-party services).'
+                label={props.item.hostingType === ModelHostingType.INTERNAL_HOSTED ? 'Model URL' : <span>Model URL <em>- Optional</em></span>}
+                description={
+                    props.item.hostingType === ModelHostingType.INTERNAL_HOSTED ?
+                        'Required internal AWS load balancer endpoint for this model (for example, http://internal-xyz.elb.amazonaws.com/v1).' :
+                        'Custom endpoint URL for the model API (e.g., for self-hosted or third-party services).'
+                }
                 errorText={props.formErrors?.modelUrl}
             >
                 <Input value={props.item.modelUrl} inputMode='text' onBlur={() => props.touchFields(['modelUrl'])} onChange={({ detail }) => {
@@ -159,7 +171,7 @@ export function BaseModelConfig (props: FormProps<IModelRequest> & BaseModelConf
                     disabled={props.isEdit}
                 />
             </FormField>
-            {props.item.lisaHostedModel && (
+            {(props.item.hostingType === ModelHostingType.LISA_HOSTED || props.item.lisaHostedModel) && (
                 <>
                     <FormField
                         label='Instance Type'

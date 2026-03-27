@@ -306,6 +306,31 @@ def test_handle_set_model_to_creating_not_lisa_managed(model_table, lambda_conte
         assert result["modelId"] == "test-model"
 
 
+def test_handle_set_model_to_creating_internal_hosted_with_model_url(model_table, sample_event, lambda_context):
+    """Ensure INTERNAL_HOSTED passes request validation when modelUrl is provided."""
+    event = deepcopy(sample_event)
+    event["hostingType"] = "internal_hosted"
+    event["modelUrl"] = "http://internal-lisa-mistral7binstruct03-665568061.us-east-1.elb.amazonaws.com/v1/"
+
+    with patch("models.state_machine.create_model.model_table", model_table):
+        result = handle_set_model_to_creating(event, lambda_context)
+
+        assert result["modelId"] == event["modelId"]
+
+
+def test_handle_set_model_to_creating_internal_hosted_missing_model_url_raises(
+    model_table, sample_event, lambda_context
+):
+    """Ensure INTERNAL_HOSTED without modelUrl is rejected by request validation."""
+    event = deepcopy(sample_event)
+    event["hostingType"] = "internal_hosted"
+    event.pop("modelUrl", None)
+
+    with patch("models.state_machine.create_model.model_table", model_table):
+        with pytest.raises(Exception):
+            handle_set_model_to_creating(event, lambda_context)
+
+
 def test_handle_start_copy_docker_image(sample_event, lambda_context):
     """Test starting Docker image copy process."""
     # Mock ECR image found to trigger ECR verification path
@@ -527,6 +552,41 @@ def test_handle_add_model_to_litellm_not_lisa_managed(model_table, sample_event,
         # Verify LiteLLM client call
         call_args = mock_litellm_client.add_model.call_args
         assert call_args[1]["litellm_params"]["model"] == "test-model-name"
+
+
+def test_handle_add_model_to_litellm_internal_hosted_sets_api_base(model_table, sample_event, lambda_context):
+    """Test internal-hosted models set LiteLLM api_base from modelUrl."""
+    event = deepcopy(sample_event)
+    event["create_infra"] = False
+    event["hostingType"] = "INTERNAL_HOSTED"
+    event["modelUrl"] = "http://internal-lisa-mistral7binstruct03-665568061.us-east-1.elb.amazonaws.com/v1/"
+    mock_litellm_client.reset_mock()
+
+    with patch("models.state_machine.create_model.model_table", model_table):
+        result = handle_add_model_to_litellm(event, lambda_context)
+
+        assert result["litellm_id"] == "test-litellm-id"
+        call_args = mock_litellm_client.add_model.call_args
+        assert (
+            call_args[1]["litellm_params"]["api_base"]
+            == "http://internal-lisa-mistral7binstruct03-665568061.us-east-1.elb.amazonaws.com/v1"
+        )
+        assert call_args[1]["litellm_params"]["model"] == "openai/test-model-name"
+
+
+def test_handle_add_model_to_litellm_internal_hosted_normalizes_prefixes(model_table, sample_event, lambda_context):
+    """Internal hosted models should normalize user-entered provider prefixes."""
+    event = deepcopy(sample_event)
+    event["create_infra"] = False
+    event["hostingType"] = "internal_hosted"
+    event["modelName"] = "hosted_vllm/openai/gpt-oss-20b"
+    event["modelUrl"] = "http://internal-lisa-mistral7binstruct03-665568061.us-east-1.elb.amazonaws.com/v1"
+    mock_litellm_client.reset_mock()
+
+    with patch("models.state_machine.create_model.model_table", model_table):
+        handle_add_model_to_litellm(event, lambda_context)
+        call_args = mock_litellm_client.add_model.call_args
+        assert call_args[1]["litellm_params"]["model"] == "openai/gpt-oss-20b"
 
 
 def test_handle_failure_with_instance(model_table, sample_event, lambda_context):

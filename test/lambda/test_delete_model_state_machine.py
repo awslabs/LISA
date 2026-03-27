@@ -112,6 +112,7 @@ from models.state_machine.delete_model import (
     handle_delete_from_litellm,
     handle_delete_guardrails,
     handle_delete_stack,
+    handle_failure,
     handle_monitor_delete_stack,
     handle_set_model_to_deleting,
 )
@@ -530,3 +531,35 @@ def test_handle_delete_guardrails_no_guardrails(guardrails_table, lambda_context
         result = handle_delete_guardrails(event, lambda_context)
 
         assert result["deleted_guardrails"] == []
+
+
+def test_handle_failure_sets_model_failed(model_table, sample_model, lambda_context):
+    """Ensure delete workflow failures set model status to FAILED."""
+    with patch("models.state_machine.delete_model.ddb_table", model_table):
+        event = {
+            "modelId": "test-model",
+            "Cause": '{"errorMessage":"Delete workflow task failed"}',
+        }
+        result = handle_failure(event, lambda_context)
+
+        assert result == event
+        item = model_table.get_item(Key={"model_id": "test-model"})["Item"]
+        assert item["model_status"] == ModelStatus.FAILED
+        assert "Delete workflow task failed" in item["failure_reason"]
+
+
+def test_handle_failure_sets_model_failed_from_error_cause(model_table, sample_model, lambda_context):
+    """Ensure delete failures can resolve model id from Step Functions catch payload."""
+    with patch("models.state_machine.delete_model.ddb_table", model_table):
+        event = {
+            "error": {
+                "Error": "States.TaskFailed",
+                "Cause": '{"errorMessage":"Delete workflow task failed","input":{"modelId":"test-model"}}',
+            }
+        }
+        result = handle_failure(event, lambda_context)
+
+        assert result == event
+        item = model_table.get_item(Key={"model_id": "test-model"})["Item"]
+        assert item["model_status"] == ModelStatus.FAILED
+        assert "Delete workflow task failed" in item["failure_reason"]

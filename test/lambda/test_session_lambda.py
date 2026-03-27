@@ -1528,6 +1528,41 @@ def test_map_session_encrypted():
         assert result.firstHumanMessage == "Decrypted message"
 
 
+def test_map_session_strips_merged_context_from_string_message():
+    """Session summary should hide merged context and show only prompt text."""
+    session = {
+        "sessionId": "test-session",
+        "history": [
+            {
+                "type": "human",
+                "content": ("Context from document search:\n" "Some retrieved content\n\n" "who is dustin?"),
+            }
+        ],
+    }
+
+    result = _map_session(session, "test-user")
+    assert result.firstHumanMessage == "who is dustin?"
+
+
+def test_map_session_strips_context_from_list_message_items():
+    """Session summary should skip context list items and show user prompt item."""
+    session = {
+        "sessionId": "test-session",
+        "history": [
+            {
+                "type": "human",
+                "content": [
+                    {"type": "text", "text": "File context:\nSome file text"},
+                    {"type": "text", "text": "who is dustin?"},
+                ],
+            }
+        ],
+    }
+
+    result = _map_session(session, "test-user")
+    assert result.firstHumanMessage == "who is dustin?"
+
+
 # Delete Session with Video Cleanup Tests
 @patch("session.lambda_functions.s3_client")
 @patch("session.lambda_functions.s3_resource")

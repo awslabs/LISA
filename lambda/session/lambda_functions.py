@@ -249,6 +249,30 @@ def _map_session(
     )
 
 
+def _strip_context_from_display_text(text: str) -> str:
+    cleaned = text.strip()
+    file_context_prefix = "File context:"
+    rag_context_prefix = "Context from document search:"
+    context_prefixes = (file_context_prefix, rag_context_prefix)
+
+    if not any(cleaned.startswith(prefix) for prefix in context_prefixes):
+        return cleaned
+
+    if cleaned.startswith(file_context_prefix):
+        return ""
+
+    # Older sessions may have merged context + prompt into one text blob.
+    # Keep only the final user prompt for session list display.
+    parts = [part.strip() for part in cleaned.split("\n\n") if part.strip()]
+    if parts:
+        tail = parts[-1]
+        if not any(tail.startswith(prefix) for prefix in context_prefixes):
+            return tail
+
+    lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
+    return lines[-1] if lines else ""
+
+
 def _find_first_human_message(session: dict, user_id: str | None = None) -> str:
     # Check if session is encrypted
     if session.get("is_encrypted", False):
@@ -274,13 +298,17 @@ def _find_first_human_message(session: dict, user_id: str | None = None) -> str:
         if msg.get("type") == "human":
             content = msg.get("content")
             if isinstance(content, str):
-                return content
+                cleaned = _strip_context_from_display_text(content)
+                if cleaned:
+                    return cleaned
             elif isinstance(content, list):
                 for item in content:
                     if isinstance(item, dict):
                         text: str = item.get("text", "")
-                        if text and not text.startswith("File context:"):
-                            return text
+                        if text:
+                            cleaned = _strip_context_from_display_text(text)
+                            if cleaned:
+                                return cleaned
             else:
                 logger.warning(f"Unhandled human message content in session {session.get('sessionId', 'unknown')}")
     return ""

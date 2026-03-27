@@ -14,7 +14,6 @@
 
 """Lambda handlers for DeleteModel state machine."""
 
-import json
 import logging
 import os
 from copy import deepcopy
@@ -23,6 +22,7 @@ from uuid import uuid4
 
 import boto3
 from models.clients.litellm_client import LiteLLMClient
+from models.state_machine.failure_utils import extract_model_failure_details
 from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint, retry_config
 from utilities.time import now
 
@@ -191,36 +191,13 @@ def handle_failure(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Set model status to Failed for unrecoverable delete workflow errors."""
     logger.error(f"Handling delete-model state machine failure: {event}")
 
-    raw_error = event.get("error")
-    catch_error: dict[str, Any] = raw_error if isinstance(raw_error, dict) else {}
-    cause_payload = event.get("Cause") or catch_error.get("Cause")
-    cause_data: dict[str, Any] | None = None
-    if isinstance(cause_payload, str):
-        try:
-            parsed = json.loads(cause_payload)
-            if isinstance(parsed, dict):
-                cause_data = parsed
-        except Exception:
-            cause_data = None
-
-    model_id = event.get("modelId") or event.get("model_id")
-    if not model_id and isinstance(cause_data, dict):
-        model_id = cause_data.get("modelId") or cause_data.get("model_id")
-        if not model_id:
-            cause_input = cause_data.get("input")
-            if isinstance(cause_input, dict):
-                model_id = cause_input.get("modelId") or cause_input.get("model_id")
+    model_id, error_reason = extract_model_failure_details(
+        event=event,
+        default_reason="Delete model state machine failed.",
+    )
     if not model_id:
         logger.error("Unable to determine model id from delete failure event; skipping DDB status update.")
         return event
-
-    error_reason = "Delete model state machine failed."
-    if isinstance(cause_data, dict):
-        error_reason = str(cause_data.get("errorMessage", error_reason))
-    elif cause_payload is not None:
-        error_reason = str(cause_payload)
-    elif "error" in event:
-        error_reason = str(event.get("error"))
 
     ddb_table.update_item(
         Key={"model_id": model_id},

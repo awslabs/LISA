@@ -235,7 +235,7 @@ To create a tool that uses AWS credentials:
 3. Call `get_aws_session_for_user(user_id, session_id)` to retrieve the `AwsSessionRecord` (or handle `AwsSessionMissingError` if the user has not connected credentials).
 4. Use the record's `aws_access_key_id`, `aws_secret_access_key`, `aws_session_token`, and `aws_region` to construct boto3 clients.
 
-See `lib/serve/mcp-workbench/src/examples/sample_tools/aws_s3_tools.py` for a complete example. Without tools that leverage these credentials, the AWS Sessions feature has no effect.
+See `lib/serve/mcp-workbench/src/examples/sample_tools/aws_operator_tools.py` for a complete example. Without tools that leverage these credentials, the AWS Sessions feature has no effect.
 
 ### Adding Python Dependencies
 

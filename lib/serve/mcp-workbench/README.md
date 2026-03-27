@@ -266,7 +266,7 @@ MCP Workbench supports **AWS Sessions**, allowing users to connect their AWS cre
 
 - **REST API**: `POST /api/aws/connect`, `GET /api/aws/status`, `DELETE /api/aws/connect`
 - **Identity**: Extracted from `Authorization` (JWT) and `X-Session-Id` headers
-- **Tool integration**: See `src/examples/sample_tools/aws_s3_tools.py` for an example tool that lists S3 buckets using connected credentials
+- **Tool integration**: See `src/examples/sample_tools/aws_operator_tools.py` for a generic boto3-based `aws_api_call` tool using connected credentials
 
 The feature requires the **AWS Sessions** toggle to be enabled in Administration → Configuration → MCP. Without MCP tools that leverage the credentials, connecting them has no effect.
 

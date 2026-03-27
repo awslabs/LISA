@@ -147,9 +147,8 @@ class TestLisaLlmGenerate:
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            "generatedText": "Generated response",
-            "generatedTokens": 10,
-            "finishReason": "stop",
+            "choices": [{"message": {"content": "Generated response"}, "finish_reason": "stop"}],
+            "usage": {"completion_tokens": 10},
         }
 
         with patch.object(llm._session, "post", return_value=mock_response):
@@ -173,19 +172,18 @@ class TestLisaLlmGenerate:
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            "generatedText": "Response",
-            "generatedTokens": 5,
-            "finishReason": "stop",
+            "choices": [{"message": {"content": "Response"}, "finish_reason": "stop"}],
+            "usage": {"completion_tokens": 5},
         }
 
         with patch.object(llm._session, "post", return_value=mock_response) as mock_post:
             llm.generate("prompt", model)
 
-            # Verify model kwargs were included in request
+            # Verify model kwargs were included in request (max_new_tokens → max_tokens)
             call_args = mock_post.call_args
             payload = call_args[1]["json"]
-            assert "modelKwargs" in payload
-            assert payload["modelKwargs"]["temperature"] == 0.7
+            assert payload["max_tokens"] == 100
+            assert payload["temperature"] == 0.7
 
     def test_generate_error(self):
         """Test generation with error response."""
@@ -221,7 +219,7 @@ class TestLisaLlmEmbed:
 
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {"embeddings": [[0.1, 0.2, 0.3]]}
+        mock_response.json.return_value = {"data": [{"embedding": [0.1, 0.2, 0.3]}]}
 
         with patch.object(llm._session, "post", return_value=mock_response):
             embeddings = llm.embed("test text", model)
@@ -241,7 +239,7 @@ class TestLisaLlmEmbed:
 
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {"embeddings": [[0.1, 0.2], [0.3, 0.4]]}
+        mock_response.json.return_value = {"data": [{"embedding": [0.1, 0.2]}, {"embedding": [0.3, 0.4]}]}
 
         with patch.object(llm._session, "post", return_value=mock_response):
             embeddings = llm.embed(["text1", "text2"], model)
@@ -285,9 +283,10 @@ class TestLisaLlmGenerateStream:
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.iter_lines.return_value = [
-            b'data:{"token":{"text":"Hello"}}',
-            b'data:{"token":{"text":" world"}}',
-            b'data:{"finishReason":"stop","generatedTokens":2}',
+            b'data: {"choices":[{"delta":{"content":"Hello"},"finish_reason":null}]}',
+            b'data: {"choices":[{"delta":{"content":" world"},"finish_reason":null}]}',
+            b'data: {"choices":[{"delta":{},"finish_reason":"stop"}],"usage":{"completion_tokens":2}}',
+            b"data: [DONE]",
         ]
 
         with patch.object(llm._session, "post", return_value=mock_response):

@@ -88,8 +88,22 @@ class LisaLlm(BaseModel):
             raise parse_error(response.status_code, response)
         return models
 
+    def _build_chat_payload(self, prompt: str, model: FoundationModel, stream: bool = False) -> dict:
+        """Build an OpenAI-compatible chat completion payload."""
+        payload: dict[str, Any] = {
+            "model": model.model_name,
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": stream,
+        }
+        if model.model_kwargs:
+            kwargs = model.model_kwargs.model_dump(exclude_none=True)
+            if "max_new_tokens" in kwargs:
+                payload["max_tokens"] = kwargs.pop("max_new_tokens")
+            payload.update(kwargs)
+        return payload
+
     def generate(self, prompt: str, model: FoundationModel) -> Response:
-        """Generate text based on the provided prompt using a specific model.
+        """Generate text using OpenAI-compatible chat completions endpoint.
 
         Parameters
         ----------
@@ -104,30 +118,22 @@ class LisaLlm(BaseModel):
         Response
             Text generation response.
         """
-        payload = {
-            "provider": model.provider,
-            "modelName": model.model_name,
-            "text": prompt,
-            "modelKwargs": model.model_kwargs.model_dump() if model.model_kwargs else {},
-        }
-        response = self._session.post(f"{self.url}/generate", json=payload)
+        payload = self._build_chat_payload(prompt, model, stream=False)
+        response = self._session.post(f"{self.url}/serve/chat/completions", json=payload)
         if response.status_code == 200:
             output = response.json()
+            choice = output["choices"][0]
+            usage = output.get("usage", {})
             return Response(
-                generated_text=output["generatedText"],
-                generated_tokens=output["generatedTokens"],
-                finish_reason=output["finishReason"],
+                generated_text=choice["message"]["content"],
+                generated_tokens=usage.get("completion_tokens", 0),
+                finish_reason=choice.get("finish_reason", "stop"),
             )
         else:
-            print(response)
             raise parse_error(response.status_code, response)
 
-    async def agenerate(
-        self,
-        prompt: str,
-        model: FoundationModel,
-    ) -> Response:
-        """Generate text based on the provided prompt using a specific model.
+    async def agenerate(self, prompt: str, model: FoundationModel) -> Response:
+        """Generate text asynchronously using OpenAI-compatible chat completions.
 
         Parameters
         ----------
@@ -142,30 +148,27 @@ class LisaLlm(BaseModel):
         Response
             Text generation response.
         """
-        payload = {
-            "provider": model.provider,
-            "modelName": model.model_name,
-            "text": prompt,
-            "modelKwargs": model.model_kwargs.model_dump() if model.model_kwargs else {},
-        }
+        payload = self._build_chat_payload(prompt, model, stream=False)
         async with ClientSession(
             headers=self.headers,
             cookies=self.cookies,
             timeout=self.async_timeout,
         ) as session:
-            async with session.post(f"{self.url}/generate", json=payload, ssl=self.verify) as response:
+            async with session.post(f"{self.url}/serve/chat/completions", json=payload, ssl=self.verify) as response:
                 output = await response.json()
                 if response.status == 200:
+                    choice = output["choices"][0]
+                    usage = output.get("usage", {})
                     return Response(
-                        generated_text=output["generatedText"],
-                        generated_tokens=output["generatedTokens"],
-                        finish_reason=output["finishReason"],
+                        generated_text=choice["message"]["content"],
+                        generated_tokens=usage.get("completion_tokens", 0),
+                        finish_reason=choice.get("finish_reason", "stop"),
                     )
                 else:
-                    raise parse_error(response.status_code, response)
+                    raise parse_error(response.status, response)
 
     def generate_stream(self, prompt: str, model: FoundationModel) -> Generator[StreamingResponse]:
-        """Generate text with streaming based on the provided prompt using a specific model.
+        """Generate text with streaming using OpenAI-compatible SSE format.
 
         Parameters
         ----------
@@ -180,39 +183,36 @@ class LisaLlm(BaseModel):
         Generator[StreamingResponse, None, None]
             Text generation streaming response.
         """
-        request = {
-            "provider": model.provider,
-            "modelName": model.model_name,
-            "text": prompt,
-            "modelKwargs": model.model_kwargs.model_dump() if model.model_kwargs else {},
-        }
-        response = self._session.post(f"{self.url}/generateStream", json=request)
+        payload = self._build_chat_payload(prompt, model, stream=True)
+        response = self._session.post(f"{self.url}/serve/chat/completions", json=payload, stream=True)
         if response.status_code == 200:
-            for resp_line in response.iter_lines():
-                if resp_line == "b\n":
+            for line in response.iter_lines():
+                if not line:
                     continue
-                payload = resp_line.decode("utf-8")
-                if payload.startswith("data:"):
-                    json_payload = json.loads(payload.removeprefix("data:").rstrip("/n"))
-                    if "finishReason" in json_payload:
-                        yield StreamingResponse(  # nosec [B106]
-                            token="",
-                            finish_reason=json_payload["finishReason"],
-                            generated_tokens=json_payload["generatedTokens"],
-                        )
-                    else:
-                        yield StreamingResponse(
-                            token=json_payload["token"]["text"],
-                        )
+                text = line.decode("utf-8") if isinstance(line, bytes) else line
+                if not text.startswith("data:"):
+                    continue
+                data_str = text[len("data:") :].strip()
+                if data_str == "[DONE]":
+                    break
+                chunk = json.loads(data_str)
+                delta = chunk.get("choices", [{}])[0].get("delta", {})
+                finish = chunk.get("choices", [{}])[0].get("finish_reason")
+                usage = chunk.get("usage")
+                token_text = delta.get("content", "")
+                if finish:
+                    yield StreamingResponse(
+                        token=token_text,
+                        finish_reason=finish,
+                        generated_tokens=usage.get("completion_tokens") if usage else None,
+                    )
+                elif token_text:
+                    yield StreamingResponse(token=token_text)
         else:
             raise parse_error(response.status_code, response)
 
-    async def agenerate_stream(
-        self,
-        prompt: str,
-        model: FoundationModel,
-    ) -> AsyncGenerator[StreamingResponse]:
-        """Generate text with streaming based on the provided prompt using a specific model.
+    async def agenerate_stream(self, prompt: str, model: FoundationModel) -> AsyncGenerator[StreamingResponse]:
+        """Generate text with async streaming using OpenAI-compatible SSE format.
 
         Parameters
         ----------
@@ -227,45 +227,38 @@ class LisaLlm(BaseModel):
         AsyncGenerator[StreamingResponse, None]
             Text generation streaming response.
         """
-        request = {
-            "provider": model.provider,
-            "modelName": model.model_name,
-            "text": prompt,
-            "modelKwargs": model.model_kwargs.model_dump() if model.model_kwargs else {},
-        }
+        payload = self._build_chat_payload(prompt, model, stream=True)
         async with ClientSession(
             headers=self.headers,
             cookies=self.cookies,
             timeout=self.async_timeout,
         ) as session:
-            async with session.post(
-                f"{self.url}/generateStream",
-                json=request,
-                ssl=self.verify,
-            ) as response:
+            async with session.post(f"{self.url}/serve/chat/completions", json=payload, ssl=self.verify) as response:
                 if response.status != 200:
-                    payload = await response.json()
-                    # TODO this probably won't work
-                    raise parse_error(response.status_code, response)
-                async for resp_line in response.content:
-                    if resp_line == "b\n":
+                    raise parse_error(response.status, response)
+                async for line in response.content:
+                    text = line.decode("utf-8").strip() if isinstance(line, bytes) else line.strip()
+                    if not text or not text.startswith("data:"):
                         continue
-                    payload = resp_line.decode("utf-8")
-                    if payload.startswith("data:"):
-                        json_payload = json.loads(payload.removeprefix("data:").rstrip("/n"))
-                        if "finishReason" in json_payload:
-                            yield StreamingResponse(  # nosec [B106]
-                                token="",
-                                finish_reason=json_payload["finishReason"],
-                                generated_tokens=json_payload["generatedTokens"],
-                            )
-                        else:
-                            yield StreamingResponse(
-                                token=json_payload["token"]["text"],
-                            )
+                    data_str = text[len("data:") :].strip()
+                    if data_str == "[DONE]":
+                        break
+                    chunk = json.loads(data_str)
+                    delta = chunk.get("choices", [{}])[0].get("delta", {})
+                    finish = chunk.get("choices", [{}])[0].get("finish_reason")
+                    usage = chunk.get("usage")
+                    token_text = delta.get("content", "")
+                    if finish:
+                        yield StreamingResponse(
+                            token=token_text,
+                            finish_reason=finish,
+                            generated_tokens=usage.get("completion_tokens") if usage else None,
+                        )
+                    elif token_text:
+                        yield StreamingResponse(token=token_text)
 
     def embed(self, texts: str | list[str], model: FoundationModel) -> list[list[float]]:
-        """Generate text embeddings based on the provided prompt using a specific model.
+        """Generate text embeddings using OpenAI-compatible embeddings endpoint.
 
         Parameters
         ----------
@@ -280,22 +273,19 @@ class LisaLlm(BaseModel):
         List[List[float]]
             Text embeddings as a batched response.
         """
-        payload = {
-            "provider": model.provider,
-            "modelName": model.model_name,
-            "text": texts,
-            "modelKwargs": model.model_kwargs.model_dump() if model.model_kwargs else {},
+        payload: dict[str, Any] = {
+            "model": model.model_name,
+            "input": texts if isinstance(texts, list) else [texts],
         }
-        response = self._session.post(f"{self.url}/embeddings", json=payload)
+        response = self._session.post(f"{self.url}/serve/embeddings", json=payload)
         if response.status_code == 200:
             output = response.json()
-            embeddings: list[list[float]] = output["embeddings"]
-            return embeddings
+            return [item["embedding"] for item in output["data"]]
         else:
             raise parse_error(response.status_code, response)
 
     async def aembed(self, texts: str | list[str], model: FoundationModel) -> list[list[float]]:
-        """Generate text embeddings based on the provided prompt using a specific model.
+        """Generate text embeddings asynchronously using OpenAI-compatible endpoint.
 
         Parameters
         ----------
@@ -310,25 +300,20 @@ class LisaLlm(BaseModel):
         List[List[float]]
             Text embeddings as a batched response.
         """
-        payload = {
-            "provider": model.provider,
-            "modelName": model.model_name,
-            "text": texts,
-            "modelKwargs": model.model_kwargs.model_dump() if model.model_kwargs else {},
+        payload: dict[str, Any] = {
+            "model": model.model_name,
+            "input": texts if isinstance(texts, list) else [texts],
         }
         async with ClientSession(
             headers=self.headers,
             cookies=self.cookies,
             timeout=self.async_timeout,
         ) as session:
-            async with session.post(f"{self.url}/embeddings", json=payload, ssl=False) as response:
+            async with session.post(f"{self.url}/serve/embeddings", json=payload, ssl=self.verify) as response:
                 if response.status != 200:
-                    output = await response.json()
-                    raise parse_error(response.status_code, response)
-
+                    raise parse_error(response.status, response)
                 output = await response.json()
-                embeddings: list[list[float]] = output["embeddings"]
-                return embeddings
+                return [item["embedding"] for item in output["data"]]
 
     def __del__(self) -> None:
         """Close session."""

@@ -32,10 +32,12 @@ from typing import Any
 
 import boto3
 
-# Add lisa-sdk and the test directory itself to path
+# Add lisa-sdk, the test directory itself, and test/integration/ (for config_loader) to path
 _HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(_HERE, "../../lisa-sdk"))
+_ROOT = os.path.dirname(os.path.dirname(_HERE))
+sys.path.insert(0, os.path.join(_ROOT, "lisa-sdk"))
 sys.path.insert(0, _HERE)
+sys.path.insert(0, os.path.join(_ROOT, "test", "integration"))
 
 from integration_definitions import (
     BEDROCK_KB_S3_BUCKET,
@@ -96,7 +98,6 @@ def setup_authentication(deployment_name: str, deployment_stage: str) -> dict[st
     api_key = get_management_key(deployment_name, deployment_stage)
     headers = {"Api-Key": api_key, "Authorization": api_key}
     print("✓ Authentication setup completed")
-    print(f"✓ Using API key: {api_key[:8]}...")
     return headers
 
 
@@ -142,13 +143,16 @@ def check_repository_ready(lisa_client: LisaApi, repository_id: str) -> bool:
         return False
 
 
-def model_exists(lisa_client: LisaApi, model_id: str) -> bool:
-    """Check if a model already exists."""
+def find_deployed_model_id(lisa_client: LisaApi, model_name: str) -> str | None:
+    """Return the modelId of a deployed model matching model_name, or None if not found."""
     try:
-        lisa_client.get_model(model_id)
-        return True
+        models = lisa_client.list_models()
+        for m in models:
+            if m.get("modelName") == model_name:
+                return m.get("modelId")
+        return None
     except Exception:
-        return False
+        return None
 
 
 def repository_exists(lisa_client: LisaApi, repository_id: str) -> bool:
@@ -181,11 +185,12 @@ def create_bedrock_model(
         print(f"\n⏭️  Skipping creation of Bedrock model '{model_id}' (skip_create=True)")
         return {"modelId": model_id}
 
-    if model_exists(lisa_client, model_id):
-        print(f"\n⏭️  Bedrock model '{model_id}' already exists, skipping creation")
-        return {"modelId": model_id}
-
     modelName = definition.get("model_name")
+
+    existing_id = find_deployed_model_id(lisa_client, modelName)
+    if existing_id:
+        print(f"\n⏭️  Bedrock model '{modelName}' already deployed as '{existing_id}', skipping creation")
+        return {"modelId": existing_id}
     model_type = definition.get("model_type", "textgen")
     features = definition.get(
         "features",
@@ -241,12 +246,14 @@ def create_self_hosted_embedded_model(
         print(f"\n⏭️  Skipping creation of self-hosted embedded model '{model_id}' (skip_create=True)")
         return {"modelId": model_id}
 
-    if model_exists(lisa_client, model_id):
-        print(f"\n⏭️  Self-hosted embedded model '{model_id}' already exists, skipping creation")
-        return {"modelId": model_id}
+    model_name = definition["model_name"]
+
+    existing_id = find_deployed_model_id(lisa_client, model_name)
+    if existing_id:
+        print(f"\n⏭️  Self-hosted embedded model '{model_name}' already deployed as '{existing_id}', skipping creation")
+        return {"modelId": existing_id}
 
     instance_type = definition.get("instance_type", "g6.xlarge")
-    model_name = definition["model_name"]
     description = definition.get("description", f"Self-hosted embedding model for {model_name}")
     default_environment: dict[str, str] = {
         "MAX_BATCH_TOKENS": "16384",
@@ -340,16 +347,18 @@ def create_self_hosted_model(
         print(f"\n⏭️  Skipping creation of self-hosted model '{model_id}' (skip_create=True)")
         return {"modelId": model_id}
 
-    if model_exists(lisa_client, model_id):
-        print(f"\n⏭️  Self-hosted model '{model_id}' already exists, skipping creation")
-        return {"modelId": model_id}
+    model_name = definition["model_name"]
+
+    existing_id = find_deployed_model_id(lisa_client, model_name)
+    if existing_id:
+        print(f"\n⏭️  Self-hosted model '{model_name}' already deployed as '{existing_id}', skipping creation")
+        return {"modelId": existing_id}
 
     instances = lisa_client.list_instances()
     if not instances:
         raise Exception("No EC2 instances available for self-hosted model")
 
     instance_type = definition.get("instance_type", "g6.xlarge")
-    model_name = definition["model_name"]
     environment = definition.get(
         "environment",
         {
@@ -820,53 +829,69 @@ def create_bedrock_knowledge_base(
 # ---------------------------------------------------------------------------
 
 
-def cleanup_all_models(lisa_client: LisaApi) -> None:
-    """Clean up all models."""
-    print("\n🧹 Cleaning up all models...")
+def _get_integ_model_names() -> set[str]:
+    """Return the set of modelName values from integration deploy lists."""
+    names = set()
+    for model_id in deploy_models:
+        if model_id in MODEL_DEFINITIONS:
+            names.add(MODEL_DEFINITIONS[model_id]["model_name"])
+    for model_id in deploy_embedded_models:
+        if model_id in EMBEDDED_MODEL_DEFINITIONS:
+            names.add(EMBEDDED_MODEL_DEFINITIONS[model_id]["model_name"])
+    for model_id in deploy_bedrock_models:
+        if model_id in BEDROCK_MODEL_DEFINITIONS:
+            names.add(BEDROCK_MODEL_DEFINITIONS[model_id].get("model_name", ""))
+    return names
+
+
+def cleanup_integ_models(lisa_client: LisaApi) -> None:
+    """Clean up only models that match integration test definitions (by modelName)."""
+    integ_names = _get_integ_model_names()
+    print(f"\nCleaning up integration test models (matching {len(integ_names)} model names)...")
     try:
         models = lisa_client.list_models()
-        if not models:
-            print("  No models found to delete")
+        targets = [m for m in models if m.get("modelName") in integ_names]
+        if not targets:
+            print("  No matching integration test models found")
             return
-        print(f"  Found {len(models)} models to delete")
-        for model in models:
+        for model in targets:
             model_id = model.get("modelId")
-            if model_id:
-                try:
-                    lisa_client.delete_model(model_id)
-                    print(f"✓ Deleted model: {model_id}")
-                except Exception as e:
-                    print(f"✗ Failed to delete model {model_id}: {e}")
+            model_name = model.get("modelName")
+            try:
+                lisa_client.delete_model(model_id)
+                print(f"  Deleted model: {model_id} ({model_name})")
+            except Exception as e:
+                print(f"  Failed to delete model {model_id}: {e}")
     except Exception as e:
-        print(f"✗ Failed to list models for cleanup: {e}")
+        print(f"  Failed to list models for cleanup: {e}")
 
 
-def cleanup_all_repositories(lisa_client: LisaApi) -> None:
-    """Clean up all repositories."""
-    print("\n🧹 Cleaning up all repositories...")
+def cleanup_integ_repositories(lisa_client: LisaApi) -> None:
+    """Clean up only repositories that match integration test definitions (by repositoryId)."""
+    integ_repo_ids = set(deploy_vector_stores)
+    print(f"\nCleaning up integration test repositories: {integ_repo_ids}")
     try:
         repositories = lisa_client.list_repositories()
-        if not repositories:
-            print("  No repositories found to delete")
+        targets = [r for r in repositories if r.get("repositoryId") in integ_repo_ids]
+        if not targets:
+            print("  No matching integration test repositories found")
             return
-        print(f"  Found {len(repositories)} repositories to delete")
-        for repo in repositories:
+        for repo in targets:
             repo_id = repo.get("repositoryId")
-            if repo_id:
-                try:
-                    lisa_client.delete_repository(repo_id)
-                    print(f"✓ Deleted repository: {repo_id}")
-                except Exception as e:
-                    print(f"✗ Failed to delete repository {repo_id}: {e}")
+            try:
+                lisa_client.delete_repository(repo_id)
+                print(f"  Deleted repository: {repo_id}")
+            except Exception as e:
+                print(f"  Failed to delete repository {repo_id}: {e}")
     except Exception as e:
-        print(f"✗ Failed to list repositories for cleanup: {e}")
+        print(f"  Failed to list repositories for cleanup: {e}")
 
 
 def cleanup_resources(lisa_client: LisaApi, created_resources: dict[str, list]) -> None:
-    """Clean up all created resources including Bedrock Knowledge Bases."""
-    print("\n🧹 Cleaning up resources...")
-    cleanup_all_models(lisa_client)
-    cleanup_all_repositories(lisa_client)
+    """Clean up only integration test resources. Does NOT delete all models/repos."""
+    print("\nCleaning up integration test resources...")
+    cleanup_integ_models(lisa_client)
+    cleanup_integ_repositories(lisa_client)
 
     for kb_info in created_resources.get("knowledge_bases", []):
         try:
@@ -911,15 +936,26 @@ def cleanup_resources(lisa_client: LisaApi, created_resources: dict[str, list]) 
 
 def main() -> int:
     """Main entry point."""
-    parser = argparse.ArgumentParser(description="LISA Integration Setup Test")
-    parser.add_argument("--url", required=True, help="LISA ALB URL")
-    parser.add_argument("--api", required=True, help="LISA API URL")
-    parser.add_argument("--deployment-name", required=True, help="LISA deployment name")
-    parser.add_argument("--deployment-stage", required=True, help="LISA deployment stage")
-    parser.add_argument("--deployment-prefix", required=True, help="LISA deployment prefix")
-    parser.add_argument("--region", help="AWS region (overrides AWS_DEFAULT_REGION / AWS_REGION env vars)")
+    parser = argparse.ArgumentParser(
+        description="LISA Integration Setup Test. When URL/deployment args are omitted, "
+        "values are auto-discovered from config-custom.yaml and AWS SSM."
+    )
+    parser.add_argument("--url", default=None, help="LISA ALB URL (auto-discovered from SSM if omitted)")
+    parser.add_argument("--api", default=None, help="LISA API URL (auto-discovered from SSM if omitted)")
+    parser.add_argument(
+        "--deployment-name", default=None, help="LISA deployment name (from config-custom.yaml if omitted)"
+    )
+    parser.add_argument(
+        "--deployment-stage", default=None, help="LISA deployment stage (from config-custom.yaml if omitted)"
+    )
+    parser.add_argument(
+        "--deployment-prefix", default=None, help="LISA deployment prefix (unused, kept for CLI compatibility)"
+    )
+    parser.add_argument(
+        "--region", default=None, help="AWS region (overrides AWS_DEFAULT_REGION / AWS_REGION env vars)"
+    )
     parser.add_argument("--verify", default="true", help="Verify SSL certificates (default: true)")
-    parser.add_argument("--profile", help="AWS profile to use")
+    parser.add_argument("--profile", default=None, help="AWS profile to use (from config-custom.yaml if omitted)")
     parser.add_argument("--cleanup", action="store_true", help="Delete all models and repositories")
     parser.add_argument("--skip-create", action="store_true", help="Skip creation, only collect IDs")
     parser.add_argument("--wait", action="store_true", help="Wait for resources to be ready")
@@ -927,25 +963,54 @@ def main() -> int:
     args = parser.parse_args()
     verify_ssl = args.verify.lower() not in ["false", "0", "no", "off"]
 
-    print("🚀 LISA Integration Setup Test Starting...")
-    print(f"ALB URL: {args.url}")
-    print(f"API URL: {args.api}")
-    print(f"Deployment Name: {args.deployment_name}")
-    print(f"Deployment Stage: {args.deployment_stage}")
-    print(f"Deployment Prefix: {args.deployment_prefix}")
+    # Resolve config: CLI args take priority, then config-custom.yaml, then AWS SSM/CloudFormation
+    # Import here (not at module level) so isort cannot move it above the sys.path.insert calls.
+    from config_loader import fetch_url_from_aws, get_config_values  # noqa: PLC0415
+
+    cfg = get_config_values()
+    alb_url = args.url or fetch_url_from_aws("alb")
+    api_url = args.api or fetch_url_from_aws("api")
+    deployment_name = args.deployment_name or cfg.get("deployment") or "prod"
+    deployment_stage = args.deployment_stage or cfg.get("stage") or "prod"
+    region = (
+        args.region
+        or cfg.get("region")
+        or os.environ.get("AWS_DEFAULT_REGION")
+        or os.environ.get("AWS_REGION")
+        or "us-east-1"
+    )
+    profile = args.profile or (cfg.get("profile") if cfg.get("profile") not in ("", "default") else None)
+
+    if not alb_url:
+        print("✗ ALB URL could not be resolved. Provide --url or ensure LISA is deployed and")
+        print("  config-custom.yaml has deploymentName/deploymentStage/region set correctly.")
+        return 1
+    if not api_url:
+        print("✗ API URL could not be resolved. Provide --api or ensure LISA is deployed and")
+        print("  config-custom.yaml has deploymentName/deploymentStage/region set correctly.")
+        return 1
+
+    # Apply profile so all boto3 calls in this process use it
+    if profile:
+        os.environ["AWS_PROFILE"] = profile
+
+    print("LISA Integration Setup Test Starting...")
+    print(f"ALB URL: {alb_url}")
+    print(f"API URL: {api_url}")
+    print(f"Deployment Name: {deployment_name}")
+    print(f"Deployment Stage: {deployment_stage}")
     print(f"Verify SSL: {verify_ssl}")
-    print(f"AWS Profile: {args.profile}")
+    print(f"AWS Profile: {profile or '(default)'}")
 
     try:
-        auth_headers = setup_authentication(args.deployment_name, args.deployment_stage)
+        auth_headers = setup_authentication(deployment_name, deployment_stage)
 
         sts_client = boto3.client("sts")
         account_id = sts_client.get_caller_identity()["Account"]
-        region = args.region or os.environ.get("AWS_DEFAULT_REGION") or os.environ.get("AWS_REGION") or "us-east-1"
         print(f"Account ID: {account_id}")
         print(f"Region: {region}")
 
-        lisa_client = LisaApi(url=args.api, verify=verify_ssl, headers=auth_headers)
+        lisa_client = LisaApi(url=api_url, verify=verify_ssl, headers=auth_headers)
         created_resources: dict[str, list] = {"models": [], "repositories": [], "knowledge_bases": []}
 
         if args.cleanup:
@@ -954,7 +1019,7 @@ def main() -> int:
                 {
                     "knowledgeBaseId": "bedrock-kb-e2e-test-id",
                     "dataSourceId": "bedrock-kb-e2e-test-ds-id",
-                    "s3Bucket": f"{args.deployment_name}-{BEDROCK_KB_S3_BUCKET}",
+                    "s3Bucket": f"{deployment_name}-{BEDROCK_KB_S3_BUCKET}",
                 }
             ]
             cleanup_resources(lisa_client, created_resources)
@@ -1024,7 +1089,7 @@ def main() -> int:
             if store_def["type"] == "bedrock_knowledge_base" and store_def.get("create_bedrock_kb"):
                 kb_opts = store_def.get("bedrock_kb_options", {})
                 kb_result = create_bedrock_knowledge_base(
-                    deployment_name=args.deployment_name,
+                    deployment_name=deployment_name,
                     region=region,
                     kb_name=kb_opts.get("kb_name", "bedrock-kb-e2e-test"),
                     s3_bucket_name=kb_opts.get("s3_bucket_name", BEDROCK_KB_S3_BUCKET),
@@ -1076,7 +1141,7 @@ def main() -> int:
                     all_ready = False
             print("\n🎉 All resources are ready!" if all_ready else "\n⚠️  Some resources may not be ready yet")
 
-        print("\n💡 To clean up resources later, run this script with --cleanup flag")
+        print("\nTo clean up resources later, run this script with --cleanup flag")
         print("\n✅ Integration setup test completed successfully!")
         return 0
 

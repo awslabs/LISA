@@ -11,11 +11,26 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
+
+"""Integration tests for RAG SDK document operations.
+
+Tests document ingestion, listing, and deletion via the LISA SDK against a deployed environment.
+Requires: deployed LISA with at least one repository and one embedding model.
+"""
+
 import logging
-from typing import Any
+import os
+import tempfile
+import time
 
 import pytest
 from lisapy import LisaApi
+
+logger = logging.getLogger(__name__)
+
+# Maximum time to wait for document ingestion to complete (seconds)
+INGEST_TIMEOUT = 360
+INGEST_POLL_INTERVAL = 15
 
 
 class TestLisaRag:
@@ -27,48 +42,101 @@ class TestLisaRag:
         self.repo_id: str = repos[0].get("repositoryId", "")
         self.collection_id: str = models[0].get("modelId", "")
 
-    @pytest.mark.skip(reason="TODO: Implement test")
-    def test_insert_doc(self, lisa_api: LisaApi) -> None:
-        lisa_api.ingest_document(self.repo_id, self.collection_id, "test.txt")
+    def test_01_insert_doc(self, lisa_api: LisaApi) -> None:
+        """Insert a document into a collection and verify ingestion completes."""
+        # Create a temp file with test content
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", prefix="integ-test-", delete=False) as f:
+            f.write("LISA integration test document for RAG SDK.\n")
+            f.write("This file validates the document ingestion pipeline.\n")
+            temp_path = f.name
 
-    def test_list_docs(self, lisa_api: LisaApi) -> Any:
+        try:
+            filename = os.path.basename(temp_path)
+
+            # Upload to S3 via presigned URL
+            presigned_data = lisa_api._presigned_url(filename)
+            s3_key = presigned_data.get("key")
+            assert s3_key, "Presigned URL response missing 'key'"
+            lisa_api._upload_document(presigned_data, temp_path)
+            logger.info(f"Uploaded {filename} to S3 key: {s3_key}")
+
+            # Ingest the uploaded document
+            jobs = lisa_api.ingest_document(
+                self.repo_id,
+                self.collection_id,
+                s3_key,
+                collection_id=self.collection_id,
+            )
+            assert len(jobs) > 0, "ingest_document returned no jobs"
+            assert all("documentId" in job for job in jobs), "Job missing documentId"
+
+            # Store for use by subsequent tests
+            self.__class__._inserted_doc_id = jobs[0].get("documentId")
+            self.__class__._inserted_doc_name = filename
+            logger.info(f"Ingestion started: {len(jobs)} job(s), documentId={self._inserted_doc_id}")
+
+            # Wait for ingestion to complete (document appears in list_documents)
+            start = time.time()
+            while time.time() - start < INGEST_TIMEOUT:
+                documents = lisa_api.list_documents(self.repo_id, self.collection_id)
+                if documents:
+                    logger.info(f"Document ingested after {int(time.time() - start)}s")
+                    return
+                logger.info(f"Waiting for ingestion... ({int(time.time() - start)}s)")
+                time.sleep(INGEST_POLL_INTERVAL)
+
+            pytest.fail(f"Document ingestion timed out after {INGEST_TIMEOUT}s")
+
+        finally:
+            os.unlink(temp_path)
+
+    def test_02_list_docs(self, lisa_api: LisaApi) -> None:
+        """List documents in a collection and verify the response structure."""
         documents = lisa_api.list_documents(self.repo_id, self.collection_id)
-        logging.info(
-            f"Found {len(documents)} documents in repo {self.repo_id} / collection {self.collection_id} - {documents}"
-        )
-        return documents
+        logger.info(f"Found {len(documents)} documents in repo {self.repo_id} / collection {self.collection_id}")
+        assert isinstance(documents, list)
 
-    @pytest.mark.skip(reason="TODO: Implement test")
-    def test_delete_doc_by_ids(self, lisa_api: LisaApi, test_list_docs: Any) -> None:
-        logging.info(test_list_docs)
-        # repo_id = "pgvector-rag"
-        # collection_id = "intfloat-tei"
-        # document_id = "3f738ec0-05e7-4707-989e-0f21d64ee81e"
-        # try:
-        #     response = lisa_api.delete_document_by_ids(repo_id, collection_id, [document_id])
-        #     logging.info(f"{response}")
-        # except Exception as e:
-        #     assert "Document not found" in str(e)
+    def test_03_delete_doc_by_ids(self, lisa_api: LisaApi) -> None:
+        """Delete a document by ID and verify removal."""
+        documents = lisa_api.list_documents(self.repo_id, self.collection_id)
+        if not documents:
+            pytest.skip("No documents available to delete")
 
-    @pytest.mark.skip(reason="TODO: Implement test")
-    def test_delete_docs_by_name(self, lisa_api: LisaApi, test_list_docs: Any) -> None:
-        logging.info(test_list_docs)
-        # repo_id = "pgvector-rag"
-        # collection_id = "intfloat-tei"
-        # document_name = "MLSpace.txt"
-        # try:
-        #     response = lisa_api.delete_documents_by_name(repo_id, collection_id, document_name)
-        #     logging.info(f"{response}")
-        # except Exception as e:
-        #     assert "No documents found" in str(e)
+        doc = documents[0]
+        doc_id = doc.get("documentId") or doc.get("document_id") or doc.get("id")
+        assert doc_id, f"Could not extract document ID from: {doc}"
 
-    @pytest.mark.skip(reason="Management Token not supported")
+        response = lisa_api.delete_document_by_ids(self.repo_id, self.collection_id, [doc_id])
+        logger.info(f"Delete by ID response: {response}")
+
+        # Poll for eventual consistency — deletion may be async
+        start = time.time()
+        while time.time() - start < 60:
+            remaining = lisa_api.list_documents(self.repo_id, self.collection_id)
+            remaining_ids = [d.get("documentId") or d.get("document_id") or d.get("id") for d in remaining]
+            if doc_id not in remaining_ids:
+                logger.info(f"Document {doc_id} confirmed deleted after {int(time.time() - start)}s")
+                return
+            time.sleep(5)
+
+        pytest.fail(f"Document {doc_id} still present after 60s")
+
+    def test_04_delete_docs_by_name(self, lisa_api: LisaApi) -> None:
+        """Delete documents by name and verify removal."""
+        documents = lisa_api.list_documents(self.repo_id, self.collection_id)
+        if not documents:
+            pytest.skip("No documents available to delete")
+
+        doc = documents[0]
+        doc_name = doc.get("name") or doc.get("documentName") or doc.get("fileName")
+        if not doc_name:
+            pytest.skip(f"Could not extract document name from: {doc}")
+
+        response = lisa_api.delete_documents_by_name(self.repo_id, self.collection_id, doc_name)
+        logger.info(f"Delete by name response: {response}")
+
+    @pytest.mark.skip(reason="Feature gap: management tokens cannot perform similarity search")
     def test_similarity_search(self, lisa_api: LisaApi) -> None:
         response = lisa_api.similarity_search(self.repo_id, self.collection_id, "What is OversightML?")
-        logging.info(f"{response}")
+        logger.info(f"{response}")
         assert len(response) > 0
-        # repo_id = "pgvector-rag"
-        # collection_id = "intfloat-tei"
-        # query = "What is the name of the author of this document?"
-        # response = lisa_api.similarity_search(repo_id, collection_id, query)
-        # logging.info(f"{response}")

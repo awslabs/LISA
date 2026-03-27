@@ -12,114 +12,135 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""Test basic usage of the Lisapy SDK."""
+"""Integration tests for the LLM proxy (generate, stream, async).
+
+Tests text generation via the LISA LiteLLM proxy against a deployed environment.
+Requires: deployed LISA with at least one textgen model (any inference container).
+"""
+
+import logging
 
 import pytest
-from lisapy import LisaLlm
-from lisapy.errors import NotFoundError
-from lisapy.types import ModelKwargs, ModelType
+from lisapy import LisaApi, LisaLlm
+from lisapy.types import FoundationModel, ModelKwargs
+
+logger = logging.getLogger(__name__)
 
 
-@pytest.mark.skip(reason="Model not deployed")
-def test_list_textgen_tgi_models(lisa_llm: LisaLlm) -> None:
-    """Test to see if we can retrieve textgen TGI models."""
-    models = lisa_llm.list_textgen_models()
+def _get_textgen_model(lisa_api: LisaApi, streaming: bool = True) -> FoundationModel:
+    """Get the first available textgen model via the LISA API (rich format).
 
-    assert all(m.model_type == ModelType.TEXTGEN for m in models)
-    assert all(hasattr(m, "streaming") for m in models)
-
-    tgi_models = [m for m in models if m.provider == "ecs.textgen.tgi"]
-    tgi_model = tgi_models[0]
-
-    assert isinstance(tgi_model.model_kwargs, ModelKwargs)
-    assert hasattr(tgi_model.model_kwargs, "max_new_tokens")
-    assert hasattr(tgi_model.model_kwargs, "top_k")
-    assert hasattr(tgi_model.model_kwargs, "top_p")
-    assert hasattr(tgi_model.model_kwargs, "do_sample")
-    assert hasattr(tgi_model.model_kwargs, "temperature")
-    assert hasattr(tgi_model.model_kwargs, "repetition_penalty")
-    assert hasattr(tgi_model.model_kwargs, "return_full_text")
-    assert hasattr(tgi_model.model_kwargs, "truncate")
-    assert hasattr(tgi_model.model_kwargs, "stop_sequences")
-    assert hasattr(tgi_model.model_kwargs, "seed")
-    assert hasattr(tgi_model.model_kwargs, "do_sample")
-    assert hasattr(tgi_model.model_kwargs, "watermark")
-
-
-@pytest.mark.skip(reason="Model not deployed")
-def test_generate_tgi(lisa_llm: LisaLlm) -> None:
-    """Generates minimal response from textgen.tgi model in batch mode."""
-    text_gen_models = lisa_llm.list_textgen_models()
-    model = [m for m in text_gen_models if m.provider == "ecs.textgen.tgi"][0]
-    model.model_kwargs.max_new_tokens = 1
-    response = lisa_llm.generate("test", model)
-
-    # assert response.generated_text == ''
-    assert response.generated_tokens == 1
-    assert response.finish_reason == "length"
+    The LiteLLM REST endpoint returns bare OpenAI-compatible format without modelType/provider.
+    The LISA API Gateway returns full model details needed to construct a FoundationModel.
+    """
+    models = lisa_api.list_models()
+    for m in models:
+        if m.get("modelType") != "textgen":
+            continue
+        if streaming and not m.get("streaming"):
+            continue
+        container = m.get("inferenceContainer", "vllm")
+        fm = FoundationModel(
+            provider=f"ecs.textgen.{container}",
+            model_name=m["modelId"],
+            model_type="textgen",
+            model_kwargs=ModelKwargs(max_new_tokens=50),
+            streaming=m.get("streaming", False),
+        )
+        logger.info(f"Using textgen model: {m['modelName']} (id={m['modelId']}, container={container})")
+        return fm
+    pytest.skip("No textgen model deployed — run `npm run test:integ:setup` first")
 
 
-@pytest.mark.skip(reason="Use API Gateway")
+def test_list_textgen_models(lisa_api: LisaApi) -> None:
+    """Verify that at least one textgen model is available via the LISA API."""
+    models = lisa_api.list_models()
+    textgen = [m for m in models if m.get("modelType") == "textgen"]
+    assert len(textgen) > 0, "No textgen models found"
+
+    for m in textgen:
+        assert m.get("modelName"), "Model missing modelName"
+        assert m.get("modelId"), "Model missing modelId"
+        assert m.get("modelType") == "textgen"
+
+
+def test_generate(lisa_api: LisaApi, lisa_llm: LisaLlm) -> None:
+    """Test batch text generation from any available textgen model."""
+    model = _get_textgen_model(lisa_api, streaming=False)
+    model.model_kwargs = ModelKwargs(max_new_tokens=10)
+
+    response = lisa_llm.generate("What is machine learning?", model)
+    assert response.generated_text is not None
+    assert response.generated_tokens > 0
+    assert response.finish_reason in ("length", "stop")
+    logger.info(f"Generated {response.generated_tokens} tokens, reason={response.finish_reason}")
+
+
+def test_generate_stream(lisa_api: LisaApi, lisa_llm: LisaLlm) -> None:
+    """Test streaming text generation — verify chunks arrive incrementally."""
+    model = _get_textgen_model(lisa_api)
+
+    responses = list(lisa_llm.generate_stream("Explain deep learning briefly.", model=model))
+    assert len(responses) >= 1, "No streaming responses received"
+
+    # At least one response should have a non-empty token
+    tokens = [r.token for r in responses if r.token]
+    assert len(tokens) > 0, "No non-empty tokens in stream"
+
+    # Final response should have finish_reason set
+    final = responses[-1]
+    assert final.finish_reason is not None, f"Final response missing finish_reason: {final}"
+    logger.info(f"Streamed {len(responses)} chunks, {len(tokens)} tokens, reason={final.finish_reason}")
+
+
+@pytest.mark.asyncio
+async def test_generate_async(lisa_api: LisaApi, lisa_llm: LisaLlm) -> None:
+    """Test async batch text generation."""
+    model = _get_textgen_model(lisa_api, streaming=False)
+    model.model_kwargs = ModelKwargs(max_new_tokens=10)
+
+    response = await lisa_llm.agenerate("What is artificial intelligence?", model=model)
+    assert response.generated_text is not None
+    assert response.generated_tokens > 0
+    assert response.finish_reason in ("length", "stop")
+    logger.info(f"Async generated {response.generated_tokens} tokens, reason={response.finish_reason}")
+
+
+@pytest.mark.asyncio
+async def test_generate_stream_async(lisa_api: LisaApi, lisa_llm: LisaLlm) -> None:
+    """Test async streaming text generation."""
+    model = _get_textgen_model(lisa_api)
+
+    responses = []
+    async for response in lisa_llm.agenerate_stream("Describe neural networks briefly.", model=model):
+        responses.append(response)
+
+    assert len(responses) >= 1, "No async streaming responses received"
+
+    tokens = [r.token for r in responses if r.token]
+    assert len(tokens) > 0, "No non-empty tokens in async stream"
+
+    final = responses[-1]
+    assert final.finish_reason is not None, f"Final response missing finish_reason: {final}"
+    logger.info(f"Async streamed {len(responses)} chunks, {len(tokens)} tokens, reason={final.finish_reason}")
+
+
+@pytest.mark.skip(reason="LisaLlm.describe_model() not implemented in SDK")
 def test_model_not_found(lisa_llm: LisaLlm) -> None:
     """Attempts to describe a model that doesn't exist."""
+    from lisapy.errors import NotFoundError
+
     with pytest.raises(NotFoundError):
         lisa_llm.describe_model(provider="unknown.provider", model_name="model-name")
 
 
-@pytest.mark.skip(reason="Model not deployed")
+@pytest.mark.skip(reason="Requires self-hosted TEI embedding model and SDK list_embedding_models()")
 def test_embed_instructor(lisa_llm: LisaLlm) -> None:
-    """Generates a simple embedding from the instructor embedding model."""
+    """Generates a simple embedding from a self-hosted embedding model."""
     embedding_models = lisa_llm.list_embedding_models()
     model = [m for m in embedding_models if m.provider == "ecs.embedding.instructor"][0]
-    print(model)
     embedding = lisa_llm.embed("test", model)
 
     assert isinstance(embedding, list)
     assert isinstance(embedding[0], list)
     assert isinstance(embedding[0][0], float)
-
-
-@pytest.mark.skip(reason="TODO")
-def test_generate_stream(lisa_llm: LisaLlm) -> None:
-    """Generates a streaming response from a textgen.tgi model."""
-    text_gen_models = lisa_llm.list_textgen_models()
-    model = [m for m in text_gen_models if m.provider == "ecs.textgen.tgi"][0]
-    model.model_kwargs.max_new_tokens = 1
-    responses = list(lisa_llm.generate_stream("what is deep learning?", model=model))
-
-    assert len(responses) == 1
-    response = responses[0]
-
-    assert response.token == ""
-    assert response.finish_reason == "length"
-    assert response.generated_tokens == 1
-
-
-@pytest.mark.asyncio
-@pytest.mark.skip(reason="TODO")
-async def test_generate_async(lisa_llm: LisaLlm) -> None:
-    """Generates a batch async response from a textgen.tgi model."""
-    text_gen_models = lisa_llm.list_textgen_models()
-    model = [m for m in text_gen_models if m.provider == "ecs.textgen.tgi"][0]
-    model.model_kwargs.max_new_tokens = 1
-    response = await lisa_llm.agenerate("test", model=model)
-
-    assert response.finish_reason == "length"
-    assert response.generated_tokens == 1
-
-
-@pytest.mark.asyncio
-@pytest.mark.skip(reason="TODO")
-async def test_generate_stream_async(lisa_llm: LisaLlm) -> None:
-    """Generates a streaming async response from a textgen.tgi model."""
-    text_gen_models = lisa_llm.list_textgen_models()
-    model = [m for m in text_gen_models if m.provider == "ecs.textgen.tgi"][0]
-    model.model_kwargs.max_new_tokens = 1
-    responses = [response async for response in lisa_llm.agenerate_stream("what is deep learning?", model=model)]
-
-    assert len(responses) == 1
-    response = responses[0]
-
-    assert response.token == ""
-    assert response.finish_reason == "length"
-    assert response.generated_tokens == 1

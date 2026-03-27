@@ -13,7 +13,7 @@
 #   limitations under the License.
 
 """Custom errors."""
-from requests import Response  # type: ignore[import-untyped,unused-ignore]
+from typing import Any
 
 
 class RateLimitExceededError(Exception):
@@ -44,29 +44,38 @@ class UnknownError(Exception):
         super().__init__(message)
 
 
-def parse_error(status_code: int, response: Response) -> Exception:
-    """Parse error given an HTTP status code and an API response.
+def parse_error(status_code: int, response: Any = None) -> Exception:
+    """Parse error given an HTTP status code and an optional API response.
+
+    Works with both requests.Response (sync) and aiohttp.ClientResponse (async).
+    For async callers, pass the status code directly — response body extraction
+    should be done before calling this function since response.json() is async.
 
     Parameters
     ----------
     status_code : int
         HTTP status code.
 
-    response : Response
-        API response.
+    response : Any, optional
+        API response object (requests.Response) or pre-extracted error message.
 
     Returns
     -------
     Exception
         Parsed exception.
     """
-    status_code = response.status_code
-    try:
-        message = response.json()
-    except ValueError:
-        message = "An error occurred with no additional information."
+    message: Any = "An error occurred with no additional information."
+    if response is not None:
+        if isinstance(response, (str, dict, list)):
+            message = response
+        elif hasattr(response, "status_code"):
+            # requests.Response — sync, safe to call .json()
+            status_code = response.status_code
+            try:
+                message = response.json()
+            except Exception:
+                message = "An error occurred with no additional information."
 
-    # Try to parse an inference error
     if status_code == 404:
         return NotFoundError(message)
     if status_code == 429:
@@ -74,5 +83,4 @@ def parse_error(status_code: int, response: Response) -> Exception:
     if status_code == 500:
         return ModelEndpointError(message)
 
-    # Fallback to an unknown error
     return UnknownError(message)

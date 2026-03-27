@@ -135,9 +135,3 @@ class TestLisaRag:
 
         response = lisa_api.delete_documents_by_name(self.repo_id, self.collection_id, doc_name)
         logger.info(f"Delete by name response: {response}")
-
-    @pytest.mark.skip(reason="Feature gap: management tokens cannot perform similarity search")
-    def test_similarity_search(self, lisa_api: LisaApi) -> None:
-        response = lisa_api.similarity_search(self.repo_id, self.collection_id, "What is OversightML?")
-        logger.info(f"{response}")
-        assert len(response) > 0

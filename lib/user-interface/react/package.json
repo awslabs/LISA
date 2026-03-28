@@ -34,7 +34,7 @@
     "@swc/core": "^1.15.3",
     "ace-builds": "^1.43.5",
     "axios": "^1.13.2",
-    "dompurify": "^3.3.1",
+    "dompurify": "^3.3.2",
     "fdir": "^6.5.0",
     "git-repo-info": "^2.1.1",
     "jszip": "^3.10.1",

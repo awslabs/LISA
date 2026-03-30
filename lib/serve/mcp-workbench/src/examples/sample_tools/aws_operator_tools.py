@@ -78,19 +78,26 @@ def _to_serializable(obj: Any) -> Any:
     if isinstance(obj, bytes):
         return obj.decode("utf-8", errors="replace")
     if isinstance(obj, StreamingBody):
-        chunk = obj.read(_STREAMING_BODY_READ_LIMIT)
-        truncated = len(chunk) >= _STREAMING_BODY_READ_LIMIT
         try:
-            text = chunk.decode("utf-8")
-        except UnicodeDecodeError:
-            text = chunk.hex()
-            truncated = True
-        return {
-            "_streaming_body": True,
-            "content_preview": text,
-            "truncated": truncated,
-            "note": "S3 and similar APIs return a stream; only a prefix is returned here.",
-        }
+            chunk = obj.read(_STREAMING_BODY_READ_LIMIT)
+            truncated = len(chunk) >= _STREAMING_BODY_READ_LIMIT
+            try:
+                text = chunk.decode("utf-8")
+            except UnicodeDecodeError:
+                text = chunk.hex()
+                truncated = True
+            return {
+                "_streaming_body": True,
+                "content_preview": text,
+                "truncated": truncated,
+                "note": "S3 and similar APIs return a stream; only a prefix is returned here.",
+            }
+        finally:
+            try:
+                obj.close()
+            except Exception:
+                # Best-effort cleanup; ignore close errors to avoid changing caller behavior.
+                pass
     return str(obj)
 
 

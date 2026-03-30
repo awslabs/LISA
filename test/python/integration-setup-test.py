@@ -78,10 +78,10 @@ def get_management_key(deployment_name: str, deployment_stage: str, region: str 
         raise
 
 
-def create_api_token(deployment_name: str, api_key: str) -> str:
+def create_api_token(deployment_name: str, api_key: str, region: str | None = None) -> str:
     """Create an API token in DynamoDB with expiration."""
     try:
-        dynamodb = boto3.resource("dynamodb")
+        dynamodb = boto3.resource("dynamodb", region_name=region) if region else boto3.resource("dynamodb")
         table = dynamodb.Table(f"{deployment_name}-LISAApiTokenTable")
         current_time = int(time.time())
         table.put_item(Item={"token": api_key, "tokenExpiration": current_time + 3600})
@@ -92,10 +92,10 @@ def create_api_token(deployment_name: str, api_key: str) -> str:
         raise
 
 
-def setup_authentication(deployment_name: str, deployment_stage: str) -> dict[str, str]:
+def setup_authentication(deployment_name: str, deployment_stage: str, region: str | None = None) -> dict[str, str]:
     """Set up authentication for LISA API calls."""
     print(f"🔑 Setting up authentication for deployment: {deployment_name}")
-    api_key = get_management_key(deployment_name, deployment_stage)
+    api_key = get_management_key(deployment_name, deployment_stage, region=region)
     headers = {"Api-Key": api_key, "Authorization": api_key}
     print("✓ Authentication setup completed")
     return headers
@@ -887,7 +887,7 @@ def cleanup_integ_repositories(lisa_client: LisaApi) -> None:
         print(f"  Failed to list repositories for cleanup: {e}")
 
 
-def cleanup_resources(lisa_client: LisaApi, created_resources: dict[str, list]) -> None:
+def cleanup_resources(lisa_client: LisaApi, created_resources: dict[str, list], region: str | None = None) -> None:
     """Clean up only integration test resources. Does NOT delete all models/repos."""
     print("\nCleaning up integration test resources...")
     cleanup_integ_models(lisa_client)
@@ -895,8 +895,10 @@ def cleanup_resources(lisa_client: LisaApi, created_resources: dict[str, list]) 
 
     for kb_info in created_resources.get("knowledge_bases", []):
         try:
-            bedrock_agent_client = boto3.client("bedrock-agent")
-            s3_client = boto3.client("s3")
+            bedrock_agent_client = (
+                boto3.client("bedrock-agent", region_name=region) if region else boto3.client("bedrock-agent")
+            )
+            s3_client = boto3.client("s3", region_name=region) if region else boto3.client("s3")
             kb_id = kb_info.get("knowledgeBaseId")
             s3_bucket = kb_info.get("s3Bucket")
 
@@ -956,7 +958,7 @@ def main() -> int:
     )
     parser.add_argument("--verify", default="true", help="Verify SSL certificates (default: true)")
     parser.add_argument("--profile", default=None, help="AWS profile to use (from config-custom.yaml if omitted)")
-    parser.add_argument("--cleanup", action="store_true", help="Delete all models and repositories")
+    parser.add_argument("--cleanup", action="store_true", help="Delete integration-test-scoped models and repositories")
     parser.add_argument("--skip-create", action="store_true", help="Skip creation, only collect IDs")
     parser.add_argument("--wait", action="store_true", help="Wait for resources to be ready")
 
@@ -1003,9 +1005,9 @@ def main() -> int:
     print(f"AWS Profile: {profile or '(default)'}")
 
     try:
-        auth_headers = setup_authentication(deployment_name, deployment_stage)
+        auth_headers = setup_authentication(deployment_name, deployment_stage, region=region)
 
-        sts_client = boto3.client("sts")
+        sts_client = boto3.client("sts", region_name=region)
         account_id = sts_client.get_caller_identity()["Account"]
         print(f"Account ID: {account_id}")
         print(f"Region: {region}")
@@ -1022,7 +1024,7 @@ def main() -> int:
                     "s3Bucket": f"{deployment_name}-{BEDROCK_KB_S3_BUCKET}",
                 }
             ]
-            cleanup_resources(lisa_client, created_resources)
+            cleanup_resources(lisa_client, created_resources, region=region)
             print("\n✅ Integration setup test completed successfully!")
             return 0
 

@@ -22,6 +22,7 @@ credentials. For production, consider restricting allowed services or operations
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
@@ -132,7 +133,16 @@ def aws_api_call(
             "Use boto3's snake_case names (see AWS service API docs / boto3 reference)."
         )
 
-    params = parameters or {}
+    if parameters is None:
+        params = {}
+    elif not isinstance(parameters, Mapping):
+        raise ValueError(
+            f"parameters must be a JSON object (mapping of string keys to boto3 keyword arguments), "
+            f"not {type(parameters).__name__}."
+        )
+    else:
+        params = dict(parameters)
+
     try:
         response = method(**params)
     except TypeError as exc:

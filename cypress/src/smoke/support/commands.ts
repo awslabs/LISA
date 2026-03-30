@@ -55,9 +55,9 @@ let mockSessions: Array<{
  * Setup stateful project stubs that track mutations.
  */
 function setupProjectStubs (apiBase: string) {
-    // Initialize from fixture
+    // Initialize from fixture with dynamic dates computed from _*DaysAgo metadata
     cy.fixture('project.json').then((fixtureProjects) => {
-        mockProjects = [...fixtureProjects];
+        mockProjects = fixtureProjects.map(applyDateOffsets) as typeof mockProjects;
     });
 
     // GET projects - returns current state
@@ -129,12 +129,54 @@ function setupProjectStubs (apiBase: string) {
 }
 
 /**
+ * Compute a date relative to now, offset by the given number of days.
+ */
+function daysAgo (days: number): string {
+    const date = new Date();
+    date.setDate(date.getDate() - days);
+    return date.toISOString();
+}
+
+/**
+ * Transforms a fixture entry by converting underscore-prefixed day-offset
+ * metadata fields (_startDaysAgo, _updatedDaysAgo, _createDaysAgo) into
+ * real ISO date strings, then strips the metadata fields.
+ *
+ * This keeps fixture JSON files as the single source of truth for both
+ * API shape and timing intent. See Sessions.tsx for bucket boundaries:
+ * Last Day (<=1), Last 7 Days (<=7), Last Month (<=30),
+ * Last 3 Months (<=90), Older (>90).
+ */
+function applyDateOffsets (fixture: Record<string, unknown>): Record<string, unknown> {
+    const result = { ...fixture };
+
+    if (typeof result._startDaysAgo === 'number') {
+        result.startTime = daysAgo(result._startDaysAgo as number);
+        result.createTime = daysAgo(result._startDaysAgo as number);
+    }
+    if (typeof result._createDaysAgo === 'number') {
+        result.createTime = daysAgo(result._createDaysAgo as number);
+    }
+    if (typeof result._updatedDaysAgo === 'number') {
+        result.lastUpdated = daysAgo(result._updatedDaysAgo as number);
+    }
+
+    // Strip metadata fields before using as mock API response
+    delete result._startDaysAgo;
+    delete result._createDaysAgo;
+    delete result._updatedDaysAgo;
+    delete result._expectedBucket;
+
+    return result;
+}
+
+/**
  * Setup stateful session stubs that track mutations.
  */
 function setupSessionStubs (apiBase: string) {
-    // Initialize from fixture
+    // Initialize from fixture with dynamic dates computed from _*DaysAgo metadata
     cy.fixture('session.json').then((fixtureSessions) => {
-        mockSessions = [...fixtureSessions];
+        mockSessions = fixtureSessions.map(applyDateOffsets) as typeof mockSessions;
     });
 
     // GET sessions - returns current state

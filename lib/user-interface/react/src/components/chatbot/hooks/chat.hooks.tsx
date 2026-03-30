@@ -86,13 +86,12 @@ const processReasoningContent = (
 };
 
 /**
- * Checks to see if exceptions being caught are due to a guardrail
- * being triggered so that they can handled gracefully.
- *
+* Checks whether caught exceptions are due to a guardrail
+ * being triggered so that they can be handled gracefully.
  */
 const isGuardrailError = (error: any): boolean => {
     const msg = error?.error?.message || error?.message || '';
-    return typeof msg === 'string' && msg.toLowerCase().includes('guardrail');
+    return typeof msg === 'string' && msg.toLowerCase().includes('violated guardrail policy');
 };
 
 /**

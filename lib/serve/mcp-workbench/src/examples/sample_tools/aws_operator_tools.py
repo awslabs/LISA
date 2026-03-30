@@ -137,7 +137,7 @@ def aws_api_call(
         response = method(**params)
     except TypeError as exc:
         raise ValueError(
-            f"Bad parameters for {service}.{operation}: {exc}. " "Check required arguments in the AWS API / boto3 docs."
+            f"Bad parameters for {service}.{operation}: {exc}. Check required arguments in the AWS API / boto3 docs."
         ) from exc
 
     return {"response": _to_serializable(response)}

@@ -13,38 +13,50 @@
 #   limitations under the License.
 
 """Custom errors."""
-from typing import Any
+from typing import Protocol, runtime_checkable, Union
+
+
+@runtime_checkable
+class _SyncResponse(Protocol):
+    """Minimal protocol for sync HTTP response objects (e.g. requests.Response)."""
+
+    status_code: int
+
+    def json(self) -> object: ...
+
+
+ErrorResponse = Union[_SyncResponse, str, dict, list, None]
 
 
 class RateLimitExceededError(Exception):
     """Rate limit exceeded exception."""
 
-    def __init__(self, message: str) -> None:
+    def __init__(self, message: object) -> None:
         super().__init__(message)
 
 
 class NotFoundError(Exception):
     """Not found exception."""
 
-    def __init__(self, message: str) -> None:
+    def __init__(self, message: object) -> None:
         super().__init__(message)
 
 
 class ModelEndpointError(Exception):
     """Model endpoint error exception."""
 
-    def __init__(self, message: str) -> None:
+    def __init__(self, message: object) -> None:
         super().__init__(message)
 
 
 class UnknownError(Exception):
     """Unknown error exception."""
 
-    def __init__(self, message: str) -> None:
+    def __init__(self, message: object) -> None:
         super().__init__(message)
 
 
-def parse_error(status_code: int, response: Any = None) -> Exception:
+def parse_error(status_code: int, response: ErrorResponse = None) -> Exception:
     """Parse error given an HTTP status code and an optional API response.
 
     Works with both requests.Response (sync) and aiohttp.ClientResponse (async).
@@ -56,7 +68,7 @@ def parse_error(status_code: int, response: Any = None) -> Exception:
     status_code : int
         HTTP status code.
 
-    response : Any, optional
+    response : ErrorResponse, optional
         API response object (requests.Response) or pre-extracted error message.
 
     Returns
@@ -64,12 +76,11 @@ def parse_error(status_code: int, response: Any = None) -> Exception:
     Exception
         Parsed exception.
     """
-    message: Any = "An error occurred with no additional information."
+    message: object = "An error occurred with no additional information."
     if response is not None:
         if isinstance(response, (str, dict, list)):
             message = response
-        elif hasattr(response, "status_code"):
-            # requests.Response — sync, safe to call .json()
+        elif isinstance(response, _SyncResponse):
             try:
                 message = response.json()
             except Exception:

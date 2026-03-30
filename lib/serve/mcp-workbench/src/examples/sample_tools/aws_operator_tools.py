@@ -98,7 +98,7 @@ def _to_serializable(obj: Any) -> Any:
                 obj.close()
             except Exception:
                 # Best-effort cleanup; ignore close errors to avoid changing caller behavior.
-                pass
+                pass  # nosec B110
     return str(obj)
 
 

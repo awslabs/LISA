@@ -33,7 +33,7 @@ while [[ $# -gt 0 ]]; do
       echo "  --rest-url, -r    URL to the LISA REST API"
       echo "  --alb-url, -a     URL to the ALB"
       echo "  --verify, -v      SSL verify (true/false)"
-      echo "  --cleanup, -c    Clean up resources after"
+      echo "  --cleanup, -c    Clean up integration-test-scoped resources after"
       echo "  --skip-create, -sc  Skip resource creation"
       echo "  --wait, -w       Wait for resources"
       exit 0

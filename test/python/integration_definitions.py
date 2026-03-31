@@ -323,7 +323,7 @@ BEDROCK_MODEL_DEFINITIONS: dict[str, dict] = {
 # ---------------------------------------------------------------------------
 
 VECTOR_STORE_DEFINITIONS: dict[str, dict] = {
-    "pgv-rag": {
+    "test-pgvector-rag": {
         "description": (
             "PostgreSQL pgvector. Self-hosted relational vector store running on RDS. Best for "
             "teams already using PostgreSQL — supports hybrid SQL+vector queries, ACID transactions, "
@@ -403,37 +403,37 @@ VECTOR_STORE_DEFINITIONS: dict[str, dict] = {
 # ---------------------------------------------------------------------------
 
 # Self-hosted textgen models to deploy (keys from MODEL_DEFINITIONS)
-# Ordered by general usefulness: frontier first, then mid-size, specialized, legacy base models
+# Default: lightweight model sufficient for SDK integration tests.
+# Add others as needed; comment out if GPU quota is unavailable.
 deploy_models: list[str] = [
-    "gpt-oss-120b",  # frontier capability, complex reasoning & agentic tasks
-    "gpt-oss-20b",  # mid-size general purpose, good cost/capability balance
-    "qwen2-vl-7b-instruct",  # multimodal — only option for image input
-    "llama-3-2-3b-instruct",  # lightweight instruct, low-latency / high-throughput
-    "granite-20b-code-instruct-8k",  # specialized: code generation and completion
-    "mistral-7b-v03",  # base model, fine-tuning or completion tasks
+    "mistral-7b-v03",  # instruct model already in S3 — 1x g6.2xlarge, good for integ tests
+    # "llama-3-2-3b-instruct", # requires HF gated access — request at huggingface.co/meta-llama
+    # "gpt-oss-20b",           # mid-size general purpose, good cost/capability balance
+    # "gpt-oss-120b",          # frontier capability, complex reasoning & agentic tasks
+    # "qwen2-vl-7b-instruct",  # multimodal — only option for image input
+    # "granite-20b-code-instruct-8k",  # specialized: code generation and completion
+    # "mistral-7b-v03",        # base model, fine-tuning or completion tasks
 ]
 
 # Self-hosted embedding models to deploy (keys from EMBEDDED_MODEL_DEFINITIONS)
-# Ordered by general usefulness: quality first, then cost-efficient alternatives
 deploy_embedded_models: list[str] = [
-    # "baai-embed-15",  # top MTEB quality, best for semantic search & RAG
-    "e5-embed",  # solid general-purpose baseline (e5-large-v2)
+    # "e5-embed",        # solid general-purpose baseline (e5-large-v2)
+    # "baai-embed-15",   # top MTEB quality, best for semantic search & RAG
     # "qwen3-embed-8b",  # highest quality for long-doc / multilingual retrieval
-    # "qwen3-embed-06b",  # cost-efficient long-context alternative
+    # "qwen3-embed-06b", # cost-efficient long-context alternative
 ]
 
 # Bedrock models to deploy (keys from BEDROCK_MODEL_DEFINITIONS)
-# Ordered by general usefulness: balanced first, then max capability, then cost-optimized
 deploy_bedrock_models: list[str] = [
-    # "sonnet-46",  # best general-purpose: reasoning, tools, image input
-    # "opus-46",  # max capability for complex multi-step tasks
+    "titan-embed",  # Bedrock-native embeddings — required for RAG integration tests
     # "nova-micro",  # ultra-low latency for high-volume simple tasks
-    # "titan-embed",  # Bedrock-native embeddings, no self-hosted infra needed
+    # "sonnet-46",   # best general-purpose: reasoning, tools, image input
+    # "opus-46",     # max capability for complex multi-step tasks
 ]
 
 # Vector stores to deploy (keys from VECTOR_STORE_DEFINITIONS)
 deploy_vector_stores: list[str] = [
-    # "pgv-rag",
-    # "os-rag",
-    # "bedrock-kb-rag",
+    "test-pgvector-rag",  # pgvector repository — required for RAG integration tests
+    # "os-rag",            # OpenSearch — higher cost, optional
+    # "bedrock-kb-rag",    # Bedrock Knowledge Base — optional
 ]

@@ -90,7 +90,7 @@ repos:
       args:
         - --max-line-length=120
         - --extend-immutable-calls=Query,fastapi.Depends,fastapi.params.Depends
-        - --ignore=B008,B042,E203,W503 # Ignore error for function calls in argument defaults and exception __init__ args
+        - --ignore=B008,B042,E203,E704,W503 # Ignore error for function calls in argument defaults and exception __init__ args
       exclude: ^(__init__.py$|.*\/__init__.py$|test/cdk/stacks/__baselines__/)
 
 

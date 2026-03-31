@@ -199,16 +199,25 @@ class ApiTokenAuthorizer:
     """
 
     def __init__(self) -> None:
+        table_name = os.environ.get(TOKEN_TABLE_NAME)
+        if not table_name:
+            logger.info("TOKEN_TABLE_NAME is unset; programmatic API token auth is disabled (OIDC still works).")
+            self._token_table = None
+            return
         ddb_resource = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"])
-        self._token_table = ddb_resource.Table(os.environ[TOKEN_TABLE_NAME])
+        self._token_table = ddb_resource.Table(table_name)
 
     def _get_token_info(self, token: str) -> Any:
         """Return DDB entry for token if it exists."""
+        if self._token_table is None:
+            return None
         ddb_response = self._token_table.get_item(Key={"token": token}, ReturnConsumedCapacity="NONE")
         return ddb_response.get("Item", None)
 
     def is_valid_api_token(self, headers: dict[str, str]) -> bool:
         """Return if API Token from request headers is valid if found."""
+        if self._token_table is None:
+            return False
         for header_name in API_KEY_HEADER_NAMES:
             token = get_authorization_token(headers, header_name)
             if token:

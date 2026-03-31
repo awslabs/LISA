@@ -120,6 +120,8 @@ export function navigateToAdminPage (menuItemName: string) {
 export function verifyAdminPageLoaded (urlFragment: string, pageTitle?: string) {
     cy.url().should('include', urlFragment);
 
+    waitForContentToLoad();
+
     if (pageTitle) {
         cy.get('h1, h2, [data-testid="page-title"]')
             .should('be.visible')
@@ -147,7 +149,6 @@ export function navigateAndVerifyAdminPage (
 ) {
     navigateToAdminPage(menuItemName);
     verifyAdminPageLoaded(urlFragment, pageTitle);
-    waitForContentToLoad();
 
     switch (contentType) {
         case 'table':

@@ -301,6 +301,9 @@ After configuring your certificate and custom domains in `config-custom.yaml`, y
 * Create a CNAME record for `serve.<alias>.people.aws.dev`:
   * Type: CNAME
   * Value: Your LisaServe REST API Application Load Balancer DNS name (found in EC2 → Load Balancers)
+* If you use MCP Workbench (`deployMcpWorkbench`), create a **separate** DNS record for the workbench hostname (derived from your Serve hostname when you do not set `mcpWorkbenchEcsConfig.domainName`, e.g. `lisa-serve…` → `lisa-mcp-workbench…`, or `serve…` → `mcp-workbench…`):
+  * Type: CNAME (or alias A to the workbench ALB as your DNS allows)
+  * Value: The **MCP Workbench** Application Load Balancer DNS name (a different load balancer from the Serve API; see the `LisaMcpWorkbench` stack or EC2 → Load Balancers)
 
 **For Internal AWS Deployments**:
 

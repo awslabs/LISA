@@ -747,6 +747,25 @@ const FastApiContainerConfigSchema = z.object({
         ),
 }).describe('Configuration schema for REST API.');
 
+/** Custom domain / TLS for the MCP Workbench ALB only (separate from Serve’s `restApiConfig`). */
+const McpWorkbenchRestApiConfigSchema = z
+    .object({
+        domainName: z
+            .string()
+            .nullish()
+            .default(null)
+            .describe(
+                'Hostname for the MCP Workbench ALB (HTTPS listener and SSM …/mcpWorkbench/endpoint). Configure here for the same YAML shape as `restApiConfig.domainName` for LISA Serve.',
+            ),
+        sslCertIamArn: z
+            .string()
+            .nullish()
+            .default(null)
+            .describe(
+                'ACM certificate ARN for the MCP Workbench ALB. Same role as `restApiConfig.sslCertIamArn` for Serve; if omitted, falls back to `mcpWorkbenchEcsConfig.sslCertIamArn` then `restApiConfig.sslCertIamArn`.',
+            ),
+    })
+    .describe('Optional load balancer domain and TLS for MCP Workbench (parallel to `restApiConfig` for LISA Serve).');
 
 const RagFileProcessingConfigSchema = z.object({
     chunkSize: z.number().min(100).max(10000),
@@ -863,6 +882,9 @@ export const RawConfigObject = z.object({
     partition: z.string().default('aws').describe('AWS partition for deployment.'),
     domain: z.string().default('amazonaws.com').describe('AWS domain for deployment'),
     restApiConfig: FastApiContainerConfigSchema.describe('Image override for Rest API'),
+    mcpWorkbenchRestApiConfig: McpWorkbenchRestApiConfigSchema.optional().describe(
+        'Custom domain and certificate for the MCP Workbench ALB. Same usage as `restApiConfig.domainName` / `sslCertIamArn` for LISA Serve.',
+    ),
     mcpWorkbenchConfig: ImageAssetSchema.optional().describe('Image override for MCP Workbench'),
     mcpWorkbenchBuildConfig: z.object({
         S6_OVERLAY_NOARCH_SOURCE: z.string().optional().describe('Override the URL with a path relative to the build directory for the architecture independent S6 overlay tar.xz.'),
@@ -906,6 +928,39 @@ export const RawConfigObject = z.object({
     deployMcp: z.boolean().default(true).describe('Whether to deploy LISA MCP stack.'),
     deployServe: z.boolean().default(true).describe('Whether to deploy LISA Serve stack.'),
     deployMcpWorkbench: z.boolean().default(true).describe('Whether to deploy MCP Workbench stack.'),
+    mcpWorkbenchEcsConfig: z
+        .object({
+            instanceType: z.enum(VALID_INSTANCE_KEYS).optional().describe('EC2 instance type for the MCP Workbench ECS cluster.'),
+            blockDeviceVolumeSize: z.number().min(30).optional().describe('Root volume size (GiB) for cluster instances.'),
+            minCapacity: z.number().min(1).optional().describe('Minimum ASG capacity for the MCP Workbench cluster.'),
+            maxCapacity: z.number().min(1).optional().describe('Maximum ASG capacity for the MCP Workbench cluster.'),
+            cooldown: z.number().min(1).optional().describe('Cooldown (seconds) between scaling activities.'),
+            domainName: z
+                .string()
+                .nullish()
+                .describe(
+                    'Optional hostname for the MCP Workbench ALB (same effect as `mcpWorkbenchRestApiConfig.domainName`; use that block for parity with `restApiConfig`). ' +
+                    'If omitted and restApiConfig.domainName is set, a default is derived (e.g. first label `lisa-serve` → `lisa-mcp-workbench`, or `serve` → `mcp-workbench`) so the workbench does not reuse the Serve API hostname. ' +
+                    'Otherwise the published endpoint uses this ALB’s DNS name. You must create DNS for the chosen or derived name pointing at the MCP Workbench ALB.',
+                ),
+            sslCertIamArn: z
+                .string()
+                .nullish()
+                .describe(
+                    'Optional ACM certificate ARN for the MCP Workbench ALB HTTPS listener (same effect as `mcpWorkbenchRestApiConfig.sslCertIamArn`). If omitted, inherits restApiConfig.sslCertIamArn when set; ' +
+                    'otherwise the workbench ALB uses HTTP on port 80 (browser MCP from an https UI will fail). Set explicitly when using a dedicated workbench hostname.',
+                ),
+        })
+        .optional()
+        .describe(
+            'Optional sizing and load-balancer settings for the MCP Workbench ECS cluster. The workbench HTTP server always runs on its own ECS cluster and ALB (separate from the Serve REST API).',
+        ),
+    mcpWorkbenchCorsOrigins: z
+        .string()
+        .default('*')
+        .describe(
+            'Comma-separated CORS allowed origins for the MCP Workbench HTTP server container (CORS_ORIGINS). Use * to allow any browser origin (typical when the UI is served from varying hosts or ports). More restrictive deployments can list explicit origins.',
+        ),
     logLevel: z.union([z.literal('DEBUG'), z.literal('INFO'), z.literal('WARNING'), z.literal('ERROR')])
         .default('DEBUG')
         .describe('Log level for application.'),

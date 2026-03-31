@@ -34,29 +34,33 @@ function parseArgs() {
   const args = process.argv.slice(2);
   let modelId = '';
   let s3Bucket = '';
+  let profile = '';
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '-m' || args[i] === '--model-id') {
       modelId = args[++i] || '';
     } else if (args[i] === '-s' || args[i] === '--s3-bucket') {
       s3Bucket = args[++i] || '';
+    } else if (args[i] === '-p' || args[i] === '--profile') {
+      profile = args[++i] || '';
     } else if (args[i] === '-h' || args[i] === '--help') {
-      console.error(`Usage: node scripts/check-for-models.mjs -m <model-id> -s <s3-bucket>`);
+      console.error(`Usage: node scripts/check-for-models.mjs -m <model-id> -s <s3-bucket> [-p <profile>]`);
       process.exit(0);
     }
   }
-  return { modelId, s3Bucket };
+  return { modelId, s3Bucket, profile };
 }
 
 function main() {
-  const { modelId, s3Bucket } = parseArgs();
+  const { modelId, s3Bucket, profile } = parseArgs();
   if (!modelId || !s3Bucket) {
     console.error('Error: -m (model-id) and -s (s3-bucket) are required');
     process.exit(1);
   }
 
   try {
+    const profileArg = profile ? `--profile ${profile}` : '';
     const out = execSync(
-      `aws s3api list-objects-v2 --bucket ${s3Bucket} --prefix "${modelId}/" --output json`,
+      `aws s3api list-objects-v2 --bucket ${s3Bucket} --prefix "${modelId}/" --output json ${profileArg}`,
       { cwd: ROOT, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }
     );
     const data = JSON.parse(out);

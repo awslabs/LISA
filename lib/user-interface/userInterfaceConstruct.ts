@@ -199,6 +199,15 @@ export class UserInterfaceConstruct extends Construct {
                 `${config.deploymentPrefix}/lisaServeRestApiUri`,
             ).stringValue,
             RESTAPI_VERSION: 'v2',
+            ...(config.deployMcpWorkbench
+                ? {
+                    MCP_WORKBENCH_URI: StringParameter.fromStringParameterName(
+                        scope,
+                        createCdkId(['LisaMcpWorkbenchHostedUri', 'StringParameter']),
+                        `${config.deploymentPrefix}/mcpWorkbench/endpoint`,
+                    ).stringValue,
+                }
+                : {}),
             RAG_ENABLED: config.deployRag,
             HOSTED_MCP_ENABLED: config.deployMcp,
             API_BASE_URL: config.apiGatewayConfig?.domainName ? '/' : `/${config.deploymentStage}/`,

@@ -308,36 +308,8 @@ export class IngestionJobConstruct extends Construct {
         const batchFailureMetricLambda = new lambda.Function(this, 'BatchFailureMetricPublisher', {
             functionName: `${config.deploymentName}-${config.deploymentStage}-batch-failure-metric`,
             runtime: lambda.Runtime.PYTHON_3_13,
-            handler: 'index.handler',
-            code: lambda.Code.fromInline(`
-import boto3, os, json
-
-cloudwatch = boto3.client("cloudwatch")
-NAMESPACE = os.environ["METRICS_NAMESPACE"]
-DEPLOYMENT = os.environ["DEPLOYMENT_NAME"]
-STAGE = os.environ["DEPLOYMENT_STAGE"]
-
-def handler(event, context):
-    job_queue = event.get("detail", {}).get("jobQueue", "unknown")
-    job_name = event.get("detail", {}).get("jobName", "unknown")
-    status = event.get("detail", {}).get("status", "FAILED")
-    cloudwatch.put_metric_data(
-        Namespace=NAMESPACE,
-        MetricData=[
-            {
-                "MetricName": "JobsFailed",
-                "Dimensions": [
-                    {"Name": "DeploymentName", "Value": DEPLOYMENT},
-                    {"Name": "DeploymentStage", "Value": STAGE},
-                    {"Name": "JobQueue", "Value": job_queue.split("/")[-1]},
-                ],
-                "Value": 1,
-                "Unit": "Count",
-            },
-        ],
-    )
-    print(json.dumps({"status": status, "jobName": job_name, "jobQueue": job_queue}))
-`),
+            handler: 'batch_failure_metric.handler',
+            code: lambda.Code.fromAsset(path.join(__dirname, '../../../lambda/metrics')),
             environment: {
                 METRICS_NAMESPACE: 'LISA/BatchIngestion',
                 DEPLOYMENT_NAME: config.deploymentName,

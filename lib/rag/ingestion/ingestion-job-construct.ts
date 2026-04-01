@@ -302,13 +302,14 @@ export class IngestionJobConstruct extends Construct {
             action: 'lambda:InvokeFunction'
         });
 
-        // EventBridge rule to catch Batch job failures and publish custom CloudWatch metric.
-        // AWS Batch does not publish job-level metrics (JobsFailedCount, etc.) to CloudWatch
-        // natively, so we use EventBridge job state change events as the source of truth.
-        const batchFailureMetricLambda = new lambda.Function(this, 'BatchFailureMetricPublisher', {
-            functionName: `${config.deploymentName}-${config.deploymentStage}-batch-failure-metric`,
+        // EventBridge rule to capture Batch job state changes and publish custom CloudWatch metrics.
+        // AWS Batch does not publish job-level metrics to CloudWatch natively, so we use
+        // EventBridge job state change events as the source of truth. This captures all
+        // ingestion jobs regardless of trigger (S3 event, scheduled, or manual upload).
+        const batchJobMetricLambda = new lambda.Function(this, 'BatchJobMetricPublisher', {
+            functionName: `${config.deploymentName}-${config.deploymentStage}-batch-job-metric`,
             runtime: lambda.Runtime.PYTHON_3_13,
-            handler: 'batch_failure_metric.handler',
+            handler: 'batch_job_metric.handler',
             code: lambda.Code.fromAsset(path.join(__dirname, '../../../lambda/metrics')),
             environment: {
                 METRICS_NAMESPACE: 'LISA/BatchIngestion',
@@ -321,23 +322,23 @@ export class IngestionJobConstruct extends Construct {
             securityGroups: [vpc.securityGroups.lambdaSg],
         });
 
-        batchFailureMetricLambda.addToRolePolicy(new iam.PolicyStatement({
+        batchJobMetricLambda.addToRolePolicy(new iam.PolicyStatement({
             actions: ['cloudwatch:PutMetricData'],
             resources: ['*'],
         }));
 
-        new events.Rule(this, 'BatchJobFailedRule', {
-            ruleName: `${config.deploymentName}-${config.deploymentStage}-batch-job-failed`,
-            description: 'Captures AWS Batch job failures for ingestion pipeline and publishes CloudWatch metric',
+        new events.Rule(this, 'BatchJobStateChangeRule', {
+            ruleName: `${config.deploymentName}-${config.deploymentStage}-batch-job-state-change`,
+            description: 'Captures AWS Batch job state changes for ingestion pipeline and publishes CloudWatch metrics',
             eventPattern: {
                 source: ['aws.batch'],
                 detailType: ['Batch Job State Change'],
                 detail: {
-                    status: ['FAILED'],
+                    status: ['SUBMITTED', 'RUNNING', 'SUCCEEDED', 'FAILED'],
                     jobQueue: [{ suffix: jobQueue.jobQueueName }],
                 },
             },
-            targets: [new targets.LambdaFunction(batchFailureMetricLambda)],
+            targets: [new targets.LambdaFunction(batchJobMetricLambda)],
         });
     }
 }

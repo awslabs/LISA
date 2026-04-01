@@ -12,7 +12,13 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""Lambda handler for publishing CloudWatch metrics on Batch job failures."""
+"""Lambda handler for publishing CloudWatch metrics on Batch job state changes.
+
+Captures SUBMITTED, RUNNING, SUCCEEDED, and FAILED state transitions from
+EventBridge and publishes corresponding metrics to the LISA/BatchIngestion
+namespace. This provides queue-level visibility regardless of how the
+ingestion job was triggered (S3 event, scheduled, or manual upload).
+"""
 
 import json
 import logging
@@ -24,17 +30,25 @@ logger = logging.getLogger(__name__)
 
 cloudwatch = boto3.client("cloudwatch")
 
+# Map Batch job states to CloudWatch metric names
+STATE_METRIC_MAP = {
+    "SUBMITTED": "JobsSubmitted",
+    "RUNNING": "JobsStarted",
+    "SUCCEEDED": "JobsSucceeded",
+    "FAILED": "JobsFailed",
+}
+
 
 def handler(event: dict, context: dict) -> None:
-    """Publish a CloudWatch metric when an AWS Batch ingestion job fails.
+    """Publish a CloudWatch metric when an AWS Batch ingestion job changes state.
 
     Triggered by an EventBridge rule that captures Batch Job State Change
-    events with status FAILED for the ingestion job queue.
+    events for the ingestion job queue.
 
     Parameters
     ----------
     event : dict
-        EventBridge event with Batch job failure details.
+        EventBridge event with Batch job state change details.
     context : dict
         Lambda execution context.
     """
@@ -45,13 +59,18 @@ def handler(event: dict, context: dict) -> None:
     detail = event.get("detail", {})
     job_queue = detail.get("jobQueue", "unknown")
     job_name = detail.get("jobName", "unknown")
-    status = detail.get("status", "FAILED")
+    status = detail.get("status", "UNKNOWN")
+
+    metric_name = STATE_METRIC_MAP.get(status)
+    if not metric_name:
+        logger.warning(json.dumps({"message": "Unhandled job status", "status": status}))
+        return
 
     cloudwatch.put_metric_data(
         Namespace=namespace,
         MetricData=[
             {
-                "MetricName": "JobsFailed",
+                "MetricName": metric_name,
                 "Dimensions": [
                     {"Name": "DeploymentName", "Value": deployment},
                     {"Name": "DeploymentStage", "Value": stage},
@@ -62,4 +81,4 @@ def handler(event: dict, context: dict) -> None:
             },
         ],
     )
-    logger.info(json.dumps({"status": status, "jobName": job_name, "jobQueue": job_queue}))
+    logger.info(json.dumps({"status": status, "metric": metric_name, "jobName": job_name, "jobQueue": job_queue}))

@@ -754,24 +754,25 @@ export class ModelHealthDashboard extends Construct {
         // Batch Ingestion Metrics
         // =====================================================================
         // AWS Batch does not publish job-level metrics to CloudWatch natively.
-        // Job failures are captured via EventBridge → Lambda → custom CloudWatch
-        // metric (LISA/BatchIngestion namespace). Lambda invocation metrics track
-        // job submissions. Function names follow:
-        //   {deploymentName}-{deploymentStage}-ingestion-{ingest-schedule|ingest-event|delete-event}
+        // All job state transitions (SUBMITTED, RUNNING, SUCCEEDED, FAILED) are
+        // captured via EventBridge → Lambda → custom CloudWatch metrics in the
+        // LISA/BatchIngestion namespace. This provides queue-level visibility
+        // regardless of how the job was triggered (S3 event, scheduled, or
+        // manual upload through the chat UI).
         dashboard.addWidgets(
             new cloudwatch.TextWidget({
-                markdown: '## **Batch Ingestion**\nDocument ingestion pipeline metrics (Lambda submissions + custom failure metric)',
+                markdown: '## **Batch Ingestion**\nJob queue metrics from EventBridge state change events (covers all ingestion triggers)',
                 width: 24,
                 height: 1,
                 background: cloudwatch.TextWidgetBackground.TRANSPARENT,
             }),
 
-            // Ingestion Lambda invocations — tracks job submissions
+            // Jobs submitted — total ingestion jobs entering the queue from any source
             new cloudwatch.GraphWidget({
-                title: 'Ingestion Lambda Invocations (Job Submissions)',
+                title: 'Jobs Submitted (All Sources)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/Lambda,FunctionName} MetricName="Invocations" ${dp}-${config.deploymentStage}-ingestion', 'Sum', 300)`,
+                        expression: `SEARCH('{LISA/BatchIngestion,DeploymentName,DeploymentStage,JobQueue} MetricName="JobsSubmitted" DeploymentName="${dp}"', 'Sum', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
@@ -780,24 +781,17 @@ export class ModelHealthDashboard extends Construct {
                 height: 6,
             }),
 
-            // Ingestion Lambda errors — failures in the submission Lambdas themselves
+            // Jobs succeeded vs failed — completion outcomes
             new cloudwatch.GraphWidget({
-                title: 'Ingestion Lambda Errors',
+                title: 'Jobs Succeeded vs Failed',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/Lambda,FunctionName} MetricName="Errors" ${dp}-${config.deploymentStage}-ingestion', 'Sum', 300)`,
+                        expression: `SEARCH('{LISA/BatchIngestion,DeploymentName,DeploymentStage,JobQueue} MetricName="JobsSucceeded" DeploymentName="${dp}"', 'Sum', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),
                 ],
-                width: 12,
-                height: 6,
-            }),
-
-            // Batch job failures — from custom metric published by EventBridge → Lambda
-            new cloudwatch.GraphWidget({
-                title: 'Batch Job Failures',
-                left: [
+                right: [
                     new cloudwatch.MathExpression({
                         expression: `SEARCH('{LISA/BatchIngestion,DeploymentName,DeploymentStage,JobQueue} MetricName="JobsFailed" DeploymentName="${dp}"', 'Sum', 300)`,
                         label: '',
@@ -808,12 +802,27 @@ export class ModelHealthDashboard extends Construct {
                 height: 6,
             }),
 
-            // Ingestion Lambda duration — how long submissions take
+            // Jobs started — tracks jobs that entered RUNNING state
             new cloudwatch.GraphWidget({
-                title: 'Ingestion Lambda Duration (ms)',
+                title: 'Jobs Started (Running)',
                 left: [
                     new cloudwatch.MathExpression({
-                        expression: `SEARCH('{AWS/Lambda,FunctionName} MetricName="Duration" ${dp}-${config.deploymentStage}-ingestion', 'Average', 300)`,
+                        expression: `SEARCH('{LISA/BatchIngestion,DeploymentName,DeploymentStage,JobQueue} MetricName="JobsStarted" DeploymentName="${dp}"', 'Sum', 300)`,
+                        label: '',
+                        period: Duration.minutes(5),
+                    }),
+                ],
+                width: 12,
+                height: 6,
+            }),
+
+            // Ingestion Lambda errors — failures in the submission Lambdas themselves
+            // (kept as a secondary signal for Lambda-level issues)
+            new cloudwatch.GraphWidget({
+                title: 'Ingestion Lambda Errors',
+                left: [
+                    new cloudwatch.MathExpression({
+                        expression: `SEARCH('{AWS/Lambda,FunctionName} MetricName="Errors" ${dp}-${config.deploymentStage}-ingestion', 'Sum', 300)`,
                         label: '',
                         period: Duration.minutes(5),
                     }),

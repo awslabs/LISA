@@ -48,7 +48,7 @@ The script uses the same authentication setup as the original `integration-test.
 
 - `--rest-url, -r` - URL to the LISA REST API (auto-detected from CloudFormation if not provided)
 - `--verify, -v` - SSL certificate verification ('true' or 'false', defaults to 'false')
-- `--cleanup, -c` - Clean up all created resources after deployment
+- `--cleanup, -c` - Clean up integration-test-scoped resources after deployment
 - `--wait, -w` - Wait for resources to reach ready state before completing
 - `--help, -h` - Display help message
 
@@ -80,7 +80,7 @@ Resources remain deployed for manual testing and must be cleaned up through:
 - Manual AWS resource deletion
 
 #### With --cleanup flag:
-All created resources are automatically deleted at the end of the test run.
+Integration-test-scoped resources (models and repositories created by this script) are automatically deleted at the end of the test run. User-created resources are not affected.
 
 #### With --wait flag:
 Script monitors resource deployment status and waits up to 30 minutes for each resource to become ready. Useful for validating full deployment pipeline.

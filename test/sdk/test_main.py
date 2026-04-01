@@ -147,9 +147,8 @@ class TestLisaLlmGenerate:
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            "generatedText": "Generated response",
-            "generatedTokens": 10,
-            "finishReason": "stop",
+            "choices": [{"message": {"content": "Generated response"}, "finish_reason": "stop"}],
+            "usage": {"completion_tokens": 10},
         }
 
         with patch.object(llm._session, "post", return_value=mock_response):
@@ -173,19 +172,18 @@ class TestLisaLlmGenerate:
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            "generatedText": "Response",
-            "generatedTokens": 5,
-            "finishReason": "stop",
+            "choices": [{"message": {"content": "Response"}, "finish_reason": "stop"}],
+            "usage": {"completion_tokens": 5},
         }
 
         with patch.object(llm._session, "post", return_value=mock_response) as mock_post:
             llm.generate("prompt", model)
 
-            # Verify model kwargs were included in request
+            # Verify model kwargs were included in request (max_new_tokens → max_tokens)
             call_args = mock_post.call_args
             payload = call_args[1]["json"]
-            assert "modelKwargs" in payload
-            assert payload["modelKwargs"]["temperature"] == 0.7
+            assert payload["max_tokens"] == 100
+            assert payload["temperature"] == 0.7
 
     def test_generate_error(self):
         """Test generation with error response."""
@@ -221,7 +219,7 @@ class TestLisaLlmEmbed:
 
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {"embeddings": [[0.1, 0.2, 0.3]]}
+        mock_response.json.return_value = {"data": [{"embedding": [0.1, 0.2, 0.3]}]}
 
         with patch.object(llm._session, "post", return_value=mock_response):
             embeddings = llm.embed("test text", model)
@@ -241,7 +239,7 @@ class TestLisaLlmEmbed:
 
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {"embeddings": [[0.1, 0.2], [0.3, 0.4]]}
+        mock_response.json.return_value = {"data": [{"embedding": [0.1, 0.2]}, {"embedding": [0.3, 0.4]}]}
 
         with patch.object(llm._session, "post", return_value=mock_response):
             embeddings = llm.embed(["text1", "text2"], model)
@@ -285,9 +283,10 @@ class TestLisaLlmGenerateStream:
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.iter_lines.return_value = [
-            b'data:{"token":{"text":"Hello"}}',
-            b'data:{"token":{"text":" world"}}',
-            b'data:{"finishReason":"stop","generatedTokens":2}',
+            b'data: {"choices":[{"delta":{"content":"Hello"},"finish_reason":null}]}',
+            b'data: {"choices":[{"delta":{"content":" world"},"finish_reason":null}]}',
+            b'data: {"choices":[{"delta":{},"finish_reason":"stop"}],"usage":{"completion_tokens":2}}',
+            b"data: [DONE]",
         ]
 
         with patch.object(llm._session, "post", return_value=mock_response):
@@ -316,6 +315,243 @@ class TestLisaLlmGenerateStream:
         with patch.object(llm._session, "post", return_value=mock_response):
             with pytest.raises(Exception):
                 list(llm.generate_stream("prompt", model))
+
+
+class TestLisaLlmHealth:
+    """Test suite for health check methods."""
+
+    def test_health_success(self):
+        """Health check should return parsed JSON response."""
+        from lisapy.main import LisaLlm
+
+        llm = LisaLlm(url="https://api.example.com")
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"status": "healthy"}
+
+        with patch.object(llm._session, "get", return_value=mock_response) as mock_get:
+            result = llm.health()
+
+            assert result == {"status": "healthy"}
+            mock_get.assert_called_once_with(f"{llm.url}/serve/health")
+
+    def test_health_error(self):
+        """Health check should raise on non-200 response."""
+        from lisapy.main import LisaLlm
+
+        llm = LisaLlm(url="https://api.example.com")
+
+        mock_response = Mock()
+        mock_response.status_code = 503
+        mock_response.json.return_value = {"status": "unhealthy"}
+
+        with patch.object(llm._session, "get", return_value=mock_response):
+            with pytest.raises(Exception):
+                llm.health()
+
+    def test_health_readiness_success(self):
+        """Readiness check should return parsed JSON response."""
+        from lisapy.main import LisaLlm
+
+        llm = LisaLlm(url="https://api.example.com")
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"status": "ready"}
+
+        with patch.object(llm._session, "get", return_value=mock_response) as mock_get:
+            result = llm.health_readiness()
+
+            assert result == {"status": "ready"}
+            mock_get.assert_called_once_with(f"{llm.url}/serve/health/readiness")
+
+    def test_health_readiness_error(self):
+        """Readiness check should raise on non-200 response."""
+        from lisapy.main import LisaLlm
+
+        llm = LisaLlm(url="https://api.example.com")
+
+        mock_response = Mock()
+        mock_response.status_code = 503
+        mock_response.json.return_value = {"status": "not ready"}
+
+        with patch.object(llm._session, "get", return_value=mock_response):
+            with pytest.raises(Exception):
+                llm.health_readiness()
+
+    def test_health_liveliness_success(self):
+        """Liveliness check should normalize string response to dict."""
+        from lisapy.main import LisaLlm
+
+        llm = LisaLlm(url="https://api.example.com")
+
+        # LiteLLM returns a plain string "I'm alive!" for this endpoint
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = "I'm alive!"
+
+        with patch.object(llm._session, "get", return_value=mock_response) as mock_get:
+            result = llm.health_liveliness()
+
+            assert result == {"status": "I'm alive!"}
+            mock_get.assert_called_once_with(f"{llm.url}/serve/health/liveliness")
+
+    def test_health_liveliness_error(self):
+        """Liveliness check should raise on non-200 response."""
+        from lisapy.main import LisaLlm
+
+        llm = LisaLlm(url="https://api.example.com")
+
+        mock_response = Mock()
+        mock_response.status_code = 503
+        mock_response.json.return_value = {"status": "not alive"}
+
+        with patch.object(llm._session, "get", return_value=mock_response):
+            with pytest.raises(Exception):
+                llm.health_liveliness()
+
+
+class TestLisaLlmGetModelInfo:
+    """Test suite for get_model_info method."""
+
+    def test_get_model_info_success(self):
+        """get_model_info should return a list of ModelInfoEntry objects."""
+        from lisapy.main import LisaLlm
+        from lisapy.types import ModelInfoEntry
+
+        llm = LisaLlm(url="https://api.example.com")
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "data": [
+                {
+                    "model_name": "mistral-vllm",
+                    "litellm_params": {"model": "hosted_vllm/mistral-vllm", "api_base": "http://internal-alb/v1"},
+                    "model_info": {"id": "abc123", "max_tokens": 4096},
+                },
+                {
+                    "model_name": "titan-embed",
+                    "litellm_params": {"model": "bedrock/titan-embed"},
+                    "model_info": {"id": "def456"},
+                },
+            ]
+        }
+
+        with patch.object(llm._session, "get", return_value=mock_response) as mock_get:
+            result = llm.get_model_info()
+
+            assert len(result) == 2
+            assert isinstance(result[0], ModelInfoEntry)
+            assert result[0].model_name == "mistral-vllm"
+            assert result[0].litellm_params["model"] == "hosted_vllm/mistral-vllm"
+            assert result[1].model_name == "titan-embed"
+            mock_get.assert_called_once_with(f"{llm.url}/serve/model/info")
+
+    def test_get_model_info_empty(self):
+        """get_model_info should return empty list when no models configured."""
+        from lisapy.main import LisaLlm
+
+        llm = LisaLlm(url="https://api.example.com")
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"data": []}
+
+        with patch.object(llm._session, "get", return_value=mock_response):
+            result = llm.get_model_info()
+
+            assert result == []
+
+    def test_get_model_info_error(self):
+        """get_model_info should raise on non-200 response."""
+        from lisapy.main import LisaLlm
+
+        llm = LisaLlm(url="https://api.example.com")
+
+        mock_response = Mock()
+        mock_response.status_code = 500
+        mock_response.json.return_value = {"error": "Internal Server Error"}
+
+        with patch.object(llm._session, "get", return_value=mock_response):
+            with pytest.raises(Exception):
+                llm.get_model_info()
+
+
+class TestLisaLlmComplete:
+    """Test suite for legacy text completions."""
+
+    def test_complete_success(self):
+        """complete() should return a CompletionResponse with parsed fields."""
+        from lisapy.main import LisaLlm
+        from lisapy.types import CompletionResponse
+
+        llm = LisaLlm(url="https://api.example.com")
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "id": "cmpl-abc123",
+            "choices": [{"text": " there was a", "index": 0, "finish_reason": "length"}],
+            "usage": {"prompt_tokens": 5, "completion_tokens": 4, "total_tokens": 9},
+        }
+
+        with patch.object(llm._session, "post", return_value=mock_response) as mock_post:
+            result = llm.complete("Once upon a time", model="mistral-vllm")
+
+            assert isinstance(result, CompletionResponse)
+            assert result.id == "cmpl-abc123"
+            assert result.choices[0].text == " there was a"
+            assert result.choices[0].finish_reason == "length"
+            assert result.usage["completion_tokens"] == 4
+
+            payload = mock_post.call_args[1]["json"]
+            assert payload["model"] == "mistral-vllm"
+            assert payload["prompt"] == "Once upon a time"
+            mock_post.assert_called_once()
+
+    def test_complete_with_kwargs(self):
+        """complete() should forward allowed kwargs and filter unknown ones."""
+        from lisapy.main import LisaLlm
+
+        llm = LisaLlm(url="https://api.example.com")
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "id": "cmpl-xyz",
+            "choices": [{"text": "hello", "index": 0, "finish_reason": "stop"}],
+            "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+        }
+
+        with patch.object(llm._session, "post", return_value=mock_response) as mock_post:
+            llm.complete(
+                "Say hi",
+                model="test-model",
+                max_tokens=100,
+                temperature=0.7,
+                unknown_param="should_be_filtered",
+            )
+
+            payload = mock_post.call_args[1]["json"]
+            assert payload["max_tokens"] == 100
+            assert payload["temperature"] == 0.7
+            assert "unknown_param" not in payload
+
+    def test_complete_error(self):
+        """complete() should raise on non-200 response."""
+        from lisapy.main import LisaLlm
+
+        llm = LisaLlm(url="https://api.example.com")
+
+        mock_response = Mock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {"error": "Bad Request"}
+
+        with patch.object(llm._session, "post", return_value=mock_response):
+            with pytest.raises(Exception):
+                llm.complete("prompt", model="test-model")
 
 
 class TestLisaLlmCleanup:

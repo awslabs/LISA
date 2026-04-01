@@ -21,6 +21,45 @@ from typing import Any, Literal, TypedDict, Union
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class ModelInfoEntry(BaseModel):
+    """A model entry from the LiteLLM model info endpoint."""
+
+    model_name: str = Field(..., description="Model name registered in LiteLLM.")
+    litellm_params: dict[str, Any] = Field(default_factory=dict, description="LiteLLM parameters.")
+    model_info: dict[str, Any] = Field(default_factory=dict, description="Model metadata.")
+
+    model_config = ConfigDict(extra="allow")
+
+
+class CompletionChoice(BaseModel):
+    """A single choice from a legacy text completion response."""
+
+    text: str = Field(..., description="Generated text.")
+    index: int = Field(0, description="Choice index.")
+    finish_reason: str | None = Field(None, description="Finish reason.")
+
+    model_config = ConfigDict(extra="allow")
+
+
+class CompletionResponse(BaseModel):
+    """Response from the legacy text completions endpoint."""
+
+    id: str = Field(..., description="Completion ID.")
+    choices: list[CompletionChoice] = Field(default_factory=list, description="Completion choices.")
+    usage: dict[str, Any] = Field(default_factory=dict, description="Token usage.")
+
+    model_config = ConfigDict(extra="allow")
+
+
+class ImageResponse(BaseModel):
+    """Response from the image generation endpoint."""
+
+    created: int = Field(..., description="Unix timestamp of creation.")
+    data: list[dict[str, Any]] = Field(default_factory=list, description="Generated image data.")
+
+    model_config = ConfigDict(extra="allow")
+
+
 class ModelType(str, Enum):
     """Type of foundation models."""
 

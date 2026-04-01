@@ -249,6 +249,7 @@ export class EcsMcpServer extends Construct {
             ...Cors.DEFAULT_HEADERS,
             'Accept',
             'Mcp-Session-Id',
+            'X-Session-Id',
             'Last-Event-Id',
             'mcp-protocol-version',
             'X-Amz-User-Agent',

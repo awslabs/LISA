@@ -128,14 +128,27 @@ class RagIntegrationFixtures:
         return os.getenv("TEST_REPOSITORY_ID", "test-pgvector-rag")
 
     @pytest.fixture(scope="class")
-    def test_embedding_model(self) -> str:
+    def test_embedding_model(self, lisa_client: LisaApi) -> str:
         """Get the embedding model to use for tests.
+
+        Resolves in order:
+        1. TEST_EMBEDDING_MODEL env var (explicit override)
+        2. First embedding model returned by the API (resilient to user-defined modelIds)
 
         Returns:
             str: Embedding model ID
         """
-        # Use a common embedding model
-        return os.getenv("TEST_EMBEDDING_MODEL", "titan-embed")
+        explicit = os.getenv("TEST_EMBEDDING_MODEL")
+        if explicit:
+            return explicit
+
+        models = lisa_client.list_embedding_models()
+        if not models:
+            pytest.skip("No embedding models deployed — run `npm run test:integ:setup` first")
+
+        model_id = models[0].get("modelId")
+        logger.info(f"Resolved embedding model: {model_id} ({models[0].get('modelName', '')})")
+        return model_id
 
     @pytest.fixture(scope="class")
     def test_collection(self, lisa_client: LisaApi, test_repository_id: str, test_embedding_model: str) -> dict:

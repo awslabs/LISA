@@ -39,6 +39,9 @@ import time
 from urllib.error import URLError
 from urllib.request import urlopen
 
+import boto3
+from botocore.config import Config as BotoConfig
+
 log_level = logging.DEBUG if os.environ.get("DEBUG", "").lower() in ("true", "1", "yes") else logging.INFO
 logging.basicConfig(
     level=log_level,
@@ -46,13 +49,6 @@ logging.basicConfig(
     stream=sys.stdout,
 )
 log = logging.getLogger("metrics_publisher")
-
-try:
-    import boto3
-    from botocore.config import Config as BotoConfig
-except ImportError:
-    log.error("boto3 not available — metrics publisher disabled")
-    sys.exit(0)
 
 # ---------------------------------------------------------------------------
 # Configuration

@@ -141,15 +141,16 @@ export class FastApiContainer extends Construct {
             }
 
             // When prepareDockerOffline is enabled, pre-generate the Prisma engine binary cache.
-            // This downloads Prisma engine binaries from binaries.prisma.sh and places them in
-            // PRISMA_CACHE/ so the Docker build can use them without internet access.
-            // Same pattern as the tiktoken cache generation above.
+            // This downloads Prisma engine binaries from binaries.prisma.sh for the target
+            // container platform and places them in PRISMA_CACHE/ so the Docker build can use
+            // them without internet access. Same pattern as the tiktoken cache generation above.
             if (config.prepareDockerOffline && process.env.NODE_ENV !== 'test') {
                 const prismaCacheDir = path.join(REST_API_PATH, 'PRISMA_CACHE');
                 console.log('prepareDockerOffline: Generating Prisma engine binary cache for offline builds...');
                 try {
                     const scriptPath = path.join(ROOT_PATH, 'scripts', 'generate-prisma-cache.py');
-                    child_process.execSync(`python3 ${scriptPath} ${prismaCacheDir}`, { stdio: 'inherit' });
+                    const platform = config.restApiConfig.buildConfig?.PRISMA_PLATFORM || 'debian-openssl-3.0.x';
+                    child_process.execSync(`python3 ${scriptPath} ${prismaCacheDir} --platform ${platform}`, { stdio: 'inherit' });
                 } catch (error) {
                     console.error('prepareDockerOffline: Failed to generate Prisma cache:', error);
                     throw new Error(

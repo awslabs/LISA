@@ -18,6 +18,12 @@ Generate Prisma engine binary cache for offline/airgapped Docker builds.
 Downloads Prisma engine binaries from binaries.prisma.sh and places them in
 the PRISMA_CACHE directory so the Dockerfile can use them without internet.
 
+Unlike running `prisma version` (which downloads binaries for the *current*
+host platform), this script downloads binaries for a specified *target*
+platform. This is critical when the build machine OS differs from the Docker
+container OS — e.g. building on Amazon Linux or macOS while the container
+uses python:3.13-slim (Debian).
+
 The Dockerfile sets PRISMA_QUERY_ENGINE_BINARY and PRISMA_SCHEMA_ENGINE_BINARY
 env vars to point at these cached files, bypassing Prisma's platform detection
 and download logic entirely.
@@ -55,8 +61,6 @@ def get_engine_version() -> str:
         from prisma import config
         return config.expected_engine_version
     except ImportError:
-        print("Warning: prisma-client-py not installed, using fallback engine version detection")
-        # Fallback: read from the installed package metadata
         raise SystemExit(
             "prisma-client-py must be installed to determine the engine version. "
             "Install it with: pip install prisma"

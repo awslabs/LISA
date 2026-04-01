@@ -127,7 +127,7 @@
     "tsx": "^4.21.0",
     "typescript": "~5.9.3",
     "wait-on": "^9.0.4",
-    "zod2md": "^0.3.2"
+    "zod2md": "^0.3.3"
   },
   "dependencies": {
     "@aws-sdk/util-dynamodb": "^3.996.2",

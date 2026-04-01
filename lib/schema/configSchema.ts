@@ -58,12 +58,12 @@ export enum ModelType {
  * @property {string} pgVectorSecurityGroupId - Security Group ID.
  */
 export const SecurityGroupConfigSchema = z.object({
-    modelSecurityGroupId: z.string().startsWith('sg-'),
-    restAlbSecurityGroupId: z.string().startsWith('sg-'),
-    lambdaSecurityGroupId: z.string().startsWith('sg-'),
-    liteLlmDbSecurityGroupId: z.string().startsWith('sg-'),
-    openSearchSecurityGroupId: z.string().startsWith('sg-').optional(),
-    pgVectorSecurityGroupId: z.string().startsWith('sg-').optional(),
+    modelSecurityGroupId: z.string().regex(/^sg-/, 'Must start with sg-'),
+    restAlbSecurityGroupId: z.string().regex(/^sg-/, 'Must start with sg-'),
+    lambdaSecurityGroupId: z.string().regex(/^sg-/, 'Must start with sg-'),
+    liteLlmDbSecurityGroupId: z.string().regex(/^sg-/, 'Must start with sg-'),
+    openSearchSecurityGroupId: z.string().regex(/^sg-/, 'Must start with sg-').optional(),
+    pgVectorSecurityGroupId: z.string().regex(/^sg-/, 'Must start with sg-').optional(),
 })
     .describe('Security Group Overrides used across stacks.');
 
@@ -727,7 +727,8 @@ const FastApiContainerConfigSchema = z.object({
     sslCertIamArn: z.string().nullish().default(null).describe('ARN of the self-signed cert to be used throughout the system'),
     imageConfig: ImageAssetSchema.optional().describe('Override image configuration for ECS FastAPI Containers'),
     buildConfig: z.object({
-        PRISMA_CACHE_DIR: z.string().optional().describe('Override with a path relative to the build directory for a pre-cached prisma directory. Defaults to PRISMA_CACHE.')
+        PRISMA_CACHE_DIR: z.string().optional().describe('Override with a path relative to the build directory for a pre-cached prisma directory. Defaults to PRISMA_CACHE.'),
+        PRISMA_PLATFORM: z.string().optional().describe('Prisma engine binary platform target for offline cache generation. Must match the container base image OS. Defaults to debian-openssl-3.0.x (matches python:3.13-slim). Common values: debian-openssl-3.0.x, rhel-openssl-3.0.x, linux-musl-openssl-3.0.x.')
     }).default({}),
     rdsConfig: RdsInstanceConfig
         .default({
@@ -894,7 +895,7 @@ export const RawConfigObject = z.object({
     batchIngestionConfig: ImageAssetSchema.optional().describe('Image override for Batch Ingestion'),
     vpcId: z.string().optional().describe('VPC ID for the application. (e.g. vpc-0123456789abcdef)'),
     subnets: z.array(z.object({
-        subnetId: z.string().startsWith('subnet-'),
+        subnetId: z.string().regex(/^subnet-/, 'Must start with subnet-'),
         ipv4CidrBlock: z.string(),
         availabilityZone: z.string().describe('Specify the availability zone for the subnet in the format {region}{letter} (e.g., us-east-1a).'),
     })).optional().describe('Array of subnet objects for the application. These contain a subnetId(e.g. [subnet-fedcba9876543210] and ipv4CidrBlock'),

@@ -266,10 +266,13 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     request_type = event.get("RequestType", "")
     logger.info(f"LiteLLM model sync invoked: RequestType={request_type}")
 
-    # Delete is a no-op — nothing to clean up
+    # Delete is a no-op — nothing to clean up.
+    # IMPORTANT: Return the *incoming* PhysicalResourceId on Delete so the CDK
+    # framework doesn't reject the response for changing the physical ID.
     if request_type == "Delete":
         logger.info("RequestType=Delete: no-op, returning SUCCESS")
-        return {"Status": "SUCCESS", "PhysicalResourceId": PHYSICAL_RESOURCE_ID}
+        physical_id = event.get("PhysicalResourceId", PHYSICAL_RESOURCE_ID)
+        return {"Status": "SUCCESS", "PhysicalResourceId": physical_id}
 
     # Create and Update both run the sync
     try:

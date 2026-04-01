@@ -14,6 +14,7 @@
  limitations under the License.
  */
 import { CustomResource, Duration, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
+import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import { ITable, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine, IDatabaseInstance } from 'aws-cdk-lib/aws-rds';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -431,6 +432,68 @@ export class LisaServeApplicationConstruct extends Construct {
                 litellmDbConnectionInfoPs.grantRead(serveRole);
                 serveRole.attachInlinePolicy(invocation_permissions);
             }
+        }
+
+        // =====================================================================
+        // REST API ALB Alarms
+        // =====================================================================
+        // These alarms use the REST API ALB's concrete dimensions (known at deploy
+        // time). Model ALB alarms are not created here because model ALBs are
+        // dynamic and CloudWatch does not support SEARCH in Metric Alarms.
+        // Model ALB health is monitored via SEARCH-based dashboard widgets in
+        // the ModelHealthDashboard.
+        if (config.deployHealthDashboard) {
+            const restAlb = restApi.apiCluster.loadBalancer;
+            const restAlbFullName = restAlb.loadBalancerFullName;
+            const alarmPrefix = `${config.deploymentName}-${config.deploymentStage}-LISA`;
+
+            new cloudwatch.Alarm(scope, 'RestApi-ELB5xxAlarm', {
+                alarmName: `${alarmPrefix}-RestApi-ELB5xxErrors`,
+                alarmDescription: 'REST API ALB is returning 5xx errors, typically meaning no healthy targets are available.',
+                metric: new cloudwatch.Metric({
+                    namespace: 'AWS/ApplicationELB',
+                    metricName: 'HTTPCode_ELB_5XX_Count',
+                    dimensionsMap: { LoadBalancer: restAlbFullName },
+                    statistic: 'Sum',
+                    period: Duration.minutes(5),
+                }),
+                threshold: 5,
+                comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+                evaluationPeriods: 2,
+                treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+            });
+
+            new cloudwatch.Alarm(scope, 'RestApi-HighLatencyAlarm', {
+                alarmName: `${alarmPrefix}-RestApi-HighP99Latency`,
+                alarmDescription: 'REST API p99 response time exceeds 120 seconds. The API may be overloaded.',
+                metric: new cloudwatch.Metric({
+                    namespace: 'AWS/ApplicationELB',
+                    metricName: 'TargetResponseTime',
+                    dimensionsMap: { LoadBalancer: restAlbFullName },
+                    statistic: 'p99',
+                    period: Duration.minutes(5),
+                }),
+                threshold: 120,
+                comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+                evaluationPeriods: 3,
+                treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+            });
+
+            new cloudwatch.Alarm(scope, 'RestApi-RejectedConnectionsAlarm', {
+                alarmName: `${alarmPrefix}-RestApi-RejectedConnections`,
+                alarmDescription: 'REST API ALB is rejecting connections, indicating the API is at maximum capacity.',
+                metric: new cloudwatch.Metric({
+                    namespace: 'AWS/ApplicationELB',
+                    metricName: 'RejectedConnectionCount',
+                    dimensionsMap: { LoadBalancer: restAlbFullName },
+                    statistic: 'Sum',
+                    period: Duration.minutes(5),
+                }),
+                threshold: 0,
+                comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+                evaluationPeriods: 2,
+                treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+            });
         }
 
         // Create Lambda for syncing models from DynamoDB to LiteLLM

@@ -38,8 +38,8 @@ RUN /opt/conda/bin/conda install s5cmd && \
 ARG LOCAL_CODE_PATH
 WORKDIR ${LOCAL_CODE_PATH}
 
-COPY src/inference.py src/requirements.txt ${LOCAL_CODE_PATH}/
-COPY src/entrypoint.sh entrypoint.sh
+COPY embedding/instructor/src/inference.py embedding/instructor/src/requirements.txt ${LOCAL_CODE_PATH}/
+COPY embedding/instructor/src/entrypoint.sh entrypoint.sh
 RUN chmod +x entrypoint.sh
 
 ENTRYPOINT ["./entrypoint.sh"]

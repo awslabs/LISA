@@ -85,7 +85,7 @@ export class RepositoryApi extends Construct {
                 method: 'GET',
                 environment: {
                     ...baseEnvironment,
-                },
+                }
             },
             {
                 name: 'list_status',

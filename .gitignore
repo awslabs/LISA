@@ -18,6 +18,7 @@ __pycache__/
 *.key
 *.pem
 TIKTOKEN_CACHE
+PRISMA_CACHE
 # Ignore only top-level docs directory, not lib/docs
 /docs/
 

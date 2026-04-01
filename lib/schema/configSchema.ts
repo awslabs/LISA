@@ -1023,6 +1023,8 @@ export const RawConfigObject = z.object({
     convertInlinePoliciesToManaged: z.boolean().optional().default(false).describe('Convert inline policies to managed policies'),
     iamRdsAuth: z.boolean().optional().default(false)
         .describe('Enable IAM authentication for RDS. When true (default), IAM authentication is used and the bootstrap password is deleted after setup. When false, password-based authentication is used. WARNING: Switching from true to false after deployment is not supported - the master password is permanently deleted when IAM auth is enabled. This is a one-way migration.'),
+    prepareDockerOffline: z.boolean().default(false)
+        .describe('When true, pre-generates all Docker build dependencies (tiktoken cache, Prisma engine binaries) during CDK synth so that subsequent Docker builds can run in an airgapped environment without access to binaries.prisma.sh or other external hosts. Requires Docker and internet access on the synth machine.'),
 });
 
 export const RawConfigSchema = RawConfigObject

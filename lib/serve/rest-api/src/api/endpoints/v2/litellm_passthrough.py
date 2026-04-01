@@ -515,6 +515,12 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
         logger.error(f"Invalid JSON in request body: {e}")
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid JSON in request body")
 
+    # Strip non-standard keys that clients (e.g. OpenAI SDK) may include in the request body.
+    # LiteLLM forwards unrecognized params to Bedrock's additionalModelRequestFields, and
+    # some Bedrock regions (e.g. GovCloud) strictly reject extraneous keys like "telemetry".
+    if isinstance(params, dict):
+        params.pop("telemetry", None)
+
     # If the caller didn't already set OpenAI's "user" identifier, populate it
     # with the human-readable LISA username so LiteLLM can surface it in logs.
     if isinstance(params, dict) and lisa_username and (not params.get("user")):

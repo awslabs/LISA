@@ -118,12 +118,22 @@ export class McpServerApi extends Construct {
         if (!mcpResource) {
             mcpResource = restApi.root.addResource('mcp');
         }
+        // Match hosted MCP server routes: browser MCP clients send MCP + LISA session headers (see ecsMcpServer.allowedCorsHeaders)
+        const mcpBrowserCorsAllowHeaders = Array.from(new Set([
+            ...Cors.DEFAULT_HEADERS,
+            'Accept',
+            'Mcp-Session-Id',
+            'X-Session-Id',
+            'Last-Event-Id',
+            'mcp-protocol-version',
+            'X-Amz-User-Agent',
+        ]));
         // Add CORS preflight support for the /mcp resource
         // This ensures OPTIONS method is available even if the resource already existed
         // addCorsPreflight is idempotent - it won't create duplicate OPTIONS methods
         mcpResource.addCorsPreflight({
             allowOrigins: Cors.ALL_ORIGINS,
-            allowHeaders: Cors.DEFAULT_HEADERS,
+            allowHeaders: mcpBrowserCorsAllowHeaders,
         });
         const mcpResourceId = mcpResource.resourceId;
 

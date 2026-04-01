@@ -174,8 +174,8 @@ def handler(event, context):
                 domainName: ['lisa-rag', repositoryId].join('-'),
                 // us-isof requires a different FIPS TLS policy
                 tlsSecurityPolicy: region!.includes('isof') ? 'Policy-Min-TLS-1-2-RFC9151-FIPS-2024-08' as TLSSecurityPolicy : TLSSecurityPolicy.TLS_1_2_PFS,
-                // latest available in ADC regions as of 3/20/26
-                version: EngineVersion.OPENSEARCH_2_19,
+                // latest available in ADC regions as of 4/1/26
+                version: EngineVersion.OPENSEARCH_3_3,
                 enableVersionUpgrade: true,
                 vpc: vpc,
                 ...(subnetSelection && {vpcSubnets: [subnetSelection]}),

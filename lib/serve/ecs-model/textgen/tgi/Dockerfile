@@ -17,18 +17,23 @@ RUN mkdir -p /etc/ssh && \
         echo "KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512" >> /etc/ssh/sshd_config; \
     fi
 
-##### DOWNLOAD MOUNTPOINTS S3
+##### Download S3 mountpoints and boto3
 ARG MOUNTS3_DEB_URL
 ARG MOUNTS3_DEB_SHA256
-RUN apt-get update -y && apt-get upgrade -y && apt-get install -y wget rsync && \
+RUN apt-get update -y && apt-get upgrade -y && \
+    apt-get install -y wget rsync python3 python3-pip && \
     wget ${MOUNTS3_DEB_URL} -O mount-s3.deb && \
     if [ -n "${MOUNTS3_DEB_SHA256}" ]; then \
         echo "${MOUNTS3_DEB_SHA256}  mount-s3.deb" | sha256sum -c; \
     fi && \
     apt-get install -y ./mount-s3.deb && \
+    pip3 install --no-cache-dir --break-system-packages boto3 && \
     rm mount-s3.deb && rm -rf /var/lib/apt/lists/*
 
-COPY src/entrypoint.sh ./entrypoint.sh
+# Metrics publisher for CloudWatch (scrapes Prometheus /metrics endpoint)
+COPY metrics_publisher.py /opt/metrics_publisher.py
+
+COPY textgen/tgi/src/entrypoint.sh ./entrypoint.sh
 RUN chmod +x entrypoint.sh
 
 ENTRYPOINT ["./entrypoint.sh"]

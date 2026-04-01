@@ -284,6 +284,14 @@ echo "=== VLLM Environment Variables ==="
 env | grep -E "^VLLM_" || echo "No VLLM_ environment variables set"
 echo "==================================="
 
+# Start metrics publisher in background (publishes Prometheus metrics to CloudWatch)
+if [ -f /opt/metrics_publisher.py ]; then
+    export INFERENCE_ENGINE="vllm"
+    echo "Starting metrics publisher daemon..."
+    python3 /opt/metrics_publisher.py &
+    METRICS_PID=$!
+    echo "Metrics publisher started (PID: ${METRICS_PID})"
+fi
 
 python3 -m vllm.entrypoints.openai.api_server \
     --model ${LOCAL_MODEL_PATH} \

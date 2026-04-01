@@ -125,7 +125,7 @@ export function registerAPIEndpoint (
             vpc: vpc.vpc,
             securityGroups,
             vpcSubnets: vpc.subnetSelection,
-            logRetention: RetentionDays.ONE_MONTH,
+            logRetention: RetentionDays.ONE_MONTH
         });
     }
 

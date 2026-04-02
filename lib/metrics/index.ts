@@ -22,6 +22,7 @@ import { Construct } from 'constructs';
 import { BaseProps } from '../schema';
 import { Vpc } from '../networking/vpc';
 import { MetricsConstruct } from './metricsConstruct';
+import { ModelHealthDashboard } from './modelHealthDashboard';
 
 /**
  * Properties for LisaMetricsStack.
@@ -47,6 +48,10 @@ export class LisaMetricsStack extends Stack {
         super(scope, id, props);
 
         new MetricsConstruct(this, id, props).node.addMetadata('aws:cdk:path', this.node.path);
+
+        if (props.config.deployHealthDashboard) {
+            new ModelHealthDashboard(this, 'ModelHealth', { config: props.config });
+        }
 
     }
 }

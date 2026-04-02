@@ -194,4 +194,5 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
             use_ssl=True,
             verify_certs=True,
             connection_class=RequestsHttpConnection,
+            engine="faiss",
         )

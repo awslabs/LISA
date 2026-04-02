@@ -13,10 +13,10 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
-import { CustomResource, Duration, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
+import { Duration, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import { ITable, Table } from 'aws-cdk-lib/aws-dynamodb';
-import { Credentials, DatabaseInstance, DatabaseInstanceEngine, IDatabaseInstance } from 'aws-cdk-lib/aws-rds';
+import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 import { FastApiContainer } from '../api-base/fastApiContainer';
@@ -26,22 +26,18 @@ import { Vpc } from '../networking/vpc';
 import { APP_MANAGEMENT_KEY, BaseProps } from '../schema';
 import {
     Effect,
-    ManagedPolicy,
     Policy,
     PolicyStatement,
     Role,
-    ServicePrincipal,
 } from 'aws-cdk-lib/aws-iam';
 import { HostedRotation } from 'aws-cdk-lib/aws-secretsmanager';
 import { SecurityGroupEnum } from '../core/iam/SecurityGroups';
 import { SecurityGroupFactory } from '../networking/vpc/security-group-factory';
-import { LAMBDA_PATH, REST_API_PATH } from '../util';
-import { AwsCustomResource, AwsCustomResourcePolicy, PhysicalResourceId, Provider } from 'aws-cdk-lib/custom-resources';
+import { REST_API_PATH } from '../util';
+import { AwsCustomResource, AwsCustomResourcePolicy, PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
 import { ISecurityGroup, Port } from 'aws-cdk-lib/aws-ec2';
 import { ECSTasks } from '../api-base/ecsCluster';
 import { GuardrailsTable } from '../models/guardrails-table';
-import { Code, Function, LayerVersion } from 'aws-cdk-lib/aws-lambda';
-import { getPythonRuntime } from '../api-base/utils';
 
 export type LisaServeApplicationProps = {
     vpc: Vpc;
@@ -496,123 +492,6 @@ export class LisaServeApplicationConstruct extends Construct {
             });
         }
 
-        // Create Lambda for syncing models from DynamoDB to LiteLLM
-        // This runs when the LiteLLM database is created or updated
-        this.createLiteLLMModelSyncLambda(scope, config, vpc, securityGroups, litellmDb);
-    }
-
-    /**
-     * Creates a Lambda function to sync models from DynamoDB to LiteLLM.
-     * This is triggered when the LiteLLM PostgreSQL database is created or updated,
-     * ensuring all models in the Models DynamoDB table are registered in LiteLLM.
-     */
-    private createLiteLLMModelSyncLambda (
-        scope: Stack,
-        config: any,
-        vpc: Vpc,
-        securityGroups: ISecurityGroup[],
-        litellmDb: IDatabaseInstance
-    ): void {
-        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
-
-        // Get common layer based on arn from SSM
-        const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
-            scope,
-            'litellm-sync-common-lambda-layer',
-            StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/layerVersion/common`),
-        );
-
-        const fastapiLambdaLayer = LayerVersion.fromLayerVersionArn(
-            scope,
-            'litellm-sync-fastapi-lambda-layer',
-            StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/layerVersion/fastapi`),
-        );
-
-        const lambdaLayers = [commonLambdaLayer, fastapiLambdaLayer];
-
-        // Get management key name from SSM
-        const managementKeyName = StringParameter.valueForStringParameter(
-            scope,
-            `${config.deploymentPrefix}/${APP_MANAGEMENT_KEY}`
-        );
-
-        // Get model table name from SSM
-        const modelTableName = StringParameter.valueForStringParameter(
-            scope,
-            `${config.deploymentPrefix}/modelTableName`
-        );
-
-        // Create role for the Lambda
-        const litellmSyncRole = new Role(scope, 'LiteLLMModelSyncRole', {
-            assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
-            managedPolicies: [
-                ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaVPCAccessExecutionRole'),
-            ],
-        });
-
-        // Grant permissions to read/update the specific model table
-        litellmSyncRole.addToPrincipalPolicy(new PolicyStatement({
-            effect: Effect.ALLOW,
-            actions: ['dynamodb:Scan', 'dynamodb:GetItem', 'dynamodb:UpdateItem'],
-            resources: [`arn:${config.partition}:dynamodb:${config.region}:${config.accountNumber}:table/${modelTableName}`],
-        }));
-
-        // Grant access to SSM parameters
-        litellmSyncRole.addToPrincipalPolicy(new PolicyStatement({
-            effect: Effect.ALLOW,
-            actions: ['ssm:GetParameter'],
-            resources: [`arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/*`],
-        }));
-
-        // Grant access to management key secret (scoped to the specific secret name)
-        litellmSyncRole.addToPrincipalPolicy(new PolicyStatement({
-            effect: Effect.ALLOW,
-            actions: ['secretsmanager:GetSecretValue'],
-            resources: [`arn:${config.partition}:secretsmanager:${config.region}:${config.accountNumber}:secret:${managementKeyName}*`],
-        }));
-
-        // Grant IAM access for SSL cert validation
-        litellmSyncRole.addToPrincipalPolicy(new PolicyStatement({
-            effect: Effect.ALLOW,
-            actions: ['iam:GetServerCertificate'],
-            resources: ['*'],
-        }));
-
-        // Create the sync Lambda
-        const litellmModelSyncLambda = new Function(scope, 'LiteLLMModelSync', {
-            runtime: getPythonRuntime(),
-            handler: 'models.litellm_model_sync.handler',
-            code: Code.fromAsset(lambdaPath),
-            layers: lambdaLayers,
-            environment: {
-                MODEL_TABLE_NAME: modelTableName,
-                MANAGEMENT_KEY_NAME: managementKeyName,
-                LISA_API_URL_PS_NAME: `${config.deploymentPrefix}/lisaServeRestApiUri`,
-                REST_API_VERSION: 'v2',
-                RESTAPI_SSL_CERT_ARN: config.restApiConfig?.sslCertIamArn ?? '',
-            },
-            role: litellmSyncRole,
-            vpc: vpc.vpc,
-            vpcSubnets: vpc.subnetSelection,
-            securityGroups: securityGroups,
-            timeout: Duration.minutes(10),
-            description: 'Sync all models from DynamoDB to LiteLLM when the LiteLLM database is created or updated',
-        });
-
-        // Create custom resource provider
-        const syncProvider = new Provider(scope, 'LiteLLMModelSyncProvider', {
-            onEventHandler: litellmModelSyncLambda,
-        });
-
-        // Create custom resource that triggers on LiteLLM DB create/update
-        const syncResource = new CustomResource(scope, 'LiteLLMModelSyncResource', {
-            serviceToken: syncProvider.serviceToken,
-            properties: { timestamp: new Date().toISOString() },  // Force re-run on every deployment
-        });
-
-        // Ensure the sync runs after the REST API and database are available
-        syncResource.node.addDependency(this.restApi);
-        syncResource.node.addDependency(litellmDb);
     }
 
 }

@@ -53,6 +53,7 @@ import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { createCdkId, createLambdaRole } from '../core/utils';
 import { Roles } from '../core/iam/roles';
 import { LAMBDA_PATH } from '../util';
+import { LiteLLMSyncConstruct } from './litellm-sync';
 
 /**
  * Properties for ModelsApi Construct.
@@ -564,6 +565,15 @@ export class ModelsApi extends Construct {
             // No mutable properties — keeping this object empty ensures CloudFormation
             // never sends an Update event to the Lambda on subsequent deployments.
             properties: {},
+        });
+
+        // Sync models from DynamoDB to LiteLLM on every deployment
+        new LiteLLMSyncConstruct(this, 'LiteLLMSync', {
+            config,
+            modelTable,
+            lambdaLayers,
+            vpc,
+            securityGroups,
         });
 
     }

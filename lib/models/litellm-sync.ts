@@ -21,7 +21,7 @@ import {
     Role,
     ServicePrincipal,
 } from 'aws-cdk-lib/aws-iam';
-import { Code, Function, ILayerVersion, LayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -33,12 +33,12 @@ import { APP_MANAGEMENT_KEY, BaseProps } from '../schema';
 import { Vpc } from '../networking/vpc';
 import { LAMBDA_PATH } from '../util';
 
-export interface LiteLLMSyncConstructProps extends BaseProps {
+export type LiteLLMSyncConstructProps = {
     modelTable: ITable;
     lambdaLayers: ILayerVersion[];
     vpc: Vpc;
     securityGroups: ISecurityGroup[];
-}
+} & BaseProps;
 
 /**
  * Construct that creates a Lambda custom resource to sync models from DynamoDB to LiteLLM.

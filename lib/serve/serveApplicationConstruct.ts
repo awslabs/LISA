@@ -26,11 +26,9 @@ import { Vpc } from '../networking/vpc';
 import { APP_MANAGEMENT_KEY, BaseProps } from '../schema';
 import {
     Effect,
-    ManagedPolicy,
     Policy,
     PolicyStatement,
     Role,
-    ServicePrincipal,
 } from 'aws-cdk-lib/aws-iam';
 import { HostedRotation } from 'aws-cdk-lib/aws-secretsmanager';
 import { SecurityGroupEnum } from '../core/iam/SecurityGroups';

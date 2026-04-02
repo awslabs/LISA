@@ -113,7 +113,7 @@ LISA Roles and Enterprise Groups control access to features and resources.
   - MCP server management
   - MCP Workbench code editor
 
-- **RagAdminGroup** (optional): The IDP group for users who need to manage RAG content without full Admin privileges. RAG Admins can:
+- **RagAdminGroup** (optional): The IDP group for users who need to manage RAG content without full Admin privileges. This is especially useful in multi-tenant environments. RAG Admins can:
   - Access the RAG Management page
   - Create, update, and delete collections on repositories they have group access to
   - Update ingestion pipelines on repositories they have group access to

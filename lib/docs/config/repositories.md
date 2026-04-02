@@ -33,7 +33,7 @@ The repository-collection model provides a two-tier organizational structure ana
 Customers have two methods to load files into repositories configured with LISA:
 
 1. **Manual Upload**: Load files via the chat assistant user interface (UI), or API
-2. **Automated Pipeline**: (Admins and RAG Admins) Configure LISA's ingestion pipelines for automated document processing. Admins can configure pipelines on any repository; RAG Admins can configure pipelines on repositories they have group access to.
+2. **Automated Pipeline**: (Admins and RAG Admins) Configure LISA's ingestion pipelines for automated document processing. Admins can configure pipelines on any repository; RAG Admins can configure pipelines on repositories they have group access to. This role is especially useful in multi-tenant environments. 
 
 ## Configuration
 
@@ -128,50 +128,12 @@ Collection access is controlled through user groups:
 - **Repository-level Groups**: Collections inherit allowed groups from their parent repository by default
 - **Collection-level Groups**: Collections can override with their own group restrictions for finer control
 - **Admin Access**: Administrators have full access to all collections across all repositories
-- **RAG Admin Access**: RAG Admins can create, update, and delete collections on repositories they have group access to. They cannot modify repository-level settings or `allowedGroups`.
+- **RAG Admin Access**: RAG Admins can create, update, and delete collections on repositories they have group access to. They cannot modify repository-level settings or `allowedGroups`. This role is especially useful in multi-tenant environments. 
 - **User Collection Creation**: Repositories can be configured to allow or restrict user-created collections via the `allowUserCollections` flag
 
 ## Configuration Examples
 
 RAG repositories and collections are configurable through the chat assistant web UI or programmatically via the API, allowing customers to tailor the ingestion process to their specific needs.
-
-## API Reference
-
-### Bedrock Knowledge Base API Reference
-
-LISA integrates with Amazon Bedrock Knowledge Bases to support repository setup and discovery workflows.
-
-Base path: `/bedrock-kb`
-
-#### List Bedrock Knowledge Bases
-
-- Method: `GET`
-- Path: `/bedrock-kb`
-- Description: Lists all active Bedrock Knowledge Bases visible to LISA.
-
-Example:
-
-```bash
-curl -X GET "https://<api-gateway-domain>/<stage>/bedrock-kb" \
-  -H "Authorization: Bearer <token>"
-```
-
-#### List Data Sources for a Knowledge Base
-
-- Method: `GET`
-- Path: `/bedrock-kb/{kbId}/data-sources`
-- Description: Lists data sources configured for the specified knowledge base.
-
-Path parameters:
-
-- `kbId` (string, required): Bedrock Knowledge Base identifier
-
-Example:
-
-```bash
-curl -X GET "https://<api-gateway-domain>/<stage>/bedrock-kb/<kbId>/data-sources" \
-  -H "Authorization: Bearer <token>"
-```
 
 ### Creating a Repository
 

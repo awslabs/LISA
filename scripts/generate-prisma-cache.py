@@ -44,9 +44,13 @@ Usage:
 import gzip
 import os
 import shutil
+import ssl
 import stat
 import sys
 import urllib.request
+
+import certifi
+from prisma import config
 
 # Engine binaries to download
 ENGINES = ["query-engine", "schema-engine"]
@@ -58,12 +62,10 @@ DEFAULT_MIRROR = "https://binaries.prisma.sh"
 def get_engine_version() -> str:
     """Get the expected engine version from prisma-client-py."""
     try:
-        from prisma import config
-        return config.expected_engine_version
+        return str(config.expected_engine_version)
     except ImportError:
         raise SystemExit(
-            "prisma-client-py must be installed to determine the engine version. "
-            "Install it with: pip install prisma"
+            "prisma-client-py must be installed to determine the engine version. " "Install it with: pip install prisma"
         )
 
 
@@ -76,16 +78,16 @@ def download_engine(mirror: str, engine_hash: str, platform: str, engine_name: s
     print(f"    URL: {url}")
 
     try:
-        import ssl
         ctx = ssl.create_default_context()
         # Honor REQUESTS_CA_BUNDLE / SSL_CERT_FILE / AWS_CA_BUNDLE env vars
-        ca_bundle = os.environ.get("REQUESTS_CA_BUNDLE") or os.environ.get("SSL_CERT_FILE") or os.environ.get("AWS_CA_BUNDLE")
+        ca_bundle = (
+            os.environ.get("REQUESTS_CA_BUNDLE") or os.environ.get("SSL_CERT_FILE") or os.environ.get("AWS_CA_BUNDLE")
+        )
         if ca_bundle:
             ctx.load_verify_locations(ca_bundle)
         else:
             # Try certifi if available (common in pip-managed environments)
             try:
-                import certifi
                 ctx.load_verify_locations(certifi.where())
             except ImportError:
                 pass
@@ -131,7 +133,7 @@ def main() -> None:
     mirror = os.environ.get("PRISMA_ENGINES_MIRROR", DEFAULT_MIRROR)
     engine_hash = get_engine_version()
 
-    print(f"Generating Prisma engine cache:")
+    print("Generating Prisma engine cache:")
     print(f"  Engine hash: {engine_hash}")
     print(f"  Platform: {platform}")
     print(f"  Mirror: {mirror}")

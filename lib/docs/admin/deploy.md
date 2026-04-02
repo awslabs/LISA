@@ -438,7 +438,7 @@ mcpWorkbenchBuildConfig:
   S6_OVERLAY_ARCH_SOURCE: "./s6-overlay-x86_64.tar.xz"    # Path relative to lib/serve/mcp-workbench/
   RCLONE_SOURCE: "./rclone-linux-amd64.zip"                # Path relative to lib/serve/mcp-workbench/
 # During synthesis, this will predownload tiktoken and prisma caches for rest-api. The folder will be added into the container, removing the need to download during the container build process
-prepareDockerOffline: true 
+prepareDockerOffline: true
 ```
 
 You'll also want any model hosting base containers available, e.g. vllm/vllm-openai:latest and ghcr.io/huggingface/text-embeddings-inference:latest

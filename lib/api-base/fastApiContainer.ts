@@ -156,7 +156,8 @@ export class FastApiContainer extends Construct {
                     throw new Error(
                         'Failed to generate Prisma engine binary cache for offline builds. ' +
                         'Ensure internet access is available and prisma-client-py is installed (pip install prisma). ' +
-                        'Set prepareDockerOffline: false to skip this step.'
+                        'Set prepareDockerOffline: false to skip this step.',
+                        { cause: error }
                     );
                 }
             }

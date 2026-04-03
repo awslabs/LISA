@@ -1097,13 +1097,6 @@
         ],
         "SecurityGroupIngress": [
           {
-            "CidrIp": "10.0.0.128/26",
-            "Description": "Allow REST API private subnets to communicate with LISA-OpenSearchSg",
-            "FromPort": 80,
-            "IpProtocol": "tcp",
-            "ToPort": 80
-          },
-          {
             "CidrIp": "10.0.0.192/26",
             "Description": "Allow REST API private subnets to communicate with LISA-OpenSearchSg",
             "FromPort": 80,
@@ -1125,11 +1118,25 @@
             "ToPort": 80
           },
           {
-            "CidrIp": "10.0.0.128/26",
+            "CidrIp": "10.0.1.128/26",
             "Description": "Allow REST API private subnets to communicate with LISA-OpenSearchSg",
-            "FromPort": 443,
+            "FromPort": 80,
             "IpProtocol": "tcp",
-            "ToPort": 443
+            "ToPort": 80
+          },
+          {
+            "CidrIp": "10.0.1.192/26",
+            "Description": "Allow REST API private subnets to communicate with LISA-OpenSearchSg",
+            "FromPort": 80,
+            "IpProtocol": "tcp",
+            "ToPort": 80
+          },
+          {
+            "CidrIp": "10.0.2.0/26",
+            "Description": "Allow REST API private subnets to communicate with LISA-OpenSearchSg",
+            "FromPort": 80,
+            "IpProtocol": "tcp",
+            "ToPort": 80
           },
           {
             "CidrIp": "10.0.0.192/26",
@@ -1147,6 +1154,27 @@
           },
           {
             "CidrIp": "10.0.1.64/26",
+            "Description": "Allow REST API private subnets to communicate with LISA-OpenSearchSg",
+            "FromPort": 443,
+            "IpProtocol": "tcp",
+            "ToPort": 443
+          },
+          {
+            "CidrIp": "10.0.1.128/26",
+            "Description": "Allow REST API private subnets to communicate with LISA-OpenSearchSg",
+            "FromPort": 443,
+            "IpProtocol": "tcp",
+            "ToPort": 443
+          },
+          {
+            "CidrIp": "10.0.1.192/26",
+            "Description": "Allow REST API private subnets to communicate with LISA-OpenSearchSg",
+            "FromPort": 443,
+            "IpProtocol": "tcp",
+            "ToPort": 443
+          },
+          {
+            "CidrIp": "10.0.2.0/26",
             "Description": "Allow REST API private subnets to communicate with LISA-OpenSearchSg",
             "FromPort": 443,
             "IpProtocol": "tcp",
@@ -1186,13 +1214,6 @@
         ],
         "SecurityGroupIngress": [
           {
-            "CidrIp": "10.0.0.128/26",
-            "Description": "Allow REST API private subnets to communicate with LISA-PGVectorSg",
-            "FromPort": 5432,
-            "IpProtocol": "tcp",
-            "ToPort": 5432
-          },
-          {
             "CidrIp": "10.0.0.192/26",
             "Description": "Allow REST API private subnets to communicate with LISA-PGVectorSg",
             "FromPort": 5432,
@@ -1208,6 +1229,27 @@
           },
           {
             "CidrIp": "10.0.1.64/26",
+            "Description": "Allow REST API private subnets to communicate with LISA-PGVectorSg",
+            "FromPort": 5432,
+            "IpProtocol": "tcp",
+            "ToPort": 5432
+          },
+          {
+            "CidrIp": "10.0.1.128/26",
+            "Description": "Allow REST API private subnets to communicate with LISA-PGVectorSg",
+            "FromPort": 5432,
+            "IpProtocol": "tcp",
+            "ToPort": 5432
+          },
+          {
+            "CidrIp": "10.0.1.192/26",
+            "Description": "Allow REST API private subnets to communicate with LISA-PGVectorSg",
+            "FromPort": 5432,
+            "IpProtocol": "tcp",
+            "ToPort": 5432
+          },
+          {
+            "CidrIp": "10.0.2.0/26",
             "Description": "Allow REST API private subnets to communicate with LISA-PGVectorSg",
             "FromPort": 5432,
             "IpProtocol": "tcp",
@@ -1450,6 +1492,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ],
           "Type": "FARGATE"
@@ -1474,6 +1519,7 @@
             "Order": 1
           }
         ],
+        "JobQueueName": "test-lisa-dev-ingestion-job",
         "Priority": 1,
         "State": "ENABLED"
       }
@@ -1578,6 +1624,10 @@
           "Environment": [
             {
               "Name": "ADMIN_GROUP",
+              "Value": ""
+            },
+            {
+              "Name": "RAG_ADMIN_GROUP",
               "Value": ""
             },
             {
@@ -1797,7 +1847,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Environment": {
           "Variables": {
@@ -1878,6 +1928,7 @@
             "MODEL_TABLE_NAME": {
               "Ref": "LisaRAGResourcesModelTableNameStringParameterParameter9C4F30B2"
             },
+            "RAG_ADMIN_GROUP": "",
             "RAG_DOCUMENT_TABLE": {
               "Ref": "testlisaRagDocumentTable5A134785"
             },
@@ -1923,6 +1974,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -1931,7 +1985,7 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E52e313c69ed9fcffbb8ccf3066a438e78": {
+    "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E50f8e37a9eb8711eb0d94979c21a1948d": {
       "Type": "AWS::Lambda::Version",
       "Properties": {
         "FunctionName": {
@@ -1950,7 +2004,7 @@
         },
         "FunctionVersion": {
           "Fn::GetAtt": [
-            "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E52e313c69ed9fcffbb8ccf3066a438e78",
+            "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E50f8e37a9eb8711eb0d94979c21a1948d",
             "Version"
           ]
         },
@@ -1998,7 +2052,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Environment": {
           "Variables": {
@@ -2079,6 +2133,7 @@
             "MODEL_TABLE_NAME": {
               "Ref": "LisaRAGResourcesModelTableNameStringParameterParameter9C4F30B2"
             },
+            "RAG_ADMIN_GROUP": "",
             "RAG_DOCUMENT_TABLE": {
               "Ref": "testlisaRagDocumentTable5A134785"
             },
@@ -2124,6 +2179,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -2132,7 +2190,7 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBCb0dba7d370b058f91c6bc210988b88a4": {
+    "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBC866f9403cf9792eeac979b30bf82b9bf": {
       "Type": "AWS::Lambda::Version",
       "Properties": {
         "FunctionName": {
@@ -2151,7 +2209,7 @@
         },
         "FunctionVersion": {
           "Fn::GetAtt": [
-            "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBCb0dba7d370b058f91c6bc210988b88a4",
+            "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBC866f9403cf9792eeac979b30bf82b9bf",
             "Version"
           ]
         },
@@ -2199,7 +2257,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Environment": {
           "Variables": {
@@ -2280,6 +2338,7 @@
             "MODEL_TABLE_NAME": {
               "Ref": "LisaRAGResourcesModelTableNameStringParameterParameter9C4F30B2"
             },
+            "RAG_ADMIN_GROUP": "",
             "RAG_DOCUMENT_TABLE": {
               "Ref": "testlisaRagDocumentTable5A134785"
             },
@@ -2325,6 +2384,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -2333,7 +2395,7 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E95cabb3a355b4d4e812ae2b9e46da2e7a3": {
+    "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E955a8ab4fc3b06952b1fca7f07442f9231": {
       "Type": "AWS::Lambda::Version",
       "Properties": {
         "FunctionName": {
@@ -2352,7 +2414,7 @@
         },
         "FunctionVersion": {
           "Fn::GetAtt": [
-            "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E95cabb3a355b4d4e812ae2b9e46da2e7a3",
+            "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E955a8ab4fc3b06952b1fca7f07442f9231",
             "Version"
           ]
         },
@@ -2376,6 +2438,202 @@
         "Type": "String",
         "Value": {
           "Ref": "IngestionStackConstructDeleteLambdaAliasD335E46A"
+        }
+      }
+    },
+    "IngestionStackConstructBatchJobMetricPublisherServiceRole73642CC3": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          },
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    "IngestionStackConstructBatchJobMetricPublisherServiceRoleDefaultPolicyCD87EDE4": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "cloudwatch:PutMetricData",
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "IngestionStackConstructBatchJobMetricPublisherServiceRoleDefaultPolicyCD87EDE4",
+        "Roles": [
+          {
+            "Ref": "IngestionStackConstructBatchJobMetricPublisherServiceRole73642CC3"
+          }
+        ]
+      }
+    },
+    "IngestionStackConstructBatchJobMetricPublisher476DE1FF": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "78ac2eabe17cad34724997a67dd902bee7a0221888940d832451dcdce19de09a.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "METRICS_NAMESPACE": "LISA/BatchIngestion",
+            "DEPLOYMENT_NAME": "test-lisa",
+            "DEPLOYMENT_STAGE": "dev"
+          }
+        },
+        "FunctionName": "test-lisa-dev-batch-job-metric",
+        "Handler": "batch_job_metric.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "IngestionStackConstructBatchJobMetricPublisherServiceRole73642CC3",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 30,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "IngestionStackConstructBatchJobMetricPublisherServiceRoleDefaultPolicyCD87EDE4",
+        "IngestionStackConstructBatchJobMetricPublisherServiceRole73642CC3"
+      ]
+    },
+    "IngestionStackConstructBatchJobStateChangeRule763B8663": {
+      "Type": "AWS::Events::Rule",
+      "Properties": {
+        "Description": "Captures AWS Batch job state changes for ingestion pipeline and publishes CloudWatch metrics",
+        "EventPattern": {
+          "source": [
+            "aws.batch"
+          ],
+          "detail-type": [
+            "Batch Job State Change"
+          ],
+          "detail": {
+            "status": [
+              "SUBMITTED",
+              "RUNNING",
+              "SUCCEEDED",
+              "FAILED"
+            ],
+            "jobQueue": [
+              {
+                "suffix": {
+                  "Fn::Select": [
+                    1,
+                    {
+                      "Fn::Split": [
+                        "/",
+                        {
+                          "Fn::Select": [
+                            5,
+                            {
+                              "Fn::Split": [
+                                ":",
+                                {
+                                  "Fn::GetAtt": [
+                                    "IngestionStackConstructIngestionJobQueueCECF0CDA",
+                                    "JobQueueArn"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "Name": "test-lisa-dev-batch-job-state-change",
+        "State": "ENABLED",
+        "Targets": [
+          {
+            "Arn": {
+              "Fn::GetAtt": [
+                "IngestionStackConstructBatchJobMetricPublisher476DE1FF",
+                "Arn"
+              ]
+            },
+            "Id": "Target0"
+          }
+        ]
+      }
+    },
+    "IngestionStackConstructBatchJobStateChangeRuleAllowEventRuleLisaRAGIngestionStackConstructBatchJobMetricPublisher9D9DEAC27CD6603E": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "IngestionStackConstructBatchJobMetricPublisher476DE1FF",
+            "Arn"
+          ]
+        },
+        "Principal": "events.amazonaws.com",
+        "SourceArn": {
+          "Fn::GetAtt": [
+            "IngestionStackConstructBatchJobStateChangeRule763B8663",
+            "Arn"
+          ]
         }
       }
     },
@@ -5441,12 +5699,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "List all repositories",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -5565,6 +5824,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -5601,12 +5863,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "List status for all repositories",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -5725,6 +5988,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -5761,12 +6027,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Generates a presigned url for uploading files to RAG",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -5885,6 +6152,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -5921,12 +6191,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Create a new repository",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -6045,6 +6316,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -6081,12 +6355,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Get a repository by ID",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -6205,6 +6480,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -6241,12 +6519,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Update a repository",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -6365,6 +6644,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -6401,12 +6683,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Delete a repository",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -6525,6 +6808,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -6561,12 +6847,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Run a similarity search against the specified repository using the specified query",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -6685,6 +6972,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -6721,12 +7011,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Ingest a set of documents based on specified S3 path",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -6845,6 +7136,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -6881,12 +7175,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "List all docs for a repository",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -7005,6 +7300,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -7041,12 +7339,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Get a document by ID",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -7165,6 +7464,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -7201,12 +7503,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Creates presigned url to download document within repository",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -7325,6 +7628,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -7361,12 +7667,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Deletes all records associated with documents from the repository",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -7485,6 +7792,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -7521,12 +7831,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "List all ingestion jobs for a repository",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -7645,6 +7956,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -7681,12 +7995,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "List all collections within a repository",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -7805,6 +8120,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -7841,12 +8159,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "List all collections user has access to across all repositories",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -7965,6 +8284,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -8001,12 +8323,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Create a new collection within a repository",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -8125,6 +8448,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -8161,12 +8487,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Get a collection by ID within a repository",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -8285,6 +8612,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -8321,12 +8651,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Update a collection within a repository",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -8445,6 +8776,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -8481,12 +8815,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Delete a collection within a repository",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -8605,6 +8940,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -8641,12 +8979,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "List all ACTIVE Bedrock Knowledge Bases",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -8765,6 +9104,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -8801,12 +9143,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "List data sources for a Bedrock Knowledge Base",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -8925,6 +9268,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -9687,7 +10033,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "6323dd10f5089f5204ae0961cef4dd30a4dc2b47cc67460901eaf0bf4b2dfa88.zip"
+          "S3Key": "1ebc9d3ac2033816c4abb63e4afd69d350b4aba8704cc9236b82ea520b74f4b0.zip"
         },
         "Environment": {
           "Variables": {
@@ -9762,6 +10108,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -9776,11 +10125,12 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -9899,6 +10249,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -9912,11 +10265,12 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -10035,6 +10389,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -10273,11 +10630,12 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -10398,6 +10756,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -10427,11 +10788,12 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "c6d406e03f1f68816d96ac39e3c345b9ba8f9e6b8aac2a0fc156812011ba197e.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -10552,6 +10914,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }

@@ -32,14 +32,6 @@
       "Type": "AWS::SSM::Parameter::Value<String>",
       "Default": "/dev/test-lisa/lisa/generatedImagesBucketName"
     },
-    "SsmParameterValuedevtestlisalisarolesMCPWORKBENCHC96584B6F00A464EAD1953AFF4B05118Parameter": {
-      "Type": "AWS::SSM::Parameter::Value<String>",
-      "Default": "/dev/test-lisa/lisa/roles/MCPWORKBENCH"
-    },
-    "SsmParameterValuedevtestlisalisarolesMCPWORKBENCHEXC96584B6F00A464EAD1953AFF4B05118Parameter": {
-      "Type": "AWS::SSM::Parameter::Value<String>",
-      "Default": "/dev/test-lisa/lisa/roles/MCPWORKBENCHEX"
-    },
     "BootstrapVersion": {
       "Type": "AWS::SSM::Parameter::Value<String>",
       "Default": "/cdk-bootstrap/hnb659fds/version",
@@ -114,7 +106,7 @@
         "ClusterSettings": [
           {
             "Name": "containerInsights",
-            "Value": "disabled"
+            "Value": "enhanced"
           }
         ]
       }
@@ -388,6 +380,9 @@
           },
           {
             "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+          },
+          {
+            "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
           }
         ]
       },
@@ -480,48 +475,6 @@
                   "Arn"
                 ]
               },
-              "\"},{\"Action\":[\"logs:CreateLogStream\",\"logs:PutLogEvents\"],\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"",
-              {
-                "Fn::Select": [
-                  4,
-                  {
-                    "Fn::Split": [
-                      ":",
-                      {
-                        "Ref": "SsmParameterValuedevtestlisalisarolesMCPWORKBENCHC96584B6F00A464EAD1953AFF4B05118Parameter"
-                      }
-                    ]
-                  }
-                ]
-              },
-              "\"},\"Resource\":\"",
-              {
-                "Fn::GetAtt": [
-                  "RestApiECSClusterdevtestlisalisaRESTLogGroup92E80EC2",
-                  "Arn"
-                ]
-              },
-              "\"},{\"Action\":[\"logs:CreateLogStream\",\"logs:PutLogEvents\"],\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"",
-              {
-                "Fn::Select": [
-                  4,
-                  {
-                    "Fn::Split": [
-                      ":",
-                      {
-                        "Ref": "SsmParameterValuedevtestlisalisarolesMCPWORKBENCHEXC96584B6F00A464EAD1953AFF4B05118Parameter"
-                      }
-                    ]
-                  }
-                ]
-              },
-              "\"},\"Resource\":\"",
-              {
-                "Fn::GetAtt": [
-                  "RestApiECSClusterdevtestlisalisaRESTLogGroup92E80EC2",
-                  "Arn"
-                ]
-              },
               "\"}],\"Version\":\"2012-10-17\"}"
             ]
           ]
@@ -559,6 +512,9 @@
           },
           {
             "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCpublicSubnet2SubnetC9D5B981D613E068"
+          },
+          {
+            "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCpublicSubnet3Subnet1B3B5189EC780C59"
           }
         ],
         "Type": "application"
@@ -610,55 +566,6 @@
         }
       }
     },
-    "RestApiECSClustertestlisadevRESTALBRESTApplicationListenerRESTMCPWORKBENCHTgtGrpGroupD99D2C75": {
-      "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
-      "Properties": {
-        "HealthCheckIntervalSeconds": 60,
-        "HealthCheckPath": "/health",
-        "HealthCheckTimeoutSeconds": 30,
-        "HealthyThresholdCount": 2,
-        "Port": 80,
-        "Protocol": "HTTP",
-        "TargetGroupAttributes": [
-          {
-            "Key": "stickiness.enabled",
-            "Value": "false"
-          }
-        ],
-        "TargetType": "instance",
-        "UnhealthyThresholdCount": 3,
-        "VpcId": {
-          "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPC8B8C4E4BB8544CDA"
-        }
-      }
-    },
-    "RestApiECSClustertestlisadevRESTALBRESTApplicationListenerRESTMCPWORKBENCHTgtGrpRuleBDFA4026": {
-      "Type": "AWS::ElasticLoadBalancingV2::ListenerRule",
-      "Properties": {
-        "Actions": [
-          {
-            "TargetGroupArn": {
-              "Ref": "RestApiECSClustertestlisadevRESTALBRESTApplicationListenerRESTMCPWORKBENCHTgtGrpGroupD99D2C75"
-            },
-            "Type": "forward"
-          }
-        ],
-        "Conditions": [
-          {
-            "Field": "path-pattern",
-            "PathPatternConfig": {
-              "Values": [
-                "/v2/mcp/*"
-              ]
-            }
-          }
-        ],
-        "ListenerArn": {
-          "Ref": "RestApiECSClustertestlisadevRESTALBRESTApplicationListener1A5BC4B4"
-        },
-        "Priority": 80
-      }
-    },
     "RestApiECSClusterRESTTRPolicy68D7DDA5": {
       "Type": "AWS::IAM::Policy",
       "Properties": {
@@ -687,21 +594,23 @@
                 "dynamodb:DescribeTable"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::Join": [
-                  "",
-                  [
-                    "arn:",
-                    {
-                      "Ref": "AWS::Partition"
-                    },
-                    ":dynamodb:us-iso-east-1:012345678901:table/",
-                    {
-                      "Ref": "TokenTableNameParameterParameter"
-                    }
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":dynamodb:us-iso-east-1:012345678901:table/",
+                      {
+                        "Ref": "TokenTableNameParameterParameter"
+                      }
+                    ]
                   ]
-                ]
-              }
+                }
+              ]
             },
             {
               "Action": [
@@ -709,21 +618,23 @@
                 "dynamodb:GetShardIterator"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::Join": [
-                  "",
-                  [
-                    "arn:",
-                    {
-                      "Ref": "AWS::Partition"
-                    },
-                    ":dynamodb:us-iso-east-1:012345678901:table/",
-                    {
-                      "Ref": "TokenTableNameParameterParameter"
-                    }
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":dynamodb:us-iso-east-1:012345678901:table/",
+                      {
+                        "Ref": "TokenTableNameParameterParameter"
+                      }
+                    ]
                   ]
-                ]
-              }
+                }
+              ]
             },
             {
               "Action": [
@@ -976,6 +887,10 @@
                 "Value": ""
               },
               {
+                "Name": "RAG_ADMIN_GROUP",
+                "Value": ""
+              },
+              {
                 "Name": "JWT_GROUPS_PROP",
                 "Value": ""
               },
@@ -1129,7 +1044,7 @@
               "Timeout": 5
             },
             "Image": {
-              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:c260d335ffe21fb5a7d06c8657a2cbb7d17bce9c121f34207ef0acd9b8950740"
+              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:e78525b6bb5b8bc5ade97f2e77f098631c0d8ab1ec0aacf3bef85ade3a021c25"
             },
             "LogConfiguration": {
               "LogDriver": "awslogs",
@@ -1226,8 +1141,6 @@
         "RestApiECSClustertestlisadevASGInstanceRole4F18B1DE",
         "RestApiECSClustertestlisadevASGLaunchConfigD5B6F73C",
         "RestApiECSClustertestlisadevRESTALBRESTApplicationListener1A5BC4B4",
-        "RestApiECSClustertestlisadevRESTALBRESTApplicationListenerRESTMCPWORKBENCHTgtGrpGroupD99D2C75",
-        "RestApiECSClustertestlisadevRESTALBRESTApplicationListenerRESTMCPWORKBENCHTgtGrpRuleBDFA4026",
         "RestApiECSClustertestlisadevRESTALBRESTApplicationListenerRESTRESTTgtGrpGroup18249DCC"
       ]
     },
@@ -1359,473 +1272,6 @@
         "RestApiECSClustertestlisadevASGLaunchConfigD5B6F73C"
       ]
     },
-    "RestApiECSClusterMCPWORKBENCHTRPolicy0E033E1A": {
-      "Type": "AWS::IAM::Policy",
-      "Properties": {
-        "PolicyDocument": {
-          "Statement": [
-            {
-              "Action": [
-                "logs:CreateLogStream",
-                "logs:PutLogEvents"
-              ],
-              "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "RestApiECSClusterdevtestlisalisaRESTLogGroup92E80EC2",
-                  "Arn"
-                ]
-              }
-            }
-          ],
-          "Version": "2012-10-17"
-        },
-        "PolicyName": "RestApiECSClusterMCPWORKBENCHTRPolicy0E033E1A",
-        "Roles": [
-          {
-            "Fn::Select": [
-              1,
-              {
-                "Fn::Split": [
-                  "/",
-                  {
-                    "Fn::Select": [
-                      5,
-                      {
-                        "Fn::Split": [
-                          ":",
-                          {
-                            "Ref": "SsmParameterValuedevtestlisalisarolesMCPWORKBENCHC96584B6F00A464EAD1953AFF4B05118Parameter"
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      }
-    },
-    "RestApiECSClusterMCPWORKBENCHERPolicy845EAEEA": {
-      "Type": "AWS::IAM::Policy",
-      "Properties": {
-        "PolicyDocument": {
-          "Statement": [
-            {
-              "Action": [
-                "logs:CreateLogStream",
-                "logs:PutLogEvents"
-              ],
-              "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "RestApiECSClusterdevtestlisalisaRESTLogGroup92E80EC2",
-                  "Arn"
-                ]
-              }
-            },
-            {
-              "Action": [
-                "ecr:BatchCheckLayerAvailability",
-                "ecr:GetDownloadUrlForLayer",
-                "ecr:BatchGetImage"
-              ],
-              "Effect": "Allow",
-              "Resource": {
-                "Fn::Join": [
-                  "",
-                  [
-                    "arn:",
-                    {
-                      "Ref": "AWS::Partition"
-                    },
-                    ":ecr:us-iso-east-1:012345678901:repository/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1"
-                  ]
-                ]
-              }
-            },
-            {
-              "Action": "ecr:GetAuthorizationToken",
-              "Effect": "Allow",
-              "Resource": "*"
-            }
-          ],
-          "Version": "2012-10-17"
-        },
-        "PolicyName": "RestApiECSClusterMCPWORKBENCHERPolicy845EAEEA",
-        "Roles": [
-          {
-            "Fn::Select": [
-              1,
-              {
-                "Fn::Split": [
-                  "/",
-                  {
-                    "Fn::Select": [
-                      5,
-                      {
-                        "Fn::Split": [
-                          ":",
-                          {
-                            "Ref": "SsmParameterValuedevtestlisalisarolesMCPWORKBENCHEXC96584B6F00A464EAD1953AFF4B05118Parameter"
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      }
-    },
-    "RestApiECSClusterMCPWORKBENCHEc2TaskDefinition7EAF0AD9": {
-      "Type": "AWS::ECS::TaskDefinition",
-      "Properties": {
-        "ContainerDefinitions": [
-          {
-            "Environment": [
-              {
-                "Name": "LOG_LEVEL",
-                "Value": "DEBUG"
-              },
-              {
-                "Name": "AWS_REGION",
-                "Value": "us-iso-east-1"
-              },
-              {
-                "Name": "AWS_REGION_NAME",
-                "Value": "us-iso-east-1"
-              },
-              {
-                "Name": "THREADS",
-                "Value": "4"
-              },
-              {
-                "Name": "USE_AUTH",
-                "Value": "true"
-              },
-              {
-                "Name": "AUTHORITY",
-                "Value": "test"
-              },
-              {
-                "Name": "CLIENT_ID",
-                "Value": "test"
-              },
-              {
-                "Name": "ADMIN_GROUP",
-                "Value": ""
-              },
-              {
-                "Name": "USER_GROUP",
-                "Value": ""
-              },
-              {
-                "Name": "JWT_GROUPS_PROP",
-                "Value": ""
-              },
-              {
-                "Name": "MANAGEMENT_KEY_NAME",
-                "Value": {
-                  "Ref": "LisaServeResourcesLisaServeResourcesmanagementKeyStringParameterParameterAD609E8A"
-                }
-              },
-              {
-                "Name": "TOKEN_TABLE_NAME",
-                "Value": {
-                  "Ref": "TokenTableNameParameterParameter"
-                }
-              },
-              {
-                "Name": "SSL_CERT_DIR",
-                "Value": "/etc/pki/tls/certs"
-              },
-              {
-                "Name": "SSL_CERT_FILE",
-                "Value": ""
-              },
-              {
-                "Name": "REQUESTS_CA_BUNDLE",
-                "Value": ""
-              },
-              {
-                "Name": "AWS_CA_BUNDLE",
-                "Value": ""
-              },
-              {
-                "Name": "CURL_CA_BUNDLE",
-                "Value": ""
-              },
-              {
-                "Name": "CORS_ORIGINS",
-                "Value": {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "https://",
-                      {
-                        "Fn::GetAtt": [
-                          "RestApiECSClustertestlisadevRESTALB34F3E71E",
-                          "DNSName"
-                        ]
-                      },
-                      ",*"
-                    ]
-                  ]
-                }
-              },
-              {
-                "Name": "RCLONE_CONFIG_S3_REGION",
-                "Value": "us-iso-east-1"
-              },
-              {
-                "Name": "MCPWORKBENCH_BUCKET",
-                "Value": "test-lisa-dev-mcpworkbench-012345678901"
-              }
-            ],
-            "Essential": true,
-            "HealthCheck": {
-              "Command": [
-                "CMD-SHELL",
-                "exit 0"
-              ],
-              "Interval": 10,
-              "Retries": 3,
-              "StartPeriod": 30,
-              "Timeout": 5
-            },
-            "Image": {
-              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:459479ccc75028b8b6359caa7b52e292a781901f08a156b8dc10334074e567fa"
-            },
-            "LogConfiguration": {
-              "LogDriver": "awslogs",
-              "Options": {
-                "awslogs-group": {
-                  "Ref": "RestApiECSClusterdevtestlisalisaRESTLogGroup92E80EC2"
-                },
-                "awslogs-stream-prefix": "MCPWORKBENCH",
-                "awslogs-region": "us-iso-east-1"
-              }
-            },
-            "Memory": 8192,
-            "MemoryReservation": 8192,
-            "MountPoints": [
-              {
-                "ContainerPath": "/etc/pki",
-                "ReadOnly": false,
-                "SourceVolume": "pki"
-              }
-            ],
-            "Name": "test-lisa-MCPWORKBENCH",
-            "PortMappings": [
-              {
-                "ContainerPort": 8000,
-                "HostPort": 0,
-                "Protocol": "tcp"
-              }
-            ],
-            "Privileged": true
-          }
-        ],
-        "ExecutionRoleArn": {
-          "Ref": "SsmParameterValuedevtestlisalisarolesMCPWORKBENCHEXC96584B6F00A464EAD1953AFF4B05118Parameter"
-        },
-        "Family": "test-lisa-MCPWORKBENCH",
-        "NetworkMode": "bridge",
-        "RequiresCompatibilities": [
-          "EC2"
-        ],
-        "TaskRoleArn": {
-          "Ref": "SsmParameterValuedevtestlisalisarolesMCPWORKBENCHC96584B6F00A464EAD1953AFF4B05118Parameter"
-        },
-        "Volumes": [
-          {
-            "Host": {
-              "SourcePath": "/etc/pki"
-            },
-            "Name": "pki"
-          }
-        ]
-      }
-    },
-    "RestApiECSClustertestlisaMCPWORKBENCHEc2SvcService1642D1D0": {
-      "Type": "AWS::ECS::Service",
-      "Properties": {
-        "CapacityProviderStrategy": [
-          {
-            "CapacityProvider": {
-              "Ref": "RestApiECSClustertestlisadevAsgCapacityProviderF18999A7"
-            },
-            "Weight": 1
-          }
-        ],
-        "Cluster": {
-          "Ref": "RestApiECSClustertestlisadevClC04148B6"
-        },
-        "DeploymentConfiguration": {
-          "MaximumPercent": 200,
-          "MinimumHealthyPercent": 50
-        },
-        "DesiredCount": 1,
-        "EnableECSManagedTags": false,
-        "HealthCheckGracePeriodSeconds": 60,
-        "LoadBalancers": [
-          {
-            "ContainerName": "test-lisa-MCPWORKBENCH",
-            "ContainerPort": 8000,
-            "TargetGroupArn": {
-              "Ref": "RestApiECSClustertestlisadevRESTALBRESTApplicationListenerRESTMCPWORKBENCHTgtGrpGroupD99D2C75"
-            }
-          }
-        ],
-        "SchedulingStrategy": "REPLICA",
-        "ServiceName": "MCPWORKBENCH",
-        "TaskDefinition": {
-          "Ref": "RestApiECSClusterMCPWORKBENCHEc2TaskDefinition7EAF0AD9"
-        }
-      },
-      "DependsOn": [
-        "RestApiECSClusterMCPWORKBENCHTRPolicy0E033E1A",
-        "RestApiECSClustertestlisadevASGCAE610D7",
-        "RestApiECSClustertestlisadevASGInstanceProfile5F0036EC",
-        "RestApiECSClustertestlisadevASGInstanceRoleDefaultPolicy763E7201",
-        "RestApiECSClustertestlisadevASGInstanceRole4F18B1DE",
-        "RestApiECSClustertestlisadevASGLaunchConfigD5B6F73C",
-        "RestApiECSClustertestlisadevRESTALBRESTApplicationListenerRESTMCPWORKBENCHTgtGrpRuleBDFA4026"
-      ]
-    },
-    "RestApiECSClustertestlisaMCPWORKBENCHEc2SvcTaskCountTarget7F3A2827": {
-      "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
-      "Properties": {
-        "MaxCapacity": 5,
-        "MinCapacity": 1,
-        "ResourceId": {
-          "Fn::Join": [
-            "",
-            [
-              "service/",
-              {
-                "Ref": "RestApiECSClustertestlisadevClC04148B6"
-              },
-              "/",
-              {
-                "Fn::GetAtt": [
-                  "RestApiECSClustertestlisaMCPWORKBENCHEc2SvcService1642D1D0",
-                  "Name"
-                ]
-              }
-            ]
-          ]
-        },
-        "RoleARN": {
-          "Fn::Join": [
-            "",
-            [
-              "arn:",
-              {
-                "Ref": "AWS::Partition"
-              },
-              ":iam::012345678901:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService"
-            ]
-          ]
-        },
-        "ScalableDimension": "ecs:service:DesiredCount",
-        "ServiceNamespace": "ecs"
-      },
-      "DependsOn": [
-        "RestApiECSClusterMCPWORKBENCHTRPolicy0E033E1A",
-        "RestApiECSClustertestlisadevASGCAE610D7",
-        "RestApiECSClustertestlisadevASGInstanceProfile5F0036EC",
-        "RestApiECSClustertestlisadevASGInstanceRoleDefaultPolicy763E7201",
-        "RestApiECSClustertestlisadevASGInstanceRole4F18B1DE",
-        "RestApiECSClustertestlisadevASGLaunchConfigD5B6F73C"
-      ]
-    },
-    "RestApiECSClustertestlisaMCPWORKBENCHEc2SvcTaskCountTargetMCPWORKBENCHReqScaling3C96E135": {
-      "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
-      "Properties": {
-        "PolicyName": "LisaServeRestApiECSClustertestlisaMCPWORKBENCHEc2SvcTaskCountTargetMCPWORKBENCHReqScalingA3821484",
-        "PolicyType": "TargetTrackingScaling",
-        "ScalingTargetId": {
-          "Ref": "RestApiECSClustertestlisaMCPWORKBENCHEc2SvcTaskCountTarget7F3A2827"
-        },
-        "TargetTrackingScalingPolicyConfiguration": {
-          "PredefinedMetricSpecification": {
-            "PredefinedMetricType": "ALBRequestCountPerTarget",
-            "ResourceLabel": {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "Fn::Select": [
-                      1,
-                      {
-                        "Fn::Split": [
-                          "/",
-                          {
-                            "Ref": "RestApiECSClustertestlisadevRESTALBRESTApplicationListener1A5BC4B4"
-                          }
-                        ]
-                      }
-                    ]
-                  },
-                  "/",
-                  {
-                    "Fn::Select": [
-                      2,
-                      {
-                        "Fn::Split": [
-                          "/",
-                          {
-                            "Ref": "RestApiECSClustertestlisadevRESTALBRESTApplicationListener1A5BC4B4"
-                          }
-                        ]
-                      }
-                    ]
-                  },
-                  "/",
-                  {
-                    "Fn::Select": [
-                      3,
-                      {
-                        "Fn::Split": [
-                          "/",
-                          {
-                            "Ref": "RestApiECSClustertestlisadevRESTALBRESTApplicationListener1A5BC4B4"
-                          }
-                        ]
-                      }
-                    ]
-                  },
-                  "/",
-                  {
-                    "Fn::GetAtt": [
-                      "RestApiECSClustertestlisadevRESTALBRESTApplicationListenerRESTMCPWORKBENCHTgtGrpGroupD99D2C75",
-                      "TargetGroupFullName"
-                    ]
-                  }
-                ]
-              ]
-            }
-          },
-          "ScaleInCooldown": 60,
-          "ScaleOutCooldown": 30,
-          "TargetValue": 1000
-        }
-      },
-      "DependsOn": [
-        "RestApiECSClusterMCPWORKBENCHTRPolicy0E033E1A",
-        "RestApiECSClustertestlisadevASGCAE610D7",
-        "RestApiECSClustertestlisadevASGInstanceProfile5F0036EC",
-        "RestApiECSClustertestlisadevASGInstanceRoleDefaultPolicy763E7201",
-        "RestApiECSClustertestlisadevASGInstanceRole4F18B1DE",
-        "RestApiECSClustertestlisadevASGLaunchConfigD5B6F73C"
-      ]
-    },
     "FastApiEndpointF31771C0": {
       "Type": "AWS::SSM::Parameter",
       "Properties": {
@@ -1860,13 +1306,6 @@
         ],
         "SecurityGroupIngress": [
           {
-            "CidrIp": "10.0.0.128/26",
-            "Description": "Allow REST API private subnets to communicate with LISA-LiteLLMScalingSg",
-            "FromPort": 5432,
-            "IpProtocol": "tcp",
-            "ToPort": 5432
-          },
-          {
             "CidrIp": "10.0.0.192/26",
             "Description": "Allow REST API private subnets to communicate with LISA-LiteLLMScalingSg",
             "FromPort": 5432,
@@ -1882,6 +1321,27 @@
           },
           {
             "CidrIp": "10.0.1.64/26",
+            "Description": "Allow REST API private subnets to communicate with LISA-LiteLLMScalingSg",
+            "FromPort": 5432,
+            "IpProtocol": "tcp",
+            "ToPort": 5432
+          },
+          {
+            "CidrIp": "10.0.1.128/26",
+            "Description": "Allow REST API private subnets to communicate with LISA-LiteLLMScalingSg",
+            "FromPort": 5432,
+            "IpProtocol": "tcp",
+            "ToPort": 5432
+          },
+          {
+            "CidrIp": "10.0.1.192/26",
+            "Description": "Allow REST API private subnets to communicate with LISA-LiteLLMScalingSg",
+            "FromPort": 5432,
+            "IpProtocol": "tcp",
+            "ToPort": 5432
+          },
+          {
+            "CidrIp": "10.0.2.0/26",
             "Description": "Allow REST API private subnets to communicate with LISA-LiteLLMScalingSg",
             "FromPort": 5432,
             "IpProtocol": "tcp",
@@ -1903,6 +1363,9 @@
           },
           {
             "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+          },
+          {
+            "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
           }
         ]
       }
@@ -2160,7 +1623,7 @@
                   }
                 ]
               },
-              "\\\",\\\"timestamp\\\":\\\"2026-03-13T17:21:20.059Z\\\"}\"}}"
+              "\\\",\\\"timestamp\\\":\\\"2026-04-03T17:34:22.576Z\\\"}\"}}"
             ]
           ]
         },
@@ -2207,7 +1670,7 @@
                   }
                 ]
               },
-              "\\\",\\\"timestamp\\\":\\\"2026-03-13T17:21:20.059Z\\\"}\"}}"
+              "\\\",\\\"timestamp\\\":\\\"2026-04-03T17:34:22.576Z\\\"}\"}}"
             ]
           ]
         },
@@ -2413,6 +1876,84 @@
           }
         ]
       }
+    },
+    "RestApiELB5xxAlarm2DEA11E5": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "REST API ALB is returning 5xx errors, typically meaning no healthy targets are available.",
+        "AlarmName": "test-lisa-dev-LISA-RestApi-ELB5xxErrors",
+        "ComparisonOperator": "GreaterThanThreshold",
+        "Dimensions": [
+          {
+            "Name": "LoadBalancer",
+            "Value": {
+              "Fn::GetAtt": [
+                "RestApiECSClustertestlisadevRESTALB34F3E71E",
+                "LoadBalancerFullName"
+              ]
+            }
+          }
+        ],
+        "EvaluationPeriods": 2,
+        "MetricName": "HTTPCode_ELB_5XX_Count",
+        "Namespace": "AWS/ApplicationELB",
+        "Period": 300,
+        "Statistic": "Sum",
+        "Threshold": 5,
+        "TreatMissingData": "notBreaching"
+      }
+    },
+    "RestApiHighLatencyAlarmE11E76F1": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "REST API p99 response time exceeds 120 seconds. The API may be overloaded.",
+        "AlarmName": "test-lisa-dev-LISA-RestApi-HighP99Latency",
+        "ComparisonOperator": "GreaterThanThreshold",
+        "Dimensions": [
+          {
+            "Name": "LoadBalancer",
+            "Value": {
+              "Fn::GetAtt": [
+                "RestApiECSClustertestlisadevRESTALB34F3E71E",
+                "LoadBalancerFullName"
+              ]
+            }
+          }
+        ],
+        "EvaluationPeriods": 3,
+        "ExtendedStatistic": "p99",
+        "MetricName": "TargetResponseTime",
+        "Namespace": "AWS/ApplicationELB",
+        "Period": 300,
+        "Threshold": 120,
+        "TreatMissingData": "notBreaching"
+      }
+    },
+    "RestApiRejectedConnectionsAlarm3E4F0465": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "REST API ALB is rejecting connections, indicating the API is at maximum capacity.",
+        "AlarmName": "test-lisa-dev-LISA-RestApi-RejectedConnections",
+        "ComparisonOperator": "GreaterThanThreshold",
+        "Dimensions": [
+          {
+            "Name": "LoadBalancer",
+            "Value": {
+              "Fn::GetAtt": [
+                "RestApiECSClustertestlisadevRESTALB34F3E71E",
+                "LoadBalancerFullName"
+              ]
+            }
+          }
+        ],
+        "EvaluationPeriods": 2,
+        "MetricName": "RejectedConnectionCount",
+        "Namespace": "AWS/ApplicationELB",
+        "Period": 300,
+        "Statistic": "Sum",
+        "Threshold": 0,
+        "TreatMissingData": "notBreaching"
+      }
     }
   },
   "Outputs": {
@@ -2430,25 +1971,6 @@
             }
           ]
         ]
-      }
-    },
-    "ExportsOutputRefRestApiECSClustertestlisadevClC04148B6699D280E": {
-      "Value": {
-        "Ref": "RestApiECSClustertestlisadevClC04148B6"
-      },
-      "Export": {
-        "Name": "LisaServe:ExportsOutputRefRestApiECSClustertestlisadevClC04148B6699D280E"
-      }
-    },
-    "ExportsOutputFnGetAttRestApiECSClustertestlisaMCPWORKBENCHEc2SvcService1642D1D0Name81C9F72A": {
-      "Value": {
-        "Fn::GetAtt": [
-          "RestApiECSClustertestlisaMCPWORKBENCHEc2SvcService1642D1D0",
-          "Name"
-        ]
-      },
-      "Export": {
-        "Name": "LisaServe:ExportsOutputFnGetAttRestApiECSClustertestlisaMCPWORKBENCHEc2SvcService1642D1D0Name81C9F72A"
       }
     }
   },

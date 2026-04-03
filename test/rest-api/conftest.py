@@ -39,7 +39,6 @@ def mock_env_vars(monkeypatch):
         "GUARDRAILS_TABLE_NAME": "test-guardrails-table",
         "USAGE_METRICS_QUEUE_URL": "",
         "LITELLM_KEY": "test-litellm-key",
-        "RAG_ADMIN_GROUP": "rag-admin",
     }
     for key, value in env_vars.items():
         monkeypatch.setenv(key, value)
@@ -94,21 +93,6 @@ def mock_admin_jwt_data() -> dict:
 
 
 @pytest.fixture
-def mock_rag_admin_jwt_data() -> dict:
-    """Mock JWT data for RAG admin user."""
-    return {
-        "sub": "rag-admin-123",
-        "username": "ragadminuser",
-        "cognito:groups": ["rag-admin", "users"],
-        "email": "ragadmin@example.com",
-        "exp": 9999999999,
-        "iat": 1000000000,
-        "iss": "https://test-authority.com",
-        "aud": "test-client-id",
-    }
-
-
-@pytest.fixture
 def mock_token_info() -> dict:
     """Mock API token info from DynamoDB."""
     return {
@@ -129,18 +113,6 @@ def mock_admin_token_info() -> dict:
         "tokenExpiration": 9999999999,
         "username": "api-admin",
         "groups": ["admin", "users"],
-    }
-
-
-@pytest.fixture
-def mock_rag_admin_token_info() -> dict:
-    """Mock RAG admin API token info from DynamoDB."""
-    return {
-        "token": "hashed-rag-admin-token",
-        "tokenUUID": "rag-admin-token-uuid",
-        "tokenExpiration": 9999999999,
-        "username": "api-rag-admin",
-        "groups": ["rag-admin", "users"],
     }
 
 

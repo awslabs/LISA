@@ -109,6 +109,7 @@ export class IngestionJobConstruct extends Construct {
         // AWS Batch Fargate compute environment for running ingestion jobs
         const maxvCpus = this.getMaxCpus(vpc);
         const computeEnv = new batch.FargateComputeEnvironment(this, 'IngestionJobFargateEnv', {
+            computeEnvironmentName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job-compute`,
             vpc: vpc.vpc,
             vpcSubnets: vpc.subnetSelection,
             maxvCpus: maxvCpus,

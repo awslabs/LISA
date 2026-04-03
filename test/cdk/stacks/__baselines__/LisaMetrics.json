@@ -500,31 +500,63 @@
               {
                 "Ref": "AWS::Region"
               },
-              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/UsageMetrics,GroupName} MetricName=\\\"UsersPerGroup\\\"', 'Maximum', 86400)\",\"period\":86400}]],\"yAxis\":{}}},{\"type\":\"text\",\"width\":24,\"height\":1,\"x\":0,\"y\":14,\"properties\":{\"markdown\":\"## **User Usage Metrics**\",\"background\":\"transparent\"}},{\"type\":\"metric\",\"width\":8,\"height\":6,\"x\":0,\"y\":15,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Prompts by User\",\"region\":\"",
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/UsageMetrics,GroupName} MetricName=\\\"UsersPerGroup\\\"', 'Maximum', 86400)\",\"period\":86400}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":8,\"height\":6,\"x\":0,\"y\":14,\"properties\":{\"view\":\"bar\",\"title\":\"Total Prompts by Model\",\"region\":\"",
               {
                 "Ref": "AWS::Region"
               },
-              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/UsageMetrics,UserId} MetricName=\\\"UserPromptCount\\\"', 'Sum', 3600)\",\"period\":3600}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":8,\"height\":6,\"x\":8,\"y\":15,\"properties\":{\"view\":\"timeSeries\",\"title\":\"RAG Usage by User\",\"region\":\"",
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/UsageMetrics,ModelId} MetricName=\\\"ModelPromptCount\\\"', 'Sum', 3600)\",\"period\":3600}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":8,\"height\":6,\"x\":8,\"y\":14,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Total Tokens Over Time (Aggregate)\",\"region\":\"",
               {
                 "Ref": "AWS::Region"
               },
-              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/UsageMetrics,UserId} MetricName=\\\"UserRAGUsageCount\\\"', 'Sum', 3600)\",\"period\":3600}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":8,\"height\":6,\"x\":16,\"y\":15,\"properties\":{\"view\":\"timeSeries\",\"title\":\"MCP Tool Calls by User\",\"region\":\"",
+              "\",\"stacked\":true,\"metrics\":[[\"LISA/UsageMetrics\",\"TotalPromptTokens\",{\"label\":\"Input Tokens\",\"period\":3600,\"stat\":\"Sum\"}],[\"LISA/UsageMetrics\",\"TotalCompletionTokens\",{\"label\":\"Output Tokens\",\"period\":3600,\"stat\":\"Sum\"}]],\"yAxis\":{}}},{\"type\":\"text\",\"width\":24,\"height\":1,\"x\":0,\"y\":20,\"properties\":{\"markdown\":\"## **User Usage Metrics**\",\"background\":\"transparent\"}},{\"type\":\"metric\",\"width\":8,\"height\":6,\"x\":0,\"y\":21,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Prompts by User\",\"region\":\"",
               {
                 "Ref": "AWS::Region"
               },
-              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/UsageMetrics,UserId} MetricName=\\\"UserMCPToolCalls\\\"', 'Sum', 3600)\",\"period\":3600}]],\"yAxis\":{}}},{\"type\":\"text\",\"width\":24,\"height\":1,\"x\":0,\"y\":21,\"properties\":{\"markdown\":\"## **Group Usage Metrics**\",\"background\":\"transparent\"}},{\"type\":\"metric\",\"width\":8,\"height\":6,\"x\":0,\"y\":22,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Group Prompt Counts\",\"region\":\"",
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/UsageMetrics,UserId} MetricName=\\\"UserPromptCount\\\"', 'Sum', 3600)\",\"period\":3600}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":8,\"height\":6,\"x\":8,\"y\":21,\"properties\":{\"view\":\"timeSeries\",\"title\":\"RAG Usage by User\",\"region\":\"",
               {
                 "Ref": "AWS::Region"
               },
-              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/UsageMetrics,GroupName} MetricName=\\\"GroupPromptCount\\\"', 'Sum', 3600)\",\"period\":3600}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":8,\"height\":6,\"x\":8,\"y\":22,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Group RAG Usage\",\"region\":\"",
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/UsageMetrics,UserId} MetricName=\\\"UserRAGUsageCount\\\"', 'Sum', 3600)\",\"period\":3600}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":8,\"height\":6,\"x\":16,\"y\":21,\"properties\":{\"view\":\"timeSeries\",\"title\":\"MCP Tool Calls by User\",\"region\":\"",
               {
                 "Ref": "AWS::Region"
               },
-              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/UsageMetrics,GroupName} MetricName=\\\"GroupRAGUsageCount\\\"', 'Sum', 3600)\",\"period\":3600}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":8,\"height\":6,\"x\":16,\"y\":22,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Group MCP Usage\",\"region\":\"",
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/UsageMetrics,UserId} MetricName=\\\"UserMCPToolCalls\\\"', 'Sum', 3600)\",\"period\":3600}]],\"yAxis\":{}}},{\"type\":\"text\",\"width\":24,\"height\":1,\"x\":0,\"y\":27,\"properties\":{\"markdown\":\"## **Group Usage Metrics**\",\"background\":\"transparent\"}},{\"type\":\"metric\",\"width\":8,\"height\":6,\"x\":0,\"y\":28,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Group Prompt Counts\",\"region\":\"",
               {
                 "Ref": "AWS::Region"
               },
-              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/UsageMetrics,GroupName} MetricName=\\\"GroupMCPToolCalls\\\"', 'Sum', 3600)\",\"period\":3600}]],\"yAxis\":{}}}]}"
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/UsageMetrics,GroupName} MetricName=\\\"GroupPromptCount\\\"', 'Sum', 3600)\",\"period\":3600}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":8,\"height\":6,\"x\":8,\"y\":28,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Group RAG Usage\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/UsageMetrics,GroupName} MetricName=\\\"GroupRAGUsageCount\\\"', 'Sum', 3600)\",\"period\":3600}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":8,\"height\":6,\"x\":16,\"y\":28,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Group MCP Usage\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/UsageMetrics,GroupName} MetricName=\\\"GroupMCPToolCalls\\\"', 'Sum', 3600)\",\"period\":3600}]],\"yAxis\":{}}},{\"type\":\"text\",\"width\":24,\"height\":1,\"x\":0,\"y\":34,\"properties\":{\"markdown\":\"## **Token Usage Metrics**\",\"background\":\"transparent\"}},{\"type\":\"metric\",\"width\":8,\"height\":6,\"x\":0,\"y\":35,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Input Tokens by Model\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/UsageMetrics,ModelId} MetricName=\\\"ModelPromptTokens\\\"', 'Sum', 3600)\",\"period\":3600}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":8,\"height\":6,\"x\":8,\"y\":35,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Output Tokens by Model\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/UsageMetrics,ModelId} MetricName=\\\"ModelCompletionTokens\\\"', 'Sum', 3600)\",\"period\":3600}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":8,\"height\":6,\"x\":16,\"y\":35,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Input Tokens by User\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/UsageMetrics,UserId} MetricName=\\\"UserPromptTokens\\\"', 'Sum', 3600)\",\"period\":3600}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":8,\"height\":6,\"x\":0,\"y\":41,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Output Tokens by User\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/UsageMetrics,UserId} MetricName=\\\"UserCompletionTokens\\\"', 'Sum', 3600)\",\"period\":3600}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":8,\"height\":6,\"x\":8,\"y\":41,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Input Tokens by Group\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/UsageMetrics,GroupName} MetricName=\\\"GroupPromptTokens\\\"', 'Sum', 3600)\",\"period\":3600}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":8,\"height\":6,\"x\":16,\"y\":41,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Output Tokens by Group\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/UsageMetrics,GroupName} MetricName=\\\"GroupCompletionTokens\\\"', 'Sum', 3600)\",\"period\":3600}]],\"yAxis\":{}}}]}"
             ]
           ]
         },
@@ -655,14 +687,19 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Gets metrics for a specific user",
         "Environment": {
           "Variables": {
             "USAGE_METRICS_TABLE_NAME": {
               "Ref": "LisaMetricsUsageMetricsTableFA0CC982"
-            }
+            },
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
           }
         },
         "FunctionName": "LisaMetrics-metrics-get_user_metrics",
@@ -693,6 +730,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -730,14 +770,19 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Gets aggregated metrics across all users",
         "Environment": {
           "Variables": {
             "USAGE_METRICS_TABLE_NAME": {
               "Ref": "LisaMetricsUsageMetricsTableFA0CC982"
-            }
+            },
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
           }
         },
         "FunctionName": "LisaMetrics-metrics-get_user_metrics_all",
@@ -768,6 +813,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -805,13 +853,18 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Environment": {
           "Variables": {
             "USAGE_METRICS_TABLE_NAME": {
               "Ref": "LisaMetricsUsageMetricsTableFA0CC982"
-            }
+            },
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
           }
         },
         "Handler": "metrics/lambda_functions.daily_metrics_handler",
@@ -840,6 +893,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -891,13 +947,18 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Environment": {
           "Variables": {
             "USAGE_METRICS_TABLE_NAME": {
               "Ref": "LisaMetricsUsageMetricsTableFA0CC982"
-            }
+            },
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
           }
         },
         "Handler": "metrics.lambda_functions.process_metrics_sqs_event",
@@ -926,6 +987,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -1026,6 +1090,220 @@
         "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRoleDefaultPolicyADDA7DEB",
         "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRole9741ECFB"
       ]
+    },
+    "ModelHealthModelHealthDashboard3D9D6730": {
+      "Type": "AWS::CloudWatch::Dashboard",
+      "Properties": {
+        "DashboardBody": {
+          "Fn::Join": [
+            "",
+            [
+              "{\"start\":\"-P7D\",\"widgets\":[{\"type\":\"text\",\"width\":24,\"height\":1,\"x\":0,\"y\":0,\"properties\":{\"markdown\":\"# **LISA Self-Hosted Model Health Dashboard**\",\"background\":\"transparent\"}},{\"type\":\"text\",\"width\":24,\"height\":1,\"x\":0,\"y\":1,\"properties\":{\"markdown\":\"## **Task & Container Health**\",\"background\":\"transparent\"}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":0,\"y\":2,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Running vs Desired Tasks (by Cluster)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{ECS/ContainerInsights,ClusterName,ServiceName} MetricName=\\\"RunningTaskCount\\\" ClusterName=test-lisa', 'Maximum', 300)\"}],[{\"expression\":\"SEARCH('{ECS/ContainerInsights,ClusterName,ServiceName} MetricName=\\\"DesiredTaskCount\\\" ClusterName=test-lisa', 'Maximum', 300)\",\"yAxis\":\"right\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":12,\"y\":2,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Pending Tasks (by Cluster)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{ECS/ContainerInsights,ClusterName,ServiceName} MetricName=\\\"PendingTaskCount\\\" ClusterName=test-lisa', 'Maximum', 300)\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":0,\"y\":8,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Task Sets (Deployment Rollouts)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{ECS/ContainerInsights,ClusterName,ServiceName} MetricName=\\\"TaskSetCount\\\" ClusterName=test-lisa', 'Maximum', 300)\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":12,\"y\":8,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Deployment Count (by Service)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{ECS/ContainerInsights,ClusterName,ServiceName} MetricName=\\\"DeploymentCount\\\" ClusterName=test-lisa', 'Maximum', 300)\"}]],\"yAxis\":{}}},{\"type\":\"text\",\"width\":24,\"height\":1,\"x\":0,\"y\":14,\"properties\":{\"markdown\":\"## **ALB Target Health**\",\"background\":\"transparent\"}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":0,\"y\":15,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Healthy Host Count (by Target Group)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{AWS/ApplicationELB,TargetGroup,LoadBalancer} MetricName=\\\"HealthyHostCount\\\" test-lisa', 'Average', 300)\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":12,\"y\":15,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Unhealthy Host Count (by Target Group)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{AWS/ApplicationELB,TargetGroup,LoadBalancer} MetricName=\\\"UnHealthyHostCount\\\" test-lisa', 'Average', 300)\"}]],\"yAxis\":{}}},{\"type\":\"text\",\"width\":24,\"height\":1,\"x\":0,\"y\":21,\"properties\":{\"markdown\":\"## **Error Rates**\",\"background\":\"transparent\"}},{\"type\":\"metric\",\"width\":8,\"height\":6,\"x\":0,\"y\":22,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Target 5xx Errors (Failed Invocations)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{AWS/ApplicationELB,TargetGroup,LoadBalancer} MetricName=\\\"HTTPCode_Target_5XX_Count\\\" test-lisa', 'Sum', 300)\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":8,\"height\":6,\"x\":8,\"y\":22,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Target 4xx Errors (by Model)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{AWS/ApplicationELB,TargetGroup,LoadBalancer} MetricName=\\\"HTTPCode_Target_4XX_Count\\\" test-lisa', 'Sum', 300)\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":8,\"height\":6,\"x\":16,\"y\":22,\"properties\":{\"view\":\"timeSeries\",\"title\":\"ELB 5xx Errors (by Load Balancer)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{AWS/ApplicationELB,LoadBalancer} MetricName=\\\"HTTPCode_ELB_5XX_Count\\\" test-lisa', 'Sum', 300)\"}]],\"yAxis\":{}}},{\"type\":\"text\",\"width\":24,\"height\":1,\"x\":0,\"y\":28,\"properties\":{\"markdown\":\"## **Latency & Throughput**\",\"background\":\"transparent\"}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":0,\"y\":29,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Target Response Time p50 (by Model)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{AWS/ApplicationELB,TargetGroup,LoadBalancer} MetricName=\\\"TargetResponseTime\\\" test-lisa NOT RestA NOT rest NOT MCP', 'p50', 300) * 1000\"}]],\"yAxis\":{\"left\":{\"label\":\"ms\"}}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":12,\"y\":29,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Target Response Time p99 (by Model)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{AWS/ApplicationELB,TargetGroup,LoadBalancer} MetricName=\\\"TargetResponseTime\\\" test-lisa NOT RestA NOT rest NOT MCP', 'p99', 300) * 1000\"}]],\"yAxis\":{\"left\":{\"label\":\"ms\"}}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":0,\"y\":35,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Request Count (by Model)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{AWS/ApplicationELB,TargetGroup,LoadBalancer} MetricName=\\\"RequestCount\\\" test-lisa NOT RestA NOT rest NOT MCP', 'Sum', 300)\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":12,\"y\":35,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Active Connections (by Load Balancer)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{AWS/ApplicationELB,LoadBalancer} MetricName=\\\"ActiveConnectionCount\\\" test-lisa', 'Sum', 300)\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":0,\"y\":41,\"properties\":{\"view\":\"timeSeries\",\"title\":\"New Connections (by Load Balancer)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{AWS/ApplicationELB,LoadBalancer} MetricName=\\\"NewConnectionCount\\\" test-lisa', 'Sum', 300)\"}]],\"yAxis\":{}}},{\"type\":\"text\",\"width\":24,\"height\":1,\"x\":0,\"y\":47,\"properties\":{\"markdown\":\"## **Resource Utilization**\",\"background\":\"transparent\"}},{\"type\":\"metric\",\"width\":8,\"height\":6,\"x\":0,\"y\":48,\"properties\":{\"view\":\"timeSeries\",\"title\":\"CPU Utilized (by Cluster)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{ECS/ContainerInsights,ClusterName,ServiceName} MetricName=\\\"CpuUtilized\\\" ClusterName=test-lisa', 'Average', 300)\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":8,\"height\":6,\"x\":8,\"y\":48,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Memory Utilized (by Cluster)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{ECS/ContainerInsights,ClusterName,ServiceName} MetricName=\\\"MemoryUtilized\\\" ClusterName=test-lisa', 'Average', 300)\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":8,\"height\":6,\"x\":16,\"y\":48,\"properties\":{\"view\":\"timeSeries\",\"title\":\"GPU Cache Usage % (vLLM)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/InferenceMetrics,ModelName} MetricName=\\\"GpuCacheUsagePercent\\\"', 'Average', 300) * 100\"}]],\"yAxis\":{\"left\":{\"min\":0,\"max\":100,\"label\":\"%\"}}}},{\"type\":\"metric\",\"width\":8,\"height\":6,\"x\":0,\"y\":54,\"properties\":{\"view\":\"timeSeries\",\"title\":\"CPU Reserved (by Cluster)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{ECS/ContainerInsights,ClusterName,ServiceName} MetricName=\\\"CpuReserved\\\" ClusterName=test-lisa', 'Average', 300)\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":8,\"height\":6,\"x\":8,\"y\":54,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Memory Reserved (by Cluster)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{ECS/ContainerInsights,ClusterName,ServiceName} MetricName=\\\"MemoryReserved\\\" ClusterName=test-lisa', 'Average', 300)\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":8,\"height\":6,\"x\":16,\"y\":54,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Requests Running / Waiting (vLLM)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/InferenceMetrics,ModelName} MetricName=\\\"RequestsRunning\\\"', 'Average', 300)\"}],[{\"expression\":\"SEARCH('{LISA/InferenceMetrics,ModelName} MetricName=\\\"RequestsWaiting\\\"', 'Average', 300)\",\"yAxis\":\"right\"}]],\"yAxis\":{}}},{\"type\":\"text\",\"width\":24,\"height\":1,\"x\":0,\"y\":60,\"properties\":{\"markdown\":\"## **Network & Storage**\",\"background\":\"transparent\"}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":0,\"y\":61,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Network RX / TX Bytes (by Cluster)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{ECS/ContainerInsights,ClusterName,ServiceName} MetricName=\\\"NetworkRxBytes\\\" ClusterName=test-lisa', 'Average', 300)\"}],[{\"expression\":\"SEARCH('{ECS/ContainerInsights,ClusterName,ServiceName} MetricName=\\\"NetworkTxBytes\\\" ClusterName=test-lisa', 'Average', 300)\",\"yAxis\":\"right\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":12,\"y\":61,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Storage Read / Write Bytes (by Cluster)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{ECS/ContainerInsights,ClusterName,ServiceName} MetricName=\\\"StorageReadBytes\\\" ClusterName=test-lisa', 'Average', 300)\"}],[{\"expression\":\"SEARCH('{ECS/ContainerInsights,ClusterName,ServiceName} MetricName=\\\"StorageWriteBytes\\\" ClusterName=test-lisa', 'Average', 300)\",\"yAxis\":\"right\"}]],\"yAxis\":{}}},{\"type\":\"text\",\"width\":24,\"height\":1,\"x\":0,\"y\":67,\"properties\":{\"markdown\":\"## **Inference Engine Metrics**\\nScraped from Prometheus `/metrics` endpoints via `metrics_publisher.py`\",\"background\":\"transparent\"}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":0,\"y\":68,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Token Throughput (vLLM)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"label\":\"Prompt toks/s\",\"expression\":\"DIFF(SEARCH('{LISA/InferenceMetrics,ModelName} MetricName=\\\"PromptTokensTotal\\\"', 'Maximum', 300)) / 300\"}],[{\"label\":\"Generation toks/s\",\"expression\":\"DIFF(SEARCH('{LISA/InferenceMetrics,ModelName} MetricName=\\\"GenerationTokensTotal\\\"', 'Maximum', 300)) / 300\",\"yAxis\":\"right\"}]],\"yAxis\":{\"left\":{\"label\":\"toks/s\"},\"right\":{\"label\":\"toks/s\"}}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":12,\"y\":68,\"properties\":{\"view\":\"timeSeries\",\"title\":\"E2E Request Latency / TTFT (vLLM)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/InferenceMetrics,ModelName} MetricName=\\\"E2ERequestLatencySeconds\\\"', 'Average', 300)\"}],[{\"expression\":\"SEARCH('{LISA/InferenceMetrics,ModelName} MetricName=\\\"TimeToFirstTokenSeconds\\\"', 'Average', 300)\",\"yAxis\":\"right\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":0,\"y\":74,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Inter-Token Latency / TPOT (vLLM)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/InferenceMetrics,ModelName} MetricName=\\\"InterTokenLatencySeconds\\\"', 'Average', 300)\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":12,\"y\":74,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Request Queue Time (vLLM)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/InferenceMetrics,ModelName} MetricName=\\\"RequestQueueTimeSeconds\\\"', 'Average', 300)\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":0,\"y\":80,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Prefill / Decode Time (vLLM)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/InferenceMetrics,ModelName} MetricName=\\\"RequestPrefillTimeSeconds\\\"', 'Average', 300)\"}],[{\"expression\":\"SEARCH('{LISA/InferenceMetrics,ModelName} MetricName=\\\"RequestDecodeTimeSeconds\\\"', 'Average', 300)\",\"yAxis\":\"right\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":12,\"y\":80,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Completed Requests (vLLM)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/InferenceMetrics,ModelName} MetricName=\\\"RequestSuccessTotal\\\"', 'Sum', 300)\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":0,\"y\":86,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Queue Size (TGI / TEI)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/InferenceMetrics,ModelName} MetricName=\\\"QueueSize\\\"', 'Average', 300)\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":12,\"y\":86,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Batch Current Size (TGI / TEI)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/InferenceMetrics,ModelName} MetricName=\\\"BatchCurrentSize\\\"', 'Average', 300)\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":0,\"y\":92,\"properties\":{\"view\":\"timeSeries\",\"title\":\"TGI Request Success / Failure\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/InferenceMetrics,ModelName} MetricName=\\\"RequestSuccess\\\"', 'Sum', 300)\"}],[{\"expression\":\"SEARCH('{LISA/InferenceMetrics,ModelName} MetricName=\\\"RequestFailure\\\"', 'Sum', 300)\",\"yAxis\":\"right\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":12,\"y\":92,\"properties\":{\"view\":\"timeSeries\",\"title\":\"TGI Latency Breakdown (Queue / Inference / Per-Token)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/InferenceMetrics,ModelName} MetricName=\\\"QueueDurationSeconds\\\"', 'Average', 300)\"}],[{\"expression\":\"SEARCH('{LISA/InferenceMetrics,ModelName} MetricName=\\\"InferenceDurationSeconds\\\"', 'Average', 300)\"}],[{\"expression\":\"SEARCH('{LISA/InferenceMetrics,ModelName} MetricName=\\\"MeanTimePerTokenSeconds\\\"', 'Average', 300)\",\"yAxis\":\"right\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":0,\"y\":98,\"properties\":{\"view\":\"timeSeries\",\"title\":\"TGI Avg Input / Generated Tokens per Request\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/InferenceMetrics,ModelName} MetricName=\\\"InputLengthPerRequest\\\"', 'Average', 300)\"}],[{\"expression\":\"SEARCH('{LISA/InferenceMetrics,ModelName} MetricName=\\\"GeneratedTokensPerRequest\\\"', 'Average', 300)\",\"yAxis\":\"right\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":12,\"y\":98,\"properties\":{\"view\":\"timeSeries\",\"title\":\"TEI Request Duration Breakdown\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/InferenceMetrics,ModelName} MetricName=\\\"RequestDurationSeconds\\\"', 'Average', 300)\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":0,\"y\":104,\"properties\":{\"view\":\"timeSeries\",\"title\":\"TEI Tokenization / Queue / Inference Time\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/InferenceMetrics,ModelName} MetricName=\\\"TokenizationDurationSeconds\\\"', 'Average', 300)\"}],[{\"expression\":\"SEARCH('{LISA/InferenceMetrics,ModelName} MetricName=\\\"QueueDurationSeconds\\\"', 'Average', 300)\"}],[{\"expression\":\"SEARCH('{LISA/InferenceMetrics,ModelName} MetricName=\\\"InferenceDurationSeconds\\\"', 'Average', 300)\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":12,\"y\":104,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Metrics Publisher Heartbeat (by Model)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/InferenceMetrics,ModelName} MetricName=\\\"MetricsPublisherHeartbeat\\\"', 'Average', 300)\"}]],\"yAxis\":{}}},{\"type\":\"text\",\"width\":24,\"height\":1,\"x\":0,\"y\":110,\"properties\":{\"markdown\":\"## **Batch Ingestion**\\nJob queue metrics from EventBridge state change events (covers all ingestion triggers)\",\"background\":\"transparent\"}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":0,\"y\":111,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Jobs Submitted (All Sources)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/BatchIngestion,DeploymentName,DeploymentStage,JobQueue} MetricName=\\\"JobsSubmitted\\\" DeploymentName=\\\"test-lisa\\\"', 'Sum', 300)\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":12,\"y\":111,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Jobs Succeeded vs Failed\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/BatchIngestion,DeploymentName,DeploymentStage,JobQueue} MetricName=\\\"JobsSucceeded\\\" DeploymentName=\\\"test-lisa\\\"', 'Sum', 300)\"}],[{\"expression\":\"SEARCH('{LISA/BatchIngestion,DeploymentName,DeploymentStage,JobQueue} MetricName=\\\"JobsFailed\\\" DeploymentName=\\\"test-lisa\\\"', 'Sum', 300)\",\"yAxis\":\"right\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":0,\"y\":117,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Jobs Started (Running)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{LISA/BatchIngestion,DeploymentName,DeploymentStage,JobQueue} MetricName=\\\"JobsStarted\\\" DeploymentName=\\\"test-lisa\\\"', 'Sum', 300)\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":12,\"y\":117,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Ingestion Lambda Errors\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{AWS/Lambda,FunctionName} MetricName=\\\"Errors\\\" test-lisa-dev-ingestion', 'Sum', 300)\"}]],\"yAxis\":{}}},{\"type\":\"text\",\"width\":24,\"height\":1,\"x\":0,\"y\":123,\"properties\":{\"markdown\":\"## **Auto Scaling**\",\"background\":\"transparent\"}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":0,\"y\":124,\"properties\":{\"view\":\"timeSeries\",\"title\":\"ASG Instance Count (by Group)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{AWS/AutoScaling,AutoScalingGroupName} MetricName=\\\"GroupInServiceInstances\\\"', 'Average', 300)\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":12,\"y\":124,\"properties\":{\"view\":\"timeSeries\",\"title\":\"ASG Desired Capacity (by Group)\",\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"metrics\":[[{\"expression\":\"SEARCH('{AWS/AutoScaling,AutoScalingGroupName} MetricName=\\\"GroupDesiredCapacity\\\"', 'Average', 300)\"}]],\"yAxis\":{}}},{\"type\":\"text\",\"width\":24,\"height\":1,\"x\":0,\"y\":130,\"properties\":{\"markdown\":\"## **Alarm Status**\",\"background\":\"transparent\"}},{\"type\":\"alarm\",\"width\":24,\"height\":4,\"x\":0,\"y\":131,\"properties\":{\"title\":\"Model Health Alarms\",\"alarms\":[\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelHealthBatchJobFailuresAlarm023432D2",
+                  "Arn"
+                ]
+              },
+              "\"]}}]}"
+            ]
+          ]
+        },
+        "DashboardName": "test-lisa-dev-LISA-Model-Health"
+      }
+    },
+    "ModelHealthBatchJobFailuresAlarm023432D2": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "One or more batch ingestion jobs have failed. Check AWS Batch console and CloudWatch Logs for the failed job details.",
+        "AlarmName": "test-lisa-dev-LISA-BatchJobFailures",
+        "ComparisonOperator": "GreaterThanThreshold",
+        "Dimensions": [
+          {
+            "Name": "DeploymentName",
+            "Value": "test-lisa"
+          },
+          {
+            "Name": "DeploymentStage",
+            "Value": "dev"
+          }
+        ],
+        "EvaluationPeriods": 1,
+        "MetricName": "JobsFailed",
+        "Namespace": "LISA/BatchIngestion",
+        "Period": 300,
+        "Statistic": "Sum",
+        "Threshold": 0,
+        "TreatMissingData": "notBreaching"
+      }
     }
   },
   "Parameters": {

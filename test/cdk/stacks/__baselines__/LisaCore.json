@@ -3,6 +3,7 @@
     "BucketAccessLogsBucket91990836": {
       "Type": "AWS::S3::Bucket",
       "Properties": {
+        "AccessControl": "LogDeliveryWrite",
         "BucketEncryption": {
           "ServerSideEncryptionConfiguration": [
             {
@@ -219,7 +220,7 @@
         ],
         "Content": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "71231ad2be1ceab673b3a4167ea414051677d2752c1307d6200b6a457aa89fdc.zip"
+          "S3Key": "312dfed18bf4895807a21a58a9b4aea3d4687cc46b8a9deae1531867b5eba227.zip"
         },
         "Description": "Common requirements for REST API Lambdas"
       },
@@ -313,6 +314,16 @@
         "Value": {
           "Ref": "CdkLayer83325AB8"
         }
+      }
+    }
+  },
+  "Outputs": {
+    "ExportsOutputRefBucketAccessLogsBucket91990836CA73FE19": {
+      "Value": {
+        "Ref": "BucketAccessLogsBucket91990836"
+      },
+      "Export": {
+        "Name": "LisaCore:ExportsOutputRefBucketAccessLogsBucket91990836CA73FE19"
       }
     }
   },

@@ -115,11 +115,7 @@ export class IngestionJobConstruct extends Construct {
             maxvCpus: maxvCpus,
         });
 
-        // AWS Batch job queue that uses the Fargate compute environment.
-        // Use a static name so the EventBridge suffix filter and CloudWatch
-        // JobQueue dimension remain stable across deployments.
         const jobQueue = new batch.JobQueue(this, 'IngestionJobQueue', {
-            jobQueueName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job`,
             computeEnvironments: [
                 {
                     computeEnvironment: computeEnv,
@@ -316,6 +312,7 @@ export class IngestionJobConstruct extends Construct {
                 METRICS_NAMESPACE: 'LISA/BatchIngestion',
                 DEPLOYMENT_NAME: config.deploymentName,
                 DEPLOYMENT_STAGE: config.deploymentStage,
+                JOB_QUEUE_LABEL: `${config.deploymentName}-${config.deploymentStage}-ingestion-job`,
             },
             timeout: Duration.seconds(30),
             vpc: vpc.vpc,
@@ -336,7 +333,7 @@ export class IngestionJobConstruct extends Construct {
                 detailType: ['Batch Job State Change'],
                 detail: {
                     status: ['SUBMITTED', 'RUNNING', 'SUCCEEDED', 'FAILED'],
-                    jobQueue: [{ suffix: jobQueue.jobQueueName }],
+                    jobQueue: [jobQueue.jobQueueArn],
                 },
             },
             targets: [new targets.LambdaFunction(batchJobMetricLambda)],

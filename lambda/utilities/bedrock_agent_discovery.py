@@ -21,6 +21,7 @@ import logging
 import re
 from typing import Any
 
+import boto3
 from botocore.exceptions import ClientError
 from models.domain_objects import BedrockAgentActionTool, BedrockAgentAliasSummary, BedrockAgentDiscoveryItem
 from utilities.validation import ValidationError
@@ -208,8 +209,6 @@ def discover_bedrock_agents(bedrock_agent_client: Any | None = None) -> list[Bed
     Only agents in PREPARED state are returned (consistent with ready-to-invoke agents).
     """
     if not bedrock_agent_client:
-        import boto3
-
         bedrock_agent_client = boto3.client("bedrock-agent")
 
     try:

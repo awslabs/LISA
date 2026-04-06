@@ -20,7 +20,7 @@ import pytest
 from botocore.exceptions import ClientError
 from models.domain_objects import BedrockAgentAliasSummary
 from utilities import bedrock_agent_discovery as bed_ad
-from utilities.bedrock_agent_discovery import TST_ALIAS_ID, discover_bedrock_agents, list_agent_aliases
+from utilities.bedrock_agent_discovery import discover_bedrock_agents, list_agent_aliases, TST_ALIAS_ID
 from utilities.validation import ValidationError
 
 
@@ -256,12 +256,15 @@ def test_tools_from_agent_action_group_member_functions():
 def test_tools_from_agent_action_group_skips_invalid_entries():
     assert bed_ad._tools_from_agent_action_group("a", "g", "n", {}) == []
     assert bed_ad._tools_from_agent_action_group("a", "g", "n", {"functionSchema": {}}) == []
-    assert bed_ad._tools_from_agent_action_group(
-        "a",
-        "g",
-        "n",
-        {"functionSchema": {"functions": [{"description": "no name"}, "not-a-dict"]}},
-    ) == []
+    assert (
+        bed_ad._tools_from_agent_action_group(
+            "a",
+            "g",
+            "n",
+            {"functionSchema": {"functions": [{"description": "no name"}, "not-a-dict"]}},
+        )
+        == []
+    )
 
 
 def test_discover_agent_action_tools_empty_version():

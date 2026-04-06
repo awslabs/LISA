@@ -119,22 +119,22 @@ export function runAdminTests (options: {
         }
     });
 
-    it('Bedrock Agent Catalog page loads; scan populates discovered agents', () => {
+    it('Bedrock Agent Catalog page loads; Add to catalog opens scan modal', () => {
         const minRows = expectMinItems ? 1 : 0;
         navigateToAdminPage('Bedrock Agent Catalog');
         cy.url().should('include', '/bedrock-agent-management');
         waitForContentToLoad();
         cy.wait('@getBedrockApprovals', { timeout: 30000 });
-        cy.contains('h2', 'Available agents').should('be.visible');
         cy.contains('h2', 'LISA catalog').should('be.visible');
         if (verifyFixtureData) {
             cy.contains('Smoke Test Agent').should('be.visible');
         }
         verifyCloudscapeTableHasData(minRows);
 
-        cy.contains('button', 'Scan account').click();
+        cy.contains('button', 'Add to catalog').click();
         cy.wait('@getBedrockDiscovery', { timeout: 30000 });
         if (verifyFixtureData) {
+            cy.contains('Add agent to catalog').should('be.visible');
             cy.contains('Discovered Only Agent').should('be.visible');
         }
     });

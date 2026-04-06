@@ -622,11 +622,11 @@ def list_bedrock_agents(event: dict, context: dict) -> dict[str, Any]:
     """
     List admin-approved Bedrock agents visible to this user, merged with live AWS discovery.
     """
-    _user_id, _is_admin, groups = get_user_context(event)
+    _user_id, is_admin, groups = get_user_context(event)
     logger.info("Listing approved Bedrock agents for catalog")
 
     approvals = _scan_bedrock_agent_approvals()
-    visible = [a for a in approvals if _approval_visible_to_user(groups, a.get("groups"))]
+    visible = approvals if is_admin else [a for a in approvals if _approval_visible_to_user(groups, a.get("groups"))]
 
     aws_region = os.environ["AWS_REGION"]
     bedrock_agent_client = boto3.client("bedrock-agent", aws_region, config=retry_config)

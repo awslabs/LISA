@@ -15,7 +15,6 @@
  */
 
 import {
-    Button,
     ButtonDropdown,
     Header,
     Link,
@@ -43,6 +42,7 @@ import { useAppDispatch, useAppSelector } from '@/config/store';
 import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
 import { useNotificationService } from '@/shared/util/hooks';
 import { getDisplayName } from '@/shared/util/branding';
+import RefreshButton from '../common/RefreshButton';
 
 export function BedrockAgentsManagementPanel (): React.ReactElement {
     const navigate = useNavigate();
@@ -176,6 +176,11 @@ export function BedrockAgentsManagementPanel (): React.ReactElement {
                     <Header
                         actions={(
                             <SpaceBetween direction='horizontal' size='xs' alignItems='center'>
+                                <RefreshButton
+                                    onClick={() => refetch()}
+                                    isLoading={isFetching}
+                                    ariaLabel='Refresh Bedrock agents'
+                                />
                                 <ButtonDropdown
                                     items={[
                                         {
@@ -194,13 +199,6 @@ export function BedrockAgentsManagementPanel (): React.ReactElement {
                                 >
                                     Actions
                                 </ButtonDropdown>
-                                <Button
-                                    onClick={() => refetch()}
-                                    loading={isFetching}
-                                    ariaLabel='Refresh Bedrock agents'
-                                >
-                                    Refresh
-                                </Button>
                             </SpaceBetween>
                         )}
                         description={`Opt in to use Bedrock agents from the ${getDisplayName()} catalog. Autopilot Mode auto-approves all Bedrock agent tools (like MCP). With Safe Mode, use per-agent auto-approve or confirm each invocation.`}

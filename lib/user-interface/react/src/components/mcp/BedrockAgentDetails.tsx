@@ -56,16 +56,22 @@ export function BedrockAgentDetails (): React.ReactElement {
     const { data: catalog, isFetching: catalogLoading } = useListBedrockAgentsQuery();
     const { data: userPreferences } = useGetUserPreferencesQuery();
     const [updatePreferences, { isLoading: isSavingPrefs }] = useUpdateUserPreferencesMutation();
-    const [localPreferences, setLocalPreferences] = useState<UserPreferences | null>(null);
+    const [optimisticPrefs, setOptimisticPrefs] = useState<UserPreferences | null>(null);
+    const [prevAgentId, setPrevAgentId] = useState(agentId);
+    const [prevUserPreferences, setPrevUserPreferences] = useState(userPreferences);
     const [updatingToolName, setUpdatingToolName] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (userPreferences) {
-            setLocalPreferences(userPreferences);
-        }
-    }, [userPreferences]);
+    if (agentId !== prevAgentId) {
+        setPrevAgentId(agentId);
+        setOptimisticPrefs(null);
+    }
+    if (userPreferences !== prevUserPreferences) {
+        setPrevUserPreferences(userPreferences);
+        setOptimisticPrefs(null);
+    }
 
-    const preferences = localPreferences
+    const preferences =
+        optimisticPrefs
         ?? (userPreferences ?? ({ ...DefaultUserPreferences, user: userName } as UserPreferences));
 
     const agent = useMemo(
@@ -111,7 +117,7 @@ export function BedrockAgentDetails (): React.ReactElement {
                 bedrockAgents: nextBedrockAgentsPrefs(preferences.preferences.bedrockAgents, nextAgents),
             },
         };
-        setLocalPreferences(updated);
+        setOptimisticPrefs(updated);
         void updatePreferences(updated)
             .unwrap()
             .then(() => {
@@ -120,7 +126,7 @@ export function BedrockAgentDetails (): React.ReactElement {
             .catch((err: unknown) => {
                 const msg = err instanceof Error ? err.message : String(err);
                 notificationService.generateNotification(`Error updating tool preference: ${msg}`, 'error');
-                setLocalPreferences(userPreferences ?? null);
+                setOptimisticPrefs(null);
             })
             .finally(() => {
                 setUpdatingToolName(null);
@@ -141,7 +147,7 @@ export function BedrockAgentDetails (): React.ReactElement {
                 bedrockAgents: nextBedrockAgentsPrefs(preferences.preferences.bedrockAgents, nextAgents),
             },
         };
-        setLocalPreferences(updated);
+        setOptimisticPrefs(updated);
         void updatePreferences(updated)
             .unwrap()
             .then(() => {
@@ -150,7 +156,7 @@ export function BedrockAgentDetails (): React.ReactElement {
             .catch((err: unknown) => {
                 const msg = err instanceof Error ? err.message : String(err);
                 notificationService.generateNotification(`Error: ${msg}`, 'error');
-                setLocalPreferences(userPreferences ?? null);
+                setOptimisticPrefs(null);
             });
     };
 

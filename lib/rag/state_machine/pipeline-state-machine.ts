@@ -280,7 +280,7 @@ export class PipelineStateMachine extends Construct {
         // Create the state machine
         this.stateMachine = new sfn.StateMachine(this, 'PipelineStateMachine', {
             stateMachineName: `${config.deploymentName}-${config.deploymentStage}-pipeline-state-machine`,
-            definition,
+            definitionBody: sfn.DefinitionBody.fromChainable(definition),
             role: stateMachineRole,
             timeout: Duration.minutes(30),
             tracingEnabled: true

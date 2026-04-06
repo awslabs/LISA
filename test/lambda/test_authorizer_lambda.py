@@ -433,6 +433,7 @@ def test_lambda_handler_with_jwt(
     # Mock auth provider
     mock_auth_provider = MagicMock()
     mock_auth_provider.check_admin_access.return_value = False
+    mock_auth_provider.check_rag_admin_access.return_value = False
     mock_auth_provider.check_app_access.return_value = True
     mock_get_auth_provider.return_value = mock_auth_provider
 
@@ -474,6 +475,7 @@ def test_lambda_handler_admin_models_access(
     # Mock auth provider with admin access
     mock_auth_provider = MagicMock()
     mock_auth_provider.check_admin_access.return_value = True
+    mock_auth_provider.check_rag_admin_access.return_value = False
     mock_auth_provider.check_app_access.return_value = True
     mock_get_auth_provider.return_value = mock_auth_provider
 
@@ -517,6 +519,7 @@ def test_lambda_handler_non_admin_models_access(
     # Mock auth provider without admin access but with app access
     mock_auth_provider = MagicMock()
     mock_auth_provider.check_admin_access.return_value = False
+    mock_auth_provider.check_rag_admin_access.return_value = False
     mock_auth_provider.check_app_access.return_value = True
     mock_get_auth_provider.return_value = mock_auth_provider
 
@@ -571,6 +574,7 @@ def test_lambda_handler_non_admin_configuration_update(
     # Mock auth provider without admin access but with app access
     mock_auth_provider = MagicMock()
     mock_auth_provider.check_admin_access.return_value = False
+    mock_auth_provider.check_rag_admin_access.return_value = False
     mock_auth_provider.check_app_access.return_value = True
     mock_get_auth_provider.return_value = mock_auth_provider
 
@@ -738,6 +742,50 @@ def test_get_management_tokens_with_previous():
                 call(SecretId="test-management-key", VersionStage="AWSPREVIOUS"),
             ]
             mock_secrets_manager.get_secret_value.assert_has_calls(calls, any_order=False)
+
+
+@patch("authorizer.lambda_functions.get_management_tokens")
+@patch("authorizer.lambda_functions.is_valid_api_token")
+@patch("authorizer.lambda_functions.id_token_is_valid")
+@patch("authorizer.lambda_functions.get_authorization_provider")
+@patch("authorizer.lambda_functions.find_jwt_username")
+def test_lambda_handler_rag_admin_only_user_gets_allow(
+    mock_find_jwt_username,
+    mock_get_auth_provider,
+    mock_id_token_is_valid,
+    mock_is_valid_api_token,
+    mock_get_management_tokens,
+    sample_event,
+    lambda_context,
+):
+    """Test lambda_handler allows a user who is only in the rag_admin group.
+
+    A user only in the rag_admin group (not admin, not user group) should get
+    an Allow policy from the authorizer, not a Deny.
+    """
+    mock_get_management_tokens.return_value = []
+    mock_is_valid_api_token.return_value = False
+    jwt_data = {
+        "sub": "rag-admin-user-id",
+        "username": "rag-admin-user",
+        "groups": ["rag-admin-group"],
+    }
+    mock_id_token_is_valid.return_value = jwt_data
+    mock_find_jwt_username.return_value = "rag-admin-user"
+
+    # Mock auth provider: NOT admin, NOT app user, but IS rag_admin
+    mock_auth_provider = MagicMock()
+    mock_auth_provider.check_admin_access.return_value = False
+    mock_auth_provider.check_app_access.return_value = False
+    mock_auth_provider.check_rag_admin_access.return_value = True
+    mock_get_auth_provider.return_value = mock_auth_provider
+
+    response = lambda_handler(sample_event, lambda_context)
+
+    assert response["policyDocument"]["Statement"][0]["Effect"] == "Allow"
+    assert response["principalId"] == "rag-admin-user"
+    assert response["context"]["username"] == "rag-admin-user"
+    assert json.loads(response["context"]["groups"]) == ["rag-admin-group"]
 
 
 def test_get_management_tokens_previous_exception():

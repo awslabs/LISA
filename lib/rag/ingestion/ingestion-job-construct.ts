@@ -28,6 +28,8 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as batch from 'aws-cdk-lib/aws-batch';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { getPythonRuntime } from '../../api-base/utils';
 import { Vpc } from '../../networking/vpc';
@@ -107,12 +109,12 @@ export class IngestionJobConstruct extends Construct {
         // AWS Batch Fargate compute environment for running ingestion jobs
         const maxvCpus = this.getMaxCpus(vpc);
         const computeEnv = new batch.FargateComputeEnvironment(this, 'IngestionJobFargateEnv', {
+            computeEnvironmentName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job-compute`,
             vpc: vpc.vpc,
             vpcSubnets: vpc.subnetSelection,
             maxvCpus: maxvCpus,
         });
 
-        // AWS Batch job queue that uses the Fargate compute environment
         const jobQueue = new batch.JobQueue(this, 'IngestionJobQueue', {
             computeEnvironments: [
                 {
@@ -295,6 +297,46 @@ export class IngestionJobConstruct extends Construct {
         deleteAlias.addPermission('AllowEventBridgeInvoke', {
             principal: new iam.ServicePrincipal('events.amazonaws.com'),
             action: 'lambda:InvokeFunction'
+        });
+
+        // EventBridge rule to capture Batch job state changes and publish custom CloudWatch metrics.
+        // AWS Batch does not publish job-level metrics to CloudWatch natively, so we use
+        // EventBridge job state change events as the source of truth. This captures all
+        // ingestion jobs regardless of trigger (S3 event, scheduled, or manual upload).
+        const batchJobMetricLambda = new lambda.Function(this, 'BatchJobMetricPublisher', {
+            functionName: `${config.deploymentName}-${config.deploymentStage}-batch-job-metric`,
+            runtime: lambda.Runtime.PYTHON_3_13,
+            handler: 'batch_job_metric.handler',
+            code: lambda.Code.fromAsset(path.join(__dirname, '../../../lambda/metrics')),
+            environment: {
+                METRICS_NAMESPACE: 'LISA/BatchIngestion',
+                DEPLOYMENT_NAME: config.deploymentName,
+                DEPLOYMENT_STAGE: config.deploymentStage,
+                JOB_QUEUE_LABEL: `${config.deploymentName}-${config.deploymentStage}-ingestion-job`,
+            },
+            timeout: Duration.seconds(30),
+            vpc: vpc.vpc,
+            vpcSubnets: vpc.subnetSelection,
+            securityGroups: [vpc.securityGroups.lambdaSg],
+        });
+
+        batchJobMetricLambda.addToRolePolicy(new iam.PolicyStatement({
+            actions: ['cloudwatch:PutMetricData'],
+            resources: ['*'],
+        }));
+
+        new events.Rule(this, 'BatchJobStateChangeRule', {
+            ruleName: `${config.deploymentName}-${config.deploymentStage}-batch-job-state-change`,
+            description: 'Captures AWS Batch job state changes for ingestion pipeline and publishes CloudWatch metrics',
+            eventPattern: {
+                source: ['aws.batch'],
+                detailType: ['Batch Job State Change'],
+                detail: {
+                    status: ['SUBMITTED', 'RUNNING', 'SUCCEEDED', 'FAILED'],
+                    jobQueue: [jobQueue.jobQueueArn],
+                },
+            },
+            targets: [new targets.LambdaFunction(batchJobMetricLambda)],
         });
     }
 }

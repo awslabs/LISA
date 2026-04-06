@@ -900,7 +900,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Lists available mcp servers for user",
         "Environment": {
@@ -909,7 +909,12 @@
             "MCP_SERVERS_TABLE_NAME": {
               "Ref": "McpApiMcpServersTable96D5EF7B"
             },
-            "MCP_SERVERS_BY_OWNER_INDEX_NAME": "byOwner"
+            "MCP_SERVERS_BY_OWNER_INDEX_NAME": "byOwner",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
           }
         },
         "FunctionName": "LisaChat-mcp_server-list_mcp_servers",
@@ -943,6 +948,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -980,7 +988,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Returns the selected mcp server",
         "Environment": {
@@ -989,7 +997,12 @@
             "MCP_SERVERS_TABLE_NAME": {
               "Ref": "McpApiMcpServersTable96D5EF7B"
             },
-            "MCP_SERVERS_BY_OWNER_INDEX_NAME": "byOwner"
+            "MCP_SERVERS_BY_OWNER_INDEX_NAME": "byOwner",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
           }
         },
         "FunctionName": "LisaChat-mcp_server-get",
@@ -1023,6 +1036,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -1060,7 +1076,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Creates the mcp server",
         "Environment": {
@@ -1069,7 +1085,12 @@
             "MCP_SERVERS_TABLE_NAME": {
               "Ref": "McpApiMcpServersTable96D5EF7B"
             },
-            "MCP_SERVERS_BY_OWNER_INDEX_NAME": "byOwner"
+            "MCP_SERVERS_BY_OWNER_INDEX_NAME": "byOwner",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
           }
         },
         "FunctionName": "LisaChat-mcp_server-create",
@@ -1103,6 +1124,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -1140,7 +1164,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Deletes selected mcp server",
         "Environment": {
@@ -1149,7 +1173,12 @@
             "MCP_SERVERS_TABLE_NAME": {
               "Ref": "McpApiMcpServersTable96D5EF7B"
             },
-            "MCP_SERVERS_BY_OWNER_INDEX_NAME": "byOwner"
+            "MCP_SERVERS_BY_OWNER_INDEX_NAME": "byOwner",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
           }
         },
         "FunctionName": "LisaChat-mcp_server-delete",
@@ -1183,6 +1212,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -1220,7 +1252,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Creates or updates selected mcp server",
         "Environment": {
@@ -1229,7 +1261,12 @@
             "MCP_SERVERS_TABLE_NAME": {
               "Ref": "McpApiMcpServersTable96D5EF7B"
             },
-            "MCP_SERVERS_BY_OWNER_INDEX_NAME": "byOwner"
+            "MCP_SERVERS_BY_OWNER_INDEX_NAME": "byOwner",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
           }
         },
         "FunctionName": "LisaChat-mcp_server-update",
@@ -1263,6 +1300,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -1505,24 +1545,26 @@
                 "dynamodb:DescribeTable"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::Join": [
-                  "",
-                  [
-                    "arn:",
-                    {
-                      "Ref": "AWS::Partition"
-                    },
-                    ":dynamodb:us-iso-east-1:012345678901:table/",
-                    {
-                      "Fn::GetAtt": [
-                        "McpApiMcpServersTableNameParameter40CBF850",
-                        "Value"
-                      ]
-                    }
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":dynamodb:us-iso-east-1:012345678901:table/",
+                      {
+                        "Fn::GetAtt": [
+                          "McpApiMcpServersTableNameParameter40CBF850",
+                          "Value"
+                        ]
+                      }
+                    ]
                   ]
-                ]
-              }
+                }
+              ]
             },
             {
               "Action": [
@@ -1530,24 +1572,26 @@
                 "dynamodb:GetShardIterator"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::Join": [
-                  "",
-                  [
-                    "arn:",
-                    {
-                      "Ref": "AWS::Partition"
-                    },
-                    ":dynamodb:us-iso-east-1:012345678901:table/",
-                    {
-                      "Fn::GetAtt": [
-                        "McpApiMcpServersTableNameParameter40CBF850",
-                        "Value"
-                      ]
-                    }
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":dynamodb:us-iso-east-1:012345678901:table/",
+                      {
+                        "Fn::GetAtt": [
+                          "McpApiMcpServersTableNameParameter40CBF850",
+                          "Value"
+                        ]
+                      }
+                    ]
                   ]
-                ]
-              }
+                }
+              ]
             },
             {
               "Action": [
@@ -1559,12 +1603,14 @@
                 "dynamodb:DescribeTable"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "ConfigurationApiConfigurationTable4B2B7EE1",
-                  "Arn"
-                ]
-              }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ConfigurationApiConfigurationTable4B2B7EE1",
+                    "Arn"
+                  ]
+                }
+              ]
             },
             {
               "Action": [
@@ -1572,12 +1618,14 @@
                 "dynamodb:GetShardIterator"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "ConfigurationApiConfigurationTable4B2B7EE1",
-                  "Arn"
-                ]
-              }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ConfigurationApiConfigurationTable4B2B7EE1",
+                    "Arn"
+                  ]
+                }
+              ]
             },
             {
               "Action": [
@@ -1588,12 +1636,14 @@
                 "dynamodb:DescribeTable"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "ConfigurationApiConfigurationTable4B2B7EE1",
-                  "Arn"
-                ]
-              }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ConfigurationApiConfigurationTable4B2B7EE1",
+                    "Arn"
+                  ]
+                }
+              ]
             }
           ],
           "Version": "2012-10-17"
@@ -1623,7 +1673,7 @@
               {
                 "Ref": "ConfigurationApiConfigurationTable4B2B7EE1"
               },
-              "\",\"Item\":{\"versionId\":{\"N\":\"0\"},\"changedBy\":{\"S\":\"System\"},\"configScope\":{\"S\":\"global\"},\"changeReason\":{\"S\":\"Initial deployment default config\"},\"createdAt\":{\"S\":\"1773422480\"},\"configuration\":{\"M\":{\"enabledComponents\":{\"M\":{\"deleteSessionHistory\":{\"BOOL\":\"True\"},\"viewMetaData\":{\"BOOL\":\"True\"},\"editKwargs\":{\"BOOL\":\"True\"},\"editPromptTemplate\":{\"BOOL\":\"True\"},\"editChatHistoryBuffer\":{\"BOOL\":\"True\"},\"editNumOfRagDocument\":{\"BOOL\":\"True\"},\"uploadRagDocs\":{\"BOOL\":\"True\"},\"uploadContextDocs\":{\"BOOL\":\"True\"},\"documentSummarization\":{\"BOOL\":\"True\"},\"showRagLibrary\":{\"BOOL\":\"True\"},\"showMcpWorkbench\":{\"BOOL\":\"True\"},\"showPromptTemplateLibrary\":{\"BOOL\":\"True\"},\"mcpConnections\":{\"BOOL\":\"True\"},\"modelLibrary\":{\"BOOL\":\"True\"},\"encryptSession\":{\"BOOL\":\"False\"},\"chatAssistantStacks\":{\"BOOL\":\"False\"},\"projectOrganization\":{\"BOOL\":\"False\"}}},\"maxProjectsPerUser\":{\"N\":\"50\"},\"systemBanner\":{\"M\":{\"isEnabled\":{\"BOOL\":\"False\"},\"text\":{\"S\":\"\"},\"textColor\":{\"S\":\"\"},\"backgroundColor\":{\"S\":\"\"}}}}}}}}"
+              "\",\"Item\":{\"versionId\":{\"N\":\"0\"},\"changedBy\":{\"S\":\"System\"},\"configScope\":{\"S\":\"global\"},\"changeReason\":{\"S\":\"Initial deployment default config\"},\"createdAt\":{\"S\":\"1775237663\"},\"configuration\":{\"M\":{\"enabledComponents\":{\"M\":{\"deleteSessionHistory\":{\"BOOL\":\"True\"},\"viewMetaData\":{\"BOOL\":\"True\"},\"editKwargs\":{\"BOOL\":\"True\"},\"editPromptTemplate\":{\"BOOL\":\"True\"},\"editChatHistoryBuffer\":{\"BOOL\":\"True\"},\"editNumOfRagDocument\":{\"BOOL\":\"True\"},\"uploadRagDocs\":{\"BOOL\":\"True\"},\"ragSelectionAvailable\":{\"BOOL\":\"True\"},\"uploadContextDocs\":{\"BOOL\":\"True\"},\"documentSummarization\":{\"BOOL\":\"True\"},\"showRagLibrary\":{\"BOOL\":\"True\"},\"showMcpWorkbench\":{\"BOOL\":\"True\"},\"showPromptTemplateLibrary\":{\"BOOL\":\"True\"},\"mcpConnections\":{\"BOOL\":\"True\"},\"awsSessions\":{\"BOOL\":\"False\"},\"modelLibrary\":{\"BOOL\":\"True\"},\"encryptSession\":{\"BOOL\":\"False\"},\"chatAssistantStacks\":{\"BOOL\":\"False\"},\"projectOrganization\":{\"BOOL\":\"False\"}}},\"maxProjectsPerUser\":{\"N\":\"50\"},\"systemBanner\":{\"M\":{\"isEnabled\":{\"BOOL\":\"False\"},\"text\":{\"S\":\"\"},\"textColor\":{\"S\":\"\"},\"backgroundColor\":{\"S\":\"\"}}}}}}}}"
             ]
           ]
         },
@@ -1935,7 +1985,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Get configuration",
         "Environment": {
@@ -1947,6 +1997,14 @@
               "Ref": "SsmParameterValuedevtestlisalisaserveendpointC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "ADMIN_GROUP": "",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
+            "MCP_WORKBENCH_ENDPOINT": {
+              "Ref": "SsmParameterValuedevtestlisalisamcpWorkbenchendpointC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
             "MCP_SERVERS_TABLE_NAME": {
               "Fn::GetAtt": [
                 "McpApiMcpServersTableNameParameter40CBF850",
@@ -1986,6 +2044,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -2023,7 +2084,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Updates config data",
         "Environment": {
@@ -2035,6 +2096,14 @@
               "Ref": "SsmParameterValuedevtestlisalisaserveendpointC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
             "ADMIN_GROUP": "",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
+            "MCP_WORKBENCH_ENDPOINT": {
+              "Ref": "SsmParameterValuedevtestlisalisamcpWorkbenchendpointC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
             "MCP_SERVERS_TABLE_NAME": {
               "Fn::GetAtt": [
                 "McpApiMcpServersTableNameParameter40CBF850",
@@ -2074,6 +2143,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -3531,7 +3603,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Lists available sessions for user",
         "Environment": {
@@ -3558,6 +3630,11 @@
             "PROJECTS_TABLE_NAME": {
               "Ref": "ProjectsTableAA0A2089"
             },
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "USAGE_METRICS_QUEUE_NAME": {
               "Ref": "SsmParameterValuedevtestlisalisaqueuenameusagemetricsC96584B6F00A464EAD1953AFF4B05118Parameter"
             }
@@ -3594,6 +3671,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -3631,7 +3711,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Returns the selected session",
         "Environment": {
@@ -3658,6 +3738,11 @@
             "PROJECTS_TABLE_NAME": {
               "Ref": "ProjectsTableAA0A2089"
             },
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "USAGE_METRICS_QUEUE_NAME": {
               "Ref": "SsmParameterValuedevtestlisalisaqueuenameusagemetricsC96584B6F00A464EAD1953AFF4B05118Parameter"
             }
@@ -3694,6 +3779,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -3731,7 +3819,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Deletes selected session",
         "Environment": {
@@ -3758,6 +3846,11 @@
             "PROJECTS_TABLE_NAME": {
               "Ref": "ProjectsTableAA0A2089"
             },
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "USAGE_METRICS_QUEUE_NAME": {
               "Ref": "SsmParameterValuedevtestlisalisaqueuenameusagemetricsC96584B6F00A464EAD1953AFF4B05118Parameter"
             }
@@ -3794,6 +3887,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -3831,7 +3927,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Deletes all sessions for selected user",
         "Environment": {
@@ -3858,6 +3954,11 @@
             "PROJECTS_TABLE_NAME": {
               "Ref": "ProjectsTableAA0A2089"
             },
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "USAGE_METRICS_QUEUE_NAME": {
               "Ref": "SsmParameterValuedevtestlisalisaqueuenameusagemetricsC96584B6F00A464EAD1953AFF4B05118Parameter"
             }
@@ -3894,6 +3995,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -3931,7 +4035,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Creates or updates selected session",
         "Environment": {
@@ -3958,6 +4062,11 @@
             "PROJECTS_TABLE_NAME": {
               "Ref": "ProjectsTableAA0A2089"
             },
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "USAGE_METRICS_QUEUE_NAME": {
               "Ref": "SsmParameterValuedevtestlisalisaqueuenameusagemetricsC96584B6F00A464EAD1953AFF4B05118Parameter"
             }
@@ -3994,6 +4103,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -4031,7 +4143,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Updates session name",
         "Environment": {
@@ -4058,6 +4170,11 @@
             "PROJECTS_TABLE_NAME": {
               "Ref": "ProjectsTableAA0A2089"
             },
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "USAGE_METRICS_QUEUE_NAME": {
               "Ref": "SsmParameterValuedevtestlisalisaqueuenameusagemetricsC96584B6F00A464EAD1953AFF4B05118Parameter"
             }
@@ -4094,6 +4211,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -4131,7 +4251,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Attaches image to session",
         "Environment": {
@@ -4158,6 +4278,11 @@
             "PROJECTS_TABLE_NAME": {
               "Ref": "ProjectsTableAA0A2089"
             },
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "USAGE_METRICS_QUEUE_NAME": {
               "Ref": "SsmParameterValuedevtestlisalisaqueuenameusagemetricsC96584B6F00A464EAD1953AFF4B05118Parameter"
             }
@@ -4194,6 +4319,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -5071,12 +5199,14 @@
                 "dynamodb:DescribeTable"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "ProjectsTableAA0A2089",
-                  "Arn"
-                ]
-              }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ProjectsTableAA0A2089",
+                    "Arn"
+                  ]
+                }
+              ]
             },
             {
               "Action": [
@@ -5084,12 +5214,14 @@
                 "dynamodb:GetShardIterator"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "ProjectsTableAA0A2089",
-                  "Arn"
-                ]
-              }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ProjectsTableAA0A2089",
+                    "Arn"
+                  ]
+                }
+              ]
             },
             {
               "Action": [
@@ -5105,12 +5237,14 @@
                 "dynamodb:DescribeTable"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "ProjectsTableAA0A2089",
-                  "Arn"
-                ]
-              }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ProjectsTableAA0A2089",
+                    "Arn"
+                  ]
+                }
+              ]
             }
           ],
           "Version": "2012-10-17"
@@ -5128,7 +5262,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "List all projects for the calling user",
         "Environment": {
@@ -5142,7 +5276,12 @@
             "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
             "CONFIG_TABLE_NAME": {
               "Ref": "ConfigurationApiConfigurationTable4B2B7EE1"
-            }
+            },
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
           }
         },
         "FunctionName": "LisaChat-projects-list_projects",
@@ -5176,6 +5315,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -5213,7 +5355,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Create a new project",
         "Environment": {
@@ -5227,7 +5369,12 @@
             "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
             "CONFIG_TABLE_NAME": {
               "Ref": "ConfigurationApiConfigurationTable4B2B7EE1"
-            }
+            },
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
           }
         },
         "FunctionName": "LisaChat-projects-create_project",
@@ -5261,6 +5408,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -5298,7 +5448,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Rename a project",
         "Environment": {
@@ -5312,7 +5462,12 @@
             "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
             "CONFIG_TABLE_NAME": {
               "Ref": "ConfigurationApiConfigurationTable4B2B7EE1"
-            }
+            },
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
           }
         },
         "FunctionName": "LisaChat-projects-rename_project",
@@ -5346,6 +5501,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -5383,7 +5541,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Delete a project",
         "Environment": {
@@ -5397,7 +5555,12 @@
             "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
             "CONFIG_TABLE_NAME": {
               "Ref": "ConfigurationApiConfigurationTable4B2B7EE1"
-            }
+            },
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
           }
         },
         "FunctionName": "LisaChat-projects-delete_project",
@@ -5431,6 +5594,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -5468,7 +5634,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Assign or unassign a session to/from a project",
         "Environment": {
@@ -5482,7 +5648,12 @@
             "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
             "CONFIG_TABLE_NAME": {
               "Ref": "ConfigurationApiConfigurationTable4B2B7EE1"
-            }
+            },
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
           }
         },
         "FunctionName": "LisaChat-projects-assign_session_project",
@@ -5516,6 +5687,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -6438,7 +6612,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Creates prompt template",
         "Environment": {
@@ -6447,7 +6621,12 @@
             "PROMPT_TEMPLATES_TABLE_NAME": {
               "Ref": "PromptTemplateApiPromptTemplatesTable2B59FA4A"
             },
-            "PROMPT_TEMPLATES_BY_LATEST_INDEX_NAME": "byOwner"
+            "PROMPT_TEMPLATES_BY_LATEST_INDEX_NAME": "byOwner",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
           }
         },
         "FunctionName": "LisaChat-prompt_templates-create",
@@ -6481,6 +6660,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -6518,7 +6700,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Retrieves specific prompt template by ID",
         "Environment": {
@@ -6527,7 +6709,12 @@
             "PROMPT_TEMPLATES_TABLE_NAME": {
               "Ref": "PromptTemplateApiPromptTemplatesTable2B59FA4A"
             },
-            "PROMPT_TEMPLATES_BY_LATEST_INDEX_NAME": "byOwner"
+            "PROMPT_TEMPLATES_BY_LATEST_INDEX_NAME": "byOwner",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
           }
         },
         "FunctionName": "LisaChat-prompt_templates-get",
@@ -6561,6 +6748,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -6598,7 +6788,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Lists all available prompt templates",
         "Environment": {
@@ -6607,7 +6797,12 @@
             "PROMPT_TEMPLATES_TABLE_NAME": {
               "Ref": "PromptTemplateApiPromptTemplatesTable2B59FA4A"
             },
-            "PROMPT_TEMPLATES_BY_LATEST_INDEX_NAME": "byOwner"
+            "PROMPT_TEMPLATES_BY_LATEST_INDEX_NAME": "byOwner",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
           }
         },
         "FunctionName": "LisaChat-prompt_templates-list_prompt",
@@ -6641,6 +6836,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -6678,7 +6876,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Updates an existing prompt template",
         "Environment": {
@@ -6687,7 +6885,12 @@
             "PROMPT_TEMPLATES_TABLE_NAME": {
               "Ref": "PromptTemplateApiPromptTemplatesTable2B59FA4A"
             },
-            "PROMPT_TEMPLATES_BY_LATEST_INDEX_NAME": "byOwner"
+            "PROMPT_TEMPLATES_BY_LATEST_INDEX_NAME": "byOwner",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
           }
         },
         "FunctionName": "LisaChat-prompt_templates-update",
@@ -6721,6 +6924,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -6758,7 +6964,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Deletes a specific prompt template by ID",
         "Environment": {
@@ -6767,7 +6973,12 @@
             "PROMPT_TEMPLATES_TABLE_NAME": {
               "Ref": "PromptTemplateApiPromptTemplatesTable2B59FA4A"
             },
-            "PROMPT_TEMPLATES_BY_LATEST_INDEX_NAME": "byOwner"
+            "PROMPT_TEMPLATES_BY_LATEST_INDEX_NAME": "byOwner",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
           }
         },
         "FunctionName": "LisaChat-prompt_templates-delete",
@@ -6801,6 +7012,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -7200,12 +7414,14 @@
                 "dynamodb:DescribeTable"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "UserPreferencesApiUserPreferencesTableD7C804C6",
-                  "Arn"
-                ]
-              }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "UserPreferencesApiUserPreferencesTableD7C804C6",
+                    "Arn"
+                  ]
+                }
+              ]
             },
             {
               "Action": [
@@ -7213,12 +7429,14 @@
                 "dynamodb:GetShardIterator"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "UserPreferencesApiUserPreferencesTableD7C804C6",
-                  "Arn"
-                ]
-              }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "UserPreferencesApiUserPreferencesTableD7C804C6",
+                    "Arn"
+                  ]
+                }
+              ]
             },
             {
               "Action": [
@@ -7229,12 +7447,14 @@
                 "dynamodb:DescribeTable"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "UserPreferencesApiUserPreferencesTableD7C804C6",
-                  "Arn"
-                ]
-              }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "UserPreferencesApiUserPreferencesTableD7C804C6",
+                    "Arn"
+                  ]
+                }
+              ]
             }
           ],
           "Version": "2012-10-17"
@@ -7252,14 +7472,19 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Returns the preferences for the calling user",
         "Environment": {
           "Variables": {
             "USER_PREFERENCES_TABLE_NAME": {
               "Ref": "UserPreferencesApiUserPreferencesTableD7C804C6"
-            }
+            },
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
           }
         },
         "FunctionName": "LisaChat-user_preferences-get",
@@ -7293,6 +7518,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -7330,14 +7558,19 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Creates or updates user preferences for user",
         "Environment": {
           "Variables": {
             "USER_PREFERENCES_TABLE_NAME": {
               "Ref": "UserPreferencesApiUserPreferencesTableD7C804C6"
-            }
+            },
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
           }
         },
         "FunctionName": "LisaChat-user_preferences-update",
@@ -7371,6 +7604,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -7521,12 +7757,14 @@
                 "dynamodb:DescribeTable"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "ChatAssistantStacksApiChatAssistantStacksTable66EFA578",
-                  "Arn"
-                ]
-              }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ChatAssistantStacksApiChatAssistantStacksTable66EFA578",
+                    "Arn"
+                  ]
+                }
+              ]
             },
             {
               "Action": [
@@ -7534,12 +7772,14 @@
                 "dynamodb:GetShardIterator"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "ChatAssistantStacksApiChatAssistantStacksTable66EFA578",
-                  "Arn"
-                ]
-              }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ChatAssistantStacksApiChatAssistantStacksTable66EFA578",
+                    "Arn"
+                  ]
+                }
+              ]
             },
             {
               "Action": [
@@ -7550,12 +7790,14 @@
                 "dynamodb:DescribeTable"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "ChatAssistantStacksApiChatAssistantStacksTable66EFA578",
-                  "Arn"
-                ]
-              }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ChatAssistantStacksApiChatAssistantStacksTable66EFA578",
+                    "Arn"
+                  ]
+                }
+              ]
             },
             {
               "Action": [
@@ -7571,12 +7813,14 @@
                 "dynamodb:DescribeTable"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "ChatAssistantStacksApiChatAssistantStacksTable66EFA578",
-                  "Arn"
-                ]
-              }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ChatAssistantStacksApiChatAssistantStacksTable66EFA578",
+                    "Arn"
+                  ]
+                }
+              ]
             }
           ],
           "Version": "2012-10-17"
@@ -8332,7 +8576,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "List stacks (all for admin, active+accessible for non-admin)",
         "Environment": {
@@ -8340,7 +8584,12 @@
             "CHAT_ASSISTANT_STACKS_TABLE_NAME": {
               "Ref": "ChatAssistantStacksApiChatAssistantStacksTable66EFA578"
             },
-            "ADMIN_GROUP": ""
+            "ADMIN_GROUP": "",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
           }
         },
         "FunctionName": "LisaChat-chat_assistant_stacks-list_stacks",
@@ -8374,6 +8623,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -8411,7 +8663,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Create Chat Assistant Stack",
         "Environment": {
@@ -8419,7 +8671,12 @@
             "CHAT_ASSISTANT_STACKS_TABLE_NAME": {
               "Ref": "ChatAssistantStacksApiChatAssistantStacksTable66EFA578"
             },
-            "ADMIN_GROUP": ""
+            "ADMIN_GROUP": "",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
           }
         },
         "FunctionName": "LisaChat-chat_assistant_stacks-create",
@@ -8453,6 +8710,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -8490,7 +8750,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Get Chat Assistant Stack by id",
         "Environment": {
@@ -8498,7 +8758,12 @@
             "CHAT_ASSISTANT_STACKS_TABLE_NAME": {
               "Ref": "ChatAssistantStacksApiChatAssistantStacksTable66EFA578"
             },
-            "ADMIN_GROUP": ""
+            "ADMIN_GROUP": "",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
           }
         },
         "FunctionName": "LisaChat-chat_assistant_stacks-get_stack",
@@ -8532,6 +8797,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -8569,7 +8837,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Update Chat Assistant Stack",
         "Environment": {
@@ -8577,7 +8845,12 @@
             "CHAT_ASSISTANT_STACKS_TABLE_NAME": {
               "Ref": "ChatAssistantStacksApiChatAssistantStacksTable66EFA578"
             },
-            "ADMIN_GROUP": ""
+            "ADMIN_GROUP": "",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
           }
         },
         "FunctionName": "LisaChat-chat_assistant_stacks-update",
@@ -8611,6 +8884,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -8648,7 +8924,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Delete Chat Assistant Stack",
         "Environment": {
@@ -8656,7 +8932,12 @@
             "CHAT_ASSISTANT_STACKS_TABLE_NAME": {
               "Ref": "ChatAssistantStacksApiChatAssistantStacksTable66EFA578"
             },
-            "ADMIN_GROUP": ""
+            "ADMIN_GROUP": "",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
           }
         },
         "FunctionName": "LisaChat-chat_assistant_stacks-delete",
@@ -8690,6 +8971,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -8727,7 +9011,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Update stack active status",
         "Environment": {
@@ -8735,7 +9019,12 @@
             "CHAT_ASSISTANT_STACKS_TABLE_NAME": {
               "Ref": "ChatAssistantStacksApiChatAssistantStacksTable66EFA578"
             },
-            "ADMIN_GROUP": ""
+            "ADMIN_GROUP": "",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
           }
         },
         "FunctionName": "LisaChat-chat_assistant_stacks-update_status",
@@ -8769,6 +9058,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -8814,6 +9106,10 @@
     "SsmParameterValuedevtestlisalisaserveendpointC96584B6F00A464EAD1953AFF4B05118Parameter": {
       "Type": "AWS::SSM::Parameter::Value<String>",
       "Default": "/dev/test-lisa/lisa/serve/endpoint"
+    },
+    "SsmParameterValuedevtestlisalisamcpWorkbenchendpointC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/mcpWorkbench/endpoint"
     },
     "SsmParameterValuedevtestlisalisageneratedImagesBucketNameC96584B6F00A464EAD1953AFF4B05118Parameter": {
       "Type": "AWS::SSM::Parameter::Value<String>",

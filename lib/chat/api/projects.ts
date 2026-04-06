@@ -26,6 +26,7 @@ import { Construct } from 'constructs';
 import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
 import { BaseProps } from '../../schema';
 import { createLambdaRole } from '../../core/utils';
+import { getAuditLoggingEnv } from '../../api-base/auditEnv';
 import { Vpc } from '../../networking/vpc';
 import { LAMBDA_PATH } from '../../util';
 
@@ -80,6 +81,7 @@ export class ProjectsApi extends Construct {
             SESSIONS_TABLE_NAME: sessionTable.tableName,
             SESSIONS_BY_USER_ID_INDEX_NAME: 'byUserId',
             CONFIG_TABLE_NAME: configTable.tableName,
+            ...getAuditLoggingEnv(config),
         };
 
         const lambdaRole: IRole = createLambdaRole(

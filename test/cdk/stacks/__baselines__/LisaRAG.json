@@ -12,10 +12,6 @@
       "Type": "AWS::SSM::Parameter::Value<String>",
       "Default": "/dev/test-lisa/lisa/registeredModels"
     },
-    "SsmParameterValuedevtestlisalisabucketbucketaccesslogsC96584B6F00A464EAD1953AFF4B05118Parameter": {
-      "Type": "AWS::SSM::Parameter::Value<String>",
-      "Default": "/dev/test-lisa/lisa/bucket/bucket-access-logs"
-    },
     "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter": {
       "Type": "AWS::SSM::Parameter::Value<String>",
       "Default": "/dev/test-lisa/lisa/roles/test-lisa-LisaRagLambdaExecutionRole"
@@ -127,12 +123,14 @@
                 "dynamodb:DescribeTable"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "RagRepositoryConfigTable6FA366CB",
-                  "Arn"
-                ]
-              }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "RagRepositoryConfigTable6FA366CB",
+                    "Arn"
+                  ]
+                }
+              ]
             },
             {
               "Action": [
@@ -140,12 +138,14 @@
                 "dynamodb:GetShardIterator"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "RagRepositoryConfigTable6FA366CB",
-                  "Arn"
-                ]
-              }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "RagRepositoryConfigTable6FA366CB",
+                    "Arn"
+                  ]
+                }
+              ]
             },
             {
               "Action": [
@@ -218,7 +218,7 @@
               "Effect": "Allow",
               "Resource": [
                 {
-                  "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                  "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                 },
                 {
                   "Fn::GetAtt": [
@@ -355,12 +355,14 @@
                 "dynamodb:DescribeTable"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "testlisaRagSubDocumentTable76E4AE52",
-                  "Arn"
-                ]
-              }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "testlisaRagSubDocumentTable76E4AE52",
+                    "Arn"
+                  ]
+                }
+              ]
             },
             {
               "Action": [
@@ -368,12 +370,14 @@
                 "dynamodb:GetShardIterator"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "testlisaRagSubDocumentTable76E4AE52",
-                  "Arn"
-                ]
-              }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "testlisaRagSubDocumentTable76E4AE52",
+                    "Arn"
+                  ]
+                }
+              ]
             },
             {
               "Action": [
@@ -505,27 +509,7 @@
         },
         "LoggingConfiguration": {
           "DestinationBucketName": {
-            "Fn::Select": [
-              0,
-              {
-                "Fn::Split": [
-                  "/",
-                  {
-                    "Fn::Select": [
-                      5,
-                      {
-                        "Fn::Split": [
-                          ":",
-                          {
-                            "Ref": "SsmParameterValuedevtestlisalisabucketbucketaccesslogsC96584B6F00A464EAD1953AFF4B05118Parameter"
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
+            "Fn::ImportValue": "LisaCore:ExportsOutputRefBucketAccessLogsBucket91990836CA73FE19"
           },
           "LogFilePrefix": "logs/rag-bucket/"
         },
@@ -1113,13 +1097,6 @@
         ],
         "SecurityGroupIngress": [
           {
-            "CidrIp": "10.0.0.128/26",
-            "Description": "Allow REST API private subnets to communicate with LISA-OpenSearchSg",
-            "FromPort": 80,
-            "IpProtocol": "tcp",
-            "ToPort": 80
-          },
-          {
             "CidrIp": "10.0.0.192/26",
             "Description": "Allow REST API private subnets to communicate with LISA-OpenSearchSg",
             "FromPort": 80,
@@ -1141,11 +1118,25 @@
             "ToPort": 80
           },
           {
-            "CidrIp": "10.0.0.128/26",
+            "CidrIp": "10.0.1.128/26",
             "Description": "Allow REST API private subnets to communicate with LISA-OpenSearchSg",
-            "FromPort": 443,
+            "FromPort": 80,
             "IpProtocol": "tcp",
-            "ToPort": 443
+            "ToPort": 80
+          },
+          {
+            "CidrIp": "10.0.1.192/26",
+            "Description": "Allow REST API private subnets to communicate with LISA-OpenSearchSg",
+            "FromPort": 80,
+            "IpProtocol": "tcp",
+            "ToPort": 80
+          },
+          {
+            "CidrIp": "10.0.2.0/26",
+            "Description": "Allow REST API private subnets to communicate with LISA-OpenSearchSg",
+            "FromPort": 80,
+            "IpProtocol": "tcp",
+            "ToPort": 80
           },
           {
             "CidrIp": "10.0.0.192/26",
@@ -1163,6 +1154,27 @@
           },
           {
             "CidrIp": "10.0.1.64/26",
+            "Description": "Allow REST API private subnets to communicate with LISA-OpenSearchSg",
+            "FromPort": 443,
+            "IpProtocol": "tcp",
+            "ToPort": 443
+          },
+          {
+            "CidrIp": "10.0.1.128/26",
+            "Description": "Allow REST API private subnets to communicate with LISA-OpenSearchSg",
+            "FromPort": 443,
+            "IpProtocol": "tcp",
+            "ToPort": 443
+          },
+          {
+            "CidrIp": "10.0.1.192/26",
+            "Description": "Allow REST API private subnets to communicate with LISA-OpenSearchSg",
+            "FromPort": 443,
+            "IpProtocol": "tcp",
+            "ToPort": 443
+          },
+          {
+            "CidrIp": "10.0.2.0/26",
             "Description": "Allow REST API private subnets to communicate with LISA-OpenSearchSg",
             "FromPort": 443,
             "IpProtocol": "tcp",
@@ -1202,13 +1214,6 @@
         ],
         "SecurityGroupIngress": [
           {
-            "CidrIp": "10.0.0.128/26",
-            "Description": "Allow REST API private subnets to communicate with LISA-PGVectorSg",
-            "FromPort": 5432,
-            "IpProtocol": "tcp",
-            "ToPort": 5432
-          },
-          {
             "CidrIp": "10.0.0.192/26",
             "Description": "Allow REST API private subnets to communicate with LISA-PGVectorSg",
             "FromPort": 5432,
@@ -1224,6 +1229,27 @@
           },
           {
             "CidrIp": "10.0.1.64/26",
+            "Description": "Allow REST API private subnets to communicate with LISA-PGVectorSg",
+            "FromPort": 5432,
+            "IpProtocol": "tcp",
+            "ToPort": 5432
+          },
+          {
+            "CidrIp": "10.0.1.128/26",
+            "Description": "Allow REST API private subnets to communicate with LISA-PGVectorSg",
+            "FromPort": 5432,
+            "IpProtocol": "tcp",
+            "ToPort": 5432
+          },
+          {
+            "CidrIp": "10.0.1.192/26",
+            "Description": "Allow REST API private subnets to communicate with LISA-PGVectorSg",
+            "FromPort": 5432,
+            "IpProtocol": "tcp",
+            "ToPort": 5432
+          },
+          {
+            "CidrIp": "10.0.2.0/26",
             "Description": "Allow REST API private subnets to communicate with LISA-PGVectorSg",
             "FromPort": 5432,
             "IpProtocol": "tcp",
@@ -1450,7 +1476,6 @@
     "IngestionStackConstructIngestionJobFargateEnvD92342F8": {
       "Type": "AWS::Batch::ComputeEnvironment",
       "Properties": {
-        "ComputeEnvironmentName": "test-lisa-dev-ingestion-job",
         "ComputeResources": {
           "MaxvCpus": 128,
           "SecurityGroupIds": [
@@ -1467,6 +1492,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ],
           "Type": "FARGATE"
@@ -1583,7 +1611,7 @@
         ]
       }
     },
-    "IngestionStackConstructIngestionJobDefinition529FE179": {
+    "IngestionStackConstructIngestionJobDef7C6DDE5A": {
       "Type": "AWS::Batch::JobDefinition",
       "Properties": {
         "ContainerProperties": {
@@ -1596,6 +1624,10 @@
           "Environment": [
             {
               "Name": "ADMIN_GROUP",
+              "Value": ""
+            },
+            {
+              "Name": "RAG_ADMIN_GROUP",
               "Value": ""
             },
             {
@@ -1667,6 +1699,26 @@
             {
               "Name": "TIKTOKEN_CACHE_DIR",
               "Value": "/opt/python/TIKTOKEN_CACHE"
+            },
+            {
+              "Name": "LISA_AUDIT_ENABLED",
+              "Value": "false"
+            },
+            {
+              "Name": "LISA_AUDIT_AUDIT_ALL",
+              "Value": "false"
+            },
+            {
+              "Name": "LISA_AUDIT_ENABLED_PATH_PREFIXES",
+              "Value": ""
+            },
+            {
+              "Name": "LISA_AUDIT_MAX_BODY_BYTES",
+              "Value": "20000"
+            },
+            {
+              "Name": "LISA_AUDIT_INCLUDE_JSON_BODY",
+              "Value": "false"
             },
             {
               "Name": "RESTAPI_SSL_CERT_ARN",
@@ -1761,7 +1813,7 @@
           ],
           "RuntimePlatform": {}
         },
-        "JobDefinitionName": "test-lisa-dev-ingestion-job",
+        "JobDefinitionName": "test-lisa-dev-ingestion-job-def",
         "PlatformCapabilities": [
           "FARGATE"
         ],
@@ -1795,7 +1847,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Environment": {
           "Variables": {
@@ -1806,6 +1858,11 @@
             "CHUNK_OVERLAP": "51",
             "CHUNK_SIZE": "512",
             "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
             "LISA_INGESTION_JOB_DEFINITION_NAME": {
               "Fn::Select": [
                 1,
@@ -1819,7 +1876,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -1871,6 +1928,7 @@
             "MODEL_TABLE_NAME": {
               "Ref": "LisaRAGResourcesModelTableNameStringParameterParameter9C4F30B2"
             },
+            "RAG_ADMIN_GROUP": "",
             "RAG_DOCUMENT_TABLE": {
               "Ref": "testlisaRagDocumentTable5A134785"
             },
@@ -1916,6 +1974,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -1924,7 +1985,7 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E5507f6904bc282231aa2c3ea4dab72d19": {
+    "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E50f8e37a9eb8711eb0d94979c21a1948d": {
       "Type": "AWS::Lambda::Version",
       "Properties": {
         "FunctionName": {
@@ -1943,7 +2004,7 @@
         },
         "FunctionVersion": {
           "Fn::GetAtt": [
-            "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E5507f6904bc282231aa2c3ea4dab72d19",
+            "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E50f8e37a9eb8711eb0d94979c21a1948d",
             "Version"
           ]
         },
@@ -1991,7 +2052,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Environment": {
           "Variables": {
@@ -2002,6 +2063,11 @@
             "CHUNK_OVERLAP": "51",
             "CHUNK_SIZE": "512",
             "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
             "LISA_INGESTION_JOB_DEFINITION_NAME": {
               "Fn::Select": [
                 1,
@@ -2015,7 +2081,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -2067,6 +2133,7 @@
             "MODEL_TABLE_NAME": {
               "Ref": "LisaRAGResourcesModelTableNameStringParameterParameter9C4F30B2"
             },
+            "RAG_ADMIN_GROUP": "",
             "RAG_DOCUMENT_TABLE": {
               "Ref": "testlisaRagDocumentTable5A134785"
             },
@@ -2112,6 +2179,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -2120,7 +2190,7 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBC4c488c07522bf183b32cd3901dd48311": {
+    "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBC866f9403cf9792eeac979b30bf82b9bf": {
       "Type": "AWS::Lambda::Version",
       "Properties": {
         "FunctionName": {
@@ -2139,7 +2209,7 @@
         },
         "FunctionVersion": {
           "Fn::GetAtt": [
-            "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBC4c488c07522bf183b32cd3901dd48311",
+            "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBC866f9403cf9792eeac979b30bf82b9bf",
             "Version"
           ]
         },
@@ -2187,7 +2257,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Environment": {
           "Variables": {
@@ -2198,6 +2268,11 @@
             "CHUNK_OVERLAP": "51",
             "CHUNK_SIZE": "512",
             "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
             "LISA_INGESTION_JOB_DEFINITION_NAME": {
               "Fn::Select": [
                 1,
@@ -2211,7 +2286,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -2263,6 +2338,7 @@
             "MODEL_TABLE_NAME": {
               "Ref": "LisaRAGResourcesModelTableNameStringParameterParameter9C4F30B2"
             },
+            "RAG_ADMIN_GROUP": "",
             "RAG_DOCUMENT_TABLE": {
               "Ref": "testlisaRagDocumentTable5A134785"
             },
@@ -2308,6 +2384,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -2316,7 +2395,7 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E95c48ffa9494af81166053685d5ec0d5f3": {
+    "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E955a8ab4fc3b06952b1fca7f07442f9231": {
       "Type": "AWS::Lambda::Version",
       "Properties": {
         "FunctionName": {
@@ -2335,7 +2414,7 @@
         },
         "FunctionVersion": {
           "Fn::GetAtt": [
-            "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E95c48ffa9494af81166053685d5ec0d5f3",
+            "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E955a8ab4fc3b06952b1fca7f07442f9231",
             "Version"
           ]
         },
@@ -2359,6 +2438,202 @@
         "Type": "String",
         "Value": {
           "Ref": "IngestionStackConstructDeleteLambdaAliasD335E46A"
+        }
+      }
+    },
+    "IngestionStackConstructBatchJobMetricPublisherServiceRole73642CC3": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          },
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    "IngestionStackConstructBatchJobMetricPublisherServiceRoleDefaultPolicyCD87EDE4": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "cloudwatch:PutMetricData",
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "IngestionStackConstructBatchJobMetricPublisherServiceRoleDefaultPolicyCD87EDE4",
+        "Roles": [
+          {
+            "Ref": "IngestionStackConstructBatchJobMetricPublisherServiceRole73642CC3"
+          }
+        ]
+      }
+    },
+    "IngestionStackConstructBatchJobMetricPublisher476DE1FF": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "78ac2eabe17cad34724997a67dd902bee7a0221888940d832451dcdce19de09a.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "METRICS_NAMESPACE": "LISA/BatchIngestion",
+            "DEPLOYMENT_NAME": "test-lisa",
+            "DEPLOYMENT_STAGE": "dev"
+          }
+        },
+        "FunctionName": "test-lisa-dev-batch-job-metric",
+        "Handler": "batch_job_metric.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "IngestionStackConstructBatchJobMetricPublisherServiceRole73642CC3",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 30,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "IngestionStackConstructBatchJobMetricPublisherServiceRoleDefaultPolicyCD87EDE4",
+        "IngestionStackConstructBatchJobMetricPublisherServiceRole73642CC3"
+      ]
+    },
+    "IngestionStackConstructBatchJobStateChangeRule763B8663": {
+      "Type": "AWS::Events::Rule",
+      "Properties": {
+        "Description": "Captures AWS Batch job state changes for ingestion pipeline and publishes CloudWatch metrics",
+        "EventPattern": {
+          "source": [
+            "aws.batch"
+          ],
+          "detail-type": [
+            "Batch Job State Change"
+          ],
+          "detail": {
+            "status": [
+              "SUBMITTED",
+              "RUNNING",
+              "SUCCEEDED",
+              "FAILED"
+            ],
+            "jobQueue": [
+              {
+                "suffix": {
+                  "Fn::Select": [
+                    1,
+                    {
+                      "Fn::Split": [
+                        "/",
+                        {
+                          "Fn::Select": [
+                            5,
+                            {
+                              "Fn::Split": [
+                                ":",
+                                {
+                                  "Fn::GetAtt": [
+                                    "IngestionStackConstructIngestionJobQueueCECF0CDA",
+                                    "JobQueueArn"
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "Name": "test-lisa-dev-batch-job-state-change",
+        "State": "ENABLED",
+        "Targets": [
+          {
+            "Arn": {
+              "Fn::GetAtt": [
+                "IngestionStackConstructBatchJobMetricPublisher476DE1FF",
+                "Arn"
+              ]
+            },
+            "Id": "Target0"
+          }
+        ]
+      }
+    },
+    "IngestionStackConstructBatchJobStateChangeRuleAllowEventRuleLisaRAGIngestionStackConstructBatchJobMetricPublisher9D9DEAC27CD6603E": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "IngestionStackConstructBatchJobMetricPublisher476DE1FF",
+            "Arn"
+          ]
+        },
+        "Principal": "events.amazonaws.com",
+        "SourceArn": {
+          "Fn::GetAtt": [
+            "IngestionStackConstructBatchJobStateChangeRule763B8663",
+            "Arn"
+          ]
         }
       }
     },
@@ -5424,12 +5699,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "List all repositories",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -5455,6 +5731,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -5503,7 +5784,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -5543,6 +5824,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -5579,12 +5863,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "List status for all repositories",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -5610,6 +5895,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -5658,7 +5948,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -5698,6 +5988,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -5734,12 +6027,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Generates a presigned url for uploading files to RAG",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -5765,6 +6059,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -5813,7 +6112,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -5853,6 +6152,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -5889,12 +6191,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Create a new repository",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -5920,6 +6223,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -5968,7 +6276,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -6008,6 +6316,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -6044,12 +6355,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Get a repository by ID",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -6075,6 +6387,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -6123,7 +6440,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -6163,6 +6480,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -6199,12 +6519,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Update a repository",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -6230,6 +6551,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -6278,7 +6604,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -6318,6 +6644,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -6354,12 +6683,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Delete a repository",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -6385,6 +6715,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -6433,7 +6768,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -6473,6 +6808,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -6509,12 +6847,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Run a similarity search against the specified repository using the specified query",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -6540,6 +6879,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -6588,7 +6932,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -6628,6 +6972,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -6664,12 +7011,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Ingest a set of documents based on specified S3 path",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -6695,6 +7043,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -6743,7 +7096,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -6783,6 +7136,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -6819,12 +7175,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "List all docs for a repository",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -6850,6 +7207,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -6898,7 +7260,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -6938,6 +7300,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -6974,12 +7339,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Get a document by ID",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -7005,6 +7371,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -7053,7 +7424,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -7093,6 +7464,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -7129,12 +7503,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Creates presigned url to download document within repository",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -7160,6 +7535,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -7208,7 +7588,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -7248,6 +7628,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -7284,12 +7667,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Deletes all records associated with documents from the repository",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -7315,6 +7699,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -7363,7 +7752,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -7403,6 +7792,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -7439,12 +7831,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "List all ingestion jobs for a repository",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -7470,6 +7863,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -7518,7 +7916,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -7558,6 +7956,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -7594,12 +7995,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "List all collections within a repository",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -7625,6 +8027,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -7673,7 +8080,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -7713,6 +8120,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -7749,12 +8159,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "List all collections user has access to across all repositories",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -7780,6 +8191,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -7828,7 +8244,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -7868,6 +8284,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -7904,12 +8323,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Create a new collection within a repository",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -7935,6 +8355,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -7983,7 +8408,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -8023,6 +8448,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -8059,12 +8487,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Get a collection by ID within a repository",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -8090,6 +8519,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -8138,7 +8572,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -8178,6 +8612,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -8214,12 +8651,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Update a collection within a repository",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -8245,6 +8683,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -8293,7 +8736,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -8333,6 +8776,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -8369,12 +8815,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Delete a collection within a repository",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -8400,6 +8847,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -8448,7 +8900,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -8488,6 +8940,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -8524,12 +8979,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "List all ACTIVE Bedrock Knowledge Bases",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -8555,6 +9011,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -8603,7 +9064,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -8643,6 +9104,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -8679,12 +9143,13 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "List data sources for a Bedrock Knowledge Base",
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -8710,6 +9175,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -8758,7 +9228,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -8798,6 +9268,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -9074,12 +9547,14 @@
                 "dynamodb:DescribeTable"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "RagRepositoryConfigTable6FA366CB",
-                  "Arn"
-                ]
-              }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "RagRepositoryConfigTable6FA366CB",
+                    "Arn"
+                  ]
+                }
+              ]
             },
             {
               "Action": [
@@ -9087,12 +9562,14 @@
                 "dynamodb:GetShardIterator"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "RagRepositoryConfigTable6FA366CB",
-                  "Arn"
-                ]
-              }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "RagRepositoryConfigTable6FA366CB",
+                    "Arn"
+                  ]
+                }
+              ]
             }
           ],
           "Version": "2012-10-17"
@@ -9161,12 +9638,14 @@
                 "dynamodb:DescribeTable"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "RagRepositoryConfigTable6FA366CB",
-                  "Arn"
-                ]
-              }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "RagRepositoryConfigTable6FA366CB",
+                    "Arn"
+                  ]
+                }
+              ]
             },
             {
               "Action": [
@@ -9174,12 +9653,14 @@
                 "dynamodb:GetShardIterator"
               ],
               "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "RagRepositoryConfigTable6FA366CB",
-                  "Arn"
-                ]
-              }
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "RagRepositoryConfigTable6FA366CB",
+                    "Arn"
+                  ]
+                }
+              ]
             },
             {
               "Action": "lambda:InvokeFunction",
@@ -9627,6 +10108,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -9641,11 +10125,12 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -9671,6 +10156,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -9719,7 +10209,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -9759,6 +10249,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -9772,11 +10265,12 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -9802,6 +10296,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -9850,7 +10349,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -9890,6 +10389,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -10128,11 +10630,12 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -10158,6 +10661,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -10206,7 +10714,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -10248,6 +10756,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -10277,11 +10788,12 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Environment": {
           "Variables": {
             "ADMIN_GROUP": "",
+            "RAG_ADMIN_GROUP": "",
             "BUCKET_NAME": {
               "Ref": "LISARAGtestlisadevFF387D45"
             },
@@ -10307,6 +10819,11 @@
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
             "TIKTOKEN_CACHE_DIR": "/opt/python/TIKTOKEN_CACHE",
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
             "LISA_RAG_VECTOR_STORE_TABLE": {
               "Ref": "RagRepositoryConfigTable6FA366CB"
@@ -10355,7 +10872,7 @@
                           "Fn::Split": [
                             ":",
                             {
-                              "Ref": "IngestionStackConstructIngestionJobDefinition529FE179"
+                              "Ref": "IngestionStackConstructIngestionJobDef7C6DDE5A"
                             }
                           ]
                         }
@@ -10397,6 +10914,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }

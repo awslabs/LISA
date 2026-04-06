@@ -270,6 +270,7 @@ export class LisaServeApplicationStage extends Stage {
             ...baseStackProps,
             stackName: createCdkId([config.deploymentName, config.appName, 'API']),
             description: `LISA-API: ${config.deploymentName}-${config.deploymentStage}`,
+            bucketAccessLogsBucket: coreStack.loggingBucket,
             vpc: networkingStack.vpc,
             securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
         });
@@ -306,6 +307,7 @@ export class LisaServeApplicationStage extends Stage {
             const mcpApiStack = new LisaMcpApiStack(this, 'LisaMcpApi', {
                 ...baseStackProps,
                 authorizer: apiBaseStack.authorizer!,
+                bucketAccessLogsBucket: coreStack.loggingBucket,
                 description: `LISA-mcp: ${config.deploymentName}-${config.deploymentStage}`,
                 restApiId: apiBaseStack.restApiId,
                 rootResourceId: apiBaseStack.rootResourceId,
@@ -337,6 +339,7 @@ export class LisaServeApplicationStage extends Stage {
         }
 
         if (config.deployServe) {
+            let mcpWorkbenchStackInstance: McpWorkbenchStack | undefined;
             const serveStack = new LisaServeApplicationStack(this, 'LisaServe', {
                 ...baseStackProps,
                 description: `LISA-serve: ${config.deploymentName}-${config.deploymentStage}`,
@@ -359,6 +362,7 @@ export class LisaServeApplicationStage extends Stage {
             const modelsApiDeploymentStack = new LisaModelsApiStack(this, 'LisaModelsApiDeployment', {
                 ...baseStackProps,
                 authorizer: apiBaseStack.authorizer,
+                bucketAccessLogsBucket: coreStack.loggingBucket,
                 description: `LISA-models: ${config.deploymentName}-${config.deploymentStage}`,
                 lisaServeEndpointUrlPs: config.restApiConfig.internetFacing ? serveStack.endpointUrl : undefined,
                 guardrailsTable: serveStack.guardrailsTable,
@@ -378,27 +382,28 @@ export class LisaServeApplicationStage extends Stage {
             this.stacks.push(modelsApiDeploymentStack);
 
             if (config.deployMcpWorkbench) {
-                const mcpWorkbenchStack = new McpWorkbenchStack(this, 'LisaMcpWorkbench', {
+                mcpWorkbenchStackInstance = new McpWorkbenchStack(this, 'LisaMcpWorkbench', {
                     ...baseStackProps,
+                    bucketAccessLogsBucket: coreStack.loggingBucket,
                     stackName: createCdkId([config.deploymentName, config.appName, 'mcp-workbench', config.deploymentStage]),
                     description: `LISA-mcp-workbench: ${config.deploymentName}-${config.deploymentStage}`,
                     vpc: networkingStack.vpc,
                     restApiId: apiBaseStack.restApiId,
                     rootResourceId: apiBaseStack.rootResourceId,
-                    apiCluster: serveStack.restApi.apiCluster,
                     authorizer: apiBaseStack.authorizer,
                 });
-                mcpWorkbenchStack.addDependency(coreStack);
-                mcpWorkbenchStack.addDependency(apiBaseStack);
-                mcpWorkbenchStack.addDependency(serveStack);
-                apiDeploymentStack.addDependency(mcpWorkbenchStack);
-                this.stacks.push(mcpWorkbenchStack);
+                mcpWorkbenchStackInstance.addDependency(coreStack);
+                mcpWorkbenchStackInstance.addDependency(apiBaseStack);
+                apiDeploymentStack.addDependency(mcpWorkbenchStackInstance);
+                this.stacks.push(mcpWorkbenchStackInstance);
+                serveStack.addDependency(mcpWorkbenchStackInstance);
             }
 
             if (config.deployRag) {
                 const ragStack = new LisaRagStack(this, 'LisaRAG', {
                     ...baseStackProps,
                     authorizer: apiBaseStack.authorizer!,
+                    bucketAccessLogsBucket: coreStack.loggingBucket,
                     description: `LISA-rag: ${config.deploymentName}-${config.deploymentStage}`,
                     restApiId: apiBaseStack.restApiId,
                     rootResourceId: apiBaseStack.rootResourceId,
@@ -438,6 +443,10 @@ export class LisaServeApplicationStage extends Stage {
                 chatStack.addDependency(modelsApiDeploymentStack);
                 // ChatStack reads: serve/endpoint from ServeStack
                 chatStack.addDependency(serveStack);
+                // ChatStack reads: mcpWorkbench/endpoint when MCP Workbench is deployed
+                if (mcpWorkbenchStackInstance) {
+                    chatStack.addDependency(mcpWorkbenchStackInstance);
+                }
                 // ChatStack reads: queue-name/usage-metrics from MetricsStack (if deployMetrics)
                 if (metricsStack) {
                     chatStack.addDependency(metricsStack);
@@ -449,6 +458,7 @@ export class LisaServeApplicationStage extends Stage {
                     const uiStack = new UserInterfaceStack(this, 'LisaUserInterface', {
                         ...baseStackProps,
                         architecture: ARCHITECTURE,
+                        bucketAccessLogsBucket: coreStack.loggingBucket,
                         stackName: createCdkId([config.deploymentName, config.appName, 'ui', config.deploymentStage]),
                         description: `LISA-user-interface: ${config.deploymentName}-${config.deploymentStage}`,
                         restApiId: apiBaseStack.restApiId,
@@ -460,6 +470,10 @@ export class LisaServeApplicationStage extends Stage {
                     // UIStack reads: lisaServeRestApiUri from ServeStack
                     uiStack.addDependency(serveStack);
                     uiStack.addDependency(apiBaseStack);
+                    // UIStack reads: mcpWorkbench/endpoint when MCP Workbench is deployed (AWS session + MCP browser calls)
+                    if (mcpWorkbenchStackInstance) {
+                        uiStack.addDependency(mcpWorkbenchStackInstance);
+                    }
                     apiDeploymentStack.addDependency(uiStack);
                     this.stacks.push(uiStack);
                 }
@@ -469,7 +483,8 @@ export class LisaServeApplicationStage extends Stage {
 
         if (config.deployDocs) {
             const docsStack = new LisaDocsStack(this, 'LisaDocs', {
-                ...baseStackProps
+                ...baseStackProps,
+                bucketAccessLogsBucket: coreStack.loggingBucket,
             });
             // DocsStack reads: bucket/bucket-access-logs from CoreStack
             docsStack.addDependency(coreStack);

@@ -36,7 +36,8 @@ from utils.guardrails import (
     get_model_guardrails,
     is_guardrail_violation,
 )
-from utils.metrics import publish_metrics_event
+from utils.metrics import extract_token_usage, publish_metrics_event
+from utils.request_utils import get_lisa_end_user_id
 from utils.route_utils import is_anthropic_route, is_chat_route, is_lisa_public_route, is_openai_route
 
 # Local LiteLLM installation URL. By default, LiteLLM runs on port 4000. Change the port here if the
@@ -257,63 +258,96 @@ def generate_response(iterator: Iterator[str | bytes]) -> Iterator[str]:
             yield f"{line}\n\n"
 
 
-def generate_response_with_guardrail_handling(iterator: Iterator[str | bytes], model: str) -> Iterator[str]:
+def generate_response_with_guardrail_handling(
+    iterator: Iterator[str | bytes],
+    model: str,
+    request: Request,
+    params: dict,
+) -> Iterator[str]:
     """
-    Generate streaming responses with guardrail violation error handling.
+    Generate streaming responses with guardrail violation error handling and token usage capture.
 
-    This wrapper checks each chunk in the stream for guardrail violations and converts
-    them into properly formatted streaming responses.
+    In addition to guardrail handling, this generator watches for the SSE usage chunk
+    (the chunk containing ``"usage": {...}``) emitted at the end of a streaming response.
+    When found, it extracts prompt/completion/total token counts and publishes a unified
+    metrics event to SQS after the stream completes.
+
+    All chunks are forwarded to the client unchanged — token capture is a side-effect only.
+
+    Args:
+        iterator: The line iterator from the streaming LiteLLM response
+        model: The model ID used for the request
+        request: The original FastAPI request (passed to publish_metrics_event)
+        params: The original request parameters (passed to publish_metrics_event)
     """
-    for line in iterator:
-        if isinstance(line, bytes):
-            line = line.decode()
+    captured_prompt_tokens: int | None = None
+    captured_completion_tokens: int | None = None
+    guardrail_triggered = False
 
-        if not line:
-            continue
+    try:
+        for line in iterator:
+            if isinstance(line, bytes):
+                line = line.decode()
 
-        # Check if this line contains an error (SSE format: "data: {...}")
-        if line.startswith("data: "):
-            try:
-                # Extract JSON from SSE data line
-                data_content = line[6:].strip()  # Remove "data: " prefix
+            if not line:
+                continue
 
-                # Skip [DONE] marker
-                if data_content == "[DONE]":
-                    yield f"{line}\n\n"
-                    continue
+            if line.startswith("data: "):
+                try:
+                    data_content = line[6:].strip()  # Remove "data: " prefix
 
-                # Try to parse as JSON to check for errors
-                chunk_data = json.loads(data_content)
+                    if data_content == "[DONE]":
+                        yield f"{line}\n\n"
+                        continue
 
-                # Check if this is an error chunk
-                if "error" in chunk_data:
-                    error_msg = chunk_data.get("error", {}).get("message", "")
+                    chunk_data = json.loads(data_content)
 
-                    if is_guardrail_violation(error_msg):
-                        logger.info("Guardrail policy violated in streaming response")
+                    # Capture token usage from the usage chunk (present near end of stream)
+                    if "usage" in chunk_data and chunk_data["usage"]:
+                        pt, ct = extract_token_usage(chunk_data)
+                        if pt is not None:
+                            captured_prompt_tokens = pt
+                        if ct is not None:
+                            captured_completion_tokens = ct
 
-                        guardrail_response = extract_guardrail_response(error_msg)
-                        if guardrail_response:
-                            # Stream the guardrail response
-                            created = int(chunk_data.get("created", 0))
-                            yield from create_guardrail_streaming_response(guardrail_response, model, created)
-                            return  # Stop streaming after guardrail response
+                    # Check if this is an error chunk
+                    if "error" in chunk_data:
+                        error_msg = chunk_data.get("error", {}).get("message", "")
+
+                        if is_guardrail_violation(error_msg):
+                            logger.info("Guardrail policy violated in streaming response")
+
+                            guardrail_response = extract_guardrail_response(error_msg)
+                            if guardrail_response:
+                                guardrail_triggered = True
+                                created = int(chunk_data.get("created", 0))
+                                yield from create_guardrail_streaming_response(guardrail_response, model, created)
+                                return  # Stop streaming — finally block publishes metrics
+                            else:
+                                yield f"{line}\n\n"
                         else:
-                            # Could not extract guardrail response, pass through the error
                             yield f"{line}\n\n"
                     else:
-                        # Different error, pass it through
                         yield f"{line}\n\n"
-                else:
-                    # Normal chunk, pass it through
-                    yield f"{line}\n\n"
 
-            except json.JSONDecodeError:
-                # Not valid JSON or not in expected format, pass through as-is
+                except json.JSONDecodeError:
+                    yield f"{line}\n\n"
+            else:
                 yield f"{line}\n\n"
-        else:
-            # Not in SSE format, pass through as-is
-            yield f"{line}\n\n"
+    finally:
+        # Always publish metrics after the stream ends, regardless of how the generator exits
+        # (normal exhaustion, guardrail early-return, or unexpected exception).
+        # When a guardrail fires, the model never completes its output so there are no token
+        # counts — pass None explicitly to skip token metrics for that case.
+        status_code = getattr(request.state, "upstream_status_code", HTTP_200_OK)
+
+        publish_metrics_event(
+            request,
+            params,
+            status_code,
+            prompt_tokens=None if guardrail_triggered else captured_prompt_tokens,
+            completion_tokens=None if guardrail_triggered else captured_completion_tokens,
+        )
 
 
 @router.api_route("/{api_path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
@@ -419,6 +453,15 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     is_video_endpoint = "video" in api_path.lower()
     is_image_endpoint = "image" in api_path.lower()
 
+    # LiteLLM uses a well-known header to attribute requests to an end-user.
+    # We set it from the human-readable username derived from JWT/session.
+    lisa_username = get_lisa_end_user_id(
+        jwt_data=jwt_data,
+        state_username=getattr(request.state, "username", None),
+    )
+    if lisa_username:
+        headers["x-litellm-end-user-id"] = lisa_username
+
     # Handle multipart/form-data requests (video generation with image references, image edits)
     if is_multipart and (is_video_endpoint or is_image_endpoint):
         try:
@@ -443,6 +486,9 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
 
             # Create new headers without Content-Type (requests library will set it with correct boundary)
             forward_headers = {"Authorization": f"Bearer {LITELLM_KEY}"}
+            # Preserve end-user attribution header for multipart requests if it was set above.
+            if "x-litellm-end-user-id" in headers:
+                forward_headers["x-litellm-end-user-id"] = headers["x-litellm-end-user-id"]
 
             # Forward multipart request to LiteLLM
             response = requests_request(
@@ -468,6 +514,11 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     except json.JSONDecodeError as e:
         logger.error(f"Invalid JSON in request body: {e}")
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid JSON in request body")
+
+    # If the caller didn't already set OpenAI's "user" identifier, populate it
+    # with the human-readable LISA username so LiteLLM can surface it in logs.
+    if isinstance(params, dict) and lisa_username and (not params.get("user")):
+        params["user"] = lisa_username
 
     # Get model info from LiteLLM to determine the actual model provider path
     model_id = params.get("model")
@@ -508,15 +559,13 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
         if guardrail_response:
             return guardrail_response
 
-        # Publish metrics for streaming chat completions (API users)
+        # Use token-capturing, guardrail-aware generator for chat/completions.
+        # The generator publishes the unified metrics event (including token counts)
+        # after the stream ends, so no separate publish_metrics_event call is needed here.
         if is_chat_completion and response.status_code == HTTP_200_OK:
-            publish_metrics_event(request, params, response.status_code)
-
-        # Use guardrail-aware generator for chat/completions to catch violations in the stream
-        if is_chat_completion:
             model_id = params.get("model", "")
             return StreamingResponse(
-                generate_response_with_guardrail_handling(response.iter_lines(), model_id),
+                generate_response_with_guardrail_handling(response.iter_lines(), model_id, request, params),
                 status_code=response.status_code,
             )
         else:
@@ -537,8 +586,11 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
     if response.status_code != HTTP_200_OK:
         logger.error(f"LiteLLM error response: {response.text}")
 
-    # Publish metrics for chat completions (API users)
-    if is_chat_completion:
-        publish_metrics_event(request, params, response.status_code)
+    # Pass the parsed response body so tokens can be extracted from the usage field.
+    response_body = response.json() if response.status_code == HTTP_200_OK else None
 
-    return JSONResponse(response.json(), status_code=response.status_code)
+    # Publish metrics for non-streaming chat completions (API users).
+    if is_chat_completion:
+        publish_metrics_event(request, params, response.status_code, response_body=response_body)
+
+    return JSONResponse(response_body, status_code=response.status_code)

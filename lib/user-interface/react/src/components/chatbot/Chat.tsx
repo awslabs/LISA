@@ -94,6 +94,7 @@ export default function Chat ({ sessionId, initialStack }) {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
     const config: IConfiguration = useContext(ConfigurationContext);
+    const ragSelectionAvailable = config?.configuration?.enabledComponents?.ragSelectionAvailable ?? true;
     const notificationService = useNotificationService(dispatch);
     const modelSelectRef = useRef<HTMLInputElement>(null);
     const bottomRef = useRef(null);
@@ -244,7 +245,7 @@ export default function Chat ({ sessionId, initialStack }) {
     const pendingToolChainExecution = useRef<(() => Promise<void>) | null>(null);
 
     // Use the custom hook to manage multiple MCP connections
-    const { tools: mcpTools, callTool, McpConnections, toolToServerMap } = useMultipleMcp(enabledServers, userPreferences?.preferences?.mcp);
+    const { tools: mcpTools, callTool, McpConnections, toolToServerMap } = useMultipleMcp(enabledServers, userPreferences?.preferences?.mcp, session?.sessionId);
     const [updatePreferences, {isSuccess: isUpdatingPreferencesSuccess, isError: isUpdatingPreferencesError, isLoading: isUpdatingPreferences}] = useUpdateUserPreferencesMutation();
 
     // Load markdown preview preference from user preferences
@@ -321,11 +322,6 @@ export default function Chat ({ sessionId, initialStack }) {
         const inList = modelsForDropdown?.find((m) => m.modelId === selectedModel.modelId);
         return inList?.status === ModelStatus.Stopped;
     }, [selectedModel, modelsForDropdown]);
-
-    const hasStoppedModelsInDropdown = useMemo(() =>
-        (modelsForDropdown || []).some((m) => m.status === ModelStatus.Stopped),
-    [modelsForDropdown]
-    );
 
     // Set default model if none is selected, default model is configured, and user hasn't interacted (only InService models)
     const availableModelsForDefault = useMemo(() =>
@@ -894,7 +890,7 @@ export default function Chat ({ sessionId, initialStack }) {
     const getButtonItemsWithAssistantMode = useCallback((...args: Parameters<typeof getButtonItems>) => {
         const [config, useRag, isImageGen, isVideoGen, isConnected, isModelDel, showMd] = args;
         return getButtonItems(config, useRag, isImageGen, isVideoGen, isConnected, isModelDel, showMd, !!effectiveStack, !!selectedModel, loadingSession);
-    }, [config, effectiveStack, selectedModel, loadingSession]);
+    }, [effectiveStack, selectedModel, loadingSession]);
 
     const promptInputProps = useMemo(() => ({
         userPrompt,
@@ -1192,6 +1188,7 @@ export default function Chat ({ sessionId, initialStack }) {
                                 >
                                     <SpaceBetween size='xs' direction='vertical'>
                                         <Autosuggest
+                                            data-testid='model-selection-autosuggest'
                                             disabled={isRunning || session.history.length > 0}
                                             statusType={isFetchingModels ? 'loading' : 'finished'}
                                             loadingText='Loading models (might take few seconds)...'
@@ -1205,11 +1202,6 @@ export default function Chat ({ sessionId, initialStack }) {
                                             ref={modelSelectRef}
                                             controlId='model-selection-autosuggest'
                                         />
-                                        {hasStoppedModelsInDropdown && (
-                                            <Box variant='small' color='text-body-secondary'>
-                                                Some models in the list are stopped and cannot be selected.
-                                            </Box>
-                                        )}
                                     </SpaceBetween>
                                 </FormField>
                                 {window.env.RAG_ENABLED && !isImageGenerationMode && !isVideoGenerationMode && (
@@ -1218,6 +1210,7 @@ export default function Chat ({ sessionId, initialStack }) {
                                         setUseRag={setUseRag}
                                         setRagConfig={setRagConfig}
                                         ragConfig={ragConfig}
+                                        selectionAvailable={ragSelectionAvailable}
                                         allowedRepositoryIds={effectiveStack ? (effectiveStack.repositoryIds ?? []) : undefined}
                                         allowedCollectionIds={effectiveStack ? (effectiveStack.collectionIds ?? []) : undefined}
                                     />

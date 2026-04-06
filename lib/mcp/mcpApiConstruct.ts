@@ -17,6 +17,7 @@
 import { Stack, StackProps } from 'aws-cdk-lib';
 import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
+import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 
 import { Vpc } from '../networking/vpc';
@@ -30,6 +31,7 @@ export type LisaMcpApiProps = BaseProps &
       rootResourceId: string;
       securityGroups: ISecurityGroup[];
       vpc: Vpc;
+      bucketAccessLogsBucket: IBucket;
   };
 
 /**
@@ -44,11 +46,12 @@ export class LisaMcpApiConstruct extends Construct {
     constructor (scope: Stack, id: string, props: LisaMcpApiProps) {
         super(scope, id);
 
-        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const { authorizer, bucketAccessLogsBucket, config, restApiId, rootResourceId, securityGroups, vpc } = props;
 
         // Add MCP Server API dynamic hosting
         new McpServerApi(scope, 'McpServerApi', {
             authorizer,
+            bucketAccessLogsBucket,
             config,
             restApiId,
             rootResourceId,

@@ -18,12 +18,72 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { Provider } from 'react-redux';
 import './index.css';
-import AppConfigured from './components/app-configured';
 
 import '@cloudscape-design/global-styles/index.css';
-import getStore from './config/store';
 import { applyTheme } from '@cloudscape-design/components/theming';
 import { Theme } from '@cloudscape-design/components/theming';
+
+declare global {
+    // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
+    interface Window {
+        env: {
+            AUTHORITY: string;
+            CLIENT_ID: string;
+            ADMIN_GROUP?: string;
+            USER_GROUP?: string;
+            API_GROUP?: string;
+            RAG_ADMIN_GROUP?: string;
+            JWT_GROUPS_PROP?: string;
+            CUSTOM_SCOPES: string[];
+            RESTAPI_URI: string;
+            MCP_WORKBENCH_URI?: string;
+            RESTAPI_VERSION: string;
+            RAG_ENABLED: boolean;
+            HOSTED_MCP_ENABLED: boolean;
+            API_BASE_URL: string;
+            USE_CUSTOM_BRANDING: boolean;
+            CUSTOM_DISPLAY_NAME: string;
+        };
+        gitInfo?: {
+            revisionTag?: string;
+            gitHash?: string;
+        };
+    }
+}
+
+const baseUrl = import.meta.env.BASE_URL || '/';
+const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+
+const loadRuntimeScript = async (scriptName: string): Promise<void> => {
+    await new Promise<void>((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = `${normalizedBase}${scriptName}`;
+        script.async = false;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error(`Failed to load ${scriptName}`));
+        document.head.appendChild(script);
+    });
+};
+
+await loadRuntimeScript('env.js');
+try {
+    await loadRuntimeScript('git-info.js');
+} catch {
+    // git-info.js is generated at build time; not present in dev/CI
+    // App runs fine without it — window.gitInfo remains undefined
+}
+
+const favicon = document.getElementById('favicon') as HTMLLinkElement | null;
+if (favicon) {
+    const brandingDir = window.env?.USE_CUSTOM_BRANDING ? 'custom' : 'base';
+    favicon.href = `${normalizedBase}branding/${brandingDir}/favicon.ico`;
+}
+
+const pageTitle = document.getElementById('page-title');
+if (pageTitle) {
+    const displayName = window.env?.CUSTOM_DISPLAY_NAME || 'LISA';
+    pageTitle.textContent = `${displayName} AI Chat Assistant`;
+}
 
 // Conditionally apply custom theme if branding is enabled
 if (window.env?.USE_CUSTOM_BRANDING) {
@@ -44,31 +104,10 @@ if (window.env?.USE_CUSTOM_BRANDING) {
     }
 }
 
-declare global {
-    // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
-    interface Window {
-        env: {
-            AUTHORITY: string;
-            CLIENT_ID: string;
-            ADMIN_GROUP?: string;
-            USER_GROUP?: string;
-            API_GROUP?: string;
-            JWT_GROUPS_PROP?: string;
-            CUSTOM_SCOPES: string[];
-            RESTAPI_URI: string;
-            RESTAPI_VERSION: string;
-            RAG_ENABLED: boolean;
-            HOSTED_MCP_ENABLED: boolean;
-            API_BASE_URL: string;
-            USE_CUSTOM_BRANDING: boolean;
-            CUSTOM_DISPLAY_NAME: string;
-        };
-        gitInfo?: {
-            revisionTag?: string;
-            gitHash?: string;
-        };
-    }
-}
+const [{ default: AppConfigured }, { default: getStore }] = await Promise.all([
+    import('./components/app-configured'),
+    import('./config/store'),
+]);
 
 const store = getStore();
 

@@ -25,17 +25,19 @@ import { Construct } from 'constructs';
 import { getPythonRuntime, registerAPIEndpoint } from '../api-base/utils';
 import { APP_MANAGEMENT_KEY, BaseProps } from '../schema';
 import { createCdkId, createLambdaRole } from '../core/utils';
+import { getAuditLoggingEnv } from '../api-base/auditEnv';
 import { Vpc } from '../networking/vpc';
 import { LAMBDA_PATH } from '../util';
 import { McpServerDeployer } from './mcp-server-deployer';
 import { CreateMcpServerStateMachine } from './state-machine/create-mcp-server';
 import { DeleteMcpServerStateMachine } from './state-machine/delete-mcp-server';
 import { UpdateMcpServerStateMachine } from './state-machine/update-mcp-server';
-import { BlockPublicAccess, Bucket, BucketEncryption, HttpMethods } from 'aws-cdk-lib/aws-s3';
+import { BlockPublicAccess, Bucket, BucketEncryption, HttpMethods, IBucket } from 'aws-cdk-lib/aws-s3';
 import { RemovalPolicy } from 'aws-cdk-lib';
 
 type McpServerApiProps = {
     authorizer: IAuthorizer;
+    bucketAccessLogsBucket: IBucket;
     restApiId: string;
     rootResourceId: string;
     securityGroups: ISecurityGroup[];
@@ -54,7 +56,7 @@ export class McpServerApi extends Construct {
     constructor (scope: Construct, id: string, props: McpServerApiProps) {
         super(scope, id);
 
-        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const { authorizer, bucketAccessLogsBucket, config, restApiId, rootResourceId, securityGroups, vpc } = props;
 
         // Get common layer based on arn from SSM due to issues with cross stack references
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
@@ -84,10 +86,6 @@ export class McpServerApi extends Construct {
             removalPolicy: config.removalPolicy,
             deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
         });
-
-        const bucketAccessLogsBucket = Bucket.fromBucketArn(scope, 'BucketAccessLogsBucket',
-            StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/bucket/bucket-access-logs`)
-        );
 
         const bucket = new Bucket(scope, createCdkId(['LISA', 'MCP-Hosting', config.deploymentName, config.deploymentStage]), {
             removalPolicy: config.removalPolicy,
@@ -120,12 +118,22 @@ export class McpServerApi extends Construct {
         if (!mcpResource) {
             mcpResource = restApi.root.addResource('mcp');
         }
+        // Match hosted MCP server routes: browser MCP clients send MCP + LISA session headers (see ecsMcpServer.allowedCorsHeaders)
+        const mcpBrowserCorsAllowHeaders = Array.from(new Set([
+            ...Cors.DEFAULT_HEADERS,
+            'Accept',
+            'Mcp-Session-Id',
+            'X-Session-Id',
+            'Last-Event-Id',
+            'mcp-protocol-version',
+            'X-Amz-User-Agent',
+        ]));
         // Add CORS preflight support for the /mcp resource
         // This ensures OPTIONS method is available even if the resource already existed
         // addCorsPreflight is idempotent - it won't create duplicate OPTIONS methods
         mcpResource.addCorsPreflight({
             allowOrigins: Cors.ALL_ORIGINS,
-            allowHeaders: Cors.DEFAULT_HEADERS,
+            allowHeaders: mcpBrowserCorsAllowHeaders,
         });
         const mcpResourceId = mcpResource.resourceId;
 
@@ -197,6 +205,7 @@ export class McpServerApi extends Construct {
             DELETE_MCP_SERVER_SFN_ARN: deleteMcpServerStateMachine.stateMachineArn,
             UPDATE_MCP_SERVER_SFN_ARN: updateMcpServerStateMachine.stateMachineArn,
             ADMIN_GROUP: config.authConfig?.adminGroup || '',
+            ...getAuditLoggingEnv(config),
         };
 
         const lambdaRole = createLambdaRole(this, config.deploymentName, 'McpServerDynamicApi', mcpServersTable.tableArn, config.roles?.LambdaExecutionRole);

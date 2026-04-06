@@ -100,13 +100,14 @@ def check_show_mcp_workbench(body: dict[str, Any], old_configuration: dict[str, 
         from mcp_server.lambda_functions import table as mcp_servers_table  # noqa: PLC0415
 
         if new_show_mcp_value:
+            mcp_base = os.getenv("MCP_WORKBENCH_ENDPOINT") or os.getenv("FASTAPI_ENDPOINT")
             mcp_server_model = McpServerModel(
                 id=MCPWORKBENCH_UUID,
                 owner="lisa:public",
                 name="MCP Workbench",
                 description="MCP Workbench Tools",
                 customHeaders={"Authorization": "Bearer {LISA_BEARER_TOKEN}"},
-                url=f"{os.getenv('FASTAPI_ENDPOINT')}/v2/mcp/",
+                url=f"{mcp_base}/v2/mcp/",
                 status=McpServerStatus.ACTIVE,
             )
 

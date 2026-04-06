@@ -16,7 +16,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
-import { DocumentLibraryComponent, getMatchesCountText } from './DocumentLibraryComponent';
+import { DocumentLibraryComponent, canDeleteAll, getMatchesCountText } from './DocumentLibraryComponent';
 import { renderWithProviders } from '../../test/helpers/render';
 import { MemoryRouter } from 'react-router-dom';
 import { createMockDocument } from '../../test/factories/document.factory';
@@ -34,6 +34,7 @@ describe('DocumentLibraryComponent', () => {
         // Mock Redux selectors
         vi.spyOn(store, 'useAppSelector').mockImplementation((selector: any) => {
             if (selector.toString().includes('selectCurrentUsername')) return 'test-user';
+            if (selector.toString().includes('selectCurrentUserIsRagAdmin')) return false;
             if (selector.toString().includes('selectCurrentUserIsAdmin')) return false;
             return null;
         });
@@ -333,6 +334,43 @@ describe('DocumentLibraryComponent', () => {
 
         it('should return correct matches count text for zero matches', () => {
             expect(getMatchesCountText(0)).toBe('0 matches');
+        });
+    });
+
+    describe('canDeleteAll', () => {
+        const docUploadedByUser = createMockDocument({ username: 'test-user' });
+        const docUploadedByOther = createMockDocument({ username: 'test-user-other', document_id: 'doc-999' });
+
+        it('returns false when no items are selected', () => {
+            expect(canDeleteAll([], 'test-user', false, false)).toBe(false);
+        });
+
+        it('allows a regular user to delete their own documents', () => {
+            expect(canDeleteAll([docUploadedByUser], 'test-user', false, false)).toBe(true);
+        });
+
+        it('blocks a regular user from deleting documents they do not own', () => {
+            expect(canDeleteAll([docUploadedByOther], 'test-user', false, false)).toBe(false);
+        });
+
+        it('allows an admin to delete documents uploaded by another user', () => {
+            expect(canDeleteAll([docUploadedByOther], 'test-admin', true, false)).toBe(true);
+        });
+
+        it('allows a rag admin to delete documents uploaded by another user', () => {
+            expect(canDeleteAll([docUploadedByOther], 'test-rag', false, true)).toBe(true);
+        });
+
+        it('blocks a regular user from a mixed selection containing a doc they do not own', () => {
+            expect(canDeleteAll([docUploadedByUser, docUploadedByOther], 'test-user', false, false)).toBe(false);
+        });
+
+        it('allows an admin to delete a mixed selection', () => {
+            expect(canDeleteAll([docUploadedByUser, docUploadedByOther], 'test-admin', true, false)).toBe(true);
+        });
+
+        it('allows a rag admin to delete a mixed selection', () => {
+            expect(canDeleteAll([docUploadedByUser, docUploadedByOther], 'test-rag', false, true)).toBe(true);
         });
     });
 });

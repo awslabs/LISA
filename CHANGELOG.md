@@ -1,3 +1,43 @@
+# v6.5.0
+
+## Key Features
+
+### Self-Service RAG Administration
+
+A new RAG Admin role gives designated users full control over RAG repository operations, document ingestion, collection management, and pipeline configuration without granting full system administrator privileges. This reduces the operational bottleneck where every RAG change required a system administrator. Self-service RAG is especially useful in multi-tenant environments.
+
+### Operations Metrics Dashboard
+
+New dashboard reports track metrics across models and clusters, including inference latency, token usage, and batch ingestion job status. For example, customers can use the new input/output token reports to derive costs across users, groups, and models. This is useful for multi-tenant environments with a variety of end-user orgs. Also, model containers publish Prometheus metrics for vLLM, TEI, and TGI, and batch ingestion jobs report totals and failures for RAG document ingestion.
+
+### Integrating Externally Deployed Models
+
+Administrators can register deployed models that are not LISA-managed by providing a URL that can be accessed from the LiteLLM ECS cluster. These models appear and behave like other models in the platform.
+
+### AWS Session Credentials
+
+LISA now lets you attach AWS credentials to a chat session. While that session is active, MCP tools can use those credentials to call AWS APIs, so tool-based workflows can reach AWS resources in the same context as the conversation instead of requiring separate per-tool setup.
+
+An example of a tool using this can be seen: lib/serve/mcp-workbench/src/examples/sample_tools/aws_operator_tools.py
+
+## Other Key Changes
+
+- Updated OpenSearch for new RAG collections to the latest supported version and indexing engine (existing collections continue to work as before)
+- Introduced optional audit logging for input/output from requests to LISA with opt-in and filtering
+- Implemented a deployment Lambda to ensure configured models are present in LiteLLM
+- Split Cypress E2E workflows into nightly health checks and weekly full suite runs, with API-based resource cleanup between runs
+- Updated LiteLLM to version 1.82.4
+
+## Acknowledgements
+* @bedanley
+* @drduhe
+* @Ernest-Gray
+* @estohlmann
+* @gingerknight
+* @jmharold
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v6.4.0..v6.5.0
+
 # v6.4.0
 
 ## Key Features

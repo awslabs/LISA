@@ -19,14 +19,14 @@ import { Construct } from 'constructs';
 import { BaseProps } from '../schema';
 import { McpWorkbenchConstruct } from './mcpWorkbenchConstruct';
 import { Vpc } from '../networking/vpc';
-import { ECSCluster } from '../api-base/ecsCluster';
 import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
+import { IBucket } from 'aws-cdk-lib/aws-s3';
 
 export type McpWorkbenchStackProps = {
+    bucketAccessLogsBucket: IBucket;
     vpc: Vpc;
     restApiId: string;
     rootResourceId: string;
-    apiCluster: ECSCluster;
     authorizer?: IAuthorizer;
 } & BaseProps & StackProps;
 
@@ -34,15 +34,15 @@ export class McpWorkbenchStack extends Stack {
     constructor (scope: Construct, id: string, props: McpWorkbenchStackProps) {
         super(scope, id, props);
 
-        const { vpc, restApiId, rootResourceId, authorizer, apiCluster } = props;
+        const { vpc, restApiId, rootResourceId, authorizer, bucketAccessLogsBucket } = props;
 
         new McpWorkbenchConstruct(this, 'McpWorkbench', {
             ...props,
+            bucketAccessLogsBucket,
             restApiId,
             rootResourceId,
             securityGroups: [vpc.securityGroups.ecsModelAlbSg],
             vpc: vpc,
-            apiCluster,
             authorizer
         });
     }

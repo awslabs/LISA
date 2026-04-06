@@ -17,6 +17,7 @@
 import json
 import logging
 import os
+import time
 from copy import deepcopy
 from datetime import datetime
 from typing import Any
@@ -25,7 +26,14 @@ from zoneinfo import ZoneInfo
 import boto3
 from botocore.config import Config
 from models.clients.litellm_client import LiteLLMClient
-from models.domain_objects import CreateModelRequest, GuardrailsTableEntry, InferenceContainer, ModelStatus, ModelType
+from models.domain_objects import (
+    CreateModelRequest,
+    GuardrailsTableEntry,
+    InferenceContainer,
+    ModelHostingType,
+    ModelStatus,
+    ModelType,
+)
 from models.exception import (
     MaxPollsExceededException,
     StackFailedToCreateException,
@@ -615,7 +623,21 @@ def handle_add_model_to_litellm(event: dict[str, Any], context: Any) -> dict[str
         litellm_params["model"] = f"{provider_prefix}/{model_name}"
         litellm_params["api_base"] = f"{event['modelUrl']}/v1"  # model's OpenAI-compliant route
     else:
-        litellm_params["model"] = event["modelName"]
+        model_name = event["modelName"]
+        if str(event.get("hostingType", "")).upper() == ModelHostingType.INTERNAL_HOSTED.value.upper():
+            # Internal hosted models are registered as OpenAI-compatible providers routed through api_base.
+            # Normalize common user-entered prefixes so LiteLLM doesn't route via hosted_vllm or external providers.
+            stripped = True
+            while stripped:
+                stripped = False
+                for prefix in ("openai/", "hosted_vllm/"):
+                    if model_name.startswith(prefix):
+                        model_name = model_name[len(prefix) :]
+                        stripped = True
+            litellm_params["model"] = f"openai/{model_name}"
+            litellm_params["api_base"] = str(event["modelUrl"]).rstrip("/")
+        else:
+            litellm_params["model"] = model_name
 
     litellm_response = litellm_client.add_model(
         model_name=event["modelId"],
@@ -769,14 +791,49 @@ def handle_add_guardrails_to_litellm(event: dict[str, Any], context: Any) -> dic
     return output_dict
 
 
-def _fetch_context_window_from_litellm(litellm_id: str) -> Any | None:
-    """Fetch max_input_tokens from LiteLLM for non-LISA-managed (Bedrock/third-party) models."""
-    try:
-        model_info = litellm_client.get_model(litellm_id)
-        return int(model_info.get("model_info", {}).get("max_input_tokens"))
-    except Exception as e:
-        logger.warning(f"Could not fetch context window from LiteLLM for {litellm_id}: {e}")
-        return None
+def _fetch_context_window_from_litellm(
+    litellm_id: str,
+    max_attempts: int = 5,
+    base_delay: float = 2.0,
+    backoff_factor: float = 2.0,
+) -> Any | None:
+    """Fetch max_input_tokens from LiteLLM for non-LISA-managed (Bedrock/third-party) models.
+
+    Retries with exponential backoff to handle cases where LiteLLM is queried too
+    quickly after a model is registered and returns a transient error.
+
+    Args:
+        litellm_id: The LiteLLM model ID to query.
+        max_attempts: Maximum number of attempts before giving up (default: 5).
+        base_delay: Initial delay in seconds between retries (default: 2.0).
+        backoff_factor: Multiplier applied to delay after each failed attempt (default: 2.0).
+
+    Returns:
+        The context window size as an int, or None if it could not be determined.
+    """
+    last_exception: Exception | None = None
+    delay = base_delay
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            model_info = litellm_client.get_model(litellm_id)
+            return int(model_info.get("model_info", {}).get("max_input_tokens"))
+        except Exception as e:
+            last_exception = e
+            if attempt < max_attempts:
+                logger.warning(
+                    f"Attempt {attempt}/{max_attempts} failed to fetch context window from LiteLLM "
+                    f"for {litellm_id}: {e}. Retrying in {delay:.1f}s..."
+                )
+                time.sleep(delay)
+                delay *= backoff_factor
+            else:
+                logger.warning(
+                    f"All {max_attempts} attempts exhausted fetching context window from LiteLLM "
+                    f"for {litellm_id}: {last_exception}"
+                )
+
+    return None
 
 
 def _fetch_context_window_from_s3(model_name: Any, model_type: str) -> int | None:

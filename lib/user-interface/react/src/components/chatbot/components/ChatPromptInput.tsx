@@ -95,6 +95,7 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
     };
     return (
         <PromptInput
+            data-testid='chat-prompt-textarea'
             value={userPrompt}
             actionButtonAriaLabel={shouldShowStopButton ? 'Stop generation' : 'Send message'}
             actionButtonIconName={shouldShowStopButton ? 'status-negative' : 'send'}

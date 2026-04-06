@@ -25,6 +25,11 @@ const stripTrailingSlash = (str) => {
 export const RESTAPI_URI = stripTrailingSlash(window.env.RESTAPI_URI);
 export const RESTAPI_VERSION = window.env.RESTAPI_VERSION;
 
+/** Base URL for MCP Workbench HTTP (MCP stream + /api/aws). From SSM …/mcpWorkbench/endpoint (workbench ALB; distinct from Serve API when custom domains are used). */
+export const MCP_WORKBENCH_URI = window.env.MCP_WORKBENCH_URI
+    ? stripTrailingSlash(window.env.MCP_WORKBENCH_URI)
+    : RESTAPI_URI;
+
 /**
  * Gets base URI for API Gateway. This can either be the APIGW execution URL directly or a
  * custom domain.
@@ -74,7 +79,15 @@ export const getSessionDisplay = (session: LisaChatSession, maxLength?: number) 
 
 export const getDisplayableMessage = (content: MessageContent, ragCitations?: string) => {
     if (Array.isArray(content)) {
-        return content.find((item) => item.type === 'text' && !item.text.startsWith('File context:'))?.text + (ragCitations ?? '') || '';
+        return (
+            content.find(
+                (item) =>
+                    item.type === 'text' &&
+                    !item.text.startsWith('File context:') &&
+                    !item.text.startsWith('Context from document search:')
+            )?.text + (ragCitations ?? '')
+            || ''
+        );
     }
     return content + (ragCitations ?? '');
 };

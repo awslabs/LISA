@@ -1,4 +1,5 @@
 # Deployment
+
 ## Prerequisites
 
 * Set up or have access to an AWS account.
@@ -21,6 +22,22 @@
 > To minimize version conflicts and ensure a consistent deployment environment, we recommend executing the following steps on a dedicated EC2 instance. However, LISA can be deployed from any machine that meets the prerequisites listed above.
 
 ## Deployment Steps
+
+
+LISA uses npm scripts for build and deployment. Key commands:
+
+| Task | Command |
+|------|---------|
+| Install Python & TypeScript deps | `npm run install:python` then `npm install` |
+| Stage model weights | `npm run model:check` |
+| Bootstrap CDK | `npm run bootstrap` |
+| Deploy (full pipeline) | `npm run deploy` |
+| Build archive (ADC pre-build) | `npm run build:archive` |
+| List CDK stacks | `npm run cdk:list` |
+
+The `npm run deploy` script runs the full pipeline: install dependencies, Docker checks, ECR login, model verification, build, and CDK deploy. Use `STACK=<stack-name> npm run deploy` to deploy specific stacks.
+
+
 ### Step 1: Clone the Repository
 
 Ensure you're working with the latest stable release of LISA:
@@ -30,11 +47,14 @@ git clone -b main --single-branch <path-to-lisa-repo>
 cd lisa
 ```
 
-### Step 2a: Create/Configure `config-custom.yaml`:
+### Step 2a: Create/Configure `config-custom.yaml`
+
 Run the command below to copy the example configuration into `config-custom.yaml`. This will create the file if it doesn't exist already.
+
 ```bash
 cp example_config.yaml config-custom.yaml
 ```
+
 Review the `config-custom.yaml` settings.  Some settings will be configured later in this guide.
 
 ### Step 2b: Set Up Environment Variables
@@ -50,8 +70,11 @@ export CDK_DOCKER=finch # Optional, only required if not using docker as contain
 
 ### Step 3: Set Up Python and TypeScript Environments
 
-Install system dependencies and set up both Python and TypeScript environments:
+
 - ***NOTE** The code block below has two tabs for Debian & EL/AL2*
+Install system dependencies and set up both Python and TypeScript environments using the project's npm scripts:
+
+* ***NOTE** The code block below has two tabs for Debian & EL/AL2*
 
 :::tabs
 == Debian
@@ -61,19 +84,16 @@ Install system dependencies and set up both Python and TypeScript environments:
 sudo apt-get update
 sudo apt-get install -y jq
 
-# Install Python packages
+# Install Python packages (for model staging)
 pip3 install --user --upgrade pip
 pip3 install yq huggingface_hub s5cmd
 
-# Set up Python environment
-make createPythonEnvironment && source .venv/bin/activate
+# Create and activate Python virtual environment
+python3 -m venv .venv && source .venv/bin/activate
 
-# Install Python Requirements
-make installPythonRequirements
-
-# Set up TypeScript environment
-make createTypeScriptEnvironment
-make installTypeScriptRequirements
+# Install Python and TypeScript dependencies via npm scripts
+npm run install:python
+npm install
 ```
 
 == EL / AL2
@@ -85,20 +105,57 @@ sudo yum update -y && yum install -y git jq yq
 # Install runtimes (use mise for installation - https://mise.jdx.dev/installing-mise.html)
 mise use --global python@3.13 node@24
 
-# Install Python packages
+# Install Python packages (for model staging)
 pip3 install --user --upgrade pip
 pip3 install yq huggingface_hub s5cmd
 
-# Set up Python environment
-make createPythonEnvironment && source .venv/bin/activate
+# Create and activate Python virtual environment
+python3 -m venv .venv && source .venv/bin/activate
 
-# Install Python Requirements
-make installPythonRequirements
-
-# Set up TypeScript environment
-make createTypeScriptEnvironment
-make installTypeScriptRequirements
+# Install Python and TypeScript dependencies via npm scripts
+npm run install:python
+npm install
 ```
+
+
+== MacOS
+
+```bash
+# 0) Install Homebrew if not installed
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# 1) Install core tools
+brew update
+brew install git jq yq s5cmd
+
+# 2) Install and activate mise for zsh
+curl https://mise.run | sh
+echo 'eval "$(~.local/bin/mise activate zsh)"' >> ~/.zshrc
+source ~/.zshrc
+
+# 3) Install runtimes
+mise use --global python@3.13 node@24
+
+# 4) Verify you are using mise versions
+which python
+which node
+python --version
+node --version
+
+
+# 5) Create and activate Python virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# 6) Upgrade pip and install model-staging tools
+python -m pip install --upgrade pip
+python -m pip install huggingface_hub yq
+
+# 7) Install Python and TypeScript dependencies via npm scripts
+npm run install:python
+npm install
+```
+
 
 :::
 
@@ -106,25 +163,25 @@ make installTypeScriptRequirements
 
 Edit the `config-custom.yaml` file to customize your LISA deployment. Key configurations include:
 
-- AWS account and region settings
-- Authentication settings
-- Model bucket name
+* AWS account and region settings
+* Authentication settings
+* Model bucket name
 
 ### Step 5: Configure Identity Provider
 
 In the `config-custom.yaml` file, configure the `authConfig` block for authentication. LISA supports OpenID Connect (OIDC) providers such as AWS Cognito or Keycloak. Required fields include:
 
-- `authority`: URL of your identity provider
-- `clientId`: Client ID for your application
-- `adminGroup`: Group name for users with model management permissions
-- `userGroup`: Group name for regular LISA users
-- `jwtGroupsProperty`: Path to the groups field in the JWT token
-- `additionalScopes` (optional): Extra scopes for group membership information
+* `authority`: URL of your identity provider
+* `clientId`: Client ID for your application
+* `adminGroup`: Group name for users with model management permissions
+* `userGroup`: Group name for regular LISA users
+* `jwtGroupsProperty`: Path to the groups field in the JWT token
+* `additionalScopes` (optional): Extra scopes for group membership information
 
 IDP Configuration examples using AWS Cognito and Keycloak can be found: [IDP Configuration Examples](/admin/idp-config)
 
-
 ### Step 6: Configure LiteLLM
+
 We utilize LiteLLM under the hood to allow LISA to respond to the [OpenAI specification](https://platform.openai.com/docs/api-reference).
 For LiteLLM configuration, a key must be set up so that the system may communicate with a database for tracking all the models that are added or removed
 using the [Model Management API](/config/model-management-api). The key must start with `sk-` and then can be any
@@ -132,74 +189,66 @@ arbitrary
 string. We recommend generating a new UUID and then using that as
 the key. Configuration example is below.
 
-
 ```yaml
 litellmConfig:
   db_key: sk-00000000-0000-0000-0000-000000000000  # needed for db operations, create your own key # pragma: allowlist-secret
 ```
 
-### Step 7: Set Up SSL Certificates (Development Only)
+> [!IMPORTANT]
+> To include prompt/response content in LiteLLM logs (published by the `LISA Serve` ECS task to CloudWatch via `litellm.log`), enable LiteLLM logging callbacks and message logging in `config-custom.yaml`.
+>
+> 1. Add the following to `litellmConfig`:
+> ```yaml
+> litellmConfig:
+>   litellm_settings:
+>     callbacks: ["otel"]
+>     turn_off_message_logging: false
+>   environment_variables:
+>     OTEL_EXPORTER: console
+>   callback_settings:
+>     otel:
+>       message_logging: true
+> ```
+>
+> 2. Ensure you are aware of the privacy/compliance implications: this causes request/response content to be logged.
+>
+> LiteLLM Proxy logging reference: https://docs.litellm.ai/docs/proxy/logging
 
-LISA requires SSL certificates for secure communication. Choose the appropriate method based on your deployment environment.
+> [!IMPORTANT]
+> API Gateway audit logging (strict opt-in):
+> LISA can emit audit logs for API Gateway requests (who initiated the request, what action was taken, and a sanitized JSON body) only when enabled via `auditLoggingConfig` in `config-custom.yaml`.
+>
+> Example (opt-in to specific API prefixes):
+> ```yaml
+> auditLoggingConfig:
+>   enabled: true
+>   auditAll: false
+>   enabledPaths: ["/api-tokens", "/models", "/repository", "/session", "/configuration", "/prompt-templates", "/project", "/user-preferences", "/mcp", "/mcp-server", "/mcp-workbench", "/metrics", "/chat-assistant-stacks", "/bedrock-kb"]
+> ```
+>
+> Example (`auditAll`):
+> ```yaml
+> auditLoggingConfig:
+>   enabled: true
+>   auditAll: true
+> ```
+>
+> Optional JSON body audit (default **off**): set `includeJsonBody: true` to emit `AUDIT_API_GATEWAY_REQUEST_BODY` for opted-in paths. When `includeJsonBody` is false or omitted, request bodies are never logged, even when path auditing is enabled.
+>
+> When audit logging is enabled for a given API prefix, two kinds of events may appear. **They are not in the same CloudWatch log group:**
+>
+> | Event | What it contains | Where it is logged |
+> | ----- | ---------------- | ------------------ |
+> | `AUDIT_API_GATEWAY_REQUEST` | Allow/Deny, user identity, HTTP method + path (from the authorizer) | **API Gateway Lambda authorizer** log group (e.g. `…-lambda-authorizer`) |
+> | `AUDIT_API_GATEWAY_REQUEST_BODY` | Sanitized JSON body (and user context from the proxy event) | **The Lambda (or service) that handles the route** — e.g. `put_session` for `PUT /session/{id}`, or the FastAPI/Mangum app log stream for APIs served that way — only if `includeJsonBody: true` |
+>
+> API Gateway does **not** send the HTTP body to the REST authorizer, so body audit must run in the integration that receives `event["body"]`.
+>
+> Each audit line is logged as **`EVENT_TYPE` followed by a compact JSON object** (same fields as before), so the full payload appears in the log message and can be parsed in CloudWatch Logs Insights (e.g. split on the first space and `parse` the JSON).
+>
+> Privacy note: enabling JSON body audit logging may include sensitive user data; ensure your organization’s compliance requirements are met.
 
-#### AWS Certificate Manager
-
-Use AWS Certificate Manager to create and manage certificates:
-
-1. **Create a Certificate in AWS Certificate Manager**:
-   - Navigate to the [AWS Certificate Manager Console](https://console.aws.amazon.com/acm)
-   - Request a public certificate
-   - For internal AWS deployments, use the domain pattern: `<alias>.people.aws.dev`
-   - Follow the DNS validation process to verify domain ownership
-   - Note: You may need access to specific AWS bindles or Route 53 hosted zones
-
-2. **Configure Custom Domains** in your `config-custom.yaml`:
-
-```yaml
-restApiConfig:
-  sslCertIamArn: arn:aws:acm:<region>:<account-id>:certificate/<certificate-id>
-  domainName: serve.<alias>.people.aws.dev
-
-apiGatewayConfig:
-  domainName: chat.<alias>.people.aws.dev
-```
-
-- For `sslCertIamArn` copy the arn from your ssl certificate from the AWS Certificate Manager.  Otherwise you can manually fill it in.
-- For `domainName` replace `<alias>` with your chosen subdomain.
-
-1. **Set Up Route 53 and Custom Domains**:
-
-After configuring your certificate and custom domains in `config-custom.yaml`, you need to set up DNS routing:
-
-**Create Route 53 Hosted Zone**:
-   - Navigate to Route 53 in the AWS Console
-   - Create a hosted zone for your domain (if it does not already exists)
-   - Note the hosted zone ID and name servers
-
-**Configure API Gateway Custom Domain** (after LISA deployment):
-   - Navigate to API Gateway → Custom domain names
-   - Create a custom domain for your chat endpoint: `chat.<alias>.people.aws.dev`
-   - Associate it with your API Gateway stage
-
-**Create DNS Records**:
-   - In Route 53, create an A record for `chat.<alias>.people.aws.dev`:
-     - Type: A record (Alias)
-     - Alias target: Your API Gateway custom domain
-   - Create a CNAME record for `serve.<alias>.people.aws.dev`:
-     - Type: CNAME
-     - Value: Your LisaServe REST API Application Load Balancer DNS name (found in EC2 → Load Balancers)
-
-**For Internal AWS Deployments**:
-   - Register your DNS name using Supernova at https://supernova.amazon.dev/
-   - Follow the guide at https://w.amazon.com/bin/view/SuperNova/PreOnboardingSteps/
-   - Use the pattern: `{username}.people.aws.dev`
-   - Associate with the appropriate AWS bindle for access control
-
-**Redeploy LISA**
-  - Redeploy LISA for the changes to take effect
-  - After completing these steps and redeploying LISA, your application will be accessible via custom domains with valid SSL certificates, eliminating the need to accept self-signed certificates in your browser.
-
-### Step 8a: Customize Model Deployment (If Using LISA Serve)
+### Step 7a: Customize Model Deployment (If Using LISA Serve)
 
 In the `ecsModels` section of `config-custom.yaml`, allow our deployment process to pull the model weights for you.
 
@@ -215,11 +264,11 @@ ecsModels:
     baseImage: vllm/vllm-openai:latest
 ```
 
-### Step 8b: Stage Model Weights
+### Step 7b: Stage Model Weights
 
 LISA requires model weights to be staged in the S3 bucket specified in your `config-custom.yaml` file, assuming the S3 bucket follows this structure:
 
-```
+```text
 s3://<bucket-name>/<hf-model-id-1>
 s3://<bucket-name>/<hf-model-id-1>/<file-1>
 s3://<bucket-name>/<hf-model-id-1>/<file-2>
@@ -229,7 +278,7 @@ s3://<bucket-name>/<hf-model-id-2>
 
 **Example:**
 
-```
+```text
 s3://<bucket-name>/mistralai/Mistral-7B-Instruct-v0.2
 s3://<bucket-name>/mistralai/Mistral-7B-Instruct-v0.2/<file-1>
 s3://<bucket-name>/mistralai/Mistral-7B-Instruct-v0.2/<file-2>
@@ -239,7 +288,7 @@ s3://<bucket-name>/mistralai/Mistral-7B-Instruct-v0.2/<file-2>
 To automatically download and stage the model weights defined by the `ecsModels` parameter in your `config-custom.yaml`, use the following command:
 
 ```bash
-make modelCheck
+npm run model:check
 ```
 
 This command verifies if the model's weights are already present in your S3 bucket. If not, it downloads the weights, converts them to the required format, and uploads them to your S3 bucket. Ensure adequate disk space is available for this process.
@@ -249,13 +298,13 @@ This command verifies if the model's weights are already present in your S3 buck
 > Previously, before models could be managed through the [API](/config/model-management-api) or via the Model Management
 > section of the [Chatbot](/user/chat), this parameter also
 > dictated which models were deployed.
-
 > **NOTE**
-> For air-gapped systems, before running `make modelCheck` you should manually download model artifacts and place them in a `models` directory at the project root, using the structure: `models/<model-id>`.
+
+
+> For air-gapped systems, before running `npm run model:check` you should manually download model artifacts and place them in a `models` directory at the project root, using the structure: `models/<model-id>`.
 
 > **NOTE**
 > This process is primarily designed and tested for HuggingFace models. For other model formats, you will need to manually create and upload safetensors.
-
 > **NOTE**
 > Please valdiate that all files successfully downloaded locally AND were uploaded to the S3 Bucket.  Ensure all large files such as .safetensor files exist.
 
@@ -264,8 +313,9 @@ This command verifies if the model's weights are already present in your S3 buck
 If you haven't bootstrapped your AWS account for CDK:
 
 ```bash
-make bootstrap
+npm run bootstrap
 ```
+
 ## ADC Region Deployment Tips
 
 Amazon Dedicated Cloud (ADC) regions are isolated AWS environments designed for government customers' most sensitive workloads. These regions have restricted internet access and limited external dependencies, requiring special deployment considerations for LISA.
@@ -283,16 +333,22 @@ This approach builds all necessary components in a commercial region with full i
 
 1. Set up LISA in a commercial AWS region with internet access
 2. Build all components:
+
    ```bash
-   make buildArchive
+   npm run build:archive
+   ./bin/build-assets --include-images
    ```
+
    This generates:
-   - Lambda function zip files in `./dist/layers/*.zip`
-   - Docker images exported as `./dist/images/*.tar` files
+
+
+* Lambda function zip files in `./dist/layers/*.zip` (from `build:archive`)
+   * Docker images exported as `./dist/images/*.tar` files (from `build-assets --include-images`)
 
 #### Step 2: Transfer to ADC Region
 
 1. Upload Docker images to ECR in your ADC region:
+
    ```bash
    # Load and tag images
    docker load -i lisa-rest-api.tar
@@ -302,6 +358,7 @@ This approach builds all necessary components in a commercial region with full i
    aws ecr get-login-password --region <adc-region> | docker login --username AWS --password-stdin <adc-account-id>.dkr.ecr.<adc-region>.amazonaws.com
    docker push <adc-account-id>.dkr.ecr.<adc-region>.amazonaws.com/lisa-rest-api:latest
    ```
+
    You'll want to repeat this for lisa-batch-ingestion, as well as any of the LISA base model hosting containers (lisa-vllm, lisa-tgi, lisa-tei)
 
 2. Transfer built artifacts to ADC environment
@@ -341,16 +398,16 @@ restApiConfig:
     code: <adc-account-id>.dkr.ecr.<adc-region>.amazonaws.com/lisa-rest-api:latest
 ```
 
-
-
 ### Approach 2: In-Region Building
 
 This approach configures LISA to build components using repositories accessible from within the ADC region.
 
 #### Prerequisites
-- ADC-accessible package repositories (PyPI mirror, npm registry, container registry)
-- ADC-accessible container registries
-- Network connectivity to required build dependencies
+
+* ADC-accessible package repositories (PyPI mirror, npm registry, container registry)
+
+* ADC-accessible container registries
+* Network connectivity to required build dependencies
 
 #### Configuration
 
@@ -380,6 +437,7 @@ mcpWorkbenchBuildConfig:
   S6_OVERLAY_ARCH_SOURCE: "./s6-overlay-x86_64.tar.xz"    # Path relative to lib/serve/mcp-workbench/
   RCLONE_SOURCE: "./rclone-linux-amd64.zip"                # Path relative to lib/serve/mcp-workbench/
 ```
+
 You'll also want any model hosting base containers available, e.g. vllm/vllm-openai:latest and ghcr.io/huggingface/text-embeddings-inference:latest
 
 #### Preparing Offline Build Dependencies
@@ -409,11 +467,13 @@ cp -r ~/.cache/prisma* lib/serve/rest-api/PRISMA_CACHE/
 ```
 
 **Important Notes:**
-- The cache is platform-specific. Generate it on a system matching your Docker base image (e.g., for `public.ecr.aws/docker/library/python:3.13-slim` which is Debian-based, so you may want to use a Debian-based system)
-- The `prisma version` command downloads binaries for your current platform
-- Both `prisma/` and `prisma-python/` directories are required for offline operation
+
+* The cache is platform-specific. Generate it on a system matching your Docker base image (e.g., for `public.ecr.aws/docker/library/python:3.13-slim` which is Debian-based, so you may want to use a Debian-based system)
+* The `prisma version` command downloads binaries for your current platform
+* Both `prisma/` and `prisma-python/` directories are required for offline operation
 
 **MCP Workbench dependencies** (S6 Overlay and rclone):
+
 ```bash
 # Download S6 Overlay files
 cd lib/serve/mcp-workbench/
@@ -435,23 +495,27 @@ To utilize the prebuilt hosting model containers with self-hosted models, select
 Once your configuration is complete:
 
 1. Bootstrap CDK (if not already done):
+
    ```bash
-   make bootstrap
+   npm run bootstrap
    ```
 
 2. Deploy LISA:
+
    ```bash
-   make deploy
+   npm run deploy
    ```
 
 3. Deploy specific stacks if needed:
+
    ```bash
-   make deploy STACK=LisaServe
+   STACK=LisaServe npm run deploy
    ```
 
 4. List available stacks:
+
    ```bash
-   make listStacks
+   npm run cdk:list
    ```
 
 ### Testing Your Deployment
@@ -464,8 +528,8 @@ pytest lisa-sdk/tests --url <rest-url-from-cdk-output> --verify <path-to-server.
 
 ### Troubleshooting ADC Deployments
 
-- **Build failures**: Ensure all dependencies are accessible from ADC region
-- **Container pull errors**: Verify ECR repositories exist and have correct permissions
-- **Lambda deployment issues**: Check that lambda zip files are properly formatted and accessible
-- **Network connectivity**: Confirm VPC configuration allows required outbound connections
-- **S3 Models Bucket Issues**: Confirm your AWS_REGION is set correctly and that all of your model's files successfully uploaded to your models bucket
+* **Build failures**: Ensure all dependencies are accessible from ADC region
+* **Container pull errors**: Verify ECR repositories exist and have correct permissions
+* **Lambda deployment issues**: Check that lambda zip files are properly formatted and accessible
+* **Network connectivity**: Confirm VPC configuration allows required outbound connections
+* **S3 Models Bucket Issues**: Confirm your AWS_REGION is set correctly and that all of your model's files successfully uploaded to your models bucket

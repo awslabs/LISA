@@ -205,7 +205,7 @@ export class ECSCluster extends Construct {
         const cluster = new Cluster(this, createCdkId([config.deploymentName, config.deploymentStage, 'Cl']), {
             clusterName: createCdkId([config.deploymentName, config.deploymentStage, identifier], 32, 2),
             vpc: vpc.vpc,
-            containerInsightsV2: !config.region.includes('iso') ? ContainerInsights.ENABLED : ContainerInsights.DISABLED,
+            containerInsightsV2: ContainerInsights.ENHANCED,
         });
 
         const asgSecurityGroup = new SecurityGroup(this, 'RestAsgSecurityGroup', {

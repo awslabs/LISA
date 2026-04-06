@@ -17,7 +17,7 @@ import { CfnOutput, Duration, RemovalPolicy, Stack, StackProps } from 'aws-cdk-l
 import { IAuthorizer } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup, Port } from 'aws-cdk-lib/aws-ec2';
 import { ILayerVersion, LayerVersion } from 'aws-cdk-lib/aws-lambda';
-import { BlockPublicAccess, Bucket, BucketEncryption, HttpMethods } from 'aws-cdk-lib/aws-s3';
+import { BlockPublicAccess, Bucket, BucketEncryption, HttpMethods, IBucket } from 'aws-cdk-lib/aws-s3';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { AttributeType, BillingMode, StreamViewType, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -29,6 +29,7 @@ import { Layer } from '../core/layers';
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
 import { APP_MANAGEMENT_KEY, BaseProps, Config } from '../schema';
+import { getAuditLoggingEnv } from '../api-base/auditEnv';
 import { SecurityGroupEnum } from '../core/iam/SecurityGroups';
 import { SecurityGroupFactory } from '../networking/vpc/security-group-factory';
 import { Roles } from '../core/iam/roles';
@@ -48,6 +49,7 @@ import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resour
 
 export type LisaRagProps = {
     authorizer: IAuthorizer;
+    bucketAccessLogsBucket: IBucket;
     endpointUrl?: StringParameter;
     modelsPs?: StringParameter;
     restApiId: string;
@@ -70,7 +72,7 @@ export class LisaRagConstruct extends Construct {
     constructor (scope: Stack, id: string, props: LisaRagProps) {
         super(scope, id);
         this.scope = scope;
-        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const { authorizer, bucketAccessLogsBucket, config, restApiId, rootResourceId, securityGroups, vpc } = props;
 
         const endpointUrl = props.endpointUrl ?? StringParameter.fromStringParameterName(
             scope,
@@ -82,10 +84,6 @@ export class LisaRagConstruct extends Construct {
             scope,
             createCdkId(['RegisteredModels', 'StringParameter']),
             `${config.deploymentPrefix}/registeredModels`,
-        );
-
-        const bucketAccessLogsBucket = Bucket.fromBucketArn(scope, 'BucketAccessLogsBucket',
-            StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/bucket/bucket-access-logs`)
         );
 
         const bucket = new Bucket(scope, createCdkId(['LISA', 'RAG', config.deploymentName, config.deploymentStage]), {
@@ -211,6 +209,7 @@ export class LisaRagConstruct extends Construct {
 
         const baseEnvironment: Record<string, string> = {
             ADMIN_GROUP: config.authConfig!.adminGroup,
+            RAG_ADMIN_GROUP: config.authConfig!.ragAdminGroup,
             BUCKET_NAME: bucket.bucketName,
             CHUNK_OVERLAP: config.ragFileProcessingConfig!.chunkOverlap.toString(),
             CHUNK_SIZE: config.ragFileProcessingConfig!.chunkSize.toString(),
@@ -226,6 +225,7 @@ export class LisaRagConstruct extends Construct {
             REGISTERED_REPOSITORIES_PS: `${config.deploymentPrefix}/registeredRepositories`,
             REST_API_VERSION: 'v2',
             TIKTOKEN_CACHE_DIR: '/tmp',
+            ...getAuditLoggingEnv(config),
         };
 
         // Add REST API SSL Cert ARN if it exists to be used to verify SSL calls to REST API

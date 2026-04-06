@@ -70,7 +70,6 @@ function ConfirmationModal ({
                             Cancel
                         </Button>
                         <Button
-                            data-cy='modal-confirm'
                             data-testid={`confirmation-modal-${action.toLowerCase().replace(/\s+/g, '-')}-btn`}
                             variant='primary'
                             onClick={async () => {

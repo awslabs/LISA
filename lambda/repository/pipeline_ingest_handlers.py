@@ -80,7 +80,7 @@ def handle_pipeline_ingest_event(event: dict[str, Any], context: Any) -> None:
     key = detail.get("key", None)
 
     if key and key.endswith(".metadata.json"):
-        logger.warning(f"Metadata file event reached Lambda (should be filtered by EventBridge): {key}")
+        logger.warning(f"Ignoring Metadata file: {key}")
         return
     repository_id = detail.get("repositoryId", None)
     pipeline_config = detail.get("pipelineConfig", None)

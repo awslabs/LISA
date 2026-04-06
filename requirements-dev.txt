@@ -27,6 +27,7 @@ cachetools==7.0.2
 # Testing
 pytest==9.0.2
 pytest-cov==7.0.0
+responses>=0.26.0
 moto[proxy]==5.1.21
 coverage>=7.10.6
 lxml==6.0.2
@@ -37,11 +38,11 @@ psycopg2-binary==2.9.11
 cachetools==7.0.2
 
 # MCP Workbench testing
-fastmcp>=2.0.0
+fastmcp>=2.10.0,<3.0.0
+mcp>=1.26.0,<2.0.0
 
 # Development
 black==26.1.0
 flake8==7.3.0
 mypy==1.19.1
 poetry==2.3.2
-yq==3.4.3

@@ -119,7 +119,12 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
         if (Array.isArray(content)) {
             return content.map((item: any, index) => {
                 if (item.type === 'text' && typeof item.text === 'string') {
-                    if (item.text.startsWith('File context:')) return null;
+                    if (
+                        item.text.startsWith('File context:') ||
+                        item.text.startsWith('Context from document search:')
+                    ) {
+                        return null;
+                    }
 
                     const displayableText = getDisplayableMessage(item.text, message.type === MessageTypes.AI ? ragCitationsString : undefined);
 
@@ -255,7 +260,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
 
     return (
         (message.type === MessageTypes.HUMAN || message.type === MessageTypes.AI || message.type === MessageTypes.TOOL) &&
-        <div className='mt-2' style={{ overflow: 'hidden' }} data-testid={`chat-message-${message.type}`}>
+        <div className='mt-2' style={{ overflow: 'auto' }} data-testid={`chat-message-${message.type}`}>
             <ImageViewer setVisible={setShowImageViewer} visible={showImageViewer} selectedImage={selectedImage} metadata={selectedMetadata} />
             {(isRunning && !callingToolName && !message?.metadata?.videoGeneration) && (
                 <ChatBubble

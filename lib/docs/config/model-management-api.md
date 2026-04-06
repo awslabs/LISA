@@ -95,7 +95,7 @@ curl -s -H "Authorization: Bearer <admin_token>" -X GET https://<apigw_endpoint>
 
 ## Creating a Model (Admin API)
 
-LISA provides the `/models` endpoint for creating both ECS and LiteLLM-hosted models. Depending on the request payload, infrastructure will be created or bypassed (e.g., for LiteLLM-only models).
+LISA provides the `/models` endpoint for creating LISA-hosted ECS models and externally hosted models managed through LiteLLM. Externally hosted models include both third-party providers and customer internal hosted endpoints.
 
 This API accepts the same model definition parameters that were accepted in the V2 model definitions within the config.yaml file with one notable difference: the `containerConfig.image.path` field is
 now omitted because it corresponded with the `inferenceContainer` selection. As a convenience, this path is no longer required.
@@ -170,6 +170,19 @@ POST https://<apigw_endpoint>/models
 }
 ```
 
+### Creating a Customer Internal Hosted Model:
+
+```json
+{
+  "modelId": "internal-mistral7b",
+  "modelName": "openai/mistral-7b-instruct",
+  "modelType": "textgen",
+  "streaming": true,
+  "hostingType": "INTERNAL_HOSTED",
+  "modelUrl": "http://internal-lisa-mistral7binstruct03-665568061.us-east-1.elb.amazonaws.com/v1"
+}
+```
+
 ### Explanation of Key Fields for Creation Payload:
 
 - `modelId`: The unique identifier for the model. This is any name you would like it to be.
@@ -182,6 +195,8 @@ POST https://<apigw_endpoint>/models
     - LiteLLM-only, SageMaker: If you want to use a SageMaker Endpoint named `my-sm-endpoint`, then the `modelName` value should be `sagemaker/my-sm-endpoint`.
 - `modelType`: The type of model, such as text generation (textgen).
 - `streaming`: Whether the model supports streaming inference.
+- `hostingType`: Optional hosting selector. Use `INTERNAL_HOSTED` for customer internal load balancer endpoints.
+- `modelUrl`: Required for `INTERNAL_HOSTED` and used as LiteLLM `api_base` for inference routing.
 - `instanceType`: The type of EC2 instance to be used (only applicable for ECS models).
 - `containerConfig`: Details about the Docker container, memory allocation, and environment variables.
 - `autoScalingConfig`: Configuration related to ECS autoscaling.

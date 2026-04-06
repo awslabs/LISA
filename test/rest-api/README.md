@@ -7,7 +7,7 @@ This directory contains comprehensive unit tests for the LISA REST API (`lib/ser
 ```
 test/rest-api/
 ├── conftest.py              # Shared fixtures and test configuration
-├── test_utils.py            # Tests for utility modules (cache, decorators, resources)
+├── test_rest_api_utils.py   # Tests for utility modules (cache, decorators, resources)
 ├── test_auth.py             # Tests for authentication and authorization
 ├── test_request_utils.py    # Tests for request validation and processing
 ├── test_guardrails.py       # Tests for guardrails functionality
@@ -168,9 +168,9 @@ These are already included in the main project dependencies.
 
 These tests are included in:
 
-- `make test` - Run all unit tests
-- `make test-coverage` - Run with coverage reporting
-- `make test-rest-api` - Run only REST API tests
+- `npm run test` - Run all unit tests
+- `npm run test:coverage` - Run with coverage reporting
+- `npm run test:rest-api` - Run only REST API tests
 
 The tests are fast and have no external dependencies, making them ideal for CI/CD pipelines.
 

@@ -9,8 +9,9 @@ tools and perform the necessary steps to complete the task.
 
 **Activate MCP Feature & LLM**
 
-1. Administrators must first activate the **MCP Server Connections** feature on LISA’s **Configuration** page. When active, the MCP Connections page will appear under the **Libraries** menu for all LISA users. To activate, toggle **Allow MCP Server Connections** to be active. Click **Save Changes** and then **Update.**
-2. An Administrator must add an LLM to support LISA’s MCP tools capability. During model creation in Model Management, toggle **Tool Calls** to be active.
+1. Administrators must first activate the **MCP Server Connections** feature on LISA’s **Configuration** page. When active, the MCP Connections page will appear under the **Libraries** menu for all LISA users. To activate, toggle **MCP Server Connections** to be active. Click **Save Changes** and then **Update.**
+2. Optionally, enable **AWS Sessions** to allow users to connect AWS credentials per chat session for use by MCP tools that support it. See [AWS Sessions](#aws-sessions) below.
+3. An Administrator must add an LLM to support LISA’s MCP tools capability. During model creation in Model Management, toggle **Tool Calls** to be active.
 
 
 **Add MCP Connections**
@@ -67,5 +68,86 @@ When a user activates Autopilot Mode, that user will not be prompted to confirm 
 *Edit and Delete*
 
 Admins can edit and delete any MCP Server Connection. Non-admins can edit or delete MCP Server Connections that they created.
+
+## API Reference
+
+The MCP Server Connections API manages MCP endpoints that users and administrators can enable in chat sessions.
+
+Base path: `/mcp-server`
+
+### List MCP Server Connections
+
+- Method: `GET`
+- Path: `/mcp-server`
+- Description: Lists MCP server connections available to the caller.
+
+### Create MCP Server Connection
+
+- Method: `POST`
+- Path: `/mcp-server`
+- Description: Creates a new MCP server connection.
+
+### Get MCP Server Connection
+
+- Method: `GET`
+- Path: `/mcp-server/{serverId}`
+- Description: Retrieves a specific MCP server connection.
+
+Path parameters:
+
+- `serverId` (string, required): MCP server identifier
+
+### Update MCP Server Connection
+
+- Method: `PUT`
+- Path: `/mcp-server/{serverId}`
+- Description: Updates an existing MCP server connection.
+
+Path parameters:
+
+- `serverId` (string, required): MCP server identifier
+
+### Delete MCP Server Connection
+
+- Method: `DELETE`
+- Path: `/mcp-server/{serverId}`
+- Description: Deletes an MCP server connection.
+
+Path parameters:
+
+- `serverId` (string, required): MCP server identifier
+
+Example:
+
+```bash
+curl -X GET "https://<api-gateway-domain>/<stage>/mcp-server" \
+  -H "Authorization: Bearer <token>"
+```
+
+## AWS Sessions
+
+When **AWS Sessions** is enabled (Administration → Configuration → MCP section), users can connect their AWS credentials to individual chat sessions. This allows MCP tools to perform AWS operations on behalf of the user using their own credentials.
+
+### How it works
+
+- **Per-session scope**: Credentials are stored per user and per chat session. Each session has its own isolated AWS connection.
+- **In-memory storage**: Keys are validated and converted to short-lived session credentials stored securely in memory. Long-term credentials are never persisted.
+- **MCP tool requirement**: The feature only has effect when an MCP server exposes tools that leverage these credentials. For example, the MCP Workbench sample S3 tools use connected credentials to list buckets or perform other S3 operations. Without such tools, connecting credentials has no effect.
+- **Session lifecycle**: Credentials are discarded when the chat session ends.
+
+> **Caution:** Credentials with broad permissions can create, modify, or delete resources in your AWS account. Use IAM credentials with the minimum permissions required for the tools you intend to use.
+
+### Using AWS Sessions
+
+1. Ensure **AWS Sessions** is enabled by your Administrator (Configuration → MCP → AWS Sessions).
+2. Start or open a chat session.
+3. Open the session configuration panel (gear icon) and locate the **AWS Credentials** section.
+4. Enter your Access Key ID, Secret Access Key, optional Session Token, and Region.
+5. Click **Connect**. Your credentials are validated and converted to short-lived session credentials.
+6. Use MCP tools that support AWS credentials (e.g., S3 list buckets) within that chat session. The LLM will invoke these tools using your connected credentials.
+
+> **TIP:**
+>
+> AWS Sessions requires MCP Server Connections to be enabled. Administrators can disable AWS Sessions independently if they do not want users connecting AWS credentials in chat.
 
 ![MCP Example](../assets/mcp_toolchain.gif)

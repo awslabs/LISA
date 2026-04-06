@@ -183,7 +183,7 @@ export function ConfigurationComponent (): ReactElement {
                         }
                     }}
                     loading={isUpdating}
-                    data-cy='configuration-submit'
+                    data-testid='configuration-submit'
                     disabled={isUpdating || _.isEmpty(changesDiff)}
                 >
                     Save Changes

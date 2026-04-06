@@ -91,3 +91,43 @@ def handle_stream_exceptions(
             yield f"data:{json.dumps({'event': 'error', 'data': error_message})}\n\n"
 
     return wrapper
+
+
+def get_lisa_end_user_id(
+    jwt_data: dict[str, Any] | None,
+    state_username: str | None,
+) -> str | None:
+    """
+    Derive a human-readable end-user id for logs/spend attribution.
+
+    LiteLLM uses the provided end-user identifier for spend/budget/logging.
+    We prefer the same claims used by the authorizer/session to make the
+    logs match what admins see in the UI/session DB.
+
+    Precedence (highest to lowest):
+    1. jwt_data["cognito:username"] (if present)
+    2. jwt_data["username"] (if present and no cognito:username)
+    3. jwt_data["sub"]
+    4. fallback to state_username (request.state.username)
+    """
+    candidate: str | None = None
+    if isinstance(jwt_data, dict):
+        username = jwt_data.get("username")
+        candidate = username if isinstance(username, str) and username else None
+
+        cognito_username = jwt_data.get("cognito:username")
+        if isinstance(cognito_username, str) and cognito_username:
+            candidate = cognito_username
+
+        if not candidate:
+            sub = jwt_data.get("sub")
+            if isinstance(sub, str) and sub:
+                candidate = sub
+
+    if candidate:
+        return candidate
+
+    if isinstance(state_username, str) and state_username:
+        return state_username
+
+    return None

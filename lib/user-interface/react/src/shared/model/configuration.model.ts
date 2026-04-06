@@ -30,12 +30,14 @@ export type IEnabledComponents = {
     editNumOfRagDocument: boolean;
     editChatHistoryBuffer: boolean;
     uploadRagDocs: boolean;
+    ragSelectionAvailable: boolean;
     uploadContextDocs: boolean;
     documentSummarization: boolean;
     showRagLibrary: boolean;
     showPromptTemplateLibrary: boolean;
     enableModelComparisonUtility: boolean;
     mcpConnections: boolean;
+    awsSessions: boolean;
     showMcpWorkbench: boolean;
     modelLibrary: boolean;
     encryptSession: boolean;
@@ -90,11 +92,13 @@ export const enabledComponentsSchema = z.object({
     editChatHistoryBuffer: z.boolean().default(true),
     editNumOfRagDocument: z.boolean().default(true),
     uploadRagDocs: z.boolean().default(true),
+    ragSelectionAvailable: z.boolean().default(true),
     uploadContextDocs: z.boolean().default(true),
     documentSummarization: z.boolean().default(true),
     showRagLibrary: z.boolean().default(true),
     showPromptTemplateLibrary: z.boolean().default(true),
     mcpConnections: z.boolean().default(true),
+    awsSessions: z.boolean().default(false),
     modelLibrary: z.boolean().default(true),
     enableModelComparisonUtility: z.boolean().default(false),
     encryptSession: z.boolean().default(false),

@@ -19,6 +19,8 @@
  * Reusable helpers for RAG collection management and document operations.
  */
 
+import { navigateToAdminPage } from './adminHelpers';
+
 export type CollectionConfig = {
     collectionId: string;
     collectionName: string;
@@ -29,25 +31,23 @@ export type CollectionConfig = {
  * Navigate to the RAG Management page
  */
 export function navigateToRagManagement () {
-    cy.visit('/#/repository-management');
-    cy.url().should('include', '/repository-management');
-    cy.wait(1000);
+    navigateToAdminPage('RAG Management');
+    cy.url({ timeout: 30000 }).should('include', '/repository-management');
 }
 
 /**
  * Get the API base URL from the application's environment
  */
-function getApiBaseUrl (): Cypress.Chainable<string> {
-    return cy.window().then((win: any) => {
-        const apiBaseUrl = win.env?.API_BASE_URL || '';
-        return apiBaseUrl.replace(/\/+$/, ''); // Remove trailing slashes
-    });
+export function getApiBaseUrl (): Cypress.Chainable<string> {
+    // Get base URL from Cypress config and ensure it doesn't have trailing slash
+    const baseUrl = Cypress.config('baseUrl') as string;
+    return cy.wrap(baseUrl.replace(/\/+$/, ''));
 }
 
 /**
  * Get the authentication token from session storage
  */
-function getAuthToken (): Cypress.Chainable<string | null> {
+export function getAuthToken (): Cypress.Chainable<string | null> {
     return cy.window().then((win) => {
         // Find the OIDC token in sessionStorage
         const oidcKey = Object.keys(win.sessionStorage).find((key) => key.startsWith('oidc.user:'));
@@ -65,7 +65,7 @@ function getAuthToken (): Cypress.Chainable<string | null> {
  * @param path - API path (e.g., '/repository', '/collections')
  * @param options - Additional request options (body, headers, etc.)
  */
-function makeAuthenticatedRequest (
+export function makeAuthenticatedRequest (
     method: string,
     path: string,
     options: Partial<Cypress.RequestOptions> = {}
@@ -87,10 +87,10 @@ function makeAuthenticatedRequest (
 }
 
 /**
- * Wait for repository to be fully created (up to 5 minutes)
+ * Wait for repository to be fully created (up to 20 minutes)
  * Checks repository status until it's CREATE_COMPLETE or UPDATE_COMPLETE
  */
-export function waitForRepositoryReady (repositoryId: string, timeoutMs: number = 300000) {
+export function waitForRepositoryReady (repositoryId: string, timeoutMs: number = 1200000) {
     cy.log(`Waiting for repository ${repositoryId} to be ready...`);
 
     const startTime = Date.now();
@@ -213,8 +213,9 @@ export function uploadDocument (filePath: string) {
                 .find('input[type="file"]')
                 .selectFile(`src/e2e/fixtures/${filePath}`, { force: true });
 
-            // Wait a moment for file to be attached
-            cy.wait(1000);
+            // Wait for file to be attached (file token appears in UI)
+            cy.get('[data-testid="rag-upload-file-input"]')
+                .should('contain.text', filePath.split('/').pop());
 
             // Click the Upload button to submit
             cy.contains('button', 'Upload')
@@ -275,12 +276,13 @@ export function selectRagRepositoryInChat (repositoryId: string) {
     cy.log(`Selecting RAG repository: ${repositoryId}`);
 
     // Click the RAG repository input
-    cy.get('input#rag-repository-autosuggest, input[placeholder*="RAG Repository" i]')
+    cy.get('[data-testid="rag-repository-autosuggest"] input, input#rag-repository-autosuggest, input[placeholder*="RAG Repository" i]')
         .should('be.visible')
         .click({ force: true });
 
     // Wait for dropdown to appear and select the repository
-    cy.get('[role="option"]')
+    cy.get('[role="option"]', { timeout: 10000 })
+        .should('be.visible')
         .contains(repositoryId)
         .should('be.visible')
         .click();
@@ -294,7 +296,7 @@ export function selectCollectionInChat (collectionName: string) {
     cy.log(`Selecting collection: ${collectionName}`);
 
     // Click the collection input
-    cy.get('input#collection-autosuggest, input[placeholder*="collection" i]')
+    cy.get('[data-testid="rag-collection-autosuggest"] input, input#collection-autosuggest, input[placeholder*="collection" i]')
         .should('be.visible')
         .click({ force: true });
 
@@ -330,7 +332,7 @@ export function sendMessageAndVerifyRagResponse (message: string) {
     cy.intercept('POST', '**/chat/completions').as('chatCompletion');
 
     // Type the message
-    cy.get('textarea[placeholder*="message" i]')
+    cy.get('[data-testid="chat-prompt-textarea"] textarea, textarea[placeholder*="message" i]')
         .should('be.visible')
         .clear()
         .type(message);
@@ -426,7 +428,8 @@ export function deleteCollectionIfExists (collectionName: string) {
                 .should('be.visible')
                 .click();
 
-            cy.wait(2000);
+            // Wait for modal to close after deletion
+            cy.get('[data-testid="confirmation-modal-delete-btn"]', { timeout: 10000 }).should('not.exist');
         }
     });
 }

@@ -38,6 +38,7 @@ import { Provider } from 'aws-cdk-lib/custom-resources';
 import { Construct } from 'constructs';
 
 import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
+import { getAuditLoggingEnv, LISA_AUDIT_API_GATEWAY_BASE_PATH } from '../api-base/auditEnv';
 import { APP_MANAGEMENT_KEY, BaseProps } from '../schema';
 import { Vpc } from '../networking/vpc';
 
@@ -47,10 +48,12 @@ import { DeleteModelStateMachine } from './state-machine/delete-model';
 import { AttributeType, BillingMode, ITable, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { CreateModelStateMachine } from './state-machine/create-model';
 import { UpdateModelStateMachine } from './state-machine/update-model';
+import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { createCdkId, createLambdaRole } from '../core/utils';
 import { Roles } from '../core/iam/roles';
 import { LAMBDA_PATH } from '../util';
+import { LiteLLMSyncConstruct } from './litellm-sync';
 
 /**
  * Properties for ModelsApi Construct.
@@ -62,6 +65,7 @@ import { LAMBDA_PATH } from '../util';
  */
 type ModelsApiProps = BaseProps & {
     authorizer?: IAuthorizer;
+    bucketAccessLogsBucket: IBucket;
     guardrailsTable?: ITable;
     lisaServeEndpointUrlPs?: StringParameter;
     restApiId: string;
@@ -77,7 +81,7 @@ export class ModelsApi extends Construct {
     constructor (scope: Construct, id: string, props: ModelsApiProps) {
         super(scope, id);
 
-        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const { authorizer, bucketAccessLogsBucket, config, restApiId, rootResourceId, securityGroups, vpc } = props;
 
         // Use guardrailsTable passed from serve stack, or fall back to SSM parameter lookup for backward compatibility
         const guardrailsTable = props.guardrailsTable ?? (() => {
@@ -150,6 +154,7 @@ export class ModelsApi extends Construct {
         });
 
         const dockerImageBuilder = new DockerImageBuilder(this, 'docker-image-builder', {
+            bucketAccessLogsBucket,
             ecrUri: ecsModelBuildRepo.repositoryUri,
             mountS3DebUrl: config.mountS3DebUrl!,
             config: config,
@@ -288,6 +293,8 @@ export class ModelsApi extends Construct {
             ADMIN_GROUP: config.authConfig?.adminGroup || '',
             MODELS_BUCKET_NAME: config.s3BucketModels,
             MANAGEMENT_KEY_NAME: managementKeyName,
+            ...getAuditLoggingEnv(config),
+            [LISA_AUDIT_API_GATEWAY_BASE_PATH]: '/models',
             // SSM parameter names for RAG tables (optional - only exist if RAG is deployed)
             ...(config.deployRag && {
                 LISA_RAG_VECTOR_STORE_TABLE_PS_NAME: `${config.deploymentPrefix}/ragVectorStoreTableName`,
@@ -558,6 +565,15 @@ export class ModelsApi extends Construct {
             // No mutable properties — keeping this object empty ensures CloudFormation
             // never sends an Update event to the Lambda on subsequent deployments.
             properties: {},
+        });
+
+        // Sync models from DynamoDB to LiteLLM on every deployment
+        new LiteLLMSyncConstruct(this, 'LiteLLMSync', {
+            config,
+            modelTable,
+            lambdaLayers,
+            vpc,
+            securityGroups,
         });
 
     }

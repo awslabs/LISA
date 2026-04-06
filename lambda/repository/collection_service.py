@@ -450,6 +450,7 @@ class CollectionService:
         username: str,
         user_groups: list[str],
         is_admin: bool,
+        is_rag_admin: bool = False,
         page_size: int = 20,
         pagination_token: dict[str, Any] | None = None,
         filter_text: str | None = None,
@@ -499,15 +500,30 @@ class CollectionService:
         logger.info(f"Estimated total collections: {estimated_total}")
 
         # Select and execute pagination strategy
+        effective_admin = is_admin or is_rag_admin
         if estimated_total > 1000:
             logger.info("Using scalable pagination strategy for large dataset")
             collections, next_token = self._paginate_large_collections(
-                repositories, username, user_groups, is_admin, page_size, pagination_token, filter_text, sort_params
+                repositories,
+                username,
+                user_groups,
+                effective_admin,
+                page_size,
+                pagination_token,
+                filter_text,
+                sort_params,
             )
         else:
             logger.info("Using simple pagination strategy")
             collections, next_token = self._paginate_collections(
-                repositories, username, user_groups, is_admin, page_size, pagination_token, filter_text, sort_params
+                repositories,
+                username,
+                user_groups,
+                effective_admin,
+                page_size,
+                pagination_token,
+                filter_text,
+                sort_params,
             )
 
         logger.info(f"Returning {len(collections)} collections")

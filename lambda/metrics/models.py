@@ -20,10 +20,21 @@ from pydantic import BaseModel
 
 
 class MetricsEvent(BaseModel):
-    """Event model for usage metrics published to SQS."""
+    """Event model for usage metrics published to SQS.
+
+    event_type : str
+        "full"       — API token user or session-lambda event; owns all metrics.
+        "token_only" — JWT/UI passthrough event; only carries token counts, session
+                       lambda already counted the prompts. Do not write a sessionMetrics
+                       entry — that would create synthetic sessions and pollute aggregation.
+    """
 
     userId: str
     sessionId: str
     messages: list[dict[str, Any]]
     userGroups: list[str]
     timestamp: str
+    eventType: str = "full"
+    modelId: str | None = None
+    promptTokens: int | None = None
+    completionTokens: int | None = None

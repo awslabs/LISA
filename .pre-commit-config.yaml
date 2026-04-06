@@ -7,9 +7,9 @@ repos:
     - id: verify-config
       name: Verify config file
       description: Verify config file to check if certain parameters are empty
-      entry: scripts/verify-config.sh
+      entry: node scripts/verify-config.mjs
       verbose: true
-      language: script
+      language: system
       files: config-base.yaml
 
 - repo: https://github.com/PyCQA/bandit
@@ -90,7 +90,7 @@ repos:
       args:
         - --max-line-length=120
         - --extend-immutable-calls=Query,fastapi.Depends,fastapi.params.Depends
-        - --ignore=B008,B042,E203,W503 # Ignore error for function calls in argument defaults and exception __init__ args
+        - --ignore=B008,B042,E203,E704,W503 # Ignore error for function calls in argument defaults and exception __init__ args
       exclude: ^(__init__.py$|.*\/__init__.py$|test/cdk/stacks/__baselines__/)
 
 

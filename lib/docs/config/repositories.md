@@ -33,7 +33,7 @@ The repository-collection model provides a two-tier organizational structure ana
 Customers have two methods to load files into repositories configured with LISA:
 
 1. **Manual Upload**: Load files via the chat assistant user interface (UI), or API
-2. **Automated Pipeline**: (Admins-only) Configure LISA's ingestion pipelines for automated document processing
+2. **Automated Pipeline**: (Admins and RAG Admins) Configure LISA's ingestion pipelines for automated document processing. Admins can configure pipelines on any repository; RAG Admins can configure pipelines on repositories they have group access to. This role is especially useful in multi-tenant environments.
 
 ## Configuration
 
@@ -46,6 +46,7 @@ Files loaded via the chat assistant UI are limited by size, and are processed th
 LISA's automated document ingestion pipeline supports larger files and broader file types. Supported file types include: PDF, docx, and plain text files (.txt, .json, .yaml, xml, etc). The individual file size limit is 50 MB. LISA's pipelines offer chunking support for fixed size chunking or no chunking. For customers using Amazon Bedrock Knowledge Bases, LISA supports all chunking strategies offered by the service. LISA's automated ingestion pipelines provide customers with a flexible, scalable solution for loading documents into configured repositories and collections.
 
 Customers can set up multiple ingestion pipelines for a repository. For each pipeline they define:
+
 - The target repository and collection
 - Embedding model (inherited from repository if not defined)
 - Chunking strategy (can be customized per pipeline)
@@ -127,6 +128,7 @@ Collection access is controlled through user groups:
 - **Repository-level Groups**: Collections inherit allowed groups from their parent repository by default
 - **Collection-level Groups**: Collections can override with their own group restrictions for finer control
 - **Admin Access**: Administrators have full access to all collections across all repositories
+- **RAG Admin Access**: RAG Admins can create, update, and delete collections on repositories they have group access to. They cannot modify repository-level settings or `allowedGroups`. This role is especially useful in multi-tenant environments.
 - **User Collection Creation**: Repositories can be configured to allow or restrict user-created collections via the `allowUserCollections` flag
 
 ## Configuration Examples
@@ -137,7 +139,7 @@ RAG repositories and collections are configurable through the chat assistant web
 
 Repositories are created by administrators and define the underlying vector store implementation, embedding model, and default access controls.
 
-#### Request Example:
+#### Request Example
 
 ```bash
 curl -s -H 'Authorization: Bearer <your_token>' -XPOST -d @repository.json https://<apigw_endpoint>/repository
@@ -174,7 +176,7 @@ curl -s -H 'Authorization: Bearer <your_token>' -XPOST -d @repository.json https
 }
 ```
 
-#### Response Fields:
+#### Response Fields
 
 - `status`: "success" if the state machine was started successfully
 - `executionArn`: The state machine ARN used to deploy the repository
@@ -183,7 +185,7 @@ curl -s -H 'Authorization: Bearer <your_token>' -XPOST -d @repository.json https
 
 Collections can be created by users with appropriate permissions within an existing repository.
 
-#### Request Example:
+#### Collection Request Example
 
 ```bash
 curl -s -H 'Authorization: Bearer <your_token>' -XPOST -d @collection.json https://<apigw_endpoint>/repository/my-rag-repository/collection
@@ -216,7 +218,7 @@ curl -s -H 'Authorization: Bearer <your_token>' -XPOST -d @collection.json https
 }
 ```
 
-#### Response Fields:
+#### Collection Response Fields
 
 - `collectionId`: Unique identifier for the created collection (UUID)
 - `repositoryId`: Parent repository identifier
@@ -230,14 +232,14 @@ curl -s -H 'Authorization: Bearer <your_token>' -XPOST -d @collection.json https
 
 Retrieve all collections accessible to the current user within a repository.
 
-#### Request Example:
+#### Listing Request Example
 
 ```bash
 curl -s -H 'Authorization: Bearer <your_token>' \
   'https://<apigw_endpoint>/repository/my-rag-repository/collections?page=1&pageSize=20&sortBy=name&sortOrder=asc'
 ```
 
-#### Query Parameters:
+#### Query Parameters
 
 - `page`: Page number (default: 1)
 - `pageSize`: Items per page (default: 20, max: 100)
@@ -247,16 +249,22 @@ curl -s -H 'Authorization: Bearer <your_token>' \
 
 ## UI Components
 
-### RAG Repository Management (Admin)
+### RAG Repository Management (Admin and RAG Admin)
 
-Administrators access repository management through the Admin Configurations page. This interface provides:
+Administrators and RAG Admins access repository management through the Administration menu. The capabilities available depend on the user's role:
 
+**Administrators** have full access, including:
 - Create, update, and delete repositories
 - Configure vector store implementation (OpenSearch, PGVector, Bedrock Knowledge Base)
 - Set default embedding models and chunking strategies
-- Define repository-level access controls
+- Define repository-level access controls (`allowedGroups`)
 - Configure metadata tags
 - Enable or disable user-created collections
+
+**RAG Admins** have scoped access on repositories they belong to via group membership:
+- Create, update, and delete collections
+- Update ingestion pipelines
+- Cannot create or delete repositories, or modify `allowedGroups`
 
 ### RAG Collection Library
 

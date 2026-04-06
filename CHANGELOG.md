@@ -2,85 +2,39 @@
 
 ## Key Features
 
-### [Self Service RAG Administration]
-Introduce a new  role that gives designated users full control over RAG repository operations, document ingestion, collection management, and pipeline configuration without granting them full system administrator privileges. This change helps address an operational bottleneck where every RAG change required involving a system admin.
+### Self-Service RAG Administration
 
-**RAG Administration:**
-- **RAG Admin Role**: Provides designated users the ability to manage RAG repositories, ingestion, collections, and pipelines without requiring full system admin privileges.
-- **Streamlined RAG Workflows**: Enables RAG-specific users to make routine changes and updates without blocking on system admin availability.
+A new RAG Admin role gives designated users full control over RAG repository operations, document ingestion, collection management, and pipeline configuration without granting full system administrator privileges. This reduces the operational bottleneck where every RAG change required a system administrator. Self-service RAG is especially useful in multi-tenant environments.
 
-### [Move LiteLLMSync to ModelAPI]
-Move the LiteLLMSync component to the ModelAPI stack to resolve a circular dependency issue.
+### Operations Metrics Dashboard
 
-**ModelAPI Improvements:**
-- **Decoupled LiteLLMSync**: Removed the circular dependency by relocating the LiteLLMSync logic to the ModelAPI service.
+New dashboard reports track metrics across models and clusters, including inference latency, token usage, and batch ingestion job status. For example, customers can use the new input/output token reports to derive costs across users, groups, and models. This is useful for multi-tenant environments with a variety of end-user orgs. Also, model containers publish Prometheus metrics for vLLM, TEI, and TGI, and batch ingestion jobs report totals and failures for RAG document ingestion.
 
-### [Deployment Guide Cleanup]
-Removed the Development Only section from the deployment guide to simplify the documentation and onboarding process.
+### Integrating Externally Deployed Models
 
-**Documentation Updates:**
-- **Streamlined Deployment Guide**: Removed the Development Only section to provide a more concise and focused deployment guide.
+Administrators can register deployed models that are not LISA-managed by providing a URL that can be accessed from the LiteLLM ECS cluster. These models appear and behave like other models in the platform.
 
-### [Opensearch Version Upgrade]
-Update the Opensearch version used in RAG repositories to the latest supported version, which requires using a new indexing engine. This change only affects new RAG collections, with existing ones continuing to function.
+### AWS Session Credentials
 
-**Opensearch Enhancements:**
-- **Version Upgrade**: Upgraded the Opensearch version used for new RAG collections to the latest supported version.
-- **Indexing Engine Update**: Switched to a new indexing engine to accommodate the Opensearch version upgrade.
+LISA now lets you attach AWS credentials to a chat session. While that session is active, MCP tools can use those credentials to call AWS APIs, so tool-based workflows can reach AWS resources in the same context as the conversation instead of requiring separate per-tool setup.
 
-### [Operations Metrics Dashboard]
-Introduced a new dashboard that monitors metrics across all models and clusters, including model-specific metrics like inference latency, token usage, and batch ingestion job status.
+An example of a tool using this can be seen: lib/serve/mcp-workbench/src/examples/sample_tools/aws_operator_tools.py
 
-**Operational Visibility Improvements:**
-- **Model Metrics Dashboard**: Created a new dashboard to visualize key operational metrics for all deployed models and clusters.
-- **Metric Publisher**: Added a metric publisher to all model containers to collect and publish Prometheus metrics for vllm, tei, and tgi components.
-- **Batch Ingestion Monitoring**: Added monitoring for batch ingestion jobs to track total and failed RAG document ingestion.
+## Other Key Changes
 
-### [Bring Internal Models]
-Added the ability for administrators to bring internally deployed non-LISA managed models into the LISA platform.
-
-**Model Management Enhancements:**
-- **Bring Your Own Model**: Enabled administrators to integrate internally deployed models with the LISA platform.
-
-### [AWS Session Management Enhancements]
-Improved the existing AWS Sessions feature with clearer UI information, an admin toggle, and updated documentation.
-
-**AWS Session Management:**
-- **UI Updates**: Added introductory text in the AwsCredentialsPanel to describe the feature, credential storage, and MCP tool requirements.
-- **Admin Configuration**: Introduced a new AWS Sessions toggle under the MCP configuration in the Administration section.
-- **Documentation Updates**: Updated the documentation to reflect the new admin configuration option.
-
-### [E2E Test Improvements]
-Implemented multiple reliability and stability improvements to the Cypress E2E test suite, including:
-
-**E2E Test Reliability:**
-- **Workflow Restructuring**: Split the E2E pipeline into nightly health checks and weekly full suite runs.
-- **Selective Test Execution**: Restricted the nightly workflow to quick spec files, while the weekly workflow runs the full E2E suite.
-- **Resource Cleanup**: Implemented API-based resource cleanup to ensure a clean testing environment.
-- **Selector Standardization**: Standardized all test selectors to use  exclusively.
-- **Deterministic Assertions**: Replaced hardcoded  calls with deterministic API intercepts and DOM assertions.
-- **Login Flow Handling**: Fixed the E2E login flow to handle both single-page and two-step Cognito auth.
-- **Failure Reporting**: Updated the Slack notification to properly reflect pass/fail status.
-
-## Key Changes
-- **Deployment**: Encoded deploy ordering so the MCP Workbench stacks deploy before the Serve API cluster to avoid CloudFormation export conflicts.
-- **Metrics**: Added a new Metrics Dashboard to monitor key operational metrics across all deployed models and clusters.
-- **Logging**: Introduced enhanced audit logging for all inbound requests to LISA, with the ability to opt-in and filter the logs.
-- **TLS**: Added FIPS-compliant TLS policy support and fixed Opensearch TLS configuration issues.
-- **Model Sync**: Implemented a deployment lambda to ensure defined models are present in LiteLLM.
-- **UI/UX**: Updated the chat page UI and put the RAG selection controls behind a configuration toggle.
-- **Cypress Tests**: Implemented numerous improvements to the E2E test suite for reliability, stability, and faster execution.
+- Updated OpenSearch for new RAG collections to the latest supported version and indexing engine (existing collections continue to work as before)
+- Introduced optional audit logging for input/output from requests to LISA with opt-in and filtering
+- Implemented a deployment Lambda to ensure configured models are present in LiteLLM
+- Split Cypress E2E workflows into nightly health checks and weekly full suite runs, with API-based resource cleanup between runs
+- Updated LiteLLM to version 1.82.4
 
 ## Acknowledgements
-* @121983012+jmharold
-* @32586639+gingerknight
-* @99225408+Ernest-Gray
 * @bedanley
 * @drduhe
+* @Ernest-Gray
 * @estohlmann
-* @evmann
+* @gingerknight
 * @jmharold
-* @williamjduhe
 
 **Full Changelog**: https://github.com/awslabs/LISA/compare/v6.4.0..v6.5.0
 

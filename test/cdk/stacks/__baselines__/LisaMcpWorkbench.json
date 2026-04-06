@@ -892,7 +892,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Lists available MCP Workbench tools",
         "Environment": {
@@ -934,6 +934,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -971,7 +974,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Create MCP Workbench tools",
         "Environment": {
@@ -1013,6 +1016,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -1050,7 +1056,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Get MCP Workbench tool",
         "Environment": {
@@ -1092,6 +1098,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -1129,7 +1138,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Update MCP Workbench tool",
         "Environment": {
@@ -1171,6 +1180,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -1208,7 +1220,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Delete MCP Workbench tool",
         "Environment": {
@@ -1250,6 +1262,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -1287,7 +1302,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Description": "Validate Python code syntax",
         "Environment": {
@@ -1329,6 +1344,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -1360,6 +1378,979 @@
         },
         "RetentionInDays": 30
       }
+    },
+    "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevCl64382BD1": {
+      "Type": "AWS::ECS::Cluster",
+      "Properties": {
+        "ClusterName": "test-lisa-dev-McpWorkbenchDedica",
+        "ClusterSettings": [
+          {
+            "Name": "containerInsights",
+            "Value": "enhanced"
+          }
+        ]
+      }
+    },
+    "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevClA8598BEF": {
+      "Type": "AWS::ECS::ClusterCapacityProviderAssociations",
+      "Properties": {
+        "CapacityProviders": [
+          {
+            "Ref": "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevAsgCapacityProvider05AC8A84"
+          }
+        ],
+        "Cluster": {
+          "Ref": "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevCl64382BD1"
+        },
+        "DefaultCapacityProviderStrategy": []
+      }
+    },
+    "McpWorkbenchMcpWorkbenchDedicatedEcsRestAsgSecurityGroup6083F388": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "LisaMcpWorkbench/McpWorkbench/McpWorkbenchDedicatedEcs/RestAsgSecurityGroup",
+        "SecurityGroupEgress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Allow all outbound traffic by default",
+            "IpProtocol": "-1"
+          }
+        ],
+        "VpcId": {
+          "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPC8B8C4E4BB8544CDA"
+        }
+      }
+    },
+    "McpWorkbenchMcpWorkbenchDedicatedEcsRestAsgSecurityGroupfromLisaNetworkingVpcRestApiAlbSgA916BD54ALLPORTS3C5A6F57": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "Description": "from LisaNetworkingVpcRestApiAlbSgA916BD54:ALL PORTS",
+        "FromPort": 0,
+        "GroupId": {
+          "Fn::GetAtt": [
+            "McpWorkbenchMcpWorkbenchDedicatedEcsRestAsgSecurityGroup6083F388",
+            "GroupId"
+          ]
+        },
+        "IpProtocol": "tcp",
+        "SourceSecurityGroupId": {
+          "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcRestApiAlbSg469AE4F8GroupIdDB418565"
+        },
+        "ToPort": 65535
+      }
+    },
+    "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevASGInstanceRoleA1F0A8D0": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ec2.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/CloudWatchLogsFullAccess"
+              ]
+            ]
+          },
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/AmazonSSMFullAccess"
+              ]
+            ]
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": "dev"
+          },
+          {
+            "Key": "LISACluster",
+            "Value": "McpWorkbenchDedicated"
+          },
+          {
+            "Key": "Name",
+            "Value": "LisaMcpWorkbench/McpWorkbench/McpWorkbenchDedicatedEcs/test-lisa-dev-ASG"
+          },
+          {
+            "Key": "ScheduleManaged",
+            "Value": "true"
+          }
+        ]
+      }
+    },
+    "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevASGInstanceRoleDefaultPolicy7753EB5E": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "ecs:DeregisterContainerInstance",
+                "ecs:RegisterContainerInstance",
+                "ecs:Submit*"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevCl64382BD1",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": [
+                "ecs:Poll",
+                "ecs:StartTelemetrySession"
+              ],
+              "Condition": {
+                "ArnEquals": {
+                  "ecs:cluster": {
+                    "Fn::GetAtt": [
+                      "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevCl64382BD1",
+                      "Arn"
+                    ]
+                  }
+                }
+              },
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": [
+                "ecs:DiscoverPollEndpoint",
+                "ecr:GetAuthorizationToken",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevASGInstanceRoleDefaultPolicy7753EB5E",
+        "Roles": [
+          {
+            "Ref": "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevASGInstanceRoleA1F0A8D0"
+          }
+        ]
+      }
+    },
+    "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevASGInstanceProfileC0D0563A": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Roles": [
+          {
+            "Ref": "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevASGInstanceRoleA1F0A8D0"
+          }
+        ]
+      }
+    },
+    "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevASGLaunchConfig81B143AC": {
+      "Type": "AWS::AutoScaling::LaunchConfiguration",
+      "Properties": {
+        "BlockDeviceMappings": [
+          {
+            "DeviceName": "/dev/xvda",
+            "Ebs": {
+              "Encrypted": true,
+              "VolumeSize": 50
+            }
+          }
+        ],
+        "IamInstanceProfile": {
+          "Ref": "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevASGInstanceProfileC0D0563A"
+        },
+        "ImageId": {
+          "Ref": "SsmParameterValueawsserviceecsoptimizedamiamazonlinux2recommendedimageidC96584B6F00A464EAD1953AFF4B05118Parameter"
+        },
+        "InstanceMonitoring": true,
+        "InstanceType": "m5.xlarge",
+        "SecurityGroups": [
+          {
+            "Fn::GetAtt": [
+              "McpWorkbenchMcpWorkbenchDedicatedEcsRestAsgSecurityGroup6083F388",
+              "GroupId"
+            ]
+          }
+        ],
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "",
+              [
+                "#!/bin/bash\necho ECS_CLUSTER=",
+                {
+                  "Ref": "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevCl64382BD1"
+                },
+                " >> /etc/ecs/ecs.config"
+              ]
+            ]
+          }
+        }
+      },
+      "DependsOn": [
+        "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevASGInstanceRoleDefaultPolicy7753EB5E",
+        "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevASGInstanceRoleA1F0A8D0"
+      ]
+    },
+    "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevASG43524177": {
+      "Type": "AWS::AutoScaling::AutoScalingGroup",
+      "Properties": {
+        "AutoScalingGroupName": "test-lisa-dev-McpWorkbenchDedica",
+        "DefaultInstanceWarmup": 60,
+        "LaunchConfigurationName": {
+          "Ref": "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevASGLaunchConfig81B143AC"
+        },
+        "MaxSize": "5",
+        "MetricsCollection": [
+          {
+            "Granularity": "1Minute"
+          }
+        ],
+        "MinSize": "1",
+        "NewInstancesProtectedFromScaleIn": true,
+        "Tags": [
+          {
+            "Key": "Environment",
+            "PropagateAtLaunch": true,
+            "Value": "dev"
+          },
+          {
+            "Key": "LISACluster",
+            "PropagateAtLaunch": true,
+            "Value": "McpWorkbenchDedicated"
+          },
+          {
+            "Key": "Name",
+            "PropagateAtLaunch": true,
+            "Value": "LisaMcpWorkbench/McpWorkbench/McpWorkbenchDedicatedEcs/test-lisa-dev-ASG"
+          },
+          {
+            "Key": "ScheduleManaged",
+            "PropagateAtLaunch": true,
+            "Value": "true"
+          }
+        ],
+        "VPCZoneIdentifier": [
+          {
+            "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+          },
+          {
+            "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+          },
+          {
+            "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
+          }
+        ]
+      },
+      "UpdatePolicy": {
+        "AutoScalingRollingUpdate": {
+          "SuspendProcesses": [
+            "HealthCheck",
+            "ReplaceUnhealthy",
+            "AZRebalance",
+            "AlarmNotification",
+            "ScheduledActions",
+            "InstanceRefresh"
+          ]
+        },
+        "AutoScalingScheduledAction": {
+          "IgnoreUnmodifiedGroupSizeProperties": true
+        }
+      }
+    },
+    "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevAsgCapacityProvider05AC8A84": {
+      "Type": "AWS::ECS::CapacityProvider",
+      "Properties": {
+        "AutoScalingGroupProvider": {
+          "AutoScalingGroupArn": {
+            "Ref": "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevASG43524177"
+          },
+          "ManagedScaling": {
+            "Status": "ENABLED",
+            "TargetCapacity": 100
+          },
+          "ManagedTerminationProtection": "ENABLED"
+        }
+      }
+    },
+    "McpWorkbenchMcpWorkbenchDedicatedEcsdevtestlisalisaMcpWorkbenchDedicatedLogGroupB0F5A413": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/ecs/test-lisa-dev-McpWorkbenchDedicated",
+        "RetentionInDays": 7
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete"
+    },
+    "McpWorkbenchMcpWorkbenchDedicatedEcsdevtestlisalisaMcpWorkbenchDedicatedLogGroupPolicyResourcePolicyAF2DBBCD": {
+      "Type": "AWS::Logs::ResourcePolicy",
+      "Properties": {
+        "PolicyDocument": {
+          "Fn::Join": [
+            "",
+            [
+              "{\"Statement\":[{\"Action\":[\"logs:CreateLogStream\",\"logs:PutLogEvents\"],\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"",
+              {
+                "Fn::Select": [
+                  4,
+                  {
+                    "Fn::Split": [
+                      ":",
+                      {
+                        "Ref": "SsmParameterValuedevtestlisalisarolesMCPWORKBENCHC96584B6F00A464EAD1953AFF4B05118Parameter"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "\"},\"Resource\":\"",
+              {
+                "Fn::GetAtt": [
+                  "McpWorkbenchMcpWorkbenchDedicatedEcsdevtestlisalisaMcpWorkbenchDedicatedLogGroupB0F5A413",
+                  "Arn"
+                ]
+              },
+              "\"},{\"Action\":[\"logs:CreateLogStream\",\"logs:PutLogEvents\"],\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"",
+              {
+                "Fn::Select": [
+                  4,
+                  {
+                    "Fn::Split": [
+                      ":",
+                      {
+                        "Ref": "SsmParameterValuedevtestlisalisarolesMCPWORKBENCHEXC96584B6F00A464EAD1953AFF4B05118Parameter"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "\"},\"Resource\":\"",
+              {
+                "Fn::GetAtt": [
+                  "McpWorkbenchMcpWorkbenchDedicatedEcsdevtestlisalisaMcpWorkbenchDedicatedLogGroupB0F5A413",
+                  "Arn"
+                ]
+              },
+              "\"}],\"Version\":\"2012-10-17\"}"
+            ]
+          ]
+        },
+        "PolicyName": "LisaMcpWorkbenchMcpWorkbenchDedicatedEcsdevtestlisalisaMcpWorkbenchDedicatedLogGroupPolicyFC63670B"
+      }
+    },
+    "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevMcpWorkbenchDedicatedALBF0559DE0": {
+      "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "Properties": {
+        "LoadBalancerAttributes": [
+          {
+            "Key": "deletion_protection.enabled",
+            "Value": "false"
+          },
+          {
+            "Key": "idle_timeout.timeout_seconds",
+            "Value": "600"
+          },
+          {
+            "Key": "routing.http.drop_invalid_header_fields.enabled",
+            "Value": "true"
+          }
+        ],
+        "Name": "test-lisa-dev-mcpworkbenchdedica",
+        "Scheme": "internet-facing",
+        "SecurityGroups": [
+          {
+            "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcRestApiAlbSg469AE4F8GroupIdDB418565"
+          }
+        ],
+        "Subnets": [
+          {
+            "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCpublicSubnet1SubnetA91B7DBE8B8D2123"
+          },
+          {
+            "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCpublicSubnet2SubnetC9D5B981D613E068"
+          },
+          {
+            "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCpublicSubnet3Subnet1B3B5189EC780C59"
+          }
+        ],
+        "Type": "application"
+      }
+    },
+    "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevMcpWorkbenchDedicatedALBMcpWorkbenchDedicatedApplicationListenerE8AEF9BD": {
+      "Type": "AWS::ElasticLoadBalancingV2::Listener",
+      "Properties": {
+        "Certificates": [
+          {
+            "CertificateArn": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev"
+          }
+        ],
+        "DefaultActions": [
+          {
+            "TargetGroupArn": {
+              "Ref": "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevMcpWorkbenchDedicatedALBMcpWorkbenchDedicatedApplicationListenerMcpWorkbenchDedicatedMCPWORKBENCHTgtGrpGroupEC3BB7CD"
+            },
+            "Type": "forward"
+          }
+        ],
+        "LoadBalancerArn": {
+          "Ref": "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevMcpWorkbenchDedicatedALBF0559DE0"
+        },
+        "Port": 443,
+        "Protocol": "HTTPS",
+        "SslPolicy": "ELBSecurityPolicy-TLS13-1-2-Res-2021-06"
+      }
+    },
+    "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevMcpWorkbenchDedicatedALBMcpWorkbenchDedicatedApplicationListenerMcpWorkbenchDedicatedMCPWORKBENCHTgtGrpGroupEC3BB7CD": {
+      "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "Properties": {
+        "HealthCheckIntervalSeconds": 60,
+        "HealthCheckPath": "/health",
+        "HealthCheckTimeoutSeconds": 30,
+        "HealthyThresholdCount": 2,
+        "Port": 80,
+        "Protocol": "HTTP",
+        "TargetGroupAttributes": [
+          {
+            "Key": "stickiness.enabled",
+            "Value": "false"
+          }
+        ],
+        "TargetType": "instance",
+        "UnhealthyThresholdCount": 3,
+        "VpcId": {
+          "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPC8B8C4E4BB8544CDA"
+        }
+      }
+    },
+    "McpWorkbenchMcpWorkbenchDedicatedEcsMCPWORKBENCHTRPolicyE569EA4B": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "McpWorkbenchMcpWorkbenchDedicatedEcsdevtestlisalisaMcpWorkbenchDedicatedLogGroupB0F5A413",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": [
+                "dynamodb:BatchGetItem",
+                "dynamodb:Query",
+                "dynamodb:GetItem",
+                "dynamodb:Scan",
+                "dynamodb:ConditionCheckItem",
+                "dynamodb:DescribeTable"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":dynamodb:us-iso-east-1:012345678901:table/",
+                      {
+                        "Ref": "McpWorkbenchMcpWorkbenchTokenTableNameParameterParameter3D0CBC24"
+                      }
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":dynamodb:us-iso-east-1:012345678901:table/",
+                      {
+                        "Ref": "McpWorkbenchMcpWorkbenchTokenTableNameParameterParameter3D0CBC24"
+                      }
+                    ]
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "McpWorkbenchMcpWorkbenchDedicatedEcsMCPWORKBENCHTRPolicyE569EA4B",
+        "Roles": [
+          {
+            "Fn::Select": [
+              1,
+              {
+                "Fn::Split": [
+                  "/",
+                  {
+                    "Fn::Select": [
+                      5,
+                      {
+                        "Fn::Split": [
+                          ":",
+                          {
+                            "Ref": "SsmParameterValuedevtestlisalisarolesMCPWORKBENCHC96584B6F00A464EAD1953AFF4B05118Parameter"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "McpWorkbenchMcpWorkbenchDedicatedEcsMCPWORKBENCHERPolicy711C85CF": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "McpWorkbenchMcpWorkbenchDedicatedEcsdevtestlisalisaMcpWorkbenchDedicatedLogGroupB0F5A413",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": [
+                "ecr:BatchCheckLayerAvailability",
+                "ecr:GetDownloadUrlForLayer",
+                "ecr:BatchGetImage"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":ecr:us-iso-east-1:012345678901:repository/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1"
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": "ecr:GetAuthorizationToken",
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "McpWorkbenchMcpWorkbenchDedicatedEcsMCPWORKBENCHERPolicy711C85CF",
+        "Roles": [
+          {
+            "Fn::Select": [
+              1,
+              {
+                "Fn::Split": [
+                  "/",
+                  {
+                    "Fn::Select": [
+                      5,
+                      {
+                        "Fn::Split": [
+                          ":",
+                          {
+                            "Ref": "SsmParameterValuedevtestlisalisarolesMCPWORKBENCHEXC96584B6F00A464EAD1953AFF4B05118Parameter"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "McpWorkbenchMcpWorkbenchDedicatedEcsMCPWORKBENCHEc2TaskDefinitionA2F01FAA": {
+      "Type": "AWS::ECS::TaskDefinition",
+      "Properties": {
+        "ContainerDefinitions": [
+          {
+            "Environment": [
+              {
+                "Name": "LOG_LEVEL",
+                "Value": "DEBUG"
+              },
+              {
+                "Name": "AWS_REGION",
+                "Value": "us-iso-east-1"
+              },
+              {
+                "Name": "AWS_REGION_NAME",
+                "Value": "us-iso-east-1"
+              },
+              {
+                "Name": "THREADS",
+                "Value": "4"
+              },
+              {
+                "Name": "USE_AUTH",
+                "Value": "true"
+              },
+              {
+                "Name": "AUTHORITY",
+                "Value": "test"
+              },
+              {
+                "Name": "CLIENT_ID",
+                "Value": "test"
+              },
+              {
+                "Name": "ADMIN_GROUP",
+                "Value": ""
+              },
+              {
+                "Name": "USER_GROUP",
+                "Value": ""
+              },
+              {
+                "Name": "JWT_GROUPS_PROP",
+                "Value": ""
+              },
+              {
+                "Name": "MANAGEMENT_KEY_NAME",
+                "Value": {
+                  "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+                }
+              },
+              {
+                "Name": "SSL_CERT_DIR",
+                "Value": "/etc/pki/tls/certs"
+              },
+              {
+                "Name": "SSL_CERT_FILE",
+                "Value": ""
+              },
+              {
+                "Name": "REQUESTS_CA_BUNDLE",
+                "Value": ""
+              },
+              {
+                "Name": "AWS_CA_BUNDLE",
+                "Value": ""
+              },
+              {
+                "Name": "CURL_CA_BUNDLE",
+                "Value": ""
+              },
+              {
+                "Name": "TOKEN_TABLE_NAME",
+                "Value": {
+                  "Ref": "SsmParameterValuedevtestlisalisatokenTableNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+                }
+              },
+              {
+                "Name": "CORS_ORIGINS",
+                "Value": "*"
+              },
+              {
+                "Name": "RCLONE_CONFIG_S3_REGION",
+                "Value": "us-iso-east-1"
+              },
+              {
+                "Name": "MCPWORKBENCH_BUCKET",
+                "Value": "test-lisa-dev-mcpworkbench-012345678901"
+              }
+            ],
+            "Essential": true,
+            "HealthCheck": {
+              "Command": [
+                "CMD-SHELL",
+                "exit 0"
+              ],
+              "Interval": 10,
+              "Retries": 3,
+              "StartPeriod": 30,
+              "Timeout": 5
+            },
+            "Image": {
+              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:17563b1407db249d42ae7535fb51f911748a7435a2cb6c257d5a84276fdc398b"
+            },
+            "LogConfiguration": {
+              "LogDriver": "awslogs",
+              "Options": {
+                "awslogs-group": {
+                  "Ref": "McpWorkbenchMcpWorkbenchDedicatedEcsdevtestlisalisaMcpWorkbenchDedicatedLogGroupB0F5A413"
+                },
+                "awslogs-stream-prefix": "MCPWORKBENCH",
+                "awslogs-region": "us-iso-east-1"
+              }
+            },
+            "Memory": 8192,
+            "MemoryReservation": 8192,
+            "MountPoints": [
+              {
+                "ContainerPath": "/etc/pki",
+                "ReadOnly": false,
+                "SourceVolume": "pki"
+              }
+            ],
+            "Name": "test-lisa-MCPWORKBENCH",
+            "PortMappings": [
+              {
+                "ContainerPort": 8000,
+                "HostPort": 0,
+                "Protocol": "tcp"
+              }
+            ],
+            "Privileged": true
+          }
+        ],
+        "ExecutionRoleArn": {
+          "Ref": "SsmParameterValuedevtestlisalisarolesMCPWORKBENCHEXC96584B6F00A464EAD1953AFF4B05118Parameter"
+        },
+        "Family": "test-lisa-MCPWORKBENCH",
+        "NetworkMode": "bridge",
+        "RequiresCompatibilities": [
+          "EC2"
+        ],
+        "TaskRoleArn": {
+          "Ref": "SsmParameterValuedevtestlisalisarolesMCPWORKBENCHC96584B6F00A464EAD1953AFF4B05118Parameter"
+        },
+        "Volumes": [
+          {
+            "Host": {
+              "SourcePath": "/etc/pki"
+            },
+            "Name": "pki"
+          }
+        ]
+      }
+    },
+    "McpWorkbenchMcpWorkbenchDedicatedEcstestlisaMCPWORKBENCHEc2SvcService33F2EBE7": {
+      "Type": "AWS::ECS::Service",
+      "Properties": {
+        "CapacityProviderStrategy": [
+          {
+            "CapacityProvider": {
+              "Ref": "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevAsgCapacityProvider05AC8A84"
+            },
+            "Weight": 1
+          }
+        ],
+        "Cluster": {
+          "Ref": "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevCl64382BD1"
+        },
+        "DeploymentConfiguration": {
+          "MaximumPercent": 200,
+          "MinimumHealthyPercent": 50
+        },
+        "DesiredCount": 1,
+        "EnableECSManagedTags": false,
+        "HealthCheckGracePeriodSeconds": 60,
+        "LoadBalancers": [
+          {
+            "ContainerName": "test-lisa-MCPWORKBENCH",
+            "ContainerPort": 8000,
+            "TargetGroupArn": {
+              "Ref": "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevMcpWorkbenchDedicatedALBMcpWorkbenchDedicatedApplicationListenerMcpWorkbenchDedicatedMCPWORKBENCHTgtGrpGroupEC3BB7CD"
+            }
+          }
+        ],
+        "SchedulingStrategy": "REPLICA",
+        "ServiceName": "MCPWORKBENCH",
+        "TaskDefinition": {
+          "Ref": "McpWorkbenchMcpWorkbenchDedicatedEcsMCPWORKBENCHEc2TaskDefinitionA2F01FAA"
+        }
+      },
+      "DependsOn": [
+        "McpWorkbenchMcpWorkbenchDedicatedEcsMCPWORKBENCHTRPolicyE569EA4B",
+        "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevASG43524177",
+        "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevASGInstanceProfileC0D0563A",
+        "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevASGInstanceRoleDefaultPolicy7753EB5E",
+        "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevASGInstanceRoleA1F0A8D0",
+        "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevASGLaunchConfig81B143AC",
+        "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevMcpWorkbenchDedicatedALBMcpWorkbenchDedicatedApplicationListenerMcpWorkbenchDedicatedMCPWORKBENCHTgtGrpGroupEC3BB7CD",
+        "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevMcpWorkbenchDedicatedALBMcpWorkbenchDedicatedApplicationListenerE8AEF9BD"
+      ]
+    },
+    "McpWorkbenchMcpWorkbenchDedicatedEcstestlisaMCPWORKBENCHEc2SvcTaskCountTargetC5AA1E76": {
+      "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+      "Properties": {
+        "MaxCapacity": 5,
+        "MinCapacity": 1,
+        "ResourceId": {
+          "Fn::Join": [
+            "",
+            [
+              "service/",
+              {
+                "Ref": "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevCl64382BD1"
+              },
+              "/",
+              {
+                "Fn::GetAtt": [
+                  "McpWorkbenchMcpWorkbenchDedicatedEcstestlisaMCPWORKBENCHEc2SvcService33F2EBE7",
+                  "Name"
+                ]
+              }
+            ]
+          ]
+        },
+        "RoleARN": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":iam::012345678901:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService"
+            ]
+          ]
+        },
+        "ScalableDimension": "ecs:service:DesiredCount",
+        "ServiceNamespace": "ecs"
+      },
+      "DependsOn": [
+        "McpWorkbenchMcpWorkbenchDedicatedEcsMCPWORKBENCHTRPolicyE569EA4B",
+        "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevASG43524177",
+        "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevASGInstanceProfileC0D0563A",
+        "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevASGInstanceRoleDefaultPolicy7753EB5E",
+        "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevASGInstanceRoleA1F0A8D0",
+        "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevASGLaunchConfig81B143AC"
+      ]
+    },
+    "McpWorkbenchMcpWorkbenchDedicatedEcstestlisaMCPWORKBENCHEc2SvcTaskCountTargetMCPWORKBENCHReqScaling1AB84803": {
+      "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+      "Properties": {
+        "PolicyName": "LisaMcpWorkbenchMcpWorkbenchDedicatedEcstestlisaMCPWORKBENCHEc2SvcTaskCountTargetMCPWORKBENCHReqScaling6FEFEF79",
+        "PolicyType": "TargetTrackingScaling",
+        "ScalingTargetId": {
+          "Ref": "McpWorkbenchMcpWorkbenchDedicatedEcstestlisaMCPWORKBENCHEc2SvcTaskCountTargetC5AA1E76"
+        },
+        "TargetTrackingScalingPolicyConfiguration": {
+          "PredefinedMetricSpecification": {
+            "PredefinedMetricType": "ALBRequestCountPerTarget",
+            "ResourceLabel": {
+              "Fn::Join": [
+                "",
+                [
+                  {
+                    "Fn::Select": [
+                      1,
+                      {
+                        "Fn::Split": [
+                          "/",
+                          {
+                            "Ref": "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevMcpWorkbenchDedicatedALBMcpWorkbenchDedicatedApplicationListenerE8AEF9BD"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "/",
+                  {
+                    "Fn::Select": [
+                      2,
+                      {
+                        "Fn::Split": [
+                          "/",
+                          {
+                            "Ref": "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevMcpWorkbenchDedicatedALBMcpWorkbenchDedicatedApplicationListenerE8AEF9BD"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "/",
+                  {
+                    "Fn::Select": [
+                      3,
+                      {
+                        "Fn::Split": [
+                          "/",
+                          {
+                            "Ref": "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevMcpWorkbenchDedicatedALBMcpWorkbenchDedicatedApplicationListenerE8AEF9BD"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "/",
+                  {
+                    "Fn::GetAtt": [
+                      "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevMcpWorkbenchDedicatedALBMcpWorkbenchDedicatedApplicationListenerMcpWorkbenchDedicatedMCPWORKBENCHTgtGrpGroupEC3BB7CD",
+                      "TargetGroupFullName"
+                    ]
+                  }
+                ]
+              ]
+            }
+          },
+          "ScaleInCooldown": 60,
+          "ScaleOutCooldown": 30,
+          "TargetValue": 1000
+        }
+      },
+      "DependsOn": [
+        "McpWorkbenchMcpWorkbenchDedicatedEcsMCPWORKBENCHTRPolicyE569EA4B",
+        "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevASG43524177",
+        "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevASGInstanceProfileC0D0563A",
+        "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevASGInstanceRoleDefaultPolicy7753EB5E",
+        "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevASGInstanceRoleA1F0A8D0",
+        "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevASGLaunchConfig81B143AC"
+      ]
     },
     "McpWorkbenchS3EventHandlerRole545174C5": {
       "Type": "AWS::IAM::Role",
@@ -1417,7 +2408,7 @@
                         [
                           "arn:aws:ecs:us-iso-east-1:*:cluster/",
                           {
-                            "Fn::ImportValue": "LisaServe:ExportsOutputRefRestApiECSClustertestlisadevClC04148B6699D280E"
+                            "Ref": "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevCl64382BD1"
                           },
                           "*"
                         ]
@@ -1429,11 +2420,14 @@
                         [
                           "arn:aws:ecs:us-iso-east-1:*:service/",
                           {
-                            "Fn::ImportValue": "LisaServe:ExportsOutputRefRestApiECSClustertestlisadevClC04148B6699D280E"
+                            "Ref": "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevCl64382BD1"
                           },
                           "*/",
                           {
-                            "Fn::ImportValue": "LisaServe:ExportsOutputFnGetAttRestApiECSClustertestlisaMCPWORKBENCHEc2SvcService1642D1D0Name81C9F72A"
+                            "Fn::GetAtt": [
+                              "McpWorkbenchMcpWorkbenchDedicatedEcstestlisaMCPWORKBENCHEc2SvcService33F2EBE7",
+                              "Name"
+                            ]
                           },
                           "*"
                         ]
@@ -1475,17 +2469,20 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
         },
         "Environment": {
           "Variables": {
             "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa",
             "API_NAME": "MCPWorkbench",
             "ECS_CLUSTER_NAME": {
-              "Fn::ImportValue": "LisaServe:ExportsOutputRefRestApiECSClustertestlisadevClC04148B6699D280E"
+              "Ref": "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevCl64382BD1"
             },
             "MCPWORKBENCH_SERVICE_NAME": {
-              "Fn::ImportValue": "LisaServe:ExportsOutputFnGetAttRestApiECSClustertestlisaMCPWORKBENCHEc2SvcService1642D1D0Name81C9F72A"
+              "Fn::GetAtt": [
+                "McpWorkbenchMcpWorkbenchDedicatedEcstestlisaMCPWORKBENCHEc2SvcService33F2EBE7",
+                "Name"
+              ]
             }
           }
         },
@@ -1513,6 +2510,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -1578,6 +2578,28 @@
         }
       }
     },
+    "McpWorkbenchMcpWorkbenchHostedEndpoint616CC8BF": {
+      "Type": "AWS::SSM::Parameter",
+      "Properties": {
+        "Description": "Base URL for hosted MCP Workbench HTTP server (MCP path /v2/mcp/)",
+        "Name": "/dev/test-lisa/lisa/mcpWorkbench/endpoint",
+        "Type": "String",
+        "Value": {
+          "Fn::Join": [
+            "",
+            [
+              "https://",
+              {
+                "Fn::GetAtt": [
+                  "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevMcpWorkbenchDedicatedALBF0559DE0",
+                  "DNSName"
+                ]
+              }
+            ]
+          ]
+        }
+      }
+    },
     "LISAMCPWorkbenchtestlisadevC221720C": {
       "Type": "AWS::S3::Bucket",
       "Properties": {
@@ -1593,27 +2615,7 @@
         "BucketName": "test-lisa-dev-mcpworkbench-012345678901",
         "LoggingConfiguration": {
           "DestinationBucketName": {
-            "Fn::Select": [
-              0,
-              {
-                "Fn::Split": [
-                  "/",
-                  {
-                    "Fn::Select": [
-                      5,
-                      {
-                        "Fn::Split": [
-                          ":",
-                          {
-                            "Ref": "SsmParameterValuedevtestlisalisabucketbucketaccesslogsC96584B6F00A464EAD1953AFF4B05118Parameter"
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
+            "Fn::ImportValue": "LisaCore:ExportsOutputRefBucketAccessLogsBucket91990836CA73FE19"
           },
           "LogFilePrefix": "logs/mcpworkbench-bucket/"
         },
@@ -1974,6 +2976,10 @@
     }
   },
   "Parameters": {
+    "McpWorkbenchMcpWorkbenchTokenTableNameParameterParameter3D0CBC24": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/tokenTableName"
+    },
     "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter": {
       "Type": "AWS::SSM::Parameter::Value<String>",
       "Default": "/dev/test-lisa/lisa/layerVersion/common"
@@ -1982,9 +2988,25 @@
       "Type": "AWS::SSM::Parameter::Value<String>",
       "Default": "/dev/test-lisa/lisa/layerVersion/fastapi"
     },
-    "SsmParameterValuedevtestlisalisabucketbucketaccesslogsC96584B6F00A464EAD1953AFF4B05118Parameter": {
+    "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter": {
       "Type": "AWS::SSM::Parameter::Value<String>",
-      "Default": "/dev/test-lisa/lisa/bucket/bucket-access-logs"
+      "Default": "/dev/test-lisa/lisa/appManagementKeySecretName"
+    },
+    "SsmParameterValuedevtestlisalisatokenTableNameC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/tokenTableName"
+    },
+    "SsmParameterValueawsserviceecsoptimizedamiamazonlinux2recommendedimageidC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>",
+      "Default": "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id"
+    },
+    "SsmParameterValuedevtestlisalisarolesMCPWORKBENCHC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/roles/MCPWORKBENCH"
+    },
+    "SsmParameterValuedevtestlisalisarolesMCPWORKBENCHEXC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/roles/MCPWORKBENCHEX"
     },
     "BootstrapVersion": {
       "Type": "AWS::SSM::Parameter::Value<String>",

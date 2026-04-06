@@ -16,7 +16,7 @@ gunicorn>=23.0.0,<24.0.0
 
 # LiteLLM — pinned by policy (orchestration / proxy compatibility).
 # Fixes: "All connection attempts failed" errors every 15 minutes with IAM auth (older LiteLLM).
-litellm[proxy]==1.82.4
+litellm[proxy]==1.83.0
 
 loguru>=0.7.3,<0.8.0
 pydantic>=2.5.0,<3.0.0

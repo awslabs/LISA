@@ -305,14 +305,18 @@ function App () {
                                         </PrivateRoute>
                                     }
                                 />}
-                                {config?.configuration?.enabledComponents?.bedrockAgents && <Route
+                                <Route
                                     path='bedrock-agent-management'
                                     element={
-                                        <AdminRoute>
-                                            <BedrockAgentManagement setNav={setNav} />
-                                        </AdminRoute>
+                                        config?.configuration?.enabledComponents?.bedrockAgents ? (
+                                            <AdminRoute>
+                                                <BedrockAgentManagement setNav={setNav} />
+                                            </AdminRoute>
+                                        ) : (
+                                            <Navigate to={import.meta.env.BASE_URL} replace />
+                                        )
                                     }
-                                />}
+                                />
                                 {config?.configuration?.enabledComponents?.enableModelComparisonUtility && <Route
                                     path='model-comparison'
                                     element={

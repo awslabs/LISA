@@ -52,6 +52,7 @@ const McpServers = lazy(() => import('@/pages/Mcp'));
 const ModelComparisonPage = lazy(() => import('./pages/ModelComparison'));
 const McpWorkbench = lazy(() => import('./pages/McpWorkbench'));
 const ChatAssistantStacks = lazy(() => import('./pages/ChatAssistantStacks'));
+const BedrockAgentManagement = lazy(() => import('./pages/BedrockAgentManagement'));
 
 export type RouteProps = {
     children: ReactElement[] | ReactElement;
@@ -156,6 +157,10 @@ function App () {
     }, [colorScheme]);
 
     const showNavigation = !!nav;
+
+    const enabledComponents = config?.configuration?.enabledComponents;
+    const showAgenticConnectionsPage =
+        Boolean(enabledComponents?.mcpConnections) || Boolean(enabledComponents?.bedrockAgents);
 
     return (
         <ColorSchemeContext.Provider value={{ colorScheme, setColorScheme }}>
@@ -292,12 +297,20 @@ function App () {
                                         </AdminRoute>
                                     }
                                 />
-                                {config?.configuration?.enabledComponents?.mcpConnections && <Route
+                                {showAgenticConnectionsPage && <Route
                                     path='mcp-connections/*'
                                     element={
                                         <PrivateRoute showConfig='showMcpServers' configs={config}>
                                             <McpServers setNav={setNav} />
                                         </PrivateRoute>
+                                    }
+                                />}
+                                {config?.configuration?.enabledComponents?.bedrockAgents && <Route
+                                    path='bedrock-agent-management'
+                                    element={
+                                        <AdminRoute>
+                                            <BedrockAgentManagement setNav={setNav} />
+                                        </AdminRoute>
                                     }
                                 />}
                                 {config?.configuration?.enabledComponents?.enableModelComparisonUtility && <Route

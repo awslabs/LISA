@@ -34,6 +34,8 @@ import { ModelType } from '@/shared/model/model-management.model';
 import { useGetAllModelsQuery } from '@/shared/reducers/model-management.reducer';
 import { useListRagRepositoriesQuery, useListAllCollectionsQuery } from '@/shared/reducers/rag.reducer';
 import { useListMcpServersQuery, useListHostedMcpServersQuery } from '@/shared/reducers/mcp-server.reducer';
+import { useListBedrockAgentsQuery } from '@/shared/reducers/mcp-server.reducer';
+import { useGetConfigurationQuery } from '@/shared/reducers/configuration.reducer';
 import { useListPromptTemplatesQuery } from '@/shared/reducers/prompt-templates.reducer';
 import { PromptTemplateType } from '@/shared/reducers/prompt-templates.reducer';
 import { VectorStoreStatus } from '#root/lib/schema';
@@ -189,9 +191,22 @@ export function StackRagStep (props: StackFormProps): ReactElement {
 
 export function StackAgentsStep (props: StackFormProps): ReactElement {
     const { item, setFields } = props;
-    const { data: connectionServers } = useListMcpServersQuery(undefined, { refetchOnMountOrArgChange: true });
+    const { data: configurationList } = useGetConfigurationQuery('global', { refetchOnMountOrArgChange: true });
+    const globalConfig = configurationList?.[0];
+    const enabledComponents = globalConfig?.configuration?.enabledComponents;
+    const mcpConnectionsEnabled = Boolean(enabledComponents?.mcpConnections);
+    const bedrockAgentsFeatureOn = Boolean(enabledComponents?.bedrockAgents);
+    const { data: connectionServers } = useListMcpServersQuery(undefined, {
+        refetchOnMountOrArgChange: true,
+        skip: !mcpConnectionsEnabled,
+    });
     const { data: hostedServers } = useListHostedMcpServersQuery(undefined, { refetchOnMountOrArgChange: true });
+    const { data: bedrockAgentsResponse, isFetching: bedrockLoading } = useListBedrockAgentsQuery(undefined, {
+        skip: !bedrockAgentsFeatureOn,
+        refetchOnMountOrArgChange: true,
+    });
     const mcpServerIds = item.mcpServerIds || [];
+    const bedrockAgentIds = item.bedrockAgentIds || [];
     const servers = useMemo(() => {
         const byId = new Map<string, { id: string; name: string }>();
         (connectionServers?.Items || []).forEach((s) => byId.set(s.id, { id: s.id, name: s.name }));
@@ -202,9 +217,20 @@ export function StackAgentsStep (props: StackFormProps): ReactElement {
         if (mcpServerIds.includes(id)) setFields({ mcpServerIds: mcpServerIds.filter((x) => x !== id) });
         else setFields({ mcpServerIds: [...mcpServerIds, id] });
     };
+    const toggleBedrockAgent = (agentId: string) => {
+        if (bedrockAgentIds.includes(agentId)) {
+            setFields({ bedrockAgentIds: bedrockAgentIds.filter((x) => x !== agentId) });
+        } else {
+            setFields({ bedrockAgentIds: [...bedrockAgentIds, agentId] });
+        }
+    };
+    const bedrockAgents = bedrockAgentsResponse?.agents ?? [];
     return (
         <SpaceBetween size='m'>
-            <Alert type='info'>If you select at least one MCP server, at least one selected model must support MCP tools (e.g. text generation models).</Alert>
+            <Alert type='info'>
+                If you select MCP servers or Bedrock agents, at least one selected model must support tool use (e.g. text generation).
+                Bedrock agents listed here are admin-approved for the account; users must still enable them under Agent connections to use them in chat.
+            </Alert>
             <FormField label='MCP Servers' description='From LISA MCP, Workbench, or Connections.'>
                 <SpaceBetween size='s'>
                     {servers.map((s) => (
@@ -215,6 +241,29 @@ export function StackAgentsStep (props: StackFormProps): ReactElement {
                     {servers.length === 0 && <Box color='text-body-secondary'>No MCP servers available.</Box>}
                 </SpaceBetween>
             </FormField>
+            {bedrockAgentsFeatureOn && (
+                <FormField
+                    label='Amazon Bedrock agents'
+                    description='Agents approved by an administrator. Empty selection means this assistant stack does not allow Bedrock agent tools (even if users opt in globally).'
+                >
+                    <SpaceBetween size='s'>
+                        {bedrockLoading && <Spinner />}
+                        {!bedrockLoading && bedrockAgents.map((a) => (
+                            <Checkbox
+                                key={a.agentId}
+                                checked={bedrockAgentIds.includes(a.agentId)}
+                                onChange={() => toggleBedrockAgent(a.agentId)}
+                            >
+                                {a.agentName} ({a.agentId})
+                                {a.suggestedAliasId ? ` — alias ${a.suggestedAliasId}` : ''}
+                            </Checkbox>
+                        ))}
+                        {!bedrockLoading && bedrockAgents.length === 0 && (
+                            <Box color='text-body-secondary'>No admin-approved Bedrock agents available in this Region.</Box>
+                        )}
+                    </SpaceBetween>
+                </FormField>
+            )}
         </SpaceBetween>
     );
 }

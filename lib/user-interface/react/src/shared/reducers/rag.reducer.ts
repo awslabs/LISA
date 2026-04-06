@@ -24,7 +24,6 @@ import {
     RagCollectionConfig as SchemaRagCollectionConfig,
     CollectionMetadata,
 } from '#root/lib/schema';
-
 export type S3UploadRequest = {
     url: string;
     body: any;

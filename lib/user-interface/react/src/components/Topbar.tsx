@@ -93,15 +93,16 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
             external: false,
             href: '/prompt-templates',
         } as ButtonDropdownProps.Item] : []),
-        ...(configs?.configuration.enabledComponents?.mcpConnections ? [{
-            id: 'mcp-connection',
-            type: 'button',
-            variant: 'link',
-            text: 'MCP Connections',
-            disableUtilityCollapse: false,
-            external: false,
-            href: '/mcp-connections',
-        } as ButtonDropdownProps.Item] : [])
+        ...((Boolean(configs?.configuration.enabledComponents?.mcpConnections)
+            || Boolean(configs?.configuration.enabledComponents?.bedrockAgents)) ? [{
+                id: 'mcp-connection',
+                type: 'button',
+                variant: 'link',
+                text: 'Agentic Connections',
+                disableUtilityCollapse: false,
+                external: false,
+                href: '/mcp-connections',
+            } as ButtonDropdownProps.Item] : [])
     ].sort((a,b) => a.text.localeCompare(b.text));
 
     const showAdminDropdown = isUserAdmin || (isUserRagAdmin && window.env.RAG_ENABLED);
@@ -193,6 +194,15 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                     href: '/mcp-management',
                                 } as ButtonDropdownProps.Item,
                             ] : []),
+                            ...(isUserAdmin && Boolean(configs?.configuration.enabledComponents?.bedrockAgents) ? [{
+                                id: 'bedrock-agent-management',
+                                type: 'button',
+                                variant: 'link',
+                                text: 'Bedrock Agent Catalog',
+                                disableUtilityCollapse: false,
+                                external: false,
+                                href: '/bedrock-agent-management',
+                            } as ButtonDropdownProps.Item] : []),
                             ...(isUserAdmin && configs?.configuration?.enabledComponents?.chatAssistantStacks ? [{
                                 id: 'chat-assistant-stacks',
                                 type: 'button',

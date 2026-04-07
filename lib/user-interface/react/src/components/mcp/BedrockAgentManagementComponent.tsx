@@ -359,17 +359,6 @@ export function BedrockAgentManagementComponent (): React.ReactElement {
                     footer={(
                         <Box float='right'>
                             <SpaceBetween direction='horizontal' size='xs'>
-                                {addWizard.step === 'form' && (
-                                    <Button
-                                        variant='link'
-                                        onClick={() => {
-                                            discoveryTableActions.setSelectedItems([]);
-                                            setAddWizard({ step: 'select' });
-                                        }}
-                                    >
-                                        Back
-                                    </Button>
-                                )}
                                 <Button variant='link' onClick={closeAddWizard}>
                                     Cancel
                                 </Button>

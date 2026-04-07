@@ -16,7 +16,6 @@
 
 import {
     Box,
-    Button,
     ColumnLayout,
     Container,
     Grid,
@@ -30,7 +29,7 @@ import {
     Toggle,
 } from '@cloudscape-design/components';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useCollection } from '@cloudscape-design/collection-hooks';
 import { useListBedrockAgentsQuery } from '@/shared/reducers/mcp-server.reducer';
 import {
@@ -48,7 +47,6 @@ import { useNotificationService } from '@/shared/util/hooks';
 export function BedrockAgentDetails (): React.ReactElement {
     const { agentId: agentIdParam } = useParams();
     const agentId = agentIdParam ? decodeURIComponent(agentIdParam) : '';
-    const navigate = useNavigate();
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
     const userName = useAppSelector(selectCurrentUsername);
@@ -182,7 +180,6 @@ export function BedrockAgentDetails (): React.ReactElement {
         return (
             <TextContent>
                 <p>Missing agent ID.</p>
-                <Button variant='link' onClick={() => navigate('/mcp-connections')}>Back to Agentic connections</Button>
             </TextContent>
         );
     }
@@ -193,7 +190,6 @@ export function BedrockAgentDetails (): React.ReactElement {
                 <TextContent>
                     <p>This agent is not in your catalog. It may have been removed or you may not have access.</p>
                 </TextContent>
-                <Button variant='primary' onClick={() => navigate('/mcp-connections')}>Back to Agentic connections</Button>
             </SpaceBetween>
         );
     }
@@ -206,7 +202,6 @@ export function BedrockAgentDetails (): React.ReactElement {
                 </Header>
                 <Box float='right' variant='div'>
                     <SpaceBetween direction='horizontal' size='s' alignItems='center'>
-                        <Button variant='link' onClick={() => navigate('/mcp-connections')}>Back</Button>
                         <StatusIndicator type={agent?.invokeReady ? 'success' : 'error'}>
                             {agent?.invokeReady ? 'Invocation ready' : 'Not ready (alias)'}
                         </StatusIndicator>

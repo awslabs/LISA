@@ -3,5 +3,5 @@
 # urllib3<2 // Provided by Lambda
 psycopg2-binary==2.9.11
 cachetools==7.0.1
-requests==2.32.5
+requests==2.33.0
 pydantic>=2.5.0,<3.0.0

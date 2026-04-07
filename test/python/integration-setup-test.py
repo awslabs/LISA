@@ -1037,7 +1037,7 @@ def main() -> int:
             print("⚠️  No embedding models found, repositories will use default embedding model")
 
         # vllm_base_image = f"{account_id}.dkr.ecr.{region}.amazonaws.com/lisa-vllm:latest"
-        vllm_base_image = "public.ecr.aws/deep-learning-containers/vllm:0.15-gpu-py312-ec2"
+        vllm_base_image = "public.ecr.aws/deep-learning-containers/vllm:0.17-gpu-py312-ec2"
 
         # Deploy self-hosted textgen models
         for model_id in deploy_models:

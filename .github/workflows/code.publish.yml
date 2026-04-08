@@ -63,7 +63,15 @@ jobs:
         run: npm version "${{ inputs.version }}" --no-git-tag-version --allow-same-version
       - name: Publish NPM Package
         if: "!(github.event_name == 'workflow_dispatch' && inputs.test_mode == true)"
-        run: npm publish
+        run: |
+          npm publish 2>&1 | tee /tmp/npm-publish.log || {
+            if grep -q "Cannot publish over previously published version" /tmp/npm-publish.log; then
+              echo "::warning::NPM package version already exists, skipping publish"
+            else
+              echo "::error::NPM publish failed"
+              exit 1
+            fi
+          }
       - name: Publish NPM Package (Dry Run)
         if: github.event_name == 'workflow_dispatch' && inputs.test_mode == true
         run: npm publish --dry-run

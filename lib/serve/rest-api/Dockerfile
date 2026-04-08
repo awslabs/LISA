@@ -67,7 +67,8 @@ COPY src/ ./src
 
 COPY TIKTOKEN_CACHE ./TIKTOKEN_CACHE
 
-# LiteLLM will handle Prisma setup at runtime with --use_prisma_db_push flag
+# Prisma client generation and DB migrations are handled by the entrypoint script
+# before LiteLLM workers spawn, preventing multi-worker write contention.
 
 # Copy LiteLLM config directly to container, it will be updated at runtime
 # with LISA-hosted models. This filename is expected in the entrypoint.sh file, so do not modify

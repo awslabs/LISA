@@ -103,7 +103,11 @@ export class FastApiContainer extends Construct {
             LOG_LEVEL: config.logLevel,
             AWS_REGION: config.region,
             AWS_REGION_NAME: config.region, // for supporting SageMaker endpoints in LiteLLM
-            THREADS: Ec2Metadata.get(instanceType).vCpus.toString(),
+            // Both LISA and LiteLLM use async Uvicorn workers that handle many concurrent
+            // connections via asyncio. vCPUs/2 workers per service balances concurrency with
+            // memory/DB connection overhead (2 services share the instance).
+            // THREADS and LITELLM_WORKERS can override individually if needed.
+            WORKER_COUNT: Math.max(1, Math.floor(Ec2Metadata.get(instanceType).vCpus / 2)).toString(),
             USE_AUTH: 'true',
             AUTHORITY: config.authConfig!.authority,
             CLIENT_ID: config.authConfig!.clientId,

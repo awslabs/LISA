@@ -30,6 +30,10 @@ class ChatAssistantStackModel(BaseModel):
     collectionIds: list[str] = Field(default_factory=list)
     mcpServerIds: list[str] = Field(default_factory=list)
     mcpToolIds: list[str] = Field(default_factory=list)
+    bedrockAgentIds: list[str] = Field(
+        default_factory=list,
+        description="Bedrock agent IDs allowed when using this stack; users must still opt in under Agent connections.",
+    )
     personaPromptId: str | None = None
     directivePromptIds: list[str] = Field(default_factory=list)
     allowedGroups: list[str] = Field(default_factory=list)

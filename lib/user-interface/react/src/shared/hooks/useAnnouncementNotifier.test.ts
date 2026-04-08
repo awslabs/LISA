@@ -76,6 +76,7 @@ function buildConfig (overrides: {
                 showPromptTemplateLibrary: true,
                 enableModelComparisonUtility: false,
                 mcpConnections: true,
+                bedrockAgents: true,
                 awsSessions: true,
                 showMcpWorkbench: false,
                 modelLibrary: true,

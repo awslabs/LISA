@@ -23,6 +23,14 @@ import {
     HostedMcpServerRequest,
     HostedMcpServerStatus,
 } from '../model/hosted-mcp-server.model';
+import type {
+    BedrockAgentApprovalRow,
+    InvokeBedrockAgentRequest,
+    InvokeBedrockAgentResponse,
+    ListBedrockAgentApprovalsResponse,
+    ListBedrockAgentsResponse,
+    PutBedrockAgentApprovalRequest,
+} from '@/types/bedrock-agent';
 
 export enum McpServerStatus {
     Active = 'active',
@@ -66,7 +74,7 @@ export type McpServerListResponse = {
 export const mcpServerApi = createApi({
     reducerPath: 'mcpServers',
     baseQuery: lisaBaseQuery(),
-    tagTypes: ['mcpServers'],
+    tagTypes: ['mcpServers', 'bedrockAgents', 'bedrockApprovals'],
     refetchOnFocus: true,
     refetchOnMountOrArgChange: true,
     keepUnusedDataFor: 60, // Keep cache for 60s to prevent cancellation during rapid navigation
@@ -155,6 +163,65 @@ export const mcpServerApi = createApi({
             transformErrorResponse: (baseQueryReturnValue) => normalizeError('Update Hosted MCP Server', baseQueryReturnValue),
             invalidatesTags: ['mcpServers']
         }),
+        listBedrockAgents: builder.query<ListBedrockAgentsResponse, void>({
+            query: () => ({ url: '/bedrock-agents', method: 'GET' }),
+            providesTags: ['bedrockAgents'],
+            transformErrorResponse: (baseQueryReturnValue) => ({
+                name: 'List Bedrock Agents Error',
+                message: baseQueryReturnValue.data?.type === 'RequestValidationError'
+                    ? baseQueryReturnValue.data.detail.map((error: { msg: string }) => error.msg).join(', ')
+                    : baseQueryReturnValue.data?.message ?? baseQueryReturnValue.data,
+            }),
+        }),
+        listBedrockAgentsDiscovery: builder.query<ListBedrockAgentsResponse, void>({
+            query: () => ({ url: '/bedrock-agents/discovery', method: 'GET' }),
+            providesTags: ['bedrockAgents'],
+            transformErrorResponse: (baseQueryReturnValue) => ({
+                name: 'Bedrock discovery Error',
+                message: baseQueryReturnValue.data?.message ?? baseQueryReturnValue.data,
+            }),
+        }),
+        listBedrockAgentApprovals: builder.query<ListBedrockAgentApprovalsResponse, void>({
+            query: () => ({ url: '/bedrock-agents/approvals', method: 'GET' }),
+            providesTags: ['bedrockApprovals'],
+            transformErrorResponse: (baseQueryReturnValue) => ({
+                name: 'List Bedrock approvals Error',
+                message: baseQueryReturnValue.data?.message ?? baseQueryReturnValue.data,
+            }),
+        }),
+        putBedrockAgentApproval: builder.mutation<
+            BedrockAgentApprovalRow,
+            { agentId: string; body: PutBedrockAgentApprovalRequest }
+        >({
+            query: ({ agentId, body }) => ({
+                url: `/bedrock-agents/approval/${encodeURIComponent(agentId)}`,
+                method: 'PUT',
+                data: body,
+            }),
+            transformErrorResponse: (baseQueryReturnValue) => normalizeError('Save Bedrock agent approval', baseQueryReturnValue),
+            invalidatesTags: ['bedrockAgents', 'bedrockApprovals'],
+        }),
+        deleteBedrockAgentApproval: builder.mutation<{ status: string }, string>({
+            query: (agentId) => ({
+                url: `/bedrock-agents/approval/${encodeURIComponent(agentId)}`,
+                method: 'DELETE',
+            }),
+            transformErrorResponse: (baseQueryReturnValue) => normalizeError('Delete Bedrock agent approval', baseQueryReturnValue),
+            invalidatesTags: ['bedrockAgents', 'bedrockApprovals'],
+        }),
+        invokeBedrockAgent: builder.mutation<InvokeBedrockAgentResponse, InvokeBedrockAgentRequest>({
+            query: (body) => ({
+                url: '/bedrock-agents/invoke',
+                method: 'POST',
+                data: body,
+            }),
+            transformErrorResponse: (baseQueryReturnValue) => ({
+                name: 'Invoke Bedrock Agent Error',
+                message: baseQueryReturnValue.data?.type === 'RequestValidationError'
+                    ? baseQueryReturnValue.data.detail.map((error: { msg: string }) => error.msg).join(', ')
+                    : baseQueryReturnValue.data?.message ?? baseQueryReturnValue.data,
+            }),
+        }),
     })
 
 });
@@ -169,6 +236,14 @@ export const {
     useCreateHostedMcpServerMutation,
     useDeleteHostedMcpServerMutation,
     useUpdateHostedMcpServerMutation,
+    useListBedrockAgentsQuery,
+    useLazyListBedrockAgentsQuery,
+    useListBedrockAgentsDiscoveryQuery,
+    useLazyListBedrockAgentsDiscoveryQuery,
+    useListBedrockAgentApprovalsQuery,
+    usePutBedrockAgentApprovalMutation,
+    useDeleteBedrockAgentApprovalMutation,
+    useInvokeBedrockAgentMutation,
 } = mcpServerApi;
 
 export { HostedMcpServerStatus };

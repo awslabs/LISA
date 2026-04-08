@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: '0 0 * * *'
   workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to test'
+        required: false
+        default: 'develop'
 
 permissions:
   contents: read
@@ -32,10 +37,10 @@ jobs:
     steps:
       - name: Set tested ref
         id: set-ref
-        run: echo "ref=develop" >> $GITHUB_OUTPUT
+        run: echo "ref=${{ inputs.branch || 'develop' }}" >> $GITHUB_OUTPUT
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
         with:
-          ref: develop
+          ref: ${{ inputs.branch || 'develop' }}
       - name: Setup Node.js
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v4
         with:

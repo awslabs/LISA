@@ -25,8 +25,8 @@ const API_STUBS = [
     { endpoint: 'configuration', alias: 'getConfiguration' },
     { endpoint: 'health', alias: 'getHealth' },
     { endpoint: 'api-tokens', alias: 'getApiTokens' },
-    { endpoint: 'mcp', alias: 'getMcp' },
     { endpoint: 'mcp-server', alias: 'getMcpServers' },
+    { endpoint: 'mcp', alias: 'getMcp' },
     { endpoint: 'mcp-workbench', alias: 'getMcpWorkbench' },
     { endpoint: 'collections', alias: 'getCollections' },
 ];
@@ -201,6 +201,25 @@ function setupApiStubs (env: Record<string, unknown>) {
     API_STUBS.forEach(({ endpoint, alias }) => {
         cy.intercept('GET', `**${apiBase}/${endpoint}*`, { fixture: `${endpoint}.json` }).as(alias);
     });
+
+    const apiRoot = String(apiBase).replace(/\/+$/, '');
+    const escRoot = apiRoot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Match full request URL (origin + path)
+    cy.intercept('GET', new RegExp(`.+${escRoot}/bedrock-agents/approvals`), { fixture: 'bedrock-agent-approvals.json' }).as(
+        'getBedrockApprovals'
+    );
+    cy.intercept('GET', new RegExp(`.+${escRoot}/bedrock-agents/discovery`), { fixture: 'bedrock-agents-discovery.json' }).as(
+        'getBedrockDiscovery'
+    );
+    cy.intercept('GET', new RegExp(`.+${escRoot}/bedrock-agents(?:/)?(?:\\?.*)?$`), { fixture: 'bedrock-agents.json' }).as(
+        'getBedrockAgents'
+    );
+    cy.intercept('GET', new RegExp(`.+${escRoot}/user-preferences(?:\\?.*)?$`), { fixture: 'user-preferences.json' }).as(
+        'getUserPreferences'
+    );
+    cy.intercept('PUT', new RegExp(`.+${escRoot}/user-preferences`), (req) => {
+        req.reply({ statusCode: 200, body: req.body });
+    }).as('putUserPreferences');
 
     // Setup stateful project stubs
     setupProjectStubs(apiBase);

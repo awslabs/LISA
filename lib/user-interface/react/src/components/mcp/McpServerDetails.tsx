@@ -89,7 +89,7 @@ export function McpServerDetails () {
 
     if (isSuccess) {
         dispatch(setBreadcrumbs([
-            { text: 'MCP Connections', href: '/mcp-connections' },
+            { text: 'Agentic connections', href: '/mcp-connections' },
             { text: data?.name, href: '' }
         ]));
     }

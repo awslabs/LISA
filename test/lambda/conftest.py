@@ -130,7 +130,13 @@ def setup_auth_patches(request, mock_auth, aws_credentials):
         patches.append(patch("utilities.auth.is_admin", mock_auth.is_admin))
         patches.append(patch("utilities.auth.is_rag_admin", mock_auth.is_rag_admin))
     # Avoid importing models.lambda_functions for tests that don't need it (that module requires MODEL_TABLE_NAME).
-    _skip_models = ("test_chat_assistant_stacks", "test_projects_lambda", "test_metrics_lambda")
+    _skip_models = (
+        "test_chat_assistant_stacks",
+        "test_projects_lambda",
+        "test_metrics_lambda",
+        "test_mcp_server_lambda",
+        "test_bedrock_agent_discovery",
+    )
     if not any(s in request.node.nodeid for s in _skip_models):
         patches.extend(
             [

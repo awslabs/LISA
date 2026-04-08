@@ -1782,7 +1782,7 @@
           },
           "FargatePlatformConfiguration": {},
           "Image": {
-            "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:b43d023f5e65932bca05f45d09aa8058f3370cd30ec1d90c686726e046c2fa43"
+            "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:8d585c22b79abfa32cd6b94d4aefcb0949f7bf701468d0456451b91ad527280d"
           },
           "JobRoleArn": {
             "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -1847,7 +1847,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -1985,7 +1985,7 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E50f8e37a9eb8711eb0d94979c21a1948d": {
+    "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E58f34e17522c0eba683e2e0cc6b9cce64": {
       "Type": "AWS::Lambda::Version",
       "Properties": {
         "FunctionName": {
@@ -2004,7 +2004,7 @@
         },
         "FunctionVersion": {
           "Fn::GetAtt": [
-            "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E50f8e37a9eb8711eb0d94979c21a1948d",
+            "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E58f34e17522c0eba683e2e0cc6b9cce64",
             "Version"
           ]
         },
@@ -2052,7 +2052,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -2190,7 +2190,7 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBC866f9403cf9792eeac979b30bf82b9bf": {
+    "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBCfa0e56b78146c7d63aeaa90556e03a2b": {
       "Type": "AWS::Lambda::Version",
       "Properties": {
         "FunctionName": {
@@ -2209,7 +2209,7 @@
         },
         "FunctionVersion": {
           "Fn::GetAtt": [
-            "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBC866f9403cf9792eeac979b30bf82b9bf",
+            "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBCfa0e56b78146c7d63aeaa90556e03a2b",
             "Version"
           ]
         },
@@ -2257,7 +2257,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -2395,7 +2395,7 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E955a8ab4fc3b06952b1fca7f07442f9231": {
+    "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E950bc75dff4fa098ddcfb6aa8e29676b12": {
       "Type": "AWS::Lambda::Version",
       "Properties": {
         "FunctionName": {
@@ -2414,7 +2414,7 @@
         },
         "FunctionVersion": {
           "Fn::GetAtt": [
-            "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E955a8ab4fc3b06952b1fca7f07442f9231",
+            "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E950bc75dff4fa098ddcfb6aa8e29676b12",
             "Version"
           ]
         },
@@ -5699,7 +5699,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Description": "List all repositories",
         "Environment": {
@@ -5863,7 +5863,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Description": "List status for all repositories",
         "Environment": {
@@ -6027,7 +6027,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Description": "Generates a presigned url for uploading files to RAG",
         "Environment": {
@@ -6191,7 +6191,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Description": "Create a new repository",
         "Environment": {
@@ -6355,7 +6355,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Description": "Get a repository by ID",
         "Environment": {
@@ -6519,7 +6519,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Description": "Update a repository",
         "Environment": {
@@ -6683,7 +6683,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Description": "Delete a repository",
         "Environment": {
@@ -6847,7 +6847,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Description": "Run a similarity search against the specified repository using the specified query",
         "Environment": {
@@ -7011,7 +7011,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Description": "Ingest a set of documents based on specified S3 path",
         "Environment": {
@@ -7175,7 +7175,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Description": "List all docs for a repository",
         "Environment": {
@@ -7339,7 +7339,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Description": "Get a document by ID",
         "Environment": {
@@ -7503,7 +7503,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Description": "Creates presigned url to download document within repository",
         "Environment": {
@@ -7667,7 +7667,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Description": "Deletes all records associated with documents from the repository",
         "Environment": {
@@ -7831,7 +7831,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Description": "List all ingestion jobs for a repository",
         "Environment": {
@@ -7995,7 +7995,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Description": "List all collections within a repository",
         "Environment": {
@@ -8159,7 +8159,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Description": "List all collections user has access to across all repositories",
         "Environment": {
@@ -8323,7 +8323,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Description": "Create a new collection within a repository",
         "Environment": {
@@ -8487,7 +8487,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Description": "Get a collection by ID within a repository",
         "Environment": {
@@ -8651,7 +8651,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Description": "Update a collection within a repository",
         "Environment": {
@@ -8815,7 +8815,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Description": "Delete a collection within a repository",
         "Environment": {
@@ -8979,7 +8979,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Description": "List all ACTIVE Bedrock Knowledge Bases",
         "Environment": {
@@ -9143,7 +9143,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Description": "List data sources for a Bedrock Knowledge Base",
         "Environment": {
@@ -10033,7 +10033,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1ebc9d3ac2033816c4abb63e4afd69d350b4aba8704cc9236b82ea520b74f4b0.zip"
+          "S3Key": "e58981f99fe0aedeb54390990e6b1a99b50210416ca987b42b905fe1aad54089.zip"
         },
         "Environment": {
           "Variables": {
@@ -10125,7 +10125,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -10265,7 +10265,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -10630,7 +10630,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -10788,7 +10788,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {

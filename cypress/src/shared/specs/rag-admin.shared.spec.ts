@@ -75,6 +75,7 @@ export function runRagAdminTests (options: {
             '#/api-token-management',
             '#/mcp-management',
             '#/mcp-workbench',
+            '#/bedrock-agent-management',
         ];
 
         adminOnlyPaths.forEach((path) => {

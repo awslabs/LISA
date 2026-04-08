@@ -11,6 +11,9 @@ pytest-asyncio==1.3.0
 # ASGI Server - Version constrained by litellm[proxy]==1.82.0 in rest-api
 uvicorn>=0.31.1,<0.42.0
 
+# LiteLLM - Pinned to match rest-api runtime version
+litellm[proxy]==1.82.4
+
 # AWS SDK - Version constrained by litellm[proxy]==1.82.0in rest-api
 boto3==1.42.59
 tiktoken==0.12.0

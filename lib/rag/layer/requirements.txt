@@ -12,7 +12,7 @@
 # Heavy document processing happens in container: lib/rag/ingestion/ingestion-image/
 
 # Core langchain package for vector store base classes
-langchain-core==1.2.17
+langchain-core==1.2.28
 
 # langchain-community for OpenSearchVectorSearch and PGVector classes
 # This package has many optional dependencies - we only need the core vectorstore functionality

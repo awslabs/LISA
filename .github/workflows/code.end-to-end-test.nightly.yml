@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: '0 0 * * *'
   workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch or tag to test against'
+        required: false
+        default: 'develop'
+        type: string
 
 permissions:
   contents: read
@@ -27,10 +33,15 @@ jobs:
     name: 🏃‍♀️ Run E2E Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    outputs:
+      tested_ref: ${{ steps.set-ref.outputs.ref }}
     steps:
+      - name: Set tested ref
+        id: set-ref
+        run: echo "ref=${{ inputs.ref || 'develop' }}" >> $GITHUB_OUTPUT
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
         with:
-          ref: develop
+          ref: ${{ inputs.ref || 'develop' }}
       - name: Setup Node.js
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v4
         with:
@@ -39,6 +50,7 @@ jobs:
       - name: Install base dependencies
         run: npm ci
       - name: Run Cypress E2E Suite
+        working-directory: cypress
         env:
           ADMIN_USER_NAME: ${{ secrets.ADMIN_USER_NAME }}
           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
@@ -48,8 +60,8 @@ jobs:
         # Update this list when adding new quick E2E specs.
         run: >-
           npx cypress run
-          --config-file cypress/cypress.e2e.config.ts
-          --spec "cypress/src/e2e/specs/admin.e2e.spec.ts,cypress/src/e2e/specs/user.e2e.spec.ts,cypress/src/e2e/specs/chat.e2e.spec.ts,cypress/src/e2e/specs/bedrock-quick.e2e.spec.ts"
+          --config-file cypress.e2e.config.ts
+          --spec "src/e2e/specs/admin.e2e.spec.ts,src/e2e/specs/user.e2e.spec.ts,src/e2e/specs/chat.e2e.spec.ts,src/e2e/specs/bedrock-quick.e2e.spec.ts"
       - name: Archive Cypress videos & screenshots
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v4
@@ -71,4 +83,4 @@ jobs:
           SLACK_COLOR: ${{ needs.e2e.result == 'success' && 'good' || 'danger' }}
           SLACK_TITLE: 'Nightly E2E Health Check Finished'
           MSG_MINIMAL: false
-          SLACK_MESSAGE: ${{ needs.e2e.result == 'success' && format('Nightly E2E health check passed on branch `{0}`.', github.ref_name) || format('<!here> Nightly E2E health check {0} on branch `{1}`.', needs.e2e.result, github.ref_name) }}
+          SLACK_MESSAGE: ${{ needs.e2e.result == 'success' && format('Nightly E2E health check passed on branch `{0}`.', needs.e2e.outputs.tested_ref) || format('<!here> Nightly E2E health check {0} on branch `{1}`.', needs.e2e.result, needs.e2e.outputs.tested_ref) }}

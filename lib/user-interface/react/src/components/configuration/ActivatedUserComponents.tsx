@@ -48,6 +48,7 @@ const advancedOptions = {
 };
 
 const mcpOptions = {
+    bedrockAgents: 'Amazon Bedrock agents',
     mcpConnections: 'MCP Server Connections',
     showMcpWorkbench: 'MCP Workbench',
     awsSessions: 'MCP AWS Sessions'

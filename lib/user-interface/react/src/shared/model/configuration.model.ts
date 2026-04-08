@@ -37,6 +37,7 @@ export type IEnabledComponents = {
     showPromptTemplateLibrary: boolean;
     enableModelComparisonUtility: boolean;
     mcpConnections: boolean;
+    bedrockAgents?: boolean;
     awsSessions: boolean;
     showMcpWorkbench: boolean;
     modelLibrary: boolean;
@@ -98,6 +99,7 @@ export const enabledComponentsSchema = z.object({
     showRagLibrary: z.boolean().default(true),
     showPromptTemplateLibrary: z.boolean().default(true),
     mcpConnections: z.boolean().default(true),
+    bedrockAgents: z.boolean().default(false),
     awsSessions: z.boolean().default(false),
     modelLibrary: z.boolean().default(true),
     enableModelComparisonUtility: z.boolean().default(false),

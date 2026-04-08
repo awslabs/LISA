@@ -53,6 +53,10 @@ import { useNotificationService } from '@/shared/util/hooks';
 import SessionConfiguration from './components/SessionConfiguration';
 import { GenerateLLMRequestParams } from '@/shared/model/chat.configurations.model';
 import { useLazyGetRelevantDocumentsQuery } from '@/shared/reducers/rag.reducer';
+import {
+    useInvokeBedrockAgentMutation,
+    useListBedrockAgentsQuery,
+} from '@/shared/reducers/mcp-server.reducer';
 import { IConfiguration } from '@/shared/model/configuration.model';
 import { DocumentSummarizationModal } from './components/DocumentSummarizationModal';
 import { useNavigate } from 'react-router-dom';
@@ -246,6 +250,129 @@ export default function Chat ({ sessionId, initialStack }) {
 
     // Use the custom hook to manage multiple MCP connections
     const { tools: mcpTools, callTool, McpConnections, toolToServerMap } = useMultipleMcp(enabledServers, userPreferences?.preferences?.mcp, session?.sessionId);
+    const [invokeBedrockAgent] = useInvokeBedrockAgentMutation();
+
+    /** User opt-in + stack allow-list (same shape as MCP prefs vs stack), before intersecting the admin catalog from list Bedrock agents API. */
+    const bedrockAgentCandidatesForChat = useMemo(() => {
+        const optedIn = userPreferences?.preferences?.bedrockAgents?.enabledAgents?.filter((a) => a.enabled) ?? [];
+        if (optedIn.length === 0) return [];
+        if (effectiveStack) {
+            const allow = new Set(effectiveStack.bedrockAgentIds ?? []);
+            if (allow.size === 0) return [];
+            return optedIn.filter((a) => allow.has(a.agentId));
+        }
+        return optedIn;
+    }, [userPreferences?.preferences?.bedrockAgents?.enabledAgents, effectiveStack]);
+
+    const skipBedrockCatalog = !config?.configuration?.enabledComponents?.bedrockAgents
+        || bedrockAgentCandidatesForChat.length === 0;
+    const { data: bedrockAgentsCatalog } = useListBedrockAgentsQuery(undefined, { skip: skipBedrockCatalog });
+
+    /** Enabled for chat only if still returned by list Bedrock agents (admin catalog), like MCP servers vs list MCP API. */
+    const enabledBedrockAgentsForChat = useMemo(() => {
+        if (bedrockAgentCandidatesForChat.length === 0) return [];
+        const agents = bedrockAgentsCatalog?.agents;
+        if (!agents?.length) return [];
+        const allowedIds = new Set(agents.map((a) => a.agentId));
+        return bedrockAgentCandidatesForChat.filter((a) => allowedIds.has(a.agentId));
+    }, [bedrockAgentCandidatesForChat, bedrockAgentsCatalog?.agents]);
+
+    const bedrockFunctionToolIndex = useMemo(() => {
+        const m = new Map<string, {
+            agentId: string;
+            functionName: string;
+            actionGroupId: string;
+            actionGroupName?: string;
+        }>();
+        const agents = bedrockAgentsCatalog?.agents;
+        if (!agents) return m;
+        for (const pref of enabledBedrockAgentsForChat) {
+            const row = agents.find((x) => x.agentId === pref.agentId);
+            const disabled = new Set(pref.disabledActionTools ?? []);
+            for (const t of row?.actionTools ?? []) {
+                if (disabled.has(t.openAiToolName)) {
+                    continue;
+                }
+                m.set(t.openAiToolName, {
+                    agentId: pref.agentId,
+                    functionName: t.functionName,
+                    actionGroupId: t.actionGroupId,
+                    actionGroupName: t.actionGroupName || undefined,
+                });
+            }
+        }
+        return m;
+    }, [bedrockAgentsCatalog?.agents, enabledBedrockAgentsForChat]);
+
+    const isBedrockManagedTool = useCallback(
+        (name: string) => name === 'invoke_bedrock_agent' || bedrockFunctionToolIndex.has(name),
+        [bedrockFunctionToolIndex],
+    );
+
+    const bedrockOpenAiToolFragments = useMemo(() => {
+        if (!config?.configuration?.enabledComponents?.bedrockAgents || enabledBedrockAgentsForChat.length === 0) {
+            return [];
+        }
+        const agentIds = enabledBedrockAgentsForChat.map((a) => a.agentId);
+        const names = enabledBedrockAgentsForChat.map((a) => `${a.agentId}: ${a.name}`).join('; ');
+        const fragments: Array<{ type: string; function: Record<string, unknown> }> = [
+            {
+                type: 'function',
+                function: {
+                    name: 'invoke_bedrock_agent',
+                    description:
+                        'Invoke an Amazon Bedrock Agent with open-ended natural language. Prefer the specific '
+                        + 'bedrock_* tools when the user wants a defined action (e.g. weather, add numbers). '
+                        + `Enabled agents: ${names}`,
+                    parameters: {
+                        type: 'object',
+                        properties: {
+                            agentId: {
+                                type: 'string',
+                                enum: agentIds,
+                                description: 'Target agent ID',
+                            },
+                            inputText: {
+                                type: 'string',
+                                description: 'User message or instruction to send to the agent',
+                            },
+                        },
+                        required: ['agentId', 'inputText'],
+                    },
+                },
+            },
+        ];
+        for (const pref of enabledBedrockAgentsForChat) {
+            const row = bedrockAgentsCatalog?.agents?.find((x) => x.agentId === pref.agentId);
+            const disabled = new Set(pref.disabledActionTools ?? []);
+            for (const t of row?.actionTools ?? []) {
+                if (disabled.has(t.openAiToolName)) {
+                    continue;
+                }
+                const schema = t.parameterSchema ?? { type: 'object', properties: {}, required: [] as string[] };
+                fragments.push({
+                    type: 'function',
+                    function: {
+                        name: t.openAiToolName,
+                        description:
+                            `[Bedrock agent: ${row?.agentName ?? pref.agentId}; action group: ${t.actionGroupName || t.actionGroupId}] `
+                            + (t.description || t.functionName),
+                        parameters: {
+                            type: schema.type ?? 'object',
+                            properties: schema.properties ?? {},
+                            required: schema.required ?? [],
+                        },
+                    },
+                });
+            }
+        }
+        return fragments;
+    }, [
+        config?.configuration?.enabledComponents,
+        enabledBedrockAgentsForChat,
+        bedrockAgentsCatalog?.agents,
+    ]);
+
     const [updatePreferences, {isSuccess: isUpdatingPreferencesSuccess, isError: isUpdatingPreferencesError, isLoading: isUpdatingPreferences}] = useUpdateUserPreferencesMutation();
 
     // Load markdown preview preference from user preferences
@@ -433,10 +560,11 @@ export default function Chat ({ sessionId, initialStack }) {
     const isImageGenerationMode = selectedModel?.modelType === ModelType.imagegen;
     const isVideoGenerationMode = selectedModel?.modelType === ModelType.videogen;
 
-    // Format MCP tools for OpenAI when they change
+    // Format MCP tools and optional Bedrock agent tool for OpenAI when they change
     useEffect(() => {
-        if (mcpTools.length > 0) {
-            const formattedTools = mcpTools.map((tool) => ({
+        const ec = config?.configuration?.enabledComponents;
+        const formattedMcp = ec?.mcpConnections && mcpTools.length > 0
+            ? mcpTools.map((tool) => ({
                 type: 'function',
                 function: {
                     ...tool,
@@ -445,12 +573,82 @@ export default function Chat ({ sessionId, initialStack }) {
                         type: 'object'
                     }
                 }
-            }));
-            setOpenAiTools(formattedTools);
-        } else {
-            setOpenAiTools(undefined);
+            }))
+            : [];
+        const bedrockFragments = config?.configuration?.enabledComponents?.bedrockAgents
+            ? bedrockOpenAiToolFragments
+            : [];
+        const merged = [...formattedMcp, ...bedrockFragments];
+        setOpenAiTools(merged.length > 0 ? merged : undefined);
+    }, [mcpTools, bedrockOpenAiToolFragments, config?.configuration?.enabledComponents]);
+
+    const toolToServerMapMerged = useMemo(() => {
+        const m = new Map(toolToServerMap);
+        m.set('invoke_bedrock_agent', 'Amazon Bedrock Agents');
+        bedrockFunctionToolIndex.forEach((_v, key) => m.set(key, 'Amazon Bedrock Agents'));
+        return m;
+    }, [toolToServerMap, bedrockFunctionToolIndex]);
+
+    const callToolWithBedrock = useCallback(async (toolName: string, args: any) => {
+        if (toolName === 'invoke_bedrock_agent') {
+            const match = enabledBedrockAgentsForChat.find((a) => a.agentId === args.agentId);
+            if (!match) {
+                throw new Error('Agent is not enabled. Turn it on under Libraries → Agentic connections → Bedrock agents.');
+            }
+            const inputText = typeof args.inputText === 'string' ? args.inputText : JSON.stringify(args.inputText ?? '');
+            const sessionKey = session?.sessionId ? `${session.sessionId}:${args.agentId}` : undefined;
+            const res = await invokeBedrockAgent({
+                agentId: match.agentId,
+                agentAliasId: match.agentAliasId,
+                inputText,
+                sessionId: sessionKey,
+            }).unwrap();
+            return res.outputText;
         }
-    }, [mcpTools]);
+        const spec = bedrockFunctionToolIndex.get(toolName);
+        if (spec) {
+            const match = enabledBedrockAgentsForChat.find((a) => a.agentId === spec.agentId);
+            if (!match) {
+                throw new Error('Agent is not enabled. Turn it on under Libraries → Agentic connections → Bedrock agents.');
+            }
+            const sessionKey = session?.sessionId ? `${session.sessionId}:${spec.agentId}` : undefined;
+            const res = await invokeBedrockAgent({
+                agentId: match.agentId,
+                agentAliasId: match.agentAliasId,
+                functionName: spec.functionName,
+                actionGroupId: spec.actionGroupId,
+                actionGroupName: spec.actionGroupName,
+                parameters: args && typeof args === 'object' && !Array.isArray(args) ? args : {},
+                sessionId: sessionKey,
+            }).unwrap();
+            return res.outputText;
+        }
+        return callTool(toolName, args);
+    }, [
+        callTool,
+        invokeBedrockAgent,
+        enabledBedrockAgentsForChat,
+        session?.sessionId,
+        bedrockFunctionToolIndex,
+    ]);
+
+    const shouldAutoApproveBedrockTool = useCallback((
+        toolName: string,
+        toolArgs: Record<string, unknown> | undefined,
+    ) => {
+        if (toolName === 'invoke_bedrock_agent') {
+            const id = toolArgs && typeof toolArgs.agentId === 'string' ? toolArgs.agentId : undefined;
+            if (!id) return false;
+            return Boolean(
+                userPreferences?.preferences?.bedrockAgents?.enabledAgents?.find((a) => a.agentId === id)?.autoApproveInvoke,
+            );
+        }
+        const spec = bedrockFunctionToolIndex.get(toolName);
+        if (!spec) return false;
+        return Boolean(
+            userPreferences?.preferences?.bedrockAgents?.enabledAgents?.find((a) => a.agentId === spec.agentId)?.autoApproveInvoke,
+        );
+    }, [userPreferences?.preferences?.bedrockAgents?.enabledAgents, bedrockFunctionToolIndex]);
 
     const fetchRelevantDocuments = useCallback(async (query: string) => {
         const { ragTopK = 3 } = chatConfiguration.sessionConfiguration;
@@ -473,7 +671,10 @@ export default function Chat ({ sessionId, initialStack }) {
         setSession,
         metadata,
         memory,
-        openAiTools: config?.configuration?.enabledComponents?.mcpConnections ? openAiTools : undefined,
+        openAiTools: (config?.configuration?.enabledComponents?.mcpConnections
+            || config?.configuration?.enabledComponents?.bedrockAgents)
+            ? openAiTools
+            : undefined,
         auth,
         fileContext,
         notificationService
@@ -488,20 +689,63 @@ export default function Chat ({ sessionId, initialStack }) {
         handleToolApproval,
         handleToolRejection
     } = useToolChain({
-        callTool,
+        callTool: callToolWithBedrock,
         generateResponse,
         session,
         setSession,
         notificationService,
-        toolToServerMap,
-        mcpPreferences: userPreferences?.preferences?.mcp
+        toolToServerMap: toolToServerMapMerged,
+        mcpPreferences: userPreferences?.preferences?.mcp,
+        shouldAutoApproveBedrockTool,
+        bedrockOverrideAllApprovals: Boolean(userPreferences?.preferences?.bedrockAgents?.overrideAllBedrockApprovals),
+        isBedrockManagedTool,
     });
 
     // Store the startToolChain function in a ref to avoid useEffect dependency issues
     startToolChainRef.current = startToolChain;
 
+    const bedrockAgentIdForApprovalModal = useMemo(() => {
+        if (!toolApprovalModal?.tool || !isBedrockManagedTool(toolApprovalModal.tool.name)) {
+            return undefined;
+        }
+        const t = toolApprovalModal.tool;
+        if (t.name === 'invoke_bedrock_agent' && typeof t.args?.agentId === 'string') {
+            return t.args.agentId;
+        }
+        return bedrockFunctionToolIndex.get(t.name)?.agentId;
+    }, [toolApprovalModal, isBedrockManagedTool, bedrockFunctionToolIndex]);
 
-    const toggleToolAutoApproval = (toolName: string, enabled: boolean) => {
+    const toggleToolAutoApproval = (toolName: string, enabled: boolean, toolArgs?: Record<string, unknown>) => {
+        if (isBedrockManagedTool(toolName)) {
+            let agentId: string | undefined;
+            if (toolName === 'invoke_bedrock_agent') {
+                agentId = toolArgs && typeof toolArgs.agentId === 'string' ? toolArgs.agentId : undefined;
+            } else {
+                agentId = bedrockFunctionToolIndex.get(toolName)?.agentId;
+            }
+            if (!agentId) {
+                setUpdatingAutoApprovalForTool(null);
+                return;
+            }
+            setUpdatingAutoApprovalForTool(toolName);
+            const cur = preferences.preferences.bedrockAgents?.enabledAgents ?? [];
+            const nextAgents = cur.map((a) =>
+                (a.agentId === agentId ? { ...a, autoApproveInvoke: enabled } : a));
+            const updated = {
+                ...preferences,
+                preferences: {
+                    ...preferences.preferences,
+                    bedrockAgents: {
+                        enabledAgents: nextAgents,
+                        overrideAllBedrockApprovals:
+                            preferences.preferences.bedrockAgents?.overrideAllBedrockApprovals ?? false,
+                    },
+                },
+            };
+            setPreferences(updated);
+            updatePreferences(updated);
+            return;
+        }
         setUpdatingAutoApprovalForTool(toolName);
         const existingMcpPrefs = preferences.preferences.mcp ?? { enabledServers: [], overrideAllApprovals: false };
         const mcpPrefs: McpPreferences = {
@@ -940,7 +1184,7 @@ export default function Chat ({ sessionId, initialStack }) {
 
     return (
         <div className='flex flex-col h-[85vh]'>
-            {/* MCP Connections - invisible components that manage the connections */}
+            {/* Agentic connections (MCP) - invisible components that manage server connections */}
             {McpConnections}
             {useMemo(() => (<DocumentSummarizationModal
                 showDocumentSummarizationModal={modals.documentSummarization}
@@ -1009,14 +1253,14 @@ export default function Chat ({ sessionId, initialStack }) {
             {toolApprovalModal && (
                 <ConfirmationModal
                     action='Execute'
-                    title={'Confirm MCP Tool Execution'}
+                    title={isBedrockManagedTool(toolApprovalModal.tool.name) ? 'Confirm Bedrock agent invocation' : 'Confirm MCP Tool Execution'}
                     onConfirm={handleToolApproval}
                     onDismiss={handleToolRejection}
                     description={
                         <SpaceBetween size='xs' direction='vertical'>
                             <SpaceBetween size='xs' direction='vertical'>
-                                <div><strong>MCP Server:</strong> {toolToServerMap.get(toolApprovalModal.tool.name)}</div>
-                                <div><strong>MCP Tool:</strong> {toolApprovalModal.tool.name}</div>
+                                <div><strong>Source:</strong> {toolToServerMapMerged.get(toolApprovalModal.tool.name) ?? toolApprovalModal.tool.name}</div>
+                                <div><strong>Tool:</strong> {toolApprovalModal.tool.name}</div>
                                 <div><strong>Details:</strong></div>
                                 {JSON.stringify(toolApprovalModal.tool.args).replace('{', '').replace('}', '')}
                             </SpaceBetween>
@@ -1028,12 +1272,27 @@ export default function Chat ({ sessionId, initialStack }) {
                             ) : (
                                 <Checkbox
                                     onChange={({ detail }) =>
-                                        toggleToolAutoApproval(toolApprovalModal.tool.name, detail.checked)
+                                        toggleToolAutoApproval(
+                                            toolApprovalModal.tool.name,
+                                            detail.checked,
+                                            toolApprovalModal.tool.args,
+                                        )
                                     }
-                                    checked={preferences?.preferences?.mcp?.enabledServers.find((server) => server.name === toolToServerMap.get(toolApprovalModal.tool.name))?.autoApprovedTools.includes(toolApprovalModal.tool.name)}
+                                    checked={
+                                        isBedrockManagedTool(toolApprovalModal.tool.name)
+                                            ? Boolean(
+                                                bedrockAgentIdForApprovalModal
+                                                && preferences?.preferences?.bedrockAgents?.enabledAgents?.find(
+                                                    (a) => a.agentId === bedrockAgentIdForApprovalModal,
+                                                )?.autoApproveInvoke,
+                                            )
+                                            : Boolean(preferences?.preferences?.mcp?.enabledServers.find((server) => server.name === toolToServerMap.get(toolApprovalModal.tool.name))?.autoApprovedTools.includes(toolApprovalModal.tool.name))
+                                    }
                                     disabled={isUpdatingPreferences}
                                 >
-                                    Auto-approve this tool in the future
+                                    {isBedrockManagedTool(toolApprovalModal.tool.name)
+                                        ? 'Auto-approve invocations for this agent in the future'
+                                        : 'Auto-approve this tool in the future'}
                                 </Checkbox>
                             )}
                         </SpaceBetween>
@@ -1228,12 +1487,16 @@ export default function Chat ({ sessionId, initialStack }) {
                             )}
                             <SpaceBetween direction='vertical' size='xs'>
                                 <Grid gridDefinition={[{ colspan: 4 }, { colspan: 4 }, { colspan: 4 }]}>
-                                    {enabledServers && enabledServers.length > 0 && selectedModel?.features?.filter((feature) => feature.name === ModelFeatures.TOOL_CALLS)?.length && true ? (
-                                        <Box>
-                                            <Icon name='gen-ai' variant='success' /> {enabledServers.length} MCP Servers - {openAiTools?.length || 0} tools
-                                        </Box>
-                                    )
-                                        : !selectedModel || !enabledServers || enabledServers.length === 0 ? (<div></div>)
+                                    {selectedModel?.features?.filter((feature) => feature.name === ModelFeatures.TOOL_CALLS)?.length && true
+                                        && ((enabledServers && enabledServers.length > 0) || enabledBedrockAgentsForChat.length > 0) ? (
+                                            <Box>
+                                                <Icon name='gen-ai' variant='success' />{' '}
+                                                {enabledServers?.length ?? 0} MCP server{(enabledServers?.length ?? 0) === 1 ? '' : 's'}
+                                                {', '}{enabledBedrockAgentsForChat.length} Bedrock agent{enabledBedrockAgentsForChat.length === 1 ? '' : 's'}
+                                                {' — '}{openAiTools?.length || 0} tool{(openAiTools?.length || 0) === 1 ? '' : 's'}
+                                            </Box>
+                                        )
+                                        : !selectedModel || ((!enabledServers || enabledServers.length === 0) && enabledBedrockAgentsForChat.length === 0) ? (<div></div>)
                                             : (<Box>
                                                 <Icon name='gen-ai' variant='disabled' /> This model does not have Tool Calling enabled
                                             </Box>)}

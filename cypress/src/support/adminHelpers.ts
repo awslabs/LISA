@@ -33,12 +33,13 @@ const MENU_ITEM_SELECTOR = '[role="menuitem"]';
 
 // Core menu items that are always present for admin users
 const EXPECTED_MENU_ITEMS = [
-    'Configuration',
-    'Model Management',
-    'RAG Management',
     'API Token Management',
+    'Bedrock Agent Catalog',
+    'Configuration',
     'MCP Management',
     'MCP Workbench',
+    'Model Management',
+    'RAG Management',
 ];
 
 /**
@@ -53,6 +54,20 @@ export function getAdminButton (): Cypress.Chainable {
 export function getLibraryButton (): Cypress.Chainable {
     // Use aria-label which is reliable in Cloudscape TopNavigation
     return cy.get('header button[aria-label="Libraries"]');
+}
+
+const LIBRARIES_MENU_SELECTOR = '[role="menu"][aria-label="Libraries"]';
+
+/**
+ * Open the Libraries dropdown and click a menu item (e.g. Agentic Connections).
+ */
+export function navigateViaLibraries (menuItemName: string) {
+    getLibraryButton().should('be.visible').click().should('have.attr', 'aria-expanded', 'true');
+    cy.get(LIBRARIES_MENU_SELECTOR)
+        .should('be.visible')
+        .contains(MENU_ITEM_SELECTOR, menuItemName)
+        .filter(':visible')
+        .click();
 }
 /**
  * Expand the admin menu and verify all items are present
@@ -108,6 +123,7 @@ export function expandRagAdminMenu () {
     // Cloudscape may render multiple menu elements (collapsed/expanded views).
     // Filter to visible only to avoid asserting on hidden duplicates.
     const ADMIN_ONLY_ITEMS = [
+        'Bedrock Agent Catalog',
         'Configuration',
         'Model Management',
         'API Token Management',

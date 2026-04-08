@@ -279,3 +279,14 @@ class UpdateHostedMcpServerRequest(BaseModel):
             if memory > 30720:
                 raise ValueError("Memory limit must be at most 30720 MiB")
         return memory
+
+
+class BedrockAgentApprovalPut(BaseModel):
+    """Admin catalog entry for a Bedrock agent (DynamoDB)."""
+
+    agentAliasId: str = Field(min_length=1, description="Alias ID used for InvokeAgent")
+    agentName: str = Field(min_length=1, description="Display name snapshot")
+    groups: list[str] | None = Field(
+        default=None,
+        description="group:... tokens; omit or empty = all authenticated users",
+    )

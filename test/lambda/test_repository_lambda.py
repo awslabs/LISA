@@ -138,11 +138,13 @@ mock_common.get_username.return_value = "test-user"
 mock_common.retry_config = retry_config
 mock_common.get_groups.return_value = ["test-group"]
 mock_common.is_admin.return_value = False
+mock_common.is_rag_admin.return_value = False
 mock_common.get_user_context.return_value = ("test-user", False, ["test-group"])
 mock_common.api_wrapper = mock_api_wrapper
 mock_common.get_id_token.return_value = "test-token"
 mock_common.get_cert_path.return_value = None
 mock_common.admin_only = mock_admin_only
+mock_common.rag_admin_or_admin = mock_admin_only
 
 # Create mock modules for missing dependencies
 mock_langchain_community = MagicMock()
@@ -255,6 +257,7 @@ patch.dict(
 patch("utilities.auth.get_username", mock_common.get_username).start()
 patch("utilities.auth.get_groups", mock_common.get_groups).start()
 patch("utilities.auth.is_admin", mock_common.is_admin).start()
+patch("utilities.auth.is_rag_admin", mock_common.is_rag_admin).start()
 patch("utilities.auth.get_user_context", mock_common.get_user_context).start()
 patch("utilities.common_functions.retry_config", retry_config).start()
 patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()
@@ -262,18 +265,22 @@ patch("utilities.common_functions.get_id_token", mock_common.get_id_token).start
 patch("utilities.common_functions.get_cert_path", mock_common.get_cert_path).start()
 _admin_only_patch = patch("utilities.auth.admin_only", mock_admin_only)
 _admin_only_patch.start()
+_rag_admin_or_admin_patch = patch("utilities.auth.rag_admin_or_admin", mock_admin_only)
+_rag_admin_or_admin_patch.start()
 
 
 @pytest.fixture(scope="module", autouse=True)
 def _admin_only_patch_fixture():
-    """Ensure admin_only patch is stopped when this module's tests complete.
+    """Ensure admin_only and rag_admin_or_admin patches are stopped when this module's tests complete.
 
-    The patch must be started at import time so repository.lambda_functions
-    imports with the mocked decorator. This fixture cleans it up to avoid
+    The patches must be started at import time so repository.lambda_functions
+    imports with the mocked decorators. This fixture cleans them up to avoid
     leaking into other test modules and order-dependent failures.
     """
     yield
     _admin_only_patch.stop()
+    _rag_admin_or_admin_patch.stop()
+    _is_rag_admin_patch.stop()
 
 
 # Note: boto3.client will be patched per-test to avoid global conflicts
@@ -281,6 +288,10 @@ def _admin_only_patch_fixture():
 
 # Only now import the lambda functions to ensure they use our mocked dependencies
 from repository.lambda_functions import _ensure_document_ownership, get_repository, presigned_url
+
+# is_rag_admin is imported by name in lambda_functions, so patch it on the module after import
+_is_rag_admin_patch = patch("repository.lambda_functions.is_rag_admin", mock_common.is_rag_admin)
+_is_rag_admin_patch.start()
 
 
 @pytest.fixture(autouse=True)

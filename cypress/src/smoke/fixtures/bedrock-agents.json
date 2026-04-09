@@ -1,0 +1,36 @@
+{
+  "agents": [
+    {
+      "agentId": "br-agent-1",
+      "agentName": "Smoke Test Agent",
+      "agentStatus": "PREPARED",
+      "description": "Cypress smoke fixture agent",
+      "suggestedAliasId": "TSTALIASID",
+      "aliases": [
+        {
+          "agentAliasId": "TSTALIASID",
+          "agentAliasName": "test-alias",
+          "agentAliasStatus": "PREPARED"
+        }
+      ],
+      "invokeReady": true,
+      "inAccount": true,
+      "catalogGroups": [],
+      "actionTools": [
+        {
+          "openAiToolName": "bedrock_smoke_tool",
+          "functionName": "get_smoke",
+          "actionGroupId": "ag-smoke",
+          "actionGroupName": "SmokeActions",
+          "description": "Smoke test tool",
+          "parameterSchema": {
+            "type": "object",
+            "properties": {},
+            "required": []
+          }
+        }
+      ]
+    }
+  ],
+  "totalAgents": 1
+}

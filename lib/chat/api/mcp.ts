@@ -16,9 +16,9 @@
 
 import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import { IRole } from 'aws-cdk-lib/aws-iam';
+import { Effect, IRole, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
-import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { IFunction, LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
@@ -108,6 +108,23 @@ export class McpApi extends Construct {
             description: 'Name of the MCP servers DynamoDB table',
         });
 
+        const bedrockAgentApprovalsTable = new dynamodb.Table(this, 'BedrockAgentApprovalsTable', {
+            partitionKey: {
+                name: 'agentId',
+                type: dynamodb.AttributeType.STRING,
+            },
+            billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+            encryption: dynamodb.TableEncryption.AWS_MANAGED,
+            removalPolicy: config.removalPolicy,
+            deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
+        });
+
+        new StringParameter(this, 'BedrockAgentApprovalsTableNameParameter', {
+            parameterName: `${config.deploymentPrefix}/table/bedrockAgentApprovalsTable`,
+            stringValue: bedrockAgentApprovalsTable.tableName,
+            description: 'DynamoDB table for admin-approved Bedrock agents (catalog)',
+        });
+
         const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
             restApiId: restApiId,
             rootResourceId: rootResourceId,
@@ -117,6 +134,7 @@ export class McpApi extends Construct {
             ADMIN_GROUP: config.authConfig?.adminGroup || '',
             MCP_SERVERS_TABLE_NAME: mcpServersTable.tableName,
             MCP_SERVERS_BY_OWNER_INDEX_NAME: byOwnerIndex,
+            BEDROCK_AGENT_APPROVALS_TABLE_NAME: bedrockAgentApprovalsTable.tableName,
             ...getAuditLoggingEnv(config),
         };
 
@@ -162,10 +180,74 @@ export class McpApi extends Construct {
                 method: 'PUT',
                 environment: env,
             },
+            {
+                name: 'put_bedrock_agent_approval',
+                resource: 'mcp_server',
+                description: 'Admin: upsert Bedrock agent catalog entry',
+                path: 'bedrock-agents/approval/{agentId}',
+                method: 'PUT',
+                environment: env,
+            },
+            {
+                name: 'delete_bedrock_agent_approval',
+                resource: 'mcp_server',
+                description: 'Admin: remove Bedrock agent from catalog',
+                path: 'bedrock-agents/approval/{agentId}',
+                method: 'DELETE',
+                environment: env,
+            },
+            {
+                name: 'list_bedrock_agent_approvals',
+                resource: 'mcp_server',
+                description: 'Admin: list all Bedrock agent catalog entries',
+                path: 'bedrock-agents/approvals',
+                method: 'GET',
+                environment: env,
+            },
+            {
+                name: 'list_bedrock_agents_discovery',
+                resource: 'mcp_server',
+                description: 'Admin: full Bedrock agent account scan',
+                path: 'bedrock-agents/discovery',
+                method: 'GET',
+                environment: env,
+            },
+            {
+                name: 'invoke_bedrock_agent',
+                resource: 'mcp_server',
+                description: 'Invoke a Bedrock Agent and return aggregated text',
+                path: 'bedrock-agents/invoke',
+                method: 'POST',
+                environment: env,
+            },
+            {
+                name: 'list_bedrock_agents',
+                resource: 'mcp_server',
+                description: 'List approved Bedrock agents for the current user',
+                path: 'bedrock-agents',
+                method: 'GET',
+                environment: env,
+            },
         ];
 
         const lambdaRole: IRole = createLambdaRole(this, config.deploymentName, 'McpServerApi', mcpServersTable.tableArn, config.roles?.LambdaExecutionRole);
+        lambdaRole.addToPrincipalPolicy(
+            new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: [
+                    'bedrock:ListAgents',
+                    'bedrock:GetAgent',
+                    'bedrock:ListAgentAliases',
+                    'bedrock:GetAgentAlias',
+                    'bedrock:ListAgentActionGroups',
+                    'bedrock:GetAgentActionGroup',
+                    'bedrock:InvokeAgent',
+                ],
+                resources: ['*'],
+            }),
+        );
         const lambdaPath = config.lambdaPath || LAMBDA_PATH;
+        const mcpLambdas: IFunction[] = [];
         apis.forEach((f) => {
             const lambdaFunction = registerAPIEndpoint(
                 this,
@@ -179,6 +261,7 @@ export class McpApi extends Construct {
                 authorizer,
                 lambdaRole,
             );
+            mcpLambdas.push(lambdaFunction);
             if (f.method === 'POST' || f.method === 'PUT') {
                 mcpServersTable.grantWriteData(lambdaFunction);
             } else if (f.method === 'GET') {
@@ -187,5 +270,6 @@ export class McpApi extends Construct {
                 mcpServersTable.grantReadWriteData(lambdaFunction);
             }
         });
+        mcpLambdas.forEach((fn) => bedrockAgentApprovalsTable.grantReadWriteData(fn));
     }
 }

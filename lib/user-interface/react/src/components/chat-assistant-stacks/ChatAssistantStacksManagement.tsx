@@ -104,6 +104,14 @@ export function ChatAssistantStacksManagement (): React.ReactElement {
                     },
                 },
                 {
+                    id: 'bedrock',
+                    header: 'Bedrock agents',
+                    content: (item: IChatAssistantStack) => {
+                        const n = item.bedrockAgentIds?.length ?? 0;
+                        return n === 0 ? '—' : formatCount(n, 'agent', 'agents');
+                    },
+                },
+                {
                     id: 'prompts',
                     header: 'Prompts',
                     content: (item: IChatAssistantStack) => {

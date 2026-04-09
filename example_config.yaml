@@ -4,6 +4,7 @@ authConfig:
   authority:
   clientId:
   adminGroup:
+  ragAdminGroup:
   jwtGroupsProperty:
 s3BucketModels: hf-models-gaiic
 ragRepositories: []

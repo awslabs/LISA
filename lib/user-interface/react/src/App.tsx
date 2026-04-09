@@ -24,7 +24,7 @@ import { useAuth } from './auth/useAuth';
 import Topbar from './components/Topbar';
 import SystemBanner from './components/system-banner/system-banner';
 import { useAppSelector } from './config/store';
-import { selectCurrentUserIsAdmin, selectCurrentUserIsUser, selectCurrentUserIsApiUser } from './shared/reducers/user.reducer';
+import { selectCurrentUserIsAdmin, selectCurrentUserIsUser, selectCurrentUserIsApiUser, selectCurrentUserIsRagAdmin } from './shared/reducers/user.reducer';
 import NotificationBanner from './shared/notification/notification';
 import ConfirmationModal, { ConfirmationModalProps } from './shared/modal/confirmation-modal';
 import { useGetConfigurationQuery } from './shared/reducers/configuration.reducer';
@@ -52,6 +52,7 @@ const McpServers = lazy(() => import('@/pages/Mcp'));
 const ModelComparisonPage = lazy(() => import('./pages/ModelComparison'));
 const McpWorkbench = lazy(() => import('./pages/McpWorkbench'));
 const ChatAssistantStacks = lazy(() => import('./pages/ChatAssistantStacks'));
+const BedrockAgentManagement = lazy(() => import('./pages/BedrockAgentManagement'));
 
 export type RouteProps = {
     children: ReactElement[] | ReactElement;
@@ -64,12 +65,13 @@ const PrivateRoute = ({ children }: RouteProps) => {
     const auth = useAuth();
     const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);
     const isUser = useAppSelector(selectCurrentUserIsUser);
+    const isRagAdmin = useAppSelector(selectCurrentUserIsRagAdmin);
 
-    if (auth.isAuthenticated && (isUserAdmin || isUser)) {
+    if (auth.isAuthenticated && (isUserAdmin || isUser || isRagAdmin)) {
         return children;
     } else if (auth.isLoading) {
         return <Spinner />;
-    } else if (auth.isAuthenticated && !isUserAdmin && !isUser) {
+    } else if (auth.isAuthenticated && !isUserAdmin && !isUser && !isRagAdmin) {
         return (
             <div style={{ padding: '20px', textAlign: 'center' }}>
                 <h2>Access Denied</h2>
@@ -85,6 +87,19 @@ const AdminRoute = ({ children }: RouteProps) => {
     const auth = useAuth();
     const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);
     if (auth.isAuthenticated && isUserAdmin) {
+        return children;
+    } else if (auth.isLoading) {
+        return <Spinner />;
+    } else {
+        return <Navigate to={import.meta.env.BASE_URL} />;
+    }
+};
+
+const RagAdminRoute = ({ children }: RouteProps) => {
+    const auth = useAuth();
+    const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);
+    const isRagAdmin = useAppSelector(selectCurrentUserIsRagAdmin);
+    if (auth.isAuthenticated && (isUserAdmin || isRagAdmin)) {
         return children;
     } else if (auth.isLoading) {
         return <Spinner />;
@@ -142,6 +157,10 @@ function App () {
     }, [colorScheme]);
 
     const showNavigation = !!nav;
+
+    const enabledComponents = config?.configuration?.enabledComponents;
+    const showAgenticConnectionsPage =
+        Boolean(enabledComponents?.mcpConnections) || Boolean(enabledComponents?.bedrockAgents);
 
     return (
         <ColorSchemeContext.Provider value={{ colorScheme, setColorScheme }}>
@@ -202,9 +221,9 @@ function App () {
                                 {window.env.RAG_ENABLED && <Route
                                     path='repository-management'
                                     element={
-                                        <AdminRoute>
+                                        <RagAdminRoute>
                                             <RepositoryManagement setNav={setNav} />
-                                        </AdminRoute>
+                                        </RagAdminRoute>
                                     }
                                 />}
                                 <Route
@@ -278,7 +297,7 @@ function App () {
                                         </AdminRoute>
                                     }
                                 />
-                                {config?.configuration?.enabledComponents?.mcpConnections && <Route
+                                {showAgenticConnectionsPage && <Route
                                     path='mcp-connections/*'
                                     element={
                                         <PrivateRoute showConfig='showMcpServers' configs={config}>
@@ -286,6 +305,18 @@ function App () {
                                         </PrivateRoute>
                                     }
                                 />}
+                                <Route
+                                    path='bedrock-agent-management'
+                                    element={
+                                        config?.configuration?.enabledComponents?.bedrockAgents ? (
+                                            <AdminRoute>
+                                                <BedrockAgentManagement setNav={setNav} />
+                                            </AdminRoute>
+                                        ) : (
+                                            <Navigate to={import.meta.env.BASE_URL} replace />
+                                        )
+                                    }
+                                />
                                 {config?.configuration?.enabledComponents?.enableModelComparisonUtility && <Route
                                     path='model-comparison'
                                     element={

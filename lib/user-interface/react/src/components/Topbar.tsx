@@ -20,7 +20,7 @@ import { useHref, useNavigate } from 'react-router-dom';
 import { applyDensity, Density, Mode } from '@cloudscape-design/global-styles';
 import TopNavigation, { TopNavigationProps } from '@cloudscape-design/components/top-navigation';
 import { useAppDispatch, useAppSelector } from '@/config/store';
-import { selectCurrentUserIsAdmin, selectCurrentUserIsApiUser, selectCurrentUsername } from '../shared/reducers/user.reducer';
+import { selectCurrentUserIsAdmin, selectCurrentUserIsApiUser, selectCurrentUserIsRagAdmin, selectCurrentUsername } from '../shared/reducers/user.reducer';
 import { IConfiguration } from '@/shared/model/configuration.model';
 import { ButtonDropdownProps } from '@cloudscape-design/components';
 import ColorSchemeContext from '@/shared/color-scheme.provider';
@@ -43,6 +43,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
     const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);
+    const isUserRagAdmin = useAppSelector(selectCurrentUserIsRagAdmin);
     const isApiUser = useAppSelector(selectCurrentUserIsApiUser);
     const userName = useAppSelector(selectCurrentUsername);
     const { colorScheme, setColorScheme } = useContext(ColorSchemeContext);
@@ -92,16 +93,19 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
             external: false,
             href: '/prompt-templates',
         } as ButtonDropdownProps.Item] : []),
-        ...(configs?.configuration.enabledComponents?.mcpConnections ? [{
-            id: 'mcp-connection',
-            type: 'button',
-            variant: 'link',
-            text: 'MCP Connections',
-            disableUtilityCollapse: false,
-            external: false,
-            href: '/mcp-connections',
-        } as ButtonDropdownProps.Item] : [])
+        ...((Boolean(configs?.configuration.enabledComponents?.mcpConnections)
+            || Boolean(configs?.configuration.enabledComponents?.bedrockAgents)) ? [{
+                id: 'mcp-connection',
+                type: 'button',
+                variant: 'link',
+                text: 'Agentic Connections',
+                disableUtilityCollapse: false,
+                external: false,
+                href: '/mcp-connections',
+            } as ButtonDropdownProps.Item] : [])
     ].sort((a,b) => a.text.localeCompare(b.text));
+
+    const showAdminDropdown = isUserAdmin || (isUserRagAdmin && window.env.RAG_ENABLED);
 
     return (
         <TopNavigation
@@ -134,7 +138,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                         items: libraryItems
                     }] as TopNavigationProps.Utility[] : []
                 ),
-                ...((isUserAdmin
+                ...((showAdminDropdown
                     ? [{
                         type: 'menu-dropdown',
                         text: 'Administration',
@@ -143,7 +147,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                             navigate(event.detail.href);
                         },
                         items: [
-                            {
+                            ...(isUserAdmin ? [{
                                 id: 'configuration',
                                 type: 'button',
                                 variant: 'link',
@@ -151,8 +155,8 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                 disableUtilityCollapse: false,
                                 external: false,
                                 href: '/configuration',
-                            } as ButtonDropdownProps.Item,
-                            {
+                            } as ButtonDropdownProps.Item] : []),
+                            ...(isUserAdmin ? [{
                                 id: 'model-management',
                                 type: 'button',
                                 variant: 'link',
@@ -160,8 +164,8 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                 disableUtilityCollapse: false,
                                 external: false,
                                 href: '/model-management',
-                            } as ButtonDropdownProps.Item,
-                            ...(window.env.RAG_ENABLED ? [{
+                            } as ButtonDropdownProps.Item] : []),
+                            ...(window.env.RAG_ENABLED && (isUserAdmin || isUserRagAdmin) ? [{
                                 id: 'repository-management',
                                 type: 'button',
                                 variant: 'link',
@@ -170,7 +174,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                 external: false,
                                 href: '/repository-management',
                             } as ButtonDropdownProps.Item] : []),
-                            {
+                            ...(isUserAdmin ? [{
                                 id: 'api-token-management',
                                 type: 'button',
                                 variant: 'link',
@@ -178,8 +182,8 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                 disableUtilityCollapse: false,
                                 external: false,
                                 href: '/api-token-management',
-                            } as ButtonDropdownProps.Item,
-                            ...(window.env.HOSTED_MCP_ENABLED ? [
+                            } as ButtonDropdownProps.Item] : []),
+                            ...(isUserAdmin && window.env.HOSTED_MCP_ENABLED ? [
                                 {
                                     id: 'mcp-management',
                                     type: 'button',
@@ -190,7 +194,16 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                     href: '/mcp-management',
                                 } as ButtonDropdownProps.Item,
                             ] : []),
-                            ...(configs?.configuration?.enabledComponents?.chatAssistantStacks ? [{
+                            ...(isUserAdmin && Boolean(configs?.configuration.enabledComponents?.bedrockAgents) ? [{
+                                id: 'bedrock-agent-management',
+                                type: 'button',
+                                variant: 'link',
+                                text: 'Bedrock Agent Catalog',
+                                disableUtilityCollapse: false,
+                                external: false,
+                                href: '/bedrock-agent-management',
+                            } as ButtonDropdownProps.Item] : []),
+                            ...(isUserAdmin && configs?.configuration?.enabledComponents?.chatAssistantStacks ? [{
                                 id: 'chat-assistant-stacks',
                                 type: 'button',
                                 variant: 'link',
@@ -199,7 +212,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                 external: false,
                                 href: '/chat-assistant-stacks',
                             } as ButtonDropdownProps.Item] : []),
-                            ...(configs?.configuration.enabledComponents?.showMcpWorkbench ? [{
+                            ...(isUserAdmin && configs?.configuration.enabledComponents?.showMcpWorkbench ? [{
                                 id: 'mcp-workbench',
                                 type: 'button',
                                 variant: 'link',

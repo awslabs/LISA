@@ -191,6 +191,7 @@ export class UserInterfaceConstruct extends Construct {
             ADMIN_GROUP: config.authConfig!.adminGroup,
             USER_GROUP: config.authConfig!.userGroup,
             API_GROUP: config.authConfig!.apiGroup,
+            RAG_ADMIN_GROUP: config.authConfig!.ragAdminGroup,
             JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
             CUSTOM_SCOPES: config.authConfig!.additionalScopes,
             RESTAPI_URI: StringParameter.fromStringParameterName(

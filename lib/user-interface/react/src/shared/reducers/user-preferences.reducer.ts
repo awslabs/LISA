@@ -31,8 +31,37 @@ export type McpPreferences = {
     enabledServers: McpServerPreferences[];
 };
 
+/** Enabled Bedrock Agent for chat tool invocation (alias stored for InvokeAgent). */
+export type BedrockAgentUserPreference = {
+    agentId: string;
+    agentAliasId: string;
+    name: string;
+    enabled: boolean;
+    disabledActionTools?: string[];
+    /** When true, skip confirmation for invoke_bedrock_agent and this agent's bedrock_* action tools. */
+    autoApproveInvoke?: boolean;
+};
+
+export type BedrockAgentsPreferences = {
+    enabledAgents: BedrockAgentUserPreference[];
+    /** When true, skip confirmation for all Bedrock agent invocations (same idea as MCP Autopilot Mode). */
+    overrideAllBedrockApprovals?: boolean;
+};
+
+/** Keep global Bedrock autopilot when updating only enabledAgents. */
+export function nextBedrockAgentsPrefs (
+    prev: BedrockAgentsPreferences | undefined,
+    enabledAgents: BedrockAgentUserPreference[],
+): BedrockAgentsPreferences {
+    return {
+        enabledAgents,
+        overrideAllBedrockApprovals: prev?.overrideAllBedrockApprovals ?? false,
+    };
+}
+
 export type Preferences = {
     mcp?: McpPreferences;
+    bedrockAgents?: BedrockAgentsPreferences;
     showMarkdownPreview?: boolean;
 };
 

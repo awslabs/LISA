@@ -43,7 +43,8 @@ export function runUserTests (options: {
             '#/repository-management',
             '#/api-token-management',
             '#/mcp-management',
-            '#/mcp-workbench'
+            '#/mcp-workbench',
+            '#/bedrock-agent-management',
         ];
 
         adminPaths.forEach((path) => {

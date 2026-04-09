@@ -29,6 +29,39 @@ vi.mock('@/shared/util/hooks', () => ({
     }),
 }));
 
+const adminState = {
+    user: { info: { isAdmin: true, isRagAdmin: false, isUser: true, isApiUser: false } },
+};
+
+const ragAdminState = {
+    user: { info: { isAdmin: false, isRagAdmin: true, isUser: false, isApiUser: false } },
+};
+
+const existingRepo: RagRepositoryConfig = {
+    repositoryId: 'test-repo',
+    repositoryName: 'Test Repository',
+    type: RagRepositoryType.OPENSEARCH,
+    embeddingModelId: 'amazon.titan-embed-text-v1',
+    allowedGroups: ['admin'],
+    opensearchConfig: {
+        dataNodes: 2,
+        dataNodeInstanceType: 't3.small.search',
+        masterNodes: 0,
+        masterNodeInstanceType: 't3.small.search',
+        volumeSize: 10,
+    },
+    pipelines: [
+        {
+            autoRemove: true,
+            trigger: 'event' as const,
+            s3Bucket: 'test-bucket',
+            s3Prefix: 'documents/',
+            chunkSize: 512,
+            chunkOverlap: 51,
+        },
+    ],
+};
+
 describe('CreateRepositoryModal', () => {
     let mockUpdateMutation: ReturnType<typeof vi.fn>;
     let mockCreateMutation: ReturnType<typeof vi.fn>;
@@ -71,31 +104,6 @@ describe('CreateRepositoryModal', () => {
     });
 
     it('renders update modal with existing repository data', async () => {
-        const existingRepo: RagRepositoryConfig = {
-            repositoryId: 'test-repo',
-            repositoryName: 'Test Repository',
-            type: RagRepositoryType.OPENSEARCH,
-            embeddingModelId: 'amazon.titan-embed-text-v1',
-            allowedGroups: ['admin'],
-            opensearchConfig: {
-                dataNodes: 2,
-                dataNodeInstanceType: 't3.small.search',
-                masterNodes: 0,
-                masterNodeInstanceType: 't3.small.search',
-                volumeSize: 10,
-            },
-            pipelines: [
-                {
-                    autoRemove: true,
-                    trigger: 'event' as const,
-                    s3Bucket: 'test-bucket',
-                    s3Prefix: 'documents/',
-                    chunkSize: 512,
-                    chunkOverlap: 51,
-                },
-            ],
-        };
-
         renderWithProviders(
             <CreateRepositoryModal
                 visible={true}
@@ -104,7 +112,8 @@ describe('CreateRepositoryModal', () => {
                 setVisible={vi.fn()}
                 selectedItems={[existingRepo]}
                 setSelectedItems={vi.fn()}
-            />
+            />,
+            { preloadedState: adminState }
         );
 
         // Wait for the modal to render with update title
@@ -121,31 +130,6 @@ describe('CreateRepositoryModal', () => {
     });
 
     it('includes pipelines in updates when pipeline configuration changes', async () => {
-        const existingRepo: RagRepositoryConfig = {
-            repositoryId: 'test-repo',
-            repositoryName: 'Test Repository',
-            type: RagRepositoryType.OPENSEARCH,
-            embeddingModelId: 'amazon.titan-embed-text-v1',
-            allowedGroups: ['admin'],
-            opensearchConfig: {
-                dataNodes: 2,
-                dataNodeInstanceType: 't3.small.search',
-                masterNodes: 0,
-                masterNodeInstanceType: 't3.small.search',
-                volumeSize: 10,
-            },
-            pipelines: [
-                {
-                    autoRemove: true,
-                    trigger: 'event' as const,
-                    s3Bucket: 'test-bucket',
-                    s3Prefix: 'documents/',
-                    chunkSize: 512,
-                    chunkOverlap: 51,
-                },
-            ],
-        };
-
         renderWithProviders(
             <CreateRepositoryModal
                 visible={true}
@@ -154,7 +138,8 @@ describe('CreateRepositoryModal', () => {
                 setVisible={vi.fn()}
                 selectedItems={[existingRepo]}
                 setSelectedItems={vi.fn()}
-            />
+            />,
+            { preloadedState: adminState }
         );
 
         await waitFor(() => {
@@ -189,5 +174,48 @@ describe('CreateRepositoryModal', () => {
 
         // Verify create mutation is available (not update)
         expect(mockCreateMutation).toBeDefined();
+    });
+
+    it('admin edit shows all wizard steps', async () => {
+        renderWithProviders(
+            <CreateRepositoryModal
+                visible={true}
+                isEdit={true}
+                setIsEdit={vi.fn()}
+                setVisible={vi.fn()}
+                selectedItems={[existingRepo]}
+                setSelectedItems={vi.fn()}
+            />,
+            { preloadedState: adminState }
+        );
+
+        await waitFor(() => {
+            expect(screen.getAllByText('Repository Configuration').length).toBeGreaterThan(0);
+            expect(screen.getAllByText('Pipeline Configuration').length).toBeGreaterThan(0);
+            expect(screen.getAllByText('Metadata & Tags').length).toBeGreaterThan(0);
+            expect(screen.getAllByText('Review and Update').length).toBeGreaterThan(0);
+        });
+    });
+
+    it('RAG admin edit shows only Pipeline and Review steps', async () => {
+        renderWithProviders(
+            <CreateRepositoryModal
+                visible={true}
+                isEdit={true}
+                setIsEdit={vi.fn()}
+                setVisible={vi.fn()}
+                selectedItems={[existingRepo]}
+                setSelectedItems={vi.fn()}
+            />,
+            { preloadedState: ragAdminState }
+        );
+
+        await waitFor(() => {
+            expect(screen.getAllByText('Pipeline Configuration').length).toBeGreaterThan(0);
+            expect(screen.getAllByText('Review and Update').length).toBeGreaterThan(0);
+        });
+
+        expect(screen.queryByText('Repository Configuration')).not.toBeInTheDocument();
+        expect(screen.queryByText('Metadata & Tags')).not.toBeInTheDocument();
     });
 });

@@ -61,6 +61,7 @@ const initialForm: ChatAssistantStackRequestForm = {
     collectionIds: [],
     mcpServerIds: [],
     mcpToolIds: [],
+    bedrockAgentIds: [],
     personaPromptId: null,
     directivePromptIds: [],
     allowedGroups: [],
@@ -109,6 +110,7 @@ export function CreateStackModal (props: CreateStackModalProps): ReactElement {
                         collectionIds: selectedStack.collectionIds || [],
                         mcpServerIds: selectedStack.mcpServerIds || [],
                         mcpToolIds: selectedStack.mcpToolIds || [],
+                        bedrockAgentIds: selectedStack.bedrockAgentIds || [],
                         personaPromptId: selectedStack.personaPromptId ?? null,
                         directivePromptIds: selectedStack.directivePromptIds || [],
                         allowedGroups: selectedStack.allowedGroups || [],
@@ -167,6 +169,7 @@ export function CreateStackModal (props: CreateStackModalProps): ReactElement {
                 collectionIds: selectedStack.collectionIds,
                 mcpServerIds: selectedStack.mcpServerIds,
                 mcpToolIds: selectedStack.mcpToolIds,
+                bedrockAgentIds: selectedStack.bedrockAgentIds || [],
                 personaPromptId: selectedStack.personaPromptId,
                 directivePromptIds: selectedStack.directivePromptIds,
                 allowedGroups: selectedStack.allowedGroups,
@@ -183,12 +186,12 @@ export function CreateStackModal (props: CreateStackModalProps): ReactElement {
             touchFields(['modelIds']);
             return;
         }
-        if (form.mcpServerIds.length > 0 && models) {
+        if ((form.mcpServerIds.length > 0 || form.bedrockAgentIds.length > 0) && models) {
             const selectedModels = models.filter((m) => form.modelIds.includes(m.modelId));
             const hasTextgen = selectedModels.some((m) => m.modelType === ModelType.textgen);
             if (!hasTextgen) {
                 notificationService.generateNotification(
-                    'At least one selected model must support MCP tools (e.g. text generation model).',
+                    'At least one selected model must support MCP / Bedrock tools (e.g. text generation model).',
                     'error'
                 );
                 return;

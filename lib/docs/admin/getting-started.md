@@ -108,9 +108,17 @@ LISA Roles and Enterprise Groups control access to features and resources.
 - **AdminGroup**: The IDP group that distinguishes which users have access to create and manage restricted resource configuration within the UI, including:
   - Activating application features
   - Configuring models via Model Management
-  - Configuring repos and Collections via RAG management
+  - Creating and deleting repositories, and configuring group access via RAG management
+  - Managing all collections across all repositories
   - MCP server management
   - MCP Workbench code editor
+
+- **RagAdminGroup** (optional): The IDP group for users who need to manage RAG content without full Admin privileges. This is especially useful in multi-tenant environments. RAG Admins can:
+  - Access the RAG Management page
+  - Create, update, and delete collections on repositories they have group access to
+  - Update ingestion pipelines on repositories they have group access to
+  - Delete documents in accessible repositories
+  - RAG Admins **cannot** create or delete repositories, change repository `allowedGroups`, or access any other Admin-only pages (Model Management, Configuration, MCP, API Tokens)
 
 - **UserGroup** (optional): If provided, this is required when the IDP is used for multiple systems and you want to control which users in the IDP have access to LISA.
 

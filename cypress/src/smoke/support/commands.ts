@@ -25,8 +25,8 @@ const API_STUBS = [
     { endpoint: 'configuration', alias: 'getConfiguration' },
     { endpoint: 'health', alias: 'getHealth' },
     { endpoint: 'api-tokens', alias: 'getApiTokens' },
-    { endpoint: 'mcp', alias: 'getMcp' },
     { endpoint: 'mcp-server', alias: 'getMcpServers' },
+    { endpoint: 'mcp', alias: 'getMcp' },
     { endpoint: 'mcp-workbench', alias: 'getMcpWorkbench' },
     { endpoint: 'collections', alias: 'getCollections' },
 ];
@@ -202,6 +202,25 @@ function setupApiStubs (env: Record<string, unknown>) {
         cy.intercept('GET', `**${apiBase}/${endpoint}*`, { fixture: `${endpoint}.json` }).as(alias);
     });
 
+    const apiRoot = String(apiBase).replace(/\/+$/, '');
+    const escRoot = apiRoot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Match full request URL (origin + path)
+    cy.intercept('GET', new RegExp(`.+${escRoot}/bedrock-agents/approvals`), { fixture: 'bedrock-agent-approvals.json' }).as(
+        'getBedrockApprovals'
+    );
+    cy.intercept('GET', new RegExp(`.+${escRoot}/bedrock-agents/discovery`), { fixture: 'bedrock-agents-discovery.json' }).as(
+        'getBedrockDiscovery'
+    );
+    cy.intercept('GET', new RegExp(`.+${escRoot}/bedrock-agents(?:/)?(?:\\?.*)?$`), { fixture: 'bedrock-agents.json' }).as(
+        'getBedrockAgents'
+    );
+    cy.intercept('GET', new RegExp(`.+${escRoot}/user-preferences(?:\\?.*)?$`), { fixture: 'user-preferences.json' }).as(
+        'getUserPreferences'
+    );
+    cy.intercept('PUT', new RegExp(`.+${escRoot}/user-preferences`), (req) => {
+        req.reply({ statusCode: 200, body: req.body });
+    }).as('putUserPreferences');
+
     // Setup stateful project stubs
     setupProjectStubs(apiBase);
 
@@ -212,9 +231,8 @@ function setupApiStubs (env: Record<string, unknown>) {
 /**
  * Build a mock OIDC user object.
  */
-function buildOidcUser (role: 'admin' | 'user', env: Record<string, unknown>) {
-    const isAdmin = role === 'admin';
-    const groups = isAdmin ? ['admin'] : ['user'];
+function buildOidcUser (role: 'admin' | 'user' | 'rag-admin', env: Record<string, unknown>) {
+    const groups = role === 'admin' ? ['admin'] : role === 'rag-admin' ? ['rag-admin'] : ['user'];
     const now = Math.floor(Date.now() / 1000);
 
     const jwtPayload = {
@@ -251,7 +269,7 @@ function buildOidcUser (role: 'admin' | 'user', env: Record<string, unknown>) {
 /**
  * Setup OIDC stubs for the login flow.
  */
-function setupOidcStubs (role: 'admin' | 'user', env: Record<string, unknown>) {
+function setupOidcStubs (role: 'admin' | 'user' | 'rag-admin', env: Record<string, unknown>) {
     const oidcUser = buildOidcUser(role, env);
 
     // Stub OIDC discovery
@@ -302,7 +320,7 @@ function waitForAppReady () {
 /**
  * Custom command to log in a user via stubbed OIDC flow.
  */
-Cypress.Commands.add('loginAs', (role = 'user') => {
+Cypress.Commands.add('loginAs', (role: 'admin' | 'user' | 'rag-admin' = 'user') => {
     cy.fixture('env.json').then((env) => {
         // Setup all stubs
         setupApiStubs(env);

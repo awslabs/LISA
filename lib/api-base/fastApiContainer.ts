@@ -109,6 +109,7 @@ export class FastApiContainer extends Construct {
             CLIENT_ID: config.authConfig!.clientId,
             ADMIN_GROUP: config.authConfig!.adminGroup,
             USER_GROUP: config.authConfig!.userGroup,
+            RAG_ADMIN_GROUP: config.authConfig!.ragAdminGroup,
             JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
             MANAGEMENT_KEY_NAME: managementKeyName
         };

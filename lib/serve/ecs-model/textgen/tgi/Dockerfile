@@ -15,7 +15,7 @@ RUN apt-get update -y && apt-get upgrade -y && \
         echo "${MOUNTS3_DEB_SHA256}  mount-s3.deb" | sha256sum -c; \
     fi && \
     apt-get install -y ./mount-s3.deb && \
-    pip3 install --no-cache-dir --break-system-packages boto3 && \
+    pip3 install --no-cache-dir --break-system-packages boto3 || pip3 install --no-cache-dir boto3 && \
     rm mount-s3.deb && rm -rf /var/lib/apt/lists/*
 
 # Metrics publisher for CloudWatch (scrapes Prometheus /metrics endpoint)

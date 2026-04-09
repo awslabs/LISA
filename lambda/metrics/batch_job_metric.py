@@ -74,7 +74,7 @@ def handler(event: dict, context: dict) -> None:
                 "Dimensions": [
                     {"Name": "DeploymentName", "Value": deployment},
                     {"Name": "DeploymentStage", "Value": stage},
-                    {"Name": "JobQueue", "Value": job_queue.split("/")[-1]},
+                    {"Name": "JobQueue", "Value": os.environ.get("JOB_QUEUE_LABEL", job_queue.split("/")[-1])},
                 ],
                 "Value": 1,
                 "Unit": "Count",

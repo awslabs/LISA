@@ -4,7 +4,6 @@
   "version": "6.5.0",
   "type": "module",
   "scripts": {
-    "postinstall": "patch-package",
     "dev": "vite",
     "build": "node ./scripts/set-revision-info.mjs && tsc && vite build && npm run copy-dist",
     "copy-dist": "mkdir -p ../../../dist/lisa-web && cp -r ./dist/* ../../../dist/lisa-web/",

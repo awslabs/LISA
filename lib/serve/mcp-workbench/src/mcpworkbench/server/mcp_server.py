@@ -18,7 +18,7 @@ import asyncio
 import inspect
 import logging
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from fastmcp import FastMCP
@@ -38,6 +38,11 @@ from .auth import is_idp_used, OIDCHTTPBearer
 from .middleware import CORSMiddleware, wrap_asgi_with_cors_headers
 
 logger = logging.getLogger(__name__)
+
+
+def _utc_iso_z() -> str:
+    """UTC instant as ISO-8601 with Z suffix (RFC 3339)."""
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 class MCPWorkbenchServer:
@@ -87,7 +92,7 @@ class MCPWorkbenchServer:
                 result = {
                     "status": "success",
                     "message": "Server shutdown initiated",
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "timestamp": _utc_iso_z(),
                 }
                 return JSONResponse(result)
 
@@ -103,14 +108,28 @@ class MCPWorkbenchServer:
                     # Use the enhanced rescan_tools method which includes module reloading
                     rescan_result = self.tool_discovery.rescan_tools()
 
-                    # Clear existing registered tools tracking
-                    # Note: FastMCP 2.0 may not have tool unregistration
-                    # This is a limitation we'll document
+                    # Unbind prior FastMCP registrations so deletes take effect and same-name tools pick up
+                    # new callables after file edits (FastMCP 2.10+ remove_tool).
+                    to_unbind = set(rescan_result.tools_removed) | set(rescan_result.tools_updated)
+                    remove_fn = getattr(self.app, "remove_tool", None)
+                    if callable(remove_fn):
+                        for name in to_unbind:
+                            try:
+                                remove_fn(name)
+                                logger.debug("FastMCP remove_tool before rescan reconcile: %s", name)
+                            except Exception as rm_err:
+                                logger.warning("Could not remove tool %s from FastMCP: %s", name, rm_err)
+                    elif to_unbind:
+                        logger.warning(
+                            "FastMCP has no remove_tool(); rescan may not reflect deletes or in-place "
+                            "updates for tools %s until process restart",
+                            sorted(to_unbind),
+                        )
+
                     self.registered_tools.clear()
 
-                    # Get the newly discovered tools and register them
                     tools = list(self.tool_discovery.current_tools.values())
-                    self.tool_registry.register_tools(tools)
+                    self.tool_registry.update_registry(tools)
                     await self._register_discovered_tools(tools)
 
                     # Build result using the rescan_result data
@@ -121,7 +140,7 @@ class MCPWorkbenchServer:
                         "tools_removed": rescan_result.tools_removed,
                         "total_tools": rescan_result.total_tools,
                         "errors": rescan_result.errors,
-                        "timestamp": datetime.utcnow().isoformat() + "Z",
+                        "timestamp": _utc_iso_z(),
                     }
 
                     logger.info(f"Rescan completed: {result}")
@@ -132,7 +151,7 @@ class MCPWorkbenchServer:
                     error_result = {
                         "status": "error",
                         "error": str(e),
-                        "timestamp": datetime.utcnow().isoformat() + "Z",
+                        "timestamp": _utc_iso_z(),
                     }
                     return JSONResponse(error_result, status_code=HTTP_500_INTERNAL_SERVER_ERROR)
 

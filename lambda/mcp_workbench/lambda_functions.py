@@ -16,8 +16,8 @@
 import json
 import logging
 import os
-import uuid
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 
 import boto3
@@ -41,7 +41,9 @@ logger = logging.getLogger(__name__)
 s3_client = boto3.client("s3", region_name=os.environ["AWS_REGION"], config=retry_config)
 WORKBENCH_BUCKET = os.environ.get("WORKBENCH_BUCKET", "")
 
-MCPWORKBENCH_UUID = str(uuid.uuid5(uuid.NAMESPACE_DNS, "LISA_MCP_WORKBENCH"))
+# Single source of truth shared with the UI: mcp_workbench_server_id.json (uuid5 DNS + "LISA_MCP_WORKBENCH").
+_MCP_WORKBENCH_SERVER_ID_PATH = Path(__file__).with_name("mcp_workbench_server_id.json")
+MCPWORKBENCH_UUID: str = json.loads(_MCP_WORKBENCH_SERVER_ID_PATH.read_text(encoding="utf-8"))["mcpWorkbenchServerId"]
 
 
 class MCPToolModel(BaseModel):

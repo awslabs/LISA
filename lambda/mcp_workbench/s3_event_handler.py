@@ -12,32 +12,97 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""Lambda to handle S3 events and trigger MCP Workbench service redeployment."""
+"""Lambda to handle S3 events: refresh MCP Workbench tools via HTTP rescan (in-VPC)."""
 
 import json
 import logging
 import os
-from typing import Any
+import ssl
+import time
+import urllib.error
+import urllib.request
+from typing import Any, cast
+from urllib.parse import urlparse
 
 import boto3
+from botocore.config import Config
 from botocore.exceptions import ClientError
-from utilities.common_functions import retry_config
+
+# Do not import utilities.common_functions here: it pulls in aws_helpers → amazoncerts,
+# which is only present on the shared Common layer. This function uses the bare Lambda.zip asset.
+_boto_retry = Config(retries={"max_attempts": 3, "mode": "standard"})
 
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-# Initialize clients
-ecs_client = boto3.client("ecs", region_name=os.environ["AWS_REGION"], config=retry_config)
-ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=retry_config)
+secrets_client = boto3.client("secretsmanager", region_name=os.environ["AWS_REGION"], config=_boto_retry)
+
+
+def _management_bearer_token() -> str | None:
+    secret_id = os.environ.get("MANAGEMENT_KEY_NAME")
+    if not secret_id:
+        return None
+    try:
+        raw = secrets_client.get_secret_value(SecretId=secret_id, VersionStage="AWSCURRENT")["SecretString"]
+        return cast(str, raw)
+    except ClientError as e:
+        logger.error("Failed to read management key for rescan auth: %s", e)
+        raise
+
+
+def trigger_workbench_rescan() -> dict[str, Any]:
+    """
+    GET the workbench rescan route (same app management key as OIDC middleware when auth is on).
+
+    Waits briefly so rclone --poll-interval can surface new S3 keys in the tools mount.
+    """
+    base = (os.environ.get("MCP_WORKBENCH_ENDPOINT") or "").rstrip("/")
+    if not base:
+        return {"skipped": True, "reason": "MCP_WORKBENCH_ENDPOINT unset"}
+
+    parsed_base = urlparse(base)
+    if parsed_base.scheme not in ("http", "https") or not parsed_base.netloc:
+        return {"skipped": True, "reason": "MCP_WORKBENCH_ENDPOINT must be http(s) with a host"}
+
+    delay_s = int(os.environ.get("WORKBENCH_RESCAN_DELAY_SECONDS", "5"))
+    if delay_s > 0:
+        logger.info("Waiting %s s before rescan so rclone can poll S3", delay_s)
+        time.sleep(delay_s)
+
+    path = (os.environ.get("MCP_WORKBENCH_RESCAN_PATH") or "v2/mcp/rescan").strip("/")
+    url = f"{base}/{path}"
+
+    headers: dict[str, str] = {}
+    token = _management_bearer_token()
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    req = urllib.request.Request(url, headers=headers, method="GET")
+    open_kw: dict[str, Any] = {"timeout": 120}
+    # In-VPC rescan only; workbench ALB may use private/self-signed certs not in the Lambda trust store.
+    if parsed_base.scheme == "https":
+        open_kw["context"] = ssl._create_unverified_context()  # nosec B323
+
+    try:
+        with urllib.request.urlopen(req, **open_kw) as resp:  # nosec B310
+            body = resp.read().decode()
+            logger.info("Rescan HTTP %s: %s", resp.status, body[:500])
+            return {"rescan_status_code": resp.status, "rescan_body": body}
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode() if e.fp else str(e)
+        logger.error("Rescan HTTP error %s: %s", e.code, err_body)
+        return {"rescan_error": True, "rescan_status_code": e.code, "rescan_body": err_body}
+    except urllib.error.URLError as e:
+        logger.error("Rescan request failed: %s", e)
+        return {"rescan_error": True, "rescan_reason": str(e.reason)}
 
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
-    Handle S3 events from EventBridge and trigger MCP Workbench service redeployment.
+    Handle S3 events from EventBridge: call MCP Workbench HTTP rescan (in-VPC).
 
-    This function is triggered by EventBridge when S3 objects are created or deleted
-    in the MCP Workbench bucket. It forces a new deployment of the MCPWORKBENCH ECS service.
+    Reloads tools from the rclone-mounted bucket without restarting ECS tasks.
     """
     logger.info(f"Received S3 event: {json.dumps(event, default=str)}")
 
@@ -53,125 +118,23 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
         logger.info(f"Processing S3 event '{event_name}' for bucket: {bucket_name}")
 
-        # Get ECS cluster and service names
-        cluster_name = get_cluster_name()
-        service_name = get_service_name()
+        rescan_result = trigger_workbench_rescan()
 
-        # Force new deployment of the MCPWORKBENCH service
-        deployment_response = force_service_deployment(cluster_name, service_name)
-
-        deployment_id = deployment_response.get("service", {}).get("deployments", [{}])[0].get("id", "unknown")
-        logger.info(f"Service deployment triggered successfully. Deployment ARN: {deployment_id}")
-
-        return {
-            "statusCode": 200,
-            "body": json.dumps(
-                {
-                    "message": "MCPWORKBENCH service redeployment triggered successfully",
-                    "bucket": bucket_name,
-                    "event": event_name,
-                    "cluster": cluster_name,
-                    "service": service_name,
-                    "deployment_id": deployment_response.get("service", {})
-                    .get("deployments", [{}])[0]
-                    .get("id", "unknown"),
-                }
-            ),
+        payload = {
+            "message": "MCP Workbench tools refresh triggered",
+            "bucket": bucket_name,
+            "event": event_name,
+            "rescan": rescan_result,
         }
+
+        if rescan_result.get("rescan_error"):
+            return {"statusCode": 502, "body": json.dumps(payload)}
+
+        return {"statusCode": 200, "body": json.dumps(payload)}
 
     except Exception as e:
         logger.error(f"Error processing S3 event: {str(e)}")
         return {"statusCode": 500, "body": json.dumps(f"Error: {str(e)}")}
-
-
-def get_cluster_name() -> str:
-    """
-    Get the ECS cluster name from environment variables or construct it from deployment info.
-    """
-    try:
-        # First try environment variable
-        cluster_name = os.environ.get("ECS_CLUSTER_NAME")
-        if cluster_name:
-            return cluster_name
-
-        # Fall back to constructing from deployment info
-        deployment_prefix = os.environ.get("DEPLOYMENT_PREFIX")
-        if not deployment_prefix:
-            raise ValueError("DEPLOYMENT_PREFIX environment variable not set")
-
-        # Get deployment name from SSM parameter
-        deployment_name_param = f"{deployment_prefix}/deploymentName"
-        try:
-            response = ssm_client.get_parameter(Name=deployment_name_param)
-            deployment_name = response["Parameter"]["Value"]
-        except ClientError:
-            # If parameter doesn't exist, extract from deployment prefix
-            # deployment_prefix format is typically /deploymentName-stage
-            deployment_name = deployment_prefix.split("/")[-1].split("-")[0]
-
-        # Construct cluster name using the same pattern as CDK: createCdkId([config.deploymentName, identifier], 32, 2)
-        # The identifier for the API cluster is typically "serve" or similar
-        api_name = os.environ.get("API_NAME", "serve")
-        cluster_name = f"{deployment_name}-{api_name}"
-
-        logger.info(f"Constructed cluster name: {cluster_name}")
-        return cluster_name
-
-    except Exception as e:
-        logger.error(f"Error getting cluster name: {e}")
-        raise
-
-
-def get_service_name() -> str:
-    """
-    Get the MCPWORKBENCH service name from environment variables or construct it.
-    """
-    try:
-        # First try environment variable
-        service_name = os.environ.get("MCPWORKBENCH_SERVICE_NAME")
-        if service_name:
-            return service_name
-
-        # Fall back to constructing the service name
-        # Based on CDK code: createCdkId([name], 32, 2) where name is ECSTasks.MCPWORKBENCH
-        service_name = "MCPWORKBENCH"
-
-        logger.info(f"Using service name: {service_name}")
-        return service_name
-
-    except Exception as e:
-        logger.error(f"Error getting service name: {e}")
-        raise
-
-
-def force_service_deployment(cluster_name: str, service_name: str) -> dict[str, Any]:
-    """
-    Force a new deployment of the specified ECS service.
-    """
-    try:
-        logger.info(f"Forcing new deployment for service '{service_name}' in cluster '{cluster_name}'")
-
-        # Call ECS update_service with forceNewDeployment=True
-        response = ecs_client.update_service(cluster=cluster_name, service=service_name, forceNewDeployment=True)
-
-        logger.info(f"Successfully triggered new deployment for service '{service_name}'")
-        return dict(response)  # Convert to dict to satisfy return type
-
-    except ClientError as e:
-        error_code = e.response.get("Error", {}).get("Code", "Unknown")
-        error_message = e.response.get("Error", {}).get("Message", str(e))
-
-        if error_code == "ServiceNotFoundException":
-            logger.error(f"Service '{service_name}' not found in cluster '{cluster_name}'")
-        elif error_code == "ClusterNotFoundException":
-            logger.error(f"Cluster '{cluster_name}' not found")
-        else:
-            logger.error(f"ECS error ({error_code}): {error_message}")
-
-        raise
-    except Exception as e:
-        logger.error(f"Unexpected error forcing service deployment: {e}")
-        raise
 
 
 def validate_s3_event(event: dict[str, Any]) -> bool:

@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../auth/useAuth';
 import Form from '@cloudscape-design/components/form';
 import Box from '@cloudscape-design/components/box';
@@ -53,10 +53,6 @@ import { useNotificationService } from '@/shared/util/hooks';
 import SessionConfiguration from './components/SessionConfiguration';
 import { GenerateLLMRequestParams } from '@/shared/model/chat.configurations.model';
 import { useLazyGetRelevantDocumentsQuery } from '@/shared/reducers/rag.reducer';
-import {
-    useInvokeBedrockAgentMutation,
-    useListBedrockAgentsQuery,
-} from '@/shared/reducers/mcp-server.reducer';
 import { IConfiguration } from '@/shared/model/configuration.model';
 import { DocumentSummarizationModal } from './components/DocumentSummarizationModal';
 import { useNavigate } from 'react-router-dom';
@@ -78,7 +74,13 @@ import PromptPreview from './components/PromptPreview';
 import ChatPromptInput from './components/ChatPromptInput';
 import { Mode } from '@cloudscape-design/global-styles';
 import ColorSchemeContext from '@/shared/color-scheme.provider';
-import { McpServerStatus, useListMcpServersQuery } from '@/shared/reducers/mcp-server.reducer';
+import {
+    McpServerStatus,
+    useInvokeBedrockAgentMutation,
+    useListBedrockAgentsQuery,
+    useListMcpServersQuery,
+    type McpServer,
+} from '@/shared/reducers/mcp-server.reducer';
 import {
     DefaultUserPreferences,
     McpPreferences,
@@ -87,12 +89,15 @@ import {
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 import { useLazyGetPromptTemplateQuery } from '@/shared/reducers/prompt-templates.reducer';
 import { useGetStackQuery } from '@/shared/reducers/chat-assistant-stacks.reducer';
+import { useListMcpToolsQuery } from '@/shared/reducers/mcp-tools.reducer';
 import ConfirmationModal from '@/shared/modal/confirmation-modal';
 import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
-import { conditionalDeps } from '../utils';
+import { conditionalDeps, isWorkbenchMcpServer } from '../utils';
 import { formatDate } from '@/shared/util/formats';
 import DocumentSidePanel from './components/DocumentSidePanel';
 import { useDocumentSidePanel } from '@/shared/hooks/useDocumentSidePanel';
+
+const EMPTY_STACK_MCP_SERVERS: McpServer[] = [];
 
 export default function Chat ({ sessionId, initialStack }) {
     const dispatch = useAppDispatch();
@@ -235,7 +240,7 @@ export default function Chat ({ sessionId, initialStack }) {
         if (!mcpServers) return undefined;
         if (effectiveStack) {
             const ids = effectiveStack.mcpServerIds ?? [];
-            return ids.length ? mcpServers.filter((server) => ids.includes(server.id)) : [];
+            return ids.length ? mcpServers.filter((server) => ids.includes(server.id)) : EMPTY_STACK_MCP_SERVERS;
         }
         const base = userPreferences?.preferences?.mcp?.enabledServers
             ? mcpServers.filter((server) => userPreferences.preferences.mcp.enabledServers.map((s) => s.id).includes(server.id))
@@ -248,8 +253,31 @@ export default function Chat ({ sessionId, initialStack }) {
     const TOOL_CALL_LIMIT = 20;
     const pendingToolChainExecution = useRef<(() => Promise<void>) | null>(null);
 
+    const needsWorkbenchToolList = Boolean(enabledServers?.some(isWorkbenchMcpServer));
+    const workbenchListQuery = useListMcpToolsQuery(undefined, { skip: !needsWorkbenchToolList });
+    const workbenchToolListDataUpdatedAt =
+        'dataUpdatedAt' in workbenchListQuery && typeof workbenchListQuery.dataUpdatedAt === 'number'
+            ? workbenchListQuery.dataUpdatedAt
+            : undefined;
+    // Include metadata so edits/resync change the key and remount the MCP client; ids alone miss same-file updates.
+    const workbenchToolListFingerprint = useMemo(() => {
+        if (!needsWorkbenchToolList) {
+            return '';
+        }
+        const files = workbenchListQuery.data ?? [];
+        return [...files]
+            .map((t) => `${t.id}\0${t.updated_at ?? ''}\0${t.size ?? ''}`)
+            .sort()
+            .join('\n');
+    }, [needsWorkbenchToolList, workbenchListQuery.data]);
+
     // Use the custom hook to manage multiple MCP connections
-    const { tools: mcpTools, callTool, McpConnections, toolToServerMap } = useMultipleMcp(enabledServers, userPreferences?.preferences?.mcp, session?.sessionId);
+    const { tools: mcpTools, callTool, McpConnections, toolToServerMap, readyMcpServerCount } = useMultipleMcp(
+        enabledServers,
+        userPreferences?.preferences?.mcp,
+        session?.sessionId,
+        { workbenchToolListFingerprint, workbenchToolListDataUpdatedAt },
+    );
     const [invokeBedrockAgent] = useInvokeBedrockAgentMutation();
 
     /** User opt-in + stack allow-list (same shape as MCP prefs vs stack), before intersecting the admin catalog from list Bedrock agents API. */
@@ -560,24 +588,34 @@ export default function Chat ({ sessionId, initialStack }) {
     const isImageGenerationMode = selectedModel?.modelType === ModelType.imagegen;
     const isVideoGenerationMode = selectedModel?.modelType === ModelType.videogen;
 
-    // Format MCP tools and optional Bedrock agent tool for OpenAI when they change
+    // Format MCP tools and optional Bedrock agent tools for OpenAI when they change
     useEffect(() => {
         const ec = config?.configuration?.enabledComponents;
-        const formattedMcp = ec?.mcpConnections && mcpTools.length > 0
-            ? mcpTools.map((tool) => ({
-                type: 'function',
-                function: {
-                    ...tool,
-                    parameters: {
-                        ...tool.inputSchema,
-                        type: 'object'
-                    }
-                }
-            }))
-            : [];
-        const bedrockFragments = config?.configuration?.enabledComponents?.bedrockAgents
-            ? bedrockOpenAiToolFragments
-            : [];
+        let formattedMcp: Array<{ type: 'function'; function: Record<string, unknown> }> = [];
+        if (ec?.mcpConnections && mcpTools.length > 0) {
+            try {
+                formattedMcp = mcpTools.map((tool) => {
+                    const schema =
+                        tool?.inputSchema != null &&
+                        typeof tool.inputSchema === 'object' &&
+                        !Array.isArray(tool.inputSchema)
+                            ? tool.inputSchema
+                            : { properties: {} };
+                    return {
+                        type: 'function' as const,
+                        function: {
+                            name: tool.name,
+                            description: tool.description ?? '',
+                            parameters: { ...schema, type: 'object' as const },
+                        },
+                    };
+                });
+            } catch (e) {
+                console.error('Failed to format MCP tools for the model:', e);
+                formattedMcp = [];
+            }
+        }
+        const bedrockFragments = ec?.bedrockAgents ? bedrockOpenAiToolFragments : [];
         const merged = [...formattedMcp, ...bedrockFragments];
         setOpenAiTools(merged.length > 0 ? merged : undefined);
     }, [mcpTools, bedrockOpenAiToolFragments, config?.configuration?.enabledComponents]);
@@ -760,7 +798,7 @@ export default function Chat ({ sessionId, initialStack }) {
         // Create a deep copy of the server object with its nested arrays
         const serverToUpdate = {
             ...originalServer,
-            autoApprovedTools: [...originalServer.autoApprovedTools],
+            autoApprovedTools: [...(originalServer.autoApprovedTools ?? [])],
         };
 
         if (enabled) {
@@ -1184,7 +1222,7 @@ export default function Chat ({ sessionId, initialStack }) {
 
     return (
         <div className='flex flex-col h-[85vh]'>
-            {/* Agentic connections (MCP) - invisible components that manage server connections */}
+            {/* Agentic connections (MCP) — invisible components that manage server connections */}
             {McpConnections}
             {useMemo(() => (<DocumentSummarizationModal
                 showDocumentSummarizationModal={modals.documentSummarization}
@@ -1286,7 +1324,7 @@ export default function Chat ({ sessionId, initialStack }) {
                                                     (a) => a.agentId === bedrockAgentIdForApprovalModal,
                                                 )?.autoApproveInvoke,
                                             )
-                                            : Boolean(preferences?.preferences?.mcp?.enabledServers.find((server) => server.name === toolToServerMap.get(toolApprovalModal.tool.name))?.autoApprovedTools.includes(toolApprovalModal.tool.name))
+                                            : Boolean(preferences?.preferences?.mcp?.enabledServers.find((server) => server.name === toolToServerMap.get(toolApprovalModal.tool.name))?.autoApprovedTools?.includes(toolApprovalModal.tool.name))
                                     }
                                     disabled={isUpdatingPreferences}
                                 >
@@ -1491,9 +1529,18 @@ export default function Chat ({ sessionId, initialStack }) {
                                         && ((enabledServers && enabledServers.length > 0) || enabledBedrockAgentsForChat.length > 0) ? (
                                             <Box>
                                                 <Icon name='gen-ai' variant='success' />{' '}
-                                                {enabledServers?.length ?? 0} MCP server{(enabledServers?.length ?? 0) === 1 ? '' : 's'}
-                                                {', '}{enabledBedrockAgentsForChat.length} Bedrock agent{enabledBedrockAgentsForChat.length === 1 ? '' : 's'}
-                                                {' — '}{openAiTools?.length || 0} tool{(openAiTools?.length || 0) === 1 ? '' : 's'}
+                                                {enabledServers && enabledServers.length > 0 ? (
+                                                    <>{readyMcpServerCount} MCP {readyMcpServerCount === 1 ? 'Server' : 'Servers'} - {mcpTools.length} {mcpTools.length === 1 ? 'tool' : 'tools'}</>
+                                                ) : null}
+                                                {enabledServers && enabledServers.length > 0 && enabledBedrockAgentsForChat.length > 0 ? ', ' : ''}
+                                                {enabledBedrockAgentsForChat.length > 0 ? (
+                                                    <>{enabledBedrockAgentsForChat.length} Bedrock agent{enabledBedrockAgentsForChat.length === 1 ? '' : 's'}</>
+                                                ) : null}
+                                                {(openAiTools?.length ?? 0) !== mcpTools.length ? (
+                                                    <>
+                                                        {' — '}{openAiTools?.length || 0} tool{(openAiTools?.length || 0) === 1 ? '' : 's'}
+                                                    </>
+                                                ) : null}
                                             </Box>
                                         )
                                         : !selectedModel || ((!enabledServers || enabledServers.length === 0) && enabledBedrockAgentsForChat.length === 0) ? (<div></div>)

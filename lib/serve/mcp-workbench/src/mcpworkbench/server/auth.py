@@ -109,8 +109,12 @@ def id_token_is_valid(
             },
         )
         return data
+    except jwt.exceptions.ExpiredSignatureError:
+        # Routine when clients reuse an old ID token; 401 is enough—no stack trace.
+        logger.debug("OIDC ID token expired")
+        return None
     except (jwt.exceptions.PyJWTError, jwt.exceptions.DecodeError) as e:
-        logger.exception(e)
+        logger.warning("OIDC ID token rejected: %s", e)
         return None
 
 

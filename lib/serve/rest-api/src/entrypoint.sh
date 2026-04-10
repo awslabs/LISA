@@ -137,7 +137,7 @@ fi
 # Pre-generate Prisma client and run migrations ONCE before spawning workers.
 # This prevents the crash-loop caused by multiple Gunicorn workers simultaneously
 # trying to generate the Prisma Python client to the same filesystem path.
-# See src/utils/run_db_migrations.py for full details.
+# See src/utils/setup_prisma_db.py for full details.
 echo "🔧 Pre-generating Prisma client and running migrations..."
 python ./src/utils/setup_prisma_db.py
 

@@ -24,8 +24,9 @@ echo "=================================="
 # Prisma binaries are cached during Docker build; client generation happens below
 # after DB connectivity is confirmed, before workers spawn.
 
-# Update LiteLLM config that was already copied from config.yaml with runtime-deployed models.
-# Depends on SSM Parameter for registered models.
+# Generate the LiteLLM config for this environment.
+# Model definitions are managed from the database, and DB connection info comes
+# from the SSM parameter referenced by LITELLM_DB_INFO_PS_NAME.
 echo "🔧 Configuring LiteLLM..."
 echo "   - AWS Region: $AWS_REGION"
 echo "   - DB Info Parameter: $LITELLM_DB_INFO_PS_NAME"

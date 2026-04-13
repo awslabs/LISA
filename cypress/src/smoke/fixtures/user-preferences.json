@@ -1,0 +1,13 @@
+{
+  "user": "test-admin",
+  "preferences": {
+    "mcp": {
+      "overrideAllApprovals": false,
+      "enabledServers": []
+    },
+    "bedrockAgents": {
+      "enabledAgents": [],
+      "overrideAllBedrockApprovals": false
+    }
+  }
+}

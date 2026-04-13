@@ -19,6 +19,7 @@ import { Route, Routes } from 'react-router-dom';
 import McpServerManagementComponent from '@/components/mcp/McpServerManagementComponent';
 import { McpServerForm } from '@/components/mcp/McpServerForm';
 import McpServerDetails from '@/components/mcp/McpServerDetails';
+import BedrockAgentDetails from '@/components/mcp/BedrockAgentDetails';
 
 export function McpServers ({ setNav }): ReactElement {
     useEffect(() => {
@@ -27,10 +28,12 @@ export function McpServers ({ setNav }): ReactElement {
 
     return (
         <Routes>
-            <Route index path='*' element={<McpServerManagementComponent />} />
-            <Route index path='/new' element={<McpServerForm />} />
-            <Route index path='/edit/:mcpServerId' element={<McpServerForm isEdit={true} />} />
-            <Route index path='/:mcpServerId' element={<McpServerDetails />} />
+            <Route path='bedrock/:agentId' element={<BedrockAgentDetails />} />
+            <Route path='new' element={<McpServerForm />} />
+            <Route path='edit/:mcpServerId' element={<McpServerForm isEdit={true} />} />
+            <Route path=':mcpServerId' element={<McpServerDetails />} />
+            <Route index element={<McpServerManagementComponent />} />
+            <Route path='*' element={<McpServerManagementComponent />} />
         </Routes>
     );
 }

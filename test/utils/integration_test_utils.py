@@ -17,7 +17,7 @@
 Common utilities for LISA integration tests.
 
 This module provides reusable functions for:
-- Authentication setup
+- Authentication setup (re-exported from lisapy.authentication)
 - API client creation
 - Resource management
 - Waiting for resources to be ready
@@ -26,7 +26,6 @@ This module provides reusable functions for:
 import logging
 import os
 import sys
-import time
 from collections.abc import Callable
 
 import boto3
@@ -35,125 +34,24 @@ import boto3
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../lisa-sdk"))
 
 from lisapy.api import LisaApi
+from lisapy.authentication import create_api_token, get_management_key, setup_authentication
 
 logger = logging.getLogger(__name__)
 
-
-def get_management_key(deployment_name: str, region: str | None = None, deployment_stage: str | None = None) -> str:
-    """Retrieve management key from AWS Secrets Manager.
-
-    Args:
-        deployment_name: The LISA deployment name
-        region: AWS region (optional, uses default if not provided)
-        deployment_stage: The deployment stage (optional, will try multiple patterns if not provided)
-
-    Returns:
-        str: The management API key
-
-    Raises:
-        Exception: If the key cannot be retrieved
-    """
-    secrets_client = boto3.client("secretsmanager", region_name=region) if region else boto3.client("secretsmanager")
-
-    # Try different secret name patterns
-    secret_patterns = []
-    if deployment_stage:
-        secret_patterns.append(f"{deployment_stage}-{deployment_name}-management-key")
-    secret_patterns.extend(
-        [
-            f"{deployment_name}-lisa-management-key",
-            f"{deployment_name}-management-key",
-            f"lisa-{deployment_name}-management-key",
-        ]
-    )
-
-    last_error = None
-    for secret_name in secret_patterns:
-        try:
-            response = secrets_client.get_secret_value(SecretId=secret_name)
-            # Secret is stored as a plain string, not JSON
-            api_key = response["SecretString"]
-            logger.info(f"Retrieved management key from {secret_name}")
-            return api_key
-        except Exception as e:
-            last_error = e
-            logger.debug(f"Secret {secret_name} not found, trying next pattern...")
-            continue
-
-    # If we get here, none of the patterns worked
-    logger.error(f"Failed to retrieve management key. Tried patterns: {secret_patterns}")
-    logger.error(f"Last error: {last_error}")
-    raise Exception(f"Could not find management key. Tried: {', '.join(secret_patterns)}")
-
-
-def create_api_token(deployment_name: str, api_key: str, region: str | None = None, ttl_seconds: int = 3600) -> str:
-    """Create an API token in DynamoDB with expiration.
-
-    Args:
-        deployment_name: The LISA deployment name
-        api_key: The management API key
-        region: AWS region (optional, uses default if not provided)
-        ttl_seconds: Time to live in seconds (default: 1 hour)
-
-    Returns:
-        str: The created API token
-
-    Raises:
-        Exception: If token creation fails
-    """
-    try:
-        dynamodb = boto3.resource("dynamodb", region_name=region) if region else boto3.resource("dynamodb")
-        table_name = f"{deployment_name}-LISAApiBaseTokenTable"
-        table = dynamodb.Table(table_name)
-
-        # Create token with expiration
-        current_time = int(time.time())
-        expiration_time = current_time + ttl_seconds
-
-        # Put item in DynamoDB
-        item = {"token": api_key, "tokenExpiration": expiration_time}
-        table.put_item(Item=item)
-
-        logger.info(f"Created API token with expiration: {expiration_time}")
-        return api_key
-
-    except Exception as e:
-        logger.error(f"Failed to create API token: {e}")
-        raise
-
-
-def setup_authentication(
-    deployment_name: str, region: str | None = None, deployment_stage: str | None = None
-) -> dict[str, str]:
-    """Set up authentication for LISA API calls.
-
-    Args:
-        deployment_name: The LISA deployment name
-        region: AWS region (optional, uses default if not provided)
-        deployment_stage: The deployment stage (optional)
-
-    Returns:
-        Dict[str, str]: Authentication headers
-
-    Raises:
-        Exception: If authentication setup fails
-    """
-    logger.info(f"Setting up authentication for deployment: {deployment_name}")
-
-    # Get management key from AWS Secrets Manager
-    api_key = get_management_key(deployment_name, region, deployment_stage)
-
-    # Create API token in DynamoDB (optional - for tracking purposes)
-    try:
-        create_api_token(deployment_name, api_key, region)
-    except Exception as e:
-        logger.warning(f"Failed to create DynamoDB token (proceeding anyway): {e}")
-
-    # Return authentication headers
-    headers = {"Api-Key": api_key, "Authorization": api_key}
-
-    logger.info("Authentication setup completed")
-    return headers
+# Re-export so existing consumers (e.g. conftest.py) continue to work.
+__all__ = [
+    "get_management_key",
+    "create_api_token",
+    "setup_authentication",
+    "create_lisa_client",
+    "wait_for_resource_ready",
+    "get_dynamodb_table",
+    "get_s3_client",
+    "verify_document_in_dynamodb",
+    "verify_document_in_s3",
+    "verify_document_not_in_s3",
+    "get_table_names_from_env",
+]
 
 
 def create_lisa_client(
@@ -182,10 +80,7 @@ def create_lisa_client(
     """
     logger.info(f"Creating LISA client for {api_url}")
 
-    # Setup authentication
     auth_headers = setup_authentication(deployment_name, region, deployment_stage)
-
-    # Create client
     client = LisaApi(url=api_url, headers=auth_headers, verify=verify_ssl, timeout=timeout)
 
     logger.info("LISA client created successfully")

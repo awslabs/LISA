@@ -62,3 +62,7 @@ config-generated.yaml
 # Cypress local environment
 /cypress/.env.local
 .npmrc
+
+# RAG Evaluation configs
+test/integration/rag/eval_datasets/eval_config.yaml
+test/integration/rag/eval_datasets/golden-dataset.jsonl

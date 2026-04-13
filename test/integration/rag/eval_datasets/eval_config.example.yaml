@@ -1,0 +1,57 @@
+# RAG Evaluation Config — Example Template
+# Copy this to eval_config.yaml and fill in your deployment details.
+#
+# Usage:
+#   cp eval_config.example.yaml eval_config.yaml
+#   # Edit eval_config.yaml with your real values
+#   python -m lisapy.evaluation --config eval_config.yaml --dataset golden-dataset.jsonl
+
+region: us-east-1  # AWS region where your LISA deployment and Bedrock KB are located
+k: 5  # Number of top results to evaluate (Precision@k, Recall@k, NDCG@k)
+
+# Document registry: short name → filename
+# These filenames are appended to each backend's s3_bucket to build full S3 URIs.
+# Example: If s3_bucket is "s3://my-bucket" and filename is "docs/paper.pdf",
+#          the full URI becomes "s3://my-bucket/docs/paper.pdf"
+documents:
+  doc1: "document1.pdf"
+  doc2: "subfolder/document2.pdf"
+  doc3: "research/paper.pdf"
+  # Add more documents as needed - these keys are referenced in your golden dataset
+
+# Backend configurations
+# You can configure one or more backends to evaluate. Each backend will be
+# evaluated independently, and if you have multiple backends, a comparison
+# report will be generated.
+
+backends:
+  # Bedrock Knowledge Base backends (optional)
+  # Uncomment and configure if you want to evaluate Bedrock KB retrieval
+  bedrock_kb:
+    - name: "Bedrock KB Production"
+      knowledge_base_id: "ABCDEFGHIJ"  # Your Bedrock Knowledge Base ID
+      s3_bucket: "s3://your-kb-data-bucket"  # S3 bucket where KB documents are stored
+
+  # LISA API backends (OpenSearch, PGVector, etc.)
+  # Configure one or more LISA RAG repositories to evaluate
+  lisa_api:
+    - name: "OpenSearch Production"
+      api_url: "https://your-api-id.execute-api.us-east-1.amazonaws.com/prod"  # Your API Gateway URL
+      deployment_name: "your-deployment-name"  # LISA deployment name (for authentication)
+      repo_id: "opensearch-repo"  # Repository ID from LISA
+      collection_id: "default"  # Collection ID within the repository
+      s3_bucket: "s3://your-docs-bucket"  # S3 bucket where documents are stored
+
+    # Example: Add a second backend to compare performance
+    # - name: "PGVector Test"
+    #   api_url: "https://your-api-id.execute-api.us-east-1.amazonaws.com/test"
+    #   deployment_name: "your-deployment-name"
+    #   repo_id: "pgvector-repo"
+    #   collection_id: "default"
+    #   s3_bucket: "s3://your-test-bucket"
+
+# Notes:
+# - You can configure only bedrock_kb, only lisa_api, or both
+# - Multiple backends of the same type are supported (e.g., multiple OpenSearch repos)
+# - Cross-backend comparison is automatically generated when you have 2+ backends
+# - Authentication for LISA API backends uses AWS Secrets Manager (see README.md)

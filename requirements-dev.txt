@@ -25,7 +25,7 @@ cachetools==7.0.2
 --only-binary=pyarrow,lxml,psycopg2-binary
 
 # Testing
-pytest==9.0.2
+pytest==9.0.3
 pytest-cov==7.0.0
 responses>=0.26.0
 moto[proxy]==5.1.21

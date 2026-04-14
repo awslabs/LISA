@@ -125,7 +125,7 @@
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
-    "typescript": "~5.9.3",
+    "typescript": "~6.0.2",
     "wait-on": "^9.0.4",
     "zod2md": "^0.3.2"
   },
@@ -142,8 +142,8 @@
     "zod": "^4.3.6"
   },
   "optionalDependencies": {
-    "@rollup/rollup-linux-x64-gnu": "4.59.0",
-    "@tailwindcss/oxide-linux-x64-gnu": "4.2.1"
+    "@rollup/rollup-linux-x64-gnu": "4.60.1",
+    "@tailwindcss/oxide-linux-x64-gnu": "4.2.2"
   },
   "peerDependencies": {
     "@cfworker/json-schema": "^4.1.0",

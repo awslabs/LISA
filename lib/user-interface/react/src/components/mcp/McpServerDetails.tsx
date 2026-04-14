@@ -161,7 +161,7 @@ export function McpServerDetails () {
                         <Spinner size='normal' />
                     ) : (
                         <Toggle
-                            checked={!localPreferences?.preferences?.mcp?.enabledServers.find((server) => server.id === mcpServerId)?.disabledTools.includes(item.name)}
+                            checked={!localPreferences?.preferences?.mcp?.enabledServers.find((server) => server.id === mcpServerId)?.disabledTools?.includes(item.name)}
                             onChange={({detail}) => toggleTool(item.name, detail.checked)}
                             disabled={isUpdating}
                         />

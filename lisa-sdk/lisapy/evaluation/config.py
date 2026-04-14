@@ -23,6 +23,8 @@ Each backend has an s3_bucket prefix. The source_map is built at runtime
 by combining the document registry with the backend's bucket.
 """
 
+from typing import Any
+
 import yaml
 from pydantic import BaseModel, Field
 
@@ -83,6 +85,7 @@ def load_eval_config(path: str) -> EvalConfig:
         FileNotFoundError: If path does not exist.
         pydantic.ValidationError: If config fails validation.
     """
+    raw: dict[str, Any] = {}
     with open(path) as f:
-        raw = yaml.safe_load(f)
-    return EvalConfig.model_validate(raw)
+        raw = yaml.safe_load(f) or {}
+    return EvalConfig.model_validate(raw)  # type: ignore[no-any-return]

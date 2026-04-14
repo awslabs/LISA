@@ -22,6 +22,7 @@ Provides:
 
 import getpass
 import logging
+import time
 from typing import Any
 
 import boto3
@@ -106,9 +107,11 @@ def get_management_key(
     for secret_name in patterns:
         try:
             response = secrets_client.get_secret_value(SecretId=secret_name)
-            api_key = response["SecretString"]
-            logger.info("Retrieved management key from %s", secret_name)
-            return api_key
+            secret_string = response.get("SecretString")
+            if not isinstance(secret_string, str):
+                raise RuntimeError(f"Secret '{secret_name}' does not contain a SecretString ")
+            logger.debug("Retrieved management key from %s", secret_name)
+            return secret_string
         except Exception as exc:
             last_error = exc
             logger.debug("Secret %s not found, trying next pattern...", secret_name)
@@ -146,15 +149,13 @@ def create_api_token(
     Exception
         If the DynamoDB put_item call fails.
     """
-    import time  # noqa: F811
-
     dynamodb = boto3.resource("dynamodb", region_name=region) if region else boto3.resource("dynamodb")
     table_name = f"{deployment_name}-LISAApiBaseTokenTable"
     table = dynamodb.Table(table_name)
 
     expiration_time = int(time.time()) + ttl_seconds
     table.put_item(Item={"token": api_key, "tokenExpiration": expiration_time})
-    logger.info("Created API token with expiration: %s", expiration_time)
+    logger.debug("Created API token with expiration: %s", expiration_time)
     return api_key
 
 
@@ -187,7 +188,7 @@ def setup_authentication(
     RuntimeError
         If the management key cannot be retrieved.
     """
-    logger.info("Setting up authentication for deployment: %s", deployment_name)
+    logger.debug("Setting up authentication for deployment: %s", deployment_name)
 
     api_key = get_management_key(deployment_name, region, deployment_stage)
 
@@ -197,5 +198,5 @@ def setup_authentication(
         logger.warning("Failed to create DynamoDB token (proceeding anyway): %s", exc)
 
     headers = {"Api-Key": api_key, "Authorization": api_key}
-    logger.info("Authentication setup completed")
+    logger.debug("Authentication setup completed")
     return headers

@@ -868,6 +868,47 @@ def test_find_first_human_message_unencrypted_list_content_with_file_context():
     assert result == "Actual question"
 
 
+def test_find_first_human_message_with_rag_context():
+    """Test _find_first_human_message with RAG context in separate text items (modern sessions)."""
+    session = {
+        "sessionId": "test-session",
+        "is_encrypted": False,
+        "history": [
+            {
+                "type": "human",
+                "content": [
+                    {"text": "Context from document search:\nDocument 1 content\nDocument 2 content"},
+                    {"text": "What is the answer to my question?"},
+                ],
+            }
+        ],
+    }
+
+    result = _find_first_human_message(session, "test-user")
+    assert result == "What is the answer to my question?"
+
+
+def test_find_first_human_message_with_rag_and_file_context():
+    """Test _find_first_human_message with both file context and RAG context."""
+    session = {
+        "sessionId": "test-session",
+        "is_encrypted": False,
+        "history": [
+            {
+                "type": "human",
+                "content": [
+                    {"text": "File context: uploaded_file.txt\nFile content here"},
+                    {"text": "Context from document search:\nRAG document content"},
+                    {"text": "User's actual prompt here"},
+                ],
+            }
+        ],
+    }
+
+    result = _find_first_human_message(session, "test-user")
+    assert result == "User's actual prompt here"
+
+
 def test_find_first_human_message_unencrypted_unhandled_content():
     """Test _find_first_human_message with unencrypted session and unhandled content type."""
     session = {

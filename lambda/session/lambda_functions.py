@@ -258,19 +258,24 @@ def _strip_context_from_display_text(text: str) -> str:
     if not any(cleaned.startswith(prefix) for prefix in context_prefixes):
         return cleaned
 
+    # File context in separate item from the prompt
     if cleaned.startswith(file_context_prefix):
         return ""
 
-    # Older sessions may have merged context + prompt into one text blob.
-    # Keep only the final user prompt for session list display.
-    parts = [part.strip() for part in cleaned.split("\n\n") if part.strip()]
-    if parts:
-        tail = parts[-1]
-        if not any(tail.startswith(prefix) for prefix in context_prefixes):
-            return tail
+    # RAG context handling - distinguish between modern (separate items) and legacy (merged) formats
+    if cleaned.startswith(rag_context_prefix):
+        parts = [part.strip() for part in cleaned.split("\n\n") if part.strip()]
+        if len(parts) > 1:
+            # check if last part is the user prompt
+            tail = parts[-1]
+            if not any(tail.startswith(prefix) for prefix in context_prefixes):
+                # Legacy merged format
+                return tail
 
-    lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
-    return lines[-1] if lines else ""
+        # Modern format or context-only
+        return ""
+
+    return cleaned
 
 
 def _find_first_human_message(session: dict, user_id: str | None = None) -> str:

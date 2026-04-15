@@ -1534,12 +1534,7 @@ export default function Chat ({ sessionId, initialStack }) {
                                                 ) : null}
                                                 {enabledServers && enabledServers.length > 0 && enabledBedrockAgentsForChat.length > 0 ? ', ' : ''}
                                                 {enabledBedrockAgentsForChat.length > 0 ? (
-                                                    <>{enabledBedrockAgentsForChat.length} Bedrock agent{enabledBedrockAgentsForChat.length === 1 ? '' : 's'}</>
-                                                ) : null}
-                                                {(openAiTools?.length ?? 0) !== mcpTools.length ? (
-                                                    <>
-                                                        {' — '}{openAiTools?.length || 0} tool{(openAiTools?.length || 0) === 1 ? '' : 's'}
-                                                    </>
+                                                    <>{enabledBedrockAgentsForChat.length} Bedrock {enabledBedrockAgentsForChat.length === 1 ? 'agent' : 'agents'} - {bedrockOpenAiToolFragments.length} {bedrockOpenAiToolFragments.length === 1 ? 'tool' : 'tools'}</>
                                                 ) : null}
                                             </Box>
                                         )

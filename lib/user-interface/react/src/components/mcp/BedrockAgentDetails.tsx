@@ -158,7 +158,17 @@ export function BedrockAgentDetails (): React.ReactElement {
             });
     };
 
-    const tools = agent?.actionTools ?? [];
+    const tools = useMemo(() => {
+        const agentActionTools = agent?.actionTools ?? [];
+        const invokeToolPlaceholder: typeof agentActionTools[number] = {
+            openAiToolName: 'invoke_bedrock_agent',
+            functionName: 'invoke_bedrock_agent',
+            actionGroupId: '—',
+            actionGroupName: 'Built-in',
+            description: 'Invoke this agent with open-ended natural language. Always available when the agent is enabled in chat.',
+        };
+        return [invokeToolPlaceholder, ...agentActionTools];
+    }, [agent?.actionTools]);
     const { paginationProps, items, collectionProps } = useCollection(tools, {
         selection: {
             defaultSelectedItems: [],
@@ -298,7 +308,9 @@ export function BedrockAgentDetails (): React.ReactElement {
                         id: 'use',
                         header: 'Use tool',
                         cell: (item) => (
-                            updatingToolName === item.openAiToolName ? (
+                            item.openAiToolName === 'invoke_bedrock_agent' ? (
+                                <StatusIndicator type='success'></StatusIndicator>
+                            ) : updatingToolName === item.openAiToolName ? (
                                 <Spinner size='normal' />
                             ) : (
                                 <Toggle

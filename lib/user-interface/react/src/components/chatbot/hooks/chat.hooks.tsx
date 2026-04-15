@@ -173,7 +173,7 @@ export const useChatGeneration = ({
         };
 
         return new ChatOpenAI(modelConfig);
-    }, [selectedModel, auth, chatConfiguration]);
+    }, [selectedModel, auth.user?.id_token, chatConfiguration]);
 
     const retryResponse = async () => {
         if (!lastRequest) return;

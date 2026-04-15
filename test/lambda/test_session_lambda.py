@@ -1570,7 +1570,7 @@ def test_map_session_encrypted():
 
 
 def test_map_session_strips_merged_context_from_string_message():
-    """Session summary should hide merged context and show only prompt text."""
+    """Session summary should skip context-prefixed string entirely."""
     session = {
         "sessionId": "test-session",
         "history": [
@@ -1582,7 +1582,7 @@ def test_map_session_strips_merged_context_from_string_message():
     }
 
     result = _map_session(session, "test-user")
-    assert result.firstHumanMessage == "who is dustin?"
+    assert result.firstHumanMessage == ""
 
 
 def test_map_session_strips_context_from_list_message_items():

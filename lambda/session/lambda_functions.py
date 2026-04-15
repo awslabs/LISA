@@ -251,28 +251,9 @@ def _map_session(
 
 def _strip_context_from_display_text(text: str) -> str:
     cleaned = text.strip()
-    file_context_prefix = "File context:"
-    rag_context_prefix = "Context from document search:"
-    context_prefixes = (file_context_prefix, rag_context_prefix)
+    context_prefixes = ("File context:", "Context from document search:")
 
-    if not any(cleaned.startswith(prefix) for prefix in context_prefixes):
-        return cleaned
-
-    # File context in separate item from the prompt
-    if cleaned.startswith(file_context_prefix):
-        return ""
-
-    # RAG context handling - distinguish between modern (separate items) and legacy (merged) formats
-    if cleaned.startswith(rag_context_prefix):
-        parts = [part.strip() for part in cleaned.split("\n\n") if part.strip()]
-        if len(parts) > 1:
-            # check if last part is the user prompt
-            tail = parts[-1]
-            if not any(tail.startswith(prefix) for prefix in context_prefixes):
-                # Legacy merged format
-                return tail
-
-        # Modern format or context-only
+    if any(cleaned.startswith(prefix) for prefix in context_prefixes):
         return ""
 
     return cleaned

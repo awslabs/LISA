@@ -24,6 +24,7 @@ from loguru import logger
 from middleware import (
     auth_middleware,
     process_request_middleware,
+    rate_limit_middleware,
     register_exception_handlers,
     security_middleware,
     validate_input_middleware,
@@ -83,11 +84,22 @@ app.add_middleware(
 
 
 @app.middleware("http")
+async def rate_limit(request, call_next):  # type: ignore
+    """Per-user rate limiting middleware.
+
+    Runs after authentication (user identity is available) to enforce
+    per-API-key / per-user request rate limits.
+    """
+    return await rate_limit_middleware(request, call_next)
+
+
+@app.middleware("http")
 async def authenticate(request, call_next):  # type: ignore
     """Authentication middleware.
 
     Validates tokens and sets user context on request.state.
-    Runs after security checks but before request processing.
+    NOTE: Function middleware executes in reverse registration order in FastAPI,
+    so this must be declared *after* rate_limit() to run first on requests.
     """
     return await auth_middleware(request, call_next)
 

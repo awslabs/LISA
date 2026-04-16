@@ -251,26 +251,12 @@ def _map_session(
 
 def _strip_context_from_display_text(text: str) -> str:
     cleaned = text.strip()
-    file_context_prefix = "File context:"
-    rag_context_prefix = "Context from document search:"
-    context_prefixes = (file_context_prefix, rag_context_prefix)
+    context_prefixes = ("File context:", "Context from document search:")
 
-    if not any(cleaned.startswith(prefix) for prefix in context_prefixes):
-        return cleaned
-
-    if cleaned.startswith(file_context_prefix):
+    if any(cleaned.startswith(prefix) for prefix in context_prefixes):
         return ""
 
-    # Older sessions may have merged context + prompt into one text blob.
-    # Keep only the final user prompt for session list display.
-    parts = [part.strip() for part in cleaned.split("\n\n") if part.strip()]
-    if parts:
-        tail = parts[-1]
-        if not any(tail.startswith(prefix) for prefix in context_prefixes):
-            return tail
-
-    lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
-    return lines[-1] if lines else ""
+    return cleaned
 
 
 def _find_first_human_message(session: dict, user_id: str | None = None) -> str:

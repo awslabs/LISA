@@ -23,7 +23,8 @@ import logging
 import sys
 
 from .config import load_eval_config
-from .runner import run_evaluation
+from .dataset import load_golden_dataset
+from .runner import format_comparison, format_report, run_evaluation
 
 
 def main() -> None:
@@ -56,7 +57,12 @@ def main() -> None:
 
     try:
         config = load_eval_config(args.config)
-        run_evaluation(config, args.dataset)
+        golden = load_golden_dataset(args.dataset)
+        results = run_evaluation(config, args.dataset)
+        for name, result in results.items():
+            print(format_report(name, result, golden, config.k))
+        if len(results) > 1:
+            print(format_comparison(results, config.k))
     except FileNotFoundError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

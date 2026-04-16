@@ -18,6 +18,7 @@ import textwrap
 
 import pytest
 from lisapy.evaluation.config import (
+    LisaApiBackend,
     load_eval_config,
 )
 from pydantic import ValidationError
@@ -146,3 +147,79 @@ class TestEvalConfig:
         config = load_eval_config(str(cfg_file))
         assert len(config.backends.bedrock_kb) == 1
         assert config.backends.lisa_api == []
+
+
+class TestLisaApiBackendValidation:
+    """Tests for input validation on LisaApiBackend."""
+
+    def _make_backend(self, **overrides) -> LisaApiBackend:
+        defaults = {
+            "name": "test",
+            "api_url": "https://api.example.com",
+            "deployment_name": "lisa-dev",
+            "repo_id": "test-repo",
+            "s3_bucket": "s3://bucket",
+        }
+        defaults.update(overrides)
+        return LisaApiBackend(**defaults)
+
+    def test_valid_https_url_accepted(self):
+        backend = self._make_backend(api_url="https://api.example.com/dev")
+        assert backend.api_url == "https://api.example.com/dev"
+
+    def test_http_api_url_rejected(self):
+        with pytest.raises(ValidationError, match="api_url"):
+            self._make_backend(api_url="http://insecure.example.com")
+
+
+class TestEvalConfigValidation:
+    """Tests for k and documents validation on EvalConfig."""
+
+    def test_k_zero_rejected(self, tmp_path):
+        yaml = textwrap.dedent(
+            """\
+            region: us-east-1
+            k: 0
+            documents:
+              doc_a: "a.pdf"
+            backends:
+              bedrock_kb: []
+              lisa_api: []
+        """
+        )
+        cfg_file = tmp_path / "config.yaml"
+        cfg_file.write_text(yaml)
+        with pytest.raises(ValidationError, match="k"):
+            load_eval_config(str(cfg_file))
+
+    def test_k_negative_rejected(self, tmp_path):
+        yaml = textwrap.dedent(
+            """\
+            region: us-east-1
+            k: -1
+            documents:
+              doc_a: "a.pdf"
+            backends:
+              bedrock_kb: []
+              lisa_api: []
+        """
+        )
+        cfg_file = tmp_path / "config.yaml"
+        cfg_file.write_text(yaml)
+        with pytest.raises(ValidationError, match="k"):
+            load_eval_config(str(cfg_file))
+
+    def test_empty_documents_rejected(self, tmp_path):
+        yaml = textwrap.dedent(
+            """\
+            region: us-east-1
+            documents: {}
+            backends:
+              bedrock_kb: []
+              lisa_api: []
+        """
+        )
+        cfg_file = tmp_path / "config.yaml"
+        cfg_file.write_text(yaml)
+        with pytest.raises(ValidationError, match="documents"):
+            load_eval_config(str(cfg_file))

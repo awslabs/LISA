@@ -24,9 +24,10 @@ by combining the document registry with the backend's bucket.
 """
 
 from typing import Any
+from urllib.parse import urlparse
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class BedrockKBBackend(BaseModel):
@@ -51,6 +52,14 @@ class LisaApiBackend(BaseModel):
     collection_id: str = Field("default", description="Collection ID within the repository.")
     s3_bucket: str = Field(..., description="S3 bucket prefix for source matching.")
 
+    @field_validator("api_url")
+    @classmethod
+    def _validate_api_url(cls, v: str) -> str:
+        parsed = urlparse(v)
+        if parsed.scheme != "https":
+            raise ValueError("api_url must use https:// scheme.")
+        return v
+
     def build_source_map(self, documents: dict[str, str]) -> dict[str, str]:
         """Build source_map from document registry + this backend's bucket."""
         return {k: f"{self.s3_bucket}/{v}" for k, v in documents.items()}
@@ -70,6 +79,20 @@ class EvalConfig(BaseModel):
     k: int = Field(5, description="Number of top results to evaluate.")
     documents: dict[str, str] = Field(..., description="Short name → filename mapping.")
     backends: Backends = Field(default_factory=Backends, description="Backend configurations.")
+
+    @field_validator("k")
+    @classmethod
+    def _validate_k(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("k must be a positive integer.")
+        return v
+
+    @field_validator("documents")
+    @classmethod
+    def _validate_documents(cls, v: dict[str, str]) -> dict[str, str]:
+        if not v:
+            raise ValueError("documents must not be empty.")
+        return v
 
 
 def load_eval_config(path: str) -> EvalConfig:

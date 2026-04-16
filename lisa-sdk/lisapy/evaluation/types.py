@@ -34,6 +34,7 @@ class QueryResult(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     query: str = Field(..., description="The original query.")
+    query_type: str = Field("unknown", description="Query type from the golden dataset entry.")
     precision: float = Field(..., description="Precision@k for this query.")
     recall: float = Field(..., description="Recall@k for this query.")
     ndcg: float = Field(..., description="NDCG@k for this query.")

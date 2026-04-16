@@ -26,6 +26,7 @@ import time
 from typing import Any
 
 import boto3
+from botocore.exceptions import ClientError
 
 logger = logging.getLogger(__name__)
 
@@ -112,10 +113,12 @@ def get_management_key(
                 raise RuntimeError(f"Secret '{secret_name}' does not contain a SecretString ")
             logger.debug("Retrieved management key from %s", secret_name)
             return secret_string
-        except Exception as exc:
+        except ClientError as exc:
             last_error = exc
             logger.debug("Secret %s not found, trying next pattern...", secret_name)
             continue
+        except Exception as exc:
+            raise RuntimeError(f"Unexpected error retrieving secret '{secret_name}': {type(exc).__name__}") from exc
 
     raise RuntimeError(f"Could not find management key. Tried: {', '.join(patterns)}") from last_error
 
@@ -194,8 +197,10 @@ def setup_authentication(
 
     try:
         create_api_token(deployment_name, api_key, region)
+    except ClientError as exc:
+        logger.warning("Failed to create DynamoDB token (proceeding anyway): %s", type(exc).__name__)
     except Exception as exc:
-        logger.warning("Failed to create DynamoDB token (proceeding anyway): %s", exc)
+        logger.warning("Unexpected error creating DynamoDB token (proceeding anyway): %s", type(exc).__name__)
 
     headers = {"Api-Key": api_key, "Authorization": api_key}
     logger.debug("Authentication setup completed")

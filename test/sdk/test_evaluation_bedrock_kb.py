@@ -20,15 +20,6 @@ import pytest
 from lisapy.evaluation import BedrockKBEvaluator, GoldenDatasetEntry
 
 
-@pytest.fixture
-def source_map() -> dict[str, str]:
-    return {
-        "doc_a": "s3://bucket/doc_a.pdf",
-        "doc_b": "s3://bucket/doc_b.pdf",
-        "doc_c": "s3://bucket/doc_c.pdf",
-    }
-
-
 def _make_retrieve_result(uri: str, score: float = 0.9) -> dict:
     """Build a single Bedrock KB retrieve() result item."""
     return {
@@ -135,3 +126,42 @@ class TestBedrockKBEvaluator:
         assert result.precision == pytest.approx(0.5)
         # Recall: 1 of 1 expected found = 1.0
         assert result.recall == 1.0
+
+    @patch("lisapy.evaluation.bedrock_kb.boto3.client")
+    def test_evaluate_empty_golden_raises(self, mock_boto_client, source_map):
+        """Passing an empty golden dataset should raise ValueError."""
+        evaluator = BedrockKBEvaluator(knowledge_base_id="KB123", source_map=source_map, region="us-east-1", k=5)
+        with pytest.raises(ValueError, match="Golden dataset must not be empty"):
+            evaluator.evaluate([])
+
+    @patch("lisapy.evaluation.bedrock_kb.boto3.client")
+    def test_evaluate_unknown_doc_in_expected_raises(self, mock_boto_client, source_map):
+        """Unknown document key in expected should raise ValueError."""
+        mock_kb = MagicMock()
+        mock_boto_client.return_value = mock_kb
+        mock_kb.retrieve.return_value = {"retrievalResults": [_make_retrieve_result("s3://bucket/doc_a.pdf")]}
+
+        golden = [
+            GoldenDatasetEntry(query="q1", expected=["nonexistent"], relevance={"nonexistent": 3}, type="semantic"),
+        ]
+        evaluator = BedrockKBEvaluator(knowledge_base_id="KB123", source_map=source_map, region="us-east-1", k=5)
+        with pytest.raises(ValueError, match="unknown document 'nonexistent'"):
+            evaluator.evaluate(golden)
+
+    @patch("lisapy.evaluation.bedrock_kb.boto3.client")
+    def test_boto3_client_error_propagates(self, mock_boto_client, source_map):
+        """ClientError from retrieve() should propagate, not be swallowed."""
+        from botocore.exceptions import ClientError
+
+        mock_kb = MagicMock()
+        mock_boto_client.return_value = mock_kb
+        mock_kb.retrieve.side_effect = ClientError(
+            {"Error": {"Code": "AccessDeniedException", "Message": "denied"}}, "Retrieve"
+        )
+
+        golden = [
+            GoldenDatasetEntry(query="q1", expected=["doc_a"], relevance={"doc_a": 3}, type="semantic"),
+        ]
+        evaluator = BedrockKBEvaluator(knowledge_base_id="KB123", source_map=source_map, region="us-east-1", k=5)
+        with pytest.raises(ClientError):
+            evaluator.evaluate(golden)

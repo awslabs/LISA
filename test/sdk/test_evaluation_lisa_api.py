@@ -20,15 +20,6 @@ from lisapy import LisaApi
 from lisapy.evaluation import GoldenDatasetEntry, LisaApiEvaluator
 
 
-@pytest.fixture
-def source_map() -> dict[str, str]:
-    return {
-        "doc_a": "s3://bucket/doc_a.pdf",
-        "doc_b": "s3://bucket/doc_b.pdf",
-        "doc_c": "s3://bucket/doc_c.pdf",
-    }
-
-
 def _make_similarity_result(source: str, content: str = "chunk text", score: float = 0.9) -> dict:
     """Build a single LISA API similarity_search result item."""
     return {
@@ -149,3 +140,86 @@ class TestLisaApiEvaluator:
         # After dedup: [doc_a, doc_b] → 1 hit / 2 unique = 0.5 precision
         assert result.precision == pytest.approx(0.5)
         assert result.recall == 1.0
+
+    def test_evaluate_empty_golden_raises(self, lisa_api: LisaApi, source_map):
+        """Passing an empty golden dataset should raise ValueError."""
+        evaluator = LisaApiEvaluator(
+            client=lisa_api, repo_id="test-repo", collection_id="default", source_map=source_map, k=5
+        )
+        with pytest.raises(ValueError, match="Golden dataset must not be empty"):
+            evaluator.evaluate([])
+
+    @responses.activate
+    def test_evaluate_unknown_doc_in_expected_raises(self, lisa_api: LisaApi, api_url: str, source_map):
+        """Unknown document key in expected should raise ValueError."""
+        responses.add(
+            responses.GET,
+            f"{api_url}/repository/test-repo/similaritySearch",
+            json={"docs": [_make_similarity_result("s3://bucket/doc_a.pdf")]},
+            status=200,
+        )
+
+        golden = [
+            GoldenDatasetEntry(query="q1", expected=["nonexistent"], relevance={"nonexistent": 3}, type="semantic"),
+        ]
+        evaluator = LisaApiEvaluator(
+            client=lisa_api, repo_id="test-repo", collection_id="default", source_map=source_map, k=5
+        )
+        with pytest.raises(ValueError, match="unknown document 'nonexistent'"):
+            evaluator.evaluate(golden)
+
+    @responses.activate
+    def test_http_401_propagates(self, lisa_api: LisaApi, api_url: str, source_map):
+        """HTTP 401 should raise an exception, not be silently ignored."""
+        responses.add(
+            responses.GET,
+            f"{api_url}/repository/test-repo/similaritySearch",
+            json={"error": "Unauthorized"},
+            status=401,
+        )
+
+        golden = [
+            GoldenDatasetEntry(query="q1", expected=["doc_a"], relevance={"doc_a": 3}, type="semantic"),
+        ]
+        evaluator = LisaApiEvaluator(
+            client=lisa_api, repo_id="test-repo", collection_id="default", source_map=source_map, k=5
+        )
+        with pytest.raises(Exception):
+            evaluator.evaluate(golden)
+
+    @responses.activate
+    def test_http_500_propagates(self, lisa_api: LisaApi, api_url: str, source_map):
+        """HTTP 500 should raise an exception."""
+        responses.add(
+            responses.GET,
+            f"{api_url}/repository/test-repo/similaritySearch",
+            json={"error": "Internal Server Error"},
+            status=500,
+        )
+
+        golden = [
+            GoldenDatasetEntry(query="q1", expected=["doc_a"], relevance={"doc_a": 3}, type="semantic"),
+        ]
+        evaluator = LisaApiEvaluator(
+            client=lisa_api, repo_id="test-repo", collection_id="default", source_map=source_map, k=5
+        )
+        with pytest.raises(Exception):
+            evaluator.evaluate(golden)
+
+    @responses.activate
+    def test_connection_error_propagates(self, lisa_api: LisaApi, api_url: str, source_map):
+        """Connection errors should propagate."""
+        responses.add(
+            responses.GET,
+            f"{api_url}/repository/test-repo/similaritySearch",
+            body=ConnectionError("connection refused"),
+        )
+
+        golden = [
+            GoldenDatasetEntry(query="q1", expected=["doc_a"], relevance={"doc_a": 3}, type="semantic"),
+        ]
+        evaluator = LisaApiEvaluator(
+            client=lisa_api, repo_id="test-repo", collection_id="default", source_map=source_map, k=5
+        )
+        with pytest.raises(ConnectionError):
+            evaluator.evaluate(golden)

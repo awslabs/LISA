@@ -18,12 +18,13 @@ Provides metric functions, golden dataset loading, and evaluator classes
 for Bedrock Knowledge Bases and LISA API backends (OpenSearch, PGVector).
 """
 
+from .base import BaseEvaluator
 from .bedrock_kb import BedrockKBEvaluator
 from .config import BedrockKBBackend, EvalConfig, LisaApiBackend, load_eval_config
 from .dataset import load_golden_dataset
 from .lisa_api import LisaApiEvaluator
 from .metrics import deduplicate_sources, ndcg_at_k, precision_at_k, recall_at_k
-from .runner import run_evaluation
+from .runner import format_comparison, format_report, run_evaluation
 from .types import EvalResult, GoldenDatasetEntry, QueryResult
 
 __all__ = [
@@ -35,11 +36,14 @@ __all__ = [
     "recall_at_k",
     "ndcg_at_k",
     "load_golden_dataset",
+    "BaseEvaluator",
     "BedrockKBEvaluator",
     "LisaApiEvaluator",
     "EvalConfig",
     "BedrockKBBackend",
     "LisaApiBackend",
     "load_eval_config",
+    "format_report",
+    "format_comparison",
     "run_evaluation",
 ]

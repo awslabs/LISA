@@ -28,9 +28,10 @@ Configuration (environment variables):
         Example: {"token:abc-123": {"rpm": 120, "burst": 20}, "oidc:user-456": {"rpm": 10}}
 """
 
+import asyncio
+import hashlib
 import json
 import os
-import threading
 import time
 from collections.abc import Callable
 
@@ -119,6 +120,10 @@ class _TokenBucket:
             self.tokens -= 1.0
             return True, 0.0
 
+        # Disabled refill (rpm=0): allow burst-only capacity and then throttle.
+        if refill_rate <= 0:
+            return False, 60.0
+
         # How long until one token is available
         wait = (1.0 - self.tokens) / refill_rate
         return False, wait
@@ -126,7 +131,7 @@ class _TokenBucket:
 
 # Global bucket store — keyed by user identity string
 _buckets: dict[str, _TokenBucket] = {}
-_lock = threading.Lock()
+_lock = asyncio.Lock()
 
 
 def _get_max_tokens() -> float:
@@ -144,11 +149,11 @@ def _get_user_limits(user_key: str) -> tuple[float, float, float]:
     """
     override = RATE_LIMIT_OVERRIDES.get(user_key)
     if override:
-        rpm = override.get("rpm", RATE_LIMIT_RPM)
-        burst = override.get("burst", RATE_LIMIT_BURST)
+        rpm = max(int(override.get("rpm", RATE_LIMIT_RPM)), 0)
+        burst = max(int(override.get("burst", RATE_LIMIT_BURST)), 0)
     else:
-        rpm = RATE_LIMIT_RPM
-        burst = RATE_LIMIT_BURST
+        rpm = max(RATE_LIMIT_RPM, 0)
+        burst = max(RATE_LIMIT_BURST, 0)
     max_tokens = float(rpm) + float(burst)
     refill_rate = rpm / 60.0
     return max_tokens, refill_rate, float(rpm)
@@ -162,7 +167,7 @@ def _prune_stale_buckets() -> None:
         del _buckets[k]
 
 
-def _check_rate_limit(user_key: str) -> tuple[bool, float]:
+async def _check_rate_limit(user_key: str) -> tuple[bool, float]:
     """Check whether *user_key* is within its rate limit.
 
     Returns ``(allowed, retry_after_seconds)``.
@@ -170,7 +175,7 @@ def _check_rate_limit(user_key: str) -> tuple[bool, float]:
     """
     max_tokens, refill_rate, _ = _get_user_limits(user_key)
 
-    with _lock:
+    async with _lock:
         if len(_buckets) >= _MAX_BUCKETS:
             _prune_stale_buckets()
 
@@ -193,28 +198,34 @@ def _get_user_key(request: Request) -> str | None:
     Returns ``None`` for requests that should bypass rate limiting
     (management tokens, unauthenticated/public paths).
     """
-    # Management tokens bypass rate limiting — they're internal automation
-    if not hasattr(request.state, "authenticated"):
+    if not getattr(request.state, "authenticated", False):
+        return None
+
+    api_token_info = getattr(request.state, "api_token_info", None)
+    jwt_data = getattr(request.state, "jwt_data", None)
+    username = getattr(request.state, "username", None)
+
+    # Management tokens bypass rate limiting — they're internal automation.
+    if getattr(request.state, "is_management_token", False):
+        return None
+    if api_token_info is None and not jwt_data and username == "management-token":
         return None
 
     # API token users — key on tokenUUID (unique per key)
-    if hasattr(request.state, "api_token_info"):
-        token_info = request.state.api_token_info
-        token_uuid = token_info.get("tokenUUID")
+    if api_token_info and isinstance(api_token_info, dict):
+        token_uuid = api_token_info.get("tokenUUID")
         if token_uuid:
             return f"token:{token_uuid}"
         # Fallback to username if no UUID (shouldn't happen for valid tokens)
-        return f"token:{token_info.get('username', 'unknown')}"
+        return f"token:{api_token_info.get('username', 'unknown')}"
 
     # OIDC users — key on subject claim
-    jwt_data = getattr(request.state, "jwt_data", None)
     if jwt_data and isinstance(jwt_data, dict):
         sub = jwt_data.get("sub") or jwt_data.get("username")
         if sub:
             return f"oidc:{sub}"
 
     # Fallback to username set by auth middleware
-    username = getattr(request.state, "username", None)
     if username:
         return f"user:{username}"
 
@@ -248,10 +259,12 @@ async def rate_limit_middleware(request: Request, call_next: Callable[[Request],
         # Can't identify user or exempt category — let it through
         return await call_next(request)
 
-    allowed, retry_after = _check_rate_limit(user_key)
+    allowed, retry_after = await _check_rate_limit(user_key)
 
     if not allowed:
-        logger.warning(f"Rate limit exceeded for {user_key}, retry_after={retry_after:.1f}s")
+        user_type = user_key.split(":", 1)[0]
+        user_hash = hashlib.sha256(user_key.encode("utf-8")).hexdigest()[:10]
+        logger.warning(f"Rate limit exceeded for {user_type}:{user_hash}, retry_after={retry_after:.1f}s")
         return JSONResponse(
             status_code=HTTP_429_TOO_MANY_REQUESTS,
             content={

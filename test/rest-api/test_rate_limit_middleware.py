@@ -160,11 +160,15 @@ class TestGetUserKey:
         assert _get_user_key(request) == "user:fallback-user"
 
     def test_management_token_returns_none(self):
-        """Management tokens have no 'authenticated' attr — should bypass."""
+        """Management tokens are authenticated but carry no per-user identity."""
         from middleware.rate_limit_middleware import _get_user_key
 
         request = _make_request()
-        # No request.state.authenticated set
+        request.state.authenticated = True
+        request.state.api_token_info = None
+        request.state.jwt_data = None
+        request.state.username = "management-token"
+        request.state.is_management_token = True
         assert _get_user_key(request) is None
 
     def test_no_identity_returns_none(self):
@@ -323,11 +327,15 @@ class TestRateLimitMiddleware:
 
     @pytest.mark.asyncio
     async def test_management_token_bypassed(self):
-        """Management tokens (no authenticated attr) should never be throttled."""
+        """Management tokens should never be throttled."""
         from middleware.rate_limit_middleware import rate_limit_middleware
 
         request = _make_request()
-        # Management tokens don't set request.state.authenticated
+        request.state.authenticated = True
+        request.state.api_token_info = None
+        request.state.jwt_data = None
+        request.state.username = "management-token"
+        request.state.is_management_token = True
 
         for _ in range(200):
             resp = await rate_limit_middleware(request, _call_next_ok)
@@ -610,3 +618,18 @@ class TestRateLimitMiddlewareOverrides:
 
         resp = await mod.rate_limit_middleware(request, _call_next_ok)
         assert resp.status_code == 429
+
+    @pytest.mark.asyncio
+    async def test_zero_rpm_override_does_not_crash(self):
+        """rpm=0 should not raise and should return a 429 after burst is consumed."""
+        mod = self._mod
+        mod.RATE_LIMIT_OVERRIDES = {"token:zero-rpm": {"rpm": 0, "burst": 1}}
+
+        request = _make_request()
+        request.state.authenticated = True
+        request.state.api_token_info = {"tokenUUID": "zero-rpm", "username": "z"}
+
+        first = await mod.rate_limit_middleware(request, _call_next_ok)
+        second = await mod.rate_limit_middleware(request, _call_next_ok)
+        assert first.status_code == 200
+        assert second.status_code == 429

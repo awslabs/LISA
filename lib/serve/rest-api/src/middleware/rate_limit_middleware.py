@@ -30,10 +30,9 @@ Configuration (environment variables):
 
 import json
 import os
-import time
 import threading
+import time
 from collections.abc import Callable
-from typing import Any
 
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
@@ -46,6 +45,7 @@ from starlette.status import HTTP_429_TOO_MANY_REQUESTS
 RATE_LIMIT_RPM = int(os.environ.get("RATE_LIMIT_RPM", "60"))
 RATE_LIMIT_BURST = int(os.environ.get("RATE_LIMIT_BURST", "10"))
 RATE_LIMIT_ENABLED = os.environ.get("RATE_LIMIT_ENABLED", "true").lower() == "true"
+
 
 # Per-user overrides: { "token:<uuid>": {"rpm": N, "burst": N}, ... }
 def _parse_overrides(raw: str) -> dict[str, dict[str, int]]:
@@ -74,9 +74,7 @@ def _parse_overrides(raw: str) -> dict[str, dict[str, int]]:
         return {}
 
 
-RATE_LIMIT_OVERRIDES: dict[str, dict[str, int]] = _parse_overrides(
-    os.environ.get("RATE_LIMIT_OVERRIDES", "")
-)
+RATE_LIMIT_OVERRIDES: dict[str, dict[str, int]] = _parse_overrides(os.environ.get("RATE_LIMIT_OVERRIDES", ""))
 
 # Derived: tokens added per second (system default)
 _REFILL_RATE = RATE_LIMIT_RPM / 60.0
@@ -93,6 +91,7 @@ _STALE_SECONDS = 300.0
 # ---------------------------------------------------------------------------
 # Token bucket implementation
 # ---------------------------------------------------------------------------
+
 
 class _TokenBucket:
     """Simple token bucket for a single user.
@@ -187,6 +186,7 @@ def _check_rate_limit(user_key: str) -> tuple[bool, float]:
 # User identity extraction
 # ---------------------------------------------------------------------------
 
+
 def _get_user_key(request: Request) -> str | None:
     """Derive a rate-limit key from the authenticated request.
 
@@ -224,6 +224,7 @@ def _get_user_key(request: Request) -> str | None:
 # ---------------------------------------------------------------------------
 # Middleware entry point
 # ---------------------------------------------------------------------------
+
 
 async def rate_limit_middleware(request: Request, call_next: Callable[[Request], Response]) -> Response:
     """Per-user rate limiting middleware.

@@ -16,7 +16,7 @@
 import sys
 import time
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from fastapi import Response
@@ -29,6 +29,7 @@ sys.path.insert(0, str(rest_api_src))
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_request(path="/v2/serve/chat/completions", method="POST"):
     """Create a mock request with a clean state object."""
@@ -54,6 +55,7 @@ async def _call_next_ok(request):
 # ---------------------------------------------------------------------------
 # Token bucket unit tests
 # ---------------------------------------------------------------------------
+
 
 class TestTokenBucket:
     """Tests for the _TokenBucket internal class."""
@@ -112,6 +114,7 @@ class TestTokenBucket:
 # ---------------------------------------------------------------------------
 # _get_user_key tests
 # ---------------------------------------------------------------------------
+
 
 class TestGetUserKey:
     """Tests for user identity extraction from request state."""
@@ -177,6 +180,7 @@ class TestGetUserKey:
 # Middleware integration tests
 # ---------------------------------------------------------------------------
 
+
 class TestRateLimitMiddleware:
     """Tests for the rate_limit_middleware function."""
 
@@ -204,8 +208,8 @@ class TestRateLimitMiddleware:
     @pytest.mark.asyncio
     async def test_blocks_after_burst_exceeded(self):
         from middleware.rate_limit_middleware import (
-            rate_limit_middleware,
             _get_max_tokens,
+            rate_limit_middleware,
         )
 
         request = _make_request()
@@ -230,8 +234,8 @@ class TestRateLimitMiddleware:
         import json
 
         from middleware.rate_limit_middleware import (
-            rate_limit_middleware,
             _get_max_tokens,
+            rate_limit_middleware,
         )
 
         request = _make_request()
@@ -294,8 +298,8 @@ class TestRateLimitMiddleware:
     async def test_separate_buckets_per_user(self):
         """Two different users should have independent rate limits."""
         from middleware.rate_limit_middleware import (
-            rate_limit_middleware,
             _get_max_tokens,
+            rate_limit_middleware,
         )
 
         max_tokens = int(_get_max_tokens())
@@ -333,8 +337,8 @@ class TestRateLimitMiddleware:
     async def test_oidc_user_rate_limited(self):
         """OIDC users should be rate limited by their sub claim."""
         from middleware.rate_limit_middleware import (
-            rate_limit_middleware,
             _get_max_tokens,
+            rate_limit_middleware,
         )
 
         request = _make_request()
@@ -353,6 +357,7 @@ class TestRateLimitMiddleware:
 # Bucket pruning tests
 # ---------------------------------------------------------------------------
 
+
 class TestBucketPruning:
     """Tests for stale bucket cleanup."""
 
@@ -368,9 +373,9 @@ class TestBucketPruning:
     def test_stale_buckets_pruned(self):
         from middleware.rate_limit_middleware import (
             _buckets,
-            _TokenBucket,
             _prune_stale_buckets,
             _STALE_SECONDS,
+            _TokenBucket,
         )
 
         # Add a stale bucket
@@ -390,6 +395,7 @@ class TestBucketPruning:
 # ---------------------------------------------------------------------------
 # Override parsing tests
 # ---------------------------------------------------------------------------
+
 
 class TestParseOverrides:
     """Tests for _parse_overrides JSON parsing."""
@@ -445,6 +451,7 @@ class TestParseOverrides:
 # ---------------------------------------------------------------------------
 # _get_user_limits tests
 # ---------------------------------------------------------------------------
+
 
 class TestGetUserLimits:
     """Tests for per-user limit resolution with overrides."""
@@ -503,6 +510,7 @@ class TestGetUserLimits:
 # ---------------------------------------------------------------------------
 # Middleware integration tests with overrides
 # ---------------------------------------------------------------------------
+
 
 class TestRateLimitMiddlewareOverrides:
     """Tests for rate_limit_middleware with per-user overrides."""

@@ -111,7 +111,12 @@ export class FastApiContainer extends Construct {
             USER_GROUP: config.authConfig!.userGroup,
             RAG_ADMIN_GROUP: config.authConfig!.ragAdminGroup,
             JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
-            MANAGEMENT_KEY_NAME: managementKeyName
+            MANAGEMENT_KEY_NAME: managementKeyName,
+            // Per-user rate limiting (in-process token bucket)
+            RATE_LIMIT_RPM: (config.restApiConfig.rateLimitRpm ?? 60).toString(),
+            RATE_LIMIT_BURST: (config.restApiConfig.rateLimitBurst ?? 10).toString(),
+            RATE_LIMIT_ENABLED: (config.restApiConfig.rateLimitEnabled ?? true).toString(),
+            RATE_LIMIT_OVERRIDES: JSON.stringify(config.restApiConfig.rateLimitOverrides ?? {}),
         };
 
         if (tokenTable) {

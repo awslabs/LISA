@@ -595,6 +595,11 @@ export class ECSCluster extends Construct {
             },
             port: 80,
             targets: [service],
+            // Enable ALB sticky sessions when rate limiting is active so that per-user
+            // in-memory token buckets are consistently hit on the same ECS task.
+            stickinessCookieDuration: this.config.restApiConfig.rateLimitEnabled
+                ? Duration.days(1)
+                : undefined,
             ...(taskDefinition.applicationTarget?.priority && {
                 priority: taskDefinition.applicationTarget.priority,
                 conditions: taskDefinition.applicationTarget.conditions?.map(({ type, values }) => {

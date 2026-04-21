@@ -344,8 +344,40 @@ export class McpWorkbenchConstruct extends Construct {
             environment,
         });
 
-        const mcpWorkbenchTaskDefinition = this.getMcpWorkbenchTaskDefinition(config);
-        workbenchCluster.addTask(ECSTasks.MCPWORKBENCH, mcpWorkbenchTaskDefinition);
+        const mcpWorkbenchTaskDefinition = {
+            environment: {
+                RCLONE_CONFIG_S3_REGION: config.region,
+                MCPWORKBENCH_BUCKET: [config.deploymentName, config.deploymentStage, 'MCPWorkbench', config.accountNumber].join('-').toLowerCase(),
+            },
+            containerConfig: {
+                image: mcpWorkbenchImage,
+                healthCheckConfig: {
+                    command: ['CMD-SHELL', 'exit 0'],
+                    interval: 10,
+                    startPeriod: 30,
+                    timeout: 5,
+                    retries: 3
+                },
+                environment: {},
+                sharedMemorySize: 0,
+                // Use SYS_ADMIN capability instead of full privileged mode
+                // Required for FUSE mounts (rclone S3 mount)
+                // The mcpworkbench application itself runs as non-root user (lisa)
+                privileged: false,
+                linuxCapabilities: {
+                    add: ['SYS_ADMIN']
+                }
+            },
+            containerMemoryReservationMiB: 1024,
+            applicationTarget: {
+                port: 8000,
+                priority: 80,
+                conditions: [{
+                    type: 'pathPatterns' as const,
+                    values: ['/v2/mcp/*']
+                }]
+            }
+        };
 
         const tokenTableNameParameter = ssm.StringParameter.fromStringParameterName(
             this,

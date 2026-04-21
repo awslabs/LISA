@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Lambda functions for managing User Preferences in AWS DynamoDB."""
+
 import json
 import logging
 import os

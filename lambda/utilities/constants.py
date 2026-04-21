@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Constants related to parsing RAG documents."""
+
 PDF_FILE = "pdf"
 TEXT_FILE = "txt"
 DOCX_FILE = "docx"

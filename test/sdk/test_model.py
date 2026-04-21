@@ -14,7 +14,6 @@
 
 """Unit tests for ModelMixin."""
 
-
 import pytest
 import responses
 from lisapy import LisaApi

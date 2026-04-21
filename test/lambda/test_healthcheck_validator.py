@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Unit tests for ECS healthcheck command validator."""
+
 import pytest
 from utilities.healthcheck_validator import validate_healthcheck_command
 

@@ -14,7 +14,6 @@
 
 """Handler for ListModels requests."""
 
-
 from utilities.auth import user_has_group_access
 
 from ..domain_objects import ListModelsResponse

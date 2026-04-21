@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Lambda functions for managing MCP Tools in AWS S3."""
+
 import json
 import logging
 import os

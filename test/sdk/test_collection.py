@@ -14,7 +14,6 @@
 
 """Unit tests for CollectionMixin."""
 
-
 import pytest
 import responses
 from lisapy import LisaApi

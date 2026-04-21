@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Pydantic models for Chat Assistant Stacks."""
+
 import uuid
 
 from pydantic import BaseModel, Field

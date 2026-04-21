@@ -14,7 +14,6 @@
 
 """Unit tests for RAG evaluation metric functions."""
 
-
 import pytest
 from lisapy.evaluation import deduplicate_sources, ndcg_at_k, precision_at_k, recall_at_k
 

@@ -114,8 +114,9 @@ def generate_config(filepath: str) -> None:
 
     # Build litellm_settings, merging with any customer-provided values
     existing_litellm_settings = config_contents.get("litellm_settings", {}) or {}
-    existing_litellm_settings.update(_build_litellm_settings())
-    config_contents["litellm_settings"] = existing_litellm_settings
+    litellm_settings = _build_litellm_settings()
+    litellm_settings.update(existing_litellm_settings)
+    config_contents["litellm_settings"] = litellm_settings
 
     # Get database connection info from SSM
     db_param_response = ssm_client.get_parameter(Name=os.environ["LITELLM_DB_INFO_PS_NAME"])

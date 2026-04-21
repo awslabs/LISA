@@ -298,3 +298,84 @@ class TestBedrockKBRepositoryService:
         with patch.object(bedrock_kb_service, "repository", {"repositoryId": "test-kb-repo"}):
             collection = bedrock_kb_service.create_default_collection()
             assert collection is None
+
+    def test_supports_hybrid_search(self, bedrock_kb_service):
+        """Bedrock KB supports hybrid search."""
+        assert bedrock_kb_service.supports_hybrid_search() is True
+
+    def test_hybrid_retrieve_sends_hybrid_search_type(self, bedrock_kb_service):
+        """hybrid_retrieve sends overrideSearchType HYBRID to Bedrock API."""
+        mock_client = MagicMock()
+        mock_client.retrieve.return_value = {"retrievalResults": []}
+
+        bedrock_kb_service.hybrid_retrieve(
+            query="test",
+            collection_id="ds-456",
+            top_k=5,
+            model_name="test-model",
+            bedrock_agent_client=mock_client,
+        )
+
+        call_args = mock_client.retrieve.call_args[1]
+        vector_config = call_args["retrievalConfiguration"]["vectorSearchConfiguration"]
+        assert vector_config["overrideSearchType"] == "HYBRID"
+
+    def test_hybrid_retrieve_applies_data_source_filter(self, bedrock_kb_service):
+        """hybrid_retrieve applies data source filter same as retrieve_documents."""
+        mock_client = MagicMock()
+        mock_client.retrieve.return_value = {"retrievalResults": []}
+
+        bedrock_kb_service.hybrid_retrieve(
+            query="test",
+            collection_id="ds-456",
+            top_k=5,
+            model_name="m",
+            bedrock_agent_client=mock_client,
+        )
+
+        call_args = mock_client.retrieve.call_args[1]
+        vector_config = call_args["retrievalConfiguration"]["vectorSearchConfiguration"]
+        assert vector_config["filter"]["equals"]["key"] == "x-amz-bedrock-kb-data-source-id"
+        assert vector_config["filter"]["equals"]["value"] == "ds-456"
+
+    def test_hybrid_retrieve_returns_documents_with_hybrid_metadata(self, bedrock_kb_service):
+        """hybrid_retrieve includes retrieval_method, actual_mode_used, hybrid_supported in metadata."""
+        mock_client = MagicMock()
+        mock_client.retrieve.return_value = {
+            "retrievalResults": [
+                {
+                    "content": {"text": "Hybrid result"},
+                    "metadata": {},
+                    "score": 0.92,
+                    "location": {"s3Location": {"uri": "s3://bucket/doc.pdf"}},
+                }
+            ]
+        }
+
+        results = bedrock_kb_service.hybrid_retrieve(
+            query="test",
+            collection_id="ds-456",
+            top_k=5,
+            model_name="m",
+            include_score=True,
+            bedrock_agent_client=mock_client,
+        )
+
+        assert len(results) == 1
+        assert results[0]["page_content"] == "Hybrid result"
+        meta = results[0]["metadata"]
+        assert meta["retrieval_method"] == "hybrid"
+        assert meta["actual_mode_used"] == "hybrid"
+        assert meta["hybrid_supported"] is True
+        assert meta["similarity_score"] == 0.92
+        assert meta["source"] == "s3://bucket/doc.pdf"
+
+    def test_hybrid_retrieve_missing_bedrock_client(self, bedrock_kb_service):
+        """hybrid_retrieve raises ValueError when bedrock_agent_client is None."""
+        with pytest.raises(ValueError, match="Bedrock agent client required"):
+            bedrock_kb_service.hybrid_retrieve(
+                query="test",
+                collection_id="ds-456",
+                top_k=5,
+                model_name="m",
+            )

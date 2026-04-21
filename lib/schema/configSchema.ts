@@ -746,6 +746,25 @@ const FastApiContainerConfigSchema = z.object({
                     'APIs. Please do not define the dbHost field for the FastAPI container DB config.',
             },
         ),
+    rateLimitRpm: z.number().int().positive().default(60).describe(
+        'Per-user sustained request rate limit in requests per minute. Each ECS task enforces this independently.'
+    ),
+    rateLimitBurst: z.number().int().nonnegative().default(10).describe(
+        'Per-user burst allowance above the sustained rate limit. Allows short spikes without throttling.'
+    ),
+    rateLimitEnabled: z.boolean().default(true).describe(
+        'Enable or disable per-user rate limiting on the serve API.'
+    ),
+    rateLimitOverrides: z.record(
+        z.string(),
+        z.object({
+            rpm: z.number().int().positive().optional().describe('Override RPM for this user/token.'),
+            burst: z.number().int().nonnegative().optional().describe('Override burst for this user/token.'),
+        })
+    ).default({}).describe(
+        'Per-user rate limit overrides. Keys use the format "token:<tokenUUID>" for API tokens, ' +
+        '"oidc:<sub>" for OIDC users, or "user:<username>". Values can override "rpm" and/or "burst".'
+    ),
 }).describe('Configuration schema for REST API.');
 
 /** Custom domain / TLS for the MCP Workbench ALB only (separate from Serve’s `restApiConfig`). */

@@ -16,12 +16,14 @@
 from .auth_middleware import auth_middleware, require_admin, require_auth
 from .exception_handlers import register_exception_handlers
 from .input_validation import validate_input_middleware
+from .rate_limit_middleware import rate_limit_middleware
 from .request_middleware import process_request_middleware
 from .security_middleware import security_middleware
 
 __all__ = [
     "auth_middleware",
     "process_request_middleware",
+    "rate_limit_middleware",
     "register_exception_handlers",
     "require_admin",
     "require_auth",

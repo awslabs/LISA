@@ -178,9 +178,9 @@ class RagMixin(BaseMixin):
         if response.status_code == 200:
             result = response.json()
             logging.info("Request successful")
-            logging.info(f"Full response: {result}")
+            logging.debug(f"Full response: {result}")
             jobs = result.get("jobs", [])
-            logging.info(f"Jobs extracted: {jobs}")
+            logging.debug(f"Jobs extracted: {jobs}")
             return jobs  # type: ignore[no-any-return]
         else:
             raise parse_error(response.status_code, response)
@@ -211,9 +211,9 @@ class RagMixin(BaseMixin):
             results = response.json()
             docs: list[dict] = results.get("docs", [])
             for doc in docs:
-                logging.info(f"Document content: {doc['Document']['page_content']}")
-                logging.info(f"Metadata: {doc['Document']['metadata']}")
-                logging.info("---")
+                logging.debug(f"Document content: {doc['Document']['page_content']}")
+                logging.debug(f"Metadata: {doc['Document']['metadata']}")
+                logging.debug("---")
 
             return docs
         else:

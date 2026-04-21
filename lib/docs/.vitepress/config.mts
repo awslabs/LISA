@@ -67,6 +67,7 @@ const navLinks = [
       { text: 'Configuration UI', link: '/config/configuration-ui' },
       { text: 'Usage & Features', link: '/config/usage' },
       { text: 'RAG Repository', link: '/config/repositories' },
+      { text: 'RAG Evaluation', link: '/config/rag-evaluation' },
       { text: 'Langfuse Tracing', link: '/config/langfuse-tracing'},
       { text: 'Private Labeling', link: '/config/custom-branding' },
       {

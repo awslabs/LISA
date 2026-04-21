@@ -14,7 +14,7 @@
   limitations under the License.
 */
 import { App, Aspects, ValidationError } from 'aws-cdk-lib/core';
-import { AddPermissionBoundary } from '@cdklabs/cdk-enterprise-iac';
+import { AddPermissionBoundary, ConvertInlinePoliciesToManaged } from '@cdklabs/cdk-enterprise-iac';
 import { OpenSearchVectorStoreStack } from './opensearch';
 import { PGVectorStoreStack } from './pgvector';
 import { RagRepositoryDeploymentConfigSchema, RagRepositoryType, PartialConfigSchema } from '../../../lib/schema';
@@ -64,8 +64,12 @@ if (ragConfig.type === RagRepositoryType.OPENSEARCH) {
 }
 
 
-if (stack && config.permissionsBoundaryAspect) {
+if (config.permissionsBoundaryAspect) {
     Aspects.of(stack).add(new AddPermissionBoundary(config.permissionsBoundaryAspect!));
+}
+
+if (config.convertInlinePoliciesToManaged) {
+    Aspects.of(stack).add(new ConvertInlinePoliciesToManaged());
 }
 
 app.synth();

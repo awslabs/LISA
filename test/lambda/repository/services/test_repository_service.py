@@ -132,3 +132,45 @@ class TestRepositoryService:
         assert service.get_vector_store_client("col", None) is None
         assert service.create_default_collection() is None
         assert service.retrieve_documents("query", "col", 5) == []
+
+    def test_supports_hybrid_search_returns_false_by_default(self):
+        """Base implementation returns False for hybrid search support."""
+        service = ConcreteRepositoryService({"repositoryId": "test-repo"})
+        assert service.supports_hybrid_search() is False
+
+    def test_hybrid_retrieve_raises_not_implemented(self):
+        """Base implementation raises NotImplementedError with class name."""
+        service = ConcreteRepositoryService({"repositoryId": "test-repo"})
+        with pytest.raises(NotImplementedError, match="ConcreteRepositoryService"):
+            service.hybrid_retrieve(
+                query="test query",
+                collection_id="test-collection",
+                top_k=5,
+                model_name="test-model",
+            )
+
+    def test_hybrid_retrieve_includes_class_name_in_error(self):
+        """NotImplementedError message includes the actual class name."""
+        service = ConcreteRepositoryService({"repositoryId": "test-repo"})
+        with pytest.raises(NotImplementedError, match="does not support hybrid search"):
+            service.hybrid_retrieve(
+                query="q",
+                collection_id="c",
+                top_k=3,
+                model_name="m",
+            )
+
+    def test_hybrid_retrieve_accepts_all_parameters(self):
+        """hybrid_retrieve signature accepts all documented parameters."""
+        service = ConcreteRepositoryService({"repositoryId": "test-repo"})
+        with pytest.raises(NotImplementedError):
+            service.hybrid_retrieve(
+                query="test",
+                collection_id="col",
+                top_k=10,
+                model_name="model",
+                vector_weight=0.6,
+                lexical_weight=0.4,
+                include_score=True,
+                bedrock_agent_client=None,
+            )
